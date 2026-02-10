@@ -52,14 +52,12 @@ export function SessionPlanOverview({
   const totalProblems = parts.reduce((sum, p) => sum + p.slots.length, 0)
 
   // Build collapsed summary: emoji (count) for each part
-  const partSummaries = parts.map((part) => `${getPartEmoji(part.type)} ${getPartLabel(part.type)} (${part.slots.length})`)
+  const partSummaries = parts.map(
+    (part) => `${getPartEmoji(part.type)} ${getPartLabel(part.type)} (${part.slots.length})`
+  )
 
   return (
-    <Collapsible.Root
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      data-component="session-plan-overview"
-    >
+    <Collapsible.Root open={isOpen} onOpenChange={setIsOpen} data-component="session-plan-overview">
       <Collapsible.Trigger asChild>
         <button
           type="button"
@@ -156,11 +154,7 @@ export function SessionPlanOverview({
                       ? 'gray.800/50'
                       : 'gray.50/50',
                   border: '1px solid',
-                  borderColor: isCurrent
-                    ? isDark
-                      ? 'blue.700/50'
-                      : 'blue.200'
-                    : 'transparent',
+                  borderColor: isCurrent ? (isDark ? 'blue.700/50' : 'blue.200') : 'transparent',
                 })}
               >
                 {/* Part info */}

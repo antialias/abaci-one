@@ -18,14 +18,18 @@ function createTermCountExplanation(opts?: {
   const comfortLevel = opts?.comfortLevel ?? 0.5
   const sessionMode = opts?.sessionMode ?? 'maintenance'
   const avgMastery = opts?.avgMastery !== undefined ? opts.avgMastery : 0.65
-  const modeMultiplier = sessionMode === 'remediation' ? 0.6 : sessionMode === 'progression' ? 0.85 : 1.0
+  const modeMultiplier =
+    sessionMode === 'remediation' ? 0.6 : sessionMode === 'progression' ? 0.85 : 1.0
   const dynamicRange = {
     min: Math.round(2 + 2 * comfortLevel),
     max: Math.round(3 + 5 * comfortLevel),
   }
   const override = opts?.override ?? null
   const finalRange = override
-    ? { min: Math.min(dynamicRange.min, override.max), max: Math.min(dynamicRange.max, override.max) }
+    ? {
+        min: Math.min(dynamicRange.min, override.max),
+        max: Math.min(dynamicRange.max, override.max),
+      }
     : dynamicRange
 
   return {

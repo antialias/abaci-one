@@ -6,11 +6,7 @@ import type { SkillBktResult } from '../bkt/types'
 // Helper factories
 // ============================================================================
 
-function makeBktResult(
-  skillId: string,
-  pKnown: number,
-  confidence: number
-): SkillBktResult {
+function makeBktResult(skillId: string, pKnown: number, confidence: number): SkillBktResult {
   return {
     skillId,
     pKnown,
@@ -57,18 +53,18 @@ describe('computeComfortLevel', () => {
     })
 
     it('returns conservative default 0.3 when bktResults map is empty', () => {
-      const result = computeComfortLevel(
-        new Map(),
-        ['skill-a'],
-        makeSessionMode('maintenance')
-      )
+      const result = computeComfortLevel(new Map(), ['skill-a'], makeSessionMode('maintenance'))
       expect(result.comfortLevel).toBe(0.3)
       expect(result.factors.avgMastery).toBeNull()
     })
 
     it('returns 0.3 when bktResults has data but none matches practicing skills', () => {
       const bkt = new Map([['unrelated-skill', makeBktResult('unrelated-skill', 0.9, 0.8)]])
-      const result = computeComfortLevel(bkt, ['skill-a', 'skill-b'], makeSessionMode('maintenance'))
+      const result = computeComfortLevel(
+        bkt,
+        ['skill-a', 'skill-b'],
+        makeSessionMode('maintenance')
+      )
       expect(result.comfortLevel).toBe(0.3)
       expect(result.factors.avgMastery).toBeNull()
     })

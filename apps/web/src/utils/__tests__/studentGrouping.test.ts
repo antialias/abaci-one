@@ -13,9 +13,7 @@ import {
 } from '../studentGrouping'
 
 // Helper to create a mock student
-function makeStudent(
-  overrides: Partial<StudentWithSkillData> = {}
-): StudentWithSkillData {
+function makeStudent(overrides: Partial<StudentWithSkillData> = {}): StudentWithSkillData {
   return {
     id: 'student-1',
     userId: 'user-1',
@@ -327,9 +325,7 @@ describe('computeSkillCategory', () => {
   })
 
   it('returns fiveComplements for five complement skills', () => {
-    expect(computeSkillCategory(['fiveComplements.4=5-1'])).toBe(
-      'fiveComplements'
-    )
+    expect(computeSkillCategory(['fiveComplements.4=5-1'])).toBe('fiveComplements')
   })
 
   it('returns the highest priority category when multiple present', () => {
@@ -343,10 +339,7 @@ describe('computeSkillCategory', () => {
   })
 
   it('returns advanced when any advanced skill is present', () => {
-    const result = computeSkillCategory([
-      'basic.directAddition',
-      'advanced.cascadingCarry',
-    ])
+    const result = computeSkillCategory(['basic.directAddition', 'advanced.cascadingCarry'])
     expect(result).toBe('advanced')
   })
 
@@ -433,9 +426,7 @@ describe('getGroupCategoryName', () => {
   })
 
   it('returns display name for advanced category', () => {
-    expect(getGroupCategoryName('advanced')).toBe(
-      'Advanced Multi-Column Operations'
-    )
+    expect(getGroupCategoryName('advanced')).toBe('Advanced Multi-Column Operations')
   })
 })
 
@@ -448,9 +439,7 @@ describe('groupStudents', () => {
   })
 
   it('groups new students into the "new" bucket', () => {
-    const students = [
-      makeStudent({ id: '1', lastPracticedAt: null, skillCategory: null }),
-    ]
+    const students = [makeStudent({ id: '1', lastPracticedAt: null, skillCategory: null })]
     const groups = groupStudents(students)
     expect(groups).toHaveLength(1)
     expect(groups[0].bucket).toBe('new')
@@ -521,12 +510,7 @@ describe('groupStudents', () => {
     ]
 
     const groups = groupStudents(students)
-    expect(groups.map((g) => g.bucket)).toEqual([
-      'today',
-      'thisWeek',
-      'older',
-      'new',
-    ])
+    expect(groups.map((g) => g.bucket)).toEqual(['today', 'thisWeek', 'older', 'new'])
 
     vi.useRealTimers()
   })
@@ -586,12 +570,7 @@ describe('filterStudents', () => {
   })
 
   it('filters by skill filters (AND logic)', () => {
-    const result = filterStudents(
-      students,
-      '',
-      ['basic.directAddition'],
-      false
-    )
+    const result = filterStudents(students, '', ['basic.directAddition'], false)
     expect(result).toHaveLength(2)
     expect(result.map((s) => s.name)).toEqual(['Alice', 'Bob'])
   })
@@ -608,23 +587,13 @@ describe('filterStudents', () => {
   })
 
   it('combines search query and skill filters', () => {
-    const result = filterStudents(
-      students,
-      'bob',
-      ['basic.directAddition'],
-      false
-    )
+    const result = filterStudents(students, 'bob', ['basic.directAddition'], false)
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('Bob')
   })
 
   it('returns empty when search and skills have no intersection', () => {
-    const result = filterStudents(
-      students,
-      'bob',
-      ['fiveComplements.4=5-1'],
-      false
-    )
+    const result = filterStudents(students, 'bob', ['fiveComplements.4=5-1'], false)
     expect(result).toHaveLength(0)
   })
 })

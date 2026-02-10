@@ -24,13 +24,7 @@ vi.mock('../../../../styled-system/css', () => ({
 
 // Mock Tooltip - render trigger and content
 vi.mock('../../ui/Tooltip', () => ({
-  Tooltip: ({
-    children,
-    content,
-  }: {
-    children: React.ReactNode
-    content: React.ReactNode
-  }) =>
+  Tooltip: ({ children, content }: { children: React.ReactNode; content: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'tooltip-wrapper' }, [
       React.createElement('div', { key: 'c' }, children),
       React.createElement('div', { key: 'tip', 'data-testid': 'tooltip-content' }, content),
@@ -131,17 +125,13 @@ describe('SessionProgressIndicator', () => {
 
   it('renders the component with data-component attribute', () => {
     render(<SessionProgressIndicator {...defaultProps} />)
-    const indicator = document.querySelector(
-      '[data-component="session-progress-indicator"]'
-    )
+    const indicator = document.querySelector('[data-component="session-progress-indicator"]')
     expect(indicator).toBeInTheDocument()
   })
 
   it('sets data-browse-mode attribute', () => {
     render(<SessionProgressIndicator {...defaultProps} isBrowseMode={true} />)
-    const indicator = document.querySelector(
-      '[data-component="session-progress-indicator"]'
-    )
+    const indicator = document.querySelector('[data-component="session-progress-indicator"]')
     expect(indicator).toHaveAttribute('data-browse-mode', 'true')
   })
 
@@ -162,26 +152,14 @@ describe('SessionProgressIndicator', () => {
 
   it('renders correct results with check mark', () => {
     const results = [createResult({ partNumber: 1, slotIndex: 0, isCorrect: true })]
-    render(
-      <SessionProgressIndicator
-        {...defaultProps}
-        results={results}
-        currentSlotIndex={1}
-      />
-    )
+    render(<SessionProgressIndicator {...defaultProps} results={results} currentSlotIndex={1} />)
     const correctSlots = document.querySelectorAll('[data-status="correct"]')
     expect(correctSlots).toHaveLength(1)
   })
 
   it('renders incorrect results with X mark', () => {
     const results = [createResult({ partNumber: 1, slotIndex: 0, isCorrect: false })]
-    render(
-      <SessionProgressIndicator
-        {...defaultProps}
-        results={results}
-        currentSlotIndex={1}
-      />
-    )
+    render(<SessionProgressIndicator {...defaultProps} results={results} currentSlotIndex={1} />)
     const incorrectSlots = document.querySelectorAll('[data-status="incorrect"]')
     expect(incorrectSlots).toHaveLength(1)
   })
@@ -388,9 +366,7 @@ describe('SessionProgressIndicator - redo mode', () => {
 
   it('calls onRedoProblem when clicking a completed problem', () => {
     const onRedoProblem = vi.fn()
-    const results = [
-      createResult({ partNumber: 1, slotIndex: 0, isCorrect: false }),
-    ]
+    const results = [createResult({ partNumber: 1, slotIndex: 0, isCorrect: false })]
     render(
       <SessionProgressIndicator
         parts={parts}
@@ -403,9 +379,7 @@ describe('SessionProgressIndicator - redo mode', () => {
       />
     )
     // Completed slot at index 0 should be clickable for redo
-    const completedSlot = document.querySelector(
-      '[data-status="incorrect"]'
-    ) as HTMLElement
+    const completedSlot = document.querySelector('[data-status="incorrect"]') as HTMLElement
     expect(completedSlot).toBeInTheDocument()
     fireEvent.click(completedSlot)
     expect(onRedoProblem).toHaveBeenCalledWith(0, results[0])
@@ -413,9 +387,7 @@ describe('SessionProgressIndicator - redo mode', () => {
 
   it('calls onCancelRedo when clicking current slot during redo', () => {
     const onCancelRedo = vi.fn()
-    const results = [
-      createResult({ partNumber: 1, slotIndex: 0, isCorrect: false }),
-    ]
+    const results = [createResult({ partNumber: 1, slotIndex: 0, isCorrect: false })]
     render(
       <SessionProgressIndicator
         parts={parts}
@@ -636,9 +608,7 @@ describe('SessionProgressIndicator - compact', () => {
         compact={true}
       />
     )
-    const indicator = document.querySelector(
-      '[data-component="session-progress-indicator"]'
-    )
+    const indicator = document.querySelector('[data-component="session-progress-indicator"]')
     expect(indicator).toBeInTheDocument()
   })
 })

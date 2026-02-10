@@ -66,11 +66,5 @@ export function usePracticeAssistanceAudio({
       sayTryUsingHelp()
       return
     }
-  }, [
-    assistanceState,
-    showWrongAnswerSuggestion,
-    replayProblem,
-    sayOfferingHelp,
-    sayTryUsingHelp,
-  ])
+  }, [assistanceState, showWrongAnswerSuggestion, replayProblem, sayOfferingHelp, sayTryUsingHelp])
 }

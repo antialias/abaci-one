@@ -20,13 +20,7 @@ vi.mock('../../../../styled-system/css', () => ({
 
 // Mock Tooltip (render children and content directly for testability)
 vi.mock('../../ui/Tooltip', () => ({
-  Tooltip: ({
-    children,
-    content,
-  }: {
-    children: React.ReactNode
-    content: React.ReactNode
-  }) =>
+  Tooltip: ({ children, content }: { children: React.ReactNode; content: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'tooltip' }, [
       React.createElement('div', { key: 'trigger', 'data-testid': 'tooltip-trigger' }, children),
       React.createElement('div', { key: 'content', 'data-testid': 'tooltip-content' }, content),
@@ -171,9 +165,7 @@ describe('PurposeBadge', () => {
 
   it('shows review schedule detail', () => {
     render(<PurposeBadge purpose="review" />)
-    expect(
-      screen.getByText('Mastered: 14 days \u2022 Practicing: 7 days')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Mastered: 14 days \u2022 Practicing: 7 days')).toBeInTheDocument()
   })
 
   it('shows targeting skill name for reinforce when slot has targetSkills', () => {

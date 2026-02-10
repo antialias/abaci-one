@@ -31,14 +31,11 @@ describe('GameLayoutContext', () => {
       return <div data-testid="mode">{mode}</div>
     }
 
-    const { unmount } = renderHook(
-      () => useGameLayoutMode(),
-      {
-        wrapper: ({ children }: { children: ReactNode }) => (
-          <GameLayoutProvider mode="container">{children}</GameLayoutProvider>
-        ),
-      }
-    )
+    const { unmount } = renderHook(() => useGameLayoutMode(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <GameLayoutProvider mode="container">{children}</GameLayoutProvider>
+      ),
+    })
     // If hook returned without throwing, the provider rendered its children
     unmount()
   })

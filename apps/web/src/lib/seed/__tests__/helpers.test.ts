@@ -166,9 +166,7 @@ describe('applyTuningAdjustments', () => {
   })
 
   it('applies problemsAdd to a specific skill', () => {
-    const adjustments: TuningAdjustment[] = [
-      { skillId: 'basic.directAddition', problemsAdd: 5 },
-    ]
+    const adjustments: TuningAdjustment[] = [{ skillId: 'basic.directAddition', problemsAdd: 5 }]
 
     const result = applyTuningAdjustments(baseHistory, adjustments)
 
@@ -190,9 +188,7 @@ describe('applyTuningAdjustments', () => {
   })
 
   it('applies adjustments to all skills when skillId is "all"', () => {
-    const adjustments: TuningAdjustment[] = [
-      { skillId: 'all', problemsAdd: 3 },
-    ]
+    const adjustments: TuningAdjustment[] = [{ skillId: 'all', problemsAdd: 3 }]
 
     const result = applyTuningAdjustments(baseHistory, adjustments)
 
@@ -230,9 +226,7 @@ describe('applyTuningAdjustments', () => {
 
   it('does not mutate original history', () => {
     const original = baseHistory.map((h) => ({ ...h }))
-    const adjustments: TuningAdjustment[] = [
-      { skillId: 'all', problemsAdd: 100 },
-    ]
+    const adjustments: TuningAdjustment[] = [{ skillId: 'all', problemsAdd: 100 }]
 
     applyTuningAdjustments(baseHistory, adjustments)
 
@@ -254,9 +248,7 @@ describe('applyTuningAdjustments', () => {
   })
 
   it('preserves non-problems fields', () => {
-    const adjustments: TuningAdjustment[] = [
-      { skillId: 'all', problemsAdd: 5 },
-    ]
+    const adjustments: TuningAdjustment[] = [{ skillId: 'all', problemsAdd: 5 }]
 
     const result = applyTuningAdjustments(baseHistory, adjustments)
 
@@ -267,9 +259,7 @@ describe('applyTuningAdjustments', () => {
   })
 
   it('ignores adjustments for non-matching skillIds', () => {
-    const adjustments: TuningAdjustment[] = [
-      { skillId: 'nonexistent.skill', problemsAdd: 100 },
-    ]
+    const adjustments: TuningAdjustment[] = [{ skillId: 'nonexistent.skill', problemsAdd: 100 }]
 
     const result = applyTuningAdjustments(baseHistory, adjustments)
 
@@ -346,9 +336,7 @@ describe('generateSlotResults', () => {
     const results = generateSlotResults(config, 0, startTime)
 
     for (let i = 1; i < results.length; i++) {
-      expect(results[i].timestamp.getTime()).toBeGreaterThan(
-        results[i - 1].timestamp.getTime()
-      )
+      expect(results[i].timestamp.getTime()).toBeGreaterThan(results[i - 1].timestamp.getTime())
     }
   })
 

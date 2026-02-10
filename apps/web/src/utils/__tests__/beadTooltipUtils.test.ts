@@ -28,9 +28,7 @@ describe('findTopmostBeadWithArrows', () => {
   })
 
   it('returns null when no beads have direction', () => {
-    const beads: StepBeadHighlight[] = [
-      { placeValue: 0, beadType: 'earth', position: 0 },
-    ]
+    const beads: StepBeadHighlight[] = [{ placeValue: 0, beadType: 'earth', position: 0 }]
     expect(findTopmostBeadWithArrows(beads as any)).toBeNull()
   })
 

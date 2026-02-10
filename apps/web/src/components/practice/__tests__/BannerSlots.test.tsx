@@ -1,13 +1,7 @@
 import { render, screen, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  ContentBannerSlot,
-  NavBannerSlot,
-  ProjectingBanner,
-} from '../BannerSlots'
-import {
-  SessionModeBannerProvider,
-} from '@/contexts/SessionModeBannerContext'
+import { ContentBannerSlot, NavBannerSlot, ProjectingBanner } from '../BannerSlots'
+import { SessionModeBannerProvider } from '@/contexts/SessionModeBannerContext'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 
 // Mock ThemeContext
@@ -40,8 +34,7 @@ vi.mock('framer-motion', () => ({
       children: React.ReactNode
       style?: Record<string, unknown>
       [key: string]: unknown
-    }) =>
-      React.createElement('div', { 'data-testid': 'motion-div', ...props }, children),
+    }) => React.createElement('div', { 'data-testid': 'motion-div', ...props }, children),
   },
   useSpring: (initial: number) => ({
     set: vi.fn(),
@@ -58,13 +51,7 @@ vi.mock('@/constants/zIndex', () => ({
 
 // Mock child banner components
 vi.mock('../SessionModeBanner', () => ({
-  SessionModeBanner: ({
-    sessionMode,
-    variant,
-  }: {
-    sessionMode: SessionMode
-    variant: string
-  }) =>
+  SessionModeBanner: ({ sessionMode, variant }: { sessionMode: SessionMode; variant: string }) =>
     React.createElement(
       'div',
       {
@@ -77,11 +64,7 @@ vi.mock('../SessionModeBanner', () => ({
 }))
 
 vi.mock('../CompactBanner', () => ({
-  CompactBanner: ({
-    sessionMode,
-  }: {
-    sessionMode: SessionMode
-  }) =>
+  CompactBanner: ({ sessionMode }: { sessionMode: SessionMode }) =>
     React.createElement(
       'div',
       { 'data-testid': 'compact-banner', 'data-mode': sessionMode.type },
@@ -90,13 +73,7 @@ vi.mock('../CompactBanner', () => ({
 }))
 
 vi.mock('../ActiveSessionBanner', () => ({
-  ActiveSessionBanner: ({
-    session,
-    variant,
-  }: {
-    session: { id: string }
-    variant: string
-  }) =>
+  ActiveSessionBanner: ({ session, variant }: { session: { id: string }; variant: string }) =>
     React.createElement(
       'div',
       {
@@ -117,8 +94,7 @@ vi.mock('../ReadinessReport', () => ({
 // Mock IntersectionObserver
 // ============================================================================
 
-let intersectionCallback: ((entries: Array<{ isIntersecting: boolean }>) => void) | null =
-  null
+let intersectionCallback: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null
 
 beforeEach(() => {
   // Mock IntersectionObserver
@@ -223,11 +199,7 @@ describe('ContentBannerSlot', () => {
       skillChanges: null,
     }
     render(
-      <SessionModeBannerProvider
-        sessionMode={null}
-        isLoading={false}
-        activeSession={activeSession}
-      >
+      <SessionModeBannerProvider sessionMode={null} isLoading={false} activeSession={activeSession}>
         <ContentBannerSlot />
       </SessionModeBannerProvider>
     )
@@ -316,11 +288,7 @@ describe('NavBannerSlot', () => {
       skillChanges: null,
     }
     render(
-      <SessionModeBannerProvider
-        sessionMode={null}
-        isLoading={false}
-        activeSession={activeSession}
-      >
+      <SessionModeBannerProvider sessionMode={null} isLoading={false} activeSession={activeSession}>
         <NavBannerSlot />
       </SessionModeBannerProvider>
     )

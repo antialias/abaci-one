@@ -13,9 +13,7 @@ describe('GameCompletionContext', () => {
     const onGameComplete = vi.fn()
     function wrapper({ children }: { children: ReactNode }) {
       return (
-        <GameCompletionProvider onGameComplete={onGameComplete}>
-          {children}
-        </GameCompletionProvider>
+        <GameCompletionProvider onGameComplete={onGameComplete}>{children}</GameCompletionProvider>
       )
     }
 
@@ -28,9 +26,7 @@ describe('GameCompletionContext', () => {
     const onGameComplete = vi.fn()
     function wrapper({ children }: { children: ReactNode }) {
       return (
-        <GameCompletionProvider onGameComplete={onGameComplete}>
-          {children}
-        </GameCompletionProvider>
+        <GameCompletionProvider onGameComplete={onGameComplete}>{children}</GameCompletionProvider>
       )
     }
 
@@ -48,9 +44,7 @@ describe('GameCompletionContext', () => {
     const onGameComplete = vi.fn()
     function wrapper({ children }: { children: ReactNode }) {
       return (
-        <GameCompletionProvider onGameComplete={onGameComplete}>
-          {children}
-        </GameCompletionProvider>
+        <GameCompletionProvider onGameComplete={onGameComplete}>{children}</GameCompletionProvider>
       )
     }
 
@@ -68,9 +62,7 @@ describe('GameCompletionContext', () => {
     let onGameComplete = firstCallback
     function Wrapper({ children }: { children: ReactNode }) {
       return (
-        <GameCompletionProvider onGameComplete={onGameComplete}>
-          {children}
-        </GameCompletionProvider>
+        <GameCompletionProvider onGameComplete={onGameComplete}>{children}</GameCompletionProvider>
       )
     }
 

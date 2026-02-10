@@ -407,9 +407,7 @@ describe('BktContext', () => {
 
     it('returns distribution when extended data is available', () => {
       const history = createProblemHistory([])
-      const skillMasteryData = [
-        { skillId: 'add-1', lastPracticedAt: null, isPracticing: true },
-      ]
+      const skillMasteryData = [{ skillId: 'add-1', lastPracticedAt: null, isPracticing: true }]
 
       const { result } = renderHook(() => useSkillDistribution(), {
         wrapper: createWrapper(history, { skillMasteryData }),

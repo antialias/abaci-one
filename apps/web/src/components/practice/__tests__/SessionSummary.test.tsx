@@ -99,9 +99,7 @@ function createPlan(overrides: Record<string, unknown> = {}): SessionPlan {
     targetDurationMinutes: 10,
     estimatedProblemCount: 4,
     avgTimePerProblemSeconds: 15,
-    parts: [
-      createPart({ partNumber: 1, type: 'abacus' }),
-    ],
+    parts: [createPart({ partNumber: 1, type: 'abacus' })],
     summary: {
       focusDescription: 'Direct +1',
       totalProblemCount: 4,
@@ -155,11 +153,7 @@ describe('SessionSummary', () => {
 
   it('displays correct/total problems count', () => {
     const { container } = render(
-      <SessionSummary
-        plan={createPlan()}
-        studentId="student-1"
-        studentName="Alice"
-      />
+      <SessionSummary plan={createPlan()} studentId="student-1" studentName="Alice" />
     )
 
     const problemsStat = container.querySelector('[data-element="stat-problems"]')!
@@ -170,11 +164,7 @@ describe('SessionSummary', () => {
 
   it('displays session duration in minutes', () => {
     const { container } = render(
-      <SessionSummary
-        plan={createPlan()}
-        studentId="student-1"
-        studentName="Alice"
-      />
+      <SessionSummary plan={createPlan()} studentId="student-1" studentName="Alice" />
     )
 
     const timeStat = container.querySelector('[data-element="stat-time"]')!
@@ -190,11 +180,7 @@ describe('SessionSummary', () => {
     })
 
     const { container } = render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-      />
+      <SessionSummary plan={plan} studentId="student-1" studentName="Alice" />
     )
 
     const timeStat = container.querySelector('[data-element="stat-time"]')!
@@ -240,12 +226,7 @@ describe('SessionSummary', () => {
     })
 
     render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-        justCompleted={true}
-      />
+      <SessionSummary plan={plan} studentId="student-1" studentName="Alice" justCompleted={true} />
     )
 
     expect(screen.getByTestId('perfect-celebration')).toBeInTheDocument()
@@ -270,11 +251,7 @@ describe('SessionSummary', () => {
 
   it('shows average time per problem in detailed stats', () => {
     const { container } = render(
-      <SessionSummary
-        plan={createPlan()}
-        studentId="student-1"
-        studentName="Alice"
-      />
+      <SessionSummary plan={createPlan()} studentId="student-1" studentName="Alice" />
     )
 
     expect(screen.getByText('Average time per problem')).toBeInTheDocument()
@@ -295,11 +272,7 @@ describe('SessionSummary', () => {
     })
 
     const { container } = render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-      />
+      <SessionSummary plan={plan} studentId="student-1" studentName="Alice" />
     )
 
     expect(screen.getByText('On-screen abacus used')).toBeInTheDocument()
@@ -334,25 +307,13 @@ describe('SessionSummary', () => {
   })
 
   it('renders SkillsPanel', () => {
-    render(
-      <SessionSummary
-        plan={createPlan()}
-        studentId="student-1"
-        studentName="Alice"
-      />
-    )
+    render(<SessionSummary plan={createPlan()} studentId="student-1" studentName="Alice" />)
 
     expect(screen.getByTestId('skills-panel')).toBeInTheDocument()
   })
 
   it('renders ProblemsToReviewPanel', () => {
-    render(
-      <SessionSummary
-        plan={createPlan()}
-        studentId="student-1"
-        studentName="Alice"
-      />
-    )
+    render(<SessionSummary plan={createPlan()} studentId="student-1" studentName="Alice" />)
 
     expect(screen.getByTestId('problems-to-review')).toBeInTheDocument()
   })
@@ -365,13 +326,7 @@ describe('SessionSummary', () => {
       ],
     })
 
-    render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-      />
-    )
+    render(<SessionSummary plan={plan} studentId="student-1" studentName="Alice" />)
 
     // PRACTICE_TYPES labels
     expect(screen.getByText('Use Abacus')).toBeInTheDocument()
@@ -380,19 +335,11 @@ describe('SessionSummary', () => {
 
   it('handles 100% accuracy with PerfectSessionCelebration', () => {
     const plan = createPlan({
-      results: [
-        createResult({ isCorrect: true }),
-        createResult({ slotIndex: 1, isCorrect: true }),
-      ],
+      results: [createResult({ isCorrect: true }), createResult({ slotIndex: 1, isCorrect: true })],
     })
 
     render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-        justCompleted={true}
-      />
+      <SessionSummary plan={plan} studentId="student-1" studentName="Alice" justCompleted={true} />
     )
 
     // 100% accuracy - should show PerfectSessionCelebration
@@ -408,29 +355,22 @@ describe('SessionSummary', () => {
     })
 
     const { container } = render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-        justCompleted={true}
-      />
+      <SessionSummary plan={plan} studentId="student-1" studentName="Alice" justCompleted={true} />
     )
 
     const accuracyStat = container.querySelector('[data-element="stat-accuracy"]')!
     expect(accuracyStat.textContent).toContain('0')
     expect(accuracyStat.textContent).toContain('%')
-    expect(screen.getByText("Keep practicing! You'll get better with each session!")).toBeInTheDocument()
+    expect(
+      screen.getByText("Keep practicing! You'll get better with each session!")
+    ).toBeInTheDocument()
   })
 
   it('handles empty results gracefully', () => {
     const plan = createPlan({ results: [] })
 
     const { container } = render(
-      <SessionSummary
-        plan={plan}
-        studentId="student-1"
-        studentName="Alice"
-      />
+      <SessionSummary plan={plan} studentId="student-1" studentName="Alice" />
     )
 
     const accuracyStat = container.querySelector('[data-element="stat-accuracy"]')!

@@ -30,11 +30,9 @@ export interface TtsConfig {
 export type TtsSegment =
   | string
   | ({ clipId: string } & Partial<TtsConfig>)
-  | ({ say: TtsSay; tone?: string })
+  | { say: TtsSay; tone?: string }
 
-function hasExplicitClipId(
-  seg: object
-): seg is { clipId: string } & Partial<TtsConfig> {
+function hasExplicitClipId(seg: object): seg is { clipId: string } & Partial<TtsConfig> {
   return 'clipId' in seg && typeof (seg as Record<string, unknown>).clipId === 'string'
 }
 
@@ -49,9 +47,7 @@ export interface CollectedClip {
   lastSeen: Date
 }
 
-export type VoiceSource =
-  | { type: 'pregenerated'; name: string }
-  | { type: 'browser-tts' }
+export type VoiceSource = { type: 'pregenerated'; name: string } | { type: 'browser-tts' }
 
 type Listener = () => void
 
@@ -191,8 +187,8 @@ export class TtsAudioManager {
           if (oldCanonical && newCanonical && oldCanonical !== newCanonical) {
             console.warn(
               `[TTS] Clip "${clipId}" re-registered with different text: ` +
-              `"${oldCanonical}" → "${newCanonical}". ` +
-              `Consider using hash-based IDs: useTTS({ say: { en: '...' }, tone: '...' })`
+                `"${oldCanonical}" → "${newCanonical}". ` +
+                `Consider using hash-based IDs: useTTS({ say: { en: '...' }, tone: '...' })`
             )
           }
         }
@@ -351,9 +347,7 @@ export class TtsAudioManager {
 
     // Resolve fallback text: manifest entry .text > resolveSay() > clipId
     const manifestEntry = AUDIO_MANIFEST_MAP[clipId]
-    const fallbackText = manifestEntry?.text
-      ?? this.resolveSay(effectiveSay)
-      ?? clipId
+    const fallbackText = manifestEntry?.text ?? this.resolveSay(effectiveSay) ?? clipId
 
     return { clipId, fallbackText, tone: effectiveTone }
   }
@@ -363,7 +357,10 @@ export class TtsAudioManager {
    * Returns true if something played, false if chain exhausted.
    */
   private async playOneSegment(resolved: ResolvedSegment): Promise<boolean> {
-    console.log('[TtsAudioManager] playOneSegment', { clipId: resolved.clipId, chainLength: this._voiceChain.length })
+    console.log('[TtsAudioManager] playOneSegment', {
+      clipId: resolved.clipId,
+      chainLength: this._voiceChain.length,
+    })
 
     if (this._voiceChain.length > 0) {
       for (let i = 0; i < this._voiceChain.length; i++) {
@@ -371,14 +368,18 @@ export class TtsAudioManager {
         if (source.type === 'pregenerated') {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false
-          console.log(`[TtsAudioManager] chain[${i}] pregenerated "${source.name}": hasClip=${hasClip}`)
+          console.log(
+            `[TtsAudioManager] chain[${i}] pregenerated "${source.name}": hasClip=${hasClip}`
+          )
           if (hasClip) {
             const ok = await this.playMp3(`/api/audio/clips/${source.name}/${resolved.clipId}`)
             if (ok) return true
             // mp3 failed, try next in chain
           }
         } else if (source.type === 'browser-tts') {
-          console.log(`[TtsAudioManager] chain[${i}] browser-tts: calling speakBrowserTts("${resolved.fallbackText.slice(0, 30)}")`)
+          console.log(
+            `[TtsAudioManager] chain[${i}] browser-tts: calling speakBrowserTts("${resolved.fallbackText.slice(0, 30)}")`
+          )
           const ok = await this.speakBrowserTts(resolved.fallbackText)
           console.log(`[TtsAudioManager] chain[${i}] browser-tts result:`, ok)
           if (ok) return true
@@ -400,13 +401,8 @@ export class TtsAudioManager {
    * Play a sequence of resolved segments with inter-segment gaps.
    */
   private async playSequence(segments: ResolvedSegment[]): Promise<void> {
-    // Stop mp3/sequence but NOT speechSynthesis — Chrome silently drops
-    // speechSynthesis.speak() if cancel() was called in the same frame.
-    this._sequenceCancelled = true
-    if (this._currentAudio) {
-      this._currentAudio.pause()
-      this._currentAudio = null
-    }
+    // speak() already cancelled previous playback and waited a frame
+    // if browser TTS was active, so we just reset the sequence flag.
     this._isPlaying = true
     this._sequenceCancelled = false
     this.notify()
@@ -428,7 +424,10 @@ export class TtsAudioManager {
   async speak(input: TtsInput, config?: TtsConfig): Promise<void> {
     this.register(input, config)
 
-    console.log('[TtsAudioManager] speak called', { isEnabled: this._isEnabled, input: typeof input === 'string' ? input : JSON.stringify(input).slice(0, 100) })
+    console.log('[TtsAudioManager] speak called', {
+      isEnabled: this._isEnabled,
+      input: typeof input === 'string' ? input : JSON.stringify(input).slice(0, 100),
+    })
 
     if (!this._isEnabled) {
       console.log('[TtsAudioManager] speak: TTS disabled, returning early')
@@ -439,7 +438,10 @@ export class TtsAudioManager {
     if (segments.length === 0) return
 
     const resolved = segments.map((seg) => this.resolveSegment(seg, config))
-    console.log('[TtsAudioManager] speak resolved:', resolved.map(r => ({ clipId: r.clipId, fallbackText: r.fallbackText.slice(0, 30) })))
+    console.log(
+      '[TtsAudioManager] speak resolved:',
+      resolved.map((r) => ({ clipId: r.clipId, fallbackText: r.fallbackText.slice(0, 30) }))
+    )
 
     // Increment play counts
     for (const r of resolved) {
@@ -450,23 +452,35 @@ export class TtsAudioManager {
       }
     }
 
+    // Cancel any in-flight playback before starting new speech.
+    this._sequenceCancelled = true
+    if (this._currentAudio) {
+      this._currentAudio.pause()
+      this._currentAudio = null
+    }
+
+    // If browser TTS is active from a previous speak() call, cancel it
+    // and wait a frame. Chrome silently drops speechSynthesis.speak() if
+    // cancel() was called in the same synchronous frame, so the delay is
+    // required to ensure the subsequent speak() is not swallowed.
+    if (
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      (speechSynthesis.speaking || speechSynthesis.pending)
+    ) {
+      console.log('[TtsAudioManager] cancelling in-flight browser TTS before new speak')
+      speechSynthesis.cancel()
+      this._activeUtterances.clear()
+      await new Promise<void>((r) => setTimeout(r, 50))
+    }
+
     if (resolved.length === 1) {
-      // Single segment: stop mp3/sequence but NOT speechSynthesis —
-      // Chrome silently drops speechSynthesis.speak() if cancel() was
-      // called in the same synchronous frame (no events, no audio).
-      this._sequenceCancelled = true
-      if (this._currentAudio) {
-        this._currentAudio.pause()
-        this._currentAudio = null
-      }
       this.setPlaying(true)
       console.log('[TtsAudioManager] playing single segment...')
       await this.playOneSegment(resolved[0])
       console.log('[TtsAudioManager] single segment done')
       this.setPlaying(false)
     } else {
-      // Multi-segment: sequence path (stop() is fine here — playSequence
-      // awaits between segments so cancel+speak never share a frame)
       await this.playSequence(resolved)
     }
   }
@@ -504,6 +518,7 @@ export class TtsAudioManager {
       const timeout = setTimeout(() => {
         console.log('[TtsAudioManager] speakBrowserTts: safety timeout (10s)')
         speechSynthesis.cancel()
+        this._activeUtterances.delete(utterance)
         settle(false)
       }, 10_000)
 
@@ -512,24 +527,37 @@ export class TtsAudioManager {
       utterance.rate = 0.9
       utterance.onend = () => {
         console.log('[TtsAudioManager] speakBrowserTts: onend')
+        this._activeUtterances.delete(utterance)
         settle(true)
       }
       utterance.onerror = (e) => {
-        console.log('[TtsAudioManager] speakBrowserTts: onerror', (e as SpeechSynthesisErrorEvent).error)
+        console.log(
+          '[TtsAudioManager] speakBrowserTts: onerror',
+          (e as SpeechSynthesisErrorEvent).error
+        )
+        this._activeUtterances.delete(utterance)
         settle(false)
       }
 
-      // Keep a strong reference so the utterance isn't GC'd before it finishes
-      this._currentUtterance = utterance
+      // Keep a strong reference so the utterance isn't GC'd before it finishes.
+      // Using a Set (not a single var) because concurrent speak() calls can
+      // create multiple in-flight utterances queued in speechSynthesis.
+      this._activeUtterances.add(utterance)
 
       // Speak synchronously — must stay in the user-gesture call stack
       speechSynthesis.speak(utterance)
-      console.log('[TtsAudioManager] speakBrowserTts: speak() called, speaking:', speechSynthesis.speaking, 'pending:', speechSynthesis.pending)
+      console.log(
+        '[TtsAudioManager] speakBrowserTts: speak() called, speaking:',
+        speechSynthesis.speaking,
+        'pending:',
+        speechSynthesis.pending
+      )
     })
   }
 
-  // prevent GC of in-flight utterance
-  private _currentUtterance: SpeechSynthesisUtterance | null = null
+  // Prevent GC of in-flight utterances — Chrome may corrupt the speech
+  // queue if a queued SpeechSynthesisUtterance is garbage-collected.
+  private _activeUtterances = new Set<SpeechSynthesisUtterance>()
 
   stop(): void {
     // Cancel any running sequence
@@ -543,6 +571,7 @@ export class TtsAudioManager {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       speechSynthesis.cancel()
     }
+    this._activeUtterances.clear()
     if (this._isPlaying) {
       this.setPlaying(false)
     }

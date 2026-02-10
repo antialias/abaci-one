@@ -36,18 +36,12 @@ describe('simulateBktSequence', () => {
   })
 
   it('all correct answers drive pKnown high', () => {
-    const result = simulateBktSequence(
-      'basic.directAddition',
-      Array(20).fill(true)
-    )
+    const result = simulateBktSequence('basic.directAddition', Array(20).fill(true))
     expect(result).toBeGreaterThan(0.8)
   })
 
   it('all incorrect answers drive pKnown low', () => {
-    const result = simulateBktSequence(
-      'basic.directAddition',
-      Array(20).fill(false)
-    )
+    const result = simulateBktSequence('basic.directAddition', Array(20).fill(false))
     expect(result).toBeLessThan(0.2)
   })
 

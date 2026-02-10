@@ -3,9 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
 
-type VoiceSource =
-  | { type: 'pregenerated'; name: string }
-  | { type: 'browser-tts' }
+type VoiceSource = { type: 'pregenerated'; name: string } | { type: 'browser-tts' }
 
 async function ensureDefaultSettings() {
   const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
@@ -23,7 +21,10 @@ function isValidVoiceChain(chain: unknown): chain is VoiceSource[] {
   if (!Array.isArray(chain)) return false
   return chain.every(
     (entry) =>
-      (entry && typeof entry === 'object' && entry.type === 'pregenerated' && typeof entry.name === 'string') ||
+      (entry &&
+        typeof entry === 'object' &&
+        entry.type === 'pregenerated' &&
+        typeof entry.name === 'string') ||
       (entry && typeof entry === 'object' && entry.type === 'browser-tts')
   )
 }
@@ -44,10 +45,9 @@ export async function GET() {
       .limit(1)
 
     const raw = settings?.voiceChain ?? DEFAULT_APP_SETTINGS.voiceChain
-    const voiceChain: VoiceSource[] = raw ? JSON.parse(raw) : [
-      { type: 'pregenerated', name: 'nova' },
-      { type: 'browser-tts' },
-    ]
+    const voiceChain: VoiceSource[] = raw
+      ? JSON.parse(raw)
+      : [{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }]
 
     return NextResponse.json({ voiceChain })
   } catch (error) {
@@ -89,10 +89,7 @@ export async function PATCH(request: NextRequest) {
       updates.audioVoice = firstPregenerated.name
     }
 
-    await db
-      .update(appSettings)
-      .set(updates)
-      .where(eq(appSettings.id, 'default'))
+    await db.update(appSettings).set(updates).where(eq(appSettings.id, 'default'))
 
     return NextResponse.json({ voiceChain })
   } catch (error) {

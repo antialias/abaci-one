@@ -17,7 +17,7 @@ export const PICK_A_GAME = audioClip(
 )
 export const BACK_TO_PRACTICE = audioClip(
   'practice-back-to-practice',
-  'Okay, back to math! Let\'s do this!',
+  "Okay, back to math! Let's do this!",
   'tutorial-instruction'
 )
 

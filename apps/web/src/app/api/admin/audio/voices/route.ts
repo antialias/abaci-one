@@ -37,9 +37,6 @@ export async function DELETE() {
     return NextResponse.json({ removedDirs, clearedDb: true })
   } catch (error) {
     console.error('Error nuking all clips:', error)
-    return NextResponse.json(
-      { error: 'Failed to remove clips' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Failed to remove clips' }, { status: 500 })
   }
 }

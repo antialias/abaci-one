@@ -26,9 +26,7 @@ describe('ROTATION_MULTIPLIERS', () => {
   })
 
   it('out-of-rotation is higher than in-rotation (more cognitive load)', () => {
-    expect(ROTATION_MULTIPLIERS.outOfRotation).toBeGreaterThan(
-      ROTATION_MULTIPLIERS.inRotation
-    )
+    expect(ROTATION_MULTIPLIERS.outOfRotation).toBeGreaterThan(ROTATION_MULTIPLIERS.inRotation)
   })
 
   it('both multipliers are positive', () => {
@@ -111,9 +109,7 @@ describe('BASE_SKILL_COMPLEXITY', () => {
   })
 
   it('has entries for all expected skill categories', () => {
-    const categories = new Set(
-      Object.keys(BASE_SKILL_COMPLEXITY).map((k) => k.split('.')[0])
-    )
+    const categories = new Set(Object.keys(BASE_SKILL_COMPLEXITY).map((k) => k.split('.')[0]))
     expect(categories.has('basic')).toBe(true)
     expect(categories.has('fiveComplements')).toBe(true)
     expect(categories.has('fiveComplementsSub')).toBe(true)

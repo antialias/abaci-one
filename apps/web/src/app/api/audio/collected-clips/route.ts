@@ -22,12 +22,14 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const clips = body?.clips as Array<{
-      clipId: string
-      say?: Record<string, string>
-      tone: string
-      playCount: number
-    }> | undefined
+    const clips = body?.clips as
+      | Array<{
+          clipId: string
+          say?: Record<string, string>
+          tone: string
+          playCount: number
+        }>
+      | undefined
 
     if (!Array.isArray(clips) || clips.length === 0) {
       return NextResponse.json({ ok: true, upserted: 0 })
@@ -81,10 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, upserted })
   } catch (error) {
     console.error('Error upserting collected clips:', error)
-    return NextResponse.json(
-      { error: 'Failed to upsert collected clips' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to upsert collected clips' }, { status: 500 })
   }
 }
 
@@ -104,9 +103,7 @@ export async function GET(request: NextRequest) {
       .orderBy(sql`${ttsCollectedClips.playCount} DESC`)
 
     // Fetch all say entries and group by clipId
-    const sayEntries = await db
-      .select()
-      .from(ttsCollectedClipSay)
+    const sayEntries = await db.select().from(ttsCollectedClipSay)
 
     const sayByClipId = new Map<string, Record<string, string>>()
     for (const entry of sayEntries) {
@@ -129,17 +126,15 @@ export async function GET(request: NextRequest) {
       const voiceDir = join(AUDIO_DIR, voice)
       generatedFor = {}
       for (const clip of clips) {
-        generatedFor[clip.id] = existsSync(join(voiceDir, `${clip.id}.mp3`))
-          || existsSync(join(voiceDir, `cc-${clip.id}.mp3`))
+        generatedFor[clip.id] =
+          existsSync(join(voiceDir, `${clip.id}.mp3`)) ||
+          existsSync(join(voiceDir, `cc-${clip.id}.mp3`))
       }
     }
 
     return NextResponse.json({ clips: clipsWithSay, ...(generatedFor ? { generatedFor } : {}) })
   } catch (error) {
     console.error('Error fetching collected clips:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch collected clips' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch collected clips' }, { status: 500 })
   }
 }

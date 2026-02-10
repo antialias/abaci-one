@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ clipIdsByVoice: {} })
     }
 
-    const voices = voicesParam.split(',').map((v) => v.trim()).filter(Boolean)
+    const voices = voicesParam
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
     const clipIdsByVoice: Record<string, string[]> = {}
 
     for (const voice of voices) {
@@ -50,9 +53,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ clipIdsByVoice })
   } catch (error) {
     console.error('Error fetching collected clips manifest:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch manifest' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Failed to fetch manifest' }, { status: 500 })
   }
 }

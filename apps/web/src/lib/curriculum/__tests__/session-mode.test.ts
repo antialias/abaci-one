@@ -220,11 +220,7 @@ describe('mode type discriminant', () => {
     const modes: SessionMode[] = [remediationMode, progressionMode, maintenanceMode]
 
     for (const mode of modes) {
-      const matches = [
-        isRemediationMode(mode),
-        isProgressionMode(mode),
-        isMaintenanceMode(mode),
-      ]
+      const matches = [isRemediationMode(mode), isProgressionMode(mode), isMaintenanceMode(mode)]
       expect(matches.filter(Boolean)).toHaveLength(1)
     }
   })

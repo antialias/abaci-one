@@ -14,24 +14,24 @@ export interface VoiceModelConfig {
 
 export const VOICE_PROVIDERS: readonly VoiceProviderConfig[] = [
   {
-    id: "openai",
-    name: "OpenAI",
+    id: 'openai',
+    name: 'OpenAI',
     models: [
       {
-        id: "tts-1",
-        name: "tts-1",
-        format: "mp3",
+        id: 'tts-1',
+        name: 'tts-1',
+        format: 'mp3',
         voices: [
-          "alloy",
-          "ash",
-          "ballad",
-          "coral",
-          "echo",
-          "fable",
-          "nova",
-          "onyx",
-          "sage",
-          "shimmer",
+          'alloy',
+          'ash',
+          'ballad',
+          'coral',
+          'echo',
+          'fable',
+          'nova',
+          'onyx',
+          'sage',
+          'shimmer',
         ],
       },
     ],
@@ -39,9 +39,7 @@ export const VOICE_PROVIDERS: readonly VoiceProviderConfig[] = [
 ] as const
 
 /** Flat list of all voice names across all providers/models */
-export const ALL_VOICES = VOICE_PROVIDERS.flatMap((p) =>
-  p.models.flatMap((m) => m.voices),
-)
+export const ALL_VOICES = VOICE_PROVIDERS.flatMap((p) => p.models.flatMap((m) => m.voices))
 
 export type VoiceName = (typeof ALL_VOICES)[number]
 

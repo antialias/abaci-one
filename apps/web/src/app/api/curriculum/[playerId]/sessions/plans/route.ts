@@ -134,8 +134,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
       sessionMode: sessionMode as SessionMode | undefined,
       gameBreakSettings: gameBreakSettings as GameBreakSettings | undefined,
-      comfortAdjustment:
-        typeof comfortAdjustment === 'number' ? comfortAdjustment : undefined,
+      comfortAdjustment: typeof comfortAdjustment === 'number' ? comfortAdjustment : undefined,
       ...(Object.keys(configOverrides).length > 0 && {
         config: configOverrides,
       }),

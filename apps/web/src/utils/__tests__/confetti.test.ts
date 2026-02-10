@@ -87,9 +87,7 @@ describe('fireConfettiCelebration', () => {
 
     const middleFirework = mockConfetti.mock.calls.find(
       (call: any[]) =>
-        call[0]?.particleCount === 80 &&
-        call[0]?.angle === 90 &&
-        call[0]?.origin?.y === 0.9
+        call[0]?.particleCount === 80 && call[0]?.angle === 90 && call[0]?.origin?.y === 0.9
     )
     expect(middleFirework).toBeDefined()
   })
@@ -102,9 +100,7 @@ describe('fireConfettiCelebration', () => {
 
     const starBurst = mockConfetti.mock.calls.find(
       (call: any[]) =>
-        call[0]?.particleCount === 150 &&
-        call[0]?.spread === 180 &&
-        call[0]?.scalar === 1.2
+        call[0]?.particleCount === 150 && call[0]?.spread === 180 && call[0]?.scalar === 1.2
     )
     expect(starBurst).toBeDefined()
     expect(starBurst![0].shapes).toEqual(['star', 'circle'])
@@ -168,9 +164,7 @@ describe('fireConfettiCelebration', () => {
 
     vi.advanceTimersByTime(1500)
 
-    const finaleCall = mockConfetti.mock.calls.find(
-      (call: any[]) => call[0]?.shapes !== undefined
-    )
+    const finaleCall = mockConfetti.mock.calls.find((call: any[]) => call[0]?.shapes !== undefined)
     expect(finaleCall).toBeDefined()
     expect(finaleCall![0].shapes).toContain('star')
     expect(finaleCall![0].shapes).toContain('circle')

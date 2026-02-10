@@ -27,16 +27,18 @@ export const ttsCollectedClips = sqliteTable('tts_collected_clips', {
  * when the clip mp3 isn't available and the voice chain falls through to
  * browser TTS. Also used as input text for TTS mp3 generation.
  */
-export const ttsCollectedClipSay = sqliteTable('tts_collected_clip_say', {
-  /** References tts_collected_clips.id */
-  clipId: text('clip_id').notNull(),
-  /** BCP 47 locale tag (e.g. "en-US", "ja") */
-  locale: text('locale').notNull(),
-  /** The text to speak in this locale */
-  text: text('text').notNull(),
-}, (table) => [
-  primaryKey({ columns: [table.clipId, table.locale] }),
-])
+export const ttsCollectedClipSay = sqliteTable(
+  'tts_collected_clip_say',
+  {
+    /** References tts_collected_clips.id */
+    clipId: text('clip_id').notNull(),
+    /** BCP 47 locale tag (e.g. "en-US", "ja") */
+    locale: text('locale').notNull(),
+    /** The text to speak in this locale */
+    text: text('text').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.clipId, table.locale] })]
+)
 
 export type TtsCollectedClip = typeof ttsCollectedClips.$inferSelect
 export type NewTtsCollectedClip = typeof ttsCollectedClips.$inferInsert

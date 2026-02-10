@@ -19,12 +19,7 @@ import {
 // Types
 // =============================================================================
 
-export type AssistanceStateName =
-  | 'idle'
-  | 'encouraging'
-  | 'offeringHelp'
-  | 'autoPaused'
-  | 'inHelp'
+export type AssistanceStateName = 'idle' | 'encouraging' | 'offeringHelp' | 'autoPaused' | 'inHelp'
 
 export interface AssistanceEventLogEntry {
   timestamp: number
@@ -81,7 +76,7 @@ const MAX_EVENT_LOG_SIZE = 30
 export function createFreshContext(
   thresholds: ProgressiveThresholds,
   wrongAnswerThreshold: number,
-  moveOnGraceMs: number,
+  moveOnGraceMs: number
 ): AssistanceContext {
   return {
     wrongAttemptCount: 0,
@@ -116,7 +111,7 @@ function appendLog(
   event: string,
   fromState: AssistanceStateName,
   toState: AssistanceStateName,
-  note: string,
+  note: string
 ): AssistanceEventLogEntry[] {
   const entry: AssistanceEventLogEntry = {
     timestamp: Date.now(),
@@ -377,8 +372,8 @@ export function assistanceReducer(
           // Determine if all terms have been helped
           // Help is for terms at indices 1..n-1 (first term is the starting number)
           const helpableTermCount = Math.max(0, event.problemTermsCount - 1)
-          const allHelped = helpableTermCount > 0 &&
-            context.helpedTermIndices.size >= helpableTermCount
+          const allHelped =
+            helpableTermCount > 0 && context.helpedTermIndices.size >= helpableTermCount
           const shouldStartGrace = allHelped && !context.moveOnAvailable
 
           return {
@@ -467,13 +462,7 @@ export interface UseProgressiveAssistanceReturn {
 export function useProgressiveAssistance(
   inputs: UseProgressiveAssistanceInputs
 ): UseProgressiveAssistanceReturn {
-  const {
-    attempt,
-    results,
-    problemTermsCount,
-    isPaused,
-    onAutoPause,
-  } = inputs
+  const { attempt, results, problemTermsCount, isPaused, onAutoPause } = inputs
 
   // Determine timing config
   const timing = useMemo<ProgressiveAssistanceTimingConfig>(
@@ -493,7 +482,7 @@ export function useProgressiveAssistance(
     context: createFreshContext(
       initialThresholds,
       timing.wrongAnswerThreshold,
-      timing.moveOnGraceMs,
+      timing.moveOnGraceMs
     ),
   })
 

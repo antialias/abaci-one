@@ -58,15 +58,9 @@ describe('tutorialConverter', () => {
 
     it('should contain the expected phases', () => {
       const basicSteps = guidedAdditionSteps.filter((s) => s.id.startsWith('basic-'))
-      const heavenSteps = guidedAdditionSteps.filter(
-        (s) => s.id.startsWith('heaven-')
-      )
-      const complementSteps = guidedAdditionSteps.filter(
-        (s) => s.id.startsWith('complement-')
-      )
-      const complexSteps = guidedAdditionSteps.filter(
-        (s) => s.id.startsWith('complex-')
-      )
+      const heavenSteps = guidedAdditionSteps.filter((s) => s.id.startsWith('heaven-'))
+      const complementSteps = guidedAdditionSteps.filter((s) => s.id.startsWith('complement-'))
+      const complexSteps = guidedAdditionSteps.filter((s) => s.id.startsWith('complex-'))
 
       expect(basicSteps.length).toBe(4)
       expect(heavenSteps.length).toBe(2)
@@ -87,9 +81,7 @@ describe('tutorialConverter', () => {
       expect(heavenIntro).toBeDefined()
       expect(heavenIntro!.startValue).toBe(0)
       expect(heavenIntro!.targetValue).toBe(5)
-      expect(heavenIntro!.highlightBeads).toEqual([
-        { placeValue: 0, beadType: 'heaven' },
-      ])
+      expect(heavenIntro!.highlightBeads).toEqual([{ placeValue: 0, beadType: 'heaven' }])
     })
 
     it('should have correct values for complement steps', () => {
@@ -226,10 +218,7 @@ describe('tutorialConverter', () => {
       // complement-intro is at index 6 (0-indexed), within the first 8 steps
       const compStep = tutorial.steps.find((s) => s.id === 'complement-intro')
       expect(compStep).toBeDefined()
-      expect(compStep!.multiStepInstructions).toEqual([
-        'Step 1 translated',
-        'Step 2 translated',
-      ])
+      expect(compStep!.multiStepInstructions).toEqual(['Step 1 translated', 'Step 2 translated'])
     })
 
     it('should generate stepBeadHighlights for each step', () => {
@@ -352,9 +341,7 @@ describe('tutorialConverter', () => {
       // Steps with expectedAction === 'multi-step' must have multiStepInstructions
       // The generated instructions should satisfy this
       const result = validateTutorialConversion()
-      expect(
-        result.errors.filter((e) => e.includes('Multi-step'))
-      ).toEqual([])
+      expect(result.errors.filter((e) => e.includes('Multi-step'))).toEqual([])
     })
 
     it('should return errors array structure', () => {
@@ -386,9 +373,7 @@ describe('tutorialConverter', () => {
       expect(fromEditor.id).toBe(fromConverter.id)
       expect(fromEditor.title).toBe(fromConverter.title)
       expect(fromEditor.steps.length).toBe(fromConverter.steps.length)
-      expect(fromEditor.steps.map((s) => s.id)).toEqual(
-        fromConverter.steps.map((s) => s.id)
-      )
+      expect(fromEditor.steps.map((s) => s.id)).toEqual(fromConverter.steps.map((s) => s.id))
     })
 
     it('should apply translation overrides', () => {
@@ -499,9 +484,7 @@ describe('tutorialConverter', () => {
       tutorial.steps.forEach((step) => {
         if (step.stepBeadHighlights && step.stepBeadHighlights.length > 0) {
           step.stepBeadHighlights.forEach((highlight) => {
-            expect(['up', 'down', 'activate', 'deactivate']).toContain(
-              highlight.direction
-            )
+            expect(['up', 'down', 'activate', 'deactivate']).toContain(highlight.direction)
             expect(typeof highlight.stepIndex).toBe('number')
             expect(['heaven', 'earth']).toContain(highlight.beadType)
             expect(typeof highlight.placeValue).toBe('number')

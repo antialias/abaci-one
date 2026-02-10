@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   useSessionMode,
@@ -36,9 +36,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 const mockRemediationMode = {
   type: 'remediation' as const,
-  weakSkills: [
-    { skillId: 'basic-add-1', displayName: 'Simple Addition', pKnown: 0.3 },
-  ],
+  weakSkills: [{ skillId: 'basic-add-1', displayName: 'Simple Addition', pKnown: 0.3 }],
   focusDescription: 'Strengthening: Simple Addition',
   blockedPromotion: {
     nextSkill: { skillId: 'five-complement-1', displayName: 'Five Complement', pKnown: 0 },

@@ -204,8 +204,12 @@ function GeneralTab({ isDark }: { isDark: boolean }) {
                 cursor: 'pointer',
                 position: 'relative',
                 backgroundColor: isEnabled
-                  ? isDark ? 'purple.500' : 'purple.600'
-                  : isDark ? 'gray.600' : 'gray.300',
+                  ? isDark
+                    ? 'purple.500'
+                    : 'purple.600'
+                  : isDark
+                    ? 'gray.600'
+                    : 'gray.300',
                 transition: 'background-color 0.2s',
               })}
             >

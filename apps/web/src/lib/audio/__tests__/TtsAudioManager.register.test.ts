@@ -50,11 +50,7 @@ describe('register — segment type routing', () => {
   it('array input registers each segment', () => {
     const clips = registerAndCollect(['number-5', 'operator-plus', 'number-3'])
     expect(clips).toHaveLength(3)
-    expect(clips.map((c) => c.clipId)).toEqual([
-      'number-5',
-      'operator-plus',
-      'number-3',
-    ])
+    expect(clips.map((c) => c.clipId)).toEqual(['number-5', 'operator-plus', 'number-3'])
   })
 
   it('mixed array of strings and objects', () => {
@@ -81,10 +77,7 @@ describe('register — config merging', () => {
   })
 
   it('segment tone overrides top-level tone', () => {
-    const clips = registerAndCollect(
-      { clipId: 'greeting', tone: 'cold' },
-      { tone: 'warm' },
-    )
+    const clips = registerAndCollect({ clipId: 'greeting', tone: 'cold' }, { tone: 'warm' })
     expect(clips[0].tone).toBe('cold')
   })
 
@@ -98,7 +91,7 @@ describe('register — config merging', () => {
   it('segment say merges with top-level say (segment wins)', () => {
     const clips = registerAndCollect(
       { clipId: 'greeting', say: { en: 'Hi', es: 'Hola' } },
-      { say: { en: 'Hello', fr: 'Bonjour' } },
+      { say: { en: 'Hello', fr: 'Bonjour' } }
     )
     // Segment 'en' overrides top-level 'en'; top-level 'fr' survives
     expect(clips[0].say).toEqual({ en: 'Hi', es: 'Hola', fr: 'Bonjour' })
@@ -114,10 +107,7 @@ describe('register — config merging', () => {
 
   it('hash segment tone overrides top-level tone for hash computation', () => {
     const say: TtsSay = { en: 'Dynamic text' }
-    const clips = registerAndCollect(
-      { say, tone: 'override' },
-      { tone: 'default' },
-    )
+    const clips = registerAndCollect({ say, tone: 'override' }, { tone: 'default' })
     expect(clips[0].clipId).toBe(computeClipHash(say, 'override'))
     expect(clips[0].tone).toBe('override')
   })
@@ -127,7 +117,7 @@ describe('register — config merging', () => {
     // Segment wins → canonical text is 'override'
     const clips = registerAndCollect(
       { say: { en: 'override' } },
-      { say: { en: 'base' }, tone: 'tone' },
+      { say: { en: 'base' }, tone: 'tone' }
     )
     expect(clips[0].clipId).toBe(computeClipHash({ en: 'override' }, 'tone'))
   })
@@ -137,7 +127,7 @@ describe('register — config merging', () => {
     // Canonical text = en (from top). Hash includes tone.
     const clips = registerAndCollect(
       { say: { es: 'hola' }, tone: 'bilingual' },
-      { say: { en: 'hello' } },
+      { say: { en: 'hello' } }
     )
     const mergedSay = { en: 'hello', es: 'hola' }
     expect(clips[0].clipId).toBe(computeClipHash(mergedSay, 'bilingual'))

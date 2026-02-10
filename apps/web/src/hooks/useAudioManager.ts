@@ -16,11 +16,7 @@ export interface UseAudioManagerReturn extends ManagerSnapshot {
 export function useAudioManager(): UseAudioManagerReturn {
   const manager = useAudioManagerInstance()
 
-  const snapshot = useSyncExternalStore(
-    manager.subscribe,
-    manager.getSnapshot,
-    manager.getSnapshot
-  )
+  const snapshot = useSyncExternalStore(manager.subscribe, manager.getSnapshot, manager.getSnapshot)
 
   const stop = useCallback(() => manager.stop(), [manager])
 

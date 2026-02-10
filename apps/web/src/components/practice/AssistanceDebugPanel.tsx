@@ -4,7 +4,10 @@ import { useState } from 'react'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { css } from '../../../styled-system/css'
 import { DebugMermaidDiagram } from '../flowchart/DebugMermaidDiagram'
-import type { AssistanceMachineState, AssistanceEventLogEntry } from './hooks/useProgressiveAssistance'
+import type {
+  AssistanceMachineState,
+  AssistanceEventLogEntry,
+} from './hooks/useProgressiveAssistance'
 
 interface AssistanceDebugPanelProps {
   machineState: AssistanceMachineState
@@ -126,14 +129,13 @@ export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps
               borderColor: 'gray.700',
             })}
           >
-            <div className={css({ fontSize: '0.625rem', color: 'gray.500', marginBottom: '0.25rem' })}>
+            <div
+              className={css({ fontSize: '0.625rem', color: 'gray.500', marginBottom: '0.25rem' })}
+            >
               STATE DIAGRAM
             </div>
             <div className={css({ maxHeight: '180px', overflow: 'auto' })}>
-              <DebugMermaidDiagram
-                mermaidContent={STATE_DIAGRAM_MERMAID}
-                currentNodeId={state}
-              />
+              <DebugMermaidDiagram mermaidContent={STATE_DIAGRAM_MERMAID} currentNodeId={state} />
             </div>
           </div>
 
@@ -145,12 +147,17 @@ export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps
               borderColor: 'gray.700',
             })}
           >
-            <div className={css({ fontSize: '0.625rem', color: 'gray.500', marginBottom: '0.25rem' })}>
+            <div
+              className={css({ fontSize: '0.625rem', color: 'gray.500', marginBottom: '0.25rem' })}
+            >
               CONTEXT
             </div>
             <table className={css({ width: '100%', borderCollapse: 'collapse' })}>
               <tbody>
-                <ContextRow label="Wrong attempts" value={`${context.wrongAttemptCount} / ${context.wrongAnswerThreshold}`} />
+                <ContextRow
+                  label="Wrong attempts"
+                  value={`${context.wrongAttemptCount} / ${context.wrongAnswerThreshold}`}
+                />
                 <ContextRow
                   label="Helped terms"
                   value={`{${[...context.helpedTermIndices].join(', ')}} (${context.helpedTermIndices.size})`}
@@ -237,7 +244,9 @@ export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps
 
           {/* Event Log */}
           <div className={css({ padding: '0.5rem 0.75rem' })}>
-            <div className={css({ fontSize: '0.625rem', color: 'gray.500', marginBottom: '0.25rem' })}>
+            <div
+              className={css({ fontSize: '0.625rem', color: 'gray.500', marginBottom: '0.25rem' })}
+            >
               EVENT LOG ({context.eventLog.length})
             </div>
             <div
@@ -264,7 +273,14 @@ export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps
 function ContextRow({ label, value }: { label: string; value: string }) {
   return (
     <tr>
-      <td className={css({ color: 'gray.500', paddingRight: '0.5rem', paddingY: '1px', whiteSpace: 'nowrap' })}>
+      <td
+        className={css({
+          color: 'gray.500',
+          paddingRight: '0.5rem',
+          paddingY: '1px',
+          whiteSpace: 'nowrap',
+        })}
+      >
         {label}
       </td>
       <td className={css({ color: 'gray.200', paddingY: '1px' })}>{value}</td>
@@ -290,15 +306,11 @@ function EventLogRow({ entry }: { entry: AssistanceEventLogEntry }) {
       <span className={css({ color: 'gray.600', whiteSpace: 'nowrap' })}>
         {formatTimestamp(entry.timestamp)}
       </span>
-      <span className={css({ color: 'cyan.400', minWidth: '100px' })}>
-        {entry.event}
-      </span>
+      <span className={css({ color: 'cyan.400', minWidth: '100px' })}>{entry.event}</span>
       <span className={css({ color: transitionChanged ? 'yellow.400' : 'gray.600' })}>
         {entry.fromState} → {entry.toState}
       </span>
-      {entry.note && (
-        <span className={css({ color: 'gray.500' })}>({entry.note})</span>
-      )}
+      {entry.note && <span className={css({ color: 'gray.500' })}>({entry.note})</span>}
     </div>
   )
 }

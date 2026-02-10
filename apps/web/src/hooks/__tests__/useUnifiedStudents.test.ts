@@ -127,7 +127,9 @@ describe('filterStudentsByView', () => {
   it('filters by "in-classroom-active"', () => {
     const filtered = filterStudentsByView(allStudents, 'in-classroom-active')
     expect(filtered).toHaveLength(2) // myChildPracticing, presentPracticingStudent
-    expect(filtered.every((s) => s.relationship.isPresent && s.activity?.status === 'practicing')).toBe(true)
+    expect(
+      filtered.every((s) => s.relationship.isPresent && s.activity?.status === 'practicing')
+    ).toBe(true)
   })
 
   it('filters by "needs-attention" (excludes archived)', () => {

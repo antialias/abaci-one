@@ -1039,10 +1039,7 @@ describe('generation trace structure', () => {
   })
 
   it('should have correct accumulated values in trace steps', () => {
-    const problem = generateSingleProblem(
-      createDefaultConstraints(),
-      createBasicAdditionSkillSet()
-    )
+    const problem = generateSingleProblem(createDefaultConstraints(), createBasicAdditionSkillSet())
     expect(problem).not.toBeNull()
     const trace = problem!.generationTrace!
     let acc = 0
@@ -1055,10 +1052,7 @@ describe('generation trace structure', () => {
   })
 
   it('should contain operation strings in each step', () => {
-    const problem = generateSingleProblem(
-      createDefaultConstraints(),
-      createBasicAdditionSkillSet()
-    )
+    const problem = generateSingleProblem(createDefaultConstraints(), createBasicAdditionSkillSet())
     expect(problem).not.toBeNull()
     for (const step of problem!.generationTrace!.steps) {
       expect(typeof step.operation).toBe('string')
@@ -1067,10 +1061,7 @@ describe('generation trace structure', () => {
   })
 
   it('should have allSkills be the union of all step skills', () => {
-    const problem = generateSingleProblem(
-      createDefaultConstraints(),
-      createFullSkillSet()
-    )
+    const problem = generateSingleProblem(createDefaultConstraints(), createFullSkillSet())
     expect(problem).not.toBeNull()
     const trace = problem!.generationTrace!
     const stepSkills = new Set(trace.steps.flatMap((s) => s.skillsUsed))
@@ -1080,10 +1071,7 @@ describe('generation trace structure', () => {
   })
 
   it('should contain explanation strings in each step', () => {
-    const problem = generateSingleProblem(
-      createDefaultConstraints(),
-      createBasicAdditionSkillSet()
-    )
+    const problem = generateSingleProblem(createDefaultConstraints(), createBasicAdditionSkillSet())
     expect(problem).not.toBeNull()
     for (const step of problem!.generationTrace!.steps) {
       expect(typeof step.explanation).toBe('string')

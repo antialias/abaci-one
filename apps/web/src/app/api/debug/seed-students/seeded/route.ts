@@ -24,10 +24,7 @@ export async function GET() {
         playerName: schema.players.name,
       })
       .from(schema.seedProfilePlayers)
-      .innerJoin(
-        schema.players,
-        eq(schema.seedProfilePlayers.playerId, schema.players.id)
-      )
+      .innerJoin(schema.players, eq(schema.seedProfilePlayers.playerId, schema.players.id))
       .where(eq(schema.players.userId, userId))
       .orderBy(desc(schema.seedProfilePlayers.seededAt))
 
@@ -37,9 +34,10 @@ export async function GET() {
       if (!seeded[row.profileId]) {
         seeded[row.profileId] = {
           playerId: row.playerId,
-          seededAt: row.seededAt instanceof Date
-            ? row.seededAt.toISOString()
-            : new Date(Number(row.seededAt) * 1000).toISOString(),
+          seededAt:
+            row.seededAt instanceof Date
+              ? row.seededAt.toISOString()
+              : new Date(Number(row.seededAt) * 1000).toISOString(),
         }
       }
     }

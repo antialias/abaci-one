@@ -10,10 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  ActiveSessionExistsError,
-  NoSkillsEnabledError,
-} from '@/lib/curriculum/session-planner'
+import { ActiveSessionExistsError, NoSkillsEnabledError } from '@/lib/curriculum/session-planner'
 
 // =============================================================================
 // ActiveSessionExistsError

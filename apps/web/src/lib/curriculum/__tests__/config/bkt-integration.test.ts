@@ -53,9 +53,7 @@ describe('BKT_INTEGRATION_CONFIG', () => {
   })
 
   it('has minMultiplier < maxMultiplier', () => {
-    expect(BKT_INTEGRATION_CONFIG.minMultiplier).toBeLessThan(
-      BKT_INTEGRATION_CONFIG.maxMultiplier
-    )
+    expect(BKT_INTEGRATION_CONFIG.minMultiplier).toBeLessThan(BKT_INTEGRATION_CONFIG.maxMultiplier)
   })
 
   it('has positive sessionHistoryDepth', () => {

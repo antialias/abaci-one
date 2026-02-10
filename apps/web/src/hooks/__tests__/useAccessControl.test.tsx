@@ -42,9 +42,7 @@ function createViewerRole(): UserRole {
   return {
     id: 'viewer-role',
     name: 'viewer',
-    permissions: [
-      { resource: 'tutorial', actions: ['read'] },
-    ],
+    permissions: [{ resource: 'tutorial', actions: ['read'] }],
   }
 }
 
@@ -55,9 +53,7 @@ function createViewerRole(): UserRole {
 describe('useAccessControl', () => {
   it('returns default context when not authenticated', () => {
     const { result } = renderHook(() => useAccessControl(), {
-      wrapper: ({ children }) => (
-        <AccessControlProvider>{children}</AccessControlProvider>
-      ),
+      wrapper: ({ children }) => <AccessControlProvider>{children}</AccessControlProvider>,
     })
 
     expect(result.current.isAuthenticated).toBe(false)
@@ -73,11 +69,7 @@ describe('useAccessControl', () => {
     const adminRole = createAdminRole()
     const { result } = renderHook(() => useAccessControl(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="admin-1"
-          roles={[adminRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="admin-1" roles={[adminRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -99,11 +91,7 @@ describe('useAccessControl', () => {
     }
     const { result } = renderHook(() => useAccessControl(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="super-1"
-          roles={[superuserRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="super-1" roles={[superuserRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -116,11 +104,7 @@ describe('useAccessControl', () => {
     const editorRole = createEditorRole()
     const { result } = renderHook(() => useAccessControl(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="editor-1"
-          roles={[editorRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="editor-1" roles={[editorRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -136,11 +120,7 @@ describe('useAccessControl', () => {
     const viewerRole = createViewerRole()
     const { result } = renderHook(() => useAccessControl(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="viewer-1"
-          roles={[viewerRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="viewer-1" roles={[viewerRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -161,11 +141,7 @@ describe('usePermission', () => {
     const adminRole = createAdminRole()
     const { result } = renderHook(() => usePermission('system', 'read'), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="admin-1"
-          roles={[adminRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="admin-1" roles={[adminRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -178,11 +154,7 @@ describe('usePermission', () => {
     const editorRole = createEditorRole()
     const { result } = renderHook(() => usePermission('tutorial', 'update'), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="editor-1"
-          roles={[editorRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="editor-1" roles={[editorRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -195,11 +167,7 @@ describe('usePermission', () => {
     const viewerRole = createViewerRole()
     const { result } = renderHook(() => usePermission('tutorial', 'delete'), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="viewer-1"
-          roles={[viewerRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="viewer-1" roles={[viewerRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -216,9 +184,7 @@ describe('usePermission', () => {
 describe('useEditorAccess', () => {
   it('denies access for unauthenticated users', () => {
     const { result } = renderHook(() => useEditorAccess(), {
-      wrapper: ({ children }) => (
-        <AccessControlProvider>{children}</AccessControlProvider>
-      ),
+      wrapper: ({ children }) => <AccessControlProvider>{children}</AccessControlProvider>,
     })
 
     expect(result.current.canAccessEditor).toBe(false)
@@ -232,11 +198,7 @@ describe('useEditorAccess', () => {
     const adminRole = createAdminRole()
     const { result } = renderHook(() => useEditorAccess(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="admin-1"
-          roles={[adminRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="admin-1" roles={[adminRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -253,11 +215,7 @@ describe('useEditorAccess', () => {
     const editorRole = createEditorRole()
     const { result } = renderHook(() => useEditorAccess(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="editor-1"
-          roles={[editorRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="editor-1" roles={[editorRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -273,11 +231,7 @@ describe('useEditorAccess', () => {
     const viewerRole = createViewerRole()
     const { result } = renderHook(() => useEditorAccess(), {
       wrapper: ({ children }) => (
-        <AccessControlProvider
-          userId="viewer-1"
-          roles={[viewerRole]}
-          isAuthenticated={true}
-        >
+        <AccessControlProvider userId="viewer-1" roles={[viewerRole]} isAuthenticated={true}>
           {children}
         </AccessControlProvider>
       ),
@@ -415,9 +369,7 @@ describe('EditorProtected', () => {
 describe('DevAccessProvider', () => {
   it('provides admin access', () => {
     const { result } = renderHook(() => useAccessControl(), {
-      wrapper: ({ children }) => (
-        <DevAccessProvider>{children}</DevAccessProvider>
-      ),
+      wrapper: ({ children }) => <DevAccessProvider>{children}</DevAccessProvider>,
     })
 
     expect(result.current.isAuthenticated).toBe(true)

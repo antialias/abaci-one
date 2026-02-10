@@ -11,10 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  readinessMapToRecord,
-  type SkillReadinessResult,
-} from '@/lib/curriculum/skill-readiness'
+import { readinessMapToRecord, type SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 
 // =============================================================================
 // readinessMapToRecord
@@ -61,9 +58,7 @@ describe('readinessMapToRecord', () => {
   })
 
   it('converts a single-entry map to a record', () => {
-    const map = new Map<string, SkillReadinessResult>([
-      ['basic.directAddition', solidResult],
-    ])
+    const map = new Map<string, SkillReadinessResult>([['basic.directAddition', solidResult]])
     const result = readinessMapToRecord(map)
     expect(result['basic.directAddition']).toBe(solidResult)
     expect(Object.keys(result)).toHaveLength(1)
@@ -91,9 +86,7 @@ describe('readinessMapToRecord', () => {
   })
 
   it('preserves dimension details', () => {
-    const map = new Map<string, SkillReadinessResult>([
-      ['fiveComplements.4=5-1', notSolidResult],
-    ])
+    const map = new Map<string, SkillReadinessResult>([['fiveComplements.4=5-1', notSolidResult]])
     const result = readinessMapToRecord(map)
     const entry = result['fiveComplements.4=5-1']
     expect(entry.dimensions.mastery.pKnown).toBe(0.5)

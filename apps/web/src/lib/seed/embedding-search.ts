@@ -40,9 +40,12 @@ function buildProfileContent(profile: ProfileInfo): string {
 
 function formatCategory(category: ProfileInfo['category']): string {
   switch (category) {
-    case 'bkt': return 'Skill Mastery Levels'
-    case 'session': return 'Session Mode Triggers'
-    case 'edge': return 'Edge Cases & Data Robustness'
+    case 'bkt':
+      return 'Skill Mastery Levels'
+    case 'session':
+      return 'Session Mode Triggers'
+    case 'edge':
+      return 'Edge Cases & Data Robustness'
   }
 }
 

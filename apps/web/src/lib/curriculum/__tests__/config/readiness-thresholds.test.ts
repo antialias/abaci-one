@@ -32,9 +32,7 @@ describe('READINESS_THRESHOLDS', () => {
 
     it('confidenceThreshold is higher than BKT confidence threshold', () => {
       // Readiness requires more certainty before advancing
-      expect(READINESS_THRESHOLDS.confidenceThreshold).toBeGreaterThan(
-        BKT_THRESHOLDS.confidence
-      )
+      expect(READINESS_THRESHOLDS.confidenceThreshold).toBeGreaterThan(BKT_THRESHOLDS.confidence)
     })
 
     it('both values are in [0, 1]', () => {

@@ -2,10 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useTTS } from '@/hooks/useTTS'
-import {
-  GAME_BREAK_ANNOUNCEMENT_CLIPS,
-  PICK_A_GAME,
-} from '@/lib/audio/clips/practice'
+import { GAME_BREAK_ANNOUNCEMENT_CLIPS, PICK_A_GAME } from '@/lib/audio/clips/practice'
 
 type GameBreakPhase = 'initializing' | 'auto-starting' | 'selecting' | 'playing' | 'completed'
 
@@ -24,10 +21,7 @@ function pickRandom<T>(arr: readonly T[]): T {
  * - initializing → auto-starting: random game break announcement
  * - initializing → selecting: announcement + "Pick a game!" after delay
  */
-export function useGameBreakAudio({
-  phase,
-  isVisible,
-}: UseGameBreakAudioOptions) {
+export function useGameBreakAudio({ phase, isVisible }: UseGameBreakAudioOptions) {
   const prevPhaseRef = useRef<GameBreakPhase>(phase)
 
   const sayAnnouncement = useTTS(pickRandom(GAME_BREAK_ANNOUNCEMENT_CLIPS), {

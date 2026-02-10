@@ -382,7 +382,7 @@ describe('comfort adjustment for problem length preference', () => {
       createSessionMode('maintenance')
     )
 
-    const adjustedComfort = Math.max(0, Math.min(1, rawComfort + (-0.3)))
+    const adjustedComfort = Math.max(0, Math.min(1, rawComfort + -0.3))
     const rawRange = computeTermCountRange('abacus', rawComfort)
     const adjustedRange = computeTermCountRange('abacus', adjustedComfort)
 
@@ -422,7 +422,7 @@ describe('comfort adjustment for problem length preference', () => {
 
   it('adjustment is clamped to [0, 1]', () => {
     // Very low comfort + shorter should clamp to 0
-    const adjustedLow = Math.max(0, Math.min(1, 0.1 + (-0.3)))
+    const adjustedLow = Math.max(0, Math.min(1, 0.1 + -0.3))
     expect(adjustedLow).toBe(0)
     const rangeLow = computeTermCountRange('abacus', adjustedLow)
     expect(rangeLow.min).toBeGreaterThanOrEqual(2)

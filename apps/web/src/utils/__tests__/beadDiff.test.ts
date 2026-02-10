@@ -32,9 +32,7 @@ describe('calculateMultiStepBeadDiffs', () => {
     }
     mockCalculateBeadDiffFromValues.mockReturnValue(mockDiff as any)
 
-    const result = calculateMultiStepBeadDiffs(0, [
-      { expectedValue: 1, instruction: 'Add 1' },
-    ])
+    const result = calculateMultiStepBeadDiffs(0, [{ expectedValue: 1, instruction: 'Add 1' }])
 
     expect(result).toHaveLength(1)
     expect(result[0].stepIndex).toBe(0)

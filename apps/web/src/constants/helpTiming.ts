@@ -92,12 +92,8 @@ export interface ProgressiveAssistanceTimingConfig {
 /**
  * Get progressive assistance timing based on debug mode
  */
-export function getProgressiveAssistanceTiming(
-  debug: boolean
-): ProgressiveAssistanceTimingConfig {
-  return debug
-    ? PROGRESSIVE_ASSISTANCE_TIMING.debug
-    : PROGRESSIVE_ASSISTANCE_TIMING.production
+export function getProgressiveAssistanceTiming(debug: boolean): ProgressiveAssistanceTimingConfig {
+  return debug ? PROGRESSIVE_ASSISTANCE_TIMING.debug : PROGRESSIVE_ASSISTANCE_TIMING.production
 }
 
 /**

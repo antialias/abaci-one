@@ -41,10 +41,7 @@ export const appSettings = sqliteTable('app_settings', {
    *   { type: 'browser-tts' }
    */
   voiceChain: text('voice_chain').default(
-    JSON.stringify([
-      { type: 'pregenerated', name: 'nova' },
-      { type: 'browser-tts' },
-    ])
+    JSON.stringify([{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }])
   ),
 })
 
@@ -58,8 +55,5 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   id: 'default',
   bktConfidenceThreshold: 0.3,
   audioVoice: 'nova',
-  voiceChain: JSON.stringify([
-    { type: 'pregenerated', name: 'nova' },
-    { type: 'browser-tts' },
-  ]),
+  voiceChain: JSON.stringify([{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }]),
 }

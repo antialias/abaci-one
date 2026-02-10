@@ -63,9 +63,7 @@ describe('CHALLENGE_RATIO_BY_PART_TYPE', () => {
     expect(CHALLENGE_RATIO_BY_PART_TYPE.abacus).toBeGreaterThan(
       CHALLENGE_RATIO_BY_PART_TYPE.visualization
     )
-    expect(CHALLENGE_RATIO_BY_PART_TYPE.abacus).toBeGreaterThan(
-      CHALLENGE_RATIO_BY_PART_TYPE.linear
-    )
+    expect(CHALLENGE_RATIO_BY_PART_TYPE.abacus).toBeGreaterThan(CHALLENGE_RATIO_BY_PART_TYPE.linear)
   })
 
   it('visualization has lowest challenge ratio (mental math is harder)', () => {
@@ -98,9 +96,7 @@ describe('PART_TIME_WEIGHTS', () => {
 
   it('weights sum to 1.0', () => {
     const sum =
-      PART_TIME_WEIGHTS.abacus +
-      PART_TIME_WEIGHTS.visualization +
-      PART_TIME_WEIGHTS.linear
+      PART_TIME_WEIGHTS.abacus + PART_TIME_WEIGHTS.visualization + PART_TIME_WEIGHTS.linear
     expect(sum).toBeCloseTo(1.0, 10)
   })
 

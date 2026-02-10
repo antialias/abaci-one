@@ -17,7 +17,7 @@ export interface FeedbackContext {
 export function buildFeedbackClipIds(
   isCorrect: boolean,
   correctAnswer: number,
-  context?: FeedbackContext,
+  context?: FeedbackContext
 ): string[] {
   if (isCorrect) {
     // At exact streak milestones, play the milestone clip instead

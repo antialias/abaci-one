@@ -42,20 +42,31 @@ describe('numberToClipIds', () => {
     expect(numberToClipIds(1000)).toEqual(['number-1', 'number-thousand'])
     expect(numberToClipIds(2000)).toEqual(['number-2', 'number-thousand'])
     expect(numberToClipIds(2345)).toEqual([
-      'number-2', 'number-thousand',
-      'number-3', 'number-hundred',
-      'number-40', 'number-5',
+      'number-2',
+      'number-thousand',
+      'number-3',
+      'number-hundred',
+      'number-40',
+      'number-5',
     ])
     expect(numberToClipIds(1001)).toEqual(['number-1', 'number-thousand', 'number-1'])
     expect(numberToClipIds(9999)).toEqual([
-      'number-9', 'number-thousand',
-      'number-9', 'number-hundred',
-      'number-90', 'number-9',
+      'number-9',
+      'number-thousand',
+      'number-9',
+      'number-hundred',
+      'number-90',
+      'number-9',
     ])
   })
 
   it('handles round thousands with hundreds', () => {
-    expect(numberToClipIds(1100)).toEqual(['number-1', 'number-thousand', 'number-1', 'number-hundred'])
+    expect(numberToClipIds(1100)).toEqual([
+      'number-1',
+      'number-thousand',
+      'number-1',
+      'number-hundred',
+    ])
     expect(numberToClipIds(5020)).toEqual(['number-5', 'number-thousand', 'number-20'])
   })
 

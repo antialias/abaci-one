@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
 import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
@@ -58,10 +58,7 @@ describe('sessionPreferencesKeys', () => {
   })
 
   it('generates player-specific keys', () => {
-    expect(sessionPreferencesKeys.detail('player-1')).toEqual([
-      'session-preferences',
-      'player-1',
-    ])
+    expect(sessionPreferencesKeys.detail('player-1')).toEqual(['session-preferences', 'player-1'])
   })
 })
 

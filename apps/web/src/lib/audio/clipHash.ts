@@ -7,9 +7,7 @@ import type { TtsSay } from './TtsAudioManager'
  * This deterministic resolution means adding lower-priority translations
  * (e.g. 'es', 'ja') does NOT change the canonical text.
  */
-export function resolveCanonicalText(
-  say: Record<string, string> | undefined | null
-): string {
+export function resolveCanonicalText(say: Record<string, string> | undefined | null): string {
   if (!say) return ''
   return say['en-US'] ?? say['en'] ?? Object.values(say)[0] ?? ''
 }

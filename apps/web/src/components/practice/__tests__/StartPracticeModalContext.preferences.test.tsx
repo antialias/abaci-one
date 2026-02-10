@@ -11,10 +11,7 @@ import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-
 import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import type { CurriculumPhase } from '@/lib/curriculum/definitions'
-import {
-  StartPracticeModalProvider,
-  useStartPracticeModal,
-} from '../StartPracticeModalContext'
+import { StartPracticeModalProvider, useStartPracticeModal } from '../StartPracticeModalContext'
 
 // Mock hooks and dependencies (same as existing test file)
 vi.mock('next/navigation', () => ({
@@ -253,9 +250,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       })
 
       expect(result.current.durationMinutes).toBe(customPreferences.durationMinutes)
-      expect(result.current.problemLengthPreference).toBe(
-        customPreferences.problemLengthPreference
-      )
+      expect(result.current.problemLengthPreference).toBe(customPreferences.problemLengthPreference)
       expect(result.current.partWeights).toEqual(customPreferences.partWeights)
       expect(result.current.purposeWeights).toEqual(customPreferences.purposeWeights)
       expect(result.current.shufflePurposes).toBe(customPreferences.shufflePurposes)
@@ -346,9 +341,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       })
 
       expect(onSave).toHaveBeenCalledTimes(1)
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({ durationMinutes: 15 })
-      )
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ durationMinutes: 15 }))
     })
 
     it('fires onSavePreferences when problemLengthPreference changes', () => {
@@ -420,9 +413,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       })
 
       expect(onSave).toHaveBeenCalledTimes(1)
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({ shufflePurposes: false })
-      )
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ shufflePurposes: false }))
     })
 
     it('fires onSavePreferences when gameBreakEnabled changes', () => {
@@ -437,9 +428,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       })
 
       expect(onSave).toHaveBeenCalledTimes(1)
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({ gameBreakEnabled: false })
-      )
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ gameBreakEnabled: false }))
     })
 
     it('fires onSavePreferences when gameBreakMinutes changes', () => {
@@ -454,9 +443,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       })
 
       expect(onSave).toHaveBeenCalledTimes(1)
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({ gameBreakMinutes: 3 })
-      )
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ gameBreakMinutes: 3 }))
     })
 
     it('fires onSavePreferences when gameBreakDifficultyPreset changes', () => {
@@ -566,9 +553,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
         result.current.setGameBreakSelectedGame('random')
       })
 
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({ gameBreakSelectedGame: null })
-      )
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ gameBreakSelectedGame: null }))
     })
 
     it('persists specific game name in save payload', () => {

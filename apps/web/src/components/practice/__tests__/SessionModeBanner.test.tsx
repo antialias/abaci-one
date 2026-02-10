@@ -43,9 +43,7 @@ vi.mock('../ReadinessReport', () => ({
 // Fixtures
 // ============================================================================
 
-function createRemediationMode(
-  overrides: Partial<RemediationMode> = {}
-): RemediationMode {
+function createRemediationMode(overrides: Partial<RemediationMode> = {}): RemediationMode {
   return {
     type: 'remediation',
     weakSkills: [
@@ -57,9 +55,7 @@ function createRemediationMode(
   }
 }
 
-function createProgressionMode(
-  overrides: Partial<ProgressionMode> = {}
-): ProgressionMode {
+function createProgressionMode(overrides: Partial<ProgressionMode> = {}): ProgressionMode {
   return {
     type: 'progression',
     nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
@@ -72,9 +68,7 @@ function createProgressionMode(
   }
 }
 
-function createMaintenanceMode(
-  overrides: Partial<MaintenanceMode> = {}
-): MaintenanceMode {
+function createMaintenanceMode(overrides: Partial<MaintenanceMode> = {}): MaintenanceMode {
   return {
     type: 'maintenance',
     focusDescription: 'All skills strong',
@@ -90,31 +84,19 @@ function createMaintenanceMode(
 describe('SessionModeBanner - Remediation', () => {
   it('renders remediation banner with data attributes', () => {
     const onAction = vi.fn()
-    render(
-      <SessionModeBanner sessionMode={createRemediationMode()} onAction={onAction} />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={onAction} />)
     const banner = document.querySelector('[data-mode="remediation"]')
     expect(banner).toBeInTheDocument()
     expect(banner).toHaveAttribute('data-variant', 'dashboard')
   })
 
   it('shows "Strengthening skills" heading without blocked promotion', () => {
-    render(
-      <SessionModeBanner
-        sessionMode={createRemediationMode()}
-        onAction={vi.fn()}
-      />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />)
     expect(screen.getByText('Strengthening skills')).toBeInTheDocument()
   })
 
   it('shows weak skill names as targeting', () => {
-    render(
-      <SessionModeBanner
-        sessionMode={createRemediationMode()}
-        onAction={vi.fn()}
-      />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />)
     // The text "Targeting: " is followed by strong elements
     expect(screen.getByText('+3, +4')).toBeInTheDocument()
   })
@@ -162,9 +144,7 @@ describe('SessionModeBanner - Remediation', () => {
 
   it('calls onAction when Practice Now button is clicked', () => {
     const onAction = vi.fn()
-    render(
-      <SessionModeBanner sessionMode={createRemediationMode()} onAction={onAction} />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={onAction} />)
     const button = document.querySelector('[data-action="start-remediation"]') as HTMLElement
     expect(button).toBeInTheDocument()
     fireEvent.click(button)
@@ -172,9 +152,7 @@ describe('SessionModeBanner - Remediation', () => {
   })
 
   it('shows "Practice Now →" on button', () => {
-    render(
-      <SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />)
     expect(screen.getByText('Practice Now →')).toBeInTheDocument()
   })
 
@@ -203,11 +181,7 @@ describe('SessionModeBanner - Remediation', () => {
 
   it('uses modal variant', () => {
     render(
-      <SessionModeBanner
-        sessionMode={createRemediationMode()}
-        onAction={vi.fn()}
-        variant="modal"
-      />
+      <SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} variant="modal" />
     )
     const banner = document.querySelector('[data-mode="remediation"]')
     expect(banner).toHaveAttribute('data-variant', 'modal')
@@ -234,17 +208,13 @@ describe('SessionModeBanner - Remediation', () => {
 
 describe('SessionModeBanner - Progression', () => {
   it('renders progression banner with data attributes', () => {
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />)
     const banner = document.querySelector('[data-mode="progression"]')
     expect(banner).toBeInTheDocument()
   })
 
   it('shows next skill name', () => {
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />)
     expect(screen.getByText('+5 (Heaven Bead)')).toBeInTheDocument()
   })
 
@@ -269,30 +239,22 @@ describe('SessionModeBanner - Progression', () => {
   })
 
   it('has keep practicing button', () => {
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />)
     const button = document.querySelector('[data-action="start-maintenance"]') as HTMLElement
     expect(button).toBeInTheDocument()
     expect(screen.getByText('Keep practicing current skills')).toBeInTheDocument()
   })
 
   it('has start learning button with skill name', () => {
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />)
     const button = document.querySelector('[data-action="start-progression"]') as HTMLElement
     expect(button).toBeInTheDocument()
-    expect(
-      screen.getByText('Start learning +5 (Heaven Bead) →')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Start learning +5 (Heaven Bead) →')).toBeInTheDocument()
   })
 
   it('calls onAction when clicking start learning', () => {
     const onAction = vi.fn()
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={onAction} />
-    )
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={onAction} />)
     const button = document.querySelector('[data-action="start-progression"]') as HTMLElement
     fireEvent.click(button)
     expect(onAction).toHaveBeenCalledTimes(1)
@@ -300,9 +262,7 @@ describe('SessionModeBanner - Progression', () => {
 
   it('calls onAction when clicking keep practicing', () => {
     const onAction = vi.fn()
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={onAction} />
-    )
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={onAction} />)
     const button = document.querySelector('[data-action="start-maintenance"]') as HTMLElement
     fireEvent.click(button)
     expect(onAction).toHaveBeenCalledTimes(1)
@@ -317,9 +277,7 @@ describe('SessionModeBanner - Progression', () => {
         onDefer={onDefer}
       />
     )
-    const deferButton = document.querySelector(
-      '[data-action="defer-progression"]'
-    ) as HTMLElement
+    const deferButton = document.querySelector('[data-action="defer-progression"]') as HTMLElement
     expect(deferButton).toBeInTheDocument()
     expect(screen.getByText('Not yet, ask again later')).toBeInTheDocument()
   })
@@ -333,20 +291,14 @@ describe('SessionModeBanner - Progression', () => {
         onDefer={onDefer}
       />
     )
-    const deferButton = document.querySelector(
-      '[data-action="defer-progression"]'
-    ) as HTMLElement
+    const deferButton = document.querySelector('[data-action="defer-progression"]') as HTMLElement
     fireEvent.click(deferButton)
     expect(onDefer).toHaveBeenCalledTimes(1)
   })
 
   it('does not show defer button when onDefer not provided', () => {
-    render(
-      <SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />
-    )
-    expect(
-      document.querySelector('[data-action="defer-progression"]')
-    ).not.toBeInTheDocument()
+    render(<SessionModeBanner sessionMode={createProgressionMode()} onAction={vi.fn()} />)
+    expect(document.querySelector('[data-action="defer-progression"]')).not.toBeInTheDocument()
   })
 
   it('shows "Starting..." on both buttons when loading', () => {
@@ -368,17 +320,13 @@ describe('SessionModeBanner - Progression', () => {
 
 describe('SessionModeBanner - Maintenance', () => {
   it('renders maintenance banner with data attributes', () => {
-    render(
-      <SessionModeBanner sessionMode={createMaintenanceMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createMaintenanceMode()} onAction={vi.fn()} />)
     const banner = document.querySelector('[data-mode="maintenance"]')
     expect(banner).toBeInTheDocument()
   })
 
   it('shows "All skills strong!" without deferred progression', () => {
-    render(
-      <SessionModeBanner sessionMode={createMaintenanceMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createMaintenanceMode()} onAction={vi.fn()} />)
     expect(screen.getByText('All skills strong!')).toBeInTheDocument()
   })
 
@@ -389,9 +337,7 @@ describe('SessionModeBanner - Maintenance', () => {
         onAction={vi.fn()}
       />
     )
-    expect(
-      screen.getByText('Keep practicing to maintain mastery (8 skills)')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Keep practicing to maintain mastery (8 skills)')).toBeInTheDocument()
   })
 
   it('shows working toward skill with deferred progression', () => {
@@ -406,7 +352,12 @@ describe('SessionModeBanner - Maintenance', () => {
               mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
               volume: { met: true, opportunities: 25, sessionCount: 5 },
               speed: { met: false, medianSecondsPerTerm: 5.0 },
-              consistency: { met: true, recentAccuracy: 0.9, lastFiveAllCorrect: true, recentHelpCount: 0 },
+              consistency: {
+                met: true,
+                recentAccuracy: 0.9,
+                lastFiveAllCorrect: true,
+                recentHelpCount: 0,
+              },
             },
           },
         },
@@ -415,9 +366,7 @@ describe('SessionModeBanner - Maintenance', () => {
     })
     render(<SessionModeBanner sessionMode={mode} onAction={vi.fn()} />)
     expect(screen.getByText('Working toward: +5 (Heaven)')).toBeInTheDocument()
-    expect(
-      screen.getByText('Building muscle memory before advancing')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Building muscle memory before advancing')).toBeInTheDocument()
   })
 
   it('renders ReadinessReport when deferred progression exists', () => {
@@ -432,7 +381,12 @@ describe('SessionModeBanner - Maintenance', () => {
               mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
               volume: { met: true, opportunities: 25, sessionCount: 5 },
               speed: { met: false, medianSecondsPerTerm: 5.0 },
-              consistency: { met: true, recentAccuracy: 0.9, lastFiveAllCorrect: true, recentHelpCount: 0 },
+              consistency: {
+                met: true,
+                recentAccuracy: 0.9,
+                lastFiveAllCorrect: true,
+                recentHelpCount: 0,
+              },
             },
           },
         },
@@ -447,20 +401,14 @@ describe('SessionModeBanner - Maintenance', () => {
 
   it('calls onAction when Practice button is clicked', () => {
     const onAction = vi.fn()
-    render(
-      <SessionModeBanner sessionMode={createMaintenanceMode()} onAction={onAction} />
-    )
-    const button = document.querySelector(
-      '[data-action="start-maintenance"]'
-    ) as HTMLElement
+    render(<SessionModeBanner sessionMode={createMaintenanceMode()} onAction={onAction} />)
+    const button = document.querySelector('[data-action="start-maintenance"]') as HTMLElement
     fireEvent.click(button)
     expect(onAction).toHaveBeenCalledTimes(1)
   })
 
   it('shows "Practice →" on button', () => {
-    render(
-      <SessionModeBanner sessionMode={createMaintenanceMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createMaintenanceMode()} onAction={vi.fn()} />)
     expect(screen.getByText('Practice →')).toBeInTheDocument()
   })
 
@@ -483,9 +431,7 @@ describe('SessionModeBanner - Maintenance', () => {
         isLoading={true}
       />
     )
-    const button = document.querySelector(
-      '[data-action="start-maintenance"]'
-    ) as HTMLButtonElement
+    const button = document.querySelector('[data-action="start-maintenance"]') as HTMLButtonElement
     expect(button).toBeDisabled()
   })
 })
@@ -496,17 +442,13 @@ describe('SessionModeBanner - Maintenance', () => {
 
 describe('SessionModeBanner - defaults', () => {
   it('defaults isLoading to false', () => {
-    render(
-      <SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />)
     expect(screen.getByText('Practice Now →')).toBeInTheDocument()
     expect(screen.queryByText('Starting...')).not.toBeInTheDocument()
   })
 
   it('defaults variant to dashboard', () => {
-    render(
-      <SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />
-    )
+    render(<SessionModeBanner sessionMode={createRemediationMode()} onAction={vi.fn()} />)
     const banner = document.querySelector('[data-mode="remediation"]')
     expect(banner).toHaveAttribute('data-variant', 'dashboard')
   })

@@ -200,66 +200,68 @@ function createWeakSkillScenario(
 
 describe('BKT Skill Identification', () => {
   describe('Basic Skill Isolation', () => {
-    it('should correctly identify a weak basic.directAddition skill', () => withSeededRandom(1001, () => {
-      const weakSkill = 'basic.directAddition'
-      const otherSkills = ['basic.heavenBead', 'fiveComplements.4=5-1', 'fiveComplements.3=5-2']
+    it('should correctly identify a weak basic.directAddition skill', () =>
+      withSeededRandom(1001, () => {
+        const weakSkill = 'basic.directAddition'
+        const otherSkills = ['basic.heavenBead', 'fiveComplements.4=5-1', 'fiveComplements.3=5-2']
 
-      const results = createWeakSkillScenario(weakSkill, otherSkills, 60)
-      const bkt = computeBktFromHistory(results)
+        const results = createWeakSkillScenario(weakSkill, otherSkills, 60)
+        const bkt = computeBktFromHistory(results)
 
-      // Find the weak skill in BKT results
-      const weakSkillResult = bkt.skills.find((s) => s.skillId === weakSkill)
-      const otherSkillResults = bkt.skills.filter((s) => s.skillId !== weakSkill)
+        // Find the weak skill in BKT results
+        const weakSkillResult = bkt.skills.find((s) => s.skillId === weakSkill)
+        const otherSkillResults = bkt.skills.filter((s) => s.skillId !== weakSkill)
 
-      console.log(`\nWeak skill: ${weakSkill}`)
-      console.log(`  pKnown: ${(weakSkillResult?.pKnown ?? 0).toFixed(3)}`)
-      console.log(`  confidence: ${(weakSkillResult?.confidence ?? 0).toFixed(3)}`)
-      console.log(`  opportunities: ${weakSkillResult?.opportunities ?? 0}`)
+        console.log(`\nWeak skill: ${weakSkill}`)
+        console.log(`  pKnown: ${(weakSkillResult?.pKnown ?? 0).toFixed(3)}`)
+        console.log(`  confidence: ${(weakSkillResult?.confidence ?? 0).toFixed(3)}`)
+        console.log(`  opportunities: ${weakSkillResult?.opportunities ?? 0}`)
 
-      console.log(`\nOther skills:`)
-      for (const skill of otherSkillResults) {
-        console.log(
-          `  ${skill.skillId}: pKnown=${skill.pKnown.toFixed(3)}, conf=${skill.confidence.toFixed(3)}`
-        )
-      }
-
-      // Assertions
-      expect(weakSkillResult).toBeDefined()
-      expect(weakSkillResult!.pKnown).toBeLessThan(0.5)
-
-      // Other skills should have higher pKnown
-      for (const skill of otherSkillResults) {
-        if (skill.confidence > 0.2) {
-          // Only check confident skills
-          expect(skill.pKnown).toBeGreaterThan(weakSkillResult!.pKnown)
+        console.log(`\nOther skills:`)
+        for (const skill of otherSkillResults) {
+          console.log(
+            `  ${skill.skillId}: pKnown=${skill.pKnown.toFixed(3)}, conf=${skill.confidence.toFixed(3)}`
+          )
         }
-      }
-    }))
 
-    it('should correctly identify a weak fiveComplements skill', () => withSeededRandom(1002, () => {
-      const weakSkill = 'fiveComplements.4=5-1'
-      const otherSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
+        // Assertions
+        expect(weakSkillResult).toBeDefined()
+        expect(weakSkillResult!.pKnown).toBeLessThan(0.5)
 
-      const results = createWeakSkillScenario(weakSkill, otherSkills, 60)
-      const bkt = computeBktFromHistory(results)
-
-      const weakSkillResult = bkt.skills.find((s) => s.skillId === weakSkill)
-      const otherSkillResults = bkt.skills.filter((s) => s.skillId !== weakSkill)
-
-      console.log(`\nWeak skill: ${weakSkill}`)
-      console.log(`  pKnown: ${(weakSkillResult?.pKnown ?? 0).toFixed(3)}`)
-      console.log(`  confidence: ${(weakSkillResult?.confidence ?? 0).toFixed(3)}`)
-
-      expect(weakSkillResult).toBeDefined()
-      expect(weakSkillResult!.pKnown).toBeLessThan(0.5)
-
-      // Other skills should be higher
-      for (const skill of otherSkillResults) {
-        if (skill.confidence > 0.2) {
-          expect(skill.pKnown).toBeGreaterThan(weakSkillResult!.pKnown)
+        // Other skills should have higher pKnown
+        for (const skill of otherSkillResults) {
+          if (skill.confidence > 0.2) {
+            // Only check confident skills
+            expect(skill.pKnown).toBeGreaterThan(weakSkillResult!.pKnown)
+          }
         }
-      }
-    }))
+      }))
+
+    it('should correctly identify a weak fiveComplements skill', () =>
+      withSeededRandom(1002, () => {
+        const weakSkill = 'fiveComplements.4=5-1'
+        const otherSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
+
+        const results = createWeakSkillScenario(weakSkill, otherSkills, 60)
+        const bkt = computeBktFromHistory(results)
+
+        const weakSkillResult = bkt.skills.find((s) => s.skillId === weakSkill)
+        const otherSkillResults = bkt.skills.filter((s) => s.skillId !== weakSkill)
+
+        console.log(`\nWeak skill: ${weakSkill}`)
+        console.log(`  pKnown: ${(weakSkillResult?.pKnown ?? 0).toFixed(3)}`)
+        console.log(`  confidence: ${(weakSkillResult?.confidence ?? 0).toFixed(3)}`)
+
+        expect(weakSkillResult).toBeDefined()
+        expect(weakSkillResult!.pKnown).toBeLessThan(0.5)
+
+        // Other skills should be higher
+        for (const skill of otherSkillResults) {
+          if (skill.confidence > 0.2) {
+            expect(skill.pKnown).toBeGreaterThan(weakSkillResult!.pKnown)
+          }
+        }
+      }))
   })
 
   describe('Systematic Skill Testing', () => {
@@ -292,31 +294,32 @@ describe('BKT Skill Identification', () => {
           it(`should identify ${skill} as weak when it fails consistently`, () => {
             // Use a deterministic seed derived from the skill name
             let seedHash = 2000
-            for (let c = 0; c < skill.length; c++) seedHash = (seedHash * 31 + skill.charCodeAt(c)) >>> 0
+            for (let c = 0; c < skill.length; c++)
+              seedHash = (seedHash * 31 + skill.charCodeAt(c)) >>> 0
             return withSeededRandom(seedHash, () => {
-            const otherSkills = [
-              ...testCase.companions,
-              ...testCase.skills.filter((s) => s !== skill),
-            ].slice(0, 4) // Use up to 4 other skills
+              const otherSkills = [
+                ...testCase.companions,
+                ...testCase.skills.filter((s) => s !== skill),
+              ].slice(0, 4) // Use up to 4 other skills
 
-            const results = createWeakSkillScenario(skill, otherSkills, 50)
-            const bkt = computeBktFromHistory(results)
+              const results = createWeakSkillScenario(skill, otherSkills, 50)
+              const bkt = computeBktFromHistory(results)
 
-            const weakSkillResult = bkt.skills.find((s) => s.skillId === skill)
+              const weakSkillResult = bkt.skills.find((s) => s.skillId === skill)
 
-            // Log results for debugging
-            console.log(`\n${skill}:`)
-            console.log(`  pKnown: ${(weakSkillResult?.pKnown ?? 0).toFixed(3)}`)
-            console.log(`  confidence: ${(weakSkillResult?.confidence ?? 0).toFixed(3)}`)
-            console.log(`  opportunities: ${weakSkillResult?.opportunities ?? 0}`)
+              // Log results for debugging
+              console.log(`\n${skill}:`)
+              console.log(`  pKnown: ${(weakSkillResult?.pKnown ?? 0).toFixed(3)}`)
+              console.log(`  confidence: ${(weakSkillResult?.confidence ?? 0).toFixed(3)}`)
+              console.log(`  opportunities: ${weakSkillResult?.opportunities ?? 0}`)
 
-            // Weak skill should be identified
-            expect(weakSkillResult).toBeDefined()
+              // Weak skill should be identified
+              expect(weakSkillResult).toBeDefined()
 
-            // With enough opportunities, BKT should identify this as weak
-            if (weakSkillResult!.opportunities >= 5) {
-              expect(weakSkillResult!.pKnown).toBeLessThan(0.6)
-            }
+              // With enough opportunities, BKT should identify this as weak
+              if (weakSkillResult!.opportunities >= 5) {
+                expect(weakSkillResult!.pKnown).toBeLessThan(0.6)
+              }
             })
           })
         }
@@ -422,164 +425,167 @@ describe('BKT Skill Identification', () => {
   })
 
   describe('BKT vs No BKT Comparison', () => {
-    it('should show clear differentiation between weak and strong skills', () => withSeededRandom(1004, () => {
-      // Create a scenario with one definitively weak skill
-      const weakSkill = 'fiveComplements.4=5-1'
-      const strongSkills = [
-        'basic.directAddition',
-        'basic.heavenBead',
-        'fiveComplements.3=5-2',
-        'tenComplements.9=10-1',
-      ]
+    it('should show clear differentiation between weak and strong skills', () =>
+      withSeededRandom(1004, () => {
+        // Create a scenario with one definitively weak skill
+        const weakSkill = 'fiveComplements.4=5-1'
+        const strongSkills = [
+          'basic.directAddition',
+          'basic.heavenBead',
+          'fiveComplements.3=5-2',
+          'tenComplements.9=10-1',
+        ]
 
-      const results = createWeakSkillScenario(weakSkill, strongSkills, 80)
+        const results = createWeakSkillScenario(weakSkill, strongSkills, 80)
 
-      const bkt = computeBktFromHistory(results)
+        const bkt = computeBktFromHistory(results)
 
-      // Calculate statistics
-      const weakResult = bkt.skills.find((s) => s.skillId === weakSkill)
-      const strongResults = bkt.skills.filter((s) => strongSkills.includes(s.skillId))
+        // Calculate statistics
+        const weakResult = bkt.skills.find((s) => s.skillId === weakSkill)
+        const strongResults = bkt.skills.filter((s) => strongSkills.includes(s.skillId))
 
-      const confidentStrong = strongResults.filter((s) => s.confidence > 0.2)
-      const avgStrongPKnown =
-        confidentStrong.length > 0
-          ? confidentStrong.reduce((sum, s) => sum + s.pKnown, 0) / confidentStrong.length
-          : 0
+        const confidentStrong = strongResults.filter((s) => s.confidence > 0.2)
+        const avgStrongPKnown =
+          confidentStrong.length > 0
+            ? confidentStrong.reduce((sum, s) => sum + s.pKnown, 0) / confidentStrong.length
+            : 0
 
-      console.log('\n=== BKT vs No BKT Comparison ===')
-      console.log(`\nWeak skill (${weakSkill}):`)
-      console.log(`  pKnown: ${(weakResult?.pKnown ?? 0).toFixed(3)}`)
-      console.log(`  confidence: ${(weakResult?.confidence ?? 0).toFixed(3)}`)
-      console.log(`  opportunities: ${weakResult?.opportunities ?? 0}`)
+        console.log('\n=== BKT vs No BKT Comparison ===')
+        console.log(`\nWeak skill (${weakSkill}):`)
+        console.log(`  pKnown: ${(weakResult?.pKnown ?? 0).toFixed(3)}`)
+        console.log(`  confidence: ${(weakResult?.confidence ?? 0).toFixed(3)}`)
+        console.log(`  opportunities: ${weakResult?.opportunities ?? 0}`)
 
-      console.log(`\nStrong skills (avg of ${confidentStrong.length} confident skills):`)
-      console.log(`  avg pKnown: ${avgStrongPKnown.toFixed(3)}`)
+        console.log(`\nStrong skills (avg of ${confidentStrong.length} confident skills):`)
+        console.log(`  avg pKnown: ${avgStrongPKnown.toFixed(3)}`)
 
-      if (weakResult) {
-        const gap = avgStrongPKnown - weakResult.pKnown
-        console.log(`\nGap: ${gap.toFixed(3)} (${gap > 0.3 ? 'GOOD' : 'POOR'} differentiation)`)
+        if (weakResult) {
+          const gap = avgStrongPKnown - weakResult.pKnown
+          console.log(`\nGap: ${gap.toFixed(3)} (${gap > 0.3 ? 'GOOD' : 'POOR'} differentiation)`)
 
-        // We expect a clear gap between weak and strong skills
-        expect(gap).toBeGreaterThan(0.2)
-      }
+          // We expect a clear gap between weak and strong skills
+          expect(gap).toBeGreaterThan(0.2)
+        }
 
-      // Verify interventionNeeded list
-      console.log(`\nIntervention needed: ${bkt.interventionNeeded.length} skills`)
-      for (const s of bkt.interventionNeeded) {
-        console.log(`  - ${s.skillId}: pKnown=${s.pKnown.toFixed(3)}`)
-      }
+        // Verify interventionNeeded list
+        console.log(`\nIntervention needed: ${bkt.interventionNeeded.length} skills`)
+        for (const s of bkt.interventionNeeded) {
+          console.log(`  - ${s.skillId}: pKnown=${s.pKnown.toFixed(3)}`)
+        }
 
-      // The weak skill should be in intervention list (or at least have low pKnown)
-      const weakInIntervention = bkt.interventionNeeded.some((s) => s.skillId === weakSkill)
-      console.log(
-        `\nWeak skill in intervention list: ${weakInIntervention ? 'YES' : 'NO (may need more data or lower threshold)'}`
-      )
-    }))
+        // The weak skill should be in intervention list (or at least have low pKnown)
+        const weakInIntervention = bkt.interventionNeeded.some((s) => s.skillId === weakSkill)
+        console.log(
+          `\nWeak skill in intervention list: ${weakInIntervention ? 'YES' : 'NO (may need more data or lower threshold)'}`
+        )
+      }))
   })
 
   describe('Confidence Building', () => {
-    it('should require sufficient opportunities before confident identification', () => withSeededRandom(1005, () => {
-      const weakSkill = 'fiveComplements.4=5-1'
-      const otherSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
+    it('should require sufficient opportunities before confident identification', () =>
+      withSeededRandom(1005, () => {
+        const weakSkill = 'fiveComplements.4=5-1'
+        const otherSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
 
-      // Test with increasing problem counts
-      const problemCounts = [10, 20, 40, 80]
-      const confidenceResults: Array<{
-        count: number
-        conf: number
-        pKnown: number
-      }> = []
+        // Test with increasing problem counts
+        const problemCounts = [10, 20, 40, 80]
+        const confidenceResults: Array<{
+          count: number
+          conf: number
+          pKnown: number
+        }> = []
 
-      console.log('\n=== Confidence Building ===')
+        console.log('\n=== Confidence Building ===')
 
-      for (const count of problemCounts) {
-        const results = createWeakSkillScenario(weakSkill, otherSkills, count)
-        const bkt = computeBktFromHistory(results)
-        const weakResult = bkt.skills.find((s) => s.skillId === weakSkill)
+        for (const count of problemCounts) {
+          const results = createWeakSkillScenario(weakSkill, otherSkills, count)
+          const bkt = computeBktFromHistory(results)
+          const weakResult = bkt.skills.find((s) => s.skillId === weakSkill)
 
-        if (weakResult) {
-          confidenceResults.push({
-            count,
-            conf: weakResult.confidence,
-            pKnown: weakResult.pKnown,
-          })
+          if (weakResult) {
+            confidenceResults.push({
+              count,
+              conf: weakResult.confidence,
+              pKnown: weakResult.pKnown,
+            })
 
-          console.log(`${count} problems:`)
-          console.log(
-            `  confidence=${weakResult.confidence.toFixed(3)}, pKnown=${weakResult.pKnown.toFixed(3)}`
-          )
+            console.log(`${count} problems:`)
+            console.log(
+              `  confidence=${weakResult.confidence.toFixed(3)}, pKnown=${weakResult.pKnown.toFixed(3)}`
+            )
+          }
         }
-      }
 
-      // Confidence should increase with more problems
-      for (let i = 1; i < confidenceResults.length; i++) {
-        expect(confidenceResults[i].conf).toBeGreaterThanOrEqual(confidenceResults[i - 1].conf)
-      }
+        // Confidence should increase with more problems
+        for (let i = 1; i < confidenceResults.length; i++) {
+          expect(confidenceResults[i].conf).toBeGreaterThanOrEqual(confidenceResults[i - 1].conf)
+        }
 
-      // With 80 problems, confidence should be reasonably high
-      const finalConf = confidenceResults[confidenceResults.length - 1]
-      expect(finalConf.conf).toBeGreaterThan(0.3)
-    }))
+        // With 80 problems, confidence should be reasonably high
+        const finalConf = confidenceResults[confidenceResults.length - 1]
+        expect(finalConf.conf).toBeGreaterThan(0.3)
+      }))
   })
 })
 
 describe('BKT Summary Statistics', () => {
-  it('should provide accurate summary for mixed skill levels', () => withSeededRandom(1006, () => {
-    // Create a mixed scenario with some weak and some strong skills
-    const results: ProblemResultWithContext[] = []
-    const baseTime = Date.now()
+  it('should provide accurate summary for mixed skill levels', () =>
+    withSeededRandom(1006, () => {
+      // Create a mixed scenario with some weak and some strong skills
+      const results: ProblemResultWithContext[] = []
+      const baseTime = Date.now()
 
-    const weakSkills = ['fiveComplements.4=5-1', 'tenComplements.9=10-1']
-    const strongSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
-    const allSkills = [...weakSkills, ...strongSkills]
+      const weakSkills = ['fiveComplements.4=5-1', 'tenComplements.9=10-1']
+      const strongSkills = ['basic.directAddition', 'basic.heavenBead', 'fiveComplements.3=5-2']
+      const allSkills = [...weakSkills, ...strongSkills]
 
-    // Generate 100 problems
-    for (let i = 0; i < 100; i++) {
-      // Each problem uses 2-3 random skills
-      const numSkills = 2 + Math.floor(Math.random() * 2)
-      const shuffled = [...allSkills].sort(() => Math.random() - 0.5)
-      const problemSkills = shuffled.slice(0, numSkills)
+      // Generate 100 problems
+      for (let i = 0; i < 100; i++) {
+        // Each problem uses 2-3 random skills
+        const numSkills = 2 + Math.floor(Math.random() * 2)
+        const shuffled = [...allSkills].sort(() => Math.random() - 0.5)
+        const problemSkills = shuffled.slice(0, numSkills)
 
-      // Fail if ANY weak skill is present
-      const hasWeakSkill = problemSkills.some((s) => weakSkills.includes(s))
+        // Fail if ANY weak skill is present
+        const hasWeakSkill = problemSkills.some((s) => weakSkills.includes(s))
 
-      results.push(
-        createResult(
-          'test',
-          i,
-          new Date(baseTime + i * 5000),
-          problemSkills,
-          !hasWeakSkill,
-          hasWeakSkill ? 8000 : 3000
+        results.push(
+          createResult(
+            'test',
+            i,
+            new Date(baseTime + i * 5000),
+            problemSkills,
+            !hasWeakSkill,
+            hasWeakSkill ? 8000 : 3000
+          )
         )
-      )
-    }
+      }
 
-    const bkt = computeBktFromHistory(results)
+      const bkt = computeBktFromHistory(results)
 
-    console.log('\n=== BKT Summary Statistics ===')
-    console.log(`Total skills tracked: ${bkt.skills.length}`)
-    console.log(`Intervention needed: ${bkt.interventionNeeded.length}`)
-    console.log(`Strengths: ${bkt.strengths.length}`)
+      console.log('\n=== BKT Summary Statistics ===')
+      console.log(`Total skills tracked: ${bkt.skills.length}`)
+      console.log(`Intervention needed: ${bkt.interventionNeeded.length}`)
+      console.log(`Strengths: ${bkt.strengths.length}`)
 
-    console.log('\nAll skills:')
-    for (const skill of bkt.skills.sort((a, b) => a.pKnown - b.pKnown)) {
-      const isWeak = weakSkills.includes(skill.skillId)
-      const marker = isWeak ? '[EXPECTED WEAK]' : ''
-      console.log(
-        `  ${skill.skillId}: pKnown=${skill.pKnown.toFixed(3)}, conf=${skill.confidence.toFixed(3)} ${marker}`
-      )
-    }
+      console.log('\nAll skills:')
+      for (const skill of bkt.skills.sort((a, b) => a.pKnown - b.pKnown)) {
+        const isWeak = weakSkills.includes(skill.skillId)
+        const marker = isWeak ? '[EXPECTED WEAK]' : ''
+        console.log(
+          `  ${skill.skillId}: pKnown=${skill.pKnown.toFixed(3)}, conf=${skill.confidence.toFixed(3)} ${marker}`
+        )
+      }
 
-    // Verify weak skills have lower pKnown
-    for (const weakId of weakSkills) {
-      const weak = bkt.skills.find((s) => s.skillId === weakId)
-      for (const strongId of strongSkills) {
-        const strong = bkt.skills.find((s) => s.skillId === strongId)
-        if (weak && strong && weak.confidence > 0.2 && strong.confidence > 0.2) {
-          expect(weak.pKnown).toBeLessThan(strong.pKnown)
+      // Verify weak skills have lower pKnown
+      for (const weakId of weakSkills) {
+        const weak = bkt.skills.find((s) => s.skillId === weakId)
+        for (const strongId of strongSkills) {
+          const strong = bkt.skills.find((s) => s.skillId === strongId)
+          if (weak && strong && weak.confidence > 0.2 && strong.confidence > 0.2) {
+            expect(weak.pKnown).toBeLessThan(strong.pKnown)
+          }
         }
       }
-    }
-  }))
+    }))
 })

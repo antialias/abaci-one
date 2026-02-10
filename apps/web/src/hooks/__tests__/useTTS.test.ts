@@ -30,10 +30,9 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 function renderUseTTS(input: TtsInput, config?: TtsConfig) {
-  return renderHook(
-    ({ input, config }) => useTTS(input, config),
-    { initialProps: { input, config } },
-  )
+  return renderHook(({ input, config }) => useTTS(input, config), {
+    initialProps: { input, config },
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -51,7 +50,7 @@ describe('useTTS — basic', () => {
     await act(() => result.current())
     expect(mockManager.speak).toHaveBeenCalledWith(
       'clip-1',
-      expect.objectContaining({ tone: 'warm' }),
+      expect.objectContaining({ tone: 'warm' })
     )
   })
 
@@ -78,7 +77,7 @@ describe('useTTS — content stability', () => {
   it('object input is stable when content is the same (no useMemo needed)', () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTTS({ say: { en: text }, tone: 'tone' }),
-      { initialProps: { text: 'hello' } },
+      { initialProps: { text: 'hello' } }
     )
     const fn1 = result.current
     // Re-render with a new object that has the same content
@@ -89,7 +88,7 @@ describe('useTTS — content stability', () => {
   it('object input produces new reference when content changes', () => {
     const { result, rerender } = renderHook(
       ({ text }) => useTTS({ say: { en: text }, tone: 'tone' }),
-      { initialProps: { text: 'hello' } },
+      { initialProps: { text: 'hello' } }
     )
     const fn1 = result.current
     rerender({ text: 'goodbye' })
@@ -97,10 +96,9 @@ describe('useTTS — content stability', () => {
   })
 
   it('config object is stable when content is the same', () => {
-    const { result, rerender } = renderHook(
-      ({ tone }) => useTTS('clip', { tone }),
-      { initialProps: { tone: 'warm' } },
-    )
+    const { result, rerender } = renderHook(({ tone }) => useTTS('clip', { tone }), {
+      initialProps: { tone: 'warm' },
+    })
     const fn1 = result.current
     rerender({ tone: 'warm' })
     expect(result.current).toBe(fn1)
@@ -115,10 +113,7 @@ describe('useTTS — speak override input', () => {
   it('speak(overrideInput) replaces hook input', async () => {
     const { result } = renderUseTTS('default-clip')
     await act(() => result.current('override-clip'))
-    expect(mockManager.speak).toHaveBeenCalledWith(
-      'override-clip',
-      expect.any(Object),
-    )
+    expect(mockManager.speak).toHaveBeenCalledWith('override-clip', expect.any(Object))
   })
 
   it('speak(hashSegment) replaces hook input with hash-based segment', async () => {
@@ -126,7 +121,7 @@ describe('useTTS — speak override input', () => {
     await act(() => result.current({ say: { en: 'dynamic' }, tone: 'eager' }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       { say: { en: 'dynamic' }, tone: 'eager' },
-      expect.any(Object),
+      expect.any(Object)
     )
   })
 
@@ -150,20 +145,17 @@ describe('useTTS — three-tier config merge', () => {
     await act(() => result.current({ say: { en: 'override' } }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       { say: { en: 'override' } },
-      expect.objectContaining({ tone: 'implicit-tone' }),
+      expect.objectContaining({ tone: 'implicit-tone' })
     )
   })
 
   it('hook config overrides implicit config', async () => {
     // Hook input has tone='implicit', hook config has tone='explicit'
-    const { result } = renderUseTTS(
-      { say: { en: 'text' }, tone: 'implicit' },
-      { tone: 'explicit' },
-    )
+    const { result } = renderUseTTS({ say: { en: 'text' }, tone: 'implicit' }, { tone: 'explicit' })
     await act(() => result.current({ say: { en: 'override' } }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       { say: { en: 'override' } },
-      expect.objectContaining({ tone: 'explicit' }),
+      expect.objectContaining({ tone: 'explicit' })
     )
   })
 
@@ -172,31 +164,26 @@ describe('useTTS — three-tier config merge', () => {
     await act(() => result.current('other-clip', { tone: 'speak-tone' }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       'other-clip',
-      expect.objectContaining({ tone: 'speak-tone' }),
+      expect.objectContaining({ tone: 'speak-tone' })
     )
   })
 
   it('speak config overrides implicit config', async () => {
     const { result } = renderUseTTS({ say: { en: 'x' }, tone: 'implicit' })
-    await act(() =>
-      result.current({ say: { en: 'y' } }, { tone: 'speak-override' }),
-    )
+    await act(() => result.current({ say: { en: 'y' } }, { tone: 'speak-override' }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       { say: { en: 'y' } },
-      expect.objectContaining({ tone: 'speak-override' }),
+      expect.objectContaining({ tone: 'speak-override' })
     )
   })
 
   it('all three tiers present: speak > hook config > implicit', async () => {
-    const { result } = renderUseTTS(
-      { say: { en: 'text' }, tone: 'tier-1' },
-      { tone: 'tier-2' },
-    )
+    const { result } = renderUseTTS({ say: { en: 'text' }, tone: 'tier-1' }, { tone: 'tier-2' })
     // speak config = tier-3 should win
     await act(() => result.current('clip', { tone: 'tier-3' }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       'clip',
-      expect.objectContaining({ tone: 'tier-3' }),
+      expect.objectContaining({ tone: 'tier-3' })
     )
   })
 
@@ -215,7 +202,7 @@ describe('useTTS — three-tier config merge', () => {
   it('say maps merge across tiers (implicit say + speak config say)', async () => {
     const { result } = renderUseTTS(
       { say: { en: 'english' }, tone: 'tone' },
-      { say: { fr: 'francais' } },
+      { say: { fr: 'francais' } }
     )
     // Speak config adds another locale
     await act(() => result.current(undefined, { say: { es: 'espanol' } }))
@@ -298,7 +285,7 @@ describe('useTTS — speak argument handling', () => {
     await act(() => result.current())
     expect(mockManager.speak).toHaveBeenCalledWith(
       'hook-clip',
-      expect.objectContaining({ tone: 'warm' }),
+      expect.objectContaining({ tone: 'warm' })
     )
   })
 
@@ -313,7 +300,7 @@ describe('useTTS — speak argument handling', () => {
     await act(() => result.current(undefined, { tone: 'override' }))
     expect(mockManager.speak).toHaveBeenCalledWith(
       'hook-clip',
-      expect.objectContaining({ tone: 'override' }),
+      expect.objectContaining({ tone: 'override' })
     )
   })
 
@@ -340,23 +327,19 @@ describe('useTTS — re-render with updated hook input', () => {
     const { result, rerender } = renderUseTTS('clip', { tone: 'old' })
     rerender({ input: 'clip', config: { tone: 'new' } })
     await act(() => result.current())
-    expect(mockManager.speak).toHaveBeenCalledWith(
-      'clip',
-      expect.objectContaining({ tone: 'new' }),
-    )
+    expect(mockManager.speak).toHaveBeenCalledWith('clip', expect.objectContaining({ tone: 'new' }))
   })
 
   it('implicit config updates when hook input changes', async () => {
-    const { result, rerender } = renderHook(
-      ({ tone }) => useTTS({ say: { en: 'x' }, tone }),
-      { initialProps: { tone: 'old-implicit' } },
-    )
+    const { result, rerender } = renderHook(({ tone }) => useTTS({ say: { en: 'x' }, tone }), {
+      initialProps: { tone: 'old-implicit' },
+    })
     rerender({ tone: 'new-implicit' })
     // Speak override should inherit the new implicit tone
     await act(() => result.current('one-off'))
     expect(mockManager.speak).toHaveBeenCalledWith(
       'one-off',
-      expect.objectContaining({ tone: 'new-implicit' }),
+      expect.objectContaining({ tone: 'new-implicit' })
     )
   })
 })

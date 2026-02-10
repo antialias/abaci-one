@@ -280,8 +280,9 @@ export function StartPracticeModalProvider({
     }),
     [partWeights]
   )
-  const [problemLengthPreference, setProblemLengthPreference] =
-    useState<ProblemLengthPreference>(savedPreferences?.problemLengthPreference ?? 'recommended')
+  const [problemLengthPreference, setProblemLengthPreference] = useState<ProblemLengthPreference>(
+    savedPreferences?.problemLengthPreference ?? 'recommended'
+  )
 
   // Game break config state
   const [gameBreakEnabled, setGameBreakEnabled] = useState(
@@ -334,9 +335,7 @@ export function StartPracticeModalProvider({
   const [purposeWeights, setPurposeWeights] = useState<PurposeWeights>(
     savedPreferences?.purposeWeights ?? { focus: 3, reinforce: 1, review: 1, challenge: 1 }
   )
-  const [shufflePurposes, setShufflePurposes] = useState(
-    savedPreferences?.shufflePurposes ?? true
-  )
+  const [shufflePurposes, setShufflePurposes] = useState(savedPreferences?.shufflePurposes ?? true)
 
   // Tap on segment: 0→1, 1↔2 (no-op if sole active)
   const cyclePurposeWeight = useCallback((purposeType: PurposeWeightType) => {

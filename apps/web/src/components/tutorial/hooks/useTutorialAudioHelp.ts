@@ -9,10 +9,7 @@ interface UseTutorialAudioHelpOptions {
   stepTitle: string | undefined
 }
 
-export function useTutorialAudioHelp({
-  currentStepIndex,
-  stepTitle,
-}: UseTutorialAudioHelpOptions) {
+export function useTutorialAudioHelp({ currentStepIndex, stepTitle }: UseTutorialAudioHelpOptions) {
   const { isEnabled, stop } = useAudioManager()
   const lastStepIndexRef = useRef<number>(-1)
 
@@ -49,14 +46,7 @@ export function useTutorialAudioHelp({
   })
 
   const steps = useMemo(
-    () => [
-      sayWelcome,
-      sayLookAtAbacus,
-      sayTapTheBead,
-      sayThisIsOne,
-      sayMoveBeadUp,
-      sayThisIsFive,
-    ],
+    () => [sayWelcome, sayLookAtAbacus, sayTapTheBead, sayThisIsOne, sayMoveBeadUp, sayThisIsFive],
     [sayWelcome, sayLookAtAbacus, sayTapTheBead, sayThisIsOne, sayMoveBeadUp, sayThisIsFive]
   )
 

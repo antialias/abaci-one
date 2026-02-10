@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   usePlayerSkillMetrics,
@@ -74,15 +74,9 @@ const mockLeaderboard = {
     { playerId: 'p1', playerName: 'Alice', rank: 1, value: 100 },
     { playerId: 'p2', playerName: 'Bob', rank: 2, value: 80 },
   ],
-  byTotalProblems: [
-    { playerId: 'p1', playerName: 'Alice', rank: 1, value: 500 },
-  ],
-  byPracticeStreak: [
-    { playerId: 'p2', playerName: 'Bob', rank: 1, value: 10 },
-  ],
-  byImprovementRate: [
-    { playerId: 'p1', playerName: 'Alice', rank: 1, value: 0.1 },
-  ],
+  byTotalProblems: [{ playerId: 'p1', playerName: 'Alice', rank: 1, value: 500 }],
+  byPracticeStreak: [{ playerId: 'p2', playerName: 'Bob', rank: 1, value: 10 }],
+  byImprovementRate: [{ playerId: 'p1', playerName: 'Alice', rank: 1, value: 0.1 }],
   speedChampions: [],
 }
 
@@ -97,27 +91,18 @@ describe('usePlayerSkillMetrics', () => {
       json: async () => ({ metrics: mockSkillMetrics }),
     } as Response)
 
-    const { result } = renderHook(
-      () => usePlayerSkillMetrics('player-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerSkillMetrics('player-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
     })
 
     expect(result.current.data).toEqual(mockSkillMetrics)
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/skills/metrics',
-      undefined
-    )
+    expect(global.fetch).toHaveBeenCalledWith('/api/curriculum/player-1/skills/metrics', undefined)
   })
 
   it('does not fetch when playerId is null', () => {
-    const { result } = renderHook(
-      () => usePlayerSkillMetrics(null),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerSkillMetrics(null), { wrapper })
 
     expect(result.current.fetchStatus).toBe('idle')
     expect(global.fetch).not.toHaveBeenCalled()
@@ -129,10 +114,7 @@ describe('usePlayerSkillMetrics', () => {
       statusText: 'Not Found',
     } as Response)
 
-    const { result } = renderHook(
-      () => usePlayerSkillMetrics('player-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerSkillMetrics('player-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
@@ -154,10 +136,7 @@ describe('usePlayerSkillMetrics', () => {
       json: async () => metricsPayload,
     } as Response)
 
-    const { result } = renderHook(
-      () => usePlayerSkillMetrics('player-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerSkillMetrics('player-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -168,11 +147,7 @@ describe('usePlayerSkillMetrics', () => {
   })
 
   it('uses correct query key', () => {
-    expect(skillMetricsKeys.player('player-1')).toEqual([
-      'skill-metrics',
-      'player',
-      'player-1',
-    ])
+    expect(skillMetricsKeys.player('player-1')).toEqual(['skill-metrics', 'player', 'player-1'])
   })
 })
 
@@ -187,10 +162,7 @@ describe('useClassroomSkillsLeaderboard', () => {
       json: async () => ({ leaderboard: mockLeaderboard }),
     } as Response)
 
-    const { result } = renderHook(
-      () => useClassroomSkillsLeaderboard('classroom-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomSkillsLeaderboard('classroom-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -204,10 +176,7 @@ describe('useClassroomSkillsLeaderboard', () => {
   })
 
   it('does not fetch when classroomId is null', () => {
-    const { result } = renderHook(
-      () => useClassroomSkillsLeaderboard(null),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomSkillsLeaderboard(null), { wrapper })
 
     expect(result.current.fetchStatus).toBe('idle')
     expect(global.fetch).not.toHaveBeenCalled()
@@ -219,10 +188,7 @@ describe('useClassroomSkillsLeaderboard', () => {
       statusText: 'Forbidden',
     } as Response)
 
-    const { result } = renderHook(
-      () => useClassroomSkillsLeaderboard('classroom-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomSkillsLeaderboard('classroom-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
@@ -244,10 +210,7 @@ describe('useClassroomSkillsLeaderboard', () => {
       json: async () => leaderboardPayload,
     } as Response)
 
-    const { result } = renderHook(
-      () => useClassroomSkillsLeaderboard('classroom-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomSkillsLeaderboard('classroom-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -277,11 +240,7 @@ describe('skillMetricsKeys', () => {
   })
 
   it('generates player keys correctly', () => {
-    expect(skillMetricsKeys.player('abc')).toEqual([
-      'skill-metrics',
-      'player',
-      'abc',
-    ])
+    expect(skillMetricsKeys.player('abc')).toEqual(['skill-metrics', 'player', 'abc'])
   })
 
   it('generates classroom leaderboard keys correctly', () => {

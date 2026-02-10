@@ -124,24 +124,14 @@ describe('GameCard', () => {
   it('does not navigate when too many players', () => {
     mockActivePlayerCount = 3
 
-    render(
-      <GameCard
-        gameType="matching"
-        config={{ ...defaultConfig, maxPlayers: 2 }}
-      />
-    )
+    render(<GameCard gameType="matching" config={{ ...defaultConfig, maxPlayers: 2 }} />)
 
     fireEvent.click(screen.getByText('Matching Game'))
     expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('does not navigate when config.available is false', () => {
-    render(
-      <GameCard
-        gameType="matching"
-        config={{ ...defaultConfig, available: false }}
-      />
-    )
+    render(<GameCard gameType="matching" config={{ ...defaultConfig, available: false }} />)
 
     fireEvent.click(screen.getByText('Matching Game'))
     expect(mockPush).not.toHaveBeenCalled()
@@ -167,12 +157,7 @@ describe('GameCard', () => {
   it('shows player availability indicator - too many', () => {
     mockActivePlayerCount = 3
 
-    render(
-      <GameCard
-        gameType="matching"
-        config={{ ...defaultConfig, maxPlayers: 2 }}
-      />
-    )
+    render(<GameCard gameType="matching" config={{ ...defaultConfig, maxPlayers: 2 }} />)
 
     expect(screen.getByText(/Too many players/)).toBeInTheDocument()
   })
@@ -180,22 +165,14 @@ describe('GameCard', () => {
   it('shows singular "player" for maxPlayers=1', () => {
     mockActivePlayerCount = 0
 
-    render(
-      <GameCard
-        gameType="solo"
-        config={{ ...defaultConfig, maxPlayers: 1 }}
-      />
-    )
+    render(<GameCard gameType="solo" config={{ ...defaultConfig, maxPlayers: 1 }} />)
 
     expect(screen.getByText(/Select 1 player/)).toBeInTheDocument()
   })
 
   it('limits chips to 2 max', () => {
     render(
-      <GameCard
-        gameType="matching"
-        config={{ ...defaultConfig, chips: ['A', 'B', 'C', 'D'] }}
-      />
+      <GameCard gameType="matching" config={{ ...defaultConfig, chips: ['A', 'B', 'C', 'D'] }} />
     )
 
     expect(screen.getByText('A')).toBeInTheDocument()
@@ -206,11 +183,7 @@ describe('GameCard', () => {
 
   it('applies custom className', () => {
     const { container } = render(
-      <GameCard
-        gameType="matching"
-        config={defaultConfig}
-        className="custom-class"
-      />
+      <GameCard gameType="matching" config={defaultConfig} className="custom-class" />
     )
 
     const card = container.firstElementChild as HTMLElement

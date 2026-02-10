@@ -16,7 +16,7 @@ import {
 } from '@/db/schema/session-plans'
 
 import { css } from '../../../styled-system/css'
-import { type AutoPauseStats, type PauseInfo } from './autoPauseCalculator'
+import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
 import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
 import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
@@ -196,7 +196,6 @@ interface ActiveSessionProps {
   /** When true, show the debug overlay with submit buttons */
   debug?: boolean
 }
-
 
 /**
  * Calculate the number of abacus columns needed to compute a problem.
@@ -592,11 +591,13 @@ export function ActiveSession({
   )
 
   const assistance = useProgressiveAssistance({
-    attempt: attempt ? {
-      startTime: attempt.startTime,
-      accumulatedPauseMs: attempt.accumulatedPauseMs,
-      problem: { terms: attempt.problem.terms },
-    } : null,
+    attempt: attempt
+      ? {
+          startTime: attempt.startTime,
+          accumulatedPauseMs: attempt.accumulatedPauseMs,
+          problem: { terms: attempt.problem.terms },
+        }
+      : null,
     results: plan.results,
     problemTermsCount: attempt?.problem?.terms?.length ?? 0,
     isPaused,
@@ -649,10 +650,7 @@ export function ActiveSession({
   // Audio help — reads problems and feedback aloud for non-readers
   const { isEnabled: audioHelpEnabled, isPlaying: audioHelpIsPlaying } = useAudioManager()
   const audioHelpIsCorrect = phase.phase === 'showingFeedback' ? phase.result === 'correct' : null
-  const recentCorrectness = useMemo(
-    () => plan.results.map((r) => r.isCorrect),
-    [plan.results]
-  )
+  const recentCorrectness = useMemo(() => plan.results.map((r) => r.isCorrect), [plan.results])
   const { replayProblem } = usePracticeAudioHelp({
     terms: attempt?.problem?.terms ?? null,
     showingFeedback: showFeedback,
@@ -1277,7 +1275,14 @@ export function ActiveSession({
         }, 300) // Match fade-out duration
       }, 1000) // Show target value in answer boxes for 1 second
     }, 600) // Brief pause to see success state on abacus
-  }, [phase.phase, helpContext, setAnswer, clearAnswer, exitHelpMode, assistance.onHelpTermCompleted])
+  }, [
+    phase.phase,
+    helpContext,
+    setAnswer,
+    clearAnswer,
+    exitHelpMode,
+    assistance.onHelpTermCompleted,
+  ])
 
   // Handle value change from the docked abacus
   const handleAbacusDockValueChange = useCallback(
@@ -1346,7 +1351,8 @@ export function ActiveSession({
       skillsExercised: attemptData.problem.skillsRequired,
       usedOnScreenAbacus: phase.phase === 'helpMode',
       incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
-      hadHelp: phase.phase === 'helpMode' || assistance.machineState.context.helpedTermIndices.size > 0,
+      hadHelp:
+        phase.phase === 'helpMode' || assistance.machineState.context.helpedTermIndices.size > 0,
     }
 
     // Handle redo mode differently - use onRecordRedo which doesn't advance session position

@@ -24,15 +24,9 @@ export function usePracticeAudioHelp({
 }: UsePracticeAudioHelpOptions) {
   const { stop } = useAudioManager()
 
-  const streak = useMemo(
-    () => (results ? calculateStreak(results) : 0),
-    [results]
-  )
+  const streak = useMemo(() => (results ? calculateStreak(results) : 0), [results])
 
-  const problemClipIds = useMemo(
-    () => (terms ? termsToClipIds(terms) : []),
-    [terms]
-  )
+  const problemClipIds = useMemo(() => (terms ? termsToClipIds(terms) : []), [terms])
 
   const feedbackClipIds = useMemo(
     () =>
@@ -49,13 +43,10 @@ export function usePracticeAudioHelp({
     tone: isCorrect ? 'celebration' : 'corrective',
   })
 
-  // Auto-play problem when terms change
-  const prevTermsRef = useRef<number[] | null>(null)
-  useEffect(() => {
-    if (problemClipIds.length === 0 || terms === prevTermsRef.current) return
-    prevTermsRef.current = terms
-    sayProblem()
-  }, [problemClipIds, terms, sayProblem])
+  // Problem auto-play is disabled — reading terms aloud is less useful
+  // than the other voice cues and creates audio contention.  The TTS
+  // registration above still runs (for clip collection), and replayProblem
+  // remains available for manual/assistance-triggered replays.
 
   // Auto-play feedback
   const playedFeedbackRef = useRef(false)

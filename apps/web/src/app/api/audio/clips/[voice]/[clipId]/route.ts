@@ -23,7 +23,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
     const { voice, clipId } = await params
 
     // Validate path segments to prevent directory traversal
-    if (!voice || !clipId || voice.includes('/') || voice.includes('..') || clipId.includes('/') || clipId.includes('..')) {
+    if (
+      !voice ||
+      !clipId ||
+      voice.includes('/') ||
+      voice.includes('..') ||
+      clipId.includes('/') ||
+      clipId.includes('..')
+    ) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 

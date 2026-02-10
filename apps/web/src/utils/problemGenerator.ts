@@ -1184,7 +1184,10 @@ export function generateProblems(practiceStep: PracticeStep): GeneratedProblem[]
   let fallbackIndex = 0
   const maxFallbackIterations = practiceStep.problemCount * 10
   let fallbackIterations = 0
-  while (problems.length < practiceStep.problemCount && fallbackIterations < maxFallbackIterations) {
+  while (
+    problems.length < practiceStep.problemCount &&
+    fallbackIterations < maxFallbackIterations
+  ) {
     fallbackIterations++
     let fallbackProblem
     let fallbackAttempts = 0

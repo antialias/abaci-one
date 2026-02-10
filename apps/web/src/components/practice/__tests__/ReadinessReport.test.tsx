@@ -32,7 +32,12 @@ function createReadinessResult(
       mastery: { met: false, pKnown: 0.6, confidence: 0.4 },
       volume: { met: false, opportunities: 10, sessionCount: 2 },
       speed: { met: false, medianSecondsPerTerm: 5.0 },
-      consistency: { met: false, recentAccuracy: 0.7, lastFiveAllCorrect: false, recentHelpCount: 1 },
+      consistency: {
+        met: false,
+        recentAccuracy: 0.7,
+        lastFiveAllCorrect: false,
+        recentHelpCount: 1,
+      },
     },
     ...overrides,
   }
@@ -46,7 +51,12 @@ function createSolidResult(skillId = 'basic.+3'): SkillReadinessResult {
       mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
       volume: { met: true, opportunities: 25, sessionCount: 5 },
       speed: { met: true, medianSecondsPerTerm: 2.5 },
-      consistency: { met: true, recentAccuracy: 0.95, lastFiveAllCorrect: true, recentHelpCount: 0 },
+      consistency: {
+        met: true,
+        recentAccuracy: 0.95,
+        lastFiveAllCorrect: true,
+        recentHelpCount: 0,
+      },
     },
   }
 }
@@ -78,7 +88,12 @@ describe('ReadinessReport - full variant', () => {
           mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
           volume: { met: false, opportunities: 10, sessionCount: 2 },
           speed: { met: true, medianSecondsPerTerm: 2.5 },
-          consistency: { met: true, recentAccuracy: 0.95, lastFiveAllCorrect: true, recentHelpCount: 0 },
+          consistency: {
+            met: true,
+            recentAccuracy: 0.95,
+            lastFiveAllCorrect: true,
+            recentHelpCount: 0,
+          },
         },
       }),
     }
@@ -97,15 +112,18 @@ describe('ReadinessReport - full variant', () => {
           mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
           volume: { met: true, opportunities: 25, sessionCount: 5 },
           speed: { met: true, medianSecondsPerTerm: 2.5 },
-          consistency: { met: true, recentAccuracy: 0.95, lastFiveAllCorrect: true, recentHelpCount: 0 },
+          consistency: {
+            met: true,
+            recentAccuracy: 0.95,
+            lastFiveAllCorrect: true,
+            recentHelpCount: 0,
+          },
         },
       }),
     }
     render(<ReadinessReport readiness={readiness} />)
     expect(
-      screen.getByText(
-        `25 problems practiced (need ${READINESS_THRESHOLDS.minOpportunities})`
-      )
+      screen.getByText(`25 problems practiced (need ${READINESS_THRESHOLDS.minOpportunities})`)
     ).toBeInTheDocument()
   })
 
@@ -116,16 +134,17 @@ describe('ReadinessReport - full variant', () => {
           mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
           volume: { met: true, opportunities: 25, sessionCount: 5 },
           speed: { met: false, medianSecondsPerTerm: 5.0 },
-          consistency: { met: true, recentAccuracy: 0.95, lastFiveAllCorrect: true, recentHelpCount: 0 },
+          consistency: {
+            met: true,
+            recentAccuracy: 0.95,
+            lastFiveAllCorrect: true,
+            recentHelpCount: 0,
+          },
         },
       }),
     }
     render(<ReadinessReport readiness={readiness} />)
-    expect(
-      screen.getByText(
-        /5\.0s per step.*need under.*4.*s.*getting faster/
-      )
-    ).toBeInTheDocument()
+    expect(screen.getByText(/5\.0s per step.*need under.*4.*s.*getting faster/)).toBeInTheDocument()
   })
 
   it('shows speed dimension no data message when null', () => {
@@ -135,14 +154,17 @@ describe('ReadinessReport - full variant', () => {
           mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
           volume: { met: true, opportunities: 25, sessionCount: 5 },
           speed: { met: false, medianSecondsPerTerm: null },
-          consistency: { met: true, recentAccuracy: 0.95, lastFiveAllCorrect: true, recentHelpCount: 0 },
+          consistency: {
+            met: true,
+            recentAccuracy: 0.95,
+            lastFiveAllCorrect: true,
+            recentHelpCount: 0,
+          },
         },
       }),
     }
     render(<ReadinessReport readiness={readiness} />)
-    expect(
-      screen.getByText(/No speed data yet.*getting faster/)
-    ).toBeInTheDocument()
+    expect(screen.getByText(/No speed data yet.*getting faster/)).toBeInTheDocument()
   })
 
   it('shows mastery dimension label', () => {
@@ -194,7 +216,12 @@ describe('ReadinessReport - full variant', () => {
           mastery: { met: false, pKnown: 0.5, confidence: 0.3 },
           volume: { met: false, opportunities: 5, sessionCount: 1 },
           speed: { met: false, medianSecondsPerTerm: 6.0 },
-          consistency: { met: false, recentAccuracy: 0.6, lastFiveAllCorrect: false, recentHelpCount: 2 },
+          consistency: {
+            met: false,
+            recentAccuracy: 0.6,
+            lastFiveAllCorrect: false,
+            recentHelpCount: 2,
+          },
         },
       }),
     }
@@ -230,7 +257,12 @@ describe('ReadinessReport - compact variant', () => {
           mastery: { met: true, pKnown: 0.9, confidence: 0.8 },
           volume: { met: true, opportunities: 25, sessionCount: 5 },
           speed: { met: false, medianSecondsPerTerm: 5.0 },
-          consistency: { met: false, recentAccuracy: 0.7, lastFiveAllCorrect: false, recentHelpCount: 1 },
+          consistency: {
+            met: false,
+            recentAccuracy: 0.7,
+            lastFiveAllCorrect: false,
+            recentHelpCount: 1,
+          },
         },
       }),
     }

@@ -139,8 +139,7 @@ describe('skillConfigurationToSkillSets', () => {
     config.fiveComplements['2=5-3'] = 'forbidden'
     config.fiveComplements['1=5-4'] = 'off'
 
-    const { required, target, forbidden } =
-      skillConfigurationToSkillSets(config)
+    const { required, target, forbidden } = skillConfigurationToSkillSets(config)
 
     expect(required.fiveComplements['4=5-1']).toBe(true) // target => required
     expect(required.fiveComplements['3=5-2']).toBe(true) // allowed => required
@@ -186,8 +185,7 @@ describe('skillSetsToConfiguration', () => {
     const config = createDefaultSkillConfiguration()
     config.tenComplements['9=10-1'] = 'forbidden'
 
-    const { required, target, forbidden } =
-      skillConfigurationToSkillSets(config)
+    const { required, target, forbidden } = skillConfigurationToSkillSets(config)
     const result = skillSetsToConfiguration(required, target, forbidden)
 
     expect(result.tenComplements['9=10-1']).toBe('forbidden')
@@ -203,8 +201,7 @@ describe('skillSetsToConfiguration', () => {
     original.tenComplements['9=10-1'] = 'forbidden'
     original.tenComplements['8=10-2'] = 'allowed'
 
-    const { required, target, forbidden } =
-      skillConfigurationToSkillSets(original)
+    const { required, target, forbidden } = skillConfigurationToSkillSets(original)
     const result = skillSetsToConfiguration(required, target, forbidden)
 
     expect(result.basic.directAddition).toBe('allowed')

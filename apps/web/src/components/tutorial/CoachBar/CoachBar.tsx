@@ -17,9 +17,7 @@ export function CoachBar() {
   // Read coach hint aloud via TTS voice chain when it changes
   // Uses hash-based clip ID so each unique summary gets its own mp3
   const summary = seg?.readable?.summary ?? ''
-  const sayCoachHint = useTTS(
-    summary ? { say: { en: summary }, tone: 'tutorial-instruction' } : ''
-  )
+  const sayCoachHint = useTTS(summary ? { say: { en: summary }, tone: 'tutorial-instruction' } : '')
 
   useEffect(() => {
     if (!audioHelpEnabled || !summary || summary === lastSummaryRef.current) return

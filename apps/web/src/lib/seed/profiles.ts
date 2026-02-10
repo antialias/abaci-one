@@ -1494,7 +1494,8 @@ Use this to test:
     emoji: '🎲',
     color: '#7c3aed',
     category: 'edge',
-    description: 'PROGRESSIVE ASSISTANCE - Wide response time spread, large gaps between thresholds',
+    description:
+      'PROGRESSIVE ASSISTANCE - Wide response time spread, large gaps between thresholds',
     currentPhaseId: 'L1.add.+2.five',
     practicingSkills: MID_L1_SKILLS,
     ensureAllPracticingHaveHistory: true,

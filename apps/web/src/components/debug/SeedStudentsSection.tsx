@@ -1,7 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Share2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  RefreshCw,
+  Search,
+  Share2,
+} from 'lucide-react'
 import { FamilyCodeDisplay } from '@/components/family/FamilyCodeDisplay'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { ProfileInfo } from '@/lib/seed/types'
@@ -698,20 +706,30 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
             borderRadius: '8px',
             fontSize: '0.8rem',
             backgroundColor: embeddingStatus.stale
-              ? isDark ? 'yellow.900/30' : 'yellow.50'
-              : isDark ? 'gray.800' : 'gray.100',
+              ? isDark
+                ? 'yellow.900/30'
+                : 'yellow.50'
+              : isDark
+                ? 'gray.800'
+                : 'gray.100',
             border: '1px solid',
             borderColor: embeddingStatus.stale
-              ? isDark ? 'yellow.800' : 'yellow.300'
-              : isDark ? 'gray.700' : 'gray.300',
+              ? isDark
+                ? 'yellow.800'
+                : 'yellow.300'
+              : isDark
+                ? 'gray.700'
+                : 'gray.300',
             color: embeddingStatus.stale
-              ? isDark ? 'yellow.300' : 'yellow.800'
-              : isDark ? 'gray.400' : 'gray.600',
+              ? isDark
+                ? 'yellow.300'
+                : 'yellow.800'
+              : isDark
+                ? 'gray.400'
+                : 'gray.600',
           })}
         >
-          {embeddingStatus.stale && (
-            <AlertTriangle size={14} className={css({ flexShrink: 0 })} />
-          )}
+          {embeddingStatus.stale && <AlertTriangle size={14} className={css({ flexShrink: 0 })} />}
           <span className={css({ flex: 1 })}>
             {embeddingStatus.stale
               ? 'Search embeddings are stale — profile content has changed since they were generated.'
@@ -733,14 +751,24 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
               cursor: regenerating ? 'not-allowed' : 'pointer',
               flexShrink: 0,
               backgroundColor: embeddingStatus.stale
-                ? isDark ? 'yellow.700' : 'yellow.500'
-                : isDark ? 'blue.700' : 'blue.500',
+                ? isDark
+                  ? 'yellow.700'
+                  : 'yellow.500'
+                : isDark
+                  ? 'blue.700'
+                  : 'blue.500',
               color: 'white',
-              _hover: regenerating ? {} : {
-                backgroundColor: embeddingStatus.stale
-                  ? isDark ? 'yellow.600' : 'yellow.400'
-                  : isDark ? 'blue.600' : 'blue.400',
-              },
+              _hover: regenerating
+                ? {}
+                : {
+                    backgroundColor: embeddingStatus.stale
+                      ? isDark
+                        ? 'yellow.600'
+                        : 'yellow.400'
+                      : isDark
+                        ? 'blue.600'
+                        : 'blue.400',
+                  },
             })}
           >
             <RefreshCw

@@ -21,13 +21,9 @@ export function usePartTransitionAudio({
   message,
   abacusAction,
 }: UsePartTransitionAudioOptions) {
-  const spokenText = [message.headline, message.subtitle, abacusAction]
-    .filter(Boolean)
-    .join('. ')
+  const spokenText = [message.headline, message.subtitle, abacusAction].filter(Boolean).join('. ')
 
-  const speak = useTTS(
-    { say: { en: spokenText }, tone: 'tutorial-instruction' },
-  )
+  const speak = useTTS({ say: { en: spokenText }, tone: 'tutorial-instruction' })
 
   const hasPlayedRef = useRef(false)
 

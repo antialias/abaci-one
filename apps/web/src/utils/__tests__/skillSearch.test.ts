@@ -148,9 +148,7 @@ describe('getSkillDisplayName', () => {
 // ============================================================================
 describe('getSkillCategoryDisplayName', () => {
   it('returns category display name for a valid skill', () => {
-    expect(getSkillCategoryDisplayName('basic.directAddition')).toBe(
-      'Basic Skills'
-    )
+    expect(getSkillCategoryDisplayName('basic.directAddition')).toBe('Basic Skills')
   })
 
   it('returns "Unknown" for an unknown skill', () => {
@@ -158,9 +156,7 @@ describe('getSkillCategoryDisplayName', () => {
   })
 
   it('returns correct category for ten complements', () => {
-    expect(getSkillCategoryDisplayName('tenComplements.9=10-1')).toBe(
-      'Ten Complements (Addition)'
-    )
+    expect(getSkillCategoryDisplayName('tenComplements.9=10-1')).toBe('Ten Complements (Addition)')
   })
 })
 

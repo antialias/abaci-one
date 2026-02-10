@@ -176,20 +176,14 @@ describe('calculateSecondsPerTermFromSessions', () => {
   })
 
   it('aggregates results from multiple sessions', () => {
-    const sessions = [
-      { results: makeResults(3, 5) },
-      { results: makeResults(3, 5) },
-    ]
+    const sessions = [{ results: makeResults(3, 5) }, { results: makeResults(3, 5) }]
     // Total 6 results, need 5 minimum
     const spt = calculateSecondsPerTermFromSessions(sessions)
     expect(spt).toBeCloseTo(5)
   })
 
   it('returns null when total results across sessions is insufficient', () => {
-    const sessions = [
-      { results: makeResults(2, 5) },
-      { results: makeResults(2, 5) },
-    ]
+    const sessions = [{ results: makeResults(2, 5) }, { results: makeResults(2, 5) }]
     // 4 total results, need 5
     expect(calculateSecondsPerTermFromSessions(sessions)).toBeNull()
   })

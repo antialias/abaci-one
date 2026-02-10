@@ -63,7 +63,7 @@ function extractImplicitConfig(input: TtsInput): TtsConfig {
  */
 export function useTTS(
   input: TtsInput,
-  config?: TtsConfig,
+  config?: TtsConfig
 ): (overrideInput?: TtsInput, overrideConfig?: TtsConfig) => Promise<void> {
   const manager = useAudioManagerInstance()
 
@@ -89,8 +89,7 @@ export function useTTS(
 
   return useCallback(
     (overrideInput?: TtsInput, overrideConfig?: TtsConfig) => {
-      const effectiveInput =
-        overrideInput !== undefined ? overrideInput : inputRef.current
+      const effectiveInput = overrideInput !== undefined ? overrideInput : inputRef.current
       const effectiveConfig: TtsConfig = {
         ...implicitConfigRef.current,
         ...configRef.current,
@@ -99,6 +98,6 @@ export function useTTS(
       return manager.speak(effectiveInput, effectiveConfig)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [manager, inputKey, configKey],
+    [manager, inputKey, configKey]
   )
 }

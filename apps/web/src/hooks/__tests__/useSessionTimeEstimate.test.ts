@@ -196,9 +196,7 @@ describe('useSessionTimeEstimate', () => {
     const parts = [makePart('abacus', 5, 1), makePart('visualization', 3, 2)]
     const results = [makeResult(5000, 1), makeResult(6000, 1)]
 
-    const { result } = renderHook(() =>
-      useSessionTimeEstimate({ results, parts })
-    )
+    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
 
     expect(result.current.totalProblems).toBe(8) // 5 + 3
     expect(result.current.completedProblems).toBe(2)
@@ -209,9 +207,7 @@ describe('useSessionTimeEstimate', () => {
     const parts = [makePart('abacus', 10, 1)]
     const results = [makeResult(5000, 1), makeResult(6000, 1)]
 
-    const { result } = renderHook(() =>
-      useSessionTimeEstimate({ results, parts })
-    )
+    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
 
     expect(result.current.timingStats.hasEnoughData).toBe(false)
     // 8 problems remaining * 10000ms default
@@ -222,9 +218,7 @@ describe('useSessionTimeEstimate', () => {
     const parts = [makePart('abacus', 10, 1)]
     const results = [4000, 5000, 6000, 7000, 8000].map((ms) => makeResult(ms, 1))
 
-    const { result } = renderHook(() =>
-      useSessionTimeEstimate({ results, parts })
-    )
+    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
 
     expect(result.current.timingStats.hasEnoughData).toBe(true)
     expect(result.current.timingStats.mean).toBe(6000)
@@ -236,9 +230,7 @@ describe('useSessionTimeEstimate', () => {
     const parts = [makePart('abacus', 10, 1)]
     const results = [4000, 5000, 6000, 7000, 8000].map((ms) => makeResult(ms, 1))
 
-    const { result } = renderHook(() =>
-      useSessionTimeEstimate({ results, parts })
-    )
+    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
 
     // 30000ms rounds to 1 min => "~1 min" (Math.round(30000/60000) = 1, not 0)
     expect(result.current.estimatedTimeRemainingFormatted).toBe('~1 min')
@@ -247,9 +239,7 @@ describe('useSessionTimeEstimate', () => {
   it('handles empty results', () => {
     const parts = [makePart('abacus', 5, 1)]
 
-    const { result } = renderHook(() =>
-      useSessionTimeEstimate({ results: [], parts })
-    )
+    const { result } = renderHook(() => useSessionTimeEstimate({ results: [], parts }))
 
     expect(result.current.completedProblems).toBe(0)
     expect(result.current.problemsRemaining).toBe(5)
@@ -257,9 +247,7 @@ describe('useSessionTimeEstimate', () => {
   })
 
   it('handles empty parts', () => {
-    const { result } = renderHook(() =>
-      useSessionTimeEstimate({ results: [], parts: [] })
-    )
+    const { result } = renderHook(() => useSessionTimeEstimate({ results: [], parts: [] }))
 
     expect(result.current.totalProblems).toBe(0)
     expect(result.current.problemsRemaining).toBe(0)
@@ -282,9 +270,7 @@ describe('useSessionTimeEstimate', () => {
     ]
 
     // Without filter: mean = 6500
-    const { result: allResult } = renderHook(() =>
-      useSessionTimeEstimate({ results, parts })
-    )
+    const { result: allResult } = renderHook(() => useSessionTimeEstimate({ results, parts }))
     expect(allResult.current.timingStats.mean).toBe(6500)
 
     // With abacus filter: mean = 3000

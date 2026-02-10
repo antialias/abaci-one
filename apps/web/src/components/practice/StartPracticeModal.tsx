@@ -78,8 +78,7 @@ export function StartPracticeModal({
   // We must wait for the query to settle before rendering the provider,
   // because useState initializers only run on first mount — if the provider
   // mounts before the query resolves, saved values are ignored.
-  const { data: savedPreferences, isLoading: prefsLoading } =
-    usePlayerSessionPreferences(studentId)
+  const { data: savedPreferences, isLoading: prefsLoading } = usePlayerSessionPreferences(studentId)
   const saveMutation = useSavePlayerSessionPreferences(studentId)
   // Ref so the callback never changes identity when mutation state changes
   const saveMutationRef = useRef(saveMutation)

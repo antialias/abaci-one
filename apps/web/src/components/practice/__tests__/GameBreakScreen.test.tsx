@@ -27,7 +27,7 @@ const mockGame = {
 }
 
 vi.mock('@/lib/arcade/game-registry', () => ({
-  getGame: (name: string) => name === 'test-game' ? mockGame : null,
+  getGame: (name: string) => (name === 'test-game' ? mockGame : null),
 }))
 
 vi.mock('@/lib/arcade/practice-approved-games', () => ({

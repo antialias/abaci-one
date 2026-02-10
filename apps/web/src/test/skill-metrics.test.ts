@@ -196,10 +196,7 @@ describe('calculateOverallMastery', () => {
   })
 
   it('returns weighted average of pKnown values', () => {
-    const results = [
-      makeBktResult('s1', 0.8, 0.5, 10),
-      makeBktResult('s2', 0.4, 0.5, 10),
-    ]
+    const results = [makeBktResult('s1', 0.8, 0.5, 10), makeBktResult('s2', 0.4, 0.5, 10)]
     const mastery = calculateOverallMastery(results)
     // weight = confidence * max(1, opportunities) = 0.5 * 10 = 5 for each
     // weighted sum = 0.8 * 5 + 0.4 * 5 = 4 + 2 = 6
@@ -211,7 +208,7 @@ describe('calculateOverallMastery', () => {
   it('weights by confidence and opportunities', () => {
     const results = [
       makeBktResult('s1', 0.9, 0.9, 50), // high confidence, many opportunities
-      makeBktResult('s2', 0.3, 0.1, 2),   // low confidence, few opportunities
+      makeBktResult('s2', 0.3, 0.1, 2), // low confidence, few opportunities
     ]
     const mastery = calculateOverallMastery(results)
     // s1 weight = 0.9 * 50 = 45
@@ -260,8 +257,8 @@ describe('calculateCategoryMastery', () => {
 
   it('counts mastered skills correctly (pKnown >= 0.8)', () => {
     const results = [
-      makeBktResult('basic.directAddition', 0.9),  // mastered
-      makeBktResult('basic.heavenBead', 0.8),       // mastered (edge)
+      makeBktResult('basic.directAddition', 0.9), // mastered
+      makeBktResult('basic.heavenBead', 0.8), // mastered (edge)
       makeBktResult('basic.directSubtraction', 0.79), // NOT mastered
     ]
 
@@ -274,7 +271,7 @@ describe('calculateCategoryMastery', () => {
   it('counts practiced skills (opportunities > 0)', () => {
     const results = [
       makeBktResult('basic.directAddition', 0.5, 0.5, 10), // practiced
-      makeBktResult('basic.heavenBead', 0.5, 0.5, 0),      // not practiced
+      makeBktResult('basic.heavenBead', 0.5, 0.5, 0), // not practiced
     ]
 
     const mastery = calculateCategoryMastery(results)
@@ -283,9 +280,7 @@ describe('calculateCategoryMastery', () => {
   })
 
   it('puts unknown categories under basic', () => {
-    const results = [
-      makeBktResult('weirdCategory.foo', 0.7),
-    ]
+    const results = [makeBktResult('weirdCategory.foo', 0.7)]
 
     const mastery = calculateCategoryMastery(results)
     expect(mastery.basic.skillCount).toBe(1)
@@ -311,9 +306,7 @@ describe('calculateNormalizedResponseTime', () => {
 
   it('excludes results where hadHelp is true', () => {
     const validResults = Array.from({ length: 4 }, () => makeProblemResult())
-    const helpResults = Array.from({ length: 5 }, () =>
-      makeProblemResult({ hadHelp: true })
-    )
+    const helpResults = Array.from({ length: 5 }, () => makeProblemResult({ hadHelp: true }))
     const all = [...validResults, ...helpResults]
     const { avgSecondsPerTerm } = calculateNormalizedResponseTime(all as any)
     expect(avgSecondsPerTerm).toBeNull() // only 4 valid results
@@ -331,9 +324,7 @@ describe('calculateNormalizedResponseTime', () => {
 
   it('excludes results with responseTimeMs <= 0', () => {
     const validResults = Array.from({ length: 4 }, () => makeProblemResult())
-    const invalidResults = Array.from({ length: 5 }, () =>
-      makeProblemResult({ responseTimeMs: 0 })
-    )
+    const invalidResults = Array.from({ length: 5 }, () => makeProblemResult({ responseTimeMs: 0 }))
     const all = [...validResults, ...invalidResults]
     const { avgSecondsPerTerm } = calculateNormalizedResponseTime(all as any)
     expect(avgSecondsPerTerm).toBeNull()
@@ -495,16 +486,12 @@ describe('calculatePracticeStreak', () => {
   })
 
   it('returns 0 for sessions without completed status', () => {
-    const sessions = [
-      makeSessionPlan({ status: 'draft', completedAt: FIXED_NOW }),
-    ]
+    const sessions = [makeSessionPlan({ status: 'draft', completedAt: FIXED_NOW })]
     expect(calculatePracticeStreak(sessions)).toBe(0)
   })
 
   it('returns 0 for completed sessions without completedAt', () => {
-    const sessions = [
-      makeSessionPlan({ status: 'completed', completedAt: null }),
-    ]
+    const sessions = [makeSessionPlan({ status: 'completed', completedAt: null })]
     expect(calculatePracticeStreak(sessions)).toBe(0)
   })
 
@@ -537,9 +524,7 @@ describe('calculatePracticeStreak', () => {
   it('returns 0 when most recent session is > 1 day ago', () => {
     const threeDaysAgo = new Date('2026-06-12T12:00:00')
 
-    const sessions = [
-      makeSessionPlan({ id: 's1', status: 'completed', completedAt: threeDaysAgo }),
-    ]
+    const sessions = [makeSessionPlan({ id: 's1', status: 'completed', completedAt: threeDaysAgo })]
 
     expect(calculatePracticeStreak(sessions)).toBe(0)
   })
@@ -571,7 +556,7 @@ describe('calculateWeeklyProblems', () => {
   it('counts problems within the last 7 days', () => {
     const now = new Date()
     const recent = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
-    const old = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000)  // 10 days ago
+    const old = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000) // 10 days ago
 
     const results = [
       makeProblemResult({ timestamp: recent }),
@@ -584,17 +569,13 @@ describe('calculateWeeklyProblems', () => {
 
   it('counts all results when all are recent', () => {
     const now = new Date()
-    const results = Array.from({ length: 5 }, () =>
-      makeProblemResult({ timestamp: now })
-    )
+    const results = Array.from({ length: 5 }, () => makeProblemResult({ timestamp: now }))
     expect(calculateWeeklyProblems(results as any)).toBe(5)
   })
 
   it('returns 0 when all results are old', () => {
     const old = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
-    const results = Array.from({ length: 5 }, () =>
-      makeProblemResult({ timestamp: old })
-    )
+    const results = Array.from({ length: 5 }, () => makeProblemResult({ timestamp: old }))
     expect(calculateWeeklyProblems(results as any)).toBe(0)
   })
 })

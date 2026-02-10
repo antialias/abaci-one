@@ -47,27 +47,29 @@ describe('computeClipHash', () => {
 
   it('different text = different hash', () => {
     const tone = 'friendly'
-    expect(computeClipHash({ en: 'hello' }, tone))
-      .not.toBe(computeClipHash({ en: 'goodbye' }, tone))
+    expect(computeClipHash({ en: 'hello' }, tone)).not.toBe(
+      computeClipHash({ en: 'goodbye' }, tone)
+    )
   })
 
   it('different tone = different hash', () => {
     const say = { en: 'hello' }
-    expect(computeClipHash(say, 'happy'))
-      .not.toBe(computeClipHash(say, 'sad'))
+    expect(computeClipHash(say, 'happy')).not.toBe(computeClipHash(say, 'sad'))
   })
 
   it('adding lower-priority locale does not change hash', () => {
     const tone = 'neutral'
-    expect(computeClipHash({ en: 'hello' }, tone))
-      .toBe(computeClipHash({ en: 'hello', es: 'hola' }, tone))
+    expect(computeClipHash({ en: 'hello' }, tone)).toBe(
+      computeClipHash({ en: 'hello', es: 'hola' }, tone)
+    )
   })
 
   it('en-US is preferred over en for hash computation', () => {
     const tone = 'neutral'
     // When en-US differs from en, the hash uses en-US
-    expect(computeClipHash({ 'en-US': 'color', en: 'colour' }, tone))
-      .toBe(computeClipHash({ 'en-US': 'color' }, tone))
+    expect(computeClipHash({ 'en-US': 'color', en: 'colour' }, tone)).toBe(
+      computeClipHash({ 'en-US': 'color' }, tone)
+    )
   })
 })
 
@@ -87,10 +89,10 @@ describe('isHashClipId', () => {
 
   it('returns false for malformed hash IDs', () => {
     expect(isHashClipId('h-')).toBe(false)
-    expect(isHashClipId('h-a3f2b1c')).toBe(false)     // 7 chars
-    expect(isHashClipId('h-a3f2b1c0f')).toBe(false)   // 9 chars
-    expect(isHashClipId('h-ABCDEF00')).toBe(false)     // uppercase
-    expect(isHashClipId('x-a3f2b1c0')).toBe(false)     // wrong prefix
+    expect(isHashClipId('h-a3f2b1c')).toBe(false) // 7 chars
+    expect(isHashClipId('h-a3f2b1c0f')).toBe(false) // 9 chars
+    expect(isHashClipId('h-ABCDEF00')).toBe(false) // uppercase
+    expect(isHashClipId('x-a3f2b1c0')).toBe(false) // wrong prefix
   })
 
   it('returns false for empty string', () => {

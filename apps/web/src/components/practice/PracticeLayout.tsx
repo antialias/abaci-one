@@ -80,7 +80,10 @@ export function PracticeLayout({ studentId, children, onBannerAction }: Practice
   const { data: sessionModeData, isLoading } = useSessionMode(studentId)
 
   return (
-    <SessionModeBannerProvider sessionMode={sessionModeData?.sessionMode ?? null} isLoading={isLoading}>
+    <SessionModeBannerProvider
+      sessionMode={sessionModeData?.sessionMode ?? null}
+      isLoading={isLoading}
+    >
       <PracticeLayoutInner onBannerAction={onBannerAction}>{children}</PracticeLayoutInner>
     </SessionModeBannerProvider>
   )

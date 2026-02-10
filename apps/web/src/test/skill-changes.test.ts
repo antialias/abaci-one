@@ -23,7 +23,11 @@ vi.mock('@/lib/curriculum/skill-tutorial-config', () => ({
   getSkillDisplayName: (skillId: string) => `Display(${skillId})`,
 }))
 
-import { computeSkillChanges, formatSkillChanges, type SkillChanges } from '@/lib/curriculum/skill-changes'
+import {
+  computeSkillChanges,
+  formatSkillChanges,
+  type SkillChanges,
+} from '@/lib/curriculum/skill-changes'
 
 // =============================================================================
 // Helpers
@@ -95,9 +99,7 @@ describe('computeSkillChanges', () => {
   it('detects removed skills', () => {
     const sessionSkills = ['skill-a', 'skill-b', 'skill-c']
     const currentSkills = ['skill-a']
-    const bktResults = makeBktMap([
-      makeBktResult('skill-a', 0.6),
-    ])
+    const bktResults = makeBktMap([makeBktResult('skill-a', 0.6)])
 
     const changes = computeSkillChanges(sessionSkills, currentSkills, bktResults)
 
@@ -179,11 +181,7 @@ describe('computeSkillChanges', () => {
 
     const changes = computeSkillChanges(skills, skills, bktResults)
 
-    expect(changes.newWeakSkills.map((s) => s.skillId)).toEqual([
-      'skill-c',
-      'skill-b',
-      'skill-a',
-    ])
+    expect(changes.newWeakSkills.map((s) => s.skillId)).toEqual(['skill-c', 'skill-b', 'skill-a'])
   })
 
   it('handles empty skill arrays', () => {
@@ -235,9 +233,7 @@ describe('formatSkillChanges', () => {
 
   it('formats weak skills message', () => {
     const changes: SkillChanges = {
-      newWeakSkills: [
-        { skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3 },
-      ],
+      newWeakSkills: [{ skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3 }],
       newPracticingSkills: [],
       removedSkills: [],
       masteredSkills: [],

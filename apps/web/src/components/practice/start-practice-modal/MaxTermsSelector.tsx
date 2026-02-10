@@ -175,7 +175,16 @@ function MasteryScaleTooltipContent({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ display: 'inline-block', width: 6, height: 10, borderRadius: 2, background: '#60a5fa', flexShrink: 0 }} />
+            <span
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 10,
+                borderRadius: 2,
+                background: '#60a5fa',
+                flexShrink: 0,
+              }}
+            />
             Shorter
           </span>
           <span style={{ color: '#9ca3af' }}>
@@ -184,7 +193,17 @@ function MasteryScaleTooltipContent({
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ display: 'inline-block', width: 8, height: 14, borderRadius: 3, background: 'white', boxShadow: '0 0 4px rgba(255,255,255,0.5)', flexShrink: 0 }} />
+            <span
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 14,
+                borderRadius: 3,
+                background: 'white',
+                boxShadow: '0 0 4px rgba(255,255,255,0.5)',
+                flexShrink: 0,
+              }}
+            />
             Recommended
           </span>
           <span style={{ color: '#9ca3af' }}>
@@ -193,7 +212,16 @@ function MasteryScaleTooltipContent({
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ display: 'inline-block', width: 6, height: 10, borderRadius: 2, background: '#f472b6', flexShrink: 0 }} />
+            <span
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 10,
+                borderRadius: 2,
+                background: '#f472b6',
+                flexShrink: 0,
+              }}
+            />
             Longer
           </span>
           <span style={{ color: '#9ca3af' }}>
@@ -221,12 +249,8 @@ function MasteryScaleTooltipContent({
 export function ProblemLengthSelector() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const {
-    problemLengthPreference,
-    setProblemLengthPreference,
-    comfortLevel,
-    sessionMode,
-  } = useStartPracticeModal()
+  const { problemLengthPreference, setProblemLengthPreference, comfortLevel, sessionMode } =
+    useStartPracticeModal()
 
   // Compute term count ranges for each preference option
   const ranges = useMemo(() => {

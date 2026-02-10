@@ -192,7 +192,10 @@ describe('useShareCode', () => {
   it('calls onRegenerate and manages isRegenerating state', async () => {
     let resolveRegenerate: (value: string) => void
     const onRegenerate = vi.fn().mockImplementation(
-      () => new Promise<string>((resolve) => { resolveRegenerate = resolve })
+      () =>
+        new Promise<string>((resolve) => {
+          resolveRegenerate = resolve
+        })
     )
 
     const { result } = renderHook(() =>

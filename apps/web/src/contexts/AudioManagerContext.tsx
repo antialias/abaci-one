@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { TtsAudioManager } from '@/lib/audio/TtsAudioManager'
 
 const LS_KEY_ENABLED = 'audio-help-enabled'
@@ -70,7 +64,9 @@ export function AudioManagerProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         // Non-fatal — browser TTS fallback works without manifest
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [manager])
 
   // Cleanup on unmount
@@ -81,11 +77,7 @@ export function AudioManagerProvider({ children }: { children: ReactNode }) {
     }
   }, [manager])
 
-  return (
-    <AudioManagerContext.Provider value={manager}>
-      {children}
-    </AudioManagerContext.Provider>
-  )
+  return <AudioManagerContext.Provider value={manager}>{children}</AudioManagerContext.Provider>
 }
 
 /**

@@ -97,10 +97,7 @@ describe('calculateSessionTrends', () => {
 
   it('returns trends with no previous session', () => {
     const current = makeSessionPlan({
-      results: [
-        makeSlotResult({ isCorrect: true }),
-        makeSlotResult({ isCorrect: false }),
-      ],
+      results: [makeSlotResult({ isCorrect: true }), makeSlotResult({ isCorrect: false })],
     })
 
     const result = calculateSessionTrends(current, null, [current])
@@ -146,18 +143,12 @@ describe('calculateSessionTrends', () => {
     const recentSession = makeSessionPlan({
       id: 'recent',
       completedAt: new Date(now - 1 * 24 * 60 * 60 * 1000) as unknown as any,
-      results: [
-        makeSlotResult({ isCorrect: true }),
-        makeSlotResult({ isCorrect: true }),
-      ],
+      results: [makeSlotResult({ isCorrect: true }), makeSlotResult({ isCorrect: true })],
     })
     const oldSession = makeSessionPlan({
       id: 'old',
       completedAt: new Date(now - 10 * 24 * 60 * 60 * 1000) as unknown as any,
-      results: [
-        makeSlotResult({ isCorrect: false }),
-        makeSlotResult({ isCorrect: false }),
-      ],
+      results: [makeSlotResult({ isCorrect: false }), makeSlotResult({ isCorrect: false })],
     })
     const current = makeSessionPlan({
       id: 'current',
@@ -204,10 +195,7 @@ describe('calculateSessionTrends', () => {
   it('calculates all-time stats correctly', () => {
     const s1 = makeSessionPlan({
       id: 's1',
-      results: [
-        makeSlotResult({ isCorrect: true }),
-        makeSlotResult({ isCorrect: false }),
-      ],
+      results: [makeSlotResult({ isCorrect: true }), makeSlotResult({ isCorrect: false })],
     })
     const s2 = makeSessionPlan({
       id: 's2',
@@ -315,9 +303,7 @@ describe('streak calculation', () => {
 
     const threeDaysAgo = now.getTime() - 3 * 24 * 60 * 60 * 1000
 
-    const sessions = [
-      makeSessionPlan({ id: 's1', completedAt: threeDaysAgo as unknown as any }),
-    ]
+    const sessions = [makeSessionPlan({ id: 's1', completedAt: threeDaysAgo as unknown as any })]
 
     const current = makeSessionPlan({
       results: [makeSlotResult()],

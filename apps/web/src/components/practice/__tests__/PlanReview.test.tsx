@@ -1,7 +1,12 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { SessionPlan, SessionPart, SessionSummary, ProblemSlot } from '@/db/schema/session-plans'
+import type {
+  SessionPlan,
+  SessionPart,
+  SessionSummary,
+  ProblemSlot,
+} from '@/db/schema/session-plans'
 import { PlanReview } from '../PlanReview'
 
 // Mock ThemeContext
@@ -21,7 +26,11 @@ vi.mock('../../../../styled-system/css', () => ({
 // Mock AllProblemsSection (use React.createElement to avoid JSX in vi.mock factory)
 vi.mock('../AllProblemsSection', () => ({
   AllProblemsSection: ({ isDark }: { plan: unknown; isDark: boolean }) =>
-    React.createElement('div', { 'data-testid': 'all-problems-section', 'data-dark': isDark }, 'All Problems'),
+    React.createElement(
+      'div',
+      { 'data-testid': 'all-problems-section', 'data-dark': isDark },
+      'All Problems'
+    ),
 }))
 
 // Helper to create minimal test data
@@ -40,7 +49,10 @@ function createTestPart(overrides: Partial<SessionPart> = {}): SessionPart {
     type: 'abacus',
     format: 'vertical',
     useAbacus: true,
-    slots: [createTestSlot({ purpose: 'focus' }), createTestSlot({ index: 1, purpose: 'reinforce' })],
+    slots: [
+      createTestSlot({ purpose: 'focus' }),
+      createTestSlot({ index: 1, purpose: 'reinforce' }),
+    ],
     estimatedMinutes: 5,
     ...overrides,
   }
@@ -303,14 +315,7 @@ describe('PlanReview', () => {
       status: 'approved',
     })
 
-    render(
-      <PlanReview
-        plan={plan}
-        studentName="Test"
-        onApprove={onApprove}
-        onCancel={onCancel}
-      />
-    )
+    render(<PlanReview plan={plan} studentName="Test" onApprove={onApprove} onCancel={onCancel} />)
 
     // Open config inspector
     fireEvent.click(screen.getByText('Configuration Details'))

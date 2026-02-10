@@ -188,9 +188,7 @@ describe('processWorksheetAttempt', () => {
     expect(mockDbUpdate).toHaveBeenCalled()
     const firstUpdateCall = mockDbUpdate.mock.results[0]
     const setCall = firstUpdateCall.value.set
-    expect(setCall).toHaveBeenCalledWith(
-      expect.objectContaining({ gradingStatus: 'processing' })
-    )
+    expect(setCall).toHaveBeenCalledWith(expect.objectContaining({ gradingStatus: 'processing' }))
   })
 
   it('calls AI grading with the correct image path', async () => {
@@ -235,17 +233,13 @@ describe('processWorksheetAttempt', () => {
     // The last update call should set gradingStatus: 'failed'
     const lastUpdateCall = mockDbUpdate.mock.results[mockDbUpdate.mock.results.length - 1]
     const setCall = lastUpdateCall.value.set
-    expect(setCall).toHaveBeenCalledWith(
-      expect.objectContaining({ gradingStatus: 'failed' })
-    )
+    expect(setCall).toHaveBeenCalledWith(expect.objectContaining({ gradingStatus: 'failed' }))
   })
 
   it('handles AI grading failure gracefully', async () => {
     mockGradeWorksheetWithVision.mockRejectedValue(new Error('AI service unavailable'))
 
-    await expect(processWorksheetAttempt(fakeAttemptId)).rejects.toThrow(
-      'AI service unavailable'
-    )
+    await expect(processWorksheetAttempt(fakeAttemptId)).rejects.toThrow('AI service unavailable')
 
     // Should mark as failed
     const lastUpdateCall = mockDbUpdate.mock.results[mockDbUpdate.mock.results.length - 1]
@@ -300,9 +294,7 @@ describe('processWorksheetAttempt', () => {
 
       // Check the inserted problem attempt has errorType 'carry'
       const insertValues = mockDbInsert.mock.results[0].value.values
-      expect(insertValues).toHaveBeenCalledWith(
-        expect.objectContaining({ errorType: 'carry' })
-      )
+      expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ errorType: 'carry' }))
     })
 
     it('infers borrow error type from error patterns', async () => {
@@ -332,9 +324,7 @@ describe('processWorksheetAttempt', () => {
       await processWorksheetAttempt(fakeAttemptId)
 
       const insertValues = mockDbInsert.mock.results[0].value.values
-      expect(insertValues).toHaveBeenCalledWith(
-        expect.objectContaining({ errorType: 'borrow' })
-      )
+      expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ errorType: 'borrow' }))
     })
 
     it('infers alignment error type from error patterns', async () => {
@@ -364,9 +354,7 @@ describe('processWorksheetAttempt', () => {
       await processWorksheetAttempt(fakeAttemptId)
 
       const insertValues = mockDbInsert.mock.results[0].value.values
-      expect(insertValues).toHaveBeenCalledWith(
-        expect.objectContaining({ errorType: 'alignment' })
-      )
+      expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ errorType: 'alignment' }))
     })
 
     it('infers ocr-uncertain error type from error patterns', async () => {
@@ -460,9 +448,7 @@ describe('processWorksheetAttempt', () => {
       await processWorksheetAttempt(fakeAttemptId)
 
       const insertValues = mockDbInsert.mock.results[0].value.values
-      expect(insertValues).toHaveBeenCalledWith(
-        expect.objectContaining({ errorType: null })
-      )
+      expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ errorType: null }))
     })
   })
 })

@@ -26,7 +26,8 @@ function createMockTermCountExplanation(
   comfortLevel: number,
   sessionMode = 'maintenance'
 ): TermCountExplanation {
-  const modeMultiplier = sessionMode === 'remediation' ? 0.6 : sessionMode === 'progression' ? 0.85 : 1.0
+  const modeMultiplier =
+    sessionMode === 'remediation' ? 0.6 : sessionMode === 'progression' ? 0.85 : 1.0
   const dynamicRange = {
     min: Math.round(2 + 2 * comfortLevel),
     max: Math.round(3 + 5 * comfortLevel),
@@ -50,7 +51,11 @@ function createMockTermCountExplanation(
  */
 function createMockSlots(
   count: number,
-  purposes: Array<'focus' | 'reinforce' | 'review' | 'challenge'> = ['focus', 'reinforce', 'review'],
+  purposes: Array<'focus' | 'reinforce' | 'review' | 'challenge'> = [
+    'focus',
+    'reinforce',
+    'review',
+  ],
   termCountExplanation?: TermCountExplanation
 ): ProblemSlot[] {
   const baseSkills = createBasicSkillSet()
@@ -330,11 +335,7 @@ export const WithTermCountScalingRemediation: Story = {
     })
     // Replace slots with ones that have term count explanation
     plan.parts.forEach((part) => {
-      part.slots = createMockSlots(
-        part.slots.length,
-        ['focus', 'reinforce', 'review'],
-        explanation
-      )
+      part.slots = createMockSlots(part.slots.length, ['focus', 'reinforce', 'review'], explanation)
     })
     return (
       <PlanWrapper>

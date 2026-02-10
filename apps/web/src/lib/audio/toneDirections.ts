@@ -4,7 +4,7 @@ export const TONE_DIRECTIONS: Record<AudioTone, string> = {
   'math-dictation':
     'Speaking clearly and steadily. Reading one word in a math problem to a young child. Neutral, measured pace.',
   celebration:
-    'Bursting with genuine excitement for a child who just got the answer right! Like a favorite teacher who can\'t contain their pride. Energetic, joyful, maybe a little silly. Make the kid feel like a champion.',
+    "Bursting with genuine excitement for a child who just got the answer right! Like a favorite teacher who can't contain their pride. Energetic, joyful, maybe a little silly. Make the kid feel like a champion.",
   corrective:
     'Gently and supportively guiding a child after a wrong answer. Kind, not disappointed.',
   encouragement:
@@ -20,6 +20,9 @@ export const TONE_DIRECTIONS: Record<AudioTone, string> = {
  * The instructions go into the separate `instructions` parameter
  * (supported by gpt-4o-mini-tts), so the voice never speaks the direction.
  */
-export function buildTtsParams(text: string, tone: AudioTone): { input: string; instructions: string } {
+export function buildTtsParams(
+  text: string,
+  tone: AudioTone
+): { input: string; instructions: string } {
   return { input: text, instructions: TONE_DIRECTIONS[tone] }
 }

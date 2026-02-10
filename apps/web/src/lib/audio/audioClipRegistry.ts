@@ -24,9 +24,7 @@ const registry = new Map<string, ClipMeta>()
 export function audioClip(id: string, text: string, tone: AudioTone): string {
   const existing = registry.get(id)
   if (existing && (existing.text !== text || existing.tone !== tone)) {
-    throw new Error(
-      `audioClip: duplicate ID "${id}" registered with different text/tone`
-    )
+    throw new Error(`audioClip: duplicate ID "${id}" registered with different text/tone`)
   }
   registry.set(id, { text, tone })
   return id

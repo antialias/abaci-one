@@ -250,19 +250,11 @@ function SlotTooltipContent({
 /**
  * Tooltip content for a part header (emoji or collapsed badge)
  */
-function PartTooltipContent({
-  part,
-  results,
-}: {
-  part: SessionPart
-  results: SlotResult[]
-}) {
+function PartTooltipContent({ part, results }: { part: SessionPart; results: SlotResult[] }) {
   const purposeCounts = { focus: 0, reinforce: 0, review: 0, challenge: 0 }
   for (const slot of part.slots) purposeCounts[slot.purpose]++
 
-  const completed = part.slots.filter((_, i) =>
-    getSlotResult(results, part.partNumber, i)
-  ).length
+  const completed = part.slots.filter((_, i) => getSlotResult(results, part.partNumber, i)).length
 
   const purposeEntries = (
     Object.entries(purposeCounts) as [keyof typeof purposeCounts, number][]
@@ -275,10 +267,12 @@ function PartTooltipContent({
         {part.estimatedMinutes > 0 && `, ~${part.estimatedMinutes} min`}
       </div>
       <div className={css({ fontSize: '0.8125rem', color: 'gray.300', marginBottom: '0.125rem' })}>
-        {purposeEntries.map(([purpose, count]) => {
-          const config = getPurposeConfig(purpose)
-          return `${config.emoji}×${count}`
-        }).join('  ')}
+        {purposeEntries
+          .map(([purpose, count]) => {
+            const config = getPurposeConfig(purpose)
+            return `${config.emoji}×${count}`
+          })
+          .join('  ')}
       </div>
       <div className={css({ fontSize: '0.8125rem', color: 'gray.400' })}>
         {completed} of {part.slots.length} completed
@@ -517,136 +511,136 @@ function ExpandedSection({
               })}
             >
               <button
-              type="button"
-              data-slot-index={slotIndex}
-              data-linear-index={linearIndex}
-              data-attempt-count={attemptCount}
-              data-clickable-for-redo={isClickableForRedo || undefined}
-              data-redo={isRedo || undefined}
-              data-observer-viewing={isObserverViewing || undefined}
-              data-status={
-                isRedo
-                  ? 'redo'
-                  : isCurrent
-                    ? 'current'
-                    : isCompleted
-                      ? isCorrect
-                        ? 'correct'
-                        : 'incorrect'
-                      : 'pending'
-              }
-              onClick={isClickable ? handleClick : undefined}
-              disabled={!isClickable}
-              className={css({
-                width: '20px',
-                height: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.625rem',
-                fontWeight: isCurrent ? 'bold' : 'normal',
-                borderRadius: '4px',
-                border: '1px solid',
-                cursor: isClickable ? 'pointer' : 'default',
-                transition: 'all 0.15s ease',
-                // Current problem
-                ...(isCurrent && {
-                  backgroundColor: isDark ? 'yellow.600' : 'yellow.400',
-                  borderColor: isDark ? 'yellow.500' : 'yellow.500',
-                  color: isDark ? 'yellow.100' : 'yellow.900',
-                  boxShadow: `0 0 0 2px ${isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)'}`,
-                }),
-                // Problem being redone (pulsing orange)
-                ...(isRedo && {
-                  backgroundColor: isDark ? 'orange.600' : 'orange.400',
-                  borderColor: isDark ? 'orange.500' : 'orange.500',
-                  color: isDark ? 'orange.100' : 'orange.900',
-                  boxShadow: `0 0 0 3px ${isDark ? 'rgba(251, 146, 60, 0.5)' : 'rgba(249, 115, 22, 0.5)'}`,
-                  animation: 'redoPulse 1.5s ease-in-out infinite',
-                }),
-                // Completed correct
-                ...(!isCurrent &&
-                  isCompleted &&
-                  isCorrect && {
-                    backgroundColor: isDark ? 'green.900' : 'green.100',
-                    borderColor: isDark ? 'green.700' : 'green.300',
-                    color: isDark ? 'green.300' : 'green.700',
-                  }),
-                // Completed incorrect
-                ...(!isCurrent &&
-                  isCompleted &&
-                  !isCorrect && {
-                    backgroundColor: isDark ? 'red.900' : 'red.100',
-                    borderColor: isDark ? 'red.700' : 'red.300',
-                    color: isDark ? 'red.300' : 'red.700',
-                  }),
-                // Pending - purpose-colored border
-                ...(!isCurrent &&
-                  !isCompleted && {
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                    borderColor: purposeColors.border,
-                    color: isDark ? 'gray.400' : 'gray.500',
-                  }),
-                // Hover effect in browse mode or redo mode
-                ...(isClickable && {
-                  _hover: {
-                    transform: 'scale(1.15)',
-                    boxShadow: isClickableForRedo
-                      ? `0 0 0 2px ${isDark ? 'rgba(251, 146, 60, 0.5)' : 'rgba(249, 115, 22, 0.4)'}, 0 2px 4px rgba(0,0,0,0.2)`
-                      : '0 2px 4px rgba(0,0,0,0.2)',
-                  },
-                }),
-                // Observer viewing indicator (cyan ring) - shows which problem observer is watching
-                ...(isObserverViewing && {
-                  outline: '2px solid',
-                  outlineColor: isDark ? 'cyan.400' : 'cyan.500',
-                  outlineOffset: '2px',
-                }),
-              })}
-              title={undefined}
-            >
-              {isBrowseMode ? linearIndex + 1 : isCompleted ? (isCorrect ? '✓' : '✗') : '○'}
-            </button>
-            {/* Retry attempt badge */}
-            {hasRetried && (
-              <span
-                data-element="retry-badge"
+                type="button"
+                data-slot-index={slotIndex}
+                data-linear-index={linearIndex}
+                data-attempt-count={attemptCount}
+                data-clickable-for-redo={isClickableForRedo || undefined}
+                data-redo={isRedo || undefined}
+                data-observer-viewing={isObserverViewing || undefined}
+                data-status={
+                  isRedo
+                    ? 'redo'
+                    : isCurrent
+                      ? 'current'
+                      : isCompleted
+                        ? isCorrect
+                          ? 'correct'
+                          : 'incorrect'
+                        : 'pending'
+                }
+                onClick={isClickable ? handleClick : undefined}
+                disabled={!isClickable}
                 className={css({
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  width: '12px',
-                  height: '12px',
+                  width: '20px',
+                  height: '20px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '0.5rem',
-                  fontWeight: 'bold',
-                  borderRadius: '50%',
-                  backgroundColor: isDark ? 'orange.600' : 'orange.500',
-                  color: 'white',
+                  fontSize: '0.625rem',
+                  fontWeight: isCurrent ? 'bold' : 'normal',
+                  borderRadius: '4px',
                   border: '1px solid',
-                  borderColor: isDark ? 'orange.400' : 'orange.600',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  cursor: isClickable ? 'pointer' : 'default',
+                  transition: 'all 0.15s ease',
+                  // Current problem
+                  ...(isCurrent && {
+                    backgroundColor: isDark ? 'yellow.600' : 'yellow.400',
+                    borderColor: isDark ? 'yellow.500' : 'yellow.500',
+                    color: isDark ? 'yellow.100' : 'yellow.900',
+                    boxShadow: `0 0 0 2px ${isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)'}`,
+                  }),
+                  // Problem being redone (pulsing orange)
+                  ...(isRedo && {
+                    backgroundColor: isDark ? 'orange.600' : 'orange.400',
+                    borderColor: isDark ? 'orange.500' : 'orange.500',
+                    color: isDark ? 'orange.100' : 'orange.900',
+                    boxShadow: `0 0 0 3px ${isDark ? 'rgba(251, 146, 60, 0.5)' : 'rgba(249, 115, 22, 0.5)'}`,
+                    animation: 'redoPulse 1.5s ease-in-out infinite',
+                  }),
+                  // Completed correct
+                  ...(!isCurrent &&
+                    isCompleted &&
+                    isCorrect && {
+                      backgroundColor: isDark ? 'green.900' : 'green.100',
+                      borderColor: isDark ? 'green.700' : 'green.300',
+                      color: isDark ? 'green.300' : 'green.700',
+                    }),
+                  // Completed incorrect
+                  ...(!isCurrent &&
+                    isCompleted &&
+                    !isCorrect && {
+                      backgroundColor: isDark ? 'red.900' : 'red.100',
+                      borderColor: isDark ? 'red.700' : 'red.300',
+                      color: isDark ? 'red.300' : 'red.700',
+                    }),
+                  // Pending - purpose-colored border
+                  ...(!isCurrent &&
+                    !isCompleted && {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      borderColor: purposeColors.border,
+                      color: isDark ? 'gray.400' : 'gray.500',
+                    }),
+                  // Hover effect in browse mode or redo mode
+                  ...(isClickable && {
+                    _hover: {
+                      transform: 'scale(1.15)',
+                      boxShadow: isClickableForRedo
+                        ? `0 0 0 2px ${isDark ? 'rgba(251, 146, 60, 0.5)' : 'rgba(249, 115, 22, 0.4)'}, 0 2px 4px rgba(0,0,0,0.2)`
+                        : '0 2px 4px rgba(0,0,0,0.2)',
+                    },
+                  }),
+                  // Observer viewing indicator (cyan ring) - shows which problem observer is watching
+                  ...(isObserverViewing && {
+                    outline: '2px solid',
+                    outlineColor: isDark ? 'cyan.400' : 'cyan.500',
+                    outlineOffset: '2px',
+                  }),
                 })}
-                title={`Attempt ${attemptCount} of 3`}
+                title={undefined}
               >
-                {attemptCount}
-              </span>
-            )}
-            {/* Redo pulse animation */}
-            {isRedo && (
-              <style
-                dangerouslySetInnerHTML={{
-                  __html: `
+                {isBrowseMode ? linearIndex + 1 : isCompleted ? (isCorrect ? '✓' : '✗') : '○'}
+              </button>
+              {/* Retry attempt badge */}
+              {hasRetried && (
+                <span
+                  data-element="retry-badge"
+                  className={css({
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    width: '12px',
+                    height: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.5rem',
+                    fontWeight: 'bold',
+                    borderRadius: '50%',
+                    backgroundColor: isDark ? 'orange.600' : 'orange.500',
+                    color: 'white',
+                    border: '1px solid',
+                    borderColor: isDark ? 'orange.400' : 'orange.600',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  })}
+                  title={`Attempt ${attemptCount} of 3`}
+                >
+                  {attemptCount}
+                </span>
+              )}
+              {/* Redo pulse animation */}
+              {isRedo && (
+                <style
+                  dangerouslySetInnerHTML={{
+                    __html: `
                     @keyframes redoPulse {
                       0%, 100% { box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.5); }
                       50% { box-shadow: 0 0 0 5px rgba(251, 146, 60, 0.8), 0 0 8px rgba(251, 146, 60, 0.6); }
                     }
                   `,
-                }}
-              />
-            )}
+                  }}
+                />
+              )}
             </div>
           </Tooltip>
         )

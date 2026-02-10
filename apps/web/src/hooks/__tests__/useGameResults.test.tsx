@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   usePlayerGameHistory,
@@ -67,10 +67,7 @@ describe('usePlayerGameHistory', () => {
     })
 
     expect(result.current.data).toEqual(mockData)
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/game-results/player/player-1',
-      undefined
-    )
+    expect(global.fetch).toHaveBeenCalledWith('/api/game-results/player/player-1', undefined)
   })
 
   it('does not fetch when playerId is null', () => {
@@ -137,9 +134,7 @@ describe('useClassroomLeaderboard', () => {
         },
       ],
       playerCount: 2,
-      gamesAvailable: [
-        { gameName: 'matching', gameDisplayName: 'Matching', gameIcon: null },
-      ],
+      gamesAvailable: [{ gameName: 'matching', gameDisplayName: 'Matching', gameIcon: null }],
     }
 
     vi.mocked(global.fetch).mockResolvedValue({
@@ -147,10 +142,7 @@ describe('useClassroomLeaderboard', () => {
       json: async () => mockData,
     } as Response)
 
-    const { result } = renderHook(
-      () => useClassroomLeaderboard('classroom-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomLeaderboard('classroom-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -169,10 +161,7 @@ describe('useClassroomLeaderboard', () => {
       json: async () => ({ rankings: [], playerCount: 0, gamesAvailable: [] }),
     } as Response)
 
-    renderHook(
-      () => useClassroomLeaderboard('classroom-1', 'matching'),
-      { wrapper }
-    )
+    renderHook(() => useClassroomLeaderboard('classroom-1', 'matching'), { wrapper })
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -183,10 +172,7 @@ describe('useClassroomLeaderboard', () => {
   })
 
   it('does not fetch when classroomId is null', () => {
-    const { result } = renderHook(
-      () => useClassroomLeaderboard(null),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomLeaderboard(null), { wrapper })
 
     expect(result.current.fetchStatus).toBe('idle')
     expect(global.fetch).not.toHaveBeenCalled()
@@ -198,10 +184,7 @@ describe('useClassroomLeaderboard', () => {
       statusText: 'Server Error',
     } as Response)
 
-    const { result } = renderHook(
-      () => useClassroomLeaderboard('classroom-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useClassroomLeaderboard('classroom-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
@@ -410,10 +393,9 @@ describe('usePlayerClassroomRank', () => {
       json: async () => mockData,
     } as Response)
 
-    const { result } = renderHook(
-      () => usePlayerClassroomRank('classroom-1', 'player-2'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerClassroomRank('classroom-1', 'player-2'), {
+      wrapper,
+    })
 
     await waitFor(() => {
       expect(result.current.playerRanking).not.toBeNull()
@@ -448,10 +430,9 @@ describe('usePlayerClassroomRank', () => {
       json: async () => mockData,
     } as Response)
 
-    const { result } = renderHook(
-      () => usePlayerClassroomRank('classroom-1', 'player-999'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerClassroomRank('classroom-1', 'player-999'), {
+      wrapper,
+    })
 
     await waitFor(() => {
       expect(result.current.rankings).toHaveLength(1)
@@ -462,10 +443,7 @@ describe('usePlayerClassroomRank', () => {
   })
 
   it('returns defaults when classroomId is null', () => {
-    const { result } = renderHook(
-      () => usePlayerClassroomRank(null, 'player-1'),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerClassroomRank(null, 'player-1'), { wrapper })
 
     expect(result.current.playerRanking).toBeNull()
     expect(result.current.totalPlayers).toBe(0)
@@ -495,10 +473,7 @@ describe('usePlayerClassroomRank', () => {
       json: async () => mockData,
     } as Response)
 
-    const { result } = renderHook(
-      () => usePlayerClassroomRank('classroom-1', null),
-      { wrapper }
-    )
+    const { result } = renderHook(() => usePlayerClassroomRank('classroom-1', null), { wrapper })
 
     await waitFor(() => {
       expect(result.current.rankings).toHaveLength(1)

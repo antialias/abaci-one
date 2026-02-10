@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import React from 'react'
+import type React from 'react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { useSessionHistory } from '../useSessionHistory'
 import { sessionHistoryKeys } from '@/lib/queryKeys'
@@ -187,10 +187,9 @@ describe('useSessionHistory', () => {
   })
 
   it('does not fetch when enabled is false', () => {
-    const { result } = renderHook(
-      () => useSessionHistory('player-1', { enabled: false }),
-      { wrapper }
-    )
+    const { result } = renderHook(() => useSessionHistory('player-1', { enabled: false }), {
+      wrapper,
+    })
 
     expect(result.current.isLoading).toBe(false)
     expect(result.current.sessions).toEqual([])

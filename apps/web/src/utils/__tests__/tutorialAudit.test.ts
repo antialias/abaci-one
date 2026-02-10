@@ -462,9 +462,9 @@ describe('auditTutorialSteps', () => {
       expect(issues.some((i) => i.stepId === 'complex-2' && i.issueType === 'highlighting')).toBe(
         true
       )
-      expect(
-        issues.some((i) => i.stepId === 'complex-2' && i.issueType === 'missing_beads')
-      ).toBe(true)
+      expect(issues.some((i) => i.stepId === 'complex-2' && i.issueType === 'missing_beads')).toBe(
+        true
+      )
     })
 
     it('reports issue when ones heaven bead missing', async () => {
@@ -534,8 +534,7 @@ describe('auditTutorialSteps', () => {
       const issues = auditTutorialSteps()
       expect(
         issues.some(
-          (i) =>
-            i.issueType === 'highlighting' && i.description.includes('Invalid place value')
+          (i) => i.issueType === 'highlighting' && i.description.includes('Invalid place value')
         )
       ).toBe(true)
     })

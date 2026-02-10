@@ -36,11 +36,7 @@ describe('queryKeys', () => {
     })
 
     it('enrolledClassrooms(playerId) includes player id', () => {
-      expect(playerKeys.enrolledClassrooms('p1')).toEqual([
-        'players',
-        'p1',
-        'enrolled-classrooms',
-      ])
+      expect(playerKeys.enrolledClassrooms('p1')).toEqual(['players', 'p1', 'enrolled-classrooms'])
     })
 
     it('presence(playerId) includes player id', () => {

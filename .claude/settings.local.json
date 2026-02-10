@@ -871,7 +871,8 @@
       "Bash(/Users/antialias/projects/soroban-abacus-flashcards/node_modules/.bin/playwright:*)",
       "Bash(gh workflow:*)",
       "Bash(do npx vitest run src/test/bkt-skill-identification.test.ts)",
-      "Bash(terraform show:*)"
+      "Bash(terraform show:*)",
+      "Bash(npm info:*)"
     ],
     "deny": [],
     "ask": []
