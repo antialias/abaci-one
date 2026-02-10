@@ -3,9 +3,18 @@ import { createGuestToken, GUEST_COOKIE_NAME } from './lib/guest-token'
 import { defaultLocale, LOCALE_COOKIE_NAME, locales, type Locale } from './i18n/routing'
 
 /**
+ * NextAuth session cookie names
+ * v5 uses 'authjs.session-token' in dev and '__Secure-authjs.session-token' in prod
+ */
+const NEXTAUTH_SESSION_COOKIE =
+  process.env.NODE_ENV === 'production'
+    ? '__Secure-authjs.session-token'
+    : 'authjs.session-token'
+
+/**
  * Middleware to:
  * 1. Detect and set locale based on Accept-Language header or cookie
- * 2. Ensure every visitor gets a guest token
+ * 2. Ensure every visitor gets a guest token (unless authenticated)
  * 3. Add pathname and locale to headers for Server Components
  */
 export async function middleware(request: NextRequest) {
@@ -40,29 +49,38 @@ export async function middleware(request: NextRequest) {
   // Add pathname to request headers so Server Components can access it
   requestHeaders.set('x-pathname', request.nextUrl.pathname)
 
-  // Check if guest cookie already exists
+  // Check if user has a NextAuth session (authenticated user)
+  const hasAuthSession = !!request.cookies.get(NEXTAUTH_SESSION_COOKIE)?.value
+
+  // Guest cookie handling: skip for authenticated users
   let existing = request.cookies.get(GUEST_COOKIE_NAME)?.value
   let guestId: string | null = null
+  let clearGuestCookie = false
 
   let verifyTime = 0
-  if (existing) {
-    // Verify and extract guest ID from existing token
-    try {
-      const t = performance.now()
-      const { verifyGuestToken } = await import('./lib/guest-token')
-      const verified = await verifyGuestToken(existing)
-      verifyTime = performance.now() - t
-      guestId = verified.sid
-    } catch {
-      // Invalid token, will create new one
-      existing = undefined
+  if (!hasAuthSession) {
+    // No auth session — handle guest cookie as before
+    if (existing) {
+      try {
+        const t = performance.now()
+        const { verifyGuestToken } = await import('./lib/guest-token')
+        const verified = await verifyGuestToken(existing)
+        verifyTime = performance.now() - t
+        guestId = verified.sid
+      } catch {
+        existing = undefined
+      }
     }
-  }
 
-  if (!existing) {
-    // Generate new stable session ID
-    const sid = crypto.randomUUID()
-    guestId = sid
+    if (!existing) {
+      const sid = crypto.randomUUID()
+      guestId = sid
+    }
+  } else {
+    // Authenticated user — clear stale guest cookie if present
+    if (existing) {
+      clearGuestCookie = true
+    }
   }
 
   // Pass guest ID to route handlers via request header
@@ -72,10 +90,10 @@ export async function middleware(request: NextRequest) {
 
   const total = performance.now() - start
   if (total > 50) {
-    // Only log slow middleware calls
     console.log(
       `[PERF] middleware: ${total.toFixed(1)}ms | ` +
         `verify=${verifyTime.toFixed(1)}ms | ` +
+        `auth=${hasAuthSession} | ` +
         `path=${request.nextUrl.pathname}`
     )
   }
@@ -98,8 +116,8 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  // Set guest cookie if it was new
-  if (!existing && guestId) {
+  // Set guest cookie if it was new (unauthenticated visitors only)
+  if (!hasAuthSession && !existing && guestId) {
     const token = await createGuestToken(guestId)
     response.cookies.set({
       name: GUEST_COOKIE_NAME,
@@ -109,6 +127,16 @@ export async function middleware(request: NextRequest) {
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 30, // 30 days
+    })
+  }
+
+  // Clear stale guest cookie for authenticated users
+  if (clearGuestCookie) {
+    response.cookies.set({
+      name: GUEST_COOKIE_NAME,
+      value: '',
+      path: '/',
+      maxAge: 0,
     })
   }
 

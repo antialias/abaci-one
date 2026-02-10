@@ -17,6 +17,7 @@ import { useVisualDebug } from '../contexts/VisualDebugContext'
 import type { Subtitle } from '../data/abaciOneSubtitles'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
+import { UserMenu } from './nav/UserMenu'
 import { ThemeToggle } from './ThemeToggle'
 
 type HomeHeroContextValue = {
@@ -1266,6 +1267,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   </NavLink>
                 </div>
               </nav>
+
+              {/* User Menu - sign in / avatar */}
+              <UserMenu />
 
               {/* Hamburger Menu - always visible, contains all links that don't fit */}
               <HamburgerMenu

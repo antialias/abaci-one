@@ -84,6 +84,7 @@ describe('session-manager', () => {
     createdAt: new Date(),
     upgradedAt: null,
     email: null,
+    image: null,
   }
 
   beforeEach(() => {

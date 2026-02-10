@@ -8,6 +8,10 @@ provider "helm" {
   }
 }
 
+provider "google" {
+  project = var.gcp_project
+}
+
 # Create namespace for abaci workloads
 resource "kubernetes_namespace" "abaci" {
   metadata {

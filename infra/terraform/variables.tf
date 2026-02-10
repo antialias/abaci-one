@@ -4,6 +4,16 @@ variable "kubeconfig_path" {
   default     = "~/.kube/k3s-config"
 }
 
+variable "gcp_project" {
+  description = "Google Cloud project ID"
+  type        = string
+}
+
+variable "gcp_billing_account" {
+  description = "Google Cloud billing account ID"
+  type        = string
+}
+
 variable "namespace" {
   description = "Default namespace for resources"
   type        = string
@@ -120,6 +130,34 @@ variable "github_repo_url" {
   description = "GitHub repo URL to migrate from"
   type        = string
   default     = "https://github.com/antialias/soroban-abacus-flashcards.git"
+}
+
+# Authentication (Google OAuth + Gmail SMTP magic links)
+variable "auth_google_id" {
+  description = "Google OAuth client ID (created via gcloud)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "auth_google_secret" {
+  description = "Google OAuth client secret (created via gcloud)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "email_server" {
+  description = "SMTP connection string for magic link emails (e.g. smtps://user:pass@smtp.gmail.com:465)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "email_from" {
+  description = "From address for magic link emails"
+  type        = string
+  default     = "Abaci One <hallock@gmail.com>"
 }
 
 # ArgoCD Configuration

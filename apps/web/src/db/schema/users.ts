@@ -28,6 +28,9 @@ export const users = sqliteTable('users', {
 
   /** Display name (only set after upgrade) */
   name: text('name'),
+
+  /** Profile photo URL (from Google OAuth) */
+  image: text('image'),
 })
 
 export type User = typeof users.$inferSelect

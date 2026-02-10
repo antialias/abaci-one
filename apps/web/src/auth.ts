@@ -1,12 +1,19 @@
+import { and, eq } from 'drizzle-orm'
 import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
+import Google from 'next-auth/providers/google'
+import Nodemailer from 'next-auth/providers/nodemailer'
+import { db, schema } from '@/db'
 import { GUEST_COOKIE_NAME, verifyGuestToken } from '@/lib/guest-token'
+import { abacisAdapter } from '@/lib/auth/adapter'
+import { mergeGuestIntoUser } from '@/lib/auth/mergeGuestIntoUser'
+import { upgradeGuestToUser } from '@/lib/auth/upgradeGuestToUser'
 
 /**
- * NextAuth v5 configuration with guest session support
+ * NextAuth v5 configuration with Google OAuth + email magic links
  *
  * Uses JWT strategy (stateless) with HttpOnly cookies.
- * Supports both guest users and future full authentication.
+ * Supports guest users (via custom cookie) and authenticated users.
+ * Handles seamless guest-to-account upgrade on sign-in.
  */
 
 export type Role = 'guest' | 'user'
@@ -32,73 +39,99 @@ declare module '@auth/core/jwt' {
   }
 }
 
-/**
- * Guest provider - allows treating guests as "authenticated"
- *
- * This creates a synthetic NextAuth session for guests, enabling
- * a single code path for both guest and authenticated users.
- */
-const GuestProvider = Credentials({
-  id: 'guest',
-  name: 'Guest',
-  credentials: {},
-  async authorize() {
-    // Create a synthetic user ID for the guest session
-    return { id: `guest:${crypto.randomUUID()}`, name: 'Guest' } as any
-  },
-})
-
-/**
- * NextAuth configuration with lazy initialization
- *
- * The function form allows access to the request object in callbacks,
- * which we need to read the guest cookie.
- */
 export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
-  // JWT strategy for stateless sessions (no database lookups)
+  adapter: abacisAdapter,
+
+  // JWT strategy for stateless sessions
   session: {
     strategy: 'jwt',
     maxAge: 60 * 60 * 24 * 30, // 30 days
   },
 
-  // Providers - guest + future providers (GitHub, Google, etc.)
   providers: [
-    GuestProvider,
-    // Add more providers here as needed:
-    // GitHub(),
-    // Google(),
-    // Email(),
+    Google,
+    Nodemailer({
+      server: process.env.EMAIL_SERVER,
+      from: process.env.EMAIL_FROM || 'Abaci One <hallock@gmail.com>',
+    }),
   ],
+
+  pages: {
+    signIn: '/auth/signin',
+    verifyRequest: '/auth/verify-request',
+  },
 
   callbacks: {
     /**
      * JWT callback - shapes the token stored in the cookie
      *
-     * Called when:
-     * - User signs in (trigger: "signIn")
-     * - Token is refreshed
-     * - Session is accessed
+     * Handles:
+     * - New sign-in with existing guest session → upgrade guest to full account
+     * - Returning user sign-in on new device → merge guest data into existing account
+     * - Brand new user sign-in (no guest session) → adapter creates user
      */
     async jwt({ token, user, account, trigger }) {
-      // Handle guest sign-in
-      if (trigger === 'signIn' && account?.provider === 'guest' && user) {
-        token.sub = user.id
-        token.role = 'guest'
-      }
-
-      // Handle upgrade from guest to full account
-      if (trigger === 'signIn' && account && account.provider !== 'guest') {
-        // Capture the guest ID from the cookie for data migration
+      if (trigger === 'signIn' && account && user) {
+        // Read the guest cookie from the current request
         const guestCookie = req?.cookies.get(GUEST_COOKIE_NAME)?.value
+        let guestId: string | null = null
+
         if (guestCookie) {
           try {
-            const { sid } = await verifyGuestToken(guestCookie)
-            token.guestId = sid // Store for merge/migration
+            const verified = await verifyGuestToken(guestCookie)
+            guestId = verified.sid
           } catch {
             // Invalid guest token, ignore
           }
         }
-        token.role = 'user'
+
+        // Check if this provider+account already has a linked user
+        const existingAccount = await db.query.authAccounts.findFirst({
+          where: and(
+            eq(schema.authAccounts.provider, account.provider),
+            eq(schema.authAccounts.providerAccountId, account.providerAccountId ?? '')
+          ),
+        })
+
+        if (existingAccount) {
+          // Returning user (already has an account linked)
+          if (guestId) {
+            // They had a guest session on this device — merge guest data
+            const guestUser = await db.query.users.findFirst({
+              where: eq(schema.users.guestId, guestId),
+            })
+            if (guestUser && guestUser.id !== existingAccount.userId) {
+              await mergeGuestIntoUser(guestUser.id, existingAccount.userId)
+            }
+          }
+          token.sub = existingAccount.userId
+          token.role = 'user'
+        } else if (guestId) {
+          // New sign-in with existing guest session → upgrade the guest
+          const upgradedUserId = await upgradeGuestToUser({
+            guestId,
+            email: user.email ?? '',
+            name: user.name,
+            image: user.image,
+            provider: account.provider,
+            providerAccountId: account.providerAccountId ?? user.email ?? '',
+            providerType: account.type,
+          })
+
+          if (upgradedUserId) {
+            token.sub = upgradedUserId
+          } else {
+            // Guest user not found, fall through to adapter-created user
+            token.sub = user.id
+          }
+          token.role = 'user'
+        } else {
+          // Brand new user (no guest session) — adapter already created user
+          token.sub = user.id
+          token.role = 'user'
+        }
+
+        token.guestId = guestId
       }
 
       return token
@@ -106,17 +139,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
 
     /**
      * Session callback - shapes what the client sees
-     *
-     * Called when:
-     * - useSession() is called on client
-     * - getSession() is called on server
      */
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub
       }
 
-      session.isGuest = token.role === 'guest'
+      session.isGuest = token.role === 'guest' || !token.role
 
       // Expose the stable guest ID from the cookie
       const guestCookie = req?.cookies.get(GUEST_COOKIE_NAME)?.value
@@ -135,30 +164,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
 
     /**
      * Authorized callback - used in middleware for route protection
-     *
-     * Return true to allow access, false to redirect to sign-in
      */
     authorized({ auth }) {
-      // For now, allow all visitors (guests + authenticated)
-      // Add role-based checks here later if needed
+      // Allow all visitors (guests + authenticated)
       return true
-    },
-  },
-
-  // Pages configuration (optional customization)
-  pages: {
-    // signIn: '/auth/signin',
-    // error: '/auth/error',
-  },
-
-  // Events for side effects (e.g., data migration on upgrade)
-  events: {
-    async signIn(_message) {
-      // Future: Handle guest → user data migration here
-      // const guestId = message.token?.guestId
-      // if (guestId && message.user.id) {
-      //   await mergeGuestDataIntoUser(guestId, message.user.id)
-      // }
     },
   },
 }))

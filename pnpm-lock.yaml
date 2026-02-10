@@ -287,10 +287,13 @@ importers:
         version: 14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: 5.0.0-beta.29
-        version: 5.0.0-beta.29(next@14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.29(next@14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@8.0.1)(react@18.3.1)
       next-intl:
         specifier: ^4.4.0
         version: 4.4.0(next@14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+      nodemailer:
+        specifier: ^8.0.1
+        version: 8.0.1
       opencv-react:
         specifier: ^0.0.6
         version: 0.0.6(react@18.3.1)
@@ -378,7 +381,7 @@ importers:
     devDependencies:
       '@auth/core':
         specifier: 0.40.0
-        version: 0.40.0
+        version: 0.40.0(nodemailer@8.0.1)
       '@next/bundle-analyzer':
         specifier: ^16.1.1
         version: 16.1.1
@@ -421,6 +424,9 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.19
+      '@types/nodemailer':
+        specifier: ^7.0.9
+        version: 7.0.9
       '@types/react':
         specifier: ^18.2.0
         version: 18.3.26
@@ -5485,6 +5491,9 @@ packages:
   '@types/node@22.19.7':
     resolution: {integrity: sha512-MciR4AKGHWl7xwxkBa6xUGxQJ4VBOmPTF7sL+iGzuahOFaO0jHCsuEfS80pan1ef4gWId1oWOweIhrDEYLuaOw==}
 
+  '@types/nodemailer@7.0.9':
+    resolution: {integrity: sha512-vI8oF1M+8JvQhsId0Pc38BdUP2evenIIys7c7p+9OZXSPOH5c1dyINP1jT8xQ2xPuBUXmIC87s+91IZMDjH8Ow==}
+
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
 
@@ -10185,6 +10194,10 @@ packages:
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
+  nodemailer@8.0.1:
+    resolution: {integrity: sha512-5kcldIXmaEjZcHR6F28IKGSgpmZHaF1IXLWFTG+Xh3S+Cce4MiakLtWY+PlBU69fLbRa8HlaGIrC/QolUpHkhg==}
+    engines: {node: '>=6.0.0'}
+
   normalize-package-data@2.5.0:
     resolution: {integrity: sha512-/5CMN3T0R4XTj4DcGaexo+roZSdSFW/0AOOTROrjxzCG1wrWXEsGbRKevjlIL+ZDE4sZlJr5ED4YW0yqmkK+eA==}
 
@@ -13268,13 +13281,15 @@ snapshots:
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
-  '@auth/core@0.40.0':
+  '@auth/core@0.40.0(nodemailer@8.0.1)':
     dependencies:
       '@panva/hkdf': 1.2.1
       jose: 6.1.3
       oauth4webapi: 3.8.2
       preact: 10.24.3
       preact-render-to-string: 6.5.11(preact@10.24.3)
+    optionalDependencies:
+      nodemailer: 8.0.1
 
   '@aw-web-design/x-default-browser@1.4.126':
     dependencies:
@@ -19285,6 +19300,10 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/nodemailer@7.0.9':
+    dependencies:
+      '@types/node': 20.19.19
+
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/offscreencanvas@2019.3.0': {}
@@ -24723,11 +24742,13 @@ snapshots:
 
   nerf-dart@1.0.0: {}
 
-  next-auth@5.0.0-beta.29(next@14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-auth@5.0.0-beta.29(next@14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(nodemailer@8.0.1)(react@18.3.1):
     dependencies:
-      '@auth/core': 0.40.0
+      '@auth/core': 0.40.0(nodemailer@8.0.1)
       next: 14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
+    optionalDependencies:
+      nodemailer: 8.0.1
 
   next-intl@4.4.0(next@14.2.33(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3):
     dependencies:
@@ -24857,6 +24878,8 @@ snapshots:
   node-releases@2.0.23: {}
 
   node-releases@2.0.27: {}
+
+  nodemailer@8.0.1: {}
 
   normalize-package-data@2.5.0:
     dependencies:

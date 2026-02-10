@@ -2,6 +2,7 @@
 
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { SessionProvider } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl'
 import dynamic from 'next/dynamic'
 import { type ReactNode, useState } from 'react'
@@ -77,14 +78,16 @@ export function ClientProviders({
   const [queryClient] = useState(() => createQueryClient())
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <VisualDebugProvider>
-          <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
-            <InnerProviders>{children}</InnerProviders>
-          </LocaleProvider>
-        </VisualDebugProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <VisualDebugProvider>
+            <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
+              <InnerProviders>{children}</InnerProviders>
+            </LocaleProvider>
+          </VisualDebugProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </SessionProvider>
   )
 }
