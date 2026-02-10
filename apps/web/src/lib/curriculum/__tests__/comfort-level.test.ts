@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { computeComfortLevel, applyTermCountOverride } from '../comfort-level'
-import type { SkillBktResult } from '../bkt/types'
+import { computeComfortLevel, computeComfortLevelByMode, applyTermCountOverride } from '../comfort-level'
+import type { BktModeResult, SkillBktResult } from '../bkt/types'
+import type { SessionMode } from '../session-mode'
 
 // ============================================================================
 // Helper factories
@@ -14,24 +15,24 @@ function makeBktResult(skillId: string, pKnown: number, confidence: number): Ski
     uncertaintyRange: { low: pKnown - 0.1, high: pKnown + 0.1 },
     opportunities: 10,
     successCount: 8,
-    classification: 'developing' as const,
+    masteryClassification: 'developing' as const,
     lastPracticedAt: new Date(),
-    daysSinceLastPractice: 1,
-    params: { pInit: 0.3, pLearn: 0.1, pSlip: 0.1, pGuess: 0.2 },
   } as SkillBktResult
 }
 
-function makeSessionMode(type: 'remediation' | 'progression' | 'maintenance') {
+function makeSessionMode(type: 'remediation' | 'progression' | 'maintenance'): SessionMode {
   if (type === 'remediation') {
-    return { type: 'remediation' as const, weakSkills: [], focusDescription: '', skillCount: 0 }
+    return { type: 'remediation' as const, weakSkills: [], focusDescription: '' }
   }
   if (type === 'progression') {
     return {
       type: 'progression' as const,
-      nextSkill: { skillId: 'x', displayName: 'x' },
+      nextSkill: { skillId: 'x', displayName: 'x', pKnown: 0.5 },
       phase: 'basic-addition' as any,
       focusDescription: '',
-      skillCount: 0,
+      tutorialRequired: false,
+      skipCount: 0,
+      canSkipTutorial: true,
     }
   }
   return { type: 'maintenance' as const, focusDescription: '', skillCount: 0 }
@@ -230,6 +231,85 @@ describe('computeComfortLevel', () => {
       expect(result.comfortLevel).toBe(0.3)
       expect(result.factors.avgMastery).toBeNull()
     })
+  })
+})
+
+// ============================================================================
+// computeComfortLevelByMode
+// ============================================================================
+
+function makeModeResult(skills: SkillBktResult[]): BktModeResult {
+  return {
+    skills,
+    interventionNeeded: skills.filter((s) => s.pKnown < 0.5),
+    strengths: skills.filter((s) => s.pKnown >= 0.8),
+  }
+}
+
+describe('computeComfortLevelByMode', () => {
+  it('produces different comfort values when BKT data differs per mode', () => {
+    const byMode: Partial<Record<string, BktModeResult>> = {
+      abacus: makeModeResult([makeBktResult('s1', 0.9, 1.0)]),
+      visualization: makeModeResult([makeBktResult('s1', 0.3, 1.0)]),
+    }
+    const result = computeComfortLevelByMode(byMode, ['s1'], makeSessionMode('maintenance'))
+
+    expect(result.abacus.comfortLevel).toBeGreaterThan(result.visualization.comfortLevel)
+  })
+
+  it('returns conservative default for modes with no BKT data', () => {
+    const byMode: Partial<Record<string, BktModeResult>> = {
+      abacus: makeModeResult([makeBktResult('s1', 0.9, 1.0)]),
+      // visualization and linear not present
+    }
+    const result = computeComfortLevelByMode(byMode, ['s1'], makeSessionMode('maintenance'))
+
+    expect(result.visualization.comfortLevel).toBe(0.3)
+    expect(result.linear.comfortLevel).toBe(0.3)
+    expect(result.abacus.comfortLevel).toBeGreaterThan(0.3)
+  })
+
+  it('always returns all three modes in result', () => {
+    const result = computeComfortLevelByMode(undefined, ['s1'], makeSessionMode('maintenance'))
+
+    expect(result).toHaveProperty('abacus')
+    expect(result).toHaveProperty('visualization')
+    expect(result).toHaveProperty('linear')
+  })
+
+  it('returns conservative defaults when byModeBkt is undefined', () => {
+    const result = computeComfortLevelByMode(undefined, ['s1'], makeSessionMode('maintenance'))
+
+    expect(result.abacus.comfortLevel).toBe(0.3)
+    expect(result.visualization.comfortLevel).toBe(0.3)
+    expect(result.linear.comfortLevel).toBe(0.3)
+  })
+
+  it('applies mode multipliers consistently with computeComfortLevel', () => {
+    const skills = [makeBktResult('s1', 0.8, 1.0)]
+    const byMode: Partial<Record<string, BktModeResult>> = {
+      abacus: makeModeResult(skills),
+    }
+
+    const byModeResult = computeComfortLevelByMode(byMode, ['s1'], makeSessionMode('remediation'))
+    const directResult = computeComfortLevel(
+      new Map(skills.map((s) => [s.skillId, s])),
+      ['s1'],
+      makeSessionMode('remediation')
+    )
+
+    // Both should produce the same result for the same data
+    expect(byModeResult.abacus.comfortLevel).toBeCloseTo(directResult.comfortLevel)
+  })
+
+  it('handles mode with empty skills array', () => {
+    const byMode: Partial<Record<string, BktModeResult>> = {
+      abacus: makeModeResult([]),
+    }
+    const result = computeComfortLevelByMode(byMode, ['s1'], makeSessionMode('maintenance'))
+
+    // Empty skills → conservative default
+    expect(result.abacus.comfortLevel).toBe(0.3)
   })
 })
 

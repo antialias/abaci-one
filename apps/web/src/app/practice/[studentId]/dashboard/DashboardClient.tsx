@@ -42,6 +42,7 @@ import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerC
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
   type BktComputeOptions,
+  type BktModeResult,
   computeBktFromHistory,
   getConfidenceLabel,
   getStalenessWarning,
@@ -120,6 +121,8 @@ export interface ProcessedSkill {
   readiness: SkillReadinessDimensions | null
   /** Whether all four readiness dimensions are met */
   isSolid: boolean
+  /** Per-mode pKnown values (e.g. { abacus: 0.85, visualization: 0.42 }) */
+  pKnownByMode: Partial<Record<string, number>>
 }
 
 interface SkillCategory {
@@ -327,7 +330,8 @@ function computeSkillHealthSummary(
 function processSkills(
   skills: PlayerSkillMastery[],
   problemHistory: ProblemResultWithContext[],
-  bktResults: Map<string, SkillBktResult>
+  bktResults: Map<string, SkillBktResult>,
+  byMode?: Partial<Record<string, BktModeResult>>
 ): ProcessedSkill[] {
   const now = new Date()
 
@@ -443,6 +447,16 @@ function processSkills(
         if (attempts === 0) return { readiness: null, isSolid: false }
         const r = assessSkillReadiness(skill.skillId, problemHistory, bkt)
         return { readiness: r.dimensions, isSolid: r.isSolid }
+      })(),
+      pKnownByMode: (() => {
+        if (!byMode) return {}
+        const result: Partial<Record<string, number>> = {}
+        for (const [mode, modeResult] of Object.entries(byMode)) {
+          if (!modeResult) continue
+          const modeSkill = modeResult.skills.find((s) => s.skillId === skill.skillId)
+          if (modeSkill) result[mode] = modeSkill.pKnown
+        }
+        return result
       })(),
     }
   })
@@ -798,6 +812,63 @@ export function SkillCard({
           ⚠️ Data Error
         </span>
       )}
+
+      {/* Per-mode mastery indicators — show when 2+ modes have data */}
+      {(() => {
+        const modeEntries = Object.entries(skill.pKnownByMode)
+        if (modeEntries.length < 2) return null
+        const modeLabels: Record<string, { emoji: string; short: string }> = {
+          abacus: { emoji: '\u{1F9EE}', short: 'Ab' },
+          visualization: { emoji: '\u{1F9E0}', short: 'Viz' },
+          linear: { emoji: '\u{1F4AD}', short: 'Lin' },
+        }
+        return (
+          <div
+            data-element="per-mode-mastery"
+            className={css({
+              display: 'flex',
+              gap: '0.375rem',
+              fontSize: '0.625rem',
+              marginBottom: '0.25rem',
+            })}
+          >
+            {(['abacus', 'visualization', 'linear'] as const).map((mode) => {
+              const pk = skill.pKnownByMode[mode]
+              if (pk === undefined) return null
+              const info = modeLabels[mode]
+              const pct = Math.round(pk * 100)
+              return (
+                <span
+                  key={mode}
+                  data-element={`mode-mastery-${mode}`}
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.125rem',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                  })}
+                  title={`${info.short}: ${pct}% mastery`}
+                >
+                  <span>{info.emoji}</span>
+                  <span
+                    className={css({
+                      fontWeight: 'bold',
+                      color:
+                        pk >= 0.8
+                          ? isDark ? 'green.400' : 'green.600'
+                          : pk < 0.5
+                            ? isDark ? 'red.400' : 'red.600'
+                            : isDark ? 'yellow.400' : 'yellow.600',
+                    })}
+                  >
+                    {pct}%
+                  </span>
+                </span>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Stats row */}
       <div
@@ -1733,8 +1804,8 @@ function SkillsTab({
   }, [bktResult])
 
   const processedSkills = useMemo(
-    () => processSkills(skills, problemHistory, bktResultsMap),
-    [skills, problemHistory, bktResultsMap]
+    () => processSkills(skills, problemHistory, bktResultsMap, bktResult.byMode),
+    [skills, problemHistory, bktResultsMap, bktResult.byMode]
   )
   const practicingSkills = useMemo(
     () => processedSkills.filter((s) => s.isPracticing),
@@ -2751,6 +2822,7 @@ export function DashboardClient({
   const { data: sessionModeData, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
   const sessionMode = sessionModeData?.sessionMode
   const comfortLevel = sessionModeData?.comfortLevel
+  const comfortByMode = sessionModeData?.comfortByMode
 
   // Subscribe to player presence updates via WebSocket
   // This ensures the UI updates when teacher removes student from classroom
@@ -3082,6 +3154,7 @@ export function DashboardClient({
               focusDescription={sessionMode.focusDescription}
               sessionMode={sessionMode}
               comfortLevel={comfortLevel}
+              comfortByMode={comfortByMode}
               avgSecondsPerProblem={avgSecondsPerProblem}
               existingPlan={activeSession}
               problemHistory={problemHistory}

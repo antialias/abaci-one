@@ -36,6 +36,7 @@ export {
 export type {
   BktComputeOptions,
   BktComputeResult,
+  BktModeResult,
   BktParams,
   BktSkillState,
   BlameDistribution,

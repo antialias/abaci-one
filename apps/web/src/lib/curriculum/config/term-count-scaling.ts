@@ -32,8 +32,8 @@ export const TERM_COUNT_SCALING: Record<
   }
 > = {
   abacus: { floor: { min: 2, max: 3 }, ceiling: { min: 4, max: 8 } },
-  visualization: { floor: { min: 2, max: 2 }, ceiling: { min: 3, max: 6 } },
-  linear: { floor: { min: 2, max: 3 }, ceiling: { min: 4, max: 8 } },
+  visualization: { floor: { min: 2, max: 2 }, ceiling: { min: 4, max: 8 } },
+  linear: { floor: { min: 2, max: 2 }, ceiling: { min: 4, max: 8 } },
 }
 
 // =============================================================================

@@ -15,6 +15,7 @@ import { getDefaultParams } from './skill-priors'
 import type {
   BktComputeOptions,
   BktComputeResult,
+  BktModeResult,
   BktSkillState,
   MasteryClassification,
   SkillBktResult,
@@ -95,6 +96,9 @@ export function computeBktFromHistory(
   // Track state for each skill
   const skillStates = new Map<string, BktSkillState>()
 
+  // Track per-mode skill states (mode → skillId → state)
+  const modeSkillStates = new Map<string, Map<string, BktSkillState>>()
+
   // Process each problem result
   for (const result of sorted) {
     // Extract skill IDs from the result (skillsExercised tracks what was actually used)
@@ -119,6 +123,27 @@ export function computeBktFromHistory(
       }
     }
 
+    // Initialize per-mode skill states if this result has a partType
+    const partType = (result as { partType?: string }).partType
+    if (partType) {
+      if (!modeSkillStates.has(partType)) {
+        modeSkillStates.set(partType, new Map())
+      }
+      const modeMap = modeSkillStates.get(partType)!
+      for (const skillId of skillIds) {
+        if (!modeMap.has(skillId)) {
+          const params = getDefaultParams(skillId)
+          modeMap.set(skillId, {
+            pKnown: params.pInit,
+            opportunities: 0,
+            successCount: 0,
+            lastPracticedAt: null,
+            params,
+          })
+        }
+      }
+    }
+
     // For recency-refresh sentinels, only update lastPracticedAt - skip BKT calculation
     if (isRecencyRefresh) {
       const timestamp =
@@ -128,6 +153,13 @@ export function computeBktFromHistory(
         // Update lastPracticedAt if this is more recent
         if (!state.lastPracticedAt || timestamp > state.lastPracticedAt) {
           state.lastPracticedAt = timestamp
+        }
+        // Also update mode-specific lastPracticedAt
+        if (partType) {
+          const modeState = modeSkillStates.get(partType)?.get(skillId)
+          if (modeState && (!modeState.lastPracticedAt || timestamp > modeState.lastPracticedAt)) {
+            modeState.lastPracticedAt = timestamp
+          }
         }
       }
       continue // Skip pKnown updates for sentinel records
@@ -200,13 +232,72 @@ export function computeBktFromHistory(
       state.lastPracticedAt =
         result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)
     }
+
+    // Per-mode BKT updates (independent computation using mode-specific priors)
+    if (partType) {
+      const modeMap = modeSkillStates.get(partType)!
+      const modeSkillRecords = skillIds.map((skillId: string) => {
+        const modeState = modeMap.get(skillId)!
+        return {
+          skillId,
+          pKnown: modeState.pKnown,
+          params: modeState.params,
+        }
+      })
+
+      const modeUpdates = result.isCorrect
+        ? updateOnCorrect(modeSkillRecords)
+        : updateOnIncorrectWithMethod(modeSkillRecords, blameMethod)
+
+      const hasModeInvalidUpdate = modeUpdates.some((u) => !Number.isFinite(u.updatedPKnown))
+      if (!hasModeInvalidUpdate) {
+        for (const update of modeUpdates) {
+          const modeState = modeMap.get(update.skillId)!
+          const newPKnown =
+            modeState.pKnown * (1 - evidenceWeight) + update.updatedPKnown * evidenceWeight
+
+          if (!Number.isFinite(newPKnown)) continue
+
+          modeState.pKnown = newPKnown
+          modeState.opportunities += 1
+          if (result.isCorrect) modeState.successCount += 1
+          modeState.lastPracticedAt =
+            result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)
+        }
+      }
+    }
   }
 
-  // Convert to results
-  const skills: SkillBktResult[] = []
+  // Convert overall states to results
   const now = new Date()
+  const overall = convertStatesToResults(skillStates, opts, now)
 
-  for (const [skillId, state] of skillStates) {
+  // Build per-mode results
+  const byMode: Partial<Record<string, BktModeResult>> = {}
+  for (const [mode, modeMap] of modeSkillStates) {
+    if (modeMap.size > 0) {
+      byMode[mode] = convertStatesToResults(modeMap, opts, now)
+    }
+  }
+
+  return {
+    ...overall,
+    byMode: Object.keys(byMode).length > 0 ? byMode : undefined,
+  }
+}
+
+/**
+ * Convert a map of skill states into sorted BKT results with classifications.
+ * Reused for both overall and per-mode result computation.
+ */
+function convertStatesToResults(
+  states: Map<string, BktSkillState>,
+  opts: BktComputeExtendedOptions,
+  now: Date
+): { skills: SkillBktResult[]; interventionNeeded: SkillBktResult[]; strengths: SkillBktResult[] } {
+  const skills: SkillBktResult[] = []
+
+  for (const [skillId, state] of states) {
     const successRate = state.opportunities > 0 ? state.successCount / state.opportunities : 0.5
     const confidence = calculateConfidence(state.opportunities, successRate)
 
@@ -229,7 +320,6 @@ export function computeBktFromHistory(
     const masteryClassification = classifyMastery(finalPKnown, confidence, opts.confidenceThreshold)
 
     // Final safety check - this should not happen after skipping invalid updates
-    // If it does, warn and let UI show error state for this specific skill
     if (!Number.isFinite(finalPKnown)) {
       console.warn(
         `[BKT] UNEXPECTED: Skill ${skillId} has corrupted pKnown after processing: ${finalPKnown}. ` +

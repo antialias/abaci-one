@@ -25,6 +25,7 @@ interface RouteParams {
 export interface SessionModeResponse {
   sessionMode: SessionMode
   comfortLevel: number
+  comfortByMode: Record<string, number>
 }
 
 /**
@@ -46,11 +47,12 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     const sessionMode = await getSessionMode(playerId)
-    const comfortLevel = await getSessionModeComfortLevel(playerId, sessionMode)
+    const comfortResult = await getSessionModeComfortLevel(playerId, sessionMode)
 
     return NextResponse.json({
       sessionMode,
-      comfortLevel,
+      comfortLevel: comfortResult.overall,
+      comfortByMode: comfortResult.byMode,
     } satisfies SessionModeResponse)
   } catch (error) {
     console.error('Error fetching session mode:', error)

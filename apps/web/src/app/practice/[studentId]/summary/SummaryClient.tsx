@@ -153,6 +153,7 @@ export function SummaryClient({
   const { data: sessionModeData, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
   const sessionMode = sessionModeData?.sessionMode
   const comfortLevel = sessionModeData?.comfortLevel
+  const comfortByMode = sessionModeData?.comfortByMode
 
   // Player access - pre-flight authorization check for upload capability
   const { data: playerAccess } = usePlayerAccess(studentId)
@@ -578,6 +579,7 @@ export function SummaryClient({
               focusDescription={sessionMode.focusDescription}
               sessionMode={sessionMode}
               comfortLevel={comfortLevel}
+              comfortByMode={comfortByMode}
               avgSecondsPerProblem={avgSecondsPerProblem}
               existingPlan={null}
               problemHistory={problemHistory}

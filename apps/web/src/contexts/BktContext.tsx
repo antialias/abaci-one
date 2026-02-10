@@ -30,6 +30,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import {
   computeBktFromHistory,
   getStalenessWarning,
+  type BktModeResult,
   type SkillBktResult,
 } from '@/lib/curriculum/bkt'
 import {
@@ -109,6 +110,8 @@ interface BktDataContextValue {
   hasData: boolean
   /** Raw BKT results for advanced usage */
   rawBktResults: SkillBktResult[]
+  /** Per-mode BKT results (abacus, visualization, linear) */
+  byMode?: Partial<Record<string, BktModeResult>>
 }
 
 // Legacy interface for backwards compatibility with BktSettingsClient
@@ -208,7 +211,7 @@ export function BktProvider({
   // Compute BKT from problem history
   const bktResult = useMemo(() => {
     if (!problemHistory || problemHistory.length === 0) {
-      return { skills: [] }
+      return { skills: [], byMode: undefined }
     }
     return computeBktFromHistory(problemHistory, {
       confidenceThreshold: effectiveThreshold,
@@ -270,8 +273,9 @@ export function BktProvider({
       strong,
       hasData: classifiedSkills.length > 0,
       rawBktResults: bktResult.skills,
+      byMode: bktResult.byMode,
     }),
-    [classifiedSkills, weak, developing, strong, bktResult.skills]
+    [classifiedSkills, weak, developing, strong, bktResult.skills, bktResult.byMode]
   )
 
   // Create a map of BKT results for quick lookup

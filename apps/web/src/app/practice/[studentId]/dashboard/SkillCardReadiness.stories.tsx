@@ -36,6 +36,7 @@ function makeSkill(overrides: Partial<ProcessedSkill> & { displayName: string })
     usingBktMultiplier: overrides.usingBktMultiplier ?? false,
     readiness: overrides.readiness ?? null,
     isSolid: overrides.isSolid ?? false,
+    pKnownByMode: overrides.pKnownByMode ?? {},
   }
 }
 

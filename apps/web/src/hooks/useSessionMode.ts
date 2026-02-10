@@ -22,6 +22,7 @@ export const sessionModeKeys = {
 export interface SessionModeWithComfort {
   sessionMode: SessionMode
   comfortLevel: number
+  comfortByMode: Record<string, number>
 }
 
 /**
@@ -39,6 +40,7 @@ async function fetchSessionMode(playerId: string): Promise<SessionModeWithComfor
   return {
     sessionMode: data.sessionMode,
     comfortLevel: data.comfortLevel,
+    comfortByMode: data.comfortByMode ?? {},
   }
 }
 

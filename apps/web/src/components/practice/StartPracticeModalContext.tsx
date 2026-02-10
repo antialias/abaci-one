@@ -123,6 +123,8 @@ interface StartPracticeModalContextValue {
   setProblemLengthPreference: (pref: ProblemLengthPreference) => void
   /** Comfort level from the session mode API (0-1) */
   comfortLevel: number
+  /** Per-mode comfort levels (e.g. { abacus: 0.72, visualization: 0.45, linear: 0.68 }) */
+  comfortByMode: Record<string, number>
 
   // Purpose weight config
   purposeWeights: PurposeWeights
@@ -226,6 +228,8 @@ interface StartPracticeModalProviderProps {
   sessionMode: SessionMode
   /** Comfort level from the session mode API (0-1), defaults to 0.3 */
   comfortLevel?: number
+  /** Per-mode comfort levels from the session mode API */
+  comfortByMode?: Record<string, number>
   secondsPerTerm?: number
   avgSecondsPerProblem?: number
   existingPlan?: SessionPlan | null
@@ -247,6 +251,7 @@ export function StartPracticeModalProvider({
   focusDescription,
   sessionMode,
   comfortLevel: comfortLevelProp = 0.3,
+  comfortByMode: comfortByModeProp = {},
   secondsPerTerm: secondsPerTermProp,
   avgSecondsPerProblem,
   existingPlan = null,
@@ -386,10 +391,19 @@ export function StartPracticeModalProvider({
 
   const avgTermsPerProblem = useMemo(() => {
     const adjustment = COMFORT_ADJUSTMENTS[problemLengthPreference]
-    const adjustedComfort = Math.max(0, Math.min(1, comfortLevelProp + adjustment))
-    const range = computeTermCountRange('abacus', adjustedComfort)
-    return (range.min + range.max) / 2
-  }, [problemLengthPreference, comfortLevelProp])
+    const totalWeight = partWeights.abacus + partWeights.visualization + partWeights.linear
+    if (totalWeight === 0) return 3 // fallback
+
+    let weightedSum = 0
+    for (const { type } of PART_TYPES) {
+      if (partWeights[type] <= 0) continue
+      const modeComfort = comfortByModeProp[type] ?? comfortLevelProp
+      const adjustedComfort = Math.max(0, Math.min(1, modeComfort + adjustment))
+      const range = computeTermCountRange(type, adjustedComfort)
+      weightedSum += ((range.min + range.max) / 2) * partWeights[type]
+    }
+    return weightedSum / totalWeight
+  }, [problemLengthPreference, comfortLevelProp, comfortByModeProp, partWeights])
 
   const practiceApprovedGames = useMemo(
     () => practiceApprovedGamesOverride ?? getPracticeApprovedGames(),
@@ -705,6 +719,7 @@ export function StartPracticeModalProvider({
     problemLengthPreference,
     setProblemLengthPreference,
     comfortLevel: comfortLevelProp,
+    comfortByMode: comfortByModeProp,
 
     // Purpose weight config
     purposeWeights,

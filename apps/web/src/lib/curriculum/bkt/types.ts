@@ -97,6 +97,16 @@ export interface SkillBktResult {
 }
 
 /**
+ * Per-mode BKT results (e.g. abacus, visualization, linear).
+ * Contains the same skill-level data as the overall result but scoped to a single mode.
+ */
+export interface BktModeResult {
+  skills: SkillBktResult[]
+  interventionNeeded: SkillBktResult[]
+  strengths: SkillBktResult[]
+}
+
+/**
  * Full result of BKT computation.
  */
 export interface BktComputeResult {
@@ -106,4 +116,6 @@ export interface BktComputeResult {
   interventionNeeded: SkillBktResult[]
   /** Skills that appear mastered (high pKnown with confidence) */
   strengths: SkillBktResult[]
+  /** Per-mode BKT results. Only populated when results have partType. */
+  byMode?: Partial<Record<string, BktModeResult>>
 }

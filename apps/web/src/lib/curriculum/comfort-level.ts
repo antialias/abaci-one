@@ -11,7 +11,7 @@
  * 4. Clamp to [0, 1]; no BKT data → conservative default 0.3
  */
 
-import type { SkillBktResult } from './bkt'
+import type { BktModeResult, SkillBktResult } from './bkt'
 import type { SessionMode } from './session-mode'
 import type { TermCountExplanation } from './config/term-count-scaling'
 
@@ -101,6 +101,44 @@ export function computeComfortLevel(
       skillCountBonus,
     },
   }
+}
+
+// =============================================================================
+// Per-Mode Comfort
+// =============================================================================
+
+/**
+ * Compute comfort levels separately for each mode (abacus, visualization, linear).
+ *
+ * For each mode present in byModeBkt, builds a SkillBktResult map and delegates
+ * to the existing computeComfortLevel(). Modes with no BKT data get the
+ * conservative 0.3 default (appropriate for unpracticed modes).
+ *
+ * @param byModeBkt - Per-mode BKT results from computeBktFromHistory
+ * @param practicingSkillIds - Skills in the student's practice rotation
+ * @param sessionMode - Current session mode
+ * @returns Record mapping mode names to their ComfortLevelResult
+ */
+export function computeComfortLevelByMode(
+  byModeBkt: Partial<Record<string, BktModeResult>> | undefined,
+  practicingSkillIds: string[],
+  sessionMode: SessionMode
+): Record<string, ComfortLevelResult> {
+  const modes = ['abacus', 'visualization', 'linear'] as const
+  const result: Record<string, ComfortLevelResult> = {}
+
+  for (const mode of modes) {
+    const modeData = byModeBkt?.[mode]
+    if (modeData && modeData.skills.length > 0) {
+      const bktMap = new Map(modeData.skills.map((s) => [s.skillId, s]))
+      result[mode] = computeComfortLevel(bktMap, practicingSkillIds, sessionMode)
+    } else {
+      // No data for this mode → conservative default
+      result[mode] = computeComfortLevel(undefined, practicingSkillIds, sessionMode)
+    }
+  }
+
+  return result
 }
 
 // =============================================================================

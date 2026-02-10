@@ -45,6 +45,8 @@ interface StartPracticeModalProps {
   sessionMode: SessionMode
   /** Comfort level from the session mode API (0-1) */
   comfortLevel?: number
+  /** Per-mode comfort levels from the session mode API */
+  comfortByMode?: Record<string, number>
   secondsPerTerm?: number
   /** @deprecated Use secondsPerTerm instead */
   avgSecondsPerProblem?: number
@@ -65,6 +67,7 @@ export function StartPracticeModal({
   focusDescription,
   sessionMode,
   comfortLevel,
+  comfortByMode,
   secondsPerTerm,
   avgSecondsPerProblem,
   existingPlan,
@@ -132,6 +135,7 @@ export function StartPracticeModal({
       focusDescription={focusDescription}
       sessionMode={sessionMode}
       comfortLevel={comfortLevel}
+      comfortByMode={comfortByMode}
       secondsPerTerm={secondsPerTerm}
       avgSecondsPerProblem={avgSecondsPerProblem}
       existingPlan={existingPlan}

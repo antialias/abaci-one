@@ -67,7 +67,7 @@ import {
 } from './progress-manager'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { revokeSharesForSession } from '@/lib/session-share'
-import { computeComfortLevel, applyTermCountOverride } from './comfort-level'
+import { computeComfortLevel, computeComfortLevelByMode, applyTermCountOverride } from './comfort-level'
 import { computeTermCountRange, type TermCountExplanation } from './config/term-count-scaling'
 
 // ============================================================================
@@ -188,11 +188,13 @@ export async function generateSessionPlan(
 
   // Compute BKT if in adaptive modes and we have problem history
   let bktResults: Map<string, SkillBktResult> | undefined
+  let byModeBkt: ReturnType<typeof computeBktFromHistory>['byMode']
   const usesBktTargeting =
     problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
   if (usesBktTargeting && problemHistory.length > 0) {
     const bktResult = computeBktFromHistory(problemHistory)
     bktResults = new Map(bktResult.skills.map((s) => [s.skillId, s]))
+    byModeBkt = bktResult.byMode
 
     // Debug: Log BKT usage
     if (process.env.DEBUG_SESSION_PLANNER === 'true') {
@@ -251,6 +253,11 @@ export async function generateSessionPlan(
           skillCountBonus: 0,
         } as TermCountExplanation['factors'],
       }
+
+  // Compute per-mode comfort levels
+  const comfortByMode = sessionMode
+    ? computeComfortLevelByMode(byModeBkt, practicingSkillIds, sessionMode)
+    : undefined
 
   // Apply comfort adjustment from problem length preference
   const rawComfortLevel = rawComfortResult.comfortLevel
@@ -336,6 +343,12 @@ export async function generateSessionPlan(
 
   for (const partType of enabledPartTypes) {
     const normalizedWeight = config.partTimeWeights[partType] / totalEnabledWeight
+
+    // Use mode-specific comfort if available, otherwise fall back to overall
+    const modeComfort = comfortByMode?.[partType] ?? rawComfortResult
+    const rawModeComfortLevel = modeComfort.comfortLevel
+    const adjustedModeComfortLevel = Math.max(0, Math.min(1, rawModeComfortLevel + comfortAdjustment))
+
     parts.push(
       buildSessionPart(
         partNumber,
@@ -358,10 +371,10 @@ export async function generateSessionPlan(
         weakSkills,
         overrideProblemsPerPart,
         shufflePurposes,
-        comfortResult.comfortLevel,
-        comfortResult.factors,
+        adjustedModeComfortLevel,
+        modeComfort.factors,
         comfortAdjustment,
-        rawComfortLevel
+        rawModeComfortLevel
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
