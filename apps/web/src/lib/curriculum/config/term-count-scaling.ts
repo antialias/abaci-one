@@ -12,6 +12,19 @@
 import type { SessionPartType } from '@/db/schema/session-plans'
 
 // =============================================================================
+// Types
+// =============================================================================
+
+/** Per-mode floor/ceiling configuration for term count ranges */
+export interface ModeScalingConfig {
+  floor: { min: number; max: number }
+  ceiling: { min: number; max: number }
+}
+
+/** Full term count scaling configuration across all modes */
+export type TermCountScalingConfig = Record<SessionPartType, ModeScalingConfig>
+
+// =============================================================================
 // Scaling Configuration
 // =============================================================================
 
@@ -24,17 +37,14 @@ import type { SessionPartType } from '@/db/schema/session-plans'
  * The actual range is linearly interpolated between floor and ceiling
  * based on the student's comfort level.
  */
-export const TERM_COUNT_SCALING: Record<
-  SessionPartType,
-  {
-    floor: { min: number; max: number }
-    ceiling: { min: number; max: number }
-  }
-> = {
+export const DEFAULT_TERM_COUNT_SCALING: TermCountScalingConfig = {
   abacus: { floor: { min: 2, max: 3 }, ceiling: { min: 4, max: 8 } },
   visualization: { floor: { min: 2, max: 2 }, ceiling: { min: 4, max: 8 } },
   linear: { floor: { min: 2, max: 2 }, ceiling: { min: 4, max: 8 } },
 }
+
+/** @deprecated Use DEFAULT_TERM_COUNT_SCALING instead */
+export const TERM_COUNT_SCALING = DEFAULT_TERM_COUNT_SCALING
 
 // =============================================================================
 // Explanation Data (for UI tooltips)
@@ -74,6 +84,83 @@ export interface TermCountExplanation {
 }
 
 // =============================================================================
+// Parsing / Validation
+// =============================================================================
+
+/**
+ * Parse and validate a JSON string into a TermCountScalingConfig.
+ *
+ * Returns the parsed config if valid, or falls back to DEFAULT_TERM_COUNT_SCALING
+ * if the input is null or invalid.
+ *
+ * Validation rules:
+ * - All 3 modes (abacus, visualization, linear) must be present
+ * - All values must be integers >= 2
+ * - floor.min <= floor.max, ceiling.min <= ceiling.max
+ * - floor.min <= ceiling.min, floor.max <= ceiling.max
+ */
+export function parseTermCountScaling(json: string | null): TermCountScalingConfig {
+  if (json === null) return DEFAULT_TERM_COUNT_SCALING
+
+  try {
+    const parsed = JSON.parse(json)
+    if (!isValidTermCountScaling(parsed)) {
+      return DEFAULT_TERM_COUNT_SCALING
+    }
+    return parsed as TermCountScalingConfig
+  } catch {
+    return DEFAULT_TERM_COUNT_SCALING
+  }
+}
+
+/**
+ * Validate that a value is a valid TermCountScalingConfig.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateTermCountScaling(config: unknown): string | null {
+  if (!config || typeof config !== 'object') return 'Config must be an object'
+
+  const modes: SessionPartType[] = ['abacus', 'visualization', 'linear']
+  const obj = config as Record<string, unknown>
+
+  for (const mode of modes) {
+    if (!(mode in obj)) return `Missing mode: ${mode}`
+
+    const modeConfig = obj[mode] as Record<string, unknown>
+    if (!modeConfig || typeof modeConfig !== 'object') return `${mode} must be an object`
+
+    for (const level of ['floor', 'ceiling'] as const) {
+      if (!(level in modeConfig)) return `${mode}.${level} is missing`
+
+      const range = modeConfig[level] as Record<string, unknown>
+      if (!range || typeof range !== 'object') return `${mode}.${level} must be an object`
+
+      for (const bound of ['min', 'max'] as const) {
+        if (!(bound in range)) return `${mode}.${level}.${bound} is missing`
+        const val = range[bound]
+        if (typeof val !== 'number' || !Number.isInteger(val)) {
+          return `${mode}.${level}.${bound} must be an integer`
+        }
+        if (val < 2) return `${mode}.${level}.${bound} must be >= 2`
+      }
+
+      const r = range as { min: number; max: number }
+      if (r.min > r.max) return `${mode}.${level}.min must be <= ${mode}.${level}.max`
+    }
+
+    const mc = modeConfig as { floor: { min: number; max: number }; ceiling: { min: number; max: number } }
+    if (mc.floor.min > mc.ceiling.min) return `${mode}: floor.min must be <= ceiling.min`
+    if (mc.floor.max > mc.ceiling.max) return `${mode}: floor.max must be <= ceiling.max`
+  }
+
+  return null
+}
+
+function isValidTermCountScaling(value: unknown): boolean {
+  return validateTermCountScaling(value) === null
+}
+
+// =============================================================================
 // Computation
 // =============================================================================
 
@@ -85,13 +172,15 @@ export interface TermCountExplanation {
  *
  * @param partType - The session part type (abacus, visualization, linear)
  * @param comfortLevel - Student comfort level (0-1), from computeComfortLevel()
+ * @param config - Optional custom scaling config (defaults to DEFAULT_TERM_COUNT_SCALING)
  * @returns { min, max } term count range
  */
 export function computeTermCountRange(
   partType: SessionPartType,
-  comfortLevel: number
+  comfortLevel: number,
+  config?: TermCountScalingConfig
 ): { min: number; max: number } {
-  const scaling = TERM_COUNT_SCALING[partType]
+  const scaling = (config ?? DEFAULT_TERM_COUNT_SCALING)[partType]
   const clamped = Math.max(0, Math.min(1, comfortLevel))
 
   const min = Math.round(scaling.floor.min + (scaling.ceiling.min - scaling.floor.min) * clamped)

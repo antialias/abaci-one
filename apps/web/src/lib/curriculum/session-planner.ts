@@ -68,7 +68,13 @@ import {
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { revokeSharesForSession } from '@/lib/session-share'
 import { computeComfortLevel, computeComfortLevelByMode, applyTermCountOverride } from './comfort-level'
-import { computeTermCountRange, type TermCountExplanation } from './config/term-count-scaling'
+import {
+  computeTermCountRange,
+  parseTermCountScaling,
+  type TermCountExplanation,
+  type TermCountScalingConfig,
+} from './config/term-count-scaling'
+import { appSettings } from '@/db/schema'
 
 // ============================================================================
 // Plan Generation
@@ -175,8 +181,8 @@ export async function generateSessionPlan(
     }
   }
 
-  // 1. Load student state (in parallel for performance)
-  const [curriculum, skillMastery, recentSessions, problemHistory] = await Promise.all([
+  // 1. Load student state and app config (in parallel for performance)
+  const [curriculum, skillMastery, recentSessions, problemHistory, dbSettings] = await Promise.all([
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
     getRecentSessions(playerId, 10),
@@ -184,7 +190,12 @@ export async function generateSessionPlan(
     problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
       ? getRecentSessionResults(playerId, BKT_INTEGRATION_CONFIG.sessionHistoryDepth)
       : Promise.resolve([]),
+    // Load term count scaling config from DB
+    db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1),
   ])
+
+  // Parse DB term count scaling config (falls back to defaults if null/invalid)
+  const termCountScalingConfig = parseTermCountScaling(dbSettings[0]?.termCountScaling ?? null)
 
   // Compute BKT if in adaptive modes and we have problem history
   let bktResults: Map<string, SkillBktResult> | undefined
@@ -374,7 +385,8 @@ export async function generateSessionPlan(
         adjustedModeComfortLevel,
         modeComfort.factors,
         comfortAdjustment,
-        rawModeComfortLevel
+        rawModeComfortLevel,
+        termCountScalingConfig
       )
     )
     partNumber = (partNumber + 1) as 1 | 2 | 3
@@ -433,7 +445,8 @@ function buildSessionPart(
   comfortLevel = 0.3,
   comfortFactors?: TermCountExplanation['factors'],
   comfortAdjustment?: number,
-  rawComfortLevel?: number
+  rawComfortLevel?: number,
+  termCountScalingConfig?: TermCountScalingConfig
 ): SessionPart {
   // Get time allocation for this part (use normalized weight if provided)
   const partWeight = normalizedWeight ?? config.partTimeWeights[type]
@@ -505,7 +518,8 @@ function buildSessionPart(
         comfortLevel,
         comfortFactors,
         comfortAdjustment,
-        rawComfortLevel
+        rawComfortLevel,
+        termCountScalingConfig
       )
     )
   }
@@ -525,7 +539,8 @@ function buildSessionPart(
         comfortLevel,
         comfortFactors,
         comfortAdjustment,
-        rawComfortLevel
+        rawComfortLevel,
+        termCountScalingConfig
       )
     )
   }
@@ -545,7 +560,8 @@ function buildSessionPart(
         comfortLevel,
         comfortFactors,
         comfortAdjustment,
-        rawComfortLevel
+        rawComfortLevel,
+        termCountScalingConfig
       )
     )
   }
@@ -564,7 +580,8 @@ function buildSessionPart(
         comfortLevel,
         comfortFactors,
         comfortAdjustment,
-        rawComfortLevel
+        rawComfortLevel,
+        termCountScalingConfig
       )
     )
   }
@@ -1295,9 +1312,10 @@ function getTermCountForPartType(
   comfortLevel: number,
   comfortFactors?: TermCountExplanation['factors'],
   comfortAdjustment?: number,
-  rawComfortLevel?: number
+  rawComfortLevel?: number,
+  termCountScalingConfig?: TermCountScalingConfig
 ): { range: { min: number; max: number }; explanation: TermCountExplanation } {
-  const dynamicRange = computeTermCountRange(partType, comfortLevel)
+  const dynamicRange = computeTermCountRange(partType, comfortLevel, termCountScalingConfig)
 
   // Get config override for this part type (parent/teacher setting)
   const override =
@@ -1394,7 +1412,8 @@ function createSlot(
   comfortLevel = 0.3,
   comfortFactors?: TermCountExplanation['factors'],
   comfortAdjustment?: number,
-  rawComfortLevel?: number
+  rawComfortLevel?: number,
+  termCountScalingConfig?: TermCountScalingConfig
 ): ProblemSlot {
   // Get complexity bounds for this purpose + part type combination
   // Pass studentMaxSkillCost for dynamic visualization budget
@@ -1412,7 +1431,8 @@ function createSlot(
     comfortLevel,
     comfortFactors,
     comfortAdjustment,
-    rawComfortLevel
+    rawComfortLevel,
+    termCountScalingConfig
   )
 
   const constraints = {

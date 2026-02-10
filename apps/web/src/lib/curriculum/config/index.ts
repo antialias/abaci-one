@@ -74,8 +74,13 @@ export { READINESS_THRESHOLDS, type ReadinessThresholds } from './readiness-thre
 // Term Count Scaling (dynamic comfort-based scaling)
 export {
   computeTermCountRange,
+  DEFAULT_TERM_COUNT_SCALING,
+  parseTermCountScaling,
   TERM_COUNT_SCALING,
+  validateTermCountScaling,
+  type ModeScalingConfig,
   type TermCountExplanation,
+  type TermCountScalingConfig,
 } from './term-count-scaling'
 
 // Comfort Level (mastery-derived comfort computation)

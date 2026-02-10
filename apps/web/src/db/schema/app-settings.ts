@@ -43,6 +43,16 @@ export const appSettings = sqliteTable('app_settings', {
   voiceChain: text('voice_chain').default(
     JSON.stringify([{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }])
   ),
+
+  /**
+   * Term count scaling configuration (JSON-encoded).
+   *
+   * Controls how many terms per problem a student gets based on comfort level.
+   * When null, uses hardcoded defaults from DEFAULT_TERM_COUNT_SCALING.
+   * When set, contains a TermCountScalingConfig JSON object with per-mode
+   * floor/ceiling ranges.
+   */
+  termCountScaling: text('term_count_scaling'),
 })
 
 export type AppSettings = typeof appSettings.$inferSelect
@@ -56,4 +66,5 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   bktConfidenceThreshold: 0.3,
   audioVoice: 'nova',
   voiceChain: JSON.stringify([{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }]),
+  termCountScaling: null,
 }

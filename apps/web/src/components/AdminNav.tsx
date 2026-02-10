@@ -27,6 +27,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Skill classification',
   },
   {
+    href: '/admin/practice-config',
+    label: 'Practice',
+    description: 'Term scaling',
+  },
+  {
     href: '/flowchart/admin',
     label: 'Flowcharts',
     description: 'Curriculum',

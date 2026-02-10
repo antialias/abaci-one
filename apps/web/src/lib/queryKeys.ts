@@ -100,6 +100,12 @@ export const collectedClipKeys = {
   list: (voice?: string) => [...collectedClipKeys.all, 'list', voice ?? ''] as const,
 }
 
+// Practice config query keys (admin term count scaling)
+export const practiceConfigKeys = {
+  all: ['practice-config'] as const,
+  config: () => [...practiceConfigKeys.all, 'config'] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player
