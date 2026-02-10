@@ -1,7 +1,7 @@
 'use client'
 
 import { animated, useSpring } from '@react-spring/web'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
 
@@ -241,6 +241,10 @@ export interface InteractiveDiceProps {
   rollTrigger?: number
   /** CSS perspective value in px for 3D depth (default: 100) */
   perspective?: number
+  /** Ref containing current tilt force vector, updated by accelerometer at ~60Hz */
+  tiltForceRef?: { readonly current: { x: number; y: number } }
+  /** Whether tilt/accelerometer mode is active */
+  tiltEnabled?: boolean
 }
 
 /**
@@ -267,6 +271,8 @@ export function InteractiveDice({
   onRolledValue,
   rollTrigger,
   perspective = 100,
+  tiltForceRef,
+  tiltEnabled = false,
 }: InteractiveDiceProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -354,12 +360,13 @@ export function InteractiveDice({
     [currentFace, onRoll, onRollComplete, onRolledValue, minFace, faceCount]
   )
 
-  // Physics simulation for thrown dice - uses direct DOM manipulation for performance
+  // Physics simulation for thrown dice and tilt mode - uses direct DOM manipulation for performance
   useEffect(() => {
-    if (!isFlying) return
+    const shouldAnimate = isFlying || (tiltEnabled && !isDragging)
+    if (!shouldAnimate) return
 
     const BASE_GRAVITY = 0.8 // Base pull toward origin
-    const BASE_FRICTION = 0.94 // Base velocity dampening (slightly less friction for longer flight)
+    const BASE_FRICTION = 0.94 // Base velocity dampening
     const ROTATION_FACTOR = 0.5 // How much velocity affects rotation
     const STOP_THRESHOLD = 2 // Distance threshold to snap home
     const VELOCITY_THRESHOLD = 0.5 // Velocity threshold to snap home
@@ -369,13 +376,16 @@ export function InteractiveDice({
     const SCALE_SHRINK_SPEED = 0.06 // How fast to shrink when close (slower for drama)
     const BOUNCE_DAMPING = 0.7 // How much velocity is retained on bounce (0-1)
     const DICE_SIZE = size // Size of the dice in pixels
+    const TILT_FORCE_MULT = 1.5 // Amplification for tilt force
 
-    // Calculate initial throw power to adjust gravity (stronger throws = weaker initial gravity)
-    const initialSpeed = Math.sqrt(
-      dicePhysics.current.vx * dicePhysics.current.vx +
-        dicePhysics.current.vy * dicePhysics.current.vy
-    )
-    const throwPower = Math.min(initialSpeed / 20, 1) // 0-1 based on throw strength
+    // Calculate initial throw power (only relevant for thrown dice, not tilt)
+    const initialSpeed = isFlying
+      ? Math.sqrt(
+          dicePhysics.current.vx * dicePhysics.current.vx +
+            dicePhysics.current.vy * dicePhysics.current.vy
+        )
+      : 0
+    const throwPower = Math.min(initialSpeed / 20, 1)
 
     let frameCount = 0
 
@@ -392,20 +402,28 @@ export function InteractiveDice({
       // Calculate distance to origin
       const dist = Math.sqrt(p.x * p.x + p.y * p.y)
 
-      // Gravity ramps up over time (weak at first for strong throws, then strengthens)
-      const gravityRampUp = Math.min(frameCount / 30, 1) // Full gravity after ~0.5s
-      const effectiveGravity = BASE_GRAVITY * (0.3 + 0.7 * gravityRampUp) * (1 - throwPower * 0.5)
+      // Read tilt force from ref (updated at ~60Hz by deviceorientation)
+      const tilt = tiltForceRef?.current ?? { x: 0, y: 0 }
+      const tiltMag = Math.sqrt(tilt.x * tilt.x + tilt.y * tilt.y)
+      const isActiveTilt = tiltEnabled && tiltMag > 0.2
 
-      // Apply spring force toward origin (proportional to distance)
-      if (dist > 0) {
-        // Quadratic falloff for more natural feel
+      // Apply tilt force (like gravity on a tilted surface)
+      if (isActiveTilt) {
+        p.vx += tilt.x * TILT_FORCE_MULT
+        p.vy += tilt.y * TILT_FORCE_MULT
+      }
+
+      // Spring force toward origin (disabled during active tilt)
+      if (!isActiveTilt && dist > 0) {
+        const gravityRampUp = Math.min(frameCount / 30, 1)
+        const effectiveGravity = BASE_GRAVITY * (0.3 + 0.7 * gravityRampUp) * (1 - throwPower * 0.5)
         const pullStrength = effectiveGravity * (dist / 50) ** 1.2
         p.vx += (-p.x / dist) * pullStrength
         p.vy += (-p.y / dist) * pullStrength
       }
 
-      // Apply friction - extra damping when close to prevent oscillation
-      const friction = dist < CLOSE_RANGE ? 0.88 : BASE_FRICTION
+      // Friction - extra close-range damping only in non-tilt mode
+      const friction = dist < CLOSE_RANGE && !isActiveTilt ? 0.88 : BASE_FRICTION
       p.vx *= friction
       p.vy *= friction
 
@@ -422,9 +440,8 @@ export function InteractiveDice({
 
       // Left edge bounce
       if (absoluteX < 0) {
-        p.x = -diceOrigin.x // Position at left edge
-        p.vx = Math.abs(p.vx) * BOUNCE_DAMPING // Reverse and dampen
-        // Add extra spin on bounce
+        p.x = -diceOrigin.x
+        p.vx = Math.abs(p.vx) * BOUNCE_DAMPING
         p.rotationZ += p.vx * 5
       }
       // Right edge bounce
@@ -450,10 +467,9 @@ export function InteractiveDice({
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
 
       // As dice gets closer to home, gradually lerp rotation toward final face
-      // settleProgress: 0 = far away (full physics rotation), 1 = at home (target rotation)
-      const SETTLE_START_DIST = 150 // Start settling rotation at this distance
+      const SETTLE_START_DIST = 150
       const settleProgress = Math.max(0, 1 - dist / SETTLE_START_DIST)
-      const settleFactor = settleProgress * settleProgress * settleProgress // Cubic easing for smooth settle
+      const settleFactor = settleProgress * settleProgress * settleProgress
 
       // Physics rotation (tumbling)
       const physicsRotationDelta = {
@@ -462,21 +478,17 @@ export function InteractiveDice({
         z: speed * ROTATION_FACTOR * 3,
       }
 
-      // Apply physics rotation, but reduced as we settle
       p.rotationX += physicsRotationDelta.x * (1 - settleFactor)
       p.rotationY += physicsRotationDelta.y * (1 - settleFactor)
       p.rotationZ += physicsRotationDelta.z * (1 - settleFactor)
 
       // Lerp toward target face rotation as we settle
-      // Target rotation should show the correct face (from DICE_FACE_ROTATIONS)
-      const lerpSpeed = 0.08 * settleFactor // Faster lerp as we get closer
+      const lerpSpeed = 0.08 * settleFactor
       if (settleFactor > 0.01) {
-        // Normalize rotations to find shortest path to target
         const targetX = targetFaceRotation.rotateX
         const targetY = targetFaceRotation.rotateY
-        const targetZ = 0 // Final Z rotation should be 0 (flat)
+        const targetZ = 0
 
-        // Normalize current rotation to -180 to 180 range for smooth interpolation
         const normalizeAngle = (angle: number) => {
           let normalized = angle % 360
           if (normalized > 180) normalized -= 360
@@ -488,27 +500,32 @@ export function InteractiveDice({
         const currentY = normalizeAngle(p.rotationY)
         const currentZ = normalizeAngle(p.rotationZ)
 
-        // Lerp each axis toward target
         p.rotationX = currentX + (targetX - currentX) * lerpSpeed
         p.rotationY = currentY + (targetY - currentY) * lerpSpeed
         p.rotationZ = currentZ + (targetZ - currentZ) * lerpSpeed
       }
 
-      // Update scale - grow when far/fast, shrink when close/slow
-      const targetScale =
-        dist > CLOSE_RANGE ? MAX_SCALE : 1 + ((MAX_SCALE - 1) * dist) / CLOSE_RANGE
-      if (p.scale < targetScale) {
-        p.scale = Math.min(p.scale + SCALE_GROW_SPEED, targetScale)
-      } else if (p.scale > targetScale) {
-        p.scale = Math.max(p.scale - SCALE_SHRINK_SPEED, targetScale)
+      // Scale behavior
+      if (tiltEnabled && !isFlying) {
+        // Tilt mode: subtle scale based on velocity (rolling on tray surface)
+        const targetScale = 1 + Math.min(speed / 30, 0.3)
+        p.scale += (targetScale - p.scale) * 0.1
+      } else {
+        // Throw mode: grow when far, shrink when close
+        const targetScale =
+          dist > CLOSE_RANGE ? MAX_SCALE : 1 + ((MAX_SCALE - 1) * dist) / CLOSE_RANGE
+        if (p.scale < targetScale) {
+          p.scale = Math.min(p.scale + SCALE_GROW_SPEED, targetScale)
+        } else if (p.scale > targetScale) {
+          p.scale = Math.max(p.scale - SCALE_SHRINK_SPEED, targetScale)
+        }
       }
 
       // Update DOM directly - no React re-renders
-      // Scale from center, offset position to keep visual center stable
       const scaleOffset = ((p.scale - 1) * DICE_SIZE) / 2
       el.style.transform = `translate(${p.x - scaleOffset}px, ${p.y - scaleOffset}px) scale(${p.scale})`
 
-      // Dynamic shadow based on scale (larger = higher = bigger shadow)
+      // Dynamic shadow based on scale
       const shadowSize = (p.scale - 1) * 10
       const shadowOpacity = Math.min((p.scale - 1) * 0.2, 0.4)
       el.style.filter =
@@ -522,35 +539,35 @@ export function InteractiveDice({
         diceEl.style.transform = `rotateX(${p.rotationX}deg) rotateY(${p.rotationY}deg) rotateZ(${p.rotationZ}deg)`
       }
 
-      // Check if we should stop - snap to home when close, slow, small, AND rotation is settled
-      const totalVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
-      const rotationSettled =
-        Math.abs(p.rotationX - targetFaceRotation.rotateX) < 5 &&
-        Math.abs(p.rotationY - targetFaceRotation.rotateY) < 5 &&
-        Math.abs(p.rotationZ) < 5
+      // Stop condition (only when tilt is off — tilt mode keeps the loop alive)
+      if (!tiltEnabled) {
+        const totalVelocity = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
+        const rotationSettled =
+          Math.abs(p.rotationX - targetFaceRotation.rotateX) < 5 &&
+          Math.abs(p.rotationY - targetFaceRotation.rotateY) < 5 &&
+          Math.abs(p.rotationZ) < 5
 
-      if (
-        dist < STOP_THRESHOLD &&
-        totalVelocity < VELOCITY_THRESHOLD &&
-        p.scale < 1.1 &&
-        rotationSettled
-      ) {
-        // Dice has returned home - clear shadow
-        el.style.filter = 'none'
-        setIsFlying(false)
-        dicePhysics.current = {
-          x: 0,
-          y: 0,
-          vx: 0,
-          vy: 0,
-          rotationX: targetFaceRotation.rotateX,
-          rotationY: targetFaceRotation.rotateY,
-          rotationZ: 0,
-          scale: 1,
+        if (
+          dist < STOP_THRESHOLD &&
+          totalVelocity < VELOCITY_THRESHOLD &&
+          p.scale < 1.1 &&
+          rotationSettled
+        ) {
+          el.style.filter = 'none'
+          setIsFlying(false)
+          dicePhysics.current = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            rotationX: targetFaceRotation.rotateX,
+            rotationY: targetFaceRotation.rotateY,
+            rotationZ: 0,
+            scale: 1,
+          }
+          onRollComplete?.()
+          return
         }
-        // Notify that roll animation is complete
-        onRollComplete?.()
-        return
       }
 
       animationFrameRef.current = requestAnimationFrame(animate)
@@ -565,6 +582,8 @@ export function InteractiveDice({
     }
   }, [
     isFlying,
+    tiltEnabled,
+    isDragging,
     diceOrigin.x,
     diceOrigin.y,
     targetFaceRotation.rotateX,
@@ -581,6 +600,52 @@ export function InteractiveDice({
       }
     }
   }, [])
+
+  // Capture origin and prepare physics when tilt mode activates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (tiltEnabled && !isDragging && !isFlying && diceContainerRef.current) {
+      const rect = diceContainerRef.current.getBoundingClientRect()
+      setDiceOrigin({ x: rect.left, y: rect.top })
+      dicePhysics.current = {
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        rotationX: targetFaceRotation.rotateX,
+        rotationY: targetFaceRotation.rotateY,
+        rotationZ: 0,
+        scale: 1,
+      }
+    }
+  }, [tiltEnabled])
+
+  // When tilt disables, fly dice back home if displaced
+  const prevTiltEnabled = useRef(tiltEnabled)
+  useLayoutEffect(() => {
+    if (prevTiltEnabled.current && !tiltEnabled) {
+      const p = dicePhysics.current
+      const dist = Math.sqrt(p.x * p.x + p.y * p.y)
+      const vel = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
+      if (dist > 5 || vel > 1) {
+        // Die is displaced — fly it back home via the existing spring-to-origin
+        setIsFlying(true)
+      } else {
+        // Close enough — snap home immediately
+        dicePhysics.current = {
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: 0,
+          rotationX: targetFaceRotation.rotateX,
+          rotationY: targetFaceRotation.rotateY,
+          rotationZ: 0,
+          scale: 1,
+        }
+      }
+    }
+    prevTiltEnabled.current = tiltEnabled
+  }, [tiltEnabled, targetFaceRotation.rotateX, targetFaceRotation.rotateY])
 
   // Programmatic roll trigger — when rollTrigger increments, fire a roll
   const prevRollTrigger = useRef(rollTrigger ?? 0)
@@ -833,9 +898,9 @@ export function InteractiveDice({
         </div>
       </button>
 
-      {/* Portal-rendered dice when dragging/flying - renders outside button to avoid clipping */}
+      {/* Portal-rendered dice when dragging/flying/tilting - renders outside button to avoid clipping */}
       {/* All transforms are applied directly via ref for performance - no React re-renders */}
-      {(isDragging || isFlying) &&
+      {(isDragging || isFlying || tiltEnabled) &&
         createPortal(
           <div
             ref={portalDiceRef}

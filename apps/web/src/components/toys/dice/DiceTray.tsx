@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { InteractiveDice } from '@/components/ui/InteractiveDice'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useDeviceTilt } from '@/hooks/useDeviceTilt'
 import { COLOR_KEYS, DICE_COLORS, getNextColor } from './diceColors'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 
@@ -29,6 +30,7 @@ export function DiceTray() {
   const [rollTrigger, setRollTrigger] = useState(0)
   const [hoveredDie, setHoveredDie] = useState<string | null>(null)
   const [perspective, setPerspective] = useState(250)
+  const { tiltRef, enabled: tiltEnabled, toggle: toggleTilt } = useDeviceTilt()
 
   const sum = useMemo(
     () => dice.reduce((acc, d) => acc + (d.value ?? 0), 0),
@@ -139,6 +141,8 @@ export function DiceTray() {
                 rollTrigger={rollTrigger}
                 title={`Roll ${die.colorKey} die`}
                 perspective={perspective}
+                tiltForceRef={tiltRef}
+                tiltEnabled={tiltEnabled}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -218,8 +222,35 @@ export function DiceTray() {
           })}
         </div>
 
-        {/* Roll All + Sum */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* Tilt + Roll All + Sum */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            data-action="toggle-tilt"
+            type="button"
+            onClick={toggleTilt}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: tiltEnabled
+                ? '2px solid #4f46e5'
+                : isDark
+                  ? '2px solid rgba(75,85,99,0.5)'
+                  : '2px solid rgba(209,213,219,0.8)',
+              background: tiltEnabled
+                ? isDark
+                  ? 'rgba(79,70,229,0.3)'
+                  : 'rgba(79,70,229,0.15)'
+                : 'transparent',
+              color: isDark ? 'rgba(209,213,219,1)' : 'rgba(55,65,81,1)',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {tiltEnabled ? 'Tilt: On' : 'Tilt'}
+          </button>
+
           <button
             data-action="roll-all"
             type="button"
