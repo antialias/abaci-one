@@ -2,12 +2,14 @@
 
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export default function SignInPage() {
   const { resolvedTheme } = useTheme()
+  const router = useRouter()
   const isDark = resolvedTheme === 'dark'
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState<'google' | 'email' | null>(null)
@@ -21,7 +23,18 @@ export default function SignInPage() {
     e.preventDefault()
     if (!email.trim()) return
     setIsLoading('email')
-    await signIn('nodemailer', { email: email.trim(), callbackUrl: '/' })
+    // Use redirect: false to avoid NextAuth's server-side redirect
+    // which uses the internal localhost:3000 origin behind the proxy
+    const result = await signIn('nodemailer', {
+      email: email.trim(),
+      redirect: false,
+      callbackUrl: '/',
+    })
+    if (result?.ok) {
+      router.push('/auth/verify-request')
+    } else {
+      setIsLoading(null)
+    }
   }
 
   return (
