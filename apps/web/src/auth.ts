@@ -59,6 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
   pages: {
     signIn: '/auth/signin',
     verifyRequest: '/auth/verify-request',
+    error: '/auth/error',
   },
 
   callbacks: {
@@ -97,31 +98,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
           // Returning user (already has an account linked)
           if (guestId) {
             // They had a guest session on this device — merge guest data
-            const guestUser = await db.query.users.findFirst({
-              where: eq(schema.users.guestId, guestId),
-            })
-            if (guestUser && guestUser.id !== existingAccount.userId) {
-              await mergeGuestIntoUser(guestUser.id, existingAccount.userId)
+            // Non-fatal: if merge fails, sign-in still succeeds (guest data is lost)
+            try {
+              const guestUser = await db.query.users.findFirst({
+                where: eq(schema.users.guestId, guestId),
+              })
+              if (guestUser && guestUser.id !== existingAccount.userId) {
+                await mergeGuestIntoUser(guestUser.id, existingAccount.userId)
+              }
+            } catch (err) {
+              console.error('[auth] guest merge failed (non-fatal, sign-in continues):', err)
             }
           }
           token.sub = existingAccount.userId
           token.role = 'user'
         } else if (guestId) {
           // New sign-in with existing guest session → upgrade the guest
-          const upgradedUserId = await upgradeGuestToUser({
-            guestId,
-            email: user.email ?? '',
-            name: user.name,
-            image: user.image,
-            provider: account.provider,
-            providerAccountId: account.providerAccountId ?? user.email ?? '',
-            providerType: account.type,
-          })
+          // Non-fatal: if upgrade fails, adapter-created user is used instead
+          try {
+            const upgradedUserId = await upgradeGuestToUser({
+              guestId,
+              email: user.email ?? '',
+              name: user.name,
+              image: user.image,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId ?? user.email ?? '',
+              providerType: account.type,
+            })
 
-          if (upgradedUserId) {
-            token.sub = upgradedUserId
-          } else {
-            // Guest user not found, fall through to adapter-created user
+            if (upgradedUserId) {
+              token.sub = upgradedUserId
+            } else {
+              token.sub = user.id
+            }
+          } catch (err) {
+            console.error('[auth] guest upgrade failed (non-fatal, sign-in continues):', err)
             token.sub = user.id
           }
           token.role = 'user'
