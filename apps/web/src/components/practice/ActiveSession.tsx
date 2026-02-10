@@ -45,6 +45,7 @@ import { findMatchedPrefixIndex, useInteractionPhase } from './hooks/useInteract
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { AudioHelpButton } from './AudioHelpButton'
 import { usePracticeAudioHelp } from './hooks/usePracticeAudioHelp'
+import { usePracticeAssistanceAudio } from './hooks/usePracticeAssistanceAudio'
 import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeFeedback } from './PracticeFeedback'
@@ -648,11 +649,23 @@ export function ActiveSession({
   // Audio help — reads problems and feedback aloud for non-readers
   const { isEnabled: audioHelpEnabled, isPlaying: audioHelpIsPlaying } = useAudioManager()
   const audioHelpIsCorrect = phase.phase === 'showingFeedback' ? phase.result === 'correct' : null
+  const recentCorrectness = useMemo(
+    () => plan.results.map((r) => r.isCorrect),
+    [plan.results]
+  )
   const { replayProblem } = usePracticeAudioHelp({
     terms: attempt?.problem?.terms ?? null,
     showingFeedback: showFeedback,
     isCorrect: audioHelpIsCorrect,
     correctAnswer: attempt?.problem?.answer ?? null,
+    results: recentCorrectness,
+  })
+
+  // Progressive assistance audio — speaks encouragement/help prompts on state transitions
+  usePracticeAssistanceAudio({
+    assistanceState: assistance.machineState.state,
+    showWrongAnswerSuggestion: assistance.showWrongAnswerSuggestion,
+    replayProblem,
   })
 
   // Calculate total progress across all parts (needed for broadcast state)
