@@ -5,6 +5,7 @@ import { ttsCollectedClips, ttsCollectedClipSay } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { createTask } from "../task-manager";
 import type { CollectedClipGenerateEvent } from "./events";
+import { resolveCanonicalText } from "../audio/clipHash";
 
 const AUDIO_DIR = join(process.cwd(), "data", "audio");
 
@@ -22,7 +23,7 @@ export interface CollectedClipGenerateOutput {
 
 /**
  * Resolve the best input text for TTS generation from the say table.
- * Prefers en-US > en > first available locale.
+ * Uses shared resolveCanonicalText for consistent priority logic.
  */
 function resolveSayText(
   sayEntries: Map<string, Record<string, string>>,
@@ -30,7 +31,8 @@ function resolveSayText(
 ): string | null {
   const sayMap = sayEntries.get(clipId);
   if (!sayMap) return null;
-  return sayMap["en-US"] ?? sayMap["en"] ?? Object.values(sayMap)[0] ?? null;
+  const text = resolveCanonicalText(sayMap);
+  return text || null;
 }
 
 /**
@@ -56,11 +58,15 @@ export async function startCollectedClipGeneration(
     const voiceDir = join(AUDIO_DIR, config.voice);
     mkdirSync(voiceDir, { recursive: true });
 
+    console.log('[collected-clip-generate] config:', { voice: config.voice, clipIds: config.clipIds, voiceDir });
+
     // Fetch clip data from DB
     const clips = await db
       .select()
       .from(ttsCollectedClips)
       .where(inArray(ttsCollectedClips.id, config.clipIds));
+
+    console.log('[collected-clip-generate] DB query result:', { requestedIds: config.clipIds, foundCount: clips.length, foundIds: clips.map(c => c.id) });
 
     if (clips.length === 0) {
       handle.emit({
@@ -96,8 +102,15 @@ export async function startCollectedClipGeneration(
 
     // Filter to clips that don't already have files on disk
     const missing = clips.filter(
-      (clip) => !existsSync(join(voiceDir, `${clip.id}.mp3`)),
+      (clip) => {
+        const filePath = join(voiceDir, `${clip.id}.mp3`);
+        const exists = existsSync(filePath);
+        console.log('[collected-clip-generate] file check:', { clipId: clip.id, filePath, exists });
+        return !exists;
+      },
     );
+
+    console.log('[collected-clip-generate] missing clips:', { total: clips.length, missing: missing.length });
 
     handle.emit({
       type: "cc_gen_started",

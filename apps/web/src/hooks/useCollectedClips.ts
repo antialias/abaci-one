@@ -42,6 +42,7 @@ async function generateCollectedClips(params: {
   voice: string
   clipIds: string[]
 }): Promise<{ taskId: string }> {
+  console.log('[useCollectedClips] generateCollectedClips called', params)
   const res = await api('admin/audio/generate-collected', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,9 +50,12 @@ async function generateCollectedClips(params: {
   })
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}))
+    console.error('[useCollectedClips] generateCollectedClips failed', res.status, errData)
     throw new Error(errData.error || 'Generation failed')
   }
-  return res.json()
+  const result = await res.json()
+  console.log('[useCollectedClips] generateCollectedClips success', result)
+  return result
 }
 
 // ============================================================================

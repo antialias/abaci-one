@@ -1,28 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { AppNavBar } from "@/components/AppNavBar";
 import { AdminNav } from "@/components/AdminNav";
 import { TtsTestPanel } from "@/components/admin/TtsTestPanel";
 import { useBackgroundTask } from "@/hooks/useBackgroundTask";
 import { useCollectedClips, useGenerateCollectedClips, collectedClipKeys } from "@/hooks/useCollectedClips";
 import type { CollectedClipGenerateOutput } from "@/lib/tasks/collected-clip-generate";
+import { isHashClipId } from "@/lib/audio/clipHash";
+import { ALL_VOICES, VOICE_PROVIDERS, getVoiceMeta } from "@/lib/audio/voices";
+import { Z_INDEX } from "@/constants/zIndex";
 import { css } from "../../../../styled-system/css";
-
-/** Known OpenAI TTS voices */
-const ALL_VOICES = [
-  "alloy",
-  "ash",
-  "ballad",
-  "coral",
-  "echo",
-  "fable",
-  "nova",
-  "onyx",
-  "sage",
-  "shimmer",
-] as const;
 
 type VoiceSource =
   | { type: "pregenerated"; name: string }
@@ -31,6 +21,8 @@ type VoiceSource =
 interface AudioStatus {
   activeVoice: string;
   voices: Record<string, { total: number; existing: number }>;
+  totalCollectedClips: number;
+  voiceClipCounts: Record<string, number>;
 }
 
 export default function AdminAudioPage() {
@@ -41,8 +33,7 @@ export default function AdminAudioPage() {
   const [voiceChainDirty, setVoiceChainDirty] = useState(false);
   const [showVoiceChain, setShowVoiceChain] = useState(false);
   const [showTtsTest, setShowTtsTest] = useState(false);
-  const [showVoiceManagement, setShowVoiceManagement] = useState(false);
-  const [showCollectedClips, setShowCollectedClips] = useState(false);
+  const [showClipManagement, setShowClipManagement] = useState(false);
   const [ccGenVoice, setCcGenVoice] = useState<string>("onyx");
   const [ccGenTaskId, setCcGenTaskId] = useState<string | null>(null);
   const [ccPlayingClipId, setCcPlayingClipId] = useState<string | null>(null);
@@ -53,7 +44,7 @@ export default function AdminAudioPage() {
   const {
     data: ccData,
     isLoading: collectedClipsLoading,
-  } = useCollectedClips(ccGenVoice, { enabled: showCollectedClips });
+  } = useCollectedClips(ccGenVoice, { enabled: showClipManagement });
   const collectedClips = ccData?.clips ?? [];
   const ccGeneratedFor = ccData?.generatedFor ?? {};
 
@@ -69,7 +60,12 @@ export default function AdminAudioPage() {
       const res = await fetch("/api/admin/audio");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setStatus({ activeVoice: data.activeVoice, voices: data.voices });
+      setStatus({
+        activeVoice: data.activeVoice,
+        voices: data.voices,
+        totalCollectedClips: data.totalCollectedClips ?? 0,
+        voiceClipCounts: data.voiceClipCounts ?? {},
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -119,46 +115,13 @@ export default function AdminAudioPage() {
     setVoiceChainDirty(true);
   };
 
-  const addToVoiceChain = (voiceName: string) => {
-    // Insert before browser-tts if it exists, otherwise append
-    const browserIdx = voiceChain.findIndex((v) => v.type === "browser-tts");
-    const entry: VoiceSource = { type: "pregenerated", name: voiceName };
-    if (browserIdx >= 0) {
-      const next = [...voiceChain];
-      next.splice(browserIdx, 0, entry);
-      setVoiceChain(next);
-    } else {
-      setVoiceChain((prev) => [...prev, entry]);
-    }
-    setVoiceChainDirty(true);
-  };
-
-  const toggleBrowserTts = () => {
-    const hasBrowser = voiceChain.some((v) => v.type === "browser-tts");
-    if (hasBrowser) {
-      setVoiceChain((prev) => prev.filter((v) => v.type !== "browser-tts"));
-    } else {
-      setVoiceChain((prev) => [...prev, { type: "browser-tts" }]);
-    }
+  const addToVoiceChain = (source: VoiceSource) => {
+    setVoiceChain((prev) => [...prev, source]);
     setVoiceChainDirty(true);
   };
 
   const isCcGenerating =
     ccTaskState?.status === "pending" || ccTaskState?.status === "running";
-
-  const handleSetActiveVoice = async (voice: string) => {
-    try {
-      const res = await fetch("/api/settings/audio-voice", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audioVoice: voice }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      await fetchStatus();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set voice");
-    }
-  };
 
   const handleRemoveVoice = async (voice: string) => {
     if (!confirm(`Remove all clips for voice "${voice}"?`)) return;
@@ -203,16 +166,15 @@ export default function AdminAudioPage() {
     audio.onerror = () => setCcPlayingClipId(null);
   };
 
-  // Invalidate collected clips query when cc task completes
+  // Invalidate collected clips query and refresh status when cc task completes
   useEffect(() => {
     if (ccTaskState?.status === "completed" || ccTaskState?.status === "failed") {
       queryClient.invalidateQueries({
         queryKey: collectedClipKeys.list(ccGenVoice),
       });
+      fetchStatus();
     }
-  }, [ccTaskState?.status, ccGenVoice, queryClient]);
-
-  const installedVoices = status ? Object.keys(status.voices).sort() : [];
+  }, [ccTaskState?.status, ccGenVoice, queryClient, fetchStatus]);
 
   return (
     <>
@@ -230,16 +192,54 @@ export default function AdminAudioPage() {
         })}
       >
         <div className={css({ maxWidth: "1200px", margin: "0 auto" })}>
-          <h1
-            className={css({
-              fontSize: "24px",
-              fontWeight: "600",
-              color: "#f0f6fc",
-              marginBottom: "24px",
-            })}
-          >
-            Audio Management
-          </h1>
+          <div className={css({ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" })}>
+            <h1
+              className={css({
+                fontSize: "24px",
+                fontWeight: "600",
+                color: "#f0f6fc",
+              })}
+            >
+              Audio Management
+            </h1>
+            <button
+              data-action="nuke-all-clips"
+              disabled={isCcGenerating}
+              onClick={async () => {
+                if (!confirm("Delete ALL generated mp3s AND collected clip records? This cannot be undone.")) return;
+                if (!confirm("Are you really sure? This removes every mp3 AND clears the database.")) return;
+                try {
+                  const res = await fetch("/api/admin/audio/voices", { method: "DELETE" });
+                  if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || "Failed to remove");
+                  }
+                  const data = await res.json();
+                  setError(null);
+                  await fetchStatus();
+                  queryClient.invalidateQueries({ queryKey: collectedClipKeys.list(ccGenVoice) });
+                  alert(`Removed ${data.removedDirs} voice director${data.removedDirs === 1 ? "y" : "ies"} and cleared all collected clips from database.`);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed to nuke clips");
+                }
+              }}
+              className={css({
+                fontSize: "12px",
+                backgroundColor: "transparent",
+                color: "#f85149",
+                border: "1px solid #f85149",
+                borderRadius: "6px",
+                padding: "4px 12px",
+                cursor: "pointer",
+                fontWeight: "600",
+                flexShrink: 0,
+                "&:hover": { backgroundColor: "#f8514922" },
+                "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
+              })}
+            >
+              Nuke All Clips + DB
+            </button>
+          </div>
 
           {error && (
             <div
@@ -343,16 +343,40 @@ export default function AdminAudioPage() {
                           <span className={css({ color: "#f0f6fc", fontWeight: "600", flex: 1 })}>
                             {source.type === "pregenerated" ? source.name : "Browser TTS"}
                           </span>
-                          <span
-                            className={css({
-                              fontSize: "11px",
-                              padding: "1px 6px",
-                              borderRadius: "8px",
-                              backgroundColor: source.type === "pregenerated" ? "#1f6feb33" : "#23863633",
-                              color: source.type === "pregenerated" ? "#58a6ff" : "#3fb950",
-                            })}
-                          >
-                            {source.type === "pregenerated" ? "pregenerated" : "browser"}
+                          <span className={css({ display: "flex", alignItems: "center", flexShrink: 0, fontSize: "11px" })}>
+                            {source.type === "pregenerated" ? (
+                              (() => {
+                                const meta = getVoiceMeta(source.name);
+                                const providerLabel = meta ? `${meta.provider.name} ${meta.model.name}` : "unknown";
+                                const formatLabel = meta?.model.format ?? "unknown";
+                                return (
+                              <>
+                                <span className={css({
+                                  padding: "2px 10px 2px 8px",
+                                  backgroundColor: "#1f6feb33",
+                                  color: "#58a6ff",
+                                  clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)",
+                                  borderRadius: "8px 0 0 8px",
+                                })}>
+                                  {providerLabel}
+                                </span>
+                                <span className={css({
+                                  padding: "2px 8px 2px 10px",
+                                  backgroundColor: "#8b949e1a",
+                                  color: "#8b949e",
+                                  clipPath: "polygon(6px 0, 100% 0, 100% 100%, 6px 100%, 0 50%)",
+                                  borderRadius: "0 8px 8px 0",
+                                })}>
+                                  {formatLabel} on disk
+                                </span>
+                              </>
+                                );
+                              })()
+                            ) : (
+                              <span className={css({ padding: "2px 8px", borderRadius: "8px", backgroundColor: "#23863633", color: "#3fb950" })}>
+                                Web Speech API
+                              </span>
+                            )}
                           </span>
                           <button
                             data-action="chain-move-up"
@@ -406,46 +430,189 @@ export default function AdminAudioPage() {
                     </div>
 
                     <div className={css({ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" })}>
-                      <select
-                        data-element="add-chain-voice"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            addToVoiceChain(e.target.value);
-                            e.target.value = "";
-                          }
-                        }}
-                        className={css({
-                          backgroundColor: "#0d1117",
-                          color: "#f0f6fc",
-                          border: "1px solid #30363d",
-                          borderRadius: "6px",
-                          padding: "6px 12px",
-                          fontSize: "13px",
-                        })}
-                      >
-                        <option value="">Add pregenerated voice...</option>
-                        {installedVoices
-                          .filter((v) => !voiceChain.some((vc) => vc.type === "pregenerated" && vc.name === v))
-                          .map((v) => (
-                            <option key={v} value={v}>{v}</option>
-                          ))}
-                      </select>
-                      <button
-                        data-action="toggle-browser-tts"
-                        onClick={toggleBrowserTts}
-                        className={css({
-                          fontSize: "12px",
-                          backgroundColor: voiceChain.some((v) => v.type === "browser-tts") ? "#f8514922" : "#23863633",
-                          color: voiceChain.some((v) => v.type === "browser-tts") ? "#f85149" : "#3fb950",
-                          border: "1px solid",
-                          borderColor: voiceChain.some((v) => v.type === "browser-tts") ? "#f85149" : "#3fb950",
-                          borderRadius: "6px",
-                          padding: "6px 12px",
-                          cursor: "pointer",
-                        })}
-                      >
-                        {voiceChain.some((v) => v.type === "browser-tts") ? "Remove Browser TTS" : "Add Browser TTS Fallback"}
-                      </button>
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            data-element="add-chain-voice"
+                            type="button"
+                            className={css({
+                              backgroundColor: "#0d1117",
+                              color: "#f0f6fc",
+                              border: "1px solid #30363d",
+                              borderRadius: "6px",
+                              padding: "6px 12px",
+                              fontSize: "13px",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              "&:hover": { borderColor: "#8b949e" },
+                            })}
+                          >
+                            Add voice...
+                            <span className={css({ color: "#8b949e", fontSize: "10px" })}>&#9662;</span>
+                          </button>
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content
+                            data-element="voice-dropdown-content"
+                            sideOffset={5}
+                            className={css({
+                              backgroundColor: "#161b22",
+                              border: "1px solid #30363d",
+                              borderRadius: "8px",
+                              padding: "4px",
+                              minWidth: "280px",
+                              maxHeight: "400px",
+                              overflowY: "auto",
+                              zIndex: Z_INDEX.DROPDOWN,
+                              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                            })}
+                          >
+                            {(() => {
+                              const hasBrowser = voiceChain.some((vc) => vc.type === "browser-tts");
+                              const chainPregenNames = new Set(
+                                voiceChain.filter((vc) => vc.type === "pregenerated").map((vc) => (vc as { type: "pregenerated"; name: string }).name)
+                              );
+                              const total = status?.totalCollectedClips ?? 0;
+
+                              // Build grouped provider sections, filtering out voices already in chain
+                              const providerGroups = VOICE_PROVIDERS.map((provider) => {
+                                const modelGroups = provider.models.map((model) => {
+                                  const available = model.voices.filter((v) => !chainPregenNames.has(v));
+                                  const sorted = [...available].sort((a, b) => {
+                                    const genA = status?.voiceClipCounts?.[a] ?? 0;
+                                    const genB = status?.voiceClipCounts?.[b] ?? 0;
+                                    const pctA = total > 0 ? genA / total : 0;
+                                    const pctB = total > 0 ? genB / total : 0;
+                                    return pctB - pctA;
+                                  });
+                                  return { model, voices: sorted };
+                                }).filter((g) => g.voices.length > 0);
+                                return { provider, modelGroups };
+                              }).filter((g) => g.modelGroups.length > 0);
+
+                              const hasAnyAvailable = providerGroups.length > 0 || !hasBrowser;
+                              if (!hasAnyAvailable) {
+                                return (
+                                  <DropdownMenu.Label className={css({ padding: "8px 12px", color: "#8b949e", fontSize: "13px", fontStyle: "italic" })}>
+                                    All voices added
+                                  </DropdownMenu.Label>
+                                );
+                              }
+
+                              const multipleProviders = VOICE_PROVIDERS.length > 1;
+                              const sectionSep = <DropdownMenu.Separator className={css({ height: "1px", backgroundColor: "#30363d", margin: "4px 0" })} />;
+
+                              const voiceItem = (v: string, format: string, isEmpty: boolean) => {
+                                const generated = status?.voiceClipCounts?.[v] ?? 0;
+                                const pct = total > 0 ? Math.round((generated / total) * 100) : 0;
+                                const barColor = pct >= 100 ? "#3fb950" : pct > 0 ? "#d29922" : "transparent";
+                                return (
+                                  <DropdownMenu.Item
+                                    key={v}
+                                    data-action={`add-voice-${v}`}
+                                    onSelect={() => addToVoiceChain({ type: "pregenerated", name: v })}
+                                    style={{ opacity: isEmpty ? 0.45 : 1 }}
+                                    className={css({
+                                      padding: "8px 12px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      outline: "none",
+                                      "&:hover": { backgroundColor: "#21262d" },
+                                      "&:focus": { backgroundColor: "#21262d" },
+                                    })}
+                                  >
+                                    <div className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" })}>
+                                      <span className={css({ display: "flex", alignItems: "center", gap: "6px" })}>
+                                        <span className={css({ color: isEmpty ? "#8b949e" : "#f0f6fc", fontWeight: "600", fontSize: "13px" })}>{v}</span>
+                                        <span className={css({ fontSize: "10px", padding: "0px 5px", borderRadius: "4px", backgroundColor: "#8b949e15", color: "#8b949e", fontFamily: "monospace" })}>
+                                          {format}
+                                        </span>
+                                      </span>
+                                      <span className={css({ color: "#8b949e", fontFamily: "monospace", fontSize: "12px" })}>
+                                        {generated === 0 ? "none" : `${generated} / ${total}`}
+                                      </span>
+                                    </div>
+                                    <div className={css({ height: "4px", backgroundColor: "#30363d", borderRadius: "2px", overflow: "hidden" })}>
+                                      {pct > 0 && (
+                                        <div
+                                          style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: barColor }}
+                                          className={css({ height: "100%", borderRadius: "2px", transition: "width 0.3s" })}
+                                        />
+                                      )}
+                                    </div>
+                                  </DropdownMenu.Item>
+                                );
+                              };
+
+                              const sections: React.ReactNode[] = [];
+
+                              // Browser TTS — always first (always healthy)
+                              if (!hasBrowser) {
+                                sections.push(
+                                  <DropdownMenu.Item
+                                    key="browser-tts"
+                                    data-action="add-voice-browser-tts"
+                                    onSelect={() => addToVoiceChain({ type: "browser-tts" })}
+                                    className={css({
+                                      padding: "8px 12px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      outline: "none",
+                                      "&:hover": { backgroundColor: "#21262d" },
+                                      "&:focus": { backgroundColor: "#21262d" },
+                                    })}
+                                  >
+                                    <div className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" })}>
+                                      <span className={css({ color: "#f0f6fc", fontWeight: "600", fontSize: "13px" })}>Browser TTS</span>
+                                      <span className={css({ fontSize: "11px", padding: "1px 6px", borderRadius: "8px", backgroundColor: "#23863633", color: "#3fb950" })}>
+                                        always available
+                                      </span>
+                                    </div>
+                                    <div className={css({ height: "4px", backgroundColor: "#30363d", borderRadius: "2px", overflow: "hidden" })}>
+                                      <div style={{ width: "100%" }} className={css({ height: "100%", borderRadius: "2px", backgroundColor: "#3fb950" })} />
+                                    </div>
+                                  </DropdownMenu.Item>
+                                );
+                              }
+
+                              // Provider groups
+                              for (const { provider, modelGroups } of providerGroups) {
+                                const multipleModels = modelGroups.length > 1;
+                                if (sections.length > 0) sections.push(<React.Fragment key={`sep-${provider.id}`}>{sectionSep}</React.Fragment>);
+
+                                if (multipleProviders || multipleModels) {
+                                  // Show provider group header when multiple providers or models
+                                  for (const { model, voices } of modelGroups) {
+                                    sections.push(
+                                      <React.Fragment key={`group-${provider.id}-${model.id}`}>
+                                        <DropdownMenu.Label className={css({ padding: "6px 12px 2px", color: "#8b949e", fontSize: "11px", fontWeight: "500" })}>
+                                          {provider.name} {model.name}
+                                        </DropdownMenu.Label>
+                                        {voices.map((v) => voiceItem(v, model.format, (status?.voiceClipCounts?.[v] ?? 0) === 0 && total === 0))}
+                                      </React.Fragment>
+                                    );
+                                  }
+                                } else {
+                                  // Single provider, single model: show inline header
+                                  const { model, voices } = modelGroups[0];
+                                  sections.push(
+                                    <React.Fragment key={`group-${provider.id}-${model.id}`}>
+                                      <DropdownMenu.Label className={css({ padding: "6px 12px 2px", color: "#8b949e", fontSize: "11px", fontWeight: "500" })}>
+                                        Voices by {provider.name} · {model.name}
+                                      </DropdownMenu.Label>
+                                      {voices.map((v) => voiceItem(v, model.format, (status?.voiceClipCounts?.[v] ?? 0) === 0 && total === 0))}
+                                    </React.Fragment>
+                                  );
+                                }
+                              }
+
+                              return <>{sections}</>;
+                            })()}
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
                     </div>
 
                     {voiceChainDirty && (
@@ -503,12 +670,12 @@ export default function AdminAudioPage() {
                     {showTtsTest ? "\u25B2" : "\u25BC"}
                   </span>
                 </button>
-                {showTtsTest && <TtsTestPanel />}
+                {showTtsTest && <TtsTestPanel voiceChain={voiceChain} />}
               </section>
 
-              {/* Collected Clips — collapsible */}
+              {/* Clip Management — collapsible */}
               <section
-                data-element="collected-clips"
+                data-element="clip-management"
                 className={css({
                   backgroundColor: "#161b22",
                   border: "1px solid #30363d",
@@ -517,8 +684,8 @@ export default function AdminAudioPage() {
                 })}
               >
                 <button
-                  data-action="toggle-collected-clips"
-                  onClick={() => setShowCollectedClips((p) => !p)}
+                  data-action="toggle-clip-management"
+                  onClick={() => setShowClipManagement((p) => !p)}
                   className={css({
                     width: "100%",
                     display: "flex",
@@ -532,18 +699,23 @@ export default function AdminAudioPage() {
                   })}
                 >
                   <span className={css({ fontSize: "15px", fontWeight: "600" })}>
-                    Collected Clips
+                    Clip Management
                   </span>
                   <span className={css({ display: "flex", alignItems: "center", gap: "8px" })}>
                     <span className={css({ color: "#8b949e", fontSize: "12px" })}>
-                      {collectedClips.length > 0 ? `${collectedClips.length} clips` : ""}
+                      {(() => {
+                        const generated = status?.voiceClipCounts?.[ccGenVoice] ?? 0;
+                        const total = status?.totalCollectedClips ?? 0;
+                        if (total === 0) return "";
+                        return `${total} clips \u00b7 viewing ${ccGenVoice} (${generated}/${total})`;
+                      })()}
                     </span>
                     <span className={css({ color: "#8b949e", fontSize: "12px" })}>
-                      {showCollectedClips ? "\u25B2" : "\u25BC"}
+                      {showClipManagement ? "\u25B2" : "\u25BC"}
                     </span>
                   </span>
                 </button>
-                {showCollectedClips && (
+                {showClipManagement && (
                   <div className={css({ padding: "0 16px 16px" })}>
                     <p className={css({ color: "#8b949e", fontSize: "13px", marginBottom: "12px" })}>
                       Clips collected from app usage. Generate mp3s for a voice, then add the voice to the chain above.
@@ -627,7 +799,88 @@ export default function AdminAudioPage() {
                       >
                         Refresh
                       </button>
+                      {/* Remove clips — only when voice has clips on disk and is NOT in voice chain */}
+                      {(() => {
+                        const hasClips = !!(status?.voices?.[ccGenVoice]);
+                        const inChain = voiceChain.some(
+                          (s) => s.type === "pregenerated" && s.name === ccGenVoice,
+                        );
+                        return hasClips && !inChain && !isCcGenerating ? (
+                          <button
+                            data-action="remove-voice-clips"
+                            onClick={() => handleRemoveVoice(ccGenVoice)}
+                            className={css({
+                              fontSize: "12px",
+                              background: "none",
+                              border: "none",
+                              color: "#f85149",
+                              cursor: "pointer",
+                              padding: "4px 8px",
+                              "&:hover": { textDecoration: "underline" },
+                            })}
+                          >
+                            Remove clips for &ldquo;{ccGenVoice}&rdquo;
+                          </button>
+                        ) : null;
+                      })()}
                     </div>
+
+                    {/* Voice Health Banner */}
+                    {(() => {
+                      const meta = getVoiceMeta(ccGenVoice);
+                      const generated = status?.voiceClipCounts?.[ccGenVoice] ?? 0;
+                      const total = status?.totalCollectedClips ?? 0;
+                      const pct = total > 0 ? Math.round((generated / total) * 100) : 0;
+                      const barColor = pct >= 100 ? "#3fb950" : pct > 0 ? "#d29922" : "#484f58";
+                      const chainIndex = voiceChain.findIndex(
+                        (s) => s.type === "pregenerated" && s.name === ccGenVoice,
+                      );
+                      const positionLabel =
+                        chainIndex >= 0
+                          ? `Position #${chainIndex + 1} in voice chain`
+                          : "Not in voice chain";
+                      return (
+                        <div
+                          data-element="voice-health-banner"
+                          className={css({
+                            backgroundColor: "#0d1117",
+                            border: "1px solid #30363d",
+                            borderRadius: "6px",
+                            padding: "12px",
+                            marginBottom: "12px",
+                          })}
+                        >
+                          <div className={css({ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" })}>
+                            <span className={css({ color: "#f0f6fc", fontSize: "13px", fontWeight: "600" })}>
+                              {ccGenVoice}
+                              {meta && (
+                                <span className={css({ color: "#8b949e", fontWeight: "400" })}>
+                                  {" "}&middot; {meta.provider.name} {meta.model.name} &middot; {meta.model.format}
+                                </span>
+                              )}
+                            </span>
+                            <span className={css({
+                              fontSize: "11px",
+                              color: chainIndex >= 0 ? "#58a6ff" : "#8b949e",
+                              fontStyle: chainIndex >= 0 ? "normal" : "italic",
+                            })}>
+                              {positionLabel}
+                            </span>
+                          </div>
+                          <div className={css({ display: "flex", alignItems: "center", gap: "8px" })}>
+                            <div className={css({ flex: 1, height: "6px", backgroundColor: "#30363d", borderRadius: "3px", overflow: "hidden" })}>
+                              <div
+                                style={{ width: `${Math.min(pct, 100)}%` }}
+                                className={css({ height: "100%", borderRadius: "3px", backgroundColor: barColor, transition: "width 0.3s" })}
+                              />
+                            </div>
+                            <span className={css({ color: "#8b949e", fontSize: "12px", fontFamily: "monospace", flexShrink: 0 })}>
+                              {generated} / {total} ({pct}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* CC generation progress */}
                     {ccTaskState && (
@@ -838,6 +1091,22 @@ export default function AdminAudioPage() {
                                   })}
                                 >
                                   {clip.id}
+                                  {isHashClipId(clip.id) && (
+                                    <span
+                                      data-element="hash-badge"
+                                      title="Content-addressed clip ID (auto-generated from text + tone)"
+                                      className={css({
+                                        marginLeft: "6px",
+                                        fontSize: "10px",
+                                        padding: "1px 5px",
+                                        borderRadius: "8px",
+                                        backgroundColor: "#8b949e22",
+                                        color: "#8b949e",
+                                      })}
+                                    >
+                                      hash
+                                    </span>
+                                  )}
                                 </td>
                                 <td
                                   className={css({
@@ -951,161 +1220,6 @@ export default function AdminAudioPage() {
                 )}
               </section>
 
-              {/* Voice Management Section — collapsible */}
-              <section
-                data-element="voice-management"
-                className={css({
-                  backgroundColor: "#161b22",
-                  border: "1px solid #30363d",
-                  borderRadius: "6px",
-                  marginBottom: "8px",
-                })}
-              >
-                <button
-                  data-action="toggle-voice-management"
-                  onClick={() => setShowVoiceManagement((p) => !p)}
-                  className={css({
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "12px 16px",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#f0f6fc",
-                  })}
-                >
-                  <span className={css({ fontSize: "15px", fontWeight: "600" })}>
-                    Voices
-                  </span>
-                  <span className={css({ display: "flex", alignItems: "center", gap: "8px" })}>
-                    <span className={css({ color: "#8b949e", fontSize: "12px" })}>
-                      {installedVoices.length} installed, active: {status.activeVoice}
-                    </span>
-                    <span className={css({ color: "#8b949e", fontSize: "12px" })}>
-                      {showVoiceManagement ? "\u25B2" : "\u25BC"}
-                    </span>
-                  </span>
-                </button>
-                {showVoiceManagement && (
-                  <div className={css({ padding: "0 16px 16px" })}>
-                    {/* Active voice indicator */}
-                    <div
-                      data-element="active-voice"
-                      className={css({
-                        marginBottom: "16px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      })}
-                    >
-                      <span className={css({ color: "#8b949e", fontSize: "14px" })}>
-                        Active voice:
-                      </span>
-                      <select
-                        value={status.activeVoice}
-                        onChange={(e) => handleSetActiveVoice(e.target.value)}
-                        disabled={installedVoices.length === 0}
-                        className={css({
-                          backgroundColor: "#0d1117",
-                          color: "#f0f6fc",
-                          border: "1px solid #30363d",
-                          borderRadius: "6px",
-                          padding: "6px 12px",
-                          fontSize: "14px",
-                        })}
-                      >
-                        {installedVoices.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Voice cards */}
-                    <div
-                      className={css({
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                      })}
-                    >
-                      {installedVoices.map((v) => {
-                        const isActive = v === status.activeVoice;
-                        return (
-                          <div
-                            key={v}
-                            data-element="voice-card"
-                            className={css({
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              backgroundColor: "#0d1117",
-                              border: "1px solid",
-                              borderColor: isActive ? "#58a6ff" : "#30363d",
-                              borderRadius: "6px",
-                              padding: "12px 16px",
-                            })}
-                          >
-                            <div
-                              className={css({
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                              })}
-                            >
-                              <span
-                                className={css({
-                                  fontWeight: "600",
-                                  color: "#f0f6fc",
-                                })}
-                              >
-                                {v}
-                              </span>
-                              {isActive && (
-                                <span
-                                  className={css({
-                                    fontSize: "11px",
-                                    backgroundColor: "#1f6feb33",
-                                    color: "#58a6ff",
-                                    padding: "2px 8px",
-                                    borderRadius: "12px",
-                                  })}
-                                >
-                                  active
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              data-action="remove-voice"
-                              onClick={() => handleRemoveVoice(v)}
-                              disabled={isActive}
-                              className={css({
-                                fontSize: "12px",
-                                backgroundColor: "transparent",
-                                color: "#f85149",
-                                border: "1px solid #f85149",
-                                borderRadius: "6px",
-                                padding: "4px 10px",
-                                cursor: "pointer",
-                                "&:hover": { backgroundColor: "#f8514922" },
-                                "&:disabled": {
-                                  opacity: 0.3,
-                                  cursor: "not-allowed",
-                                },
-                              })}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </section>
             </>
           )}
         </div>
