@@ -29,17 +29,29 @@ export async function mergeGuestIntoUser(
     )
   }
 
-  // Tables with user_id FK
+  // Helper for tables with unique constraint on user_id (one row per user).
+  // Delete the guest's row if the target user already has one; otherwise re-parent.
+  async function reparentOrDrop(table: string, column: string) {
+    await db.run(
+      sql`DELETE FROM ${sql.identifier(table)} WHERE ${sql.identifier(column)} = ${sourceUserId} AND EXISTS (SELECT 1 FROM ${sql.identifier(table)} AS t2 WHERE t2.${sql.identifier(column)} = ${targetUserId})`
+    )
+    await reparent(table, column)
+  }
+
+  // Tables with user_id FK (multi-row, no unique constraint on user_id)
   await reparent('players', 'user_id')
-  await reparent('abacus_settings', 'user_id')
-  await reparent('scanner_settings', 'user_id')
-  await reparent('user_stats', 'user_id')
   await reparent('arcade_sessions', 'user_id')
   await reparent('custom_skills', 'user_id')
   await reparent('mcp_api_keys', 'user_id')
   await reparent('teacher_flowcharts', 'user_id')
   await reparent('skill_customizations', 'user_id')
   await reparent('workshop_sessions', 'user_id')
+
+  // Tables with unique constraint on user_id (one settings row per user)
+  // Prefer the target user's settings; drop the guest's if both exist
+  await reparentOrDrop('abacus_settings', 'user_id')
+  await reparentOrDrop('scanner_settings', 'user_id')
+  await reparentOrDrop('user_stats', 'user_id')
 
   // Tables with differently named FK columns
   await reparent('classrooms', 'teacher_id')
