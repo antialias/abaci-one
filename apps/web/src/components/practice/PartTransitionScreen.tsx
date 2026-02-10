@@ -17,6 +17,7 @@ import {
   requiresAbacusPutAway,
   requiresAbacusPickUp,
 } from './partTransitionMessages'
+import { usePartTransitionAudio } from './hooks/usePartTransitionAudio'
 
 // ============================================================================
 // Constants
@@ -111,6 +112,16 @@ export function PartTransitionScreen({
   // Check if abacus action is needed
   const showAbacusPutAway = requiresAbacusPutAway(previousPartType, nextPartType)
   const showAbacusPickUp = requiresAbacusPickUp(previousPartType, nextPartType)
+
+  // Compute abacus action text for audio narration
+  const abacusActionText = showAbacusPutAway
+    ? 'Put your abacus away'
+    : showAbacusPickUp
+      ? 'Grab your abacus'
+      : null
+
+  // Speak the transition message when screen becomes visible
+  usePartTransitionAudio({ isVisible, message, abacusAction: abacusActionText })
 
   // Handle skip
   const handleSkip = useCallback(() => {
