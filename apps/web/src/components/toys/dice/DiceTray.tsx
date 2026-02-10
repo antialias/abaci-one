@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { InteractiveDice } from '@/components/ui/InteractiveDice'
 import { useTheme } from '@/contexts/ThemeContext'
 import { COLOR_KEYS, DICE_COLORS, getNextColor } from './diceColors'
+import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 
 interface DieState {
   id: string
@@ -27,6 +28,7 @@ export function DiceTray() {
 
   const [rollTrigger, setRollTrigger] = useState(0)
   const [hoveredDie, setHoveredDie] = useState<string | null>(null)
+  const [perspective, setPerspective] = useState(250)
 
   const sum = useMemo(
     () => dice.reduce((acc, d) => acc + (d.value ?? 0), 0),
@@ -136,6 +138,7 @@ export function DiceTray() {
                 onRolledValue={(value) => handleRolledValue(die.id, value)}
                 rollTrigger={rollTrigger}
                 title={`Roll ${die.colorKey} die`}
+                perspective={perspective}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -257,6 +260,10 @@ export function DiceTray() {
           )}
         </div>
       </div>
+
+      <ToyDebugPanel title="Dice">
+        <DebugSlider label="Perspective" value={perspective} min={50} max={800} step={10} onChange={setPerspective} />
+      </ToyDebugPanel>
     </div>
   )
 }

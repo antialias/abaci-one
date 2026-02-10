@@ -72,6 +72,7 @@ function DiceIcon({
   isDark,
   size = 22,
   colorScheme,
+  perspective = 100,
 }: {
   className?: string
   rotateX: number
@@ -80,6 +81,7 @@ function DiceIcon({
   isDark: boolean
   size?: number
   colorScheme?: DiceColorScheme
+  perspective?: number
 }) {
   const halfSize = size / 2
 
@@ -143,7 +145,7 @@ function DiceIcon({
       style={{
         width: size,
         height: size,
-        perspective: 100,
+        perspective,
         perspectiveOrigin: 'center',
       }}
     >
@@ -237,6 +239,8 @@ export interface InteractiveDiceProps {
   onRolledValue?: (value: number) => void
   /** Increment to trigger a roll programmatically (e.g. for "Roll All") */
   rollTrigger?: number
+  /** CSS perspective value in px for 3D depth (default: 100) */
+  perspective?: number
 }
 
 /**
@@ -262,6 +266,7 @@ export function InteractiveDice({
   colorScheme,
   onRolledValue,
   rollTrigger,
+  perspective = 100,
 }: InteractiveDiceProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -823,6 +828,7 @@ export function InteractiveDice({
             isDark={isDark}
             size={size}
             colorScheme={colorScheme}
+            perspective={perspective}
           />
         </div>
       </button>
@@ -853,6 +859,7 @@ export function InteractiveDice({
               isDark={isDark}
               size={size}
               colorScheme={colorScheme}
+              perspective={perspective}
             />
           </div>,
           document.body

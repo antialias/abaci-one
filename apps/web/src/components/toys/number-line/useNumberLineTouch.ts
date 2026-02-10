@@ -6,11 +6,14 @@ interface UseNumberLineTouchOptions {
   stateRef: React.MutableRefObject<NumberLineState>
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onStateChange: () => void
+  /** Called with the instantaneous zoom velocity (log-ratio of PPU change). Positive = zoom in. */
+  onZoomVelocity?: (velocity: number) => void
 }
 
-// Zoom limits
+// Zoom limits — 1e14 allows viewing down to ~femto-scale (power -15)
+// while staying well within float64's ~15 significant digits
 const MIN_PIXELS_PER_UNIT = 0.001
-const MAX_PIXELS_PER_UNIT = 1e8
+const MAX_PIXELS_PER_UNIT = 1e14
 
 function clampPixelsPerUnit(ppu: number): number {
   return Math.max(MIN_PIXELS_PER_UNIT, Math.min(MAX_PIXELS_PER_UNIT, ppu))
@@ -22,7 +25,7 @@ function clampPixelsPerUnit(ppu: number): number {
  *
  * All math uses absolute anchor-based computations (not deltas) to prevent drift.
  */
-export function useNumberLineTouch({ stateRef, canvasRef, onStateChange }: UseNumberLineTouchOptions) {
+export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity }: UseNumberLineTouchOptions) {
   // Anchor state for single-finger drag / mouse drag
   const dragAnchorRef = useRef<number | null>(null)
 
@@ -95,6 +98,8 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange }: UseNu
         const screen1 = touch1.clientX - rect.left
         const screen2 = touch2.clientX - rect.left
 
+        const oldPPU = state.pixelsPerUnit
+
         // Edge case: anchors too close together
         if (Math.abs(n1 - n2) < 1e-12) {
           // Treat as single-finger drag using midpoint
@@ -110,6 +115,11 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange }: UseNu
 
         stateRef.current = state
         onStateChange()
+
+        // Report zoom velocity for pinch
+        if (state.pixelsPerUnit !== oldPPU) {
+          onZoomVelocity?.(Math.log(state.pixelsPerUnit / oldPPU))
+        }
       } else if (e.touches.length === 1 && dragAnchorRef.current !== null) {
         // Single finger drag
         const x = e.touches[0].clientX - rect.left
@@ -186,14 +196,18 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange }: UseNu
       const anchorNumber = screenXToNumber(x, state.center, state.pixelsPerUnit, canvasWidth)
 
       // Zoom factor: positive deltaY = scroll down = zoom out
+      const oldPPU = state.pixelsPerUnit
       const zoomFactor = Math.pow(1.001, -e.deltaY)
-      const newPPU = clampPixelsPerUnit(state.pixelsPerUnit * zoomFactor)
+      const newPPU = clampPixelsPerUnit(oldPPU * zoomFactor)
       state.pixelsPerUnit = newPPU
 
       // Re-center so anchorNumber stays under the cursor
       state.center = anchorNumber - (x - canvasWidth / 2) / newPPU
       stateRef.current = state
       onStateChange()
+
+      // Report zoom velocity as log-ratio (positive = zooming in)
+      onZoomVelocity?.(Math.log(newPPU / oldPPU))
     }
 
     // Attach listeners
@@ -219,5 +233,5 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange }: UseNu
       window.removeEventListener('mouseup', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
     }
-  }, [canvasRef, stateRef, onStateChange, getCanvasWidth, getCanvasRect])
+  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, getCanvasWidth, getCanvasRect])
 }

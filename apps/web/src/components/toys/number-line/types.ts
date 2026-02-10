@@ -14,4 +14,18 @@ export interface TickMark {
   power: number
   /** Visual class determining opacity, height, and label style */
   tickClass: TickClass
+  /** Smooth opacity for fading labels/ticks (0-1) */
+  opacity: number
+}
+
+export interface TickThresholds {
+  /** Max ticks to be classified as "anchor" (default: 3) */
+  anchorMax: number
+  /** Max ticks to be classified as "medium" (default: 13) */
+  mediumMax: number
+}
+
+export const DEFAULT_TICK_THRESHOLDS: TickThresholds = {
+  anchorMax: 9,
+  mediumMax: 23,
 }

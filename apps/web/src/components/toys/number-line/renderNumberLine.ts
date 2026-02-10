@@ -1,4 +1,5 @@
-import type { NumberLineState, TickMark } from './types'
+import type { NumberLineState, TickMark, TickThresholds } from './types'
+import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { computeTickMarks, numberToScreenX } from './numberLineTicks'
 
 interface RenderColors {
@@ -62,14 +63,17 @@ function getTickColor(tickClass: TickMark['tickClass'], colors: RenderColors): s
   }
 }
 
-/** Format a number for display as a tick label */
-function formatTickLabel(value: number): string {
+/** Format a number for display as a tick label, using the tick's power for precision */
+function formatTickLabel(value: number, power: number): string {
   // Use scientific notation for very large or very small numbers
   if (value !== 0 && (Math.abs(value) >= 1e7 || Math.abs(value) < 1e-4)) {
-    return value.toExponential()
+    // Show enough significant digits based on power
+    const sigFigs = Math.max(1, Math.min(15, -power + 1))
+    return value.toExponential(Math.min(sigFigs, 6))
   }
-  // Use locale formatting for normal numbers
-  return value.toLocaleString(undefined, { maximumFractionDigits: 10 })
+  // For normal numbers, show enough fraction digits for the tick's power
+  const fractionDigits = Math.max(0, -power)
+  return value.toLocaleString(undefined, { maximumFractionDigits: Math.min(fractionDigits, 20) })
 }
 
 /**
@@ -81,13 +85,32 @@ export function renderNumberLine(
   state: NumberLineState,
   cssWidth: number,
   cssHeight: number,
-  isDark: boolean
+  isDark: boolean,
+  thresholds: TickThresholds = DEFAULT_TICK_THRESHOLDS,
+  zoomVelocity = 0
 ): void {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
 
   // Clear
   ctx.clearRect(0, 0, cssWidth, cssHeight)
+
+  // Zoom velocity background wash
+  if (Math.abs(zoomVelocity) > 0.001) {
+    const intensity = Math.min(Math.abs(zoomVelocity) * 3, 0.35)
+    // Zoom in → cool indigo/cyan, zoom out → warm amber/coral
+    const hue = zoomVelocity > 0 ? 220 : 25
+    const sat = 80
+    const lum = isDark ? 30 : 70
+    const gradient = ctx.createRadialGradient(
+      cssWidth / 2, centerY, 0,
+      cssWidth / 2, centerY, cssWidth * 0.7
+    )
+    gradient.addColorStop(0, `hsla(${hue}, ${sat}%, ${lum}%, ${intensity})`)
+    gradient.addColorStop(1, `hsla(${hue}, ${sat}%, ${lum}%, 0)`)
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, cssWidth, cssHeight)
+  }
 
   // Draw horizontal axis line
   ctx.beginPath()
@@ -98,40 +121,107 @@ export function renderNumberLine(
   ctx.stroke()
 
   // Compute ticks
-  const ticks = computeTickMarks(state, cssWidth)
+  const ticks = computeTickMarks(state, cssWidth, thresholds)
 
-  // Draw ticks
-  for (const tick of ticks) {
-    const x = numberToScreenX(tick.value, state.center, state.pixelsPerUnit, cssWidth)
+  // Pre-compute screen positions
+  const ticksWithX = ticks.map((tick) => ({
+    tick,
+    x: numberToScreenX(tick.value, state.center, state.pixelsPerUnit, cssWidth),
+  }))
 
-    // Skip ticks outside visible area (with small margin for labels)
+  // Compute per-power label rotation angle.
+  // When labels fit horizontally: angle = 0. As they get more crowded the angle
+  // increases smoothly.  At angle θ the horizontal footprint is labelWidth·cos(θ),
+  // so the exact no-overlap angle is acos(spacing / labelWidth).
+  const LABEL_PAD = 6
+  const MAX_LABEL_ANGLE = Math.PI / 3 // cap at 60°
+  const powerAngle = new Map<number, number>()
+
+  const powerSpacingPx = new Map<number, number>()
+  for (const { tick } of ticksWithX) {
+    if (!powerSpacingPx.has(tick.power)) {
+      const spacing = Math.pow(10, tick.power)
+      powerSpacingPx.set(tick.power, spacing * state.pixelsPerUnit)
+    }
+  }
+
+  // Measure a representative label for each power to compute the needed angle
+  const measuredPowers = new Set<number>()
+  for (const { tick } of ticksWithX) {
+    if (measuredPowers.has(tick.power)) continue
+    if (tick.tickClass === 'fine' && tick.opacity <= 0) continue
+    measuredPowers.add(tick.power)
+
+    const fontSize = tick.tickClass === 'anchor' ? 13 : 11
+    const fontWeight = tick.tickClass === 'anchor' ? '600' : '400'
+    ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+
+    const label = formatTickLabel(tick.value, tick.power)
+    const labelWidth = ctx.measureText(label).width
+    const spacingPx = powerSpacingPx.get(tick.power) ?? Infinity
+
+    // ratio < 1 means labels overlap horizontally
+    const ratio = Math.max(0, spacingPx - LABEL_PAD) / labelWidth
+    if (ratio >= 1) {
+      powerAngle.set(tick.power, 0)
+    } else {
+      // acos(ratio) gives the exact angle where labels just fit
+      powerAngle.set(tick.power, Math.min(Math.acos(ratio), MAX_LABEL_ANGLE))
+    }
+  }
+
+  // Pass 1: tick lines
+  for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
 
     const height = getTickHeight(tick.tickClass, cssHeight)
     const lineWidth = getTickLineWidth(tick.tickClass)
     const color = getTickColor(tick.tickClass, colors)
 
-    // Draw tick line
+    ctx.globalAlpha = tick.opacity
     ctx.beginPath()
     ctx.moveTo(x, centerY - height)
     ctx.lineTo(x, centerY + height)
     ctx.strokeStyle = color
     ctx.lineWidth = lineWidth
     ctx.stroke()
+    ctx.globalAlpha = 1
+  }
 
-    // Draw label for anchor and medium ticks
-    if (tick.tickClass !== 'fine') {
-      const label = formatTickLabel(tick.value)
-      const fontSize = tick.tickClass === 'anchor' ? 13 : 11
-      const fontWeight = tick.tickClass === 'anchor' ? '600' : '400'
-      const labelColor =
-        tick.tickClass === 'anchor' ? colors.labelAnchor : colors.labelMedium
+  // Pass 2: labels — angle and x-offset both interpolate smoothly.
+  // At angle 0 the label is centered (x offset = -width/2).
+  // At max angle the label is left-aligned at the tick (x offset = 0).
+  for (const { tick, x } of ticksWithX) {
+    if (x < -50 || x > cssWidth + 50) continue
+    if (tick.tickClass === 'fine' && tick.opacity <= 0) continue
 
-      ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-      ctx.fillStyle = labelColor
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.fillText(label, x, centerY + height + 4)
-    }
+    const height = getTickHeight(tick.tickClass, cssHeight)
+    const label = formatTickLabel(tick.value, tick.power)
+    const fontSize = tick.tickClass === 'anchor' ? 13 : 11
+    const fontWeight = tick.tickClass === 'anchor' ? '600' : '400'
+    const labelColor =
+      tick.tickClass === 'anchor' ? colors.labelAnchor : colors.labelMedium
+
+    ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    ctx.globalAlpha = tick.opacity
+    ctx.fillStyle = labelColor
+
+    const labelY = centerY + height + 4
+    const angle = powerAngle.get(tick.power) ?? 0
+
+    // t: 0 = fully horizontal/centered, 1 = fully rotated/left-aligned
+    const t = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
+    const labelWidth = ctx.measureText(label).width
+    const xOffset = -labelWidth / 2 * (1 - t)
+
+    ctx.save()
+    ctx.translate(x, labelY)
+    ctx.rotate(angle)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    ctx.fillText(label, xOffset, 0)
+    ctx.restore()
+
+    ctx.globalAlpha = 1
   }
 }
