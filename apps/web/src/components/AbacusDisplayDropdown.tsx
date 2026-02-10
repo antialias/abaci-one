@@ -4,7 +4,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Label from '@radix-ui/react-label'
 import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
-import { type BeadShape, type ColorScheme, useAbacusDisplay } from '@soroban/abacus-react'
+import { AbacusStatic, type BeadShape, type ColorScheme, useAbacusDisplay } from '@soroban/abacus-react'
 import { useState } from 'react'
 import { css } from '../../styled-system/css'
 import { hstack, stack } from '../../styled-system/patterns'
@@ -15,6 +15,7 @@ import { useAbacusSettings, useUpdateAbacusSettings } from '../hooks/useAbacusSe
 interface AbacusDisplayDropdownProps {
   isFullscreen?: boolean
   onOpenChange?: (open: boolean) => void
+  triggerStyle?: React.CSSProperties
 }
 
 /**
@@ -284,8 +285,11 @@ export function AbacusStylePanel({
 export function AbacusDisplayDropdown({
   isFullscreen = false,
   onOpenChange: onOpenChangeProp,
+  triggerStyle,
 }: AbacusDisplayDropdownProps) {
   const [open, setOpen] = useState(false)
+  const { config } = useAbacusDisplay()
+  const [day] = useState(() => new Date().getDate())
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -300,6 +304,7 @@ export function AbacusDisplayDropdown({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
+          style={triggerStyle}
           className={css({
             display: 'flex',
             alignItems: 'center',
@@ -337,7 +342,32 @@ export function AbacusDisplayDropdown({
             },
           })}
         >
-          <span className={css({ fontSize: 'lg' })}>🧮</span>
+          <div
+            className={css({
+              width: '20px',
+              height: '20px',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '& svg': {
+                width: '100%',
+                height: '100%',
+              },
+            })}
+          >
+            <AbacusStatic
+              value={day}
+              columns={2}
+              beadShape={config.beadShape === 'custom' ? 'diamond' : config.beadShape}
+              colorScheme={config.colorScheme}
+              hideInactiveBeads={true}
+              showNumbers={false}
+              frameVisible={true}
+              scaleFactor={1.8}
+              cropToActiveBeads={{ padding: { top: 8, bottom: 2, left: 5, right: 5 } }}
+            />
+          </div>
         </button>
       </DropdownMenu.Trigger>
 
