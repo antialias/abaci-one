@@ -1,6 +1,7 @@
 'use client'
 
-import { Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { SeedStudentsSection } from '@/components/debug/SeedStudentsSection'
@@ -70,6 +71,23 @@ export default function DebugPracticePage() {
       >
         <div className={css({ maxWidth: '600px', margin: '0 auto' })}>
           <header className={css({ marginBottom: '2rem' })}>
+            <Link
+              href="/debug"
+              data-action="back-to-debug-hub"
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                textDecoration: 'none',
+                marginBottom: '0.75rem',
+                _hover: { color: isDark ? 'gray.200' : 'gray.700' },
+              })}
+            >
+              <ArrowLeft size={14} />
+              Debug Hub
+            </Link>
             <h1
               className={css({
                 fontSize: '1.75rem',

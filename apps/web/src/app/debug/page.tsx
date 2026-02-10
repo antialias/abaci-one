@@ -1,6 +1,6 @@
 'use client'
 
-import { Bug, Cable, Camera, Eye, Gamepad2, TestTube, Wifi } from 'lucide-react'
+import { Bug, Cable, Camera, Eye, Gamepad2, GraduationCap, TestTube, Volume2, Wifi } from 'lucide-react'
 import Link from 'next/link'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -28,6 +28,12 @@ const DEBUG_SECTIONS: DebugSection[] = [
         description: 'Test WebSocket connections, join rooms, send events',
         icon: <Cable size={20} />,
       },
+      {
+        href: '/admin/tts-lab',
+        title: 'TTS Lab',
+        description: 'Test and preview text-to-speech audio generation',
+        icon: <Volume2 size={20} />,
+      },
     ],
   },
   {
@@ -44,6 +50,17 @@ const DEBUG_SECTIONS: DebugSection[] = [
         title: 'Static Abacus Test',
         description: 'Test static abacus rendering',
         icon: <TestTube size={20} />,
+      },
+    ],
+  },
+  {
+    title: 'Practice',
+    links: [
+      {
+        href: '/debug/practice',
+        title: 'Practice Debug',
+        description: 'Create debug sessions with presets (game break test, etc.)',
+        icon: <GraduationCap size={20} />,
       },
     ],
   },
@@ -67,12 +84,6 @@ const DEBUG_SECTIONS: DebugSection[] = [
         title: 'Guard Test',
         description: 'Test route guards and authentication',
         icon: <TestTube size={20} />,
-      },
-      {
-        href: '/debug/practice',
-        title: 'Practice Debug',
-        description: 'Create debug sessions with presets (game break test, etc.)',
-        icon: <Gamepad2 size={20} />,
       },
     ],
   },
