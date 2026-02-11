@@ -16,7 +16,9 @@
         "noLabelWithoutControl": "warn",
         "noStaticElementInteractions": "off",
         "useKeyWithClickEvents": "warn",
-        "useSemanticElements": "warn"
+        "useSemanticElements": "warn",
+        "noAutofocus": "warn",
+        "useMediaCaption": "warn"
       },
       "suspicious": {
         "noExplicitAny": "off",
