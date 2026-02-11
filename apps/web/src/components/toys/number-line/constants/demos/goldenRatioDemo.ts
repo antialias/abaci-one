@@ -157,6 +157,50 @@ function computeStageBounds(): StageBounds[] {
 
 const STAGE_BOUNDS = computeStageBounds()
 
+// --- Pre-computed frame snapshots ---
+// At each step completion, the bounding box is transformed to number-line
+// coordinates and frozen. These static frames show the convergence.
+
+type NLCorners = [[number, number], [number, number], [number, number], [number, number]]
+
+function computeFrameSnapshots(): NLCorners[] {
+  const snapshots: NLCorners[] = []
+
+  for (let i = 0; i < NUM_LEVELS; i++) {
+    const sub = SUBDIVISIONS[NUM_LEVELS - 1 - i]
+    const bb = STAGE_BOUNDS[NUM_LEVELS - 1 - i]
+
+    // Arm parameters at step i completion (stepT = 1)
+    const angle = sub.arcStartAngle
+    const tX = sub.arcCx + sub.side * Math.cos(angle)
+    const tY = sub.arcCy + sub.side * Math.sin(angle)
+    const rot = Math.PI - angle
+    const cR = Math.cos(rot)
+    const sR = Math.sin(rot)
+    const sc = 1 / sub.side
+
+    const toNL = (x: number, y: number): [number, number] => {
+      const dx = x - tX
+      const dy = y - tY
+      return [(dx * cR - dy * sR) * sc, (dx * sR + dy * cR) * sc]
+    }
+
+    snapshots.push([
+      toNL(bb.minX, bb.minY),
+      toNL(bb.maxX, bb.minY),
+      toNL(bb.maxX, bb.maxY),
+      toNL(bb.minX, bb.maxY),
+    ])
+  }
+
+  return snapshots
+}
+
+const FRAME_SNAPSHOTS = computeFrameSnapshots()
+
+/** Number of steps before a frame fully fades out */
+const FRAME_FADE_STEPS = 4
+
 // --- Animation timing ---
 
 /** Fraction of revealProgress for compass sweeps; remainder for rectangle fade. */
@@ -397,34 +441,34 @@ export function renderGoldenRatioOverlay(
     ctx.stroke()
   }
 
-  // --- Outer rectangle + φ label fade in after construction ---
-  if (revealProgress > SWEEP_PHASE) {
-    const bb = STAGE_BOUNDS[0]
-    const rectFade = Math.min(1, (revealProgress - SWEEP_PHASE) / (1 - SWEEP_PHASE))
-    ctx.globalAlpha = opacity * rectFade
+  // --- Frame snapshots: static bounding boxes left behind at each step ---
+  // Each completed step leaves a frozen frame in NL coordinates.
+  // Newer frames are opaque; older ones progressively fade out.
+  // The most recently completed frame "flashes" briefly.
+  for (let i = 0; i < animStep && i < NUM_LEVELS; i++) {
+    const age = (animStep - 1) - i // 0 = most recent, 1 = one back, ...
+    if (age >= FRAME_FADE_STEPS) continue
 
-    // Draw rectangle as a polygon (in current rotated frame)
-    const [c0x, c0y] = subToScreen(bb.minX, bb.minY)
-    const [c1x, c1y] = subToScreen(bb.maxX, bb.minY)
-    const [c2x, c2y] = subToScreen(bb.maxX, bb.maxY)
-    const [c3x, c3y] = subToScreen(bb.minX, bb.maxY)
+    // Base opacity fades with age
+    let frameAlpha = 1 - age / FRAME_FADE_STEPS
 
+    // Flash: most recently completed frame starts bright and settles
+    if (age === 0 && animStep < NUM_LEVELS) {
+      const flash = Math.max(0, 1 - stepT * 3) // fades in first ~1/3 of next step
+      frameAlpha = Math.min(1, frameAlpha + flash * 0.5)
+    }
+
+    const corners = FRAME_SNAPSHOTS[i]
+    ctx.globalAlpha = opacity * frameAlpha
     ctx.strokeStyle = color
-    ctx.lineWidth = 2
+    ctx.lineWidth = age === 0 && stepT < 0.2 ? 2.5 : 1
     ctx.beginPath()
-    ctx.moveTo(c0x, c0y)
-    ctx.lineTo(c1x, c1y)
-    ctx.lineTo(c2x, c2y)
-    ctx.lineTo(c3x, c3y)
+    ctx.moveTo(toX(corners[0][0]), toY(corners[0][1]))
+    ctx.lineTo(toX(corners[1][0]), toY(corners[1][1]))
+    ctx.lineTo(toX(corners[2][0]), toY(corners[2][1]))
+    ctx.lineTo(toX(corners[3][0]), toY(corners[3][1]))
     ctx.closePath()
     ctx.stroke()
-
-    ctx.fillStyle = color
-    ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'bottom'
-    const [lx, ly] = subToScreen(bb.maxX, bb.minY)
-    ctx.fillText('φ', lx, ly - 6)
   }
 
   ctx.globalAlpha = 1
