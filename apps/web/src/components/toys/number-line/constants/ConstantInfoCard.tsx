@@ -68,7 +68,10 @@ export function ConstantInfoCard({
   const spaceAbove = centerY
   const spaceBelow = containerHeight - centerY
   const placeAbove = spaceAbove > spaceBelow
-  const top = placeAbove ? Math.max(CARD_PAD, centerY - 140) : centerY + 20
+  const rawTop = placeAbove ? Math.max(CARD_PAD, centerY - 140) : centerY + 20
+  // Clamp so the card never extends past the container bottom.
+  // Reserve at least 200px for the card so the Explore button is visible.
+  const top = Math.min(rawTop, containerHeight - CARD_PAD - 200)
 
   const hasImages = !!(constant.metaphorImage && constant.mathImage)
   const [imageTab, setImageTab] = useState<'metaphor' | 'math'>('metaphor')
@@ -87,7 +90,7 @@ export function ConstantInfoCard({
         left: clampedX,
         top,
         width: CARD_WIDTH,
-        maxHeight: containerHeight - CARD_PAD * 2,
+        maxHeight: containerHeight - top - CARD_PAD,
         overflowY: 'auto',
         padding: '12px 14px',
         borderRadius: 10,
@@ -208,13 +211,14 @@ export function ConstantInfoCard({
           }}
           style={{
             marginTop: 8,
-            padding: '6px 12px',
-            fontSize: 12,
+            padding: '10px 12px',
+            minHeight: 44,
+            fontSize: 13,
             fontWeight: 600,
             color: isDark ? '#1f2937' : '#fff',
             backgroundColor: symbolColor,
             border: 'none',
-            borderRadius: 6,
+            borderRadius: 8,
             cursor: 'pointer',
             width: '100%',
           }}
