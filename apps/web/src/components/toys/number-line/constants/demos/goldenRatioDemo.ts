@@ -247,17 +247,51 @@ export function renderGoldenRatioOverlay(
   // steps in inside-out order.
   const sweepProgress = Math.min(1, revealProgress / SWEEP_PHASE)
 
-  // Find current animation step.
+  // Find current animation step and split into sub-phases.
   // Step i (inside-out) reveals SUBDIVISIONS[N-1-i].
+  // For steps after the first, each step has three phases:
+  //   1. Pivot transition (visual rotation) — diagram re-orients
+  //   2. Scale transition — diagram resizes to new arm length
+  //   3. Arc sweep — compass arm draws the new arc
+
+  /** Fraction of step time for pivot (rotation) transition */
+  const PIVOT_FRAC = 0.2
+  /** Fraction of step time for scale transition */
+  const SCALE_FRAC = 0.2
+
   let animStep = NUM_LEVELS // all done
-  let stepT = 1
+  let pivotT = 1   // 0→1 pivot transition progress
+  let scaleT = 1   // 0→1 scale transition progress
+  let sweepT = 0   // 0→1 arc sweep progress
 
   for (let i = 0; i < NUM_LEVELS; i++) {
     if (sweepProgress < STEP_TIMINGS[i].end) {
       animStep = i
-      const raw = (sweepProgress - STEP_TIMINGS[i].start) /
+      const raw = Math.max(0, Math.min(1,
+        (sweepProgress - STEP_TIMINGS[i].start) /
         (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
-      stepT = easeOutCubic(Math.max(0, Math.min(1, raw)))
+      ))
+
+      if (i === 0) {
+        // First step: no transition, go straight to sweep
+        pivotT = 1
+        scaleT = 1
+        sweepT = easeOutCubic(raw)
+      } else if (raw < PIVOT_FRAC) {
+        pivotT = easeOutCubic(raw / PIVOT_FRAC)
+        scaleT = 0
+        sweepT = 0
+      } else if (raw < PIVOT_FRAC + SCALE_FRAC) {
+        pivotT = 1
+        scaleT = easeOutCubic((raw - PIVOT_FRAC) / SCALE_FRAC)
+        sweepT = 0
+      } else {
+        pivotT = 1
+        scaleT = 1
+        sweepT = easeOutCubic(
+          (raw - PIVOT_FRAC - SCALE_FRAC) / (1 - PIVOT_FRAC - SCALE_FRAC)
+        )
+      }
       break
     }
   }
@@ -266,17 +300,27 @@ export function renderGoldenRatioOverlay(
   // During sweeps: pivot (arc center) at 1, tip at 0, arm horizontal.
   // Rotation = π - armAngle (makes arm point left from 1 toward 0).
   // Scale = 1/armSide (arm length → 1 NL unit).
-  // After sweeps: blends to canonical (no rotation, [0, φ] scale).
+  // Between arcs: pivot and scale transition smoothly (rotate first, then scale).
+  // After all sweeps: blends to canonical (no rotation, [0, φ] scale).
 
   let armPivotX: number, armPivotY: number, armAngle: number, armSide: number
 
   if (animStep < NUM_LEVELS) {
-    const sub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
-    armPivotX = sub.arcCx
-    armPivotY = sub.arcCy
-    armSide = sub.side
-    // Reversed sweep: endAngle → startAngle
-    armAngle = sub.arcStartAngle + ARC_SWEEP - ARC_SWEEP * stepT
+    const currSub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
+    const prevSub = animStep > 0
+      ? SUBDIVISIONS[NUM_LEVELS - animStep]
+      : currSub
+
+    // Pivot smoothly transitions from prev to current (rotation phase)
+    armPivotX = lerp(prevSub.arcCx, currSub.arcCx, pivotT)
+    armPivotY = lerp(prevSub.arcCy, currSub.arcCy, pivotT)
+
+    // Scale smoothly transitions after pivot is done (scale phase)
+    armSide = lerp(prevSub.side, currSub.side, scaleT)
+
+    // Angle: continuous at transition point, sweeps during sweep phase
+    const transitionAngle = currSub.arcStartAngle + ARC_SWEEP
+    armAngle = transitionAngle - ARC_SWEEP * sweepT
   } else {
     // All steps done — use last step's final arm position
     const sub = SUBDIVISIONS[0]
@@ -286,40 +330,19 @@ export function renderGoldenRatioOverlay(
     armAngle = sub.arcStartAngle
   }
 
-  // Canonical transform params (target for blend)
-  const canonBB = STAGE_BOUNDS[0]
-  const canonW = canonBB.maxX - canonBB.minX || 1
-  const canonScale = PHI / canonW
-
-  // Blend factor: 0 during sweeps, ramps to 1 during rect fade-in
-  const blendT = revealProgress > SWEEP_PHASE
-    ? easeOutCubic(Math.min(1, (revealProgress - SWEEP_PHASE) / (1 - SWEEP_PHASE)))
-    : 0
-
-  // Interpolated transform parameters
-  // Pivot: arm center → canonical origin
-  const effPivotX = lerp(armPivotX, canonBB.minX, blendT)
-  const effPivotY = lerp(armPivotY, canonBB.maxY, blendT)
-  // Rotation: π - armAngle (arm horizontal pointing left) → 0
-  const effRotation = (Math.PI - armAngle) * (1 - blendT)
+  // Transform: pivot at 1, arm horizontal pointing left, scale = 1/armSide
+  const effRotation = Math.PI - armAngle
   const cosR = Math.cos(effRotation)
   const sinR = Math.sin(effRotation)
-  // Scale: 1/armSide (arm = 1 unit) → canonScale (full rect = φ)
-  const effScale = lerp(1 / armSide, canonScale, blendT)
-  // Offset: pivot at (1, 0) → pivot at (0, 0) i.e. canonical origin
-  const effOffsetX = 1 * (1 - blendT)
-  const effOffsetY = 0
+  const effScale = 1 / armSide
 
   // Transform subdivision coords → number-line coords
   function subToNL(x: number, y: number): [number, number] {
-    const dx = x - effPivotX
-    const dy = y - effPivotY
+    const dx = x - armPivotX
+    const dy = y - armPivotY
     const rx = dx * cosR - dy * sinR
     const ry = dx * sinR + dy * cosR
-    return [
-      rx * effScale + effOffsetX,
-      ry * effScale + effOffsetY,
-    ]
+    return [rx * effScale + 1, ry * effScale]
   }
 
   function subToScreen(x: number, y: number): [number, number] {
@@ -366,13 +389,13 @@ export function renderGoldenRatioOverlay(
   }
 
   // Draw current sweeping arc + compass arm
-  if (animStep < NUM_LEVELS && stepT > 0) {
+  if (animStep < NUM_LEVELS && sweepT > 0) {
     const sub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
 
     const [cx, cy] = subToScreen(sub.arcCx, sub.arcCy)
     const r = screenR(sub.side)
     const sEnd = xformAngle(sub.arcStartAngle + ARC_SWEEP)
-    const sCur = xformAngle(sub.arcStartAngle + ARC_SWEEP - ARC_SWEEP * stepT)
+    const sCur = xformAngle(sub.arcStartAngle + ARC_SWEEP - ARC_SWEEP * sweepT)
 
     // Partial spiral arc (reversed: end → current, anticlockwise)
     ctx.globalAlpha = opacity
@@ -395,14 +418,15 @@ export function renderGoldenRatioOverlay(
 
   // --- Outer rectangle + φ label fade in after construction ---
   if (revealProgress > SWEEP_PHASE) {
+    const bb = STAGE_BOUNDS[0]
     const rectFade = Math.min(1, (revealProgress - SWEEP_PHASE) / (1 - SWEEP_PHASE))
     ctx.globalAlpha = opacity * rectFade
 
-    // Draw rotated/blended rectangle as a polygon
-    const [c0x, c0y] = subToScreen(canonBB.minX, canonBB.minY)
-    const [c1x, c1y] = subToScreen(canonBB.maxX, canonBB.minY)
-    const [c2x, c2y] = subToScreen(canonBB.maxX, canonBB.maxY)
-    const [c3x, c3y] = subToScreen(canonBB.minX, canonBB.maxY)
+    // Draw rectangle as a polygon (in current rotated frame)
+    const [c0x, c0y] = subToScreen(bb.minX, bb.minY)
+    const [c1x, c1y] = subToScreen(bb.maxX, bb.minY)
+    const [c2x, c2y] = subToScreen(bb.maxX, bb.maxY)
+    const [c3x, c3y] = subToScreen(bb.minX, bb.maxY)
 
     ctx.strokeStyle = color
     ctx.lineWidth = 2
@@ -418,10 +442,9 @@ export function renderGoldenRatioOverlay(
     ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
-    // Place φ label above the top edge midpoint
     const [lx, ly] = subToScreen(
-      (canonBB.minX + canonBB.maxX) / 2,
-      canonBB.minY
+      (bb.minX + bb.maxX) / 2,
+      bb.minY
     )
     ctx.fillText('φ', lx, ly - 6)
   }
