@@ -27,3 +27,16 @@ export const DEFAULT_TICK_THRESHOLDS: TickThresholds = {
   anchorMax: 9,
   mediumMax: 23,
 }
+
+/** Per-label fade state for smooth collision show/hide transitions */
+export interface CollisionFadeEntry {
+  /** Whether the label is currently visible (not collision-hidden) */
+  visible: boolean
+  /** performance.now() when visibility last changed */
+  startTime: number
+  /** Opacity at the moment visibility changed (to animate from) */
+  startOpacity: number
+}
+
+/** Map from tick value → fade state, persisted across frames */
+export type CollisionFadeMap = Map<number, CollisionFadeEntry>

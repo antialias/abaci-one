@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useTheme } from '../../../contexts/ThemeContext'
-import type { NumberLineState, TickThresholds } from './types'
+import type { NumberLineState, TickThresholds, CollisionFadeMap } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { renderNumberLine } from './renderNumberLine'
 import type { RenderTarget } from './renderNumberLine'
@@ -39,11 +39,17 @@ export function NumberLine() {
   const zoomVelocityRef = useRef(0)
   // Smoothed hue (lerps toward target to avoid hard color jumps)
   const zoomHueRef = useRef(0) // 0 = neutral, will lerp toward 220 or 25
+  // Committed hue target — only changes when velocity is decisively in one direction
+  const committedHueRef = useRef(0)
   // Focal point as fraction of canvas width (0-1)
   const zoomFocalXRef = useRef(0.5)
   const decayRafRef = useRef<number>(0)
   // Direct DOM ref for the wrapper — updated outside React for 60fps bg color
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Persistent collision fade state for smooth label show/hide transitions
+  const collisionFadeMapRef = useRef<CollisionFadeMap>(new Map())
+  const collisionRafRef = useRef<number>(0)
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -144,13 +150,21 @@ export function NumberLine() {
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
-    renderNumberLine(
+    const fadeAnimating = renderNumberLine(
       ctx, stateRef.current, cssWidth, cssHeight,
       resolvedTheme === 'dark', thresholdsRef.current,
       zoomVelocityRef.current, zoomHueRef.current, zoomFocalXRef.current,
-      renderTarget
+      renderTarget, collisionFadeMapRef.current
     )
     ctx.restore()
+
+    // Keep redrawing while collision fades are in progress
+    if (fadeAnimating && !collisionRafRef.current) {
+      collisionRafRef.current = requestAnimationFrame(() => {
+        collisionRafRef.current = 0
+        draw()
+      })
+    }
   }, [resolvedTheme])
 
   const scheduleRedraw = useCallback(() => {
@@ -166,13 +180,15 @@ export function NumberLine() {
     if (decayRafRef.current) return
     const tick = () => {
       // Decay velocity
-      zoomVelocityRef.current *= 0.92
+      zoomVelocityRef.current *= 0.88
 
-      // Lerp hue toward target (220 for zoom-in, 25 for zoom-out)
-      // When velocity is near zero, hue stays where it was and just fades with intensity
+      // Lerp hue toward committed target — only update committed direction
+      // when velocity is decisively in one direction (avoids flashing on rapid alternation)
+      if (Math.abs(zoomVelocityRef.current) > 0.05) {
+        committedHueRef.current = zoomVelocityRef.current > 0 ? 220 : 25
+      }
       if (Math.abs(zoomVelocityRef.current) > 0.01) {
-        const targetHue = zoomVelocityRef.current > 0 ? 220 : 25
-        zoomHueRef.current += (targetHue - zoomHueRef.current) * 0.08
+        zoomHueRef.current += (committedHueRef.current - zoomHueRef.current) * 0.04
       }
 
       // Sync wrapper background with decay
@@ -191,15 +207,17 @@ export function NumberLine() {
   }, [draw, updateWrapperBg])
 
   const handleZoomVelocity = useCallback((velocity: number, focalX: number) => {
-    // Accumulate with some blending so rapid events build up
-    zoomVelocityRef.current = zoomVelocityRef.current * 0.6 + velocity * 8
+    // Accumulate with heavy smoothing to avoid flashing
+    zoomVelocityRef.current = zoomVelocityRef.current * 0.8 + velocity * 4
 
     // Smoothly move focal point toward the new zoom point
     zoomFocalXRef.current += (focalX - zoomFocalXRef.current) * 0.3
 
-    // Nudge hue toward target direction immediately (but smoothly via lerp)
-    const targetHue = velocity > 0 ? 220 : 25
-    zoomHueRef.current += (targetHue - zoomHueRef.current) * 0.15
+    // Only commit to a new hue direction when velocity is strong enough
+    if (Math.abs(zoomVelocityRef.current) > 0.05) {
+      committedHueRef.current = zoomVelocityRef.current > 0 ? 220 : 25
+    }
+    zoomHueRef.current += (committedHueRef.current - zoomHueRef.current) * 0.06
 
     startDecay()
   }, [startDecay])
@@ -288,6 +306,9 @@ export function NumberLine() {
       }
       if (gameRafRef.current) {
         cancelAnimationFrame(gameRafRef.current)
+      }
+      if (collisionRafRef.current) {
+        cancelAnimationFrame(collisionRafRef.current)
       }
       // Restore page background on unmount
       if (pageRef.current) {

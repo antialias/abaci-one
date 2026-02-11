@@ -1,4 +1,4 @@
-import type { NumberLineState, TickThresholds } from './types'
+import type { NumberLineState, TickThresholds, CollisionFadeMap } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { computeTickMarks, numberToScreenX } from './numberLineTicks'
 
@@ -37,6 +37,7 @@ const LINE_WIDTHS = { anchor: 2, medium: 1.5, fine: 1 } as const
 const FONT_SIZES = { anchor: 13, medium: 11, fine: 11 } as const
 const FONT_WEIGHTS = { anchor: 600, medium: 400, fine: 400 } as const
 const TICK_ALPHAS = { anchor: 1.0, medium: 0.5, fine: 0.15 } as const
+const COLLISION_FADE_MS = 500
 
 /** Piecewise linear interpolation between three landmarks at p=1, p=0.5, p=0 */
 function lerpLandmarks(prominence: number, anchor: number, medium: number, fine: number): number {
@@ -105,8 +106,9 @@ export function renderNumberLine(
   zoomVelocity = 0,
   zoomHue = 0,
   zoomFocalX = 0.5,
-  target?: RenderTarget
-): void {
+  target?: RenderTarget,
+  collisionFadeMap?: CollisionFadeMap
+): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
 
@@ -269,23 +271,60 @@ export function renderNumberLine(
     ctx.globalAlpha = 1
   }
 
-  // Pass 2: labels — only render labels that survived collision detection.
-  // Angle and x-offset both interpolate smoothly.
-  // At angle 0 the label is centered (x offset = -width/2).
-  // At max angle the label is left-aligned at the tick (x offset = 0).
-  for (const info of labelVisible) {
+  // Pass 2: labels with smooth collision fade.
+  // All labels are rendered (not just visible ones) so that collision-hidden
+  // labels can fade out over COLLISION_FADE_MS instead of disappearing instantly.
+  const now = performance.now()
+  let animating = false
+  const seenValues = new Set<number>()
+
+  for (const info of labelInfos) {
     const { tick, x, label, fontSize, fontWeight, labelWidth, angle, height } = info
+    const isVisible = labelVisible.has(info)
+    seenValues.add(tick.value)
+
+    // Compute collision opacity (1 = fully visible, 0 = collision-hidden)
+    let collisionOpacity = isVisible ? 1 : 0
+
+    if (collisionFadeMap) {
+      let entry = collisionFadeMap.get(tick.value)
+      if (!entry) {
+        // First time seeing this label — no fade, just snap to current state
+        entry = { visible: isVisible, startTime: now, startOpacity: isVisible ? 1 : 0 }
+        collisionFadeMap.set(tick.value, entry)
+      } else if (entry.visible !== isVisible) {
+        // Visibility changed — start transition from current animated position
+        const elapsed = now - entry.startTime
+        const t = Math.min(1, elapsed / COLLISION_FADE_MS)
+        const prevTarget = entry.visible ? 1 : 0
+        const currentOpacity = entry.startOpacity + (prevTarget - entry.startOpacity) * t
+        entry.visible = isVisible
+        entry.startTime = now
+        entry.startOpacity = currentOpacity
+      }
+
+      const elapsed = now - entry.startTime
+      const t = Math.min(1, elapsed / COLLISION_FADE_MS)
+      const target = entry.visible ? 1 : 0
+      collisionOpacity = entry.startOpacity + (target - entry.startOpacity) * t
+
+      if (t < 1) animating = true
+    }
+
+    // Skip fully hidden labels
+    if (collisionOpacity <= 0.01) continue
+
     const labelAlpha = getTickAlpha(tick.prominence)
 
     ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.globalAlpha = tick.opacity
+    ctx.globalAlpha = tick.opacity * collisionOpacity
     ctx.fillStyle = `rgba(${colors.labelRgb}, ${labelAlpha})`
 
     const labelY = centerY + height + 4
 
     // t: 0 = fully horizontal/centered, 1 = fully rotated/left-aligned
-    const t = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
-    const xOffset = -labelWidth / 2 * (1 - t)
+    const tAngle = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
+    const xOffset = -labelWidth / 2 * (1 - tAngle)
 
     ctx.save()
     ctx.translate(x, labelY)
@@ -296,6 +335,15 @@ export function renderNumberLine(
     ctx.restore()
 
     ctx.globalAlpha = 1
+  }
+
+  // Clean up stale entries no longer in the viewport
+  if (collisionFadeMap) {
+    for (const key of collisionFadeMap.keys()) {
+      if (!seenValues.has(key)) {
+        collisionFadeMap.delete(key)
+      }
+    }
   }
 
   // Pass 3: target emoji (Find the Number game)
@@ -324,4 +372,6 @@ export function renderNumberLine(
     ctx.fillText(target.emoji, tx, centerY)
     ctx.globalAlpha = 1
   }
+
+  return animating
 }
