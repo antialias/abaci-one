@@ -2,7 +2,6 @@ import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import type { Preview } from '@storybook/nextjs'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NextIntlClientProvider } from 'next-intl'
-import React from 'react'
 import { ThemeProvider } from '../src/contexts/ThemeContext'
 import tutorialEn from '../src/i18n/locales/tutorial/en.json'
 
