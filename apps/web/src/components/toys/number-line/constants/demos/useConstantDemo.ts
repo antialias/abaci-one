@@ -25,7 +25,7 @@ const INITIAL_STATE: DemoState = {
 /** Duration of viewport fly-in animation (ms) */
 const VIEWPORT_ANIM_MS = 1200
 /** Duration of subdivision reveal after viewport arrives (ms) */
-const REVEAL_ANIM_MS = 3000
+const REVEAL_ANIM_MS = 15000
 /** Duration of fade-out when user deviates (ms) */
 const FADE_OUT_MS = 600
 /** Duration of initial fade-in (ms) */

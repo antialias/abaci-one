@@ -110,40 +110,81 @@ const SUBDIVISIONS = computeSubdivisions()
 /** Every arc sweeps exactly 90° */
 const ARC_SWEEP = Math.PI / 2
 
+// --- Stage bounds for convergence animation ---
+
+interface StageBounds {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+/**
+ * STAGE_BOUNDS[k] = bounding box of SUBDIVISIONS[k..N-1].
+ *
+ * Used to rescale the inside-out construction so that it always fits
+ * exactly in [0, φ] on the number line. As k decreases (more squares
+ * added), the aspect ratio converges to φ.
+ */
+function computeStageBounds(): StageBounds[] {
+  const result: StageBounds[] = new Array(NUM_LEVELS)
+
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+
+  for (let k = NUM_LEVELS - 1; k >= 0; k--) {
+    const sub = SUBDIVISIONS[k]
+    minX = Math.min(minX, sub.sx)
+    maxX = Math.max(maxX, sub.sx + sub.side)
+    minY = Math.min(minY, sub.sy)
+    maxY = Math.max(maxY, sub.sy + sub.side)
+    result[k] = { minX, maxX, minY, maxY }
+  }
+
+  return result
+}
+
+const STAGE_BOUNDS = computeStageBounds()
+
 // --- Animation timing ---
 
-/** Compute staggered timing for N steps, normalized to [0, 1]. */
+/** Fraction of revealProgress for compass sweeps; remainder for rectangle fade. */
+const SWEEP_PHASE = 0.85
+
+/**
+ * Sequential step timings with growth: later steps (larger outer squares
+ * that cause the most dramatic ratio changes) get progressively more time.
+ */
 function computeStepTimings(count: number): Array<{ start: number; end: number }> {
-  const OVERLAP = 0.7 // next step starts at 70% of previous duration
-  const DECAY = 0.88  // each step is 88% the duration of the previous
+  const GROWTH = 1.12
 
   const durations: number[] = []
   let d = 1
   for (let i = 0; i < count; i++) {
     durations.push(d)
-    d *= DECAY
+    d *= GROWTH
   }
 
-  const starts: number[] = [0]
-  for (let i = 1; i < count; i++) {
-    starts[i] = starts[i - 1] + durations[i - 1] * OVERLAP
-  }
+  const total = durations.reduce((a, b) => a + b, 0)
+  let cumulative = 0
 
-  const totalSpan = starts[count - 1] + durations[count - 1]
-
-  return durations.map((dur, i) => ({
-    start: starts[i] / totalSpan,
-    end: (starts[i] + dur) / totalSpan,
-  }))
+  return durations.map(dur => {
+    const start = cumulative / total
+    cumulative += dur
+    return { start, end: cumulative / total }
+  })
 }
-
-/** Fraction of revealProgress used for compass sweeps; remainder is rectangle fade-in. */
-const SWEEP_PHASE = 0.85
 
 const STEP_TIMINGS = computeStepTimings(NUM_LEVELS)
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3)
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
 }
 
 // --- Canvas rendering ---
@@ -156,10 +197,12 @@ const SPIRAL_COLOR_DARK = '#fbbf24'
 /**
  * Render the golden ratio demo overlay on the canvas.
  *
- * Animation within revealProgress [0, 1]:
- *   [0, SWEEP_PHASE]:  compass arms sweep, tracing golden spiral arcs;
- *                       each arm lands as a subdivision division line.
- *   [SWEEP_PHASE, 1]:  outer rectangle + φ label fade in.
+ * The animation builds the golden rectangle from the inside out at
+ * a fixed [0, φ] scale. The construction rotates so the currently-
+ * drawn compass arm is always horizontal on the number line axis,
+ * pinned at position 1. Arcs grow with each step as the aspect
+ * ratio converges to φ. After all sweeps, the construction smoothly
+ * unrotates to canonical orientation.
  *
  * @param revealProgress 0-1 for the full construction animation
  * @param opacity 0-1 overall overlay opacity for fade-in/fade-out
@@ -188,34 +231,132 @@ export function renderGoldenRatioOverlay(
   ctx.globalAlpha = opacity
   ctx.setLineDash([])
 
-  // --- Compass sweep phase: trace golden spiral arcs ---
+  // --- Base line on axis [0, φ] ---
+  ctx.beginPath()
+  ctx.moveTo(toX(0), toY(0))
+  ctx.lineTo(toX(PHI), toY(0))
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  // --- Compass sweep phase: build inside → out with convergence ---
+  // Draws SUBDIVISIONS[N-1] (smallest) first, then [N-2], ... (progressively
+  // larger). The currently-drawn compass arm is kept horizontal on the axis.
+  // Arcs grow with each step, and the aspect ratio converges to φ.
+  // Reversed sweep (endAngle → startAngle) ensures arm continuity between
+  // steps in inside-out order.
   const sweepProgress = Math.min(1, revealProgress / SWEEP_PHASE)
 
+  // Find current animation step.
+  // Step i (inside-out) reveals SUBDIVISIONS[N-1-i].
+  let animStep = NUM_LEVELS // all done
+  let stepT = 1
+
   for (let i = 0; i < NUM_LEVELS; i++) {
-    const timing = STEP_TIMINGS[i]
-    const rawT = (sweepProgress - timing.start) / (timing.end - timing.start)
-    if (rawT <= 0) continue
+    if (sweepProgress < STEP_TIMINGS[i].end) {
+      animStep = i
+      const raw = (sweepProgress - STEP_TIMINGS[i].start) /
+        (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
+      stepT = easeOutCubic(Math.max(0, Math.min(1, raw)))
+      break
+    }
+  }
 
-    const t = easeOutCubic(Math.min(1, rawT))
-    const stepAlpha = opacity * Math.min(1, rawT * 3)
-    const sub = SUBDIVISIONS[i]
+  // --- Transform: arm always spans [0, 1] on the number line ---
+  // During sweeps: pivot (arc center) at 1, tip at 0, arm horizontal.
+  // Rotation = π - armAngle (makes arm point left from 1 toward 0).
+  // Scale = 1/armSide (arm length → 1 NL unit).
+  // After sweeps: blends to canonical (no rotation, [0, φ] scale).
 
-    const cx = toX(sub.arcCx)
-    const cy = toY(sub.arcCy)
-    const r = sub.side * ppu
-    const currentAngle = sub.arcStartAngle + ARC_SWEEP * t
+  let armPivotX: number, armPivotY: number, armAngle: number, armSide: number
 
-    // Golden spiral arc (traced by the compass tip)
-    ctx.globalAlpha = stepAlpha
+  if (animStep < NUM_LEVELS) {
+    const sub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
+    armPivotX = sub.arcCx
+    armPivotY = sub.arcCy
+    armSide = sub.side
+    // Reversed sweep: endAngle → startAngle
+    armAngle = sub.arcStartAngle + ARC_SWEEP - ARC_SWEEP * stepT
+  } else {
+    // All steps done — use last step's final arm position
+    const sub = SUBDIVISIONS[0]
+    armPivotX = sub.arcCx
+    armPivotY = sub.arcCy
+    armSide = sub.side
+    armAngle = sub.arcStartAngle
+  }
+
+  // Canonical transform params (target for blend)
+  const canonBB = STAGE_BOUNDS[0]
+  const canonW = canonBB.maxX - canonBB.minX || 1
+  const canonScale = PHI / canonW
+
+  // Blend factor: 0 during sweeps, ramps to 1 during rect fade-in
+  const blendT = revealProgress > SWEEP_PHASE
+    ? easeOutCubic(Math.min(1, (revealProgress - SWEEP_PHASE) / (1 - SWEEP_PHASE)))
+    : 0
+
+  // Interpolated transform parameters
+  // Pivot: arm center → canonical origin
+  const effPivotX = lerp(armPivotX, canonBB.minX, blendT)
+  const effPivotY = lerp(armPivotY, canonBB.maxY, blendT)
+  // Rotation: π - armAngle (arm horizontal pointing left) → 0
+  const effRotation = (Math.PI - armAngle) * (1 - blendT)
+  const cosR = Math.cos(effRotation)
+  const sinR = Math.sin(effRotation)
+  // Scale: 1/armSide (arm = 1 unit) → canonScale (full rect = φ)
+  const effScale = lerp(1 / armSide, canonScale, blendT)
+  // Offset: pivot at (1, 0) → pivot at (0, 0) i.e. canonical origin
+  const effOffsetX = 1 * (1 - blendT)
+  const effOffsetY = 0
+
+  // Transform subdivision coords → number-line coords
+  function subToNL(x: number, y: number): [number, number] {
+    const dx = x - effPivotX
+    const dy = y - effPivotY
+    const rx = dx * cosR - dy * sinR
+    const ry = dx * sinR + dy * cosR
+    return [
+      rx * effScale + effOffsetX,
+      ry * effScale + effOffsetY,
+    ]
+  }
+
+  function subToScreen(x: number, y: number): [number, number] {
+    const [nlx, nly] = subToNL(x, y)
+    return [toX(nlx), toY(nly)]
+  }
+
+  // Transform angle from subdivision space to screen space
+  function xformAngle(angle: number): number {
+    return angle + effRotation
+  }
+
+  // Screen radius for a subdivision side length
+  function screenR(side: number): number {
+    return side * effScale * ppu
+  }
+
+  // Draw completed arcs + division lines (from previous steps)
+  for (let i = 0; i < animStep && i < NUM_LEVELS; i++) {
+    const sub = SUBDIVISIONS[NUM_LEVELS - 1 - i]
+
+    const [cx, cy] = subToScreen(sub.arcCx, sub.arcCy)
+    const r = screenR(sub.side)
+    const sEnd = xformAngle(sub.arcStartAngle + ARC_SWEEP)
+    const sStart = xformAngle(sub.arcStartAngle)
+
+    // Full spiral arc (reversed: end → start, anticlockwise)
+    ctx.globalAlpha = opacity
     ctx.strokeStyle = spiralColor
     ctx.lineWidth = 2.5
     ctx.beginPath()
-    ctx.arc(cx, cy, r, sub.arcStartAngle, currentAngle, false)
+    ctx.arc(cx, cy, r, sEnd, sStart, true)
     ctx.stroke()
 
-    // Compass arm / division line
-    const ex = cx + r * Math.cos(currentAngle)
-    const ey = cy + r * Math.sin(currentAngle)
+    // Division line at endAngle
+    const ex = cx + r * Math.cos(sEnd)
+    const ey = cy + r * Math.sin(sEnd)
     ctx.strokeStyle = color
     ctx.lineWidth = 1
     ctx.beginPath()
@@ -224,27 +365,65 @@ export function renderGoldenRatioOverlay(
     ctx.stroke()
   }
 
-  // --- Rectangle + label fade in after arcs are drawn ---
+  // Draw current sweeping arc + compass arm
+  if (animStep < NUM_LEVELS && stepT > 0) {
+    const sub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
+
+    const [cx, cy] = subToScreen(sub.arcCx, sub.arcCy)
+    const r = screenR(sub.side)
+    const sEnd = xformAngle(sub.arcStartAngle + ARC_SWEEP)
+    const sCur = xformAngle(sub.arcStartAngle + ARC_SWEEP - ARC_SWEEP * stepT)
+
+    // Partial spiral arc (reversed: end → current, anticlockwise)
+    ctx.globalAlpha = opacity
+    ctx.strokeStyle = spiralColor
+    ctx.lineWidth = 2.5
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, sEnd, sCur, true)
+    ctx.stroke()
+
+    // Compass arm
+    const ex = cx + r * Math.cos(sCur)
+    const ey = cy + r * Math.sin(sCur)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(ex, ey)
+    ctx.stroke()
+  }
+
+  // --- Outer rectangle + φ label fade in after construction ---
   if (revealProgress > SWEEP_PHASE) {
     const rectFade = Math.min(1, (revealProgress - SWEEP_PHASE) / (1 - SWEEP_PHASE))
     ctx.globalAlpha = opacity * rectFade
 
-    // Outer golden rectangle
-    const rectLeft = toX(0)
-    const rectTop = toY(-1)
-    const rectWidth = PHI * ppu
-    const rectHeight = 1 * ppu
+    // Draw rotated/blended rectangle as a polygon
+    const [c0x, c0y] = subToScreen(canonBB.minX, canonBB.minY)
+    const [c1x, c1y] = subToScreen(canonBB.maxX, canonBB.minY)
+    const [c2x, c2y] = subToScreen(canonBB.maxX, canonBB.maxY)
+    const [c3x, c3y] = subToScreen(canonBB.minX, canonBB.maxY)
 
     ctx.strokeStyle = color
     ctx.lineWidth = 2
-    ctx.strokeRect(rectLeft, rectTop, rectWidth, rectHeight)
+    ctx.beginPath()
+    ctx.moveTo(c0x, c0y)
+    ctx.lineTo(c1x, c1y)
+    ctx.lineTo(c2x, c2y)
+    ctx.lineTo(c3x, c3y)
+    ctx.closePath()
+    ctx.stroke()
 
-    // φ label above the rectangle
     ctx.fillStyle = color
     ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
-    ctx.fillText('φ', toX(PHI), toY(-1) - 6)
+    // Place φ label above the top edge midpoint
+    const [lx, ly] = subToScreen(
+      (canonBB.minX + canonBB.maxX) / 2,
+      canonBB.minY
+    )
+    ctx.fillText('φ', lx, ly - 6)
   }
 
   ctx.globalAlpha = 1
