@@ -78,6 +78,8 @@ function getTickFontWeight(prominence: number): number {
 
 /** Format a number for display as a tick label, using the tick's power for precision */
 function formatTickLabel(value: number, power: number): string {
+  // Normalize -0 to 0
+  if (value === 0) value = 0
   // Use scientific notation for very large or very small numbers
   if (value !== 0 && (Math.abs(value) >= 1e7 || Math.abs(value) < 1e-4)) {
     // Show enough significant digits based on power
