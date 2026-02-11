@@ -1,66 +1,79 @@
-import type { NumberLineState, TickMark, TickThresholds } from './types'
+import type { NumberLineState, TickThresholds } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { computeTickMarks, numberToScreenX } from './numberLineTicks'
 
+export interface RenderTarget {
+  value: number
+  emoji: string
+  /** Pre-computed opacity (0-1) from proximity engine */
+  opacity: number
+}
+
+/** Base RGB components for dynamic alpha composition */
 interface RenderColors {
   axisLine: string
-  tickAnchor: string
-  tickMedium: string
-  tickFine: string
-  labelAnchor: string
-  labelMedium: string
+  /** RGB for tick marks — alpha computed from prominence */
+  tickRgb: string
+  /** RGB for labels — alpha computed from prominence */
+  labelRgb: string
 }
 
 const LIGHT_COLORS: RenderColors = {
   axisLine: 'rgba(55, 65, 81, 0.8)',
-  tickAnchor: 'rgba(55, 65, 81, 1)',
-  tickMedium: 'rgba(55, 65, 81, 0.5)',
-  tickFine: 'rgba(55, 65, 81, 0.15)',
-  labelAnchor: 'rgba(17, 24, 39, 1)',
-  labelMedium: 'rgba(55, 65, 81, 0.7)',
+  tickRgb: '55, 65, 81',
+  labelRgb: '17, 24, 39',
 }
 
 const DARK_COLORS: RenderColors = {
   axisLine: 'rgba(209, 213, 219, 0.8)',
-  tickAnchor: 'rgba(209, 213, 219, 1)',
-  tickMedium: 'rgba(209, 213, 219, 0.5)',
-  tickFine: 'rgba(209, 213, 219, 0.15)',
-  labelAnchor: 'rgba(243, 244, 246, 1)',
-  labelMedium: 'rgba(209, 213, 219, 0.7)',
+  tickRgb: '209, 213, 219',
+  labelRgb: '243, 244, 246',
 }
 
-function getTickHeight(tickClass: TickMark['tickClass'], canvasHeight: number): number {
+// Visual landmarks for prominence-based interpolation
+// p=1.0 (anchor), p=0.5 (medium), p=0.0 (fine)
+const HEIGHTS = { anchor: 40, medium: 24, fine: 12 } as const
+const LINE_WIDTHS = { anchor: 2, medium: 1.5, fine: 1 } as const
+const FONT_SIZES = { anchor: 13, medium: 11, fine: 11 } as const
+const FONT_WEIGHTS = { anchor: 600, medium: 400, fine: 400 } as const
+const TICK_ALPHAS = { anchor: 1.0, medium: 0.5, fine: 0.15 } as const
+
+/** Piecewise linear interpolation between three landmarks at p=1, p=0.5, p=0 */
+function lerpLandmarks(prominence: number, anchor: number, medium: number, fine: number): number {
+  if (prominence >= 0.5) {
+    // Interpolate between anchor (p=1) and medium (p=0.5)
+    const t = (prominence - 0.5) / 0.5
+    return medium + t * (anchor - medium)
+  } else {
+    // Interpolate between medium (p=0.5) and fine (p=0)
+    const t = prominence / 0.5
+    return fine + t * (medium - fine)
+  }
+}
+
+function getTickHeight(prominence: number, canvasHeight: number): number {
   const maxHeight = canvasHeight / 2
-  switch (tickClass) {
-    case 'anchor':
-      return Math.min(maxHeight * 0.6, 40)
-    case 'medium':
-      return Math.min(maxHeight * 0.4, 24)
-    case 'fine':
-      return Math.min(maxHeight * 0.2, 12)
-  }
+  const raw = lerpLandmarks(prominence, HEIGHTS.anchor, HEIGHTS.medium, HEIGHTS.fine)
+  const maxForLevel = lerpLandmarks(prominence, maxHeight * 0.6, maxHeight * 0.4, maxHeight * 0.2)
+  return Math.min(raw, maxForLevel)
 }
 
-function getTickLineWidth(tickClass: TickMark['tickClass']): number {
-  switch (tickClass) {
-    case 'anchor':
-      return 2
-    case 'medium':
-      return 1.5
-    case 'fine':
-      return 1
-  }
+function getTickLineWidth(prominence: number): number {
+  return lerpLandmarks(prominence, LINE_WIDTHS.anchor, LINE_WIDTHS.medium, LINE_WIDTHS.fine)
 }
 
-function getTickColor(tickClass: TickMark['tickClass'], colors: RenderColors): string {
-  switch (tickClass) {
-    case 'anchor':
-      return colors.tickAnchor
-    case 'medium':
-      return colors.tickMedium
-    case 'fine':
-      return colors.tickFine
-  }
+function getTickAlpha(prominence: number): number {
+  return lerpLandmarks(prominence, TICK_ALPHAS.anchor, TICK_ALPHAS.medium, TICK_ALPHAS.fine)
+}
+
+function getTickFontSize(prominence: number): number {
+  return lerpLandmarks(prominence, FONT_SIZES.anchor, FONT_SIZES.medium, FONT_SIZES.fine)
+}
+
+function getTickFontWeight(prominence: number): number {
+  return Math.round(
+    lerpLandmarks(prominence, FONT_WEIGHTS.anchor, FONT_WEIGHTS.medium, FONT_WEIGHTS.fine)
+  )
 }
 
 /** Format a number for display as a tick label, using the tick's power for precision */
@@ -89,7 +102,8 @@ export function renderNumberLine(
   thresholds: TickThresholds = DEFAULT_TICK_THRESHOLDS,
   zoomVelocity = 0,
   zoomHue = 0,
-  zoomFocalX = 0.5
+  zoomFocalX = 0.5,
+  target?: RenderTarget
 ): void {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -150,11 +164,11 @@ export function renderNumberLine(
   const measuredPowers = new Set<number>()
   for (const { tick } of ticksWithX) {
     if (measuredPowers.has(tick.power)) continue
-    if (tick.tickClass === 'fine' && tick.opacity <= 0) continue
+    if (tick.opacity <= 0) continue
     measuredPowers.add(tick.power)
 
-    const fontSize = tick.tickClass === 'anchor' ? 13 : 11
-    const fontWeight = tick.tickClass === 'anchor' ? '600' : '400'
+    const fontSize = getTickFontSize(tick.prominence)
+    const fontWeight = getTickFontWeight(tick.prominence)
     ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
 
     const label = formatTickLabel(tick.value, tick.power)
@@ -175,15 +189,15 @@ export function renderNumberLine(
   for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
 
-    const height = getTickHeight(tick.tickClass, cssHeight)
-    const lineWidth = getTickLineWidth(tick.tickClass)
-    const color = getTickColor(tick.tickClass, colors)
+    const height = getTickHeight(tick.prominence, cssHeight)
+    const lineWidth = getTickLineWidth(tick.prominence)
+    const tickAlpha = getTickAlpha(tick.prominence)
 
     ctx.globalAlpha = tick.opacity
     ctx.beginPath()
     ctx.moveTo(x, centerY - height)
     ctx.lineTo(x, centerY + height)
-    ctx.strokeStyle = color
+    ctx.strokeStyle = `rgba(${colors.tickRgb}, ${tickAlpha})`
     ctx.lineWidth = lineWidth
     ctx.stroke()
     ctx.globalAlpha = 1
@@ -194,18 +208,17 @@ export function renderNumberLine(
   // At max angle the label is left-aligned at the tick (x offset = 0).
   for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
-    if (tick.tickClass === 'fine' && tick.opacity <= 0) continue
+    if (tick.opacity <= 0) continue
 
-    const height = getTickHeight(tick.tickClass, cssHeight)
+    const height = getTickHeight(tick.prominence, cssHeight)
     const label = formatTickLabel(tick.value, tick.power)
-    const fontSize = tick.tickClass === 'anchor' ? 13 : 11
-    const fontWeight = tick.tickClass === 'anchor' ? '600' : '400'
-    const labelColor =
-      tick.tickClass === 'anchor' ? colors.labelAnchor : colors.labelMedium
+    const fontSize = getTickFontSize(tick.prominence)
+    const fontWeight = getTickFontWeight(tick.prominence)
+    const labelAlpha = getTickAlpha(tick.prominence)
 
     ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
     ctx.globalAlpha = tick.opacity
-    ctx.fillStyle = labelColor
+    ctx.fillStyle = `rgba(${colors.labelRgb}, ${labelAlpha})`
 
     const labelY = centerY + height + 4
     const angle = powerAngle.get(tick.power) ?? 0
@@ -223,6 +236,33 @@ export function renderNumberLine(
     ctx.fillText(label, xOffset, 0)
     ctx.restore()
 
+    ctx.globalAlpha = 1
+  }
+
+  // Pass 3: target emoji (Find the Number game)
+  if (target && target.opacity > 0) {
+    const tx = numberToScreenX(target.value, state.center, state.pixelsPerUnit, cssWidth)
+    // Scale emoji size with opacity: 24px at low opacity, 40px at full
+    const emojiSize = 24 + 16 * target.opacity
+    // Pulsing glow when nearly found
+    if (target.opacity > 0.8) {
+      const pulsePhase = (Date.now() % 1500) / 1500
+      const pulseAlpha = 0.15 + 0.1 * Math.sin(pulsePhase * Math.PI * 2)
+      const glowRadius = emojiSize * 1.2
+      const glow = ctx.createRadialGradient(tx, centerY, 0, tx, centerY, glowRadius)
+      glow.addColorStop(0, `hsla(45, 100%, 60%, ${pulseAlpha * target.opacity})`)
+      glow.addColorStop(1, `hsla(45, 100%, 60%, 0)`)
+      ctx.globalAlpha = 1
+      ctx.fillStyle = glow
+      ctx.fillRect(tx - glowRadius, centerY - glowRadius, glowRadius * 2, glowRadius * 2)
+    }
+
+    ctx.globalAlpha = target.opacity
+    ctx.font = `${emojiSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = isDark ? '#fff' : '#000'
+    ctx.fillText(target.emoji, tx, centerY)
     ctx.globalAlpha = 1
   }
 }

@@ -5,16 +5,14 @@ export interface NumberLineState {
   pixelsPerUnit: number
 }
 
-export type TickClass = 'anchor' | 'medium' | 'fine'
-
 export interface TickMark {
   /** The numeric value on the number line */
   value: number
   /** The power of 10 this tick belongs to (0 = ones, 1 = tens, etc.) */
   power: number
-  /** Visual class determining opacity, height, and label style */
-  tickClass: TickClass
-  /** Smooth opacity for fading labels/ticks (0-1) */
+  /** Continuous visual prominence (0-1). 1 = anchor, 0.5 = medium, 0 = fine/invisible */
+  prominence: number
+  /** Overall visibility envelope derived from prominence (0-1) */
   opacity: number
 }
 
