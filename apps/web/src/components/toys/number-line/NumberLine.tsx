@@ -349,12 +349,39 @@ export function NumberLine() {
     })()
     const effectiveHovered = tourForced ?? hoveredValueRef.current
 
-    // Compute tour spotlight highlight set
+    // Compute tour spotlight highlight set (phase-aware)
     const tourTs = tourStateRef.current
     const tourStop = tourTs.stopIndex !== null ? PRIME_TOUR_STOPS[tourTs.stopIndex] : null
-    const highlightSet = tourStop?.highlightValues?.length
-      ? new Set(tourStop.highlightValues) : undefined
     const dimAmount = tourStop?.dimOthers ?? 0
+
+    let highlightSet: Set<number> | undefined
+    let highlightedArcSet: Set<string> | undefined
+
+    if (tourStop?.highlightPhases && tourStop.highlightPhases.length > 0) {
+      // Phase-based: accumulate values/arcs based on dwell elapsed time
+      const dwellElapsed = tourTs.phase === 'dwelling'
+        ? performance.now() - tourTs.dwellStartMs
+        : tourTs.phase === 'fading' ? Infinity  // show all during fade-out
+        : -1                                     // flying/idle: no phases yet
+
+      const values: number[] = []
+      const arcPairs: [number, number][] = []
+      for (const phase of tourStop.highlightPhases) {
+        if (phase.delayMs <= dwellElapsed) {
+          values.push(...phase.values)
+          if (phase.arcs) arcPairs.push(...phase.arcs)
+        }
+      }
+      highlightSet = values.length > 0 ? new Set(values) : undefined
+      if (arcPairs.length > 0) {
+        highlightedArcSet = new Set(arcPairs.map(([a, b]) =>
+          a < b ? `${a}-${b}` : `${b}-${a}`
+        ))
+      }
+    } else if (tourStop?.highlightValues?.length) {
+      // Legacy: all values at once, no arc filtering
+      highlightSet = new Set(tourStop.highlightValues)
+    }
 
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
@@ -365,7 +392,7 @@ export function NumberLine() {
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
       renderTarget, collisionFadeMapRef.current, renderConstants,
       primeInfos, effectiveHovered, interestingPrimes, primePairArcs,
-      highlightSet
+      highlightSet, highlightedArcSet
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -381,7 +408,7 @@ export function NumberLine() {
     if (tourTs.phase !== 'idle' && highlightSet && highlightSet.size > 0 && dimAmount > 0) {
       renderTourSpotlight(
         ctx, stateRef.current, cssWidth, cssHeight,
-        resolvedTheme === 'dark', tourStop!.highlightValues!, dimAmount, tourTs.opacity
+        resolvedTheme === 'dark', [...highlightSet], dimAmount, tourTs.opacity
       )
     }
 

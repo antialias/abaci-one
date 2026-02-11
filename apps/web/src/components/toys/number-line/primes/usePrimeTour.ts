@@ -14,6 +14,8 @@ export interface TourState {
   flightProgress: number
   /** 0-1 overlay opacity */
   opacity: number
+  /** performance.now() when dwelling began — used for phase timing */
+  dwellStartMs: number
 }
 
 const INITIAL_STATE: TourState = {
@@ -21,6 +23,7 @@ const INITIAL_STATE: TourState = {
   stopIndex: null,
   flightProgress: 0,
   opacity: 0,
+  dwellStartMs: 0,
 }
 
 // --- Animation timing ---
@@ -92,6 +95,7 @@ export function usePrimeTour(
       stopIndex: index,
       flightProgress: 0,
       opacity: tourStateRef.current.opacity, // preserve during mid-tour transitions
+      dwellStartMs: 0,
     }
     animStartRef.current = performance.now()
     ttsFinishedRef.current = false
@@ -186,6 +190,7 @@ export function usePrimeTour(
         ts.phase = 'dwelling'
         ts.flightProgress = 1
         ts.opacity = 1
+        ts.dwellStartMs = now
         stateRef.current.center = tgt.center
         stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
         dwellStartRef.current = now

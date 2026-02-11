@@ -118,7 +118,8 @@ export function renderNumberLine(
   hoveredTick?: number | null,
   interestingPrimes?: InterestingPrime[],
   primePairArcs?: PrimePairArc[],
-  highlightedPrimes?: Set<number>
+  highlightedPrimes?: Set<number>,
+  highlightedArcs?: Set<string>
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -469,20 +470,33 @@ export function renderNumberLine(
   }
 
   // Pass 2.3: prime pair arcs (twin / cousin / sexy) — for hovered or highlighted primes
-  const showArcs = hoveredTick != null || (highlightedPrimes && highlightedPrimes.size > 0)
+  const hasExplicitArcs = highlightedArcs && highlightedArcs.size > 0
+  const showArcs = hoveredTick != null || (highlightedPrimes && highlightedPrimes.size > 0) || hasExplicitArcs
   if (primePairArcs && primePairArcs.length > 0 && showArcs) {
     const arcOrder: Array<'sexy' | 'cousin' | 'twin'> = ['sexy', 'cousin', 'twin']
 
+    // Pulsing phase for tour arc glow
+    const arcPulsePhase = (Date.now() % 2000) / 2000
+    const arcPulseAlpha = 0.2 + 0.15 * Math.sin(arcPulsePhase * Math.PI * 2)
+
     for (const arcType of arcOrder) {
       const colorTemplate = isDark ? ARC_COLORS[arcType].dark : ARC_COLORS[arcType].light
-      const alpha = arcType === 'twin' ? 0.7 : arcType === 'cousin' ? 0.6 : 0.5
-      ctx.strokeStyle = colorTemplate.replace('A', String(alpha))
-      ctx.lineWidth = arcType === 'twin' ? 1.5 : 1.2
+      const baseAlpha = arcType === 'twin' ? 0.7 : arcType === 'cousin' ? 0.6 : 0.5
+      const baseLineWidth = arcType === 'twin' ? 1.5 : 1.2
 
       for (const arc of primePairArcs) {
         if (arc.type !== arcType) continue
+
+        const arcKey = `${arc.p1}-${arc.p2}`
         const matchesHover = arc.p1 === hoveredTick || arc.p2 === hoveredTick
-        const matchesHighlight = highlightedPrimes && (highlightedPrimes.has(arc.p1) || highlightedPrimes.has(arc.p2))
+        let matchesHighlight = false
+        if (hasExplicitArcs) {
+          // Explicit mode: only show arcs in the explicit set
+          matchesHighlight = highlightedArcs!.has(arcKey)
+        } else if (highlightedPrimes && highlightedPrimes.size > 0) {
+          // Legacy mode: any arc touching a highlighted prime
+          matchesHighlight = highlightedPrimes.has(arc.p1) || highlightedPrimes.has(arc.p2)
+        }
         if (!matchesHover && !matchesHighlight) continue
 
         const x1 = numberToScreenX(arc.p1, state.center, state.pixelsPerUnit, cssWidth)
@@ -494,6 +508,27 @@ export function renderNumberLine(
 
         const midX = (x1 + x2) / 2
         const arcDepth = Math.min(16, Math.max(3, screenDist * 0.3))
+
+        const isTourArc = hasExplicitArcs && highlightedArcs!.has(arcKey)
+
+        if (isTourArc) {
+          // Tour arc glow pass: wider, pulsing, lower alpha
+          ctx.save()
+          ctx.strokeStyle = colorTemplate.replace('A', String(arcPulseAlpha))
+          ctx.lineWidth = baseLineWidth + 4
+          ctx.beginPath()
+          ctx.moveTo(x1, centerY + 1)
+          ctx.quadraticCurveTo(midX, centerY + 1 + arcDepth, x2, centerY + 1)
+          ctx.stroke()
+          ctx.restore()
+
+          // Main arc: boosted alpha + thickness
+          ctx.strokeStyle = colorTemplate.replace('A', String(Math.min(1, baseAlpha + 0.2)))
+          ctx.lineWidth = baseLineWidth + 1
+        } else {
+          ctx.strokeStyle = colorTemplate.replace('A', String(baseAlpha))
+          ctx.lineWidth = baseLineWidth
+        }
 
         ctx.beginPath()
         ctx.moveTo(x1, centerY + 1)
