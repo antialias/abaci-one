@@ -1,15 +1,25 @@
 import type { NumberLineState } from '../../types'
 import { numberToScreenX } from '../../numberLineTicks'
 
-const PHI = (1 + Math.sqrt(5)) / 2
 const NUM_LEVELS = 10
+
+// Fibonacci numbers for the construction.
+// Using Fibonacci ratio instead of exact φ means the two innermost squares
+// are exactly equal, and the aspect ratio genuinely converges to φ as the
+// construction grows outward.
+const FIB: number[] = [1, 1]
+for (let i = 2; i <= NUM_LEVELS; i++) {
+  FIB.push(FIB[i - 1] + FIB[i - 2])
+}
+/** Starting rectangle ratio F(n+1)/F(n) — converges to φ */
+const RECT_RATIO = FIB[NUM_LEVELS] / FIB[NUM_LEVELS - 1]
 
 /**
  * Target viewport for the golden ratio demo.
- * Centers the rectangle [0, φ] with some padding.
+ * Centers the Fibonacci rectangle with some padding.
  */
 export function goldenRatioDemoViewport(_cssWidth: number, cssHeight: number) {
-  const center = PHI / 2
+  const center = RECT_RATIO / 2
   // Scale so the rectangle height (1 unit) fills ~40% of canvas height
   const ppu = cssHeight * 0.35
   return { center, pixelsPerUnit: ppu }
@@ -30,22 +40,21 @@ interface Subdivision {
 }
 
 /**
- * Compute the golden rectangle subdivisions.
+ * Compute the golden rectangle subdivisions using Fibonacci numbers.
  *
- * Starting rectangle: [0, φ] × [-1, 0]. Bottom edge on the axis (y=0),
- * extending 1 unit upward. First cut from LEFT so the 1×1 square aligns
- * with "1" on the number line.
+ * Starting rectangle: [0, F(n+1)/F(n)] × [-1, 0]. The two innermost
+ * squares are exactly equal (both side 1/F(n)), and the aspect ratio
+ * converges to φ as the construction grows outward.
  *
  * After computing the canonical subdivisions, a y-flip is applied so the
- * spiral opens downward (toward the axis) instead of upward, giving the
- * classic "opening left" golden spiral orientation.
+ * spiral opens downward (toward the axis) instead of upward.
  */
 function computeSubdivisions(): Subdivision[] {
   const subs: Subdivision[] = []
 
   let rx = 0
   let ry = -1
-  let rw = PHI
+  let rw = RECT_RATIO
   let rh = 1
   let dir = 0
 
@@ -230,7 +239,7 @@ export function renderGoldenRatioOverlay(
   // --- Base line on axis [0, φ] ---
   ctx.beginPath()
   ctx.moveTo(toX(0), toY(0))
-  ctx.lineTo(toX(PHI), toY(0))
+  ctx.lineTo(toX(RECT_RATIO), toY(0))
   ctx.strokeStyle = color
   ctx.lineWidth = 2
   ctx.stroke()
@@ -404,12 +413,9 @@ export function renderGoldenRatioOverlay(
 
     ctx.fillStyle = color
     ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    ctx.textAlign = 'center'
+    ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'
-    const [lx, ly] = subToScreen(
-      (bb.minX + bb.maxX) / 2,
-      bb.minY
-    )
+    const [lx, ly] = subToScreen(bb.maxX, bb.minY)
     ctx.fillText('φ', lx, ly - 6)
   }
 
