@@ -249,19 +249,15 @@ export function renderGoldenRatioOverlay(
 
   // Find current animation step and split into sub-phases.
   // Step i (inside-out) reveals SUBDIVISIONS[N-1-i].
-  // For steps after the first, each step has three phases:
-  //   1. Pivot transition (visual rotation) — diagram re-orients
-  //   2. Scale transition — diagram resizes to new arm length
-  //   3. Arc sweep — compass arm draws the new arc
+  // For steps after the first, each step has two phases:
+  //   1. Transition — pivot + scale change simultaneously
+  //   2. Arc sweep — compass arm draws the new arc
 
-  /** Fraction of step time for pivot (rotation) transition */
-  const PIVOT_FRAC = 0.2
-  /** Fraction of step time for scale transition */
-  const SCALE_FRAC = 0.2
+  /** Fraction of step time for simultaneous transition */
+  const TRANSITION_FRAC = 0.3
 
   let animStep = NUM_LEVELS // all done
-  let pivotT = 1   // 0→1 pivot transition progress
-  let scaleT = 1   // 0→1 scale transition progress
+  let transT = 1   // 0→1 transition progress (pivot + scale together)
   let sweepT = 0   // 0→1 arc sweep progress
 
   for (let i = 0; i < NUM_LEVELS; i++) {
@@ -274,22 +270,15 @@ export function renderGoldenRatioOverlay(
 
       if (i === 0) {
         // First step: no transition, go straight to sweep
-        pivotT = 1
-        scaleT = 1
+        transT = 1
         sweepT = easeOutCubic(raw)
-      } else if (raw < PIVOT_FRAC) {
-        pivotT = easeOutCubic(raw / PIVOT_FRAC)
-        scaleT = 0
-        sweepT = 0
-      } else if (raw < PIVOT_FRAC + SCALE_FRAC) {
-        pivotT = 1
-        scaleT = easeOutCubic((raw - PIVOT_FRAC) / SCALE_FRAC)
+      } else if (raw < TRANSITION_FRAC) {
+        transT = easeOutCubic(raw / TRANSITION_FRAC)
         sweepT = 0
       } else {
-        pivotT = 1
-        scaleT = 1
+        transT = 1
         sweepT = easeOutCubic(
-          (raw - PIVOT_FRAC - SCALE_FRAC) / (1 - PIVOT_FRAC - SCALE_FRAC)
+          (raw - TRANSITION_FRAC) / (1 - TRANSITION_FRAC)
         )
       }
       break
@@ -297,11 +286,10 @@ export function renderGoldenRatioOverlay(
   }
 
   // --- Transform: arm always spans [0, 1] on the number line ---
-  // During sweeps: pivot (arc center) at 1, tip at 0, arm horizontal.
+  // During sweeps: tip at 0, pivot at 1, arm horizontal.
   // Rotation = π - armAngle (makes arm point left from 1 toward 0).
   // Scale = 1/armSide (arm length → 1 NL unit).
-  // Between arcs: pivot and scale transition smoothly (rotate first, then scale).
-  // After all sweeps: blends to canonical (no rotation, [0, φ] scale).
+  // Between arcs: pivot + scale transition simultaneously.
 
   let armPivotX: number, armPivotY: number, armAngle: number, armSide: number
 
@@ -311,12 +299,10 @@ export function renderGoldenRatioOverlay(
       ? SUBDIVISIONS[NUM_LEVELS - animStep]
       : currSub
 
-    // Pivot smoothly transitions from prev to current (rotation phase)
-    armPivotX = lerp(prevSub.arcCx, currSub.arcCx, pivotT)
-    armPivotY = lerp(prevSub.arcCy, currSub.arcCy, pivotT)
-
-    // Scale smoothly transitions after pivot is done (scale phase)
-    armSide = lerp(prevSub.side, currSub.side, scaleT)
+    // Pivot and scale transition simultaneously
+    armPivotX = lerp(prevSub.arcCx, currSub.arcCx, transT)
+    armPivotY = lerp(prevSub.arcCy, currSub.arcCy, transT)
+    armSide = lerp(prevSub.side, currSub.side, transT)
 
     // Angle: continuous at transition point, sweeps during sweep phase
     const transitionAngle = currSub.arcStartAngle + ARC_SWEEP
@@ -330,7 +316,11 @@ export function renderGoldenRatioOverlay(
     armAngle = sub.arcStartAngle
   }
 
-  // Transform: pivot at 1, arm horizontal pointing left, scale = 1/armSide
+  // Arm tip (arc-drawing endpoint) in subdivision coords
+  const tipX = armPivotX + armSide * Math.cos(armAngle)
+  const tipY = armPivotY + armSide * Math.sin(armAngle)
+
+  // Transform anchored at the TIP → origin (0, 0). Pivot lands at (1, 0).
   const effRotation = Math.PI - armAngle
   const cosR = Math.cos(effRotation)
   const sinR = Math.sin(effRotation)
@@ -338,11 +328,11 @@ export function renderGoldenRatioOverlay(
 
   // Transform subdivision coords → number-line coords
   function subToNL(x: number, y: number): [number, number] {
-    const dx = x - armPivotX
-    const dy = y - armPivotY
+    const dx = x - tipX
+    const dy = y - tipY
     const rx = dx * cosR - dy * sinR
     const ry = dx * sinR + dy * cosR
-    return [rx * effScale + 1, ry * effScale]
+    return [rx * effScale, ry * effScale]
   }
 
   function subToScreen(x: number, y: number): [number, number] {
