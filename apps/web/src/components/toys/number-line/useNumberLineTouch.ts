@@ -10,6 +10,8 @@ interface UseNumberLineTouchOptions {
   onZoomVelocity?: (velocity: number, focalX: number) => void
   /** Called when a tap (short press, no movement) is detected. Coordinates are CSS px relative to canvas. */
   onTap?: (screenX: number, screenY: number) => void
+  /** Called on mousemove (when not dragging) with CSS px coordinates. (-1, -1) signals mouse left. */
+  onHover?: (screenX: number, screenY: number) => void
 }
 
 const TAP_MAX_DURATION_MS = 300
@@ -30,7 +32,7 @@ function clampPixelsPerUnit(ppu: number): number {
  *
  * All math uses absolute anchor-based computations (not deltas) to prevent drift.
  */
-export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity, onTap }: UseNumberLineTouchOptions) {
+export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity, onTap, onHover }: UseNumberLineTouchOptions) {
   // Anchor state for single-finger drag / mouse drag
   const dragAnchorRef = useRef<number | null>(null)
 
@@ -270,6 +272,21 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       onZoomVelocity?.(Math.log(newPPU / oldPPU), x / canvasWidth)
     }
 
+    // --- Hover handler (independent of drag) ---
+    function handleCanvasMouseMove(e: MouseEvent) {
+      // Only fire hover when not dragging
+      if (mouseAnchor !== null) return
+      const rect = getCanvasRect()
+      if (!rect) return
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      onHover?.(x, y)
+    }
+
+    function handleCanvasMouseLeave() {
+      onHover?.(-1, -1)
+    }
+
     // Attach listeners
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false })
@@ -279,6 +296,8 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
+    canvas.addEventListener('mousemove', handleCanvasMouseMove)
+    canvas.addEventListener('mouseleave', handleCanvasMouseLeave)
 
     // Set initial cursor
     canvas.style.cursor = 'grab'
@@ -292,6 +311,8 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
+      canvas.removeEventListener('mousemove', handleCanvasMouseMove)
+      canvas.removeEventListener('mouseleave', handleCanvasMouseLeave)
     }
-  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, onTap, getCanvasWidth, getCanvasRect])
+  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, onTap, onHover, getCanvasWidth, getCanvasRect])
 }

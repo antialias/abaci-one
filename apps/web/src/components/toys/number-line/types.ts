@@ -41,6 +41,14 @@ export interface CollisionFadeEntry {
 /** Map from tick value → fade state, persisted across frames */
 export type CollisionFadeMap = Map<number, CollisionFadeEntry>
 
+/** Prime classification info for a tick value */
+export interface PrimeTickInfo {
+  value: number
+  smallestPrimeFactor: number
+  isPrime: boolean
+  classification: 'prime' | 'composite' | 'one' | 'not-applicable'
+}
+
 /** Pre-computed constant ready for canvas rendering */
 export interface RenderConstant {
   symbol: string
