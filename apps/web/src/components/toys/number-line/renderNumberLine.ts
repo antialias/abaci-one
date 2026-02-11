@@ -185,6 +185,70 @@ export function renderNumberLine(
     }
   }
 
+  // Pre-compute label info for cross-power collision detection.
+  // Each label occupies a horizontal extent on the x-axis; when a lower-prominence
+  // label overlaps a higher-prominence one, the lower-prominence label is hidden.
+  interface LabelInfo {
+    tick: typeof ticksWithX[number]['tick']
+    x: number
+    label: string
+    fontSize: number
+    fontWeight: number
+    labelWidth: number
+    angle: number
+    height: number
+    /** Horizontal extent: [xMin, xMax] on the canvas */
+    xMin: number
+    xMax: number
+  }
+
+  const labelInfos: LabelInfo[] = []
+  for (const { tick, x } of ticksWithX) {
+    if (x < -50 || x > cssWidth + 50) continue
+    if (tick.opacity <= 0) continue
+
+    const label = formatTickLabel(tick.value, tick.power)
+    const fontSize = getTickFontSize(tick.prominence)
+    const fontWeight = getTickFontWeight(tick.prominence)
+    ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    const labelWidth = ctx.measureText(label).width
+    const angle = powerAngle.get(tick.power) ?? 0
+    const height = getTickHeight(tick.prominence, cssHeight)
+
+    // Compute horizontal footprint of the (possibly rotated) label.
+    // The label is drawn at (x, labelY) then rotated by angle.
+    // Its horizontal extent is approximately labelWidth·cos(angle) + fontSize·sin(angle).
+    const t = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
+    const xOffset = -labelWidth / 2 * (1 - t)
+    const hFootprint = labelWidth * Math.cos(angle) + fontSize * Math.sin(angle)
+    const xMin = x + xOffset * Math.cos(angle)
+    const xMax = xMin + hFootprint
+
+    labelInfos.push({ tick, x, label, fontSize, fontWeight, labelWidth, angle, height, xMin, xMax })
+  }
+
+  // Sort by prominence descending so higher-prominence labels take priority
+  labelInfos.sort((a, b) => b.tick.prominence - a.tick.prominence)
+
+  // Mark which labels survive collision detection
+  const labelVisible = new Set<LabelInfo>()
+  const occupiedExtents: { xMin: number; xMax: number }[] = []
+
+  for (const info of labelInfos) {
+    const pad = LABEL_PAD / 2
+    let overlaps = false
+    for (const occ of occupiedExtents) {
+      if (info.xMin - pad < occ.xMax && info.xMax + pad > occ.xMin) {
+        overlaps = true
+        break
+      }
+    }
+    if (!overlaps) {
+      labelVisible.add(info)
+      occupiedExtents.push({ xMin: info.xMin, xMax: info.xMax })
+    }
+  }
+
   // Pass 1: tick lines
   for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
@@ -203,17 +267,12 @@ export function renderNumberLine(
     ctx.globalAlpha = 1
   }
 
-  // Pass 2: labels — angle and x-offset both interpolate smoothly.
+  // Pass 2: labels — only render labels that survived collision detection.
+  // Angle and x-offset both interpolate smoothly.
   // At angle 0 the label is centered (x offset = -width/2).
   // At max angle the label is left-aligned at the tick (x offset = 0).
-  for (const { tick, x } of ticksWithX) {
-    if (x < -50 || x > cssWidth + 50) continue
-    if (tick.opacity <= 0) continue
-
-    const height = getTickHeight(tick.prominence, cssHeight)
-    const label = formatTickLabel(tick.value, tick.power)
-    const fontSize = getTickFontSize(tick.prominence)
-    const fontWeight = getTickFontWeight(tick.prominence)
+  for (const info of labelVisible) {
+    const { tick, x, label, fontSize, fontWeight, labelWidth, angle, height } = info
     const labelAlpha = getTickAlpha(tick.prominence)
 
     ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
@@ -221,11 +280,9 @@ export function renderNumberLine(
     ctx.fillStyle = `rgba(${colors.labelRgb}, ${labelAlpha})`
 
     const labelY = centerY + height + 4
-    const angle = powerAngle.get(tick.power) ?? 0
 
     // t: 0 = fully horizontal/centered, 1 = fully rotated/left-aligned
     const t = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
-    const labelWidth = ctx.measureText(label).width
     const xOffset = -labelWidth / 2 * (1 - t)
 
     ctx.save()
