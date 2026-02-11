@@ -247,49 +247,27 @@ export function renderGoldenRatioOverlay(
   // steps in inside-out order.
   const sweepProgress = Math.min(1, revealProgress / SWEEP_PHASE)
 
-  // Find current animation step and split into sub-phases.
+  // Find current animation step.
   // Step i (inside-out) reveals SUBDIVISIONS[N-1-i].
-  // For steps after the first, each step has two phases:
-  //   1. Transition — pivot + scale change simultaneously
-  //   2. Arc sweep — compass arm draws the new arc
-
-  /** Fraction of step time for simultaneous transition */
-  const TRANSITION_FRAC = 0.3
+  // Pivot, scale, and arc sweep all happen simultaneously.
 
   let animStep = NUM_LEVELS // all done
-  let transT = 1   // 0→1 transition progress (pivot + scale together)
-  let sweepT = 0   // 0→1 arc sweep progress
+  let stepT = 0   // 0→1 progress within current step
 
   for (let i = 0; i < NUM_LEVELS; i++) {
     if (sweepProgress < STEP_TIMINGS[i].end) {
       animStep = i
-      const raw = Math.max(0, Math.min(1,
+      stepT = easeOutCubic(Math.max(0, Math.min(1,
         (sweepProgress - STEP_TIMINGS[i].start) /
         (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
-      ))
-
-      if (i === 0) {
-        // First step: no transition, go straight to sweep
-        transT = 1
-        sweepT = easeOutCubic(raw)
-      } else if (raw < TRANSITION_FRAC) {
-        transT = easeOutCubic(raw / TRANSITION_FRAC)
-        sweepT = 0
-      } else {
-        transT = 1
-        sweepT = easeOutCubic(
-          (raw - TRANSITION_FRAC) / (1 - TRANSITION_FRAC)
-        )
-      }
+      )))
       break
     }
   }
 
   // --- Transform: arm always spans [0, 1] on the number line ---
-  // During sweeps: tip at 0, pivot at 1, arm horizontal.
-  // Rotation = π - armAngle (makes arm point left from 1 toward 0).
-  // Scale = 1/armSide (arm length → 1 NL unit).
-  // Between arcs: pivot + scale transition simultaneously.
+  // Tip at 0, pivot at 1, arm horizontal.
+  // Pivot, scale, and angle all interpolate together with stepT.
 
   let armPivotX: number, armPivotY: number, armAngle: number, armSide: number
 
@@ -299,14 +277,14 @@ export function renderGoldenRatioOverlay(
       ? SUBDIVISIONS[NUM_LEVELS - animStep]
       : currSub
 
-    // Pivot and scale transition simultaneously
-    armPivotX = lerp(prevSub.arcCx, currSub.arcCx, transT)
-    armPivotY = lerp(prevSub.arcCy, currSub.arcCy, transT)
-    armSide = lerp(prevSub.side, currSub.side, transT)
+    // Everything transitions simultaneously
+    armPivotX = lerp(prevSub.arcCx, currSub.arcCx, stepT)
+    armPivotY = lerp(prevSub.arcCy, currSub.arcCy, stepT)
+    armSide = lerp(prevSub.side, currSub.side, stepT)
 
-    // Angle: continuous at transition point, sweeps during sweep phase
+    // Angle sweeps from end to start simultaneously
     const transitionAngle = currSub.arcStartAngle + ARC_SWEEP
-    armAngle = transitionAngle - ARC_SWEEP * sweepT
+    armAngle = transitionAngle - ARC_SWEEP * stepT
   } else {
     // All steps done — use last step's final arm position
     const sub = SUBDIVISIONS[0]
@@ -379,13 +357,13 @@ export function renderGoldenRatioOverlay(
   }
 
   // Draw current sweeping arc + compass arm
-  if (animStep < NUM_LEVELS && sweepT > 0) {
-    const sub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
-
-    const [cx, cy] = subToScreen(sub.arcCx, sub.arcCy)
-    const r = screenR(sub.side)
-    const sEnd = xformAngle(sub.arcStartAngle + ARC_SWEEP)
-    const sCur = xformAngle(sub.arcStartAngle + ARC_SWEEP - ARC_SWEEP * sweepT)
+  // Use interpolated arm parameters so the growing tip stays pinned at origin
+  if (animStep < NUM_LEVELS && stepT > 0) {
+    const [cx, cy] = subToScreen(armPivotX, armPivotY)
+    const r = screenR(armSide)
+    const currSub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
+    const sEnd = xformAngle(currSub.arcStartAngle + ARC_SWEEP)
+    const sCur = xformAngle(armAngle)
 
     // Partial spiral arc (reversed: end → current, anticlockwise)
     ctx.globalAlpha = opacity
