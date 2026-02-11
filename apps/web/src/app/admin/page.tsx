@@ -258,6 +258,12 @@ export default function AdminDashboardPage() {
               description="Manage the curriculum sequence - which skills exist, how they connect, and what order students learn them. Seeds built-in flowcharts."
             />
             <QuickLink
+              href="/admin/constant-images"
+              icon="🎨"
+              title="Constant Images"
+              description="Generate AI illustrations for math constants on the number line. Metaphor and blueprint style images for each constant."
+            />
+            <QuickLink
               href="/vision-training"
               icon="👁️"
               title="Vision Training"

@@ -12,11 +12,11 @@ export interface MathConstant {
   mathml: string
   /** Prompt suffix for generating a whimsical metaphor illustration (flat vector style) */
   metaphorPrompt: string
-  /** Prompt suffix for generating a technical math illustration (neon blueprint style) */
+  /** Prompt suffix for generating a classical geometric math illustration */
   mathPrompt: string
   /** Path to metaphor illustration (populated after generation) */
   metaphorImage?: string
-  /** Path to math/blueprint illustration (populated after generation) */
+  /** Path to math-style illustration (populated after generation) */
   mathImage?: string
 }
 
@@ -24,21 +24,21 @@ export interface MathConstant {
 export const METAPHOR_PROMPT_PREFIX =
   'Clean flat vector illustration, bold colors, simple geometric shapes, no text, no labels, square 1:1 composition, white background.'
 
-/** Shared prompt prefix for math/blueprint-style illustrations */
+/** Shared prompt prefix for math-style illustrations (classical geometric, Byrne's Euclid inspired) */
 export const MATH_PROMPT_PREFIX =
-  'Technical blueprint diagram, glowing cyan/teal neon lines on dark navy background, no text, no labels, square 1:1 composition, precise geometric construction.'
+  'Classical geometric diagram in the style of Oliver Byrne\'s illustrated Euclid. Clean precise constructions with bold flat primary colors (red, blue, gold, black) on warm cream parchment background. No text, no labels, no numbers, no letters. Square 1:1 composition. Mathematically accurate and instructional. Simple clean shapes, visible compass and straightedge construction marks where appropriate.'
 
 /** Theme-specific prompt modifiers appended during generation */
 export const THEME_MODIFIERS = {
   light: {
     metaphor:
       'IMPORTANT: Use a clean white (#ffffff) background. Ensure all colors are vibrant and visible against the light background. Same subject and composition.',
-    math: 'IMPORTANT: Use a clean white (#ffffff) background instead of cream parchment. Use bold primary colors (red, blue, gold) that stand out crisply against white. Same geometric construction and composition.',
+    math: 'IMPORTANT: Use a clean white (#ffffff) background instead of cream parchment. Keep the same bold primary colors (red, blue, gold) and clean geometric construction style. Same composition.',
   },
   dark: {
     metaphor:
       'IMPORTANT: Use a dark navy background (#1e1e28). Use bright, saturated colors with high contrast against the dark background. Same subject and composition.',
-    math: 'IMPORTANT: Use a dark slate background (#1a1a2e) resembling aged dark vellum. Use bright vivid primary colors (vermillion, electric blue, bright gold) with high contrast against the dark ground. Same geometric construction and composition.',
+    math: 'IMPORTANT: Use a dark aged-vellum background (#1a1a2e). Use bright vivid primary colors (vermillion, bright blue, bright gold) with high contrast against the dark ground. Keep the same clean geometric construction style. Same composition.',
   },
 } as const
 
@@ -66,7 +66,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A tiny person walking straight across a perfectly round pond in one step, then the same person walking all the way around the edge of the pond taking a little more than three steps. Show the diameter path and the circumference path with different colors.',
     mathPrompt:
-      'A perfect circle with a highlighted diameter line and the circumference unrolled into a straight line below it, showing the ratio is slightly more than 3. Glowing arcs and measurement marks.',
+      'A circle with its diameter drawn as a bold red line. Below the circle, the circumference unrolled into a straight blue line. The diameter length is marked off along the unrolled line three times with a visible remainder, showing the ratio is slightly more than 3. Compass arcs visible at construction points.',
     metaphorImage: '/images/constants/pi-metaphor.png',
     mathImage: '/images/constants/pi-math.png',
   },
@@ -84,7 +84,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A magic vine growing from a single stem, with each tiny leaf sprouting its own baby leaves instantly. The vine is lush and fractal-like, almost tripling from its original size. Warm greens with golden highlights.',
     mathPrompt:
-      'The exponential curve y=eˣ rising steeply, with compound interest stepping functions converging toward the smooth curve. Show the limit of (1+1/n)ⁿ as stacked rectangular approximations approaching the curve.',
+      'The hyperbola y=1/x drawn as a clean black curve. The region under the curve from x=1 to x=e shaded in translucent blue, representing area exactly equal to 1. A red vertical line at x=e. Thin rectangular Riemann-sum slices visible within the shaded region, showing how the area is measured.',
     metaphorImage: '/images/constants/e-metaphor.png',
     mathImage: '/images/constants/e-math.png',
   },
@@ -102,7 +102,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A sunflower viewed from above with spiral seed patterns radiating from the center. Golden petals arranged in a fibonacci spiral. Warm yellows and oranges.',
     mathPrompt:
-      'A golden rectangle subdivided into successively smaller golden rectangles, with a logarithmic spiral (golden spiral) traced through their corners. Precise proportional construction lines.',
+      'A golden rectangle subdivided recursively: each subdivision peels off a red square, leaving a smaller blue golden rectangle, repeated four or five times inward. A smooth golden spiral arc traced through the corners of the squares in black. Construction lines showing the proportional division at each step.',
     metaphorImage: '/images/constants/phi-metaphor.png',
     mathImage: '/images/constants/phi-math.png',
   },
@@ -120,7 +120,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A square garden tile viewed from above with a glowing diagonal line cutting across it as a shortcut. Two tiny people — one walking along two sides, one cutting diagonally. The diagonal splits the square into two perfect triangles.',
     mathPrompt:
-      'A unit square with side length 1, its diagonal highlighted, and the Pythagorean theorem shown geometrically: two small squares on the sides and one larger square on the hypotenuse. Construction lines and right-angle marks.',
+      'A blue unit square with its diagonal drawn as a bold red line. On each side of the square, a small gold square is constructed outward (area 1 each). On the diagonal, a larger red square is constructed (area 2), visually showing that the diagonal square equals the two side squares combined. Right-angle marks at the corners. Compass arc at the diagonal endpoint.',
     metaphorImage: '/images/constants/sqrt2-metaphor.png',
     mathImage: '/images/constants/sqrt2-math.png',
   },
@@ -138,7 +138,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A transparent cube/box viewed in 3D perspective with a glowing string stretched from the bottom-front-left corner to the top-back-right corner — the space diagonal. Honeycomb cells and stacked bubbles nearby.',
     mathPrompt:
-      'A cube with edge length 1, showing the face diagonal (√2) and the space diagonal (√3) as glowing lines. An equilateral triangle cross-section highlighted inside the cube.',
+      'A large equilateral triangle with side length 2, filled in light blue. The altitude drawn from the apex perpendicular to the base as a bold red line, splitting the triangle into two right triangles. The base halves marked in gold. Compass arcs visible at the apex and base vertices showing the construction of the equilateral triangle.',
     metaphorImage: '/images/constants/sqrt3-metaphor.png',
     mathImage: '/images/constants/sqrt3-math.png',
   },
@@ -156,7 +156,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A spinning wheel or merry-go-round completing one full revolution, with a trail showing the complete circular path. A stick figure riding it all the way around back to the start. Bright, dynamic, sense of motion.',
     mathPrompt:
-      'A unit circle with the full circumference highlighted (not just half). A radius line sweeping through a complete 360° rotation, with radians marked. The full arc glowing brightly compared to a dimmer half-arc (π).',
+      'A circle with its radius drawn in red. The full circumference traced as a bold blue arc going all the way around (one complete turn). The radius length is marked off along the circumference six times with tick marks, showing it fits slightly more than six times. A faint dashed semicircle in gold contrasts the full turn (tau) against the half turn (pi).',
     metaphorImage: '/images/constants/tau-metaphor.png',
     mathImage: '/images/constants/tau-math.png',
   },
@@ -174,7 +174,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'The same magic vine from e, but now with a clock or hourglass beside it showing the exact moment when one leaf becomes two leaves. The vine at the halfway-point of its growth journey. A bridge connecting "1" to "2".',
     mathPrompt:
-      'The curve y=eˣ with a horizontal line at y=2 intersecting it. A vertical drop-line from the intersection to x=ln(2)≈0.693 on the x-axis. The area under the curve 1/x from 1 to 2 shaded.',
+      'The hyperbola y=1/x drawn as a clean black curve. The area under the curve from x=1 to x=2 shaded in translucent red. Vertical lines at x=1 (blue) and x=2 (blue) bounding the shaded region. The shaded area represents ln(2). Thin horizontal reference line at y=1 in light gold. Clean axis lines.',
     metaphorImage: '/images/constants/ln2-metaphor.png',
     mathImage: '/images/constants/ln2-math.png',
   },
@@ -192,7 +192,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A smooth curved slide built from tiny square blocks, with a small jagged gap visible between the smooth curve and the stepped blocks. The gap is highlighted in a contrasting color, stubbornly present no matter how small the blocks get.',
     mathPrompt:
-      'A smooth ln(x) curve with a staircase function (harmonic series partial sums) stepping above it. The persistent gap between the staircase and the curve highlighted as a glowing strip of constant width γ≈0.577.',
+      'A smooth ln(x) curve drawn in black. Above it, a descending staircase of rectangles (the harmonic series partial sums: heights 1, 1/2, 1/3, 1/4...) drawn with blue outlines. The persistent gap between the top of the staircase and the smooth curve is shaded in red — this strip represents gamma. The gap stays visually constant even as both curve and staircase rise together.',
     metaphorImage: '/images/constants/gamma-metaphor.png',
     mathImage: '/images/constants/gamma-math.png',
   },
@@ -210,7 +210,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'A dripping faucet where drops split into two streams, then four, then eight, rushing toward chaotic splashing. The rhythm of splitting visualized as branching paths. Blues and silvers.',
     mathPrompt:
-      'A bifurcation diagram (logistic map) showing period-doubling cascade. The parameter axis horizontal, population vertical. Branches splitting at accelerating intervals, converging to chaos. The ratio between successive bifurcation points highlighted.',
+      'A clean bifurcation diagram showing the period-doubling cascade. A single branch at left splits into two (red), then four (blue), then eight (gold), with the splits accelerating toward a chaotic region on the right. Brackets between successive fork points show the shrinking intervals whose ratio converges to delta. Simple tree-like branching, clean lines, no scatter.',
     metaphorImage: '/images/constants/feigenbaum-metaphor.png',
     mathImage: '/images/constants/feigenbaum-math.png',
   },
@@ -228,7 +228,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'Beams of light sticking to atoms like velcro, with a cosmic volume/dial knob controlling how strongly light grabs matter. A sun shining, solid ground stable. Cosmic purple and gold tones.',
     mathPrompt:
-      'A Feynman diagram showing a photon (wavy line) coupling to an electron (straight line) at a vertex. The coupling constant α≈1/137 visualized as the vertex strength. Particle physics interaction diagram.',
+      'A clean Feynman diagram: two straight red lines (electrons) meeting a wavy blue line (photon) at a single vertex point. The vertex drawn as a bold black dot. The diagram is simple and centered — just the basic QED vertex showing how light couples to matter. Clean straight lines and a smooth sinusoidal photon line.',
     metaphorImage: '/images/constants/alpha-metaphor.png',
     mathImage: '/images/constants/alpha-math.png',
   },
@@ -246,7 +246,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     metaphorPrompt:
       'Two parallel walls with invisible waves trapped between them, the walls being sucked together instead of pushed apart. A tiny vacuum force pulling inward. Dark space between the plates with subtle wave patterns.',
     mathPrompt:
-      'The Casimir effect diagram: two parallel conducting plates with standing electromagnetic waves between them (discrete modes) and continuous wave spectrum outside. Arrows showing the net inward force. Quantum vacuum energy visualization.',
+      'Two thick parallel vertical red lines (conducting plates). Between them, three or four standing wave patterns drawn in blue (discrete modes: 1, 2, 3 half-wavelengths that fit between the plates). Outside the plates, denser wave patterns in gold (continuous spectrum). Bold black arrows on each plate pointing inward, showing the net attractive Casimir force.',
     metaphorImage: '/images/constants/ramanujan-metaphor.png',
     mathImage: '/images/constants/ramanujan-math.png',
   },

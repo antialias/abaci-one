@@ -18,13 +18,28 @@ import { computeAllConstantVisibilities } from './constants/computeConstantVisib
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
-import { renderGoldenRatioOverlay } from './constants/demos/goldenRatioDemo'
+import { renderGoldenRatioOverlay, NUM_LEVELS } from './constants/demos/goldenRatioDemo'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
 import { computeInterestingPrimes } from './primes/interestingness'
 import type { InterestingPrime } from './primes/interestingness'
+import { usePrimeTour } from './primes/usePrimeTour'
+import { PRIME_TOUR_STOPS } from './primes/primeTourStops'
+import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
+
+// Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
+// gives more precision to later (dramatic) levels on the right.
+// B=16 puts step 10 at the scrubber midpoint: (16^0.5 - 1)/(16 - 1) = 0.2 = 10/50.
+const LOG_BASE = 16
+const LOG_DENOM = Math.log(LOG_BASE)
+function progressToScrubber(p: number): number {
+  return (Math.pow(LOG_BASE, p) - 1) / (LOG_BASE - 1)
+}
+function scrubberToProgress(s: number): number {
+  return Math.log(1 + s * (LOG_BASE - 1)) / LOG_DENOM
+}
 
 const INITIAL_STATE: NumberLineState = {
   center: 0,
@@ -100,6 +115,21 @@ export function NumberLine() {
   const scrubberThumbRef = useRef<HTMLDivElement>(null)
   const [demoActive, setDemoActive] = useState(false)
   const isDraggingScrubberRef = useRef(false)
+
+  // --- Prime Tour state ---
+  // Uses the same drawFnRef/demoRedraw pattern as useConstantDemo
+  const {
+    tourState: tourStateRef,
+    currentStopIndex: tourStopIndex,
+    totalStops: tourTotalStops,
+    currentStop: tourCurrentStop,
+    startTour,
+    nextStop: tourNextStop,
+    prevStop: tourPrevStop,
+    exitTour,
+    tickTour,
+    forcedHoverValue,
+  } = usePrimeTour(stateRef, cssWidthRef, cssHeightRef, demoRedraw)
 
   // --- Primes (Sieve of Eratosthenes) state ---
   const [primesEnabled, setPrimesEnabled] = useState(true)
@@ -288,6 +318,18 @@ export function NumberLine() {
     // Tick the constant demo state machine (updates viewport during animation)
     tickDemo()
 
+    // Tick the prime tour state machine (updates viewport during flights)
+    tickTour()
+
+    // Effective hovered value: tour forced hover overrides user hover
+    // Read directly from tourStateRef to avoid stale closure
+    const tourForced = (() => {
+      const ts = tourStateRef.current
+      if (ts.phase === 'idle' || ts.phase === 'fading' || ts.stopIndex === null) return null
+      return PRIME_TOUR_STOPS[ts.stopIndex]?.hoverValue ?? null
+    })()
+    const effectiveHovered = tourForced ?? hoveredValueRef.current
+
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
@@ -296,7 +338,7 @@ export function NumberLine() {
       resolvedTheme === 'dark', thresholdsRef.current,
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
       renderTarget, collisionFadeMapRef.current, renderConstants,
-      primeInfos, hoveredValueRef.current, interestingPrimes, primePairArcs
+      primeInfos, effectiveHovered, interestingPrimes, primePairArcs
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -317,10 +359,10 @@ export function NumberLine() {
       scrubberTrackRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
     }
     if (scrubberFillRef.current) {
-      scrubberFillRef.current.style.width = `${ds.revealProgress * 100}%`
+      scrubberFillRef.current.style.width = `${progressToScrubber(ds.revealProgress) * 100}%`
     }
     if (scrubberThumbRef.current) {
-      scrubberThumbRef.current.style.left = `${ds.revealProgress * 100}%`
+      scrubberThumbRef.current.style.left = `${progressToScrubber(ds.revealProgress) * 100}%`
     }
     // Sync React state for conditional rendering (batch with rAF)
     if (isActive && !demoActive) setDemoActive(true)
@@ -453,6 +495,9 @@ export function NumberLine() {
 
   // --- Hover handler for prime tooltips (primes only) ---
   const handleHover = useCallback((hoverScreenX: number, _hoverScreenY: number) => {
+    // Suppress user hover during prime tour (forced hover handles it)
+    if (tourStateRef.current.phase !== 'idle') return
+
     if (hoverScreenX < 0) {
       if (hoveredValueRef.current !== null) {
         setHoveredValue(null)
@@ -645,15 +690,26 @@ export function NumberLine() {
   }, [])
 
   const handleExploreConstant = useCallback((constantId: string) => {
+    exitTour() // mutual exclusion: cancel tour when starting demo
     startDemo(constantId)
-  }, [startDemo])
+  }, [startDemo, exitTour])
+
+  // --- Prime Tour handlers ---
+  const handleStartTour = useCallback(() => {
+    cancelDemo() // mutual exclusion: cancel demo when starting tour
+    setTappedConstantId(null)
+    setTappedIntValue(null)
+    setHoveredValue(null)
+    startTour()
+  }, [startTour, cancelDemo])
 
   // --- Scrubber pointer handlers ---
   const scrubberProgressFromPointer = useCallback((clientX: number) => {
     const track = scrubberTrackRef.current
     if (!track) return 0
     const rect = track.getBoundingClientRect()
-    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const linearPos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return scrubberToProgress(linearPos)
   }, [])
 
   const handleScrubberPointerDown = useCallback((e: React.PointerEvent) => {
@@ -711,6 +767,31 @@ export function NumberLine() {
             overflow: 'hidden',
           }}
         />
+        {/* Prime Tour start button — shown when primes enabled and tour not active */}
+        {primesEnabled && tourStateRef.current.phase === 'idle' && !demoActive && (
+          <button
+            data-action="start-prime-tour"
+            onClick={handleStartTour}
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: resolvedTheme === 'dark' ? '#e9d5ff' : '#6d28d9',
+              backgroundColor: resolvedTheme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+              border: `1px solid ${resolvedTheme === 'dark' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.25)'}`,
+              borderRadius: 8,
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)',
+              zIndex: 10,
+              pointerEvents: 'auto',
+            }}
+          >
+            Prime Tour
+          </button>
+        )}
         {tappedConstant && (
           <ConstantInfoCard
             constant={tappedConstant}
@@ -788,13 +869,22 @@ export function NumberLine() {
             />
           </div>
         )}
-        {hoveredValue !== null && primesEnabled && (() => {
-          const ip = interestingPrimesRef.current.find(p => p.value === hoveredValue)
+        {(() => {
+          const tooltipValue = forcedHoverValue ?? hoveredValue
+          if (tooltipValue === null || !primesEnabled) return null
+          const spf = tooltipValue >= 2 ? smallestPrimeFactor(tooltipValue) : 0
+          const isPrime = tooltipValue >= 2 && spf === tooltipValue
+          const ip = interestingPrimesRef.current.find(p => p.value === tooltipValue)
           return (
             <PrimeTooltip
-              value={hoveredValue}
-              primeInfo={{ value: hoveredValue, smallestPrimeFactor: hoveredValue, isPrime: true, classification: 'prime' }}
-              screenX={numberToScreenX(hoveredValue, stateRef.current.center, stateRef.current.pixelsPerUnit, cssWidthRef.current)}
+              value={tooltipValue}
+              primeInfo={{
+                value: tooltipValue,
+                smallestPrimeFactor: spf,
+                isPrime,
+                classification: tooltipValue === 1 ? 'one' : isPrime ? 'prime' : 'composite',
+              }}
+              screenX={numberToScreenX(tooltipValue, stateRef.current.center, stateRef.current.pixelsPerUnit, cssWidthRef.current)}
               tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
               containerWidth={cssWidthRef.current}
               isDark={resolvedTheme === 'dark'}
@@ -802,7 +892,7 @@ export function NumberLine() {
             />
           )
         })()}
-        {hoveredValue === null && tappedIntValue !== null && primesEnabled && (() => {
+        {hoveredValue === null && forcedHoverValue === null && tappedIntValue !== null && primesEnabled && (() => {
           const v = tappedIntValue
           const spf = v >= 2 ? smallestPrimeFactor(v) : 0
           const info: PrimeTickInfo = v === 1
@@ -819,6 +909,18 @@ export function NumberLine() {
             />
           )
         })()}
+        {/* Prime Tour overlay card */}
+        {tourCurrentStop !== null && tourStopIndex !== null && (
+          <PrimeTourOverlay
+            stop={tourCurrentStop}
+            stopIndex={tourStopIndex}
+            totalStops={tourTotalStops}
+            isDark={resolvedTheme === 'dark'}
+            onNext={tourNextStop}
+            onPrev={tourPrevStop}
+            onClose={exitTour}
+          />
+        )}
         <ToyDebugPanel title="Number Line">
           <DebugSlider label="Anchor max" value={anchorMax} min={1} max={20} step={1} onChange={setAnchorMax} />
           <DebugSlider label="Medium max" value={mediumMax} min={5} max={50} step={1} onChange={setMediumMax} />
@@ -839,10 +941,12 @@ export function NumberLine() {
             Primes (Sieve)
           </label>
         </ToyDebugPanel>
-        {hoveredValue !== null && primesEnabled && hoveredValue >= 2 && (() => {
-          const spf = smallestPrimeFactor(hoveredValue)
-          if (spf !== hoveredValue) return null // not prime
-          const labels = getSpecialPrimeLabels(hoveredValue)
+        {(() => {
+          const fv = forcedHoverValue ?? hoveredValue
+          if (fv === null || !primesEnabled || fv < 2) return null
+          const spf = smallestPrimeFactor(fv)
+          if (spf !== fv) return null // not prime
+          const labels = getSpecialPrimeLabels(fv)
           if (labels.length === 0) return null
           const isDark = resolvedTheme === 'dark'
           // Deduplicate types (a prime can have e.g. two twin pairs but one footnote)

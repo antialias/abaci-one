@@ -1,7 +1,7 @@
 import type { NumberLineState } from '../../types'
 import { numberToScreenX } from '../../numberLineTicks'
 
-const NUM_LEVELS = 10
+export const NUM_LEVELS = 50
 
 // Fibonacci numbers for the construction.
 // Using Fibonacci ratio instead of exact φ means the two innermost squares
@@ -59,7 +59,9 @@ function computeSubdivisions(): Subdivision[] {
   let dir = 0
 
   for (let i = 0; i < NUM_LEVELS; i++) {
-    const side = dir % 2 === 0 ? rh : rw
+    // Compute side directly from Fibonacci to avoid catastrophic cancellation
+    // in the iterative subtraction of rw/rh over 50 levels.
+    const side = FIB[NUM_LEVELS - i] / FIB[NUM_LEVELS]
     let sx: number, sy: number
     let arcCx: number, arcCy: number
     let arcStart: number
@@ -238,10 +240,18 @@ function lerp(a: number, b: number, t: number): number {
 
 // --- Canvas rendering ---
 
-const COLOR_LIGHT = '#4338ca'
+// Construction lines + division lines
+const COLOR_LIGHT = '#6d28d9'
 const COLOR_DARK = '#f59e0b'
-const SPIRAL_COLOR_LIGHT = '#7c3aed'
+// Spiral arcs
+const SPIRAL_COLOR_LIGHT = '#a855f7'
 const SPIRAL_COLOR_DARK = '#fbbf24'
+// Frame snapshot colors — cycle through a palette for visual variety
+const FRAME_COLORS_LIGHT = ['#dc2626', '#ea580c', '#d97706', '#65a30d', '#0891b2', '#7c3aed']
+const FRAME_COLORS_DARK = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#22d3ee', '#c4b5fd']
+// Flash glow
+const FLASH_COLOR_LIGHT = '#fff'
+const FLASH_COLOR_DARK = '#fff'
 
 /**
  * Render the golden ratio demo overlay on the canvas.
@@ -444,24 +454,46 @@ export function renderGoldenRatioOverlay(
   // --- Frame snapshots: static bounding boxes left behind at each step ---
   // Each completed step leaves a frozen frame in NL coordinates.
   // Newer frames are opaque; older ones progressively fade out.
-  // The most recently completed frame "flashes" briefly.
+  // The most recently completed frame "flashes" with a bright glow.
+  const framePalette = isDark ? FRAME_COLORS_DARK : FRAME_COLORS_LIGHT
+  const flashColor = isDark ? FLASH_COLOR_DARK : FLASH_COLOR_LIGHT
+
   for (let i = 0; i < animStep && i < NUM_LEVELS; i++) {
     const age = (animStep - 1) - i // 0 = most recent, 1 = one back, ...
     if (age >= FRAME_FADE_STEPS) continue
 
-    // Base opacity fades with age
-    let frameAlpha = 1 - age / FRAME_FADE_STEPS
+    const frameColor = framePalette[i % framePalette.length]
+    const corners = FRAME_SNAPSHOTS[i]
 
-    // Flash: most recently completed frame starts bright and settles
-    if (age === 0 && animStep < NUM_LEVELS) {
-      const flash = Math.max(0, 1 - stepT * 3) // fades in first ~1/3 of next step
-      frameAlpha = Math.min(1, frameAlpha + flash * 0.5)
+    // Base opacity fades with age
+    const baseAlpha = 1 - age / FRAME_FADE_STEPS
+
+    // Flash: dramatic glow on most recently completed frame
+    const isFlashing = age === 0 && animStep < NUM_LEVELS
+    const flashT = isFlashing ? Math.max(0, 1 - stepT * 2.5) : 0
+
+    // Draw glow pass first (wider, blurred, bright)
+    if (flashT > 0) {
+      ctx.globalAlpha = opacity * flashT * 0.8
+      ctx.strokeStyle = flashColor
+      ctx.lineWidth = 6
+      ctx.shadowColor = flashColor
+      ctx.shadowBlur = 20 * flashT
+      ctx.beginPath()
+      ctx.moveTo(toX(corners[0][0]), toY(corners[0][1]))
+      ctx.lineTo(toX(corners[1][0]), toY(corners[1][1]))
+      ctx.lineTo(toX(corners[2][0]), toY(corners[2][1]))
+      ctx.lineTo(toX(corners[3][0]), toY(corners[3][1]))
+      ctx.closePath()
+      ctx.stroke()
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
     }
 
-    const corners = FRAME_SNAPSHOTS[i]
-    ctx.globalAlpha = opacity * frameAlpha
-    ctx.strokeStyle = color
-    ctx.lineWidth = age === 0 && stepT < 0.2 ? 2.5 : 1
+    // Draw the frame itself
+    ctx.globalAlpha = opacity * Math.min(1, baseAlpha + flashT * 0.3)
+    ctx.strokeStyle = frameColor
+    ctx.lineWidth = isFlashing ? lerp(3, 1.5, stepT) : 1.5
     ctx.beginPath()
     ctx.moveTo(toX(corners[0][0]), toY(corners[0][1]))
     ctx.lineTo(toX(corners[1][0]), toY(corners[1][1]))

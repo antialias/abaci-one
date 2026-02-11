@@ -7,7 +7,7 @@ import { AdminNav } from '@/components/AdminNav'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { ImageGenerateOutput } from '@/lib/tasks/image-generate'
 
-type ThemeMode = 'base' | 'light' | 'dark'
+type PipelinePhase = 'base' | 'light' | 'dark'
 
 interface ImageStyleStatus {
   exists: boolean
@@ -50,7 +50,7 @@ export default function ConstantImagesPage() {
   const [error, setError] = useState<string | null>(null)
   const [provider, setProvider] = useState<string>('')
   const [model, setModel] = useState<string>('')
-  const [themeMode, setThemeMode] = useState<ThemeMode>('base')
+  const [pipelineQueue, setPipelineQueue] = useState<PipelinePhase[]>([])
   const [taskId, setTaskId] = useState<string | null>(null)
   const [expandedPrompts, setExpandedPrompts] = useState<Set<string>>(new Set())
   // REST-polled task state as fallback when socket is slow to connect
@@ -58,8 +58,9 @@ export default function ConstantImagesPage() {
   const [polledTaskStatus, setPolledTaskStatus] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<ImageGenerateOutput | null>(null)
   const providerInitRef = useRef(false)
+  const pipelineAdvancingRef = useRef(false)
 
-  const { state: taskState, cancel } = useBackgroundTask<ImageGenerateOutput>(taskId)
+  const { state: taskState, cancel: cancelTask } = useBackgroundTask<ImageGenerateOutput>(taskId)
 
   const isGenerating = taskState?.status === 'pending' || taskState?.status === 'running'
     || (!!taskId && !taskState && polledTaskStatus !== 'completed' && polledTaskStatus !== 'failed')
@@ -150,21 +151,21 @@ export default function ConstantImagesPage() {
     }
   }, [polledTaskStatus, fetchStatus])
 
-  // Derive stats based on selected theme mode
+  // Derive per-variant stats
   const stats = useMemo(() => {
-    if (!status) return { total: 0, existing: 0, missing: 0 }
+    if (!status) return { total: 0, base: 0, light: 0, dark: 0 }
     const total = status.constants.length * 2
-    const existing = status.constants.reduce((acc, c) => {
-      const metaphorExists = themeMode === 'base' ? c.metaphor.exists
-        : themeMode === 'light' ? c.metaphor.lightExists
-        : c.metaphor.darkExists
-      const mathExists = themeMode === 'base' ? c.math.exists
-        : themeMode === 'light' ? c.math.lightExists
-        : c.math.darkExists
-      return acc + (metaphorExists ? 1 : 0) + (mathExists ? 1 : 0)
-    }, 0)
-    return { total, existing, missing: total - existing }
-  }, [status, themeMode])
+    let base = 0, light = 0, dark = 0
+    for (const c of status.constants) {
+      if (c.metaphor.exists) base++
+      if (c.math.exists) base++
+      if (c.metaphor.lightExists) light++
+      if (c.math.lightExists) light++
+      if (c.metaphor.darkExists) dark++
+      if (c.math.darkExists) dark++
+    }
+    return { total, base, light, dark }
+  }, [status])
 
   // Currently generating images (from task events)
   const generatingSet = useMemo(() => {
@@ -183,19 +184,20 @@ export default function ConstantImagesPage() {
     return set
   }, [taskState, isGenerating])
 
-  const handleGenerate = async (
+  const handleGenerate = useCallback(async (
     targets?: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>,
-    forceRegenerate?: boolean
+    forceRegenerate?: boolean,
+    themeOverride?: 'light' | 'dark'
   ) => {
     setError(null)
     setPolledTaskError(null)
     setPolledTaskStatus(null)
     setLastResult(null)
-    // Apply theme from selector: for individual targets, set per-target; for "all", set top-level
-    const activeTheme = themeMode !== 'base' ? themeMode : undefined
+
     const themedTargets = targets
-      ? targets.map((t) => ({ ...t, theme: t.theme ?? activeTheme }))
+      ? targets.map((t) => ({ ...t, theme: t.theme ?? themeOverride }))
       : undefined
+
     try {
       const res = await fetch('/api/admin/constant-images/generate', {
         method: 'POST',
@@ -205,7 +207,7 @@ export default function ConstantImagesPage() {
           model,
           targets: themedTargets,
           forceRegenerate,
-          ...(activeTheme && !themedTargets && { theme: activeTheme }),
+          ...(themeOverride && !themedTargets && { theme: themeOverride }),
         }),
       })
       if (!res.ok) {
@@ -216,7 +218,54 @@ export default function ConstantImagesPage() {
       setTaskId(data.taskId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start generation')
+      // If pipeline is running and we hit an error, clear it
+      setPipelineQueue([])
     }
+  }, [provider, model])
+
+  // Pipeline advancement: when a task completes and there's more in the queue, advance
+  useEffect(() => {
+    if (pipelineQueue.length === 0) return
+    if (polledTaskStatus !== 'completed') return
+    if (pipelineAdvancingRef.current) return
+
+    pipelineAdvancingRef.current = true
+
+    // Brief delay to let status refresh complete
+    const timer = setTimeout(() => {
+      const [, ...remaining] = pipelineQueue
+      setPipelineQueue(remaining)
+
+      if (remaining.length > 0) {
+        const nextTheme = remaining[0] === 'base' ? undefined : remaining[0]
+        handleGenerate(undefined, false, nextTheme)
+      }
+      pipelineAdvancingRef.current = false
+    }, 1000)
+
+    return () => {
+      clearTimeout(timer)
+      pipelineAdvancingRef.current = false
+    }
+  }, [polledTaskStatus, pipelineQueue, handleGenerate])
+
+  // Clear pipeline on task failure
+  useEffect(() => {
+    if (polledTaskStatus === 'failed' && pipelineQueue.length > 0) {
+      setPipelineQueue([])
+    }
+  }, [polledTaskStatus, pipelineQueue])
+
+  const handlePipelineGenerate = () => {
+    const queue: PipelinePhase[] = ['base', 'light', 'dark']
+    setPipelineQueue(queue)
+    // Start with base (no theme override)
+    handleGenerate(undefined, false, undefined)
+  }
+
+  const handleCancel = () => {
+    setPipelineQueue([])
+    cancelTask()
   }
 
   const togglePrompt = (key: string) => {
@@ -250,6 +299,17 @@ export default function ConstantImagesPage() {
 
   const selectedValue = `${provider}:${model}`
 
+  // Pipeline progress info
+  const pipelinePhaseIndex = pipelineQueue.length > 0
+    ? 3 - pipelineQueue.length
+    : -1
+  const pipelinePhaseLabel = pipelineQueue[0] === 'base' ? 'base images'
+    : pipelineQueue[0] === 'light' ? 'light variants'
+    : pipelineQueue[0] === 'dark' ? 'dark variants'
+    : ''
+
+  const baseMissing = stats.total - stats.base
+
   return (
     <div
       data-component="constant-images-admin"
@@ -279,7 +339,9 @@ export default function ConstantImagesPage() {
           <p className={css({ fontSize: '13px', color: '#8b949e' })}>
             Generate AI illustrations for math constants. Each constant has a metaphor and a math
             style image.
-            {stats.total > 0 && ` ${stats.existing}/${stats.total} images generated.`}
+            {stats.total > 0 && (
+              <> Base: {stats.base}/{stats.total}, Light: {stats.light}/{stats.total}, Dark: {stats.dark}/{stats.total}</>
+            )}
           </p>
         </div>
 
@@ -322,33 +384,32 @@ export default function ConstantImagesPage() {
             ))}
           </select>
 
-          {/* Theme mode selector */}
-          <select
-            data-action="select-theme"
-            value={themeMode}
-            onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
-            disabled={isGenerating}
+          {/* Generate All Pipeline button */}
+          <button
+            data-action="generate-all-pipeline"
+            onClick={handlePipelineGenerate}
+            disabled={isGenerating || !provider}
             className={css({
-              backgroundColor: '#21262d',
-              color: '#c9d1d9',
-              border: '1px solid #30363d',
-              borderRadius: '6px',
-              padding: '6px 12px',
               fontSize: '13px',
+              backgroundColor: '#8957e5',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 16px',
               cursor: 'pointer',
+              fontWeight: '600',
+              '&:hover': { backgroundColor: '#a371f7' },
               '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
-            <option value="base">Base images</option>
-            <option value="light">Light theme</option>
-            <option value="dark">Dark theme</option>
-          </select>
+            Generate All Pipeline
+          </button>
 
-          {/* Generate All Missing button */}
+          {/* Generate Missing (base only) */}
           <button
             data-action="generate-all-missing"
             onClick={() => handleGenerate()}
-            disabled={isGenerating || stats.missing === 0 || !provider}
+            disabled={isGenerating || baseMissing === 0 || !provider}
             className={css({
               fontSize: '13px',
               backgroundColor: '#238636',
@@ -362,10 +423,10 @@ export default function ConstantImagesPage() {
               '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
-            Generate {stats.missing} Missing
+            Generate {baseMissing} Missing
           </button>
 
-          {/* Force regenerate all */}
+          {/* Force regenerate all (base only) */}
           <button
             data-action="generate-all-force"
             onClick={() => handleGenerate(undefined, true)}
@@ -390,7 +451,7 @@ export default function ConstantImagesPage() {
           {isGenerating && (
             <button
               data-action="cancel-generation"
-              onClick={cancel}
+              onClick={handleCancel}
               className={css({
                 fontSize: '13px',
                 backgroundColor: '#da3633',
@@ -428,8 +489,8 @@ export default function ConstantImagesPage() {
           </div>
         )}
 
-        {/* Task result summary */}
-        {lastResult && !isGenerating && (
+        {/* Task result summary (only show when pipeline is fully done) */}
+        {lastResult && !isGenerating && pipelineQueue.length === 0 && (
           <div
             data-element="task-result"
             className={css({
@@ -502,7 +563,9 @@ export default function ConstantImagesPage() {
               })}
             >
               <span className={css({ fontSize: '13px', fontWeight: '600', color: '#58a6ff' })}>
-                {taskState ? 'Generating images...' : 'Starting generation...'}
+                {pipelineQueue.length > 0
+                  ? `Pipeline Step ${pipelinePhaseIndex + 1}/3 — Generating ${pipelinePhaseLabel}...`
+                  : taskState ? 'Generating images...' : 'Starting generation...'}
               </span>
               <span className={css({ fontSize: '12px', color: '#8b949e' })}>
                 {taskState?.progress ?? 0}%
@@ -520,7 +583,7 @@ export default function ConstantImagesPage() {
               <div
                 className={css({
                   height: '100%',
-                  backgroundColor: '#58a6ff',
+                  backgroundColor: pipelineQueue.length > 0 ? '#8957e5' : '#58a6ff',
                   borderRadius: '3px',
                   transition: 'width 0.3s',
                 })}
@@ -556,7 +619,6 @@ export default function ConstantImagesPage() {
               <ConstantCard
                 key={constant.id}
                 constant={constant}
-                themeMode={themeMode}
                 isGenerating={isGenerating}
                 generatingSet={generatingSet}
                 expandedPrompts={expandedPrompts}
@@ -576,7 +638,6 @@ export default function ConstantImagesPage() {
 
 function ConstantCard({
   constant,
-  themeMode,
   isGenerating,
   generatingSet,
   expandedPrompts,
@@ -585,7 +646,6 @@ function ConstantCard({
   provider,
 }: {
   constant: ConstantImageStatus
-  themeMode: ThemeMode
   isGenerating: boolean
   generatingSet: Set<string>
   expandedPrompts: Set<string>
@@ -656,7 +716,6 @@ function ConstantCard({
           constant={constant}
           style="metaphor"
           info={constant.metaphor}
-          themeMode={themeMode}
           isGenerating={isGenerating}
           isCurrentlyGenerating={generatingSet.has(`${constant.id}-metaphor`)}
           isExpanded={expandedPrompts.has(`${constant.id}-metaphor`)}
@@ -668,7 +727,6 @@ function ConstantCard({
           constant={constant}
           style="math"
           info={constant.math}
-          themeMode={themeMode}
           isGenerating={isGenerating}
           isCurrentlyGenerating={generatingSet.has(`${constant.id}-math`)}
           isExpanded={expandedPrompts.has(`${constant.id}-math`)}
@@ -685,7 +743,6 @@ function ImageSlot({
   constant,
   style,
   info,
-  themeMode,
   isGenerating,
   isCurrentlyGenerating,
   isExpanded,
@@ -696,7 +753,6 @@ function ImageSlot({
   constant: ConstantImageStatus
   style: 'metaphor' | 'math'
   info: ImageStyleStatus
-  themeMode: ThemeMode
   isGenerating: boolean
   isCurrentlyGenerating: boolean
   isExpanded: boolean
@@ -704,11 +760,11 @@ function ImageSlot({
   onRegenerate: () => void
   provider: string
 }) {
-  const themeSuffix = themeMode !== 'base' ? `-${themeMode}` : ''
-  const imagePath = `/images/constants/${constant.id}-${style}${themeSuffix}.png`
-  const imageExists = themeMode === 'base' ? info.exists
-    : themeMode === 'light' ? info.lightExists
-    : info.darkExists
+  const variants: Array<{ key: string; label: string; suffix: string; exists: boolean }> = [
+    { key: 'base', label: 'base', suffix: '', exists: info.exists },
+    { key: 'light', label: 'light', suffix: '-light', exists: info.lightExists },
+    { key: 'dark', label: 'dark', suffix: '-dark', exists: info.darkExists },
+  ]
 
   return (
     <div
@@ -735,59 +791,85 @@ function ImageSlot({
         {style}
       </div>
 
-      {/* Image area */}
+      {/* Variant thumbnails row */}
       <div
+        data-element="variant-thumbnails"
         className={css({
-          aspectRatio: '1',
-          backgroundColor: '#161b22',
-          borderRadius: '6px',
-          border: '1px solid #30363d',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          position: 'relative',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: '6px',
         })}
       >
-        {isCurrentlyGenerating ? (
-          <div className={css({ textAlign: 'center', color: '#58a6ff' })}>
-            <div
-              className={css({
-                width: '24px',
-                height: '24px',
-                border: '2px solid #58a6ff',
-                borderTopColor: 'transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 8px',
-              })}
-            />
-            <span className={css({ fontSize: '11px' })}>Generating...</span>
-            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-          </div>
-        ) : imageExists ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={`${imagePath}?t=${Date.now()}`}
-            alt={`${constant.name} ${style}${themeMode !== 'base' ? ` (${themeMode})` : ''}`}
-            className={css({
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            })}
-          />
-        ) : (
-          <div className={css({ textAlign: 'center', color: '#484f58' })}>
-            <div className={css({ fontSize: '24px', marginBottom: '4px' })}>
-              {style === 'metaphor' ? '\u{1F3A8}' : '\u{1F4D0}'}
+        {variants.map((variant) => {
+          const imagePath = `/images/constants/${constant.id}-${style}${variant.suffix}.png`
+          return (
+            <div key={variant.key} data-element={`variant-${variant.key}`}>
+              <div
+                className={css({
+                  aspectRatio: '1',
+                  backgroundColor: '#161b22',
+                  borderRadius: '4px',
+                  border: '1px solid #30363d',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative',
+                })}
+              >
+                {isCurrentlyGenerating && variant.key === 'base' ? (
+                  <div className={css({ textAlign: 'center', color: '#58a6ff' })}>
+                    <div
+                      className={css({
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid #58a6ff',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto 4px',
+                      })}
+                    />
+                    <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                  </div>
+                ) : variant.exists ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={`${imagePath}?t=${Date.now()}`}
+                    alt={`${constant.name} ${style} (${variant.label})`}
+                    className={css({
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    })}
+                  />
+                ) : (
+                  <div className={css({ textAlign: 'center', color: '#484f58' })}>
+                    <div className={css({ fontSize: '14px' })}>
+                      {style === 'metaphor' ? '\u{1F3A8}' : '\u{1F4D0}'}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div
+                className={css({
+                  fontSize: '9px',
+                  color: variant.exists ? '#8b949e' : '#484f58',
+                  textAlign: 'center',
+                  marginTop: '2px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                })}
+              >
+                {variant.label}
+              </div>
             </div>
-            <span className={css({ fontSize: '11px' })}>Not generated</span>
-          </div>
-        )}
+          )
+        })}
       </div>
 
-      {/* File info (only shown for base images which have size data) */}
-      {themeMode === 'base' && info.exists && info.sizeBytes && (
+      {/* File info (base image size) */}
+      {info.exists && info.sizeBytes && (
         <div className={css({ fontSize: '10px', color: '#484f58' })}>
           {(info.sizeBytes / 1024).toFixed(0)} KB
         </div>
@@ -812,7 +894,7 @@ function ImageSlot({
             '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
           })}
         >
-          {imageExists ? 'Regenerate' : 'Generate'}
+          {info.exists ? 'Regenerate' : 'Generate'}
         </button>
         <button
           data-action={`toggle-prompt-${constant.id}-${style}`}
