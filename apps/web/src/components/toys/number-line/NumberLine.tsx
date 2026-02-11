@@ -19,9 +19,11 @@ import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
 import { renderGoldenRatioOverlay } from './constants/demos/goldenRatioDemo'
-import { computePrimeInfos, computeVisiblePrimes, smallestPrimeFactor } from './primes/sieve'
+import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
+import { computeInterestingPrimes } from './primes/interestingness'
+import type { InterestingPrime } from './primes/interestingness'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 
 const INITIAL_STATE: NumberLineState = {
@@ -106,6 +108,10 @@ export function NumberLine() {
   const primeInfosRef = useRef<Map<number, PrimeTickInfo>>(new Map())
   // Visible primes set for fast lookup in hover handler
   const visiblePrimesSetRef = useRef<Set<number>>(new Set())
+  // Rendered interesting prime positions for hit-testing at low zoom
+  const renderedPrimePositionsRef = useRef<{ value: number; screenX: number; note?: string }[]>([])
+  // Current interesting primes for the visible range
+  const interestingPrimesRef = useRef<InterestingPrime[]>([])
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -230,28 +236,44 @@ export function NumberLine() {
       renderConstantsRef.current = []
     }
 
-    // Compute prime infos, visible primes, and pair arcs
+    // Compute prime infos, interesting primes, and pair arcs
     let primeInfos: Map<number, PrimeTickInfo> | undefined
-    let visiblePrimes: number[] | undefined
+    let interestingPrimes: InterestingPrime[] | undefined
     let primePairArcs: ReturnType<typeof computePrimePairArcs> | undefined
     if (primesEnabledRef.current) {
       const ticks = computeTickMarks(stateRef.current, cssWidth, thresholdsRef.current)
       primeInfos = computePrimeInfos(ticks)
       primeInfosRef.current = primeInfos
 
-      // Compute visible primes for axis-level markers (works at any zoom)
+      // Compute interesting primes for axis-level markers (works at any zoom)
       const halfWidth = cssWidth / 2
       const ppu = stateRef.current.pixelsPerUnit
       const leftValue = stateRef.current.center - halfWidth / ppu
       const rightValue = stateRef.current.center + halfWidth / ppu
-      visiblePrimes = computeVisiblePrimes(leftValue, rightValue)
-      visiblePrimesSetRef.current = new Set(visiblePrimes)
+      interestingPrimes = computeInterestingPrimes(leftValue, rightValue, cssWidth)
+      interestingPrimesRef.current = interestingPrimes
+      visiblePrimesSetRef.current = new Set(interestingPrimes.map(ip => ip.value))
 
-      // Compute pair arcs for connecting twin/cousin/sexy primes
-      primePairArcs = computePrimePairArcs(visiblePrimes)
+      // Store rendered positions for hover hit-testing at low zoom
+      const positions: { value: number; screenX: number; note?: string }[] = []
+      for (const ip of interestingPrimes) {
+        // Skip if already visible as a tick-based dot
+        if (primeInfos.has(ip.value)) continue
+        const sx = numberToScreenX(ip.value, stateRef.current.center, ppu, cssWidth)
+        if (sx >= -5 && sx <= cssWidth + 5) {
+          positions.push({ value: ip.value, screenX: sx, note: ip.note })
+        }
+      }
+      renderedPrimePositionsRef.current = positions
+
+      // Compute pair arcs from the raw prime values
+      const primeValues = interestingPrimes.map(ip => ip.value)
+      primePairArcs = computePrimePairArcs(primeValues)
     } else {
       primeInfosRef.current = new Map()
       visiblePrimesSetRef.current = new Set()
+      interestingPrimesRef.current = []
+      renderedPrimePositionsRef.current = []
     }
 
     // Rate-limit display values before rendering
@@ -268,7 +290,7 @@ export function NumberLine() {
       resolvedTheme === 'dark', thresholdsRef.current,
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
       renderTarget, collisionFadeMapRef.current, renderConstants,
-      primeInfos, hoveredValueRef.current, visiblePrimes, primePairArcs
+      primeInfos, hoveredValueRef.current, interestingPrimes, primePairArcs
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -430,17 +452,37 @@ export function NumberLine() {
     const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
     const dist = Math.abs(hoverScreenX - nearestScreenX)
 
-    // Only show hover tooltip for primes
+    // Standard approach: snap to nearest integer prime
     if (dist < 20 && nearest >= 2 && smallestPrimeFactor(nearest) === nearest) {
       if (hoveredValueRef.current !== nearest) {
         setHoveredValue(nearest)
         scheduleRedraw()
       }
-    } else {
-      if (hoveredValueRef.current !== null) {
-        setHoveredValue(null)
-        scheduleRedraw()
+      return
+    }
+
+    // At low zoom, snap to nearest rendered interesting prime dot instead
+    const renderedPrimes = renderedPrimePositionsRef.current
+    if (renderedPrimes.length > 0 && renderedPrimes.length < 5000) {
+      let closest: typeof renderedPrimes[number] | null = null
+      let closestDist = Infinity
+      for (const rp of renderedPrimes) {
+        const d = Math.abs(hoverScreenX - rp.screenX)
+        if (d < closestDist) { closest = rp; closestDist = d }
       }
+      if (closest && closestDist < 20) {
+        if (hoveredValueRef.current !== closest.value) {
+          setHoveredValue(closest.value)
+          scheduleRedraw()
+        }
+        return
+      }
+    }
+
+    // No prime nearby
+    if (hoveredValueRef.current !== null) {
+      setHoveredValue(null)
+      scheduleRedraw()
     }
   }, [scheduleRedraw])
 
@@ -625,16 +667,20 @@ export function NumberLine() {
             onExplore={handleExploreConstant}
           />
         )}
-        {hoveredValue !== null && primesEnabled && (
-          <PrimeTooltip
-            value={hoveredValue}
-            primeInfo={{ value: hoveredValue, smallestPrimeFactor: hoveredValue, isPrime: true, classification: 'prime' }}
-            screenX={numberToScreenX(hoveredValue, stateRef.current.center, stateRef.current.pixelsPerUnit, cssWidthRef.current)}
-            tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
-            containerWidth={cssWidthRef.current}
-            isDark={resolvedTheme === 'dark'}
-          />
-        )}
+        {hoveredValue !== null && primesEnabled && (() => {
+          const ip = interestingPrimesRef.current.find(p => p.value === hoveredValue)
+          return (
+            <PrimeTooltip
+              value={hoveredValue}
+              primeInfo={{ value: hoveredValue, smallestPrimeFactor: hoveredValue, isPrime: true, classification: 'prime' }}
+              screenX={numberToScreenX(hoveredValue, stateRef.current.center, stateRef.current.pixelsPerUnit, cssWidthRef.current)}
+              tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
+              containerWidth={cssWidthRef.current}
+              isDark={resolvedTheme === 'dark'}
+              landmarkNote={ip?.note}
+            />
+          )
+        })()}
         {hoveredValue === null && tappedIntValue !== null && primesEnabled && (() => {
           const v = tappedIntValue
           const spf = v >= 2 ? smallestPrimeFactor(v) : 0

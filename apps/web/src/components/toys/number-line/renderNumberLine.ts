@@ -1,7 +1,11 @@
-import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant } from './types'
+import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant, PrimeTickInfo } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { computeTickMarks, numberToScreenX } from './numberLineTicks'
 import { renderConstantDropLines } from './constants/renderConstants'
+import { primeColorRgba } from './primes/primeColors'
+import type { PrimePairArc } from './primes/specialPrimes'
+import { MERSENNE_PRIMES, ARC_COLORS } from './primes/specialPrimes'
+import type { InterestingPrime } from './primes/interestingness'
 
 export interface RenderTarget {
   value: number
@@ -109,7 +113,11 @@ export function renderNumberLine(
   zoomFocalX = 0.5,
   target?: RenderTarget,
   collisionFadeMap?: CollisionFadeMap,
-  constants?: RenderConstant[]
+  constants?: RenderConstant[],
+  primeInfos?: Map<number, PrimeTickInfo>,
+  hoveredTick?: number | null,
+  interestingPrimes?: InterestingPrime[],
+  primePairArcs?: PrimePairArc[]
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -260,18 +268,49 @@ export function renderNumberLine(
   for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
 
-    const height = getTickHeight(tick.prominence, cssHeight)
+    let height = getTickHeight(tick.prominence, cssHeight)
     if (height > maxTickHeight) maxTickHeight = height
-    const lineWidth = getTickLineWidth(tick.prominence)
+    let lineWidth = getTickLineWidth(tick.prominence)
     const tickAlpha = getTickAlpha(tick.prominence)
+
+    const primeInfo = primeInfos?.get(tick.value)
+    const isHovered = hoveredTick != null && tick.value === hoveredTick
+
+    // Prime ticks: slightly taller + thicker
+    if (primeInfo?.isPrime) {
+      height *= 1.15
+      lineWidth += 0.5
+    }
 
     ctx.globalAlpha = tick.opacity
     ctx.beginPath()
     ctx.moveTo(x, centerY - height)
     ctx.lineTo(x, centerY + height)
-    ctx.strokeStyle = `rgba(${colors.tickRgb}, ${tickAlpha})`
+
+    if (primeInfo && primeInfo.classification !== 'one') {
+      // Color by smallest prime factor
+      const alpha = isHovered ? Math.min(1, tickAlpha + 0.3) : tickAlpha
+      ctx.strokeStyle = primeColorRgba(primeInfo.smallestPrimeFactor, alpha, isDark)
+    } else {
+      ctx.strokeStyle = `rgba(${colors.tickRgb}, ${tickAlpha})`
+    }
+
     ctx.lineWidth = lineWidth
     ctx.stroke()
+
+    // Hover highlight: subtle glow ring
+    if (isHovered && primeInfo && primeInfo.classification !== 'one') {
+      ctx.save()
+      ctx.globalAlpha = 0.25 * tick.opacity
+      ctx.strokeStyle = primeColorRgba(primeInfo.smallestPrimeFactor, 1, isDark)
+      ctx.lineWidth = lineWidth + 3
+      ctx.beginPath()
+      ctx.moveTo(x, centerY - height)
+      ctx.lineTo(x, centerY + height)
+      ctx.stroke()
+      ctx.restore()
+    }
+
     ctx.globalAlpha = 1
   }
 
@@ -322,7 +361,13 @@ export function renderNumberLine(
 
     ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
     ctx.globalAlpha = tick.opacity * collisionOpacity
-    ctx.fillStyle = `rgba(${colors.labelRgb}, ${labelAlpha})`
+
+    const labelPrimeInfo = primeInfos?.get(tick.value)
+    if (labelPrimeInfo && labelPrimeInfo.classification !== 'one') {
+      ctx.fillStyle = primeColorRgba(labelPrimeInfo.smallestPrimeFactor, labelAlpha, isDark)
+    } else {
+      ctx.fillStyle = `rgba(${colors.labelRgb}, ${labelAlpha})`
+    }
 
     const labelY = centerY + height + 4
 
@@ -348,6 +393,111 @@ export function renderNumberLine(
         collisionFadeMap.delete(key)
       }
     }
+  }
+
+  // Pass 2.25: prime markers
+  // Two sources of prime dots:
+  // (a) Tick-based dots (above prime ticks) — visible when zoomed in enough for integer ticks
+  // (b) Axis-level dots from visiblePrimes — visible at any zoom level, independent of ticks
+  if (primeInfos) {
+    for (const { tick, x } of ticksWithX) {
+      if (x < -50 || x > cssWidth + 50) continue
+      const pi = primeInfos.get(tick.value)
+      if (!pi?.isPrime) continue
+
+      const height = getTickHeight(tick.prominence, cssHeight) * 1.15
+      const dotRadius = 2 + tick.prominence * 2
+      const dotY = centerY - height - 4
+
+      ctx.globalAlpha = tick.opacity
+      ctx.beginPath()
+      ctx.arc(x, dotY, dotRadius, 0, Math.PI * 2)
+      ctx.fillStyle = primeColorRgba(pi.value, 0.85, isDark)
+      ctx.fill()
+
+      // Mersenne prime halo
+      if (MERSENNE_PRIMES.has(pi.value)) {
+        ctx.beginPath()
+        ctx.arc(x, dotY, dotRadius + 3, 0, Math.PI * 2)
+        ctx.strokeStyle = isDark ? 'rgba(255, 158, 238, 0.6)' : 'rgba(160, 48, 142, 0.5)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+
+      ctx.globalAlpha = 1
+    }
+  }
+
+  // Axis-level prime dots (visible when zoomed out) — score-based sizing
+  if (interestingPrimes && interestingPrimes.length > 0) {
+    const count = interestingPrimes.length
+    const baseAlpha = count < 50 ? 0.8 : count < 200 ? 0.65 : count < 800 ? 0.5 : 0.35
+    // Offset dots slightly above axis so they don't get hidden by the axis line
+    const dotY = centerY - 1
+
+    for (const ip of interestingPrimes) {
+      const x = numberToScreenX(ip.value, state.center, state.pixelsPerUnit, cssWidth)
+      if (x < -5 || x > cssWidth + 5) continue
+
+      // Skip if this prime already has a visible tick-based dot (avoid double-drawing)
+      const tickInfo = primeInfos?.get(ip.value)
+      if (tickInfo) continue
+
+      // Score-based dot radius: clamp(2 + score/20, 1.5, 6)
+      const dotRadius = Math.max(1.5, Math.min(6, 2 + ip.score / 20))
+      // Higher-scoring primes are more opaque
+      const alpha = Math.min(baseAlpha + ip.score / 200, 0.95)
+
+      ctx.globalAlpha = alpha
+      ctx.beginPath()
+      ctx.arc(x, dotY, dotRadius, 0, Math.PI * 2)
+      ctx.fillStyle = primeColorRgba(ip.value, 1, isDark)
+      ctx.fill()
+
+      // Mersenne prime halo (axis-level)
+      if (MERSENNE_PRIMES.has(ip.value)) {
+        ctx.globalAlpha = Math.min(alpha + 0.2, 0.9)
+        ctx.beginPath()
+        ctx.arc(x, dotY, dotRadius + 2.5, 0, Math.PI * 2)
+        ctx.strokeStyle = isDark ? 'rgba(255, 158, 238, 0.7)' : 'rgba(160, 48, 142, 0.6)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+    }
+    ctx.globalAlpha = 1
+  }
+
+  // Pass 2.3: prime pair arcs (twin / cousin / sexy) — only for hovered prime
+  if (primePairArcs && primePairArcs.length > 0 && hoveredTick != null) {
+    const arcOrder: Array<'sexy' | 'cousin' | 'twin'> = ['sexy', 'cousin', 'twin']
+
+    for (const arcType of arcOrder) {
+      const colorTemplate = isDark ? ARC_COLORS[arcType].dark : ARC_COLORS[arcType].light
+      const alpha = arcType === 'twin' ? 0.7 : arcType === 'cousin' ? 0.6 : 0.5
+      ctx.strokeStyle = colorTemplate.replace('A', String(alpha))
+      ctx.lineWidth = arcType === 'twin' ? 1.5 : 1.2
+
+      for (const arc of primePairArcs) {
+        if (arc.type !== arcType) continue
+        if (arc.p1 !== hoveredTick && arc.p2 !== hoveredTick) continue
+
+        const x1 = numberToScreenX(arc.p1, state.center, state.pixelsPerUnit, cssWidth)
+        const x2 = numberToScreenX(arc.p2, state.center, state.pixelsPerUnit, cssWidth)
+
+        if (x2 < -10 || x1 > cssWidth + 10) continue
+        const screenDist = x2 - x1
+        if (screenDist < 3) continue
+
+        const midX = (x1 + x2) / 2
+        const arcDepth = Math.min(16, Math.max(3, screenDist * 0.3))
+
+        ctx.beginPath()
+        ctx.moveTo(x1, centerY + 1)
+        ctx.quadraticCurveTo(midX, centerY + 1 + arcDepth, x2, centerY + 1)
+        ctx.stroke()
+      }
+    }
+    ctx.globalAlpha = 1
   }
 
   // Pass 2.5: mathematical constants
