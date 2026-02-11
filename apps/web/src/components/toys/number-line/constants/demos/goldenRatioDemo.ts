@@ -378,11 +378,19 @@ export function renderGoldenRatioOverlay(
     ctx.arc(cx, cy, r, sEnd, sCur, true)
     ctx.stroke()
 
+    // Division line at endAngle (boundary with previous arc's square)
+    const dx = cx + r * Math.cos(sEnd)
+    const dy = cy + r * Math.sin(sEnd)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(dx, dy)
+    ctx.stroke()
+
     // Compass arm
     const ex = cx + r * Math.cos(sCur)
     const ey = cy + r * Math.sin(sCur)
-    ctx.strokeStyle = color
-    ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(cx, cy)
     ctx.lineTo(ex, ey)
