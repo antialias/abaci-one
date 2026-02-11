@@ -60,13 +60,13 @@ describe('TERM_COUNT_SCALING configuration', () => {
   it('has specific visualization values', () => {
     expect(TERM_COUNT_SCALING.visualization).toEqual({
       floor: { min: 2, max: 2 },
-      ceiling: { min: 3, max: 6 },
+      ceiling: { min: 4, max: 8 },
     })
   })
 
   it('has specific linear values', () => {
     expect(TERM_COUNT_SCALING.linear).toEqual({
-      floor: { min: 2, max: 3 },
+      floor: { min: 2, max: 2 },
       ceiling: { min: 4, max: 8 },
     })
   })
@@ -93,7 +93,7 @@ describe('computeTermCountRange', () => {
 
     it('returns floor for linear', () => {
       const result = computeTermCountRange('linear', 0)
-      expect(result).toEqual({ min: 2, max: 3 })
+      expect(result).toEqual({ min: 2, max: 2 })
     })
   })
 
@@ -108,7 +108,7 @@ describe('computeTermCountRange', () => {
 
     it('returns ceiling for visualization', () => {
       const result = computeTermCountRange('visualization', 1)
-      expect(result).toEqual({ min: 3, max: 6 })
+      expect(result).toEqual({ min: 4, max: 8 })
     })
 
     it('returns ceiling for linear', () => {
@@ -131,10 +131,10 @@ describe('computeTermCountRange', () => {
 
     it('returns interpolated range for visualization', () => {
       const result = computeTermCountRange('visualization', 0.5)
-      // min: round(2 + (3-2)*0.5) = round(2.5) = 3 (rounding)
-      // max: round(2 + (6-2)*0.5) = round(4) = 4
-      expect(result.min).toBe(Math.round(2 + (3 - 2) * 0.5))
-      expect(result.max).toBe(4)
+      // min: round(2 + (4-2)*0.5) = round(3) = 3
+      // max: round(2 + (8-2)*0.5) = round(5) = 5
+      expect(result.min).toBe(3)
+      expect(result.max).toBe(5)
     })
 
     it('ensures min <= max at midpoint', () => {
@@ -258,10 +258,10 @@ describe('computeTermCountRange', () => {
 
     it('comfort 0.1 for visualization', () => {
       const result = computeTermCountRange('visualization', 0.1)
-      // min: round(2 + 1*0.1) = round(2.1) = 2
-      // max: round(2 + 4*0.1) = round(2.4) = 2
-      expect(result.min).toBe(Math.round(2 + 1 * 0.1))
-      expect(result.max).toBe(Math.round(2 + 4 * 0.1))
+      // min: round(2 + 2*0.1) = round(2.2) = 2
+      // max: round(2 + 6*0.1) = round(2.6) = 3
+      expect(result.min).toBe(Math.round(2 + 2 * 0.1))
+      expect(result.max).toBe(Math.round(2 + 6 * 0.1))
     })
   })
 })

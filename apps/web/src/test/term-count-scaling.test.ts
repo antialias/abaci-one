@@ -75,12 +75,12 @@ describe('computeTermCountRange', () => {
   it('returns floor values at comfort level 0', () => {
     expect(computeTermCountRange('abacus', 0)).toEqual({ min: 2, max: 3 })
     expect(computeTermCountRange('visualization', 0)).toEqual({ min: 2, max: 2 })
-    expect(computeTermCountRange('linear', 0)).toEqual({ min: 2, max: 3 })
+    expect(computeTermCountRange('linear', 0)).toEqual({ min: 2, max: 2 })
   })
 
   it('returns ceiling values at comfort level 1', () => {
     expect(computeTermCountRange('abacus', 1)).toEqual({ min: 4, max: 8 })
-    expect(computeTermCountRange('visualization', 1)).toEqual({ min: 3, max: 6 })
+    expect(computeTermCountRange('visualization', 1)).toEqual({ min: 4, max: 8 })
     expect(computeTermCountRange('linear', 1)).toEqual({ min: 4, max: 8 })
   })
 
@@ -92,10 +92,10 @@ describe('computeTermCountRange', () => {
     expect(abacus.max).toBe(6)
 
     const vis = computeTermCountRange('visualization', 0.5)
-    // floor.min=2, ceiling.min=3 → lerp = 2.5 → rounds to 3
-    // floor.max=2, ceiling.max=6 → lerp = 4
+    // floor.min=2, ceiling.min=4 → lerp = 3
+    // floor.max=2, ceiling.max=8 → lerp = 5
     expect(vis.min).toBe(3)
-    expect(vis.max).toBe(4)
+    expect(vis.max).toBe(5)
   })
 
   it('clamps comfort below 0 to 0', () => {
