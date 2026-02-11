@@ -33,7 +33,7 @@ export default function NumberLinePage() {
           </span>
         }
       />
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, paddingTop: 'var(--app-nav-height)' }}>
         <NumberLine />
       </div>
     </div>
