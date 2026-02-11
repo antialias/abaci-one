@@ -179,10 +179,6 @@ function computeStepTimings(count: number): Array<{ start: number; end: number }
 
 const STEP_TIMINGS = computeStepTimings(NUM_LEVELS)
 
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3)
-}
-
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
@@ -257,10 +253,10 @@ export function renderGoldenRatioOverlay(
   for (let i = 0; i < NUM_LEVELS; i++) {
     if (sweepProgress < STEP_TIMINGS[i].end) {
       animStep = i
-      stepT = easeOutCubic(Math.max(0, Math.min(1,
+      stepT = Math.max(0, Math.min(1,
         (sweepProgress - STEP_TIMINGS[i].start) /
         (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
-      )))
+      ))
       break
     }
   }
