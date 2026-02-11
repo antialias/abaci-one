@@ -4,6 +4,13 @@ import { animated, useSpring } from '@react-spring/web'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '@/contexts/ThemeContext'
+import {
+  type CubeOrientation,
+  type TipDirection,
+  orientationForFace,
+  applyTip,
+} from '@/lib/cubeOrientation'
+import { type JoltEvent, type JoltConfig, DEFAULT_JOLT_CONFIG } from '@/hooks/useDeviceJolt'
 
 export interface DiceColorScheme {
   faceLight: string
@@ -245,6 +252,10 @@ export interface InteractiveDiceProps {
   tiltForceRef?: { readonly current: { x: number; y: number } }
   /** Whether tilt/accelerometer mode is active */
   tiltEnabled?: boolean
+  /** Ref containing latest jolt event from device motion, or null */
+  joltRef?: { readonly current: JoltEvent | null }
+  /** Override jolt detection thresholds */
+  joltConfig?: Partial<JoltConfig>
 }
 
 /**
@@ -273,6 +284,8 @@ export function InteractiveDice({
   perspective = 100,
   tiltForceRef,
   tiltEnabled = false,
+  joltRef,
+  joltConfig,
 }: InteractiveDiceProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -309,6 +322,35 @@ export function InteractiveDice({
   // Track velocity samples for smoother flick detection
   const velocitySamples = useRef<Array<{ vx: number; vy: number; time: number }>>([])
   const animationFrameRef = useRef<number>()
+
+  // Tip animation state for jolt-based cube tipping
+  const tipState = useRef<{
+    orientation: CubeOrientation
+    tipAnimation: {
+      active: boolean
+      startTime: number
+      duration: number
+      axis: 'X' | 'Y'
+      direction: 1 | -1
+      originCSS: string
+      tipDirection: TipDirection
+    } | null
+    tipQueue: TipDirection[]
+    tipThreshold: number // per-die randomized threshold
+    tipDuration: number // per-die randomized duration
+    lastJoltTimestamp: number // to avoid re-reading same jolt
+  }>({
+    orientation: orientationForFace(currentFace),
+    tipAnimation: null,
+    tipQueue: [],
+    tipThreshold: DEFAULT_JOLT_CONFIG.joltThreshold * (0.8 + Math.random() * 0.4),
+    tipDuration: 200 + Math.random() * 100,
+    lastJoltTimestamp: 0,
+  })
+
+  // Merged jolt config ref (always up to date, no re-renders)
+  const joltConfigRef = useRef<JoltConfig>({ ...DEFAULT_JOLT_CONFIG, ...joltConfig })
+  joltConfigRef.current = { ...DEFAULT_JOLT_CONFIG, ...joltConfig }
   // Timeout ref for click-only roll completion callback
   const rollCompleteTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
   // Flag to prevent click from firing after a throw (pointerup + click both fire)
@@ -345,6 +387,10 @@ export function InteractiveDice({
 
       setSpinCount((prev) => prev + extraSpins)
       setCurrentFace(targetFace)
+      // Sync orientation state machine with new face from roll
+      tipState.current.orientation = orientationForFace(targetFace)
+      tipState.current.tipAnimation = null
+      tipState.current.tipQueue = []
       onRolledValue?.(targetFace)
       onRoll()
 
@@ -377,6 +423,53 @@ export function InteractiveDice({
     const BOUNCE_DAMPING = 0.7 // How much velocity is retained on bounce (0-1)
     const DICE_SIZE = size // Size of the dice in pixels
     const TILT_FORCE_MULT = 1.5 // Amplification for tilt force
+    const JOLT_IMPULSE = 4 // Velocity impulse from a jolt
+    const WOBBLE_ROTATION = 10 // Degrees of wobble for sub-threshold jolts
+
+    // Transform-origin and rotation axis mapping for tip directions
+    const TIP_ORIGIN: Record<TipDirection, string> = {
+      up: '50% 0%',
+      down: '50% 100%',
+      left: '0% 50%',
+      right: '100% 50%',
+    }
+    const TIP_AXIS: Record<TipDirection, 'X' | 'Y'> = {
+      up: 'X',
+      down: 'X',
+      left: 'Y',
+      right: 'Y',
+    }
+    const TIP_SIGN: Record<TipDirection, 1 | -1> = {
+      up: -1,    // rotateX -= 90
+      down: 1,   // rotateX += 90
+      left: 1,   // rotateY += 90
+      right: -1, // rotateY -= 90
+    }
+
+    // Quantize a jolt direction vector to cardinal
+    const quantizeDirection = (dx: number, dy: number): TipDirection => {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return dx > 0 ? 'right' : 'left'
+      }
+      return dy > 0 ? 'down' : 'up'
+    }
+
+    // Start a tip animation from the queue
+    const startNextTip = (ts: tipStateType, now: number) => {
+      if (ts.tipQueue.length === 0) return
+      const dir = ts.tipQueue.shift()!
+      ts.tipAnimation = {
+        active: true,
+        startTime: now,
+        duration: ts.tipDuration,
+        axis: TIP_AXIS[dir],
+        direction: TIP_SIGN[dir],
+        originCSS: TIP_ORIGIN[dir],
+        tipDirection: dir,
+      }
+    }
+
+    type tipStateType = typeof tipState.current
 
     // Calculate initial throw power (only relevant for thrown dice, not tilt)
     const initialSpeed = isFlying
@@ -398,6 +491,124 @@ export function InteractiveDice({
       }
 
       frameCount++
+      const now = performance.now()
+      const ts = tipState.current
+      const cfg = joltConfigRef.current
+      const diceEl = el.querySelector('[data-dice-cube]') as HTMLElement | null
+
+      // === Tip animation logic ===
+      let tipOwnsRotation = false
+
+      if (ts.tipAnimation?.active) {
+        const tip = ts.tipAnimation
+        const progress = Math.min((now - tip.startTime) / tip.duration, 1)
+
+        if (progress >= 1) {
+          // Tip complete
+          const newOrientation = applyTip(ts.orientation, tip.tipDirection)
+          ts.orientation = newOrientation
+          const newFace = newOrientation.front
+          const newFaceRot = DICE_FACE_ROTATIONS[newFace] ?? { rotateX: 0, rotateY: 0 }
+
+          // Snap rotation to the new face's canonical rotation
+          p.rotationX = newFaceRot.rotateX
+          p.rotationY = newFaceRot.rotateY
+
+          // Reset transform-origin
+          if (diceEl) {
+            diceEl.style.transformOrigin = '50% 50%'
+          }
+
+          // Position compensation: the cube pivoted around its edge, so its center
+          // moved by half the dice size in the tip direction
+          const halfSize = DICE_SIZE / 2
+          switch (tip.tipDirection) {
+            case 'up': p.y -= halfSize; break
+            case 'down': p.y += halfSize; break
+            case 'left': p.x -= halfSize; break
+            case 'right': p.x += halfSize; break
+          }
+
+          // Update face state
+          setCurrentFace(newFace)
+          onRolledValue?.(newFace)
+          setSpinCount(0) // Reset spin count so react-spring targets the new face correctly
+
+          // Clear this animation
+          ts.tipAnimation = null
+
+          // Chain next tip if queue has more
+          if (ts.tipQueue.length > 0) {
+            startNextTip(ts, now)
+          }
+        } else {
+          // Interpolate tip rotation with ease-out: t * (2 - t)
+          const eased = progress * (2 - progress)
+          const tipAngle = eased * 90 * tip.direction
+
+          if (diceEl) {
+            diceEl.style.transformOrigin = tip.originCSS
+            // Build rotation: base face rotation + tip rotation on the tip axis
+            const baseRot = DICE_FACE_ROTATIONS[ts.orientation.front] ?? { rotateX: 0, rotateY: 0 }
+            if (tip.axis === 'X') {
+              diceEl.style.transform = `rotateX(${baseRot.rotateX + tipAngle}deg) rotateY(${baseRot.rotateY}deg) rotateZ(${p.rotationZ}deg)`
+            } else {
+              diceEl.style.transform = `rotateX(${baseRot.rotateX}deg) rotateY(${baseRot.rotateY + tipAngle}deg) rotateZ(${p.rotationZ}deg)`
+            }
+          }
+          tipOwnsRotation = true
+        }
+      }
+
+      // === Jolt detection (only in tilt mode, not during active tip) ===
+      if (!ts.tipAnimation?.active && joltRef?.current) {
+        const jolt = joltRef.current
+        if (jolt.timestamp !== ts.lastJoltTimestamp) {
+          ts.lastJoltTimestamp = jolt.timestamp
+          const magnitude = jolt.magnitude
+
+          if (magnitude > ts.tipThreshold) {
+            // Determine tip count based on magnitude
+            let tipCount = 1
+            if (magnitude > cfg.heavyTumbleThreshold) tipCount = 3
+            else if (magnitude > cfg.tumbleThreshold) tipCount = 2
+
+            // Primary direction from jolt
+            const primaryDir = quantizeDirection(jolt.directionX, jolt.directionY)
+            ts.tipQueue.push(primaryDir)
+
+            // Additional tips with slight randomness
+            const allDirs: TipDirection[] = ['up', 'down', 'left', 'right']
+            for (let i = 1; i < tipCount; i++) {
+              // 50% chance same direction, 50% random adjacent
+              if (Math.random() < 0.5) {
+                ts.tipQueue.push(primaryDir)
+              } else {
+                const others = allDirs.filter((d) => d !== primaryDir)
+                ts.tipQueue.push(others[Math.floor(Math.random() * others.length)])
+              }
+            }
+
+            // Add velocity impulse for physical kick
+            p.vx += jolt.directionX * JOLT_IMPULSE
+            p.vy += jolt.directionY * JOLT_IMPULSE
+
+            // Start first tip (with per-die random delay)
+            const delay = Math.random() * 80
+            if (delay < 16) {
+              startNextTip(ts, now)
+            } else {
+              setTimeout(() => startNextTip(ts, performance.now()), delay)
+            }
+          } else if (magnitude > cfg.wobbleThreshold) {
+            // Sub-threshold wobble: rotational impulse + brief scale bump
+            p.rotationZ += (Math.random() - 0.5) * WOBBLE_ROTATION * 2
+            p.scale = Math.min(p.scale + 0.08, 1.3)
+          }
+        }
+      }
+
+      // === Position / velocity physics (same as before) ===
 
       // Calculate distance to origin
       const dist = Math.sqrt(p.x * p.x + p.y * p.y)
@@ -466,43 +677,44 @@ export function InteractiveDice({
       // Update rotation based on velocity (dice rolls as it moves)
       const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
 
-      // As dice gets closer to home, gradually lerp rotation toward final face
-      const SETTLE_START_DIST = 150
-      const settleProgress = Math.max(0, 1 - dist / SETTLE_START_DIST)
-      const settleFactor = settleProgress * settleProgress * settleProgress
+      if (!tipOwnsRotation) {
+        // As dice gets closer to home, gradually lerp rotation toward final face
+        const SETTLE_START_DIST = 150
+        const settleProgress = Math.max(0, 1 - dist / SETTLE_START_DIST)
+        const settleFactor = settleProgress * settleProgress * settleProgress
 
-      // Physics rotation (tumbling)
-      const physicsRotationDelta = {
-        x: p.vy * ROTATION_FACTOR * 12,
-        y: -p.vx * ROTATION_FACTOR * 12,
-        z: speed * ROTATION_FACTOR * 3,
-      }
-
-      p.rotationX += physicsRotationDelta.x * (1 - settleFactor)
-      p.rotationY += physicsRotationDelta.y * (1 - settleFactor)
-      p.rotationZ += physicsRotationDelta.z * (1 - settleFactor)
-
-      // Lerp toward target face rotation as we settle
-      const lerpSpeed = 0.08 * settleFactor
-      if (settleFactor > 0.01) {
-        const targetX = targetFaceRotation.rotateX
-        const targetY = targetFaceRotation.rotateY
-        const targetZ = 0
-
-        const normalizeAngle = (angle: number) => {
-          let normalized = angle % 360
-          if (normalized > 180) normalized -= 360
-          if (normalized < -180) normalized += 360
-          return normalized
+        // Physics rotation (tumbling)
+        const physicsRotationDelta = {
+          x: p.vy * ROTATION_FACTOR * 12,
+          y: -p.vx * ROTATION_FACTOR * 12,
+          z: speed * ROTATION_FACTOR * 3,
         }
 
-        const currentX = normalizeAngle(p.rotationX)
-        const currentY = normalizeAngle(p.rotationY)
-        const currentZ = normalizeAngle(p.rotationZ)
+        p.rotationX += physicsRotationDelta.x * (1 - settleFactor)
+        p.rotationY += physicsRotationDelta.y * (1 - settleFactor)
+        p.rotationZ += physicsRotationDelta.z * (1 - settleFactor)
 
-        p.rotationX = currentX + (targetX - currentX) * lerpSpeed
-        p.rotationY = currentY + (targetY - currentY) * lerpSpeed
-        p.rotationZ = currentZ + (targetZ - currentZ) * lerpSpeed
+        // Lerp toward target face rotation as we settle
+        const lerpSpeed = 0.08 * settleFactor
+        if (settleFactor > 0.01) {
+          const targetX = targetFaceRotation.rotateX
+          const targetY = targetFaceRotation.rotateY
+
+          const normalizeAngle = (angle: number) => {
+            let normalized = angle % 360
+            if (normalized > 180) normalized -= 360
+            if (normalized < -180) normalized += 360
+            return normalized
+          }
+
+          const currentX = normalizeAngle(p.rotationX)
+          const currentY = normalizeAngle(p.rotationY)
+          const currentZ = normalizeAngle(p.rotationZ)
+
+          p.rotationX = currentX + (targetX - currentX) * lerpSpeed
+          p.rotationY = currentY + (targetY - currentY) * lerpSpeed
+          p.rotationZ = currentZ + (0 - currentZ) * lerpSpeed
+        }
       }
 
       // Scale behavior
@@ -533,9 +745,9 @@ export function InteractiveDice({
           ? `drop-shadow(0 ${shadowSize}px ${shadowSize * 1.5}px rgba(0,0,0,${shadowOpacity}))`
           : 'none'
 
-      // Update dice rotation
-      const diceEl = el.querySelector('[data-dice-cube]') as HTMLElement | null
-      if (diceEl) {
+      // Update dice rotation (only if tip doesn't own it this frame)
+      if (!tipOwnsRotation && diceEl) {
+        diceEl.style.transformOrigin = '50% 50%'
         diceEl.style.transform = `rotateX(${p.rotationX}deg) rotateY(${p.rotationY}deg) rotateZ(${p.rotationZ}deg)`
       }
 
@@ -551,7 +763,8 @@ export function InteractiveDice({
           dist < STOP_THRESHOLD &&
           totalVelocity < VELOCITY_THRESHOLD &&
           p.scale < 1.1 &&
-          rotationSettled
+          rotationSettled &&
+          !ts.tipAnimation?.active
         ) {
           el.style.filter = 'none'
           setIsFlying(false)
@@ -590,6 +803,8 @@ export function InteractiveDice({
     targetFaceRotation.rotateY,
     size,
     onRollComplete,
+    onRolledValue,
+    joltRef,
   ])
 
   // Cleanup timeout on unmount

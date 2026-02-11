@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { InteractiveDice } from '@/components/ui/InteractiveDice'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useDeviceTilt } from '@/hooks/useDeviceTilt'
+import { useDeviceJolt, type JoltConfig, DEFAULT_JOLT_CONFIG } from '@/hooks/useDeviceJolt'
 import { COLOR_KEYS, DICE_COLORS, getNextColor } from './diceColors'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 
@@ -31,6 +32,20 @@ export function DiceTray() {
   const [hoveredDie, setHoveredDie] = useState<string | null>(null)
   const [perspective, setPerspective] = useState(250)
   const { tiltRef, enabled: tiltEnabled, toggle: toggleTilt } = useDeviceTilt()
+
+  // Jolt detection config (tunable via debug panel)
+  const [joltThreshold, setJoltThreshold] = useState(DEFAULT_JOLT_CONFIG.joltThreshold)
+  const [wobbleThreshold, setWobbleThreshold] = useState(DEFAULT_JOLT_CONFIG.wobbleThreshold)
+  const [cooldownMs, setCooldownMs] = useState(DEFAULT_JOLT_CONFIG.cooldownMs)
+  const [tumbleThreshold, setTumbleThreshold] = useState(DEFAULT_JOLT_CONFIG.tumbleThreshold)
+  const [heavyTumbleThreshold, setHeavyTumbleThreshold] = useState(DEFAULT_JOLT_CONFIG.heavyTumbleThreshold)
+
+  const joltConfig = useMemo<Partial<JoltConfig>>(
+    () => ({ joltThreshold, wobbleThreshold, cooldownMs, tumbleThreshold, heavyTumbleThreshold }),
+    [joltThreshold, wobbleThreshold, cooldownMs, tumbleThreshold, heavyTumbleThreshold]
+  )
+
+  const { joltRef } = useDeviceJolt(tiltEnabled, joltConfig)
 
   const sum = useMemo(
     () => dice.reduce((acc, d) => acc + (d.value ?? 0), 0),
@@ -143,6 +158,8 @@ export function DiceTray() {
                 perspective={perspective}
                 tiltForceRef={tiltRef}
                 tiltEnabled={tiltEnabled}
+                joltRef={joltRef}
+                joltConfig={joltConfig}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -294,6 +311,11 @@ export function DiceTray() {
 
       <ToyDebugPanel title="Dice">
         <DebugSlider label="Perspective" value={perspective} min={50} max={800} step={10} onChange={setPerspective} />
+        <DebugSlider label="Jolt Threshold" value={joltThreshold} min={5} max={80} step={1} onChange={setJoltThreshold} />
+        <DebugSlider label="Wobble Threshold" value={wobbleThreshold} min={2} max={40} step={1} onChange={setWobbleThreshold} />
+        <DebugSlider label="Cooldown (ms)" value={cooldownMs} min={50} max={500} step={10} onChange={setCooldownMs} />
+        <DebugSlider label="Tumble Threshold" value={tumbleThreshold} min={20} max={120} step={1} onChange={setTumbleThreshold} />
+        <DebugSlider label="Heavy Tumble" value={heavyTumbleThreshold} min={40} max={150} step={1} onChange={setHeavyTumbleThreshold} />
       </ToyDebugPanel>
     </div>
   )

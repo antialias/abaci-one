@@ -51,6 +51,21 @@ export function useDeviceTilt() {
         return
       }
     }
+
+    // Also request DeviceMotionEvent permission (needed for jolt detection).
+    // On iOS this shares the same underlying permission dialog, so it should
+    // succeed immediately if orientation was granted.
+    const DME = DeviceMotionEvent as unknown as {
+      requestPermission?: () => Promise<string>
+    }
+    if (typeof DME?.requestPermission === 'function') {
+      try {
+        await DME.requestPermission()
+      } catch {
+        // Non-fatal — jolt detection just won't work
+      }
+    }
+
     setEnabled(true)
     setNeedsPermission(false)
   }, [enabled])
