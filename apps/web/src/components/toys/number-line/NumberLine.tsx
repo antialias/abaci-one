@@ -91,9 +91,15 @@ export function NumberLine() {
   // Use a ref to break the circular dependency: demo needs draw(), but draw() is defined later
   const drawFnRef = useRef<() => void>(() => {})
   const demoRedraw = useCallback(() => drawFnRef.current(), [])
-  const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo } = useConstantDemo(
+  const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress } = useConstantDemo(
     stateRef, cssWidthRef, cssHeightRef, demoRedraw
   )
+  // --- Demo scrubber state ---
+  const scrubberTrackRef = useRef<HTMLDivElement>(null)
+  const scrubberFillRef = useRef<HTMLDivElement>(null)
+  const scrubberThumbRef = useRef<HTMLDivElement>(null)
+  const [demoActive, setDemoActive] = useState(false)
+  const isDraggingScrubberRef = useRef(false)
 
   // --- Primes (Sieve of Eratosthenes) state ---
   const [primesEnabled, setPrimesEnabled] = useState(true)
@@ -303,6 +309,22 @@ export function NumberLine() {
     }
 
     ctx.restore()
+
+    // --- Sync demo scrubber DOM ---
+    const isActive = ds.phase !== 'idle'
+    if (scrubberTrackRef.current) {
+      scrubberTrackRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
+      scrubberTrackRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
+    }
+    if (scrubberFillRef.current) {
+      scrubberFillRef.current.style.width = `${ds.revealProgress * 100}%`
+    }
+    if (scrubberThumbRef.current) {
+      scrubberThumbRef.current.style.left = `${ds.revealProgress * 100}%`
+    }
+    // Sync React state for conditional rendering (batch with rAF)
+    if (isActive && !demoActive) setDemoActive(true)
+    else if (!isActive && demoActive) setDemoActive(false)
 
     // Sync MathML DOM overlays with canvas
     if (constantMarkersRef.current && renderConstants) {
@@ -626,6 +648,40 @@ export function NumberLine() {
     startDemo(constantId)
   }, [startDemo])
 
+  // --- Scrubber pointer handlers ---
+  const scrubberProgressFromPointer = useCallback((clientX: number) => {
+    const track = scrubberTrackRef.current
+    if (!track) return 0
+    const rect = track.getBoundingClientRect()
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  }, [])
+
+  const handleScrubberPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    isDraggingScrubberRef.current = true
+    const progress = scrubberProgressFromPointer(e.clientX)
+    setRevealProgress(progress)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }, [scrubberProgressFromPointer, setRevealProgress])
+
+  const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDraggingScrubberRef.current) return
+    e.preventDefault()
+    const progress = scrubberProgressFromPointer(e.clientX)
+    setRevealProgress(progress)
+  }, [scrubberProgressFromPointer, setRevealProgress])
+
+  const handleScrubberPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isDraggingScrubberRef.current) return
+    isDraggingScrubberRef.current = false
+    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+  }, [])
+
+  // Colors for scrubber (match golden ratio demo palette)
+  const scrubberTrackColor = resolvedTheme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(109, 40, 217, 0.3)'
+  const scrubberFillColor = resolvedTheme === 'dark' ? '#fbbf24' : '#a855f7'
+
   return (
     <div ref={wrapperRef} data-component="number-line-wrapper" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
       <FindTheNumberBar
@@ -666,6 +722,71 @@ export function NumberLine() {
             onDismiss={handleDismissInfoCard}
             onExplore={handleExploreConstant}
           />
+        )}
+        {demoActive && (
+          <div
+            ref={scrubberTrackRef}
+            data-element="demo-scrubber"
+            onPointerDown={handleScrubberPointerDown}
+            onPointerMove={handleScrubberPointerMove}
+            onPointerUp={handleScrubberPointerUp}
+            onPointerCancel={handleScrubberPointerUp}
+            style={{
+              position: 'absolute',
+              bottom: 24,
+              left: 40,
+              right: 40,
+              height: 24,
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              touchAction: 'none',
+              opacity: 0,
+              pointerEvents: 'none',
+              transition: 'opacity 0.15s',
+            }}
+          >
+            {/* Track background */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: 3,
+                borderRadius: 1.5,
+                backgroundColor: scrubberTrackColor,
+              }}
+            />
+            {/* Filled portion */}
+            <div
+              ref={scrubberFillRef}
+              data-element="demo-scrubber-fill"
+              style={{
+                position: 'absolute',
+                left: 0,
+                height: 3,
+                borderRadius: 1.5,
+                backgroundColor: scrubberFillColor,
+                width: '0%',
+              }}
+            />
+            {/* Thumb */}
+            <div
+              ref={scrubberThumbRef}
+              data-element="demo-scrubber-thumb"
+              style={{
+                position: 'absolute',
+                left: '0%',
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                backgroundColor: scrubberFillColor,
+                border: '2px solid white',
+                transform: 'translateX(-50%)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              }}
+            />
+          </div>
         )}
         {hoveredValue !== null && primesEnabled && (() => {
           const ip = interestingPrimesRef.current.find(p => p.value === hoveredValue)

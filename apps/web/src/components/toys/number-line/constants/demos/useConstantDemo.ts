@@ -57,6 +57,8 @@ export function useConstantDemo(
   /** Called every frame from draw() to update animation and detect deviation */
   tickDemo: () => void
   cancelDemo: () => void
+  /** Pauses auto-play and sets revealProgress to the given value (0-1) */
+  setRevealProgress: (value: number) => void
 } {
   const demoStateRef = useRef<DemoState>({ ...INITIAL_STATE })
   const animStartRef = useRef(0)
@@ -64,6 +66,7 @@ export function useConstantDemo(
   const sourceViewportRef = useRef({ center: 0, pixelsPerUnit: 100 })
   const rafRef = useRef<number>(0)
   const fadeStartRef = useRef(0)
+  const isPausedRef = useRef(false)
 
   const stopLoop = useCallback(() => {
     if (rafRef.current) {
@@ -106,6 +109,7 @@ export function useConstantDemo(
       revealProgress: 0,
       opacity: 0,
     }
+    isPausedRef.current = false
     animStartRef.current = performance.now()
 
     startLoop()
@@ -147,21 +151,23 @@ export function useConstantDemo(
       const logTgt = Math.log(tgt.pixelsPerUnit)
       stateRef.current.pixelsPerUnit = Math.exp(logSrc + (logTgt - logSrc) * eased)
 
-      // Reveal progress starts after viewport animation begins, overlapping slightly
-      const revealStart = VIEWPORT_ANIM_MS * 0.6
-      if (elapsed > revealStart) {
-        ds.revealProgress = Math.min(1, (elapsed - revealStart) / REVEAL_ANIM_MS)
-      }
+      // Reveal progress: skip update when paused (user is scrubbing)
+      if (!isPausedRef.current) {
+        const revealStart = VIEWPORT_ANIM_MS * 0.6
+        if (elapsed > revealStart) {
+          ds.revealProgress = Math.min(1, (elapsed - revealStart) / REVEAL_ANIM_MS)
+        }
 
-      // Transition to presenting when both viewport and reveal are done
-      const totalDuration = revealStart + REVEAL_ANIM_MS
-      if (elapsed >= totalDuration) {
-        ds.phase = 'presenting'
-        ds.revealProgress = 1
-        ds.opacity = 1
-        // Snap viewport exactly to target
-        stateRef.current.center = tgt.center
-        stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
+        // Transition to presenting when both viewport and reveal are done
+        const totalDuration = revealStart + REVEAL_ANIM_MS
+        if (elapsed >= totalDuration) {
+          ds.phase = 'presenting'
+          ds.revealProgress = 1
+          ds.opacity = 1
+          // Snap viewport exactly to target
+          stateRef.current.center = tgt.center
+          stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
+        }
       }
     } else if (ds.phase === 'presenting') {
       // Detect deviation from target viewport
@@ -191,5 +197,28 @@ export function useConstantDemo(
     }
   }, [stateRef, stopLoop])
 
-  return { demoState: demoStateRef, startDemo, tickDemo, cancelDemo }
+  const setRevealProgress = useCallback((value: number) => {
+    const ds = demoStateRef.current
+    if (ds.phase === 'idle') return
+
+    isPausedRef.current = true
+    ds.revealProgress = Math.max(0, Math.min(1, value))
+
+    // Snap viewport to target (skip interpolation) when scrubbing
+    const tgt = targetViewportRef.current
+    stateRef.current.center = tgt.center
+    stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
+
+    // Ensure opacity is full while scrubbing
+    ds.opacity = 1
+
+    // If we were fading, go back to animating so the overlay stays visible
+    if (ds.phase === 'fading') {
+      ds.phase = 'animating'
+    }
+
+    onRedraw()
+  }, [stateRef, onRedraw])
+
+  return { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress }
 }
