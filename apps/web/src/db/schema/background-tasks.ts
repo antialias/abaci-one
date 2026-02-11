@@ -126,6 +126,7 @@ export type TaskType =
   | 'seed-students'
   | 'audio-generate'
   | 'collected-clip-generate'
+  | 'image-generate'
   | 'demo'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**

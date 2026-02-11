@@ -74,6 +74,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   'seed-students': 10 * 60 * 1000, // 10 minutes (high-volume profiles are slow)
   'audio-generate': 15 * 60 * 1000, // 15 minutes (many clips, external API)
   'collected-clip-generate': 15 * 60 * 1000, // 15 minutes (many clips, external API)
+  'image-generate': 15 * 60 * 1000, // 15 minutes (22 images, external API)
   demo: 2 * 60 * 1000, // 2 minutes
 }
 

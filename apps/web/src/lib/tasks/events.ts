@@ -317,6 +317,45 @@ export type CollectedClipGenerateEvent =
     }
 
 // ============================================================================
+// Image Generate domain events
+// ============================================================================
+
+export type ImageGenerateEvent =
+  | {
+      type: 'image_started'
+      constantId: string
+      style: 'metaphor' | 'math'
+      model: string
+      provider: string
+    }
+  | {
+      type: 'image_complete'
+      constantId: string
+      style: 'metaphor' | 'math'
+      filePath: string
+      sizeBytes: number
+    }
+  | {
+      type: 'image_error'
+      constantId: string
+      style: 'metaphor' | 'math'
+      error: string
+    }
+  | {
+      type: 'batch_progress'
+      completed: number
+      total: number
+      currentConstant: string
+      currentStyle: 'metaphor' | 'math'
+    }
+  | {
+      type: 'batch_complete'
+      generated: number
+      skipped: number
+      failed: number
+    }
+
+// ============================================================================
 // Demo task events
 // ============================================================================
 
@@ -336,6 +375,7 @@ export interface TaskEventMap {
   'seed-students': SeedStudentsEvent
   'audio-generate': AudioGenerateEvent
   'collected-clip-generate': CollectedClipGenerateEvent
+  'image-generate': ImageGenerateEvent
   demo: DemoTaskEvent
 }
 
