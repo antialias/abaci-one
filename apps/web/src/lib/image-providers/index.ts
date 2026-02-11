@@ -2,7 +2,7 @@ import { geminiProvider } from './gemini'
 import { openaiProvider } from './openai'
 import type { ImageProvider, ImageProviderMeta } from './types'
 
-export type { ImageProvider, ImageProviderMeta, ImageGenerationResult } from './types'
+export type { ImageProvider, ImageProviderMeta, ImageGenerationResult, ImageOptions } from './types'
 
 const providers: ImageProvider[] = [geminiProvider, openaiProvider]
 

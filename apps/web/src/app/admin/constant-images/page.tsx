@@ -6,6 +6,7 @@ import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { ImageGenerateOutput } from '@/lib/tasks/image-generate'
+import type { PhiExploreGenerateOutput } from '@/lib/tasks/phi-explore-generate'
 
 type PipelinePhase = 'base' | 'light' | 'dark'
 
@@ -25,6 +26,16 @@ interface ConstantImageStatus {
   math: ImageStyleStatus
 }
 
+interface PhiExploreImageStatus {
+  id: string
+  name: string
+  prompt: string
+  exists: boolean
+  sizeBytes?: number
+  lightExists: boolean
+  darkExists: boolean
+}
+
 interface ProviderInfo {
   id: string
   name: string
@@ -35,6 +46,7 @@ interface ProviderInfo {
 interface StatusResponse {
   constants: ConstantImageStatus[]
   providers: ProviderInfo[]
+  phiExplore: PhiExploreImageStatus[]
 }
 
 /**
@@ -57,13 +69,24 @@ export default function ConstantImagesPage() {
   const [polledTaskError, setPolledTaskError] = useState<string | null>(null)
   const [polledTaskStatus, setPolledTaskStatus] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<ImageGenerateOutput | null>(null)
+  // Phi explore state (independent task, pipeline runs server-side)
+  const [phiTaskId, setPhiTaskId] = useState<string | null>(null)
+  const [phiExpandedPrompts, setPhiExpandedPrompts] = useState<Set<string>>(new Set())
+  const [phiPolledTaskError, setPhiPolledTaskError] = useState<string | null>(null)
+  const [phiPolledTaskStatus, setPhiPolledTaskStatus] = useState<string | null>(null)
+  const [phiLastResult, setPhiLastResult] = useState<PhiExploreGenerateOutput | null>(null)
+
   const providerInitRef = useRef(false)
   const pipelineAdvancingRef = useRef(false)
 
   const { state: taskState, cancel: cancelTask } = useBackgroundTask<ImageGenerateOutput>(taskId)
+  const { state: phiTaskState, cancel: cancelPhiTask } = useBackgroundTask<PhiExploreGenerateOutput>(phiTaskId)
 
   const isGenerating = taskState?.status === 'pending' || taskState?.status === 'running'
     || (!!taskId && !taskState && polledTaskStatus !== 'completed' && polledTaskStatus !== 'failed')
+
+  const isPhiGenerating = phiTaskState?.status === 'pending' || phiTaskState?.status === 'running'
+    || (!!phiTaskId && !phiTaskState && phiPolledTaskStatus !== 'completed' && phiPolledTaskStatus !== 'failed')
 
   // REST polling fallback: when taskId is set but socket hasn't delivered state yet
   useEffect(() => {
@@ -113,6 +136,51 @@ export default function ConstantImagesPage() {
     }
   }, [taskState?.status, taskState?.error, taskState?.output])
 
+  // Phi explore REST polling fallback
+  useEffect(() => {
+    if (!phiTaskId) {
+      setPhiPolledTaskError(null)
+      setPhiPolledTaskStatus(null)
+      return
+    }
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/admin/tasks?taskId=${phiTaskId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const task = data.task
+        if (!task) return
+
+        setPhiPolledTaskStatus(task.status)
+        if (task.status === 'failed' && task.error) {
+          setPhiPolledTaskError(task.error)
+        }
+        if (task.status === 'completed' && task.output) {
+          setPhiLastResult(task.output as PhiExploreGenerateOutput)
+        }
+      } catch {
+        // Silently ignore poll errors
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, 2000)
+    return () => clearInterval(interval)
+  }, [phiTaskId])
+
+  // Sync phi task results from socket state
+  useEffect(() => {
+    if (phiTaskState?.status === 'failed' && phiTaskState.error) {
+      setPhiPolledTaskError(phiTaskState.error)
+      setPhiPolledTaskStatus('failed')
+    }
+    if (phiTaskState?.status === 'completed' && phiTaskState.output) {
+      setPhiLastResult(phiTaskState.output)
+      setPhiPolledTaskStatus('completed')
+    }
+  }, [phiTaskState?.status, phiTaskState?.error, phiTaskState?.output])
+
   // Effective error: from socket, REST poll, or local fetch error
   const effectiveError = error || taskState?.error || polledTaskError
 
@@ -151,6 +219,13 @@ export default function ConstantImagesPage() {
     }
   }, [polledTaskStatus, fetchStatus])
 
+  // Refresh image status after phi task reaches terminal state
+  useEffect(() => {
+    if (phiPolledTaskStatus === 'completed' || phiPolledTaskStatus === 'failed') {
+      fetchStatus()
+    }
+  }, [phiPolledTaskStatus, fetchStatus])
+
   // Derive per-variant stats
   const stats = useMemo(() => {
     if (!status) return { total: 0, base: 0, light: 0, dark: 0 }
@@ -163,6 +238,19 @@ export default function ConstantImagesPage() {
       if (c.math.lightExists) light++
       if (c.metaphor.darkExists) dark++
       if (c.math.darkExists) dark++
+    }
+    return { total, base, light, dark }
+  }, [status])
+
+  // Phi explore stats
+  const phiStats = useMemo(() => {
+    if (!status?.phiExplore) return { total: 0, base: 0, light: 0, dark: 0 }
+    const total = status.phiExplore.length
+    let base = 0, light = 0, dark = 0
+    for (const s of status.phiExplore) {
+      if (s.exists) base++
+      if (s.lightExists) light++
+      if (s.darkExists) dark++
     }
     return { total, base, light, dark }
   }, [status])
@@ -183,6 +271,23 @@ export default function ConstantImagesPage() {
     }
     return set
   }, [taskState, isGenerating])
+
+  // Currently generating phi explore images (from task events)
+  const phiGeneratingSet = useMemo(() => {
+    const set = new Set<string>()
+    if (!phiTaskState || !isPhiGenerating) return set
+    for (const event of phiTaskState.events) {
+      if (event.eventType === 'image_started') {
+        const p = event.payload as { subjectId: string }
+        set.add(p.subjectId)
+      }
+      if (event.eventType === 'image_complete' || event.eventType === 'image_error') {
+        const p = event.payload as { subjectId: string }
+        set.delete(p.subjectId)
+      }
+    }
+    return set
+  }, [phiTaskState, isPhiGenerating])
 
   const handleGenerate = useCallback(async (
     targets?: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>,
@@ -220,6 +325,41 @@ export default function ConstantImagesPage() {
       setError(err instanceof Error ? err.message : 'Failed to start generation')
       // If pipeline is running and we hit an error, clear it
       setPipelineQueue([])
+    }
+  }, [provider, model])
+
+  const handlePhiGenerate = useCallback(async (opts?: {
+    targets?: Array<{ subjectId: string; theme?: 'light' | 'dark' }>
+    forceRegenerate?: boolean
+    theme?: 'light' | 'dark'
+    pipeline?: boolean
+  }) => {
+    setError(null)
+    setPhiPolledTaskError(null)
+    setPhiPolledTaskStatus(null)
+    setPhiLastResult(null)
+
+    try {
+      const res = await fetch('/api/admin/constant-images/phi-explore/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          model,
+          targets: opts?.targets,
+          forceRegenerate: opts?.forceRegenerate,
+          theme: opts?.theme,
+          pipeline: opts?.pipeline,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      setPhiTaskId(data.taskId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start phi explore generation')
     }
   }, [provider, model])
 
@@ -268,6 +408,23 @@ export default function ConstantImagesPage() {
     cancelTask()
   }
 
+  const handlePhiPipelineGenerate = () => {
+    handlePhiGenerate({ pipeline: true })
+  }
+
+  const handlePhiCancel = () => {
+    cancelPhiTask()
+  }
+
+  const togglePhiPrompt = (key: string) => {
+    setPhiExpandedPrompts((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   const togglePrompt = (key: string) => {
     setExpandedPrompts((prev) => {
       const next = new Set(prev)
@@ -308,6 +465,13 @@ export default function ConstantImagesPage() {
     : pipelineQueue[0] === 'dark' ? 'dark variants'
     : ''
 
+  const phiBaseMissing = phiStats.total - phiStats.base
+  const phiLightMissing = phiStats.total - phiStats.light
+  const phiDarkMissing = phiStats.total - phiStats.dark
+
+  // Effective phi error
+  const effectivePhiError = phiTaskState?.error || phiPolledTaskError
+
   const baseMissing = stats.total - stats.base
 
   return (
@@ -342,6 +506,9 @@ export default function ConstantImagesPage() {
             {stats.total > 0 && (
               <> Base: {stats.base}/{stats.total}, Light: {stats.light}/{stats.total}, Dark: {stats.dark}/{stats.total}</>
             )}
+          </p>
+          <p className={css({ fontSize: '12px', color: '#d29922', marginTop: '8px' })}>
+            Images are baked into the source code and deployed with the build. Generate locally, commit to git, then deploy. Do not regenerate on production.
           </p>
         </div>
 
@@ -630,6 +797,316 @@ export default function ConstantImagesPage() {
               />
             ))}
           </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* Phi Explore Section                                          */}
+        {/* ============================================================ */}
+        {status?.phiExplore && (
+          <>
+            {/* Phi explore header */}
+            <div className={css({ marginTop: '48px', marginBottom: '24px' })}>
+              <h2
+                data-element="phi-explore-header"
+                className={css({ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' })}
+              >
+                {'\u03C6'} Explore Images
+              </h2>
+              <p className={css({ fontSize: '13px', color: '#8b949e' })}>
+                AI-generated images of natural phenomena exhibiting the golden spiral.
+                {phiStats.total > 0 && (
+                  <> Base: {phiStats.base}/{phiStats.total}, Light: {phiStats.light}/{phiStats.total}, Dark: {phiStats.dark}/{phiStats.total}</>
+                )}
+              </p>
+            </div>
+
+            {/* Phi explore controls */}
+            <div
+              data-element="phi-controls-bar"
+              className={css({
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                marginBottom: '20px',
+                padding: '16px',
+                backgroundColor: '#161b22',
+                borderRadius: '8px',
+                border: '1px solid #30363d',
+              })}
+            >
+              <button
+                data-action="phi-generate-pipeline"
+                onClick={handlePhiPipelineGenerate}
+                disabled={isPhiGenerating || !provider}
+                className={css({
+                  fontSize: '13px',
+                  backgroundColor: '#8957e5',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 16px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  '&:hover': { backgroundColor: '#a371f7' },
+                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Generate Pipeline
+              </button>
+
+              <button
+                data-action="phi-generate-missing"
+                onClick={() => handlePhiGenerate({})}
+                disabled={isPhiGenerating || phiBaseMissing === 0 || !provider}
+                className={css({
+                  fontSize: '13px',
+                  backgroundColor: '#238636',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 16px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  '&:hover': { backgroundColor: '#2ea043' },
+                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Generate {phiBaseMissing} Missing
+              </button>
+
+              <button
+                data-action="phi-regenerate-all"
+                onClick={() => handlePhiGenerate({ forceRegenerate: true })}
+                disabled={isPhiGenerating || !provider}
+                className={css({
+                  fontSize: '13px',
+                  backgroundColor: '#21262d',
+                  color: '#c9d1d9',
+                  border: '1px solid #30363d',
+                  borderRadius: '6px',
+                  padding: '6px 16px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  '&:hover': { backgroundColor: '#30363d' },
+                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Regenerate All
+              </button>
+
+              <button
+                data-action="phi-generate-light"
+                onClick={() => handlePhiGenerate({ theme: 'light' })}
+                disabled={isPhiGenerating || phiLightMissing === 0 || !provider}
+                className={css({
+                  fontSize: '13px',
+                  backgroundColor: '#21262d',
+                  color: '#c9d1d9',
+                  border: '1px solid #30363d',
+                  borderRadius: '6px',
+                  padding: '6px 16px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  '&:hover': { backgroundColor: '#30363d' },
+                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Light ({phiLightMissing})
+              </button>
+
+              <button
+                data-action="phi-generate-dark"
+                onClick={() => handlePhiGenerate({ theme: 'dark' })}
+                disabled={isPhiGenerating || phiDarkMissing === 0 || !provider}
+                className={css({
+                  fontSize: '13px',
+                  backgroundColor: '#21262d',
+                  color: '#c9d1d9',
+                  border: '1px solid #30363d',
+                  borderRadius: '6px',
+                  padding: '6px 16px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  '&:hover': { backgroundColor: '#30363d' },
+                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                Dark ({phiDarkMissing})
+              </button>
+
+              {isPhiGenerating && (
+                <button
+                  data-action="phi-cancel"
+                  onClick={handlePhiCancel}
+                  className={css({
+                    fontSize: '13px',
+                    backgroundColor: '#da3633',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 16px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    '&:hover': { backgroundColor: '#f85149' },
+                  })}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+
+            {/* Phi error banner */}
+            {effectivePhiError && (
+              <div
+                data-element="phi-error-banner"
+                className={css({
+                  padding: '12px 16px',
+                  backgroundColor: '#f8514922',
+                  border: '1px solid #f85149',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
+                  color: '#f85149',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                })}
+              >
+                {effectivePhiError}
+              </div>
+            )}
+
+            {/* Phi task result summary */}
+            {phiLastResult && !isPhiGenerating && (
+              <div
+                data-element="phi-task-result"
+                className={css({
+                  padding: '12px 16px',
+                  backgroundColor: phiLastResult.failed > 0 ? '#9e6a0322' : '#23863522',
+                  border: '1px solid',
+                  borderColor: phiLastResult.failed > 0 ? '#d29922' : '#3fb950',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
+                })}
+              >
+                <div>
+                  <span className={css({ fontWeight: '600' })}>Generation complete: </span>
+                  {phiLastResult.generated > 0 && (
+                    <span className={css({ color: '#3fb950' })}>{phiLastResult.generated} generated </span>
+                  )}
+                  {phiLastResult.skipped > 0 && (
+                    <span className={css({ color: '#8b949e' })}>{phiLastResult.skipped} skipped </span>
+                  )}
+                  {phiLastResult.failed > 0 && (
+                    <span className={css({ color: '#f85149' })}>{phiLastResult.failed} failed</span>
+                  )}
+                </div>
+                {phiLastResult.results
+                  ?.filter((r) => r.status === 'failed' && r.error)
+                  .map((r, i) => (
+                    <div
+                      key={i}
+                      className={css({
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        backgroundColor: '#f8514911',
+                        borderRadius: '4px',
+                        border: '1px solid #f8514933',
+                        color: '#f85149',
+                        fontSize: '12px',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      })}
+                    >
+                      <span className={css({ fontWeight: '600', color: '#c9d1d9' })}>
+                        {r.subjectId}:{' '}
+                      </span>
+                      {r.error}
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Phi task progress */}
+            {isPhiGenerating && (
+              <div
+                data-element="phi-task-progress"
+                className={css({
+                  padding: '16px',
+                  backgroundColor: '#161b22',
+                  border: '1px solid #1f6feb',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                })}
+              >
+                <div
+                  className={css({
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px',
+                  })}
+                >
+                  <span className={css({ fontSize: '13px', fontWeight: '600', color: '#58a6ff' })}>
+                    {phiTaskState ? 'Generating phi explore images...' : 'Starting generation...'}
+                  </span>
+                  <span className={css({ fontSize: '12px', color: '#8b949e' })}>
+                    {phiTaskState?.progress ?? 0}%
+                  </span>
+                </div>
+                <div
+                  className={css({
+                    height: '6px',
+                    backgroundColor: '#30363d',
+                    borderRadius: '3px',
+                    overflow: 'hidden',
+                    marginBottom: '6px',
+                  })}
+                >
+                  <div
+                    className={css({
+                      height: '100%',
+                      backgroundColor: '#58a6ff',
+                      borderRadius: '3px',
+                      transition: 'width 0.3s',
+                    })}
+                    style={{ width: `${phiTaskState?.progress ?? 0}%` }}
+                  />
+                </div>
+                {phiTaskState?.progressMessage && (
+                  <p className={css({ fontSize: '12px', color: '#8b949e' })}>
+                    {phiTaskState.progressMessage}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Phi explore grid */}
+            <div
+              data-element="phi-explore-grid"
+              className={css({
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                gap: '16px',
+              })}
+            >
+              {status.phiExplore.map((subject) => (
+                <PhiExploreCard
+                  key={subject.id}
+                  subject={subject}
+                  isGenerating={isPhiGenerating}
+                  isCurrentlyGenerating={phiGeneratingSet.has(subject.id)}
+                  isExpanded={phiExpandedPrompts.has(subject.id)}
+                  onTogglePrompt={() => togglePhiPrompt(subject.id)}
+                  onRegenerate={() =>
+                    handlePhiGenerate({ targets: [{ subjectId: subject.id }], forceRegenerate: true })
+                  }
+                  provider={provider}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -931,6 +1408,220 @@ function ImageSlot({
           {info.prompt}
         </div>
       )}
+    </div>
+  )
+}
+
+function PhiExploreCard({
+  subject,
+  isGenerating,
+  isCurrentlyGenerating,
+  isExpanded,
+  onTogglePrompt,
+  onRegenerate,
+  provider,
+}: {
+  subject: PhiExploreImageStatus
+  isGenerating: boolean
+  isCurrentlyGenerating: boolean
+  isExpanded: boolean
+  onTogglePrompt: () => void
+  onRegenerate: () => void
+  provider: string
+}) {
+  const variants: Array<{ key: string; label: string; suffix: string; exists: boolean }> = [
+    { key: 'base', label: 'base', suffix: '', exists: subject.exists },
+    { key: 'light', label: 'light', suffix: '-light', exists: subject.lightExists },
+    { key: 'dark', label: 'dark', suffix: '-dark', exists: subject.darkExists },
+  ]
+
+  return (
+    <div
+      data-element="phi-explore-card"
+      data-subject-id={subject.id}
+      className={css({
+        backgroundColor: '#161b22',
+        borderRadius: '8px',
+        border: '1px solid #30363d',
+        overflow: 'hidden',
+      })}
+    >
+      {/* Card header */}
+      <div
+        className={css({
+          padding: '12px 16px',
+          borderBottom: '1px solid #21262d',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        })}
+      >
+        <span className={css({ fontSize: '14px', fontWeight: 'bold', color: '#f0f6fc' })}>
+          {subject.name}
+        </span>
+        <div className={css({ marginLeft: 'auto', display: 'flex', gap: '4px' })}>
+          {subject.exists && (
+            <span className={css({ fontSize: '10px', color: '#3fb950', padding: '2px 6px', backgroundColor: '#23863533', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '3px' })}>
+              base
+              {subject.lightExists && (
+                <span title="Light variant" className={css({ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f0f6fc', border: '1px solid #484f58' })} />
+              )}
+              {subject.darkExists && (
+                <span title="Dark variant" className={css({ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#21262d', border: '1px solid #484f58' })} />
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Thumbnails row */}
+      <div
+        className={css({
+          padding: '12px',
+          backgroundColor: '#0d1117',
+        })}
+      >
+        <div
+          data-element="phi-variant-thumbnails"
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '6px',
+          })}
+        >
+          {variants.map((variant) => {
+            const imagePath = `/images/constants/phi-explore/${subject.id}${variant.suffix}.png`
+            return (
+              <div key={variant.key} data-element={`variant-${variant.key}`}>
+                <div
+                  className={css({
+                    aspectRatio: '1',
+                    backgroundColor: '#161b22',
+                    borderRadius: '4px',
+                    border: '1px solid #30363d',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  })}
+                >
+                  {isCurrentlyGenerating && variant.key === 'base' ? (
+                    <div className={css({ textAlign: 'center', color: '#58a6ff' })}>
+                      <div
+                        className={css({
+                          width: '16px',
+                          height: '16px',
+                          border: '2px solid #58a6ff',
+                          borderTopColor: 'transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite',
+                          margin: '0 auto 4px',
+                        })}
+                      />
+                      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                    </div>
+                  ) : variant.exists ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={`${imagePath}?t=${Date.now()}`}
+                      alt={`${subject.name} (${variant.label})`}
+                      className={css({
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      })}
+                    />
+                  ) : (
+                    <div className={css({ textAlign: 'center', color: '#484f58' })}>
+                      <div className={css({ fontSize: '14px' })}>
+                        {'\u{1F300}'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div
+                  className={css({
+                    fontSize: '9px',
+                    color: variant.exists ? '#8b949e' : '#484f58',
+                    textAlign: 'center',
+                    marginTop: '2px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  })}
+                >
+                  {variant.label}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* File info */}
+        {subject.exists && subject.sizeBytes && (
+          <div className={css({ fontSize: '10px', color: '#484f58', marginTop: '8px' })}>
+            {(subject.sizeBytes / 1024).toFixed(0)} KB
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className={css({ display: 'flex', gap: '4px', marginTop: '8px' })}>
+          <button
+            data-action={`regenerate-phi-${subject.id}`}
+            onClick={onRegenerate}
+            disabled={isGenerating || !provider}
+            className={css({
+              flex: 1,
+              fontSize: '11px',
+              backgroundColor: '#21262d',
+              color: '#c9d1d9',
+              border: '1px solid #30363d',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              '&:hover': { backgroundColor: '#30363d' },
+              '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            {subject.exists ? 'Regenerate' : 'Generate'}
+          </button>
+          <button
+            data-action={`toggle-prompt-phi-${subject.id}`}
+            onClick={onTogglePrompt}
+            className={css({
+              fontSize: '11px',
+              backgroundColor: '#21262d',
+              color: '#8b949e',
+              border: '1px solid #30363d',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              '&:hover': { backgroundColor: '#30363d' },
+            })}
+          >
+            Prompt
+          </button>
+        </div>
+
+        {/* Expanded prompt */}
+        {isExpanded && (
+          <div
+            className={css({
+              fontSize: '11px',
+              color: '#8b949e',
+              backgroundColor: '#161b22',
+              borderRadius: '4px',
+              padding: '8px',
+              lineHeight: '1.5',
+              wordBreak: 'break-word',
+              border: '1px solid #21262d',
+              marginTop: '8px',
+            })}
+          >
+            {subject.prompt}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

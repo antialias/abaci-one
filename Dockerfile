@@ -182,8 +182,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/
 # Set up environment
 WORKDIR /app/apps/web
 
-# Create data directory for uploads and vision training
-RUN mkdir -p data/uploads data/vision-training/collected data/vision-training/.venv && chown -R nextjs:nodejs data
+# Create data directories for uploads, vision training, generated images, and audio
+RUN mkdir -p data/uploads data/vision-training/collected data/vision-training/.venv data/generated-images data/audio && chown -R nextjs:nodejs data
 
 # Run as non-root user
 USER nextjs

@@ -1,3 +1,12 @@
+export interface HighlightPhase {
+  /** ms after dwell start to activate this phase */
+  delayMs: number
+  /** values to ADD to the highlight set */
+  values: number[]
+  /** arc pairs to ADD (p1 < p2) */
+  arcs?: [number, number][]
+}
+
 export interface PrimeTourStop {
   id: string
   viewport: { center: number; pixelsPerUnit: number }
@@ -6,6 +15,12 @@ export interface PrimeTourStop {
   ttsTone: string
   hoverValue?: number
   highlightValues?: number[]
+  /**
+   * When present, drives the highlight set with time-based phases.
+   * Each phase accumulates onto the previous ones.
+   * When absent, highlightValues applies immediately (legacy mode).
+   */
+  highlightPhases?: HighlightPhase[]
   dimOthers?: number
   minDwellMs: number
   autoAdvance: boolean
@@ -75,6 +90,11 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
     ttsTone: 'Delighted discovery. Like spotting something rare on a nature walk and pointing it out with glee.',
     hoverValue: 11,
     highlightValues: [5, 7, 11, 13, 17, 19],
+    highlightPhases: [
+      { delayMs: 0, values: [11, 13], arcs: [[11, 13]] },       // "Look at 11 and 13. See that arc?"
+      { delayMs: 14000, values: [5, 7], arcs: [[5, 7]] },       // "And look — 5 and 7? Twins too!"
+      { delayMs: 17000, values: [17, 19], arcs: [[17, 19]] },   // "And 17 and 19!"
+    ],
     dimOthers: 0.35,
     minDwellMs: 2000,
     autoAdvance: true,
@@ -140,6 +160,9 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
     ttsTone: 'Conspiratorial whisper, building to warm genuine encouragement. Like entrusting them with a precious secret map.',
     hoverValue: 29,
     highlightValues: [29, 31],
+    highlightPhases: [
+      { delayMs: 0, values: [29, 31], arcs: [[29, 31]] },  // "Remember our twin primes?"
+    ],
     dimOthers: 0.3,
     minDwellMs: 3000,
     autoAdvance: false,

@@ -894,13 +894,15 @@ export function NumberLine() {
               position: 'absolute',
               top: 10,
               right: 10,
-              padding: '6px 12px',
-              fontSize: 12,
+              minHeight: 44,
+              minWidth: 44,
+              padding: '10px 16px',
+              fontSize: 13,
               fontWeight: 600,
               color: resolvedTheme === 'dark' ? '#e9d5ff' : '#6d28d9',
               backgroundColor: resolvedTheme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
               border: `1px solid ${resolvedTheme === 'dark' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.25)'}`,
-              borderRadius: 8,
+              borderRadius: 10,
               cursor: 'pointer',
               backdropFilter: 'blur(4px)',
               zIndex: 10,
@@ -941,7 +943,7 @@ export function NumberLine() {
             onBlur={handleScrubberBlur}
             style={{
               position: 'absolute',
-              bottom: 40,
+              bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
               left: 24,
               right: 24,
               height: 48,
@@ -1147,7 +1149,7 @@ export function NumberLine() {
               data-element="prime-footnotes"
               style={{
                 position: 'absolute',
-                bottom: 8,
+                bottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
                 left: 12,
                 right: 12,
                 display: 'flex',

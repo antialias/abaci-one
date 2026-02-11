@@ -1,4 +1,4 @@
-import type { ImageProvider } from './types'
+import type { ImageOptions, ImageProvider } from './types'
 
 const MAX_RETRIES = 3
 const RETRYABLE_STATUSES = new Set([500, 502, 503])
@@ -27,6 +27,35 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+type GeminiAspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
+type GeminiImageSize = '256' | '512' | '1K'
+
+/** Pick the closest Gemini-supported aspect ratio and image size for a given pixel size. */
+function mapSizeToGeminiParams(size?: ImageOptions['size']): {
+  aspectRatio: GeminiAspectRatio
+  imageSize: GeminiImageSize
+} {
+  if (!size) return { aspectRatio: '1:1', imageSize: '1K' }
+
+  const ratio = size.width / size.height
+  const aspects: Array<{ label: GeminiAspectRatio; ratio: number }> = [
+    { label: '9:16', ratio: 9 / 16 },
+    { label: '3:4', ratio: 3 / 4 },
+    { label: '1:1', ratio: 1 },
+    { label: '4:3', ratio: 4 / 3 },
+    { label: '16:9', ratio: 16 / 9 },
+  ]
+  let closest = aspects[0]
+  for (const a of aspects) {
+    if (Math.abs(a.ratio - ratio) < Math.abs(closest.ratio - ratio)) closest = a
+  }
+
+  const maxDim = Math.max(size.width, size.height)
+  const imageSize: GeminiImageSize = maxDim <= 256 ? '256' : maxDim <= 512 ? '512' : '1K'
+
+  return { aspectRatio: closest.label, imageSize }
+}
+
 export const geminiProvider: ImageProvider = {
   meta: {
     id: 'gemini',
@@ -42,11 +71,13 @@ export const geminiProvider: ImageProvider = {
     return !!process.env.GEMINI_API_KEY
   },
 
-  async generate({ model, prompt }): Promise<{ imageBuffer: Buffer }> {
+  async generate({ model, prompt, options }): Promise<{ imageBuffer: Buffer }> {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
       throw new Error('No API key configured for Gemini. Set GEMINI_API_KEY in your environment.')
     }
+
+    const { aspectRatio, imageSize } = mapSizeToGeminiParams(options?.size)
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
     const requestBody = JSON.stringify({
@@ -54,8 +85,8 @@ export const geminiProvider: ImageProvider = {
       generationConfig: {
         responseModalities: ['TEXT', 'IMAGE'],
         imageConfig: {
-          aspectRatio: '1:1',
-          imageSize: '1K',
+          aspectRatio,
+          imageSize,
         },
       },
     })

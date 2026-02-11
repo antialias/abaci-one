@@ -261,6 +261,52 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
+// --- Convergence gap data for visual indicator ---
+
+const PHI = (1 + Math.sqrt(5)) / 2
+
+/**
+ * Pre-compute normalized convergence gaps from Fibonacci ratios.
+ * At inside-out step i, the aspect ratio is F(i+1)/F(i) which
+ * converges to φ. The gap is |F(i+1)/F(i) - φ|, normalized to [0,1].
+ */
+const CONVERGENCE_GAPS: number[] = (() => {
+  const gaps: number[] = []
+  for (let i = 0; i < NUM_LEVELS; i++) {
+    // F(i+1)/F(i) is the aspect ratio at step i (FIB is 0-indexed: F(0)=1, F(1)=1, F(2)=2, ...)
+    const ratio = FIB[i + 1] / FIB[i]
+    gaps.push(Math.abs(ratio - PHI))
+  }
+  const maxGap = gaps[0] || 1
+  return gaps.map(g => g / maxGap)
+})()
+
+/**
+ * Returns the convergence gap at a given revealProgress (0-1).
+ * 1 = maximum gap (just started), 0 = converged to φ.
+ * Interpolates smoothly between adjacent step gap values.
+ */
+export function convergenceGapAtProgress(revealProgress: number): number {
+  if (revealProgress <= 0) return 1
+  if (revealProgress >= 1) return CONVERGENCE_GAPS[NUM_LEVELS - 1] ?? 0
+
+  const sweepProgress = Math.min(1, revealProgress / SWEEP_PHASE)
+
+  // Find which step we're in
+  for (let i = 0; i < NUM_LEVELS; i++) {
+    if (sweepProgress < STEP_TIMINGS[i].end) {
+      const stepT = Math.max(0, Math.min(1,
+        (sweepProgress - STEP_TIMINGS[i].start) /
+        (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
+      ))
+      const currGap = CONVERGENCE_GAPS[i] ?? 0
+      const prevGap = i > 0 ? CONVERGENCE_GAPS[i - 1] : 1
+      return lerp(prevGap, currGap, stepT)
+    }
+  }
+  return CONVERGENCE_GAPS[NUM_LEVELS - 1] ?? 0
+}
+
 // --- Canvas rendering ---
 
 // Construction lines + division lines
@@ -495,20 +541,45 @@ export function renderGoldenRatioOverlay(
     const isFlashing = age === 0 && animStep < NUM_LEVELS
     const flashT = isFlashing ? Math.max(0, 1 - stepT * 2.5) : 0
 
+    // Identify the RIGHT edge (primary, convergence) and TOP edge (secondary)
+    // by scoring all 4 edges in NL space independently.
+    // Right edge = highest average x; Top edge = lowest average y (highest on screen).
+    const edgeIndices: [number, number][] = [[0,1],[1,2],[2,3],[3,0]]
+    let rightEdge = 0, topEdge = 0
+    let maxAvgX = -Infinity, minAvgY = Infinity
+    for (let j = 0; j < 4; j++) {
+      const [a, b] = edgeIndices[j]
+      const avgX = (corners[a][0] + corners[b][0]) / 2
+      const avgY = (corners[a][1] + corners[b][1]) / 2
+      if (avgX > maxAvgX) { maxAvgX = avgX; rightEdge = j }
+      if (avgY < minAvgY) { minAvgY = avgY; topEdge = j }
+    }
+    const [rFrom, rTo] = edgeIndices[rightEdge]
+    const [tFrom, tTo] = edgeIndices[topEdge]
+    // The other two edges (for non-flash context drawing)
+    const otherEdges = edgeIndices.filter((_, j) => j !== rightEdge && j !== topEdge)
+
     // Draw glow pass first (wider, blurred, bright)
     if (flashT > 0) {
-      ctx.globalAlpha = opacity * flashT * 0.8
-      ctx.strokeStyle = flashColor
-      ctx.lineWidth = 6
       ctx.shadowColor = flashColor
       ctx.shadowBlur = 20 * flashT
+
+      // Right edge — thicker glow (primary convergence edge)
+      ctx.globalAlpha = opacity * flashT * 0.8
+      ctx.strokeStyle = flashColor
+      ctx.lineWidth = 8
       ctx.beginPath()
-      ctx.moveTo(toX(corners[0][0]), toY(corners[0][1]))
-      ctx.lineTo(toX(corners[1][0]), toY(corners[1][1]))
-      ctx.lineTo(toX(corners[2][0]), toY(corners[2][1]))
-      ctx.lineTo(toX(corners[3][0]), toY(corners[3][1]))
-      ctx.closePath()
+      ctx.moveTo(toX(corners[rFrom][0]), toY(corners[rFrom][1]))
+      ctx.lineTo(toX(corners[rTo][0]), toY(corners[rTo][1]))
       ctx.stroke()
+
+      // Top edge — standard glow
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.moveTo(toX(corners[tFrom][0]), toY(corners[tFrom][1]))
+      ctx.lineTo(toX(corners[tTo][0]), toY(corners[tTo][1]))
+      ctx.stroke()
+
       ctx.shadowColor = 'transparent'
       ctx.shadowBlur = 0
     }
@@ -516,14 +587,39 @@ export function renderGoldenRatioOverlay(
     // Draw the frame itself
     ctx.globalAlpha = opacity * Math.min(1, baseAlpha + flashT * 0.3)
     ctx.strokeStyle = frameColor
-    ctx.lineWidth = isFlashing ? lerp(3, 1.5, stepT) : 1.5
-    ctx.beginPath()
-    ctx.moveTo(toX(corners[0][0]), toY(corners[0][1]))
-    ctx.lineTo(toX(corners[1][0]), toY(corners[1][1]))
-    ctx.lineTo(toX(corners[2][0]), toY(corners[2][1]))
-    ctx.lineTo(toX(corners[3][0]), toY(corners[3][1]))
-    ctx.closePath()
-    ctx.stroke()
+    if (isFlashing) {
+      // Right edge — brighter
+      ctx.lineWidth = lerp(2.5, 1.5, stepT)
+      ctx.beginPath()
+      ctx.moveTo(toX(corners[rFrom][0]), toY(corners[rFrom][1]))
+      ctx.lineTo(toX(corners[rTo][0]), toY(corners[rTo][1]))
+      ctx.stroke()
+
+      // Top edge
+      ctx.lineWidth = lerp(2, 1.5, stepT)
+      ctx.beginPath()
+      ctx.moveTo(toX(corners[tFrom][0]), toY(corners[tFrom][1]))
+      ctx.lineTo(toX(corners[tTo][0]), toY(corners[tTo][1]))
+      ctx.stroke()
+
+      // Remaining two edges at normal width for context
+      ctx.lineWidth = 1.5
+      for (const [oFrom, oTo] of otherEdges) {
+        ctx.beginPath()
+        ctx.moveTo(toX(corners[oFrom][0]), toY(corners[oFrom][1]))
+        ctx.lineTo(toX(corners[oTo][0]), toY(corners[oTo][1]))
+        ctx.stroke()
+      }
+    } else {
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(toX(corners[0][0]), toY(corners[0][1]))
+      ctx.lineTo(toX(corners[1][0]), toY(corners[1][1]))
+      ctx.lineTo(toX(corners[2][0]), toY(corners[2][1]))
+      ctx.lineTo(toX(corners[3][0]), toY(corners[3][1]))
+      ctx.closePath()
+      ctx.stroke()
+    }
   }
 
   ctx.globalAlpha = 1

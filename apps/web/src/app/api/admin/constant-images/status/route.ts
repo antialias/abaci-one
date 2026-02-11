@@ -6,9 +6,14 @@ import {
   METAPHOR_PROMPT_PREFIX,
   MATH_PROMPT_PREFIX,
 } from '@/components/toys/number-line/constants/constantsData'
+import {
+  PHI_EXPLORE_SUBJECTS,
+  PHI_EXPLORE_PROMPT_PREFIX,
+} from '@/components/toys/number-line/constants/phiExploreData'
 import { IMAGE_PROVIDERS } from '@/lib/tasks/image-generate'
 
 const IMAGES_DIR = join(process.cwd(), 'public', 'images', 'constants')
+const PHI_EXPLORE_DIR = join(IMAGES_DIR, 'phi-explore')
 
 /**
  * GET /api/admin/constant-images/status
@@ -63,5 +68,19 @@ export async function GET() {
     }
   })
 
-  return NextResponse.json({ constants, providers })
+  const phiExplore = PHI_EXPLORE_SUBJECTS.map((s) => {
+    const baseFile = join(PHI_EXPLORE_DIR, `${s.id}.png`)
+    const baseExists = existsSync(baseFile)
+    return {
+      id: s.id,
+      name: s.name,
+      prompt: `${PHI_EXPLORE_PROMPT_PREFIX} ${s.prompt}`,
+      exists: baseExists,
+      sizeBytes: baseExists ? statSync(baseFile).size : undefined,
+      lightExists: existsSync(join(PHI_EXPLORE_DIR, `${s.id}-light.png`)),
+      darkExists: existsSync(join(PHI_EXPLORE_DIR, `${s.id}-dark.png`)),
+    }
+  })
+
+  return NextResponse.json({ constants, providers, phiExplore })
 }

@@ -127,6 +127,7 @@ export type TaskType =
   | 'audio-generate'
   | 'collected-clip-generate'
   | 'image-generate'
+  | 'phi-explore-generate'
   | 'demo'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**

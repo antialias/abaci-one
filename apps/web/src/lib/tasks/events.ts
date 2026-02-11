@@ -360,6 +360,45 @@ export type ImageGenerateEvent =
     }
 
 // ============================================================================
+// Phi Explore Generate domain events
+// ============================================================================
+
+export type PhiExploreGenerateEvent =
+  | {
+      type: 'image_started'
+      subjectId: string
+      model: string
+      provider: string
+      theme?: 'light' | 'dark'
+    }
+  | {
+      type: 'image_complete'
+      subjectId: string
+      filePath: string
+      sizeBytes: number
+      theme?: 'light' | 'dark'
+    }
+  | {
+      type: 'image_error'
+      subjectId: string
+      error: string
+      theme?: 'light' | 'dark'
+    }
+  | {
+      type: 'batch_progress'
+      completed: number
+      total: number
+      currentSubject: string
+      theme?: 'light' | 'dark'
+    }
+  | {
+      type: 'batch_complete'
+      generated: number
+      skipped: number
+      failed: number
+    }
+
+// ============================================================================
 // Demo task events
 // ============================================================================
 
@@ -380,6 +419,7 @@ export interface TaskEventMap {
   'audio-generate': AudioGenerateEvent
   'collected-clip-generate': CollectedClipGenerateEvent
   'image-generate': ImageGenerateEvent
+  'phi-explore-generate': PhiExploreGenerateEvent
   demo: DemoTaskEvent
 }
 

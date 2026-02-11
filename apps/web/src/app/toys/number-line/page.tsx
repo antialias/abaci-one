@@ -13,7 +13,7 @@ export default function NumberLinePage() {
       data-component="number-line-page"
       style={{
         width: '100vw',
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         background: isDark ? '#111827' : '#f9fafb',
         display: 'flex',

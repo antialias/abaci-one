@@ -217,6 +217,16 @@ resource "kubernetes_deployment" "app" {
           }
 
           volume_mount {
+            name       = "audio-data"
+            mount_path = "/app/apps/web/data/audio"
+          }
+
+          volume_mount {
+            name       = "generated-images-data"
+            mount_path = "/app/apps/web/data/generated-images"
+          }
+
+          volume_mount {
             name       = "dev-artifacts"
             mount_path = "/dev-artifacts"
           }
@@ -233,6 +243,20 @@ resource "kubernetes_deployment" "app" {
           name = "uploads-data"
           persistent_volume_claim {
             claim_name = kubernetes_persistent_volume_claim.uploads.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "audio-data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.audio.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "generated-images-data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.generated_images.metadata[0].name
           }
         }
 

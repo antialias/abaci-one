@@ -158,3 +158,55 @@ resource "kubernetes_persistent_volume_claim" "audio" {
     }
   }
 }
+
+# NFS PersistentVolume for generated images (avatars, backgrounds, icons, etc.)
+resource "kubernetes_persistent_volume" "generated_images" {
+  metadata {
+    name = "generated-images-pv"
+    labels = {
+      type = "nfs"
+      app  = "abaci-generated-images"
+    }
+  }
+
+  spec {
+    capacity = {
+      storage = "10Gi"
+    }
+    access_modes                     = ["ReadWriteMany"]
+    persistent_volume_reclaim_policy = "Retain"
+    storage_class_name               = "nfs"
+
+    persistent_volume_source {
+      nfs {
+        server = var.nfs_server
+        path   = "/volume1/homes/antialias/projects/abaci.one/data/generated-images"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "generated_images" {
+  metadata {
+    name      = "generated-images-data"
+    namespace = kubernetes_namespace.abaci.metadata[0].name
+  }
+
+  spec {
+    access_modes       = ["ReadWriteMany"]
+    storage_class_name = "nfs"
+
+    resources {
+      requests = {
+        storage = "10Gi"
+      }
+    }
+
+    selector {
+      match_labels = {
+        type = "nfs"
+        app  = "abaci-generated-images"
+      }
+    }
+  }
+}

@@ -34,7 +34,7 @@ export function PrimeTourOverlay({
       data-component="prime-tour-overlay"
       style={{
         position: 'absolute',
-        bottom: 16,
+        bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
         left: '50%',
         transform: 'translateX(-50%)',
         width: 'min(380px, calc(100% - 32px))',
@@ -56,14 +56,14 @@ export function PrimeTourOverlay({
         onClick={onClose}
         style={{
           position: 'absolute',
-          top: 8,
-          right: 8,
-          width: 24,
-          height: 24,
+          top: 0,
+          right: 0,
+          width: 44,
+          height: 44,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 14,
+          fontSize: 16,
           lineHeight: 1,
           color: subtextColor,
           backgroundColor: 'transparent',
@@ -107,12 +107,17 @@ export function PrimeTourOverlay({
           onClick={onPrev}
           disabled={isFirst}
           style={{
-            fontSize: 18,
+            fontSize: 22,
             color: isFirst ? (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') : accentColor,
             backgroundColor: 'transparent',
             border: 'none',
             cursor: isFirst ? 'default' : 'pointer',
-            padding: '2px 6px',
+            minWidth: 44,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             lineHeight: 1,
           }}
           aria-label="Previous stop"
@@ -153,13 +158,18 @@ export function PrimeTourOverlay({
           data-action={isLast ? 'tour-finish' : 'tour-next'}
           onClick={onNext}
           style={{
-            fontSize: isLast ? 12 : 18,
+            fontSize: isLast ? 13 : 22,
             fontWeight: isLast ? 600 : 400,
             color: accentColor,
             backgroundColor: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            padding: '2px 6px',
+            minWidth: 44,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             lineHeight: 1,
           }}
           aria-label={isLast ? 'Finish tour' : 'Next stop'}

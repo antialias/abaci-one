@@ -1,45 +1,46 @@
 import {
-  MATH_CONSTANTS,
-  METAPHOR_PROMPT_PREFIX,
-  MATH_PROMPT_PREFIX,
-  THEME_MODIFIERS,
-} from '@/components/toys/number-line/constants/constantsData'
+  PHI_EXPLORE_SUBJECTS,
+  PHI_EXPLORE_PROMPT_PREFIX,
+  PHI_EXPLORE_THEME_MODIFIERS,
+} from '@/components/toys/number-line/constants/phiExploreData'
 import { createTask } from '../task-manager'
 import { getImageProvider } from '../image-providers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
-import type { ImageGenerateEvent } from './events'
+import type { PhiExploreGenerateEvent } from './events'
 
 export { IMAGE_PROVIDERS } from '../image-providers'
 
-export interface ImageGenerateInput {
+export interface PhiExploreGenerateInput {
   provider: 'gemini' | 'openai'
   model: string
-  targets: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>
+  targets: Array<{ subjectId: string; theme?: 'light' | 'dark' }>
   forceRegenerate?: boolean
 }
 
-export interface ImageGenerateOutput {
+export interface PhiExploreGenerateOutput {
   generated: number
   skipped: number
   failed: number
   results: Array<{
-    constantId: string
-    style: string
+    subjectId: string
+    theme?: 'light' | 'dark'
     status: 'generated' | 'skipped' | 'failed'
     error?: string
   }>
 }
 
 /**
- * Start an image generation background task.
+ * Start a phi explore image generation background task.
  *
- * Generates constant illustrations using the specified AI provider.
+ * Generates golden-ratio subject illustrations using the specified AI provider.
  * Reports per-image progress via task events.
  */
-export async function startImageGeneration(input: ImageGenerateInput): Promise<string> {
-  return createTask<ImageGenerateInput, ImageGenerateOutput, ImageGenerateEvent>(
-    'image-generate',
+export async function startPhiExploreGeneration(
+  input: PhiExploreGenerateInput
+): Promise<string> {
+  return createTask<PhiExploreGenerateInput, PhiExploreGenerateOutput, PhiExploreGenerateEvent>(
+    'phi-explore-generate',
     input,
     async (handle, config) => {
       const provider = getImageProvider(config.provider)
@@ -57,11 +58,11 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
         return
       }
 
-      // Build lookup for constant data
-      const constantMap = new Map(MATH_CONSTANTS.map((c) => [c.id, c]))
+      // Build lookup for subject data
+      const subjectMap = new Map(PHI_EXPLORE_SUBJECTS.map((s) => [s.id, s]))
 
       // Determine work items
-      const results: ImageGenerateOutput['results'] = []
+      const results: PhiExploreGenerateOutput['results'] = []
       let generated = 0
       let skipped = 0
       let failed = 0
@@ -70,44 +71,50 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
 
       const total = config.targets.length
 
-      handle.setProgress(0, `Starting generation of ${total} images`)
+      handle.setProgress(0, `Starting generation of ${total} phi explore images`)
 
       for (let i = 0; i < config.targets.length; i++) {
         if (handle.isCancelled()) break
 
         const target = config.targets[i]
-        const constant = constantMap.get(target.constantId)
-        if (!constant) {
+        const subject = subjectMap.get(target.subjectId)
+        if (!subject) {
           results.push({
-            constantId: target.constantId,
-            style: target.style,
+            subjectId: target.subjectId,
+            theme: target.theme,
             status: 'failed',
-            error: `Unknown constant: ${target.constantId}`,
+            error: `Unknown subject: ${target.subjectId}`,
           })
           failed++
           continue
         }
 
-        const filename = `${target.constantId}-${target.style}${target.theme ? `-${target.theme}` : ''}.png`
-        const storageTarget = { type: 'static' as const, relativePath: `images/constants/${filename}` }
+        const themeSuffix = target.theme ? `-${target.theme}` : ''
+        const filename = `${target.subjectId}${themeSuffix}.png`
+        const storageTarget = {
+          type: 'static' as const,
+          relativePath: `images/constants/phi-explore/${filename}`,
+        }
 
         // Skip if already exists and not force-regenerating
         if (!config.forceRegenerate && imageExists(storageTarget)) {
           results.push({
-            constantId: target.constantId,
-            style: target.style,
+            subjectId: target.subjectId,
+            theme: target.theme,
             status: 'skipped',
           })
           skipped++
           const progress = Math.round(((i + 1) / total) * 100)
-          handle.setProgress(progress, `Skipped ${target.constantId} ${target.style} (already exists)`)
+          handle.setProgress(
+            progress,
+            `Skipped ${subject.name}${target.theme ? ` (${target.theme})` : ''} (already exists)`
+          )
           continue
         }
 
         handle.emit({
           type: 'image_started',
-          constantId: target.constantId,
-          style: target.style,
+          subjectId: target.subjectId,
           model: config.model,
           provider: config.provider,
           ...(target.theme && { theme: target.theme }),
@@ -117,16 +124,15 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
           type: 'batch_progress',
           completed: generated + skipped + failed,
           total,
-          currentConstant: constant.name,
-          currentStyle: target.style,
+          currentSubject: subject.name,
           ...(target.theme && { theme: target.theme }),
         })
 
         // Build the full prompt
-        const prefix = target.style === 'metaphor' ? METAPHOR_PROMPT_PREFIX : MATH_PROMPT_PREFIX
-        const suffix = target.style === 'metaphor' ? constant.metaphorPrompt : constant.mathPrompt
-        const themeModifier = target.theme ? ` ${THEME_MODIFIERS[target.theme][target.style]}` : ''
-        const fullPrompt = `${prefix} ${suffix}${themeModifier}`
+        const themeModifier = target.theme
+          ? ` ${PHI_EXPLORE_THEME_MODIFIERS[target.theme]}`
+          : ''
+        const fullPrompt = `${PHI_EXPLORE_PROMPT_PREFIX} ${subject.prompt}${themeModifier}`
 
         try {
           const result = await generateAndStoreImage({
@@ -143,16 +149,15 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
 
           handle.emit({
             type: 'image_complete',
-            constantId: target.constantId,
-            style: target.style,
+            subjectId: target.subjectId,
             filePath: result.publicUrl,
             sizeBytes,
             ...(target.theme && { theme: target.theme }),
           })
 
           results.push({
-            constantId: target.constantId,
-            style: target.style,
+            subjectId: target.subjectId,
+            theme: target.theme,
             status: 'generated',
           })
         } catch (err) {
@@ -162,21 +167,22 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
 
           handle.emit({
             type: 'image_error',
-            constantId: target.constantId,
-            style: target.style,
+            subjectId: target.subjectId,
             error: errorMsg,
             ...(target.theme && { theme: target.theme }),
           })
 
           results.push({
-            constantId: target.constantId,
-            style: target.style,
+            subjectId: target.subjectId,
+            theme: target.theme,
             status: 'failed',
             error: errorMsg,
           })
 
           if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-            handle.fail(`Generation aborted after ${MAX_CONSECUTIVE_ERRORS} consecutive failures: ${errorMsg}`)
+            handle.fail(
+              `Generation aborted after ${MAX_CONSECUTIVE_ERRORS} consecutive failures: ${errorMsg}`
+            )
             return
           }
         }
