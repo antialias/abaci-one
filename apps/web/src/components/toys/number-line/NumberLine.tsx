@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useTheme } from '../../../contexts/ThemeContext'
-import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant } from './types'
+import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant, PrimeTickInfo } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { renderNumberLine } from './renderNumberLine'
 import type { RenderTarget } from './renderNumberLine'
@@ -17,6 +17,12 @@ import { MATH_CONSTANTS } from './constants/constantsData'
 import { computeAllConstantVisibilities } from './constants/computeConstantVisibility'
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
+import { useConstantDemo } from './constants/demos/useConstantDemo'
+import { renderGoldenRatioOverlay } from './constants/demos/goldenRatioDemo'
+import { computePrimeInfos, computeVisiblePrimes, smallestPrimeFactor } from './primes/sieve'
+import { PrimeTooltip } from './primes/PrimeTooltip'
+import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
+import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 
 const INITIAL_STATE: NumberLineState = {
   center: 0,
@@ -78,6 +84,28 @@ export function NumberLine() {
   const renderConstantsRef = useRef<RenderConstant[]>([])
   // Container for DOM-rendered MathML constant symbols
   const constantMarkersRef = useRef<HTMLDivElement>(null)
+
+  // --- Constant demo state ---
+  // Use a ref to break the circular dependency: demo needs draw(), but draw() is defined later
+  const drawFnRef = useRef<() => void>(() => {})
+  const demoRedraw = useCallback(() => drawFnRef.current(), [])
+  const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo } = useConstantDemo(
+    stateRef, cssWidthRef, cssHeightRef, demoRedraw
+  )
+
+  // --- Primes (Sieve of Eratosthenes) state ---
+  const [primesEnabled, setPrimesEnabled] = useState(true)
+  const primesEnabledRef = useRef(true)
+  primesEnabledRef.current = primesEnabled
+  const [hoveredValue, setHoveredValue] = useState<number | null>(null)
+  const hoveredValueRef = useRef<number | null>(null)
+  hoveredValueRef.current = hoveredValue
+  // Tapped non-prime integer (click to show factorization)
+  const [tappedIntValue, setTappedIntValue] = useState<number | null>(null)
+  // Last computed prime infos (for tooltip data lookup)
+  const primeInfosRef = useRef<Map<number, PrimeTickInfo>>(new Map())
+  // Visible primes set for fast lookup in hover handler
+  const visiblePrimesSetRef = useRef<Set<number>>(new Set())
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -202,8 +230,35 @@ export function NumberLine() {
       renderConstantsRef.current = []
     }
 
+    // Compute prime infos, visible primes, and pair arcs
+    let primeInfos: Map<number, PrimeTickInfo> | undefined
+    let visiblePrimes: number[] | undefined
+    let primePairArcs: ReturnType<typeof computePrimePairArcs> | undefined
+    if (primesEnabledRef.current) {
+      const ticks = computeTickMarks(stateRef.current, cssWidth, thresholdsRef.current)
+      primeInfos = computePrimeInfos(ticks)
+      primeInfosRef.current = primeInfos
+
+      // Compute visible primes for axis-level markers (works at any zoom)
+      const halfWidth = cssWidth / 2
+      const ppu = stateRef.current.pixelsPerUnit
+      const leftValue = stateRef.current.center - halfWidth / ppu
+      const rightValue = stateRef.current.center + halfWidth / ppu
+      visiblePrimes = computeVisiblePrimes(leftValue, rightValue)
+      visiblePrimesSetRef.current = new Set(visiblePrimes)
+
+      // Compute pair arcs for connecting twin/cousin/sexy primes
+      primePairArcs = computePrimePairArcs(visiblePrimes)
+    } else {
+      primeInfosRef.current = new Map()
+      visiblePrimesSetRef.current = new Set()
+    }
+
     // Rate-limit display values before rendering
     updateDisplayValues()
+
+    // Tick the constant demo state machine (updates viewport during animation)
+    tickDemo()
 
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
@@ -212,8 +267,19 @@ export function NumberLine() {
       ctx, stateRef.current, cssWidth, cssHeight,
       resolvedTheme === 'dark', thresholdsRef.current,
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
-      renderTarget, collisionFadeMapRef.current, renderConstants
+      renderTarget, collisionFadeMapRef.current, renderConstants,
+      primeInfos, hoveredValueRef.current, visiblePrimes, primePairArcs
     )
+
+    // Render constant demo overlay (golden ratio, etc.)
+    const ds = demoStateRef.current
+    if (ds.phase !== 'idle' && ds.constantId === 'phi') {
+      renderGoldenRatioOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+
     ctx.restore()
 
     // Sync MathML DOM overlays with canvas
@@ -239,6 +305,9 @@ export function NumberLine() {
       })
     }
   }, [resolvedTheme])
+
+  // Keep the demo's redraw ref pointing at the latest draw function
+  drawFnRef.current = draw
 
   const scheduleRedraw = useCallback(() => {
     if (rafRef.current) return
@@ -338,40 +407,99 @@ export function NumberLine() {
   // Audio feedback for the game
   useFindTheNumberAudio(audioZone, proximityRef)
 
-  // --- Constants tap handler ---
+  // --- Hover handler for prime tooltips (primes only) ---
+  const handleHover = useCallback((hoverScreenX: number, _hoverScreenY: number) => {
+    if (hoverScreenX < 0) {
+      if (hoveredValueRef.current !== null) {
+        setHoveredValue(null)
+        scheduleRedraw()
+      }
+      return
+    }
+    if (!primesEnabledRef.current) {
+      if (hoveredValueRef.current !== null) setHoveredValue(null)
+      return
+    }
+
+    const cssWidth = cssWidthRef.current
+    const state = stateRef.current
+    const value = screenXToNumber(hoverScreenX, state.center, state.pixelsPerUnit, cssWidth)
+    const nearest = Math.round(value)
+
+    // Check if cursor is within ~20px of the nearest integer's screen position
+    const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
+    const dist = Math.abs(hoverScreenX - nearestScreenX)
+
+    // Only show hover tooltip for primes
+    if (dist < 20 && nearest >= 2 && smallestPrimeFactor(nearest) === nearest) {
+      if (hoveredValueRef.current !== nearest) {
+        setHoveredValue(nearest)
+        scheduleRedraw()
+      }
+    } else {
+      if (hoveredValueRef.current !== null) {
+        setHoveredValue(null)
+        scheduleRedraw()
+      }
+    }
+  }, [scheduleRedraw])
+
+  // --- Constants + non-prime integer tap handler ---
   const handleCanvasTap = useCallback((screenX: number, _screenY: number) => {
-    if (!constantsEnabledRef.current) return
+    // Check constants first
+    if (constantsEnabledRef.current) {
+      const HIT_RADIUS = 30
+      const constants = renderConstantsRef.current
+      let closest: RenderConstant | null = null
+      let closestDist = Infinity
 
-    const HIT_RADIUS = 30
-    const constants = renderConstantsRef.current
-    let closest: RenderConstant | null = null
-    let closestDist = Infinity
+      for (const c of constants) {
+        if (c.opacity < 0.3) continue
+        const dist = Math.abs(c.screenX - screenX)
+        if (dist < HIT_RADIUS && dist < closestDist) {
+          closest = c
+          closestDist = dist
+        }
+      }
 
-    for (const c of constants) {
-      if (c.opacity < 0.3) continue // don't allow tapping barely-visible constants
-      const dist = Math.abs(c.screenX - screenX)
-      if (dist < HIT_RADIUS && dist < closestDist) {
-        closest = c
-        closestDist = dist
+      if (closest) {
+        setDiscoveredIds(prev => {
+          const next = new Set(prev)
+          next.add(closest!.id)
+          try {
+            localStorage.setItem('number-line-discovered-constants', JSON.stringify([...next]))
+          } catch { /* ignore */ }
+          return next
+        })
+        setTappedConstantId(closest.id)
+        setTappedIntValue(null)
+        draw()
+        return
       }
     }
 
-    if (closest) {
-      // Mark as discovered
-      setDiscoveredIds(prev => {
-        const next = new Set(prev)
-        next.add(closest!.id)
-        try {
-          localStorage.setItem('number-line-discovered-constants', JSON.stringify([...next]))
-        } catch { /* ignore */ }
-        return next
-      })
-      setTappedConstantId(closest.id)
-      draw()
-    } else {
-      // Tap on empty space dismisses info card
-      setTappedConstantId(null)
+    // Check for non-prime integer tap (composites + 1)
+    if (primesEnabledRef.current) {
+      const cssWidth = cssWidthRef.current
+      const state = stateRef.current
+      const value = screenXToNumber(screenX, state.center, state.pixelsPerUnit, cssWidth)
+      const nearest = Math.round(value)
+      const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
+      const dist = Math.abs(screenX - nearestScreenX)
+
+      if (dist < 20 && nearest >= 1) {
+        const isPrime = nearest >= 2 && smallestPrimeFactor(nearest) === nearest
+        if (!isPrime) {
+          setTappedConstantId(null)
+          setTappedIntValue(nearest)
+          return
+        }
+      }
     }
+
+    // Tap on empty space dismisses everything
+    setTappedConstantId(null)
+    setTappedIntValue(null)
   }, [draw])
 
   // Touch/mouse/wheel handling
@@ -381,6 +509,7 @@ export function NumberLine() {
     onStateChange: scheduleRedraw,
     onZoomVelocity: handleZoomVelocity,
     onTap: handleCanvasTap,
+    onHover: handleHover,
   })
 
   // ResizeObserver for responsive canvas sizing
@@ -451,6 +580,10 @@ export function NumberLine() {
     setTappedConstantId(null)
   }, [])
 
+  const handleExploreConstant = useCallback((constantId: string) => {
+    startDemo(constantId)
+  }, [startDemo])
+
   return (
     <div ref={wrapperRef} data-component="number-line-wrapper" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
       <FindTheNumberBar
@@ -489,8 +622,36 @@ export function NumberLine() {
             centerY={cssHeightRef.current / 2}
             isDark={resolvedTheme === 'dark'}
             onDismiss={handleDismissInfoCard}
+            onExplore={handleExploreConstant}
           />
         )}
+        {hoveredValue !== null && primesEnabled && (
+          <PrimeTooltip
+            value={hoveredValue}
+            primeInfo={{ value: hoveredValue, smallestPrimeFactor: hoveredValue, isPrime: true, classification: 'prime' }}
+            screenX={numberToScreenX(hoveredValue, stateRef.current.center, stateRef.current.pixelsPerUnit, cssWidthRef.current)}
+            tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
+            containerWidth={cssWidthRef.current}
+            isDark={resolvedTheme === 'dark'}
+          />
+        )}
+        {hoveredValue === null && tappedIntValue !== null && primesEnabled && (() => {
+          const v = tappedIntValue
+          const spf = v >= 2 ? smallestPrimeFactor(v) : 0
+          const info: PrimeTickInfo = v === 1
+            ? { value: 1, smallestPrimeFactor: 0, isPrime: false, classification: 'one' }
+            : { value: v, smallestPrimeFactor: spf, isPrime: false, classification: 'composite' }
+          return (
+            <PrimeTooltip
+              value={v}
+              primeInfo={info}
+              screenX={numberToScreenX(v, stateRef.current.center, stateRef.current.pixelsPerUnit, cssWidthRef.current)}
+              tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
+              containerWidth={cssWidthRef.current}
+              isDark={resolvedTheme === 'dark'}
+            />
+          )
+        })()}
         <ToyDebugPanel title="Number Line">
           <DebugSlider label="Anchor max" value={anchorMax} min={1} max={20} step={1} onChange={setAnchorMax} />
           <DebugSlider label="Medium max" value={mediumMax} min={5} max={50} step={1} onChange={setMediumMax} />
@@ -502,7 +663,59 @@ export function NumberLine() {
             />
             Math Constants
           </label>
+          <label data-element="primes-toggle" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            <input
+              type="checkbox"
+              checked={primesEnabled}
+              onChange={e => { setPrimesEnabled(e.target.checked); scheduleRedraw() }}
+            />
+            Primes (Sieve)
+          </label>
         </ToyDebugPanel>
+        {hoveredValue !== null && primesEnabled && hoveredValue >= 2 && (() => {
+          const spf = smallestPrimeFactor(hoveredValue)
+          if (spf !== hoveredValue) return null // not prime
+          const labels = getSpecialPrimeLabels(hoveredValue)
+          if (labels.length === 0) return null
+          const isDark = resolvedTheme === 'dark'
+          // Deduplicate types (a prime can have e.g. two twin pairs but one footnote)
+          const seenTypes = new Set<string>()
+          const uniqueLabels = labels.filter(l => {
+            if (seenTypes.has(l.type)) return false
+            seenTypes.add(l.type)
+            return true
+          })
+          return (
+            <div
+              data-element="prime-footnotes"
+              style={{
+                position: 'absolute',
+                bottom: 8,
+                left: 12,
+                right: 12,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '4px 14px',
+                pointerEvents: 'none',
+              }}
+            >
+              {uniqueLabels.map(label => (
+                <span
+                  key={label.type}
+                  data-element="prime-footnote"
+                  style={{
+                    fontSize: 10,
+                    lineHeight: 1.4,
+                    color: LABEL_COLORS[label.type][isDark ? 'dark' : 'light'],
+                    opacity: 0.85,
+                  }}
+                >
+                  {PRIME_TYPE_DESCRIPTIONS[label.type]}
+                </span>
+              ))}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

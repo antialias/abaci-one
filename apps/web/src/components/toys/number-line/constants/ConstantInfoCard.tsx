@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MathConstant } from './constantsData'
 import { useTTS } from '@/hooks/useTTS'
+import { DEMO_AVAILABLE } from './demos/useConstantDemo'
 
 interface ConstantInfoCardProps {
   constant: MathConstant
@@ -16,6 +17,8 @@ interface ConstantInfoCardProps {
   centerY: number
   isDark: boolean
   onDismiss: () => void
+  /** Called when user taps "Explore" to launch the constant's demo */
+  onExplore?: (constantId: string) => void
 }
 
 const CARD_WIDTH = 220
@@ -29,6 +32,7 @@ export function ConstantInfoCard({
   centerY,
   isDark,
   onDismiss,
+  onExplore,
 }: ConstantInfoCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -66,6 +70,9 @@ export function ConstantInfoCard({
   const placeAbove = spaceAbove > spaceBelow
   const top = placeAbove ? Math.max(CARD_PAD, centerY - 140) : centerY + 20
 
+  const hasImages = !!(constant.metaphorImage && constant.mathImage)
+  const [imageTab, setImageTab] = useState<'metaphor' | 'math'>('metaphor')
+
   const bg = isDark ? 'rgba(30, 30, 40, 0.92)' : 'rgba(255, 255, 255, 0.92)'
   const textColor = isDark ? '#f3f4f6' : '#1f2937'
   const subtextColor = isDark ? '#9ca3af' : '#6b7280'
@@ -80,6 +87,8 @@ export function ConstantInfoCard({
         left: clampedX,
         top,
         width: CARD_WIDTH,
+        maxHeight: containerHeight - CARD_PAD * 2,
+        overflowY: 'auto',
         padding: '12px 14px',
         borderRadius: 10,
         backgroundColor: bg,
@@ -129,6 +138,56 @@ export function ConstantInfoCard({
         {formatConstantValue(constant.value)}
       </div>
 
+      {/* Illustration with tab toggle */}
+      {hasImages && (
+        <div data-element="constant-illustration" style={{ marginBottom: 8 }}>
+          <div
+            data-element="illustration-tabs"
+            style={{
+              display: 'flex',
+              gap: 4,
+              marginBottom: 6,
+            }}
+          >
+            {(['metaphor', 'math'] as const).map((tab) => {
+              const active = imageTab === tab
+              return (
+                <button
+                  key={tab}
+                  data-action={`illustration-tab-${tab}`}
+                  onClick={() => setImageTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: '3px 0',
+                    fontSize: 11,
+                    fontWeight: active ? 600 : 400,
+                    color: active ? (isDark ? '#1f2937' : '#fff') : subtextColor,
+                    backgroundColor: active ? symbolColor : 'transparent',
+                    border: `1px solid ${active ? symbolColor : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}`,
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {tab === 'metaphor' ? 'Imagine' : 'Math'}
+                </button>
+              )
+            })}
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            data-element="constant-illustration-image"
+            src={imageTab === 'metaphor' ? constant.metaphorImage : constant.mathImage}
+            alt={`${constant.name} — ${imageTab === 'metaphor' ? 'metaphor' : 'math'} illustration`}
+            style={{
+              width: '100%',
+              aspectRatio: '1 / 1',
+              borderRadius: 6,
+              objectFit: 'cover',
+            }}
+          />
+        </div>
+      )}
+
       <div
         data-element="constant-description"
         style={{
@@ -139,6 +198,31 @@ export function ConstantInfoCard({
       >
         {constant.description}
       </div>
+
+      {/* Explore button — only for constants with demos */}
+      {onExplore && DEMO_AVAILABLE.has(constant.id) && (
+        <button
+          data-action="explore-constant"
+          onClick={() => {
+            onExplore(constant.id)
+            onDismiss()
+          }}
+          style={{
+            marginTop: 8,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 600,
+            color: isDark ? '#1f2937' : '#fff',
+            backgroundColor: symbolColor,
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          Explore
+        </button>
+      )}
 
       {/* Inline keyframe animation */}
       <style>{`
