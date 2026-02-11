@@ -173,10 +173,9 @@ export function ConstantInfoCard({
               )
             })}
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            data-element="constant-illustration-image"
-            src={imageTab === 'metaphor' ? constant.metaphorImage : constant.mathImage}
+          <ThemedImage
+            baseSrc={(imageTab === 'metaphor' ? constant.metaphorImage : constant.mathImage)!}
+            isDark={isDark}
             alt={`${constant.name} — ${imageTab === 'metaphor' ? 'metaphor' : 'math'} illustration`}
             style={{
               width: '100%',
@@ -232,6 +231,42 @@ export function ConstantInfoCard({
         }
       `}</style>
     </div>
+  )
+}
+
+function ThemedImage({
+  baseSrc,
+  isDark,
+  alt,
+  style,
+}: {
+  baseSrc: string
+  isDark: boolean
+  alt: string
+  style: React.CSSProperties
+}) {
+  const [useFallback, setUseFallback] = useState(false)
+
+  useEffect(() => {
+    setUseFallback(false)
+  }, [isDark])
+
+  const theme = isDark ? 'dark' : 'light'
+  const themedSrc = !useFallback
+    ? baseSrc.replace('.png', `-${theme}.png`)
+    : baseSrc
+
+  return (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      data-element="constant-illustration-image"
+      src={themedSrc}
+      alt={alt}
+      style={style}
+      onError={() => {
+        if (!useFallback) setUseFallback(true)
+      }}
+    />
   )
 }
 

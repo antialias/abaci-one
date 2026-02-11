@@ -4,6 +4,7 @@ import {
   MATH_CONSTANTS,
   METAPHOR_PROMPT_PREFIX,
   MATH_PROMPT_PREFIX,
+  THEME_MODIFIERS,
 } from '@/components/toys/number-line/constants/constantsData'
 import { createTask } from '../task-manager'
 import { getImageProvider } from '../image-providers'
@@ -16,7 +17,7 @@ const IMAGES_DIR = join(process.cwd(), 'public', 'images', 'constants')
 export interface ImageGenerateInput {
   provider: 'gemini' | 'openai'
   model: string
-  targets: Array<{ constantId: string; style: 'metaphor' | 'math' }>
+  targets: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>
   forceRegenerate?: boolean
 }
 
@@ -91,7 +92,7 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
           continue
         }
 
-        const filename = `${target.constantId}-${target.style}.png`
+        const filename = `${target.constantId}-${target.style}${target.theme ? `-${target.theme}` : ''}.png`
         const filePath = join(IMAGES_DIR, filename)
 
         // Skip if already exists and not force-regenerating
@@ -113,6 +114,7 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
           style: target.style,
           model: config.model,
           provider: config.provider,
+          ...(target.theme && { theme: target.theme }),
         })
 
         handle.emit({
@@ -121,12 +123,14 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
           total,
           currentConstant: constant.name,
           currentStyle: target.style,
+          ...(target.theme && { theme: target.theme }),
         })
 
         // Build the full prompt
         const prefix = target.style === 'metaphor' ? METAPHOR_PROMPT_PREFIX : MATH_PROMPT_PREFIX
         const suffix = target.style === 'metaphor' ? constant.metaphorPrompt : constant.mathPrompt
-        const fullPrompt = `${prefix} ${suffix}`
+        const themeModifier = target.theme ? ` ${THEME_MODIFIERS[target.theme][target.style]}` : ''
+        const fullPrompt = `${prefix} ${suffix}${themeModifier}`
 
         try {
           const { imageBuffer } = await provider.generate({ model: config.model, prompt: fullPrompt })
@@ -143,6 +147,7 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
             style: target.style,
             filePath: `/images/constants/${filename}`,
             sizeBytes,
+            ...(target.theme && { theme: target.theme }),
           })
 
           results.push({
@@ -160,6 +165,7 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
             constantId: target.constantId,
             style: target.style,
             error: errorMsg,
+            ...(target.theme && { theme: target.theme }),
           })
 
           results.push({

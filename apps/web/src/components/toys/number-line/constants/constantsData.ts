@@ -28,6 +28,20 @@ export const METAPHOR_PROMPT_PREFIX =
 export const MATH_PROMPT_PREFIX =
   'Technical blueprint diagram, glowing cyan/teal neon lines on dark navy background, no text, no labels, square 1:1 composition, precise geometric construction.'
 
+/** Theme-specific prompt modifiers appended during generation */
+export const THEME_MODIFIERS = {
+  light: {
+    metaphor:
+      'IMPORTANT: Use a clean white (#ffffff) background. Ensure all colors are vibrant and visible against the light background. Same subject and composition.',
+    math: 'IMPORTANT: Use a clean white (#ffffff) background instead of cream parchment. Use bold primary colors (red, blue, gold) that stand out crisply against white. Same geometric construction and composition.',
+  },
+  dark: {
+    metaphor:
+      'IMPORTANT: Use a dark navy background (#1e1e28). Use bright, saturated colors with high contrast against the dark background. Same subject and composition.',
+    math: 'IMPORTANT: Use a dark slate background (#1a1a2e) resembling aged dark vellum. Use bright vivid primary colors (vermillion, electric blue, bright gold) with high contrast against the dark ground. Same geometric construction and composition.',
+  },
+} as const
+
 /** Euler-Mascheroni constant */
 const EULER_MASCHERONI = 0.5772156649
 

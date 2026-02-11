@@ -327,6 +327,7 @@ export type ImageGenerateEvent =
       style: 'metaphor' | 'math'
       model: string
       provider: string
+      theme?: 'light' | 'dark'
     }
   | {
       type: 'image_complete'
@@ -334,12 +335,14 @@ export type ImageGenerateEvent =
       style: 'metaphor' | 'math'
       filePath: string
       sizeBytes: number
+      theme?: 'light' | 'dark'
     }
   | {
       type: 'image_error'
       constantId: string
       style: 'metaphor' | 'math'
       error: string
+      theme?: 'light' | 'dark'
     }
   | {
       type: 'batch_progress'
@@ -347,6 +350,7 @@ export type ImageGenerateEvent =
       total: number
       currentConstant: string
       currentStyle: 'metaphor' | 'math'
+      theme?: 'light' | 'dark'
     }
   | {
       type: 'batch_complete'
