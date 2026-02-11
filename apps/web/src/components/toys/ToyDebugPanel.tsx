@@ -11,14 +11,16 @@ interface DebugSliderProps {
   max: number
   step?: number
   onChange: (value: number) => void
+  /** Custom value formatter for display (e.g. toFixed(3) for floats) */
+  formatValue?: (value: number) => string
 }
 
-export function DebugSlider({ label, value, min, max, step = 1, onChange }: DebugSliderProps) {
+export function DebugSlider({ label, value, min, max, step = 1, onChange, formatValue }: DebugSliderProps) {
   return (
     <div data-element="debug-slider" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 500 }}>
         <span>{label}</span>
-        <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>{value}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>{formatValue ? formatValue(value) : value}</span>
       </div>
       <Slider.Root
         value={[value]}

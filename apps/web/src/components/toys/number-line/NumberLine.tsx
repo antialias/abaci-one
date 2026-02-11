@@ -18,7 +18,7 @@ import { computeAllConstantVisibilities } from './constants/computeConstantVisib
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
-import { renderGoldenRatioOverlay, NUM_LEVELS } from './constants/demos/goldenRatioDemo'
+import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress } from './constants/demos/goldenRatioDemo'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
@@ -31,14 +31,19 @@ import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLine
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
-// B=16 puts step 10 at the scrubber midpoint: (16^0.5 - 1)/(16 - 1) = 0.2 = 10/50.
-const LOG_BASE = 16
-const LOG_DENOM = Math.log(LOG_BASE)
+let scrubberLogBase = 7
+let scrubberLogDenom = Math.log(Math.max(1.01, scrubberLogBase))
 function progressToScrubber(p: number): number {
-  return (Math.pow(LOG_BASE, p) - 1) / (LOG_BASE - 1)
+  if (scrubberLogBase <= 1.01) return p // linear fallback
+  return (Math.pow(scrubberLogBase, p) - 1) / (scrubberLogBase - 1)
 }
 function scrubberToProgress(s: number): number {
-  return Math.log(1 + s * (LOG_BASE - 1)) / LOG_DENOM
+  if (scrubberLogBase <= 1.01) return s // linear fallback
+  return Math.log(1 + s * (scrubberLogBase - 1)) / scrubberLogDenom
+}
+function setScrubberLogBase(base: number): void {
+  scrubberLogBase = Math.max(1, base)
+  scrubberLogDenom = Math.log(Math.max(1.01, scrubberLogBase))
 }
 
 const INITIAL_STATE: NumberLineState = {
@@ -55,6 +60,17 @@ export function NumberLine() {
   // Debug controls for tick thresholds
   const [anchorMax, setAnchorMax] = useState(DEFAULT_TICK_THRESHOLDS.anchorMax)
   const [mediumMax, setMediumMax] = useState(DEFAULT_TICK_THRESHOLDS.mediumMax)
+
+  // Debug controls for golden ratio demo tuning
+  const [debugDecay, setDebugDecay] = useState(getStepTimingDecay)
+  const [debugLogBase, setDebugLogBase] = useState(scrubberLogBase)
+  // Readout: arc counts at scrubber 50% and 75% — recomputed when params change
+  const arcReadout = useMemo(() => {
+    const p50 = scrubberToProgress(0.5)
+    const p75 = scrubberToProgress(0.75)
+    return { at50: arcCountAtProgress(p50), at75: arcCountAtProgress(p75) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debugDecay, debugLogBase])
   const thresholdsRef = useRef<TickThresholds>({ anchorMax, mediumMax })
   thresholdsRef.current = { anchorMax, mediumMax }
 
@@ -694,6 +710,19 @@ export function NumberLine() {
     startDemo(constantId)
   }, [startDemo, exitTour])
 
+  // --- Debug tuning handlers for golden ratio demo ---
+  const handleDecayChange = useCallback((v: number) => {
+    setDebugDecay(v)
+    setStepTimingDecay(v)
+    scheduleRedraw()
+  }, [scheduleRedraw])
+
+  const handleLogBaseChange = useCallback((v: number) => {
+    setDebugLogBase(v)
+    setScrubberLogBase(v)
+    scheduleRedraw()
+  }, [scheduleRedraw])
+
   // --- Prime Tour handlers ---
   const handleStartTour = useCallback(() => {
     cancelDemo() // mutual exclusion: cancel demo when starting tour
@@ -940,6 +969,35 @@ export function NumberLine() {
             />
             Primes (Sieve)
           </label>
+          <div
+            data-element="phi-tuning-section"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 2 }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.5, marginBottom: 6 }}>
+              φ Scrubber Tuning
+            </div>
+            <DebugSlider
+              label="Step decay"
+              value={debugDecay}
+              min={0.80}
+              max={0.99}
+              step={0.005}
+              onChange={handleDecayChange}
+              formatValue={v => v.toFixed(3)}
+            />
+            <DebugSlider
+              label="Scrubber log base"
+              value={debugLogBase}
+              min={1}
+              max={32}
+              step={0.5}
+              onChange={handleLogBaseChange}
+              formatValue={v => v.toFixed(1)}
+            />
+            <div style={{ fontSize: 10, opacity: 0.6, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
+              50% → {arcReadout.at50} arcs · 75% → {arcReadout.at75} arcs · total {NUM_LEVELS}
+            </div>
+          </div>
         </ToyDebugPanel>
         {(() => {
           const fv = forcedHoverValue ?? hoveredValue

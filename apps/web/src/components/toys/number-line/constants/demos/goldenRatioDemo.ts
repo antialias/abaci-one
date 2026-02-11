@@ -206,20 +206,22 @@ const FRAME_FADE_STEPS = 4
 // --- Animation timing ---
 
 /** Fraction of revealProgress for compass sweeps; remainder for rectangle fade. */
-const SWEEP_PHASE = 0.85
+const SWEEP_PHASE = 1.0
 
 /**
- * Sequential step timings with growth: later steps (larger outer squares
- * that cause the most dramatic ratio changes) get progressively more time.
+ * Sequential step timings with decay: earlier steps (small inner squares
+ * that cause the most dramatic rotation) get progressively more scrubber
+ * range, while later (calmer) steps pass quickly.
+ *
+ * Default decay factor r = 0.8 gives ~5 arcs at scrubber midpoint,
+ * ~9 arcs at 75% (with log base 7 scrubber mapping).
  */
-function computeStepTimings(count: number): Array<{ start: number; end: number }> {
-  const GROWTH = 1.12
-
+function computeStepTimings(count: number, decay: number): Array<{ start: number; end: number }> {
   const durations: number[] = []
   let d = 1
   for (let i = 0; i < count; i++) {
     durations.push(d)
-    d *= GROWTH
+    d *= decay
   }
 
   const total = durations.reduce((a, b) => a + b, 0)
@@ -232,7 +234,28 @@ function computeStepTimings(count: number): Array<{ start: number; end: number }
   })
 }
 
-const STEP_TIMINGS = computeStepTimings(NUM_LEVELS)
+let currentDecay = 0.8
+let STEP_TIMINGS = computeStepTimings(NUM_LEVELS, currentDecay)
+
+/** Update the step timing decay factor (debug tuning). Recomputes all timings. */
+export function setStepTimingDecay(decay: number): void {
+  currentDecay = Math.max(0.5, Math.min(0.999, decay))
+  STEP_TIMINGS = computeStepTimings(NUM_LEVELS, currentDecay)
+}
+
+export function getStepTimingDecay(): number {
+  return currentDecay
+}
+
+/** Given a sweep progress (0-1), returns how many arcs are fully complete */
+export function arcCountAtProgress(sweepProgress: number): number {
+  if (sweepProgress <= 0) return 0
+  if (sweepProgress >= 1) return NUM_LEVELS
+  for (let i = 0; i < NUM_LEVELS; i++) {
+    if (sweepProgress < STEP_TIMINGS[i].end) return i
+  }
+  return NUM_LEVELS
+}
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
