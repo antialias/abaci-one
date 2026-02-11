@@ -18,7 +18,7 @@ import { computeAllConstantVisibilities } from './constants/computeConstantVisib
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
-import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress } from './constants/demos/goldenRatioDemo'
+import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress } from './constants/demos/goldenRatioDemo'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
@@ -26,6 +26,7 @@ import { computeInterestingPrimes } from './primes/interestingness'
 import type { InterestingPrime } from './primes/interestingness'
 import { usePrimeTour } from './primes/usePrimeTour'
 import { PRIME_TOUR_STOPS } from './primes/primeTourStops'
+import { renderTourSpotlight } from './primes/renderTourSpotlight'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 
@@ -129,6 +130,8 @@ export function NumberLine() {
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
   const scrubberFillRef = useRef<HTMLDivElement>(null)
   const scrubberThumbRef = useRef<HTMLDivElement>(null)
+  const scrubberThumbVisualRef = useRef<HTMLDivElement>(null)
+  const scrubberGapRef = useRef<HTMLDivElement>(null)
   const [demoActive, setDemoActive] = useState(false)
   const isDraggingScrubberRef = useRef(false)
 
@@ -346,6 +349,13 @@ export function NumberLine() {
     })()
     const effectiveHovered = tourForced ?? hoveredValueRef.current
 
+    // Compute tour spotlight highlight set
+    const tourTs = tourStateRef.current
+    const tourStop = tourTs.stopIndex !== null ? PRIME_TOUR_STOPS[tourTs.stopIndex] : null
+    const highlightSet = tourStop?.highlightValues?.length
+      ? new Set(tourStop.highlightValues) : undefined
+    const dimAmount = tourStop?.dimOthers ?? 0
+
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
@@ -354,7 +364,8 @@ export function NumberLine() {
       resolvedTheme === 'dark', thresholdsRef.current,
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
       renderTarget, collisionFadeMapRef.current, renderConstants,
-      primeInfos, effectiveHovered, interestingPrimes, primePairArcs
+      primeInfos, effectiveHovered, interestingPrimes, primePairArcs,
+      highlightSet
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -366,19 +377,44 @@ export function NumberLine() {
       )
     }
 
+    // Render tour spotlight (dim overlay + pulse glow)
+    if (tourTs.phase !== 'idle' && highlightSet && highlightSet.size > 0 && dimAmount > 0) {
+      renderTourSpotlight(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', tourStop!.highlightValues!, dimAmount, tourTs.opacity
+      )
+    }
+
     ctx.restore()
 
     // --- Sync demo scrubber DOM ---
     const isActive = ds.phase !== 'idle'
+    const scrubberPct = progressToScrubber(ds.revealProgress) * 100
     if (scrubberTrackRef.current) {
       scrubberTrackRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
       scrubberTrackRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
+      // ARIA: update slider value
+      scrubberTrackRef.current.setAttribute('aria-valuenow', String(Math.round(ds.revealProgress * 100)))
+      scrubberTrackRef.current.setAttribute('aria-valuetext', `${Math.round(ds.revealProgress * 100)}% convergence progress`)
     }
     if (scrubberFillRef.current) {
-      scrubberFillRef.current.style.width = `${progressToScrubber(ds.revealProgress) * 100}%`
+      scrubberFillRef.current.style.width = `${scrubberPct}%`
     }
     if (scrubberThumbRef.current) {
-      scrubberThumbRef.current.style.left = `${progressToScrubber(ds.revealProgress) * 100}%`
+      scrubberThumbRef.current.style.left = `${scrubberPct}%`
+    }
+    // Convergence gap indicator
+    if (scrubberGapRef.current) {
+      const gap = convergenceGapAtProgress(ds.revealProgress)
+      const maxWidth = 60
+      scrubberGapRef.current.style.width = `${gap * maxWidth}px`
+      scrubberGapRef.current.style.left = `calc(${scrubberPct}% - ${(gap * maxWidth) / 2}px)`
+      // Color: warm (red/amber) when large gap, cool (green) when converged
+      const r = Math.round(220 * gap + 34 * (1 - gap))
+      const g = Math.round(80 * gap + 197 * (1 - gap))
+      const b = Math.round(40 * gap + 94 * (1 - gap))
+      scrubberGapRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
+      scrubberGapRef.current.style.opacity = isActive && ds.opacity > 0.1 ? '1' : '0'
     }
     // Sync React state for conditional rendering (batch with rAF)
     if (isActive && !demoActive) setDemoActive(true)
@@ -747,7 +783,13 @@ export function NumberLine() {
     isDraggingScrubberRef.current = true
     const progress = scrubberProgressFromPointer(e.clientX)
     setRevealProgress(progress)
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    // Capture on the track element for reliable drag tracking
+    scrubberTrackRef.current?.setPointerCapture(e.pointerId)
+    // Active-state feedback: scale up + glow
+    if (scrubberThumbVisualRef.current) {
+      scrubberThumbVisualRef.current.style.transform = 'scale(1.4)'
+      scrubberThumbVisualRef.current.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)'
+    }
   }, [scrubberProgressFromPointer, setRevealProgress])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
@@ -760,7 +802,54 @@ export function NumberLine() {
   const handleScrubberPointerUp = useCallback((e: React.PointerEvent) => {
     if (!isDraggingScrubberRef.current) return
     isDraggingScrubberRef.current = false
-    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+    scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
+    // Reset active-state feedback
+    if (scrubberThumbVisualRef.current) {
+      scrubberThumbVisualRef.current.style.transform = 'scale(1)'
+      scrubberThumbVisualRef.current.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)'
+    }
+  }, [])
+
+  const handleScrubberKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const ds = demoStateRef.current
+    if (ds.phase === 'idle') return
+    let progress = ds.revealProgress
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowUp':
+        e.preventDefault()
+        progress = Math.min(1, progress + 0.02)
+        break
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        e.preventDefault()
+        progress = Math.max(0, progress - 0.02)
+        break
+      case 'Home':
+        e.preventDefault()
+        progress = 0
+        break
+      case 'End':
+        e.preventDefault()
+        progress = 1
+        break
+      default:
+        return
+    }
+    setRevealProgress(progress)
+  }, [demoStateRef, setRevealProgress])
+
+  const handleScrubberFocus = useCallback(() => {
+    if (scrubberTrackRef.current) {
+      scrubberTrackRef.current.style.outline = '2px solid rgba(168, 85, 247, 0.7)'
+      scrubberTrackRef.current.style.outlineOffset = '2px'
+    }
+  }, [])
+
+  const handleScrubberBlur = useCallback(() => {
+    if (scrubberTrackRef.current) {
+      scrubberTrackRef.current.style.outline = 'none'
+    }
   }, [])
 
   // Colors for scrubber (match golden ratio demo palette)
@@ -837,16 +926,25 @@ export function NumberLine() {
           <div
             ref={scrubberTrackRef}
             data-element="demo-scrubber"
+            role="slider"
+            aria-label="Golden ratio convergence progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={0}
+            tabIndex={0}
             onPointerDown={handleScrubberPointerDown}
             onPointerMove={handleScrubberPointerMove}
             onPointerUp={handleScrubberPointerUp}
             onPointerCancel={handleScrubberPointerUp}
+            onKeyDown={handleScrubberKeyDown}
+            onFocus={handleScrubberFocus}
+            onBlur={handleScrubberBlur}
             style={{
               position: 'absolute',
-              bottom: 24,
-              left: 40,
-              right: 40,
-              height: 24,
+              bottom: 40,
+              left: 24,
+              right: 24,
+              height: 48,
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
@@ -854,16 +952,18 @@ export function NumberLine() {
               opacity: 0,
               pointerEvents: 'none',
               transition: 'opacity 0.15s',
+              outline: 'none',
             }}
           >
             {/* Track background */}
             <div
+              data-element="demo-scrubber-track-bg"
               style={{
                 position: 'absolute',
                 left: 0,
                 right: 0,
-                height: 3,
-                borderRadius: 1.5,
+                height: 6,
+                borderRadius: 3,
                 backgroundColor: scrubberTrackColor,
               }}
             />
@@ -874,28 +974,56 @@ export function NumberLine() {
               style={{
                 position: 'absolute',
                 left: 0,
-                height: 3,
-                borderRadius: 1.5,
+                height: 6,
+                borderRadius: 3,
                 backgroundColor: scrubberFillColor,
                 width: '0%',
               }}
             />
-            {/* Thumb */}
+            {/* Convergence gap indicator — colored bar above scrubber */}
+            <div
+              ref={scrubberGapRef}
+              data-element="demo-scrubber-gap"
+              style={{
+                position: 'absolute',
+                top: 0,
+                height: 4,
+                borderRadius: 2,
+                opacity: 0,
+                transition: 'width 0.1s, background-color 0.15s, opacity 0.15s',
+                pointerEvents: 'none',
+              }}
+            />
+            {/* Thumb: 44x44 invisible touch target wrapping a visible circle */}
             <div
               ref={scrubberThumbRef}
               data-element="demo-scrubber-thumb"
               style={{
                 position: 'absolute',
                 left: '0%',
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                backgroundColor: scrubberFillColor,
-                border: '2px solid white',
+                width: 44,
+                height: 44,
                 transform: 'translateX(-50%)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
+            >
+              <div
+                ref={scrubberThumbVisualRef}
+                data-element="demo-scrubber-thumb-visual"
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  backgroundColor: scrubberFillColor,
+                  border: '3px solid white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  transition: 'transform 0.15s, box-shadow 0.15s',
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
           </div>
         )}
         {(() => {

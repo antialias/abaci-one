@@ -117,7 +117,8 @@ export function renderNumberLine(
   primeInfos?: Map<number, PrimeTickInfo>,
   hoveredTick?: number | null,
   interestingPrimes?: InterestingPrime[],
-  primePairArcs?: PrimePairArc[]
+  primePairArcs?: PrimePairArc[],
+  highlightedPrimes?: Set<number>
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -467,8 +468,9 @@ export function renderNumberLine(
     ctx.globalAlpha = 1
   }
 
-  // Pass 2.3: prime pair arcs (twin / cousin / sexy) — only for hovered prime
-  if (primePairArcs && primePairArcs.length > 0 && hoveredTick != null) {
+  // Pass 2.3: prime pair arcs (twin / cousin / sexy) — for hovered or highlighted primes
+  const showArcs = hoveredTick != null || (highlightedPrimes && highlightedPrimes.size > 0)
+  if (primePairArcs && primePairArcs.length > 0 && showArcs) {
     const arcOrder: Array<'sexy' | 'cousin' | 'twin'> = ['sexy', 'cousin', 'twin']
 
     for (const arcType of arcOrder) {
@@ -479,7 +481,9 @@ export function renderNumberLine(
 
       for (const arc of primePairArcs) {
         if (arc.type !== arcType) continue
-        if (arc.p1 !== hoveredTick && arc.p2 !== hoveredTick) continue
+        const matchesHover = arc.p1 === hoveredTick || arc.p2 === hoveredTick
+        const matchesHighlight = highlightedPrimes && (highlightedPrimes.has(arc.p1) || highlightedPrimes.has(arc.p2))
+        if (!matchesHover && !matchesHighlight) continue
 
         const x1 = numberToScreenX(arc.p1, state.center, state.pixelsPerUnit, cssWidth)
         const x2 = numberToScreenX(arc.p2, state.center, state.pixelsPerUnit, cssWidth)
