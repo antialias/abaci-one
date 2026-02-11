@@ -872,7 +872,20 @@
       "Bash(gh workflow:*)",
       "Bash(do npx vitest run src/test/bkt-skill-identification.test.ts)",
       "Bash(terraform show:*)",
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "Bash(gcloud config:*)",
+      "Bash(gcloud auth list:*)",
+      "Bash(gcloud services list:*)",
+      "Bash(gcloud auth application-default print-access-token:*)",
+      "Bash(gcloud billing accounts list:*)",
+      "Bash(gcloud billing projects list:*)",
+      "Bash(gcloud iap oauth-brands create:*)",
+      "Bash(gcloud services enable:*)",
+      "Bash(gcloud projects list:*)",
+      "Bash(gcloud alpha iap oauth-clients list:*)",
+      "Bash(gcloud beta iap oauth-brands list:*)",
+      "Bash(in again\" and \"Continue as guest\" instead of generic server error\n- Error page handles Configuration, AccessDenied, Verification, and\n  default error codes with human-readable messages\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(xxd:*)"
     ],
     "deny": [],
     "ask": []

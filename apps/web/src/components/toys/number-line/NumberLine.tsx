@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { useTheme } from '../../../contexts/ThemeContext'
-import type { NumberLineState, TickThresholds, CollisionFadeMap } from './types'
+import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { renderNumberLine } from './renderNumberLine'
 import type { RenderTarget } from './renderNumberLine'
@@ -13,6 +13,10 @@ import type { ProximityZone, ProximityResult } from './findTheNumber/computeProx
 import { FindTheNumberBar } from './findTheNumber/FindTheNumberBar'
 import type { FindTheNumberGameState } from './findTheNumber/FindTheNumberBar'
 import { useFindTheNumberAudio } from './findTheNumber/useFindTheNumberAudio'
+import { MATH_CONSTANTS } from './constants/constantsData'
+import { computeAllConstantVisibilities } from './constants/computeConstantVisibility'
+import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
+import { ConstantInfoCard } from './constants/ConstantInfoCard'
 
 const INITIAL_STATE: NumberLineState = {
   center: 0,
@@ -36,11 +40,13 @@ export function NumberLine() {
   const cssHeightRef = useRef(0)
 
   // Zoom velocity for background color wash effect
+  // Raw values track the instantaneous state; display values are slew-rate-limited
+  // so the visible wash can't change faster than a fixed rate per ms.
   const zoomVelocityRef = useRef(0)
-  // Smoothed hue (lerps toward target to avoid hard color jumps)
-  const zoomHueRef = useRef(0) // 0 = neutral, will lerp toward 220 or 25
-  // Committed hue target — only changes when velocity is decisively in one direction
-  const committedHueRef = useRef(0)
+  const zoomHueRef = useRef(0)
+  const displayVelocityRef = useRef(0)
+  const displayHueRef = useRef(0)
+  const lastDisplayTimeRef = useRef(0)
   // Focal point as fraction of canvas width (0-1)
   const zoomFocalXRef = useRef(0.5)
   const decayRafRef = useRef<number>(0)
@@ -50,6 +56,28 @@ export function NumberLine() {
   // Persistent collision fade state for smooth label show/hide transitions
   const collisionFadeMapRef = useRef<CollisionFadeMap>(new Map())
   const collisionRafRef = useRef<number>(0)
+
+  // --- Mathematical constants (Number Safari) state ---
+  const [constantsEnabled, setConstantsEnabled] = useState(true)
+  const constantsEnabledRef = useRef(true)
+  constantsEnabledRef.current = constantsEnabled
+  const [tappedConstantId, setTappedConstantId] = useState<string | null>(null)
+  // Persist discovered constants in localStorage
+  const [discoveredIds, setDiscoveredIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const stored = localStorage.getItem('number-line-discovered-constants')
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+  const discoveredIdsRef = useRef(discoveredIds)
+  discoveredIdsRef.current = discoveredIds
+  // Last computed render constants (for hit-testing taps)
+  const renderConstantsRef = useRef<RenderConstant[]>([])
+  // Container for DOM-rendered MathML constant symbols
+  const constantMarkersRef = useRef<HTMLDivElement>(null)
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -75,6 +103,22 @@ export function NumberLine() {
     const wrapper = wrapperRef.current
     if (!wrapper) return
     pageRef.current = wrapper.closest('[data-component="number-line-page"]') as HTMLElement | null
+  }, [])
+
+  // Exponential moving average low-pass filter for display values.
+  // TAU controls the time constant: 63% of a step change reached in TAU ms.
+  // Crucially, oscillating inputs (rapid zoom direction changes) naturally
+  // average toward zero, suppressing the flash.
+  const WASH_TAU = 150 // ms
+  const updateDisplayValues = useCallback(() => {
+    const now = performance.now()
+    const dt = Math.min(now - (lastDisplayTimeRef.current || now), 50)
+    lastDisplayTimeRef.current = now
+    if (dt <= 0) return
+
+    const alpha = 1 - Math.exp(-dt / WASH_TAU)
+    displayVelocityRef.current += (zoomVelocityRef.current - displayVelocityRef.current) * alpha
+    displayHueRef.current += (zoomHueRef.current - displayHueRef.current) * alpha
   }, [])
 
   const updateWrapperBg = useCallback((velocity: number, hue: number) => {
@@ -147,16 +191,45 @@ export function NumberLine() {
     }
     renderTargetRef.current = renderTarget
 
+    // Compute constant visibilities
+    let renderConstants: RenderConstant[] | undefined
+    if (constantsEnabledRef.current) {
+      renderConstants = computeAllConstantVisibilities(
+        MATH_CONSTANTS, stateRef.current, cssWidth, discoveredIdsRef.current
+      )
+      renderConstantsRef.current = renderConstants
+    } else {
+      renderConstantsRef.current = []
+    }
+
+    // Rate-limit display values before rendering
+    updateDisplayValues()
+
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
     const fadeAnimating = renderNumberLine(
       ctx, stateRef.current, cssWidth, cssHeight,
       resolvedTheme === 'dark', thresholdsRef.current,
-      zoomVelocityRef.current, zoomHueRef.current, zoomFocalXRef.current,
-      renderTarget, collisionFadeMapRef.current
+      displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
+      renderTarget, collisionFadeMapRef.current, renderConstants
     )
     ctx.restore()
+
+    // Sync MathML DOM overlays with canvas
+    if (constantMarkersRef.current && renderConstants) {
+      const maxTickHeight = Math.min(40, cssHeight * 0.3)
+      updateConstantMarkerDOM(
+        constantMarkersRef.current, renderConstants, MATH_CONSTANTS,
+        cssHeight / 2, maxTickHeight, resolvedTheme === 'dark'
+      )
+    } else if (constantMarkersRef.current) {
+      // Constants disabled — clear any remaining DOM elements
+      updateConstantMarkerDOM(
+        constantMarkersRef.current, [], MATH_CONSTANTS,
+        cssHeight / 2, 0, resolvedTheme === 'dark'
+      )
+    }
 
     // Keep redrawing while collision fades are in progress
     if (fadeAnimating && !collisionRafRef.current) {
@@ -179,23 +252,23 @@ export function NumberLine() {
   const startDecay = useCallback(() => {
     if (decayRafRef.current) return
     const tick = () => {
-      // Decay velocity
+      // Decay raw velocity
       zoomVelocityRef.current *= 0.88
 
-      // Lerp hue toward committed target — only update committed direction
-      // when velocity is decisively in one direction (avoids flashing on rapid alternation)
-      if (Math.abs(zoomVelocityRef.current) > 0.05) {
-        committedHueRef.current = zoomVelocityRef.current > 0 ? 220 : 25
-      }
+      // Lerp raw hue toward direction target
       if (Math.abs(zoomVelocityRef.current) > 0.01) {
-        zoomHueRef.current += (committedHueRef.current - zoomHueRef.current) * 0.04
+        const targetHue = zoomVelocityRef.current > 0 ? 220 : 25
+        zoomHueRef.current += (targetHue - zoomHueRef.current) * 0.08
       }
 
-      // Sync wrapper background with decay
-      updateWrapperBg(zoomVelocityRef.current, zoomHueRef.current)
+      // Rate-limit display values and sync wrapper background
+      updateDisplayValues()
+      updateWrapperBg(displayVelocityRef.current, displayHueRef.current)
 
-      if (Math.abs(zoomVelocityRef.current) < 0.001) {
+      // Keep looping until both raw and display values have settled
+      if (Math.abs(zoomVelocityRef.current) < 0.001 && Math.abs(displayVelocityRef.current) < 0.001) {
         zoomVelocityRef.current = 0
+        displayVelocityRef.current = 0
         decayRafRef.current = 0
         draw()
         return
@@ -204,20 +277,18 @@ export function NumberLine() {
       decayRafRef.current = requestAnimationFrame(tick)
     }
     decayRafRef.current = requestAnimationFrame(tick)
-  }, [draw, updateWrapperBg])
+  }, [draw, updateWrapperBg, updateDisplayValues])
 
   const handleZoomVelocity = useCallback((velocity: number, focalX: number) => {
-    // Accumulate with heavy smoothing to avoid flashing
-    zoomVelocityRef.current = zoomVelocityRef.current * 0.8 + velocity * 4
+    // Accumulate raw velocity
+    zoomVelocityRef.current = zoomVelocityRef.current * 0.6 + velocity * 8
 
     // Smoothly move focal point toward the new zoom point
     zoomFocalXRef.current += (focalX - zoomFocalXRef.current) * 0.3
 
-    // Only commit to a new hue direction when velocity is strong enough
-    if (Math.abs(zoomVelocityRef.current) > 0.05) {
-      committedHueRef.current = zoomVelocityRef.current > 0 ? 220 : 25
-    }
-    zoomHueRef.current += (committedHueRef.current - zoomHueRef.current) * 0.06
+    // Nudge raw hue toward direction
+    const targetHue = zoomVelocityRef.current > 0 ? 220 : 25
+    zoomHueRef.current += (targetHue - zoomHueRef.current) * 0.15
 
     startDecay()
   }, [startDecay])
@@ -267,12 +338,49 @@ export function NumberLine() {
   // Audio feedback for the game
   useFindTheNumberAudio(audioZone, proximityRef)
 
+  // --- Constants tap handler ---
+  const handleCanvasTap = useCallback((screenX: number, _screenY: number) => {
+    if (!constantsEnabledRef.current) return
+
+    const HIT_RADIUS = 30
+    const constants = renderConstantsRef.current
+    let closest: RenderConstant | null = null
+    let closestDist = Infinity
+
+    for (const c of constants) {
+      if (c.opacity < 0.3) continue // don't allow tapping barely-visible constants
+      const dist = Math.abs(c.screenX - screenX)
+      if (dist < HIT_RADIUS && dist < closestDist) {
+        closest = c
+        closestDist = dist
+      }
+    }
+
+    if (closest) {
+      // Mark as discovered
+      setDiscoveredIds(prev => {
+        const next = new Set(prev)
+        next.add(closest!.id)
+        try {
+          localStorage.setItem('number-line-discovered-constants', JSON.stringify([...next]))
+        } catch { /* ignore */ }
+        return next
+      })
+      setTappedConstantId(closest.id)
+      draw()
+    } else {
+      // Tap on empty space dismisses info card
+      setTappedConstantId(null)
+    }
+  }, [draw])
+
   // Touch/mouse/wheel handling
   useNumberLineTouch({
     stateRef,
     canvasRef,
     onStateChange: scheduleRedraw,
     onZoomVelocity: handleZoomVelocity,
+    onTap: handleCanvasTap,
   })
 
   // ResizeObserver for responsive canvas sizing
@@ -327,6 +435,22 @@ export function NumberLine() {
     draw()
   }, [anchorMax, mediumMax, draw])
 
+  // Find tapped constant data for info card
+  const tappedConstant = useMemo(
+    () => tappedConstantId ? MATH_CONSTANTS.find(c => c.id === tappedConstantId) ?? null : null,
+    [tappedConstantId]
+  )
+  // Find screen position of tapped constant from last render
+  const tappedScreenX = useMemo(() => {
+    if (!tappedConstantId) return 0
+    const rc = renderConstantsRef.current.find(c => c.id === tappedConstantId)
+    return rc?.screenX ?? 0
+  }, [tappedConstantId])
+
+  const handleDismissInfoCard = useCallback(() => {
+    setTappedConstantId(null)
+  }, [])
+
   return (
     <div ref={wrapperRef} data-component="number-line-wrapper" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
       <FindTheNumberBar
@@ -346,9 +470,38 @@ export function NumberLine() {
             touchAction: 'none',
           }}
         />
+        <div
+          ref={constantMarkersRef}
+          data-element="constant-markers"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            overflow: 'hidden',
+          }}
+        />
+        {tappedConstant && (
+          <ConstantInfoCard
+            constant={tappedConstant}
+            screenX={tappedScreenX}
+            containerWidth={cssWidthRef.current}
+            containerHeight={cssHeightRef.current}
+            centerY={cssHeightRef.current / 2}
+            isDark={resolvedTheme === 'dark'}
+            onDismiss={handleDismissInfoCard}
+          />
+        )}
         <ToyDebugPanel title="Number Line">
           <DebugSlider label="Anchor max" value={anchorMax} min={1} max={20} step={1} onChange={setAnchorMax} />
           <DebugSlider label="Medium max" value={mediumMax} min={5} max={50} step={1} onChange={setMediumMax} />
+          <label data-element="constants-toggle" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            <input
+              type="checkbox"
+              checked={constantsEnabled}
+              onChange={e => setConstantsEnabled(e.target.checked)}
+            />
+            Math Constants
+          </label>
         </ToyDebugPanel>
       </div>
     </div>

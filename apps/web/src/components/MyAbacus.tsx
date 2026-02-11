@@ -235,9 +235,9 @@ export function MyAbacus() {
   // Effective scaleFactor: explicit > auto-calculated > undefined (AbacusReact default)
   const effectiveScaleFactor = dock?.scaleFactor ?? autoScaleFactor
 
-  // Detect if we're on a game route (arcade games hide the abacus by default)
-  // This matches /arcade, /arcade/*, and /arcade-rooms/*
-  const isOnGameRoute = pathname?.startsWith('/arcade')
+  // Detect if we're on a game route (arcade games and toys hide the abacus by default)
+  // This matches /arcade, /arcade/*, /arcade-rooms/*, and /toys/*
+  const isOnGameRoute = pathname?.startsWith('/arcade') || pathname?.startsWith('/toys')
 
   // Detect if we're on the flowchart workshop (editing a flowchart)
   // The workshop has its own UI/UX and the floating abacus gets in the way

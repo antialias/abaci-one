@@ -8,7 +8,12 @@ interface UseNumberLineTouchOptions {
   onStateChange: () => void
   /** Called with instantaneous zoom velocity and focal point (0-1 fraction of canvas width). */
   onZoomVelocity?: (velocity: number, focalX: number) => void
+  /** Called when a tap (short press, no movement) is detected. Coordinates are CSS px relative to canvas. */
+  onTap?: (screenX: number, screenY: number) => void
 }
+
+const TAP_MAX_DURATION_MS = 300
+const TAP_MAX_DISTANCE_PX = 10
 
 // Zoom limits — 1e14 allows viewing down to ~femto-scale (power -15)
 // while staying well within float64's ~15 significant digits
@@ -25,12 +30,15 @@ function clampPixelsPerUnit(ppu: number): number {
  *
  * All math uses absolute anchor-based computations (not deltas) to prevent drift.
  */
-export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity }: UseNumberLineTouchOptions) {
+export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity, onTap }: UseNumberLineTouchOptions) {
   // Anchor state for single-finger drag / mouse drag
   const dragAnchorRef = useRef<number | null>(null)
 
   // Anchor state for two-finger pinch
   const pinchAnchorsRef = useRef<{ n1: number; n2: number; id1: number; id2: number } | null>(null)
+
+  // Tap detection state
+  const tapStartRef = useRef<{ time: number; x: number; y: number; cancelled: boolean } | null>(null)
 
   const getCanvasWidth = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect().width ?? 0
@@ -56,9 +64,12 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       if (e.touches.length === 1) {
         // Single finger: anchor the number under the touch
         const x = e.touches[0].clientX - rect.left
+        const y = e.touches[0].clientY - rect.top
         const anchorNumber = screenXToNumber(x, state.center, state.pixelsPerUnit, canvasWidth)
         dragAnchorRef.current = anchorNumber
         pinchAnchorsRef.current = null
+        // Start tap detection
+        tapStartRef.current = { time: performance.now(), x, y, cancelled: false }
       } else if (e.touches.length === 2) {
         // Two fingers: anchor both numbers
         const x1 = e.touches[0].clientX - rect.left
@@ -72,6 +83,8 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
           id2: e.touches[1].identifier,
         }
         dragAnchorRef.current = null
+        // Cancel tap on second finger
+        if (tapStartRef.current) tapStartRef.current.cancelled = true
       }
     }
 
@@ -81,6 +94,17 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       if (!rect) return
       const canvasWidth = rect.width
       const state = stateRef.current
+
+      // Cancel tap if finger moved too far
+      if (tapStartRef.current && !tapStartRef.current.cancelled && e.touches.length === 1) {
+        const tx = e.touches[0].clientX - rect.left
+        const ty = e.touches[0].clientY - rect.top
+        const dx = tx - tapStartRef.current.x
+        const dy = ty - tapStartRef.current.y
+        if (Math.sqrt(dx * dx + dy * dy) > TAP_MAX_DISTANCE_PX) {
+          tapStartRef.current.cancelled = true
+        }
+      }
 
       if (e.touches.length === 2 && pinchAnchorsRef.current) {
         // Two-finger pinch + drag
@@ -146,6 +170,15 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
         dragAnchorRef.current = anchorNumber
         pinchAnchorsRef.current = null
       } else if (e.touches.length === 0) {
+        // Fire tap if conditions met
+        const tap = tapStartRef.current
+        if (tap && !tap.cancelled) {
+          const elapsed = performance.now() - tap.time
+          if (elapsed < TAP_MAX_DURATION_MS) {
+            onTap?.(tap.x, tap.y)
+          }
+        }
+        tapStartRef.current = null
         dragAnchorRef.current = null
         pinchAnchorsRef.current = null
       }
@@ -154,6 +187,7 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
     // --- Mouse handlers ---
 
     let mouseAnchor: number | null = null
+    let mouseDownInfo: { time: number; x: number; y: number; cancelled: boolean } | null = null
 
     function handleMouseDown(e: MouseEvent) {
       if (e.button !== 0) return // left button only
@@ -161,8 +195,10 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       if (!rect) return
       const canvasWidth = rect.width
       const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
       const state = stateRef.current
       mouseAnchor = screenXToNumber(x, state.center, state.pixelsPerUnit, canvasWidth)
+      mouseDownInfo = { time: performance.now(), x, y, cancelled: false }
       canvas!.style.cursor = 'grabbing'
     }
 
@@ -172,13 +208,36 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       if (!rect) return
       const canvasWidth = rect.width
       const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
       const state = stateRef.current
       state.center = mouseAnchor - (x - canvasWidth / 2) / state.pixelsPerUnit
       stateRef.current = state
       onStateChange()
+
+      // Cancel mouse tap if moved too far
+      if (mouseDownInfo && !mouseDownInfo.cancelled) {
+        const dx = x - mouseDownInfo.x
+        const dy = y - mouseDownInfo.y
+        if (Math.sqrt(dx * dx + dy * dy) > TAP_MAX_DISTANCE_PX) {
+          mouseDownInfo.cancelled = true
+        }
+      }
     }
 
-    function handleMouseUp() {
+    function handleMouseUp(e: MouseEvent) {
+      // Fire tap if conditions met
+      if (mouseDownInfo && !mouseDownInfo.cancelled) {
+        const elapsed = performance.now() - mouseDownInfo.time
+        if (elapsed < TAP_MAX_DURATION_MS) {
+          const rect = getCanvasRect()
+          if (rect) {
+            const x = e.clientX - rect.left
+            const y = e.clientY - rect.top
+            onTap?.(x, y)
+          }
+        }
+      }
+      mouseDownInfo = null
       mouseAnchor = null
       if (canvas) canvas.style.cursor = 'grab'
     }
@@ -234,5 +293,5 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       window.removeEventListener('mouseup', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
     }
-  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, getCanvasWidth, getCanvasRect])
+  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, onTap, getCanvasWidth, getCanvasRect])
 }

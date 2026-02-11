@@ -1,6 +1,7 @@
-import type { NumberLineState, TickThresholds, CollisionFadeMap } from './types'
+import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { computeTickMarks, numberToScreenX } from './numberLineTicks'
+import { renderConstantDropLines } from './constants/renderConstants'
 
 export interface RenderTarget {
   value: number
@@ -107,7 +108,8 @@ export function renderNumberLine(
   zoomHue = 0,
   zoomFocalX = 0.5,
   target?: RenderTarget,
-  collisionFadeMap?: CollisionFadeMap
+  collisionFadeMap?: CollisionFadeMap,
+  constants?: RenderConstant[]
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -254,10 +256,12 @@ export function renderNumberLine(
   }
 
   // Pass 1: tick lines
+  let maxTickHeight = 0
   for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
 
     const height = getTickHeight(tick.prominence, cssHeight)
+    if (height > maxTickHeight) maxTickHeight = height
     const lineWidth = getTickLineWidth(tick.prominence)
     const tickAlpha = getTickAlpha(tick.prominence)
 
@@ -344,6 +348,11 @@ export function renderNumberLine(
         collisionFadeMap.delete(key)
       }
     }
+  }
+
+  // Pass 2.5: mathematical constants
+  if (constants && constants.length > 0) {
+    renderConstantDropLines(ctx, constants, centerY, isDark, maxTickHeight)
   }
 
   // Pass 3: target emoji (Find the Number game)

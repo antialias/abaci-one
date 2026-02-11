@@ -40,3 +40,15 @@ export interface CollisionFadeEntry {
 
 /** Map from tick value → fade state, persisted across frames */
 export type CollisionFadeMap = Map<number, CollisionFadeEntry>
+
+/** Pre-computed constant ready for canvas rendering */
+export interface RenderConstant {
+  symbol: string
+  screenX: number
+  /** 0-1 opacity from zoom adequacy */
+  opacity: number
+  /** Whether user has previously tapped this constant */
+  discovered: boolean
+  /** Constant ID for hit-testing */
+  id: string
+}
