@@ -5,8 +5,14 @@ import { useTheme } from '../../../contexts/ThemeContext'
 import type { NumberLineState, TickThresholds } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { renderNumberLine } from './renderNumberLine'
+import type { RenderTarget } from './renderNumberLine'
 import { useNumberLineTouch } from './useNumberLineTouch'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
+import { computeProximity } from './findTheNumber/computeProximity'
+import type { ProximityZone, ProximityResult } from './findTheNumber/computeProximity'
+import { FindTheNumberBar } from './findTheNumber/FindTheNumberBar'
+import type { FindTheNumberGameState } from './findTheNumber/FindTheNumberBar'
+import { useFindTheNumberAudio } from './findTheNumber/useFindTheNumberAudio'
 
 const INITIAL_STATE: NumberLineState = {
   center: 0,
@@ -38,6 +44,21 @@ export function NumberLine() {
   const decayRafRef = useRef<number>(0)
   // Direct DOM ref for the wrapper — updated outside React for 60fps bg color
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // --- Find the Number game state ---
+  const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
+  const targetRef = useRef<{ value: number; emoji: string } | null>(null)
+  const gameStateRef = useRef<FindTheNumberGameState>('idle')
+  gameStateRef.current = gameState
+  // Audio zone state — zone triggers React effects for transition detection
+  const [audioZone, setAudioZone] = useState<ProximityZone | null>(null)
+  const prevGameZoneRef = useRef<ProximityZone | null>(null)
+  // Live proximity data for the audio hook (updated every frame in draw())
+  const proximityRef = useRef<ProximityResult | null>(null)
+  // Ref to hold the current render target (computed in draw, used by renderNumberLine)
+  const renderTargetRef = useRef<RenderTarget | undefined>(undefined)
+  // Animation frame for game loop (continuous redraws while game is active)
+  const gameRafRef = useRef<number>(0)
 
   // Set a CSS custom property on the page-level container so the wash extends
   // seamlessly beyond the canvas (e.g. into iPhone safe areas).
@@ -93,13 +114,41 @@ export function NumberLine() {
     const cssWidth = cssWidthRef.current
     const cssHeight = cssHeightRef.current
 
+    // Compute proximity for Find the Number game
+    const target = targetRef.current
+    let renderTarget: RenderTarget | undefined
+    if (target && gameStateRef.current === 'active') {
+      const prox = computeProximity(target.value, stateRef.current, cssWidth)
+      renderTarget = { value: target.value, emoji: target.emoji, opacity: prox.opacity }
+
+      // Update live proximity ref every frame for audio hints
+      proximityRef.current = prox
+
+      // Update audio zone state when zone changes (triggers React effects)
+      if (prox.zone !== prevGameZoneRef.current) {
+        prevGameZoneRef.current = prox.zone
+        setAudioZone(prox.zone)
+      }
+
+      // Detect found
+      if (prox.zone === 'found') {
+        setGameState('found')
+      }
+    } else if (target && gameStateRef.current === 'found') {
+      // Keep emoji visible at full opacity in found state
+      const prox = computeProximity(target.value, stateRef.current, cssWidth)
+      renderTarget = { value: target.value, emoji: target.emoji, opacity: Math.max(prox.opacity, 0.9) }
+    }
+    renderTargetRef.current = renderTarget
+
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
     renderNumberLine(
       ctx, stateRef.current, cssWidth, cssHeight,
       resolvedTheme === 'dark', thresholdsRef.current,
-      zoomVelocityRef.current, zoomHueRef.current, zoomFocalXRef.current
+      zoomVelocityRef.current, zoomHueRef.current, zoomFocalXRef.current,
+      renderTarget
     )
     ctx.restore()
   }, [resolvedTheme])
@@ -155,6 +204,51 @@ export function NumberLine() {
     startDecay()
   }, [startDecay])
 
+  // --- Find the Number game loop ---
+  // Continuous redraw while game is active (for glow pulsing and proximity updates)
+  useEffect(() => {
+    if (gameState !== 'active') {
+      if (gameRafRef.current) {
+        cancelAnimationFrame(gameRafRef.current)
+        gameRafRef.current = 0
+      }
+      return
+    }
+    const tick = () => {
+      draw()
+      gameRafRef.current = requestAnimationFrame(tick)
+    }
+    gameRafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (gameRafRef.current) {
+        cancelAnimationFrame(gameRafRef.current)
+        gameRafRef.current = 0
+      }
+    }
+  }, [gameState, draw])
+
+  const handleGameStart = useCallback((target: number, emoji: string) => {
+    targetRef.current = { value: target, emoji }
+    prevGameZoneRef.current = null
+    proximityRef.current = null
+    setAudioZone(null)
+    setGameState('active')
+    draw()
+  }, [draw])
+
+  const handleGameGiveUp = useCallback(() => {
+    targetRef.current = null
+    prevGameZoneRef.current = null
+    proximityRef.current = null
+    renderTargetRef.current = undefined
+    setAudioZone(null)
+    setGameState('idle')
+    draw()
+  }, [draw])
+
+  // Audio feedback for the game
+  useFindTheNumberAudio(audioZone, proximityRef)
+
   // Touch/mouse/wheel handling
   useNumberLineTouch({
     stateRef,
@@ -192,6 +286,9 @@ export function NumberLine() {
       if (decayRafRef.current) {
         cancelAnimationFrame(decayRafRef.current)
       }
+      if (gameRafRef.current) {
+        cancelAnimationFrame(gameRafRef.current)
+      }
       // Restore page background on unmount
       if (pageRef.current) {
         pageRef.current.style.backgroundColor = ''
@@ -210,21 +307,29 @@ export function NumberLine() {
   }, [anchorMax, mediumMax, draw])
 
   return (
-    <div ref={wrapperRef} data-component="number-line-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <canvas
-        ref={canvasRef}
-        data-component="number-line"
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'block',
-          touchAction: 'none',
-        }}
+    <div ref={wrapperRef} data-component="number-line-wrapper" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+      <FindTheNumberBar
+        onStart={handleGameStart}
+        onGiveUp={handleGameGiveUp}
+        gameState={gameState}
+        isDark={resolvedTheme === 'dark'}
       />
-      <ToyDebugPanel title="Number Line">
-        <DebugSlider label="Anchor max" value={anchorMax} min={1} max={20} step={1} onChange={setAnchorMax} />
-        <DebugSlider label="Medium max" value={mediumMax} min={5} max={50} step={1} onChange={setMediumMax} />
-      </ToyDebugPanel>
+      <div data-element="canvas-wrapper" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <canvas
+          ref={canvasRef}
+          data-component="number-line"
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            touchAction: 'none',
+          }}
+        />
+        <ToyDebugPanel title="Number Line">
+          <DebugSlider label="Anchor max" value={anchorMax} min={1} max={20} step={1} onChange={setAnchorMax} />
+          <DebugSlider label="Medium max" value={mediumMax} min={5} max={50} step={1} onChange={setMediumMax} />
+        </ToyDebugPanel>
+      </div>
     </div>
   )
 }
