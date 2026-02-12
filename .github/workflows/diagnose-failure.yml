@@ -58,5 +58,4 @@ jobs:
             - Failed logs file: /tmp/failed-logs-truncated.txt
             - Run summary file: /tmp/run-summary.txt
             - Existing fixbot issues file: /tmp/existing-fixbot-issues.json
-          show_full_output: "true"
           claude_args: "--max-turns 15"
