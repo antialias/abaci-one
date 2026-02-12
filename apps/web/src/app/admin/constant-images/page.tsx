@@ -1153,13 +1153,14 @@ export default function ConstantImagesPage() {
                     />
                     {aligningTheme && (
                       <PhiAlignmentEditor
+                        key={`${subject.id}-${aligningTheme}`}
                         subjectId={subject.id}
                         theme={aligningTheme}
                         alignment={alignmentData[subject.id]?.[aligningTheme] ?? DEFAULT_ALIGNMENT}
-                        onSave={(alignment) => {
+                        onSave={(a) => {
                           setAlignmentData((prev) => ({
                             ...prev,
-                            [subject.id]: { ...prev[subject.id], [aligningTheme]: alignment },
+                            [subject.id]: { ...prev[subject.id], [aligningTheme]: a },
                           }))
                         }}
                         onClose={() => setAligningKey(null)}
@@ -1751,10 +1752,11 @@ function PhiAlignmentEditor({
   onClose: () => void
 }) {
   const [draft, setDraft] = useState<AlignmentConfig>(alignment)
-  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
   const imgLoadedRef = useRef(false)
+  const lastSavedRef = useRef<string>(JSON.stringify(alignment))
 
   // Refs for mouse interaction (avoid re-renders during drag)
   const draftRef = useRef(draft)
@@ -1781,6 +1783,33 @@ function PhiAlignmentEditor({
     capturedScale: number
     capturedRotationRad: number
   } | null>(null)
+
+  // Debounced auto-save: persist draft to server 500ms after last change
+  useEffect(() => {
+    const serialized = JSON.stringify(draft)
+    if (serialized === lastSavedRef.current) return
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/admin/constant-images/phi-explore/alignment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subjectId, theme, alignment: draft }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || `HTTP ${res.status}`)
+        }
+        lastSavedRef.current = serialized
+        setSaveError(null)
+        onSave(draft)
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Save failed')
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [draft, subjectId, theme, onSave])
 
   // Load the themed image
   useEffect(() => {
@@ -1904,49 +1933,65 @@ function PhiAlignmentEditor({
   }, [redraw])
 
   // --- Mouse event handlers ---
+  // Use a capture-phase window listener so clicks always work even when
+  // other DOM elements (e.g. adjacent grid cells) overlap the canvas.
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const layout = layoutRef.current
-    const canvas = canvasRef.current
-    if (!layout || !canvas) return
-    const rect = canvas.getBoundingClientRect()
-    const cx = e.clientX - rect.left
-    const cy = e.clientY - rect.top
-    const d = draftRef.current
+  useEffect(() => {
+    const handleGlobalMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const isInCanvasArea =
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom
+      if (!isInCanvasArea) return
 
-    if (e.altKey) {
-      // Alt+click: position the clicked image point at the convergence point
-      const { convCx, convCy, boxH } = layout
-      const s = d.scale
-      const r = (d.rotation * Math.PI) / 180
-      const u = (cx - convCx) / s
-      const v = (cy - convCy) / s
-      const newOffsetXPx = d.offsetX * boxH - u * Math.cos(r) - v * Math.sin(r)
-      const newOffsetYPx = d.offsetY * boxH + u * Math.sin(r) - v * Math.cos(r)
-      setDraft((prev) => ({
-        ...prev,
-        offsetX: newOffsetXPx / boxH,
-        offsetY: newOffsetYPx / boxH,
-      }))
-      return
+      e.preventDefault()
+
+      const layout = layoutRef.current
+      if (!layout) return
+
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      const d = draftRef.current
+
+      if (e.altKey) {
+        // Alt+click: position the clicked image point at the convergence point
+        const { convCx, convCy, boxH } = layout
+        const s = d.scale
+        const r = (d.rotation * Math.PI) / 180
+        const u = (cx - convCx) / s
+        const v = (cy - convCy) / s
+        const newOffsetXPx = d.offsetX * boxH - u * Math.cos(r) - v * Math.sin(r)
+        const newOffsetYPx = d.offsetY * boxH + u * Math.sin(r) - v * Math.cos(r)
+        setDraft((prev) => ({
+          ...prev,
+          offsetX: newOffsetXPx / boxH,
+          offsetY: newOffsetYPx / boxH,
+        }))
+        return
+      }
+
+      const mode = e.shiftKey ? 'rotate' : 'pan'
+      const startAngle =
+        mode === 'rotate' ? Math.atan2(cy - layout.convCy, cx - layout.convCx) : 0
+
+      dragRef.current = {
+        mode,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startOffsetX: d.offsetX,
+        startOffsetY: d.offsetY,
+        startRotation: d.rotation,
+        startAngle,
+        capturedScale: d.scale,
+        capturedRotationRad: (d.rotation * Math.PI) / 180,
+      }
     }
-
-    const mode = e.shiftKey ? 'rotate' : 'pan'
-    const startAngle =
-      mode === 'rotate' ? Math.atan2(cy - layout.convCy, cx - layout.convCx) : 0
-
-    dragRef.current = {
-      mode,
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startOffsetX: d.offsetX,
-      startOffsetY: d.offsetY,
-      startRotation: d.rotation,
-      startAngle,
-      capturedScale: d.scale,
-      capturedRotationRad: (d.rotation * Math.PI) / 180,
-    }
+    // Capture phase ensures we see the event before any overlapping element
+    window.addEventListener('mousedown', handleGlobalMouseDown, true)
+    return () => window.removeEventListener('mousedown', handleGlobalMouseDown, true)
   }, [])
 
   // Window-level move/up listeners for drag
@@ -1996,40 +2041,33 @@ function PhiAlignmentEditor({
     }
   }, [])
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const factor = e.deltaY > 0 ? 0.95 : 1.05
-    setDraft((prev) => ({
-      ...prev,
-      scale: Math.max(0.1, Math.min(5, prev.scale * factor)),
-    }))
-  }, [])
+  // Capture-phase wheel handler (same reason as mousedown — overlapping elements)
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const isInCanvasArea =
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom
+      if (!isInCanvasArea) return
 
-  // --- Save / Reset ---
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch('/api/admin/constant-images/phi-explore/alignment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId, theme, alignment: draft }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || `HTTP ${res.status}`)
-      }
-      onSave(draft)
-    } catch (err) {
-      console.error('Failed to save alignment:', err)
-    } finally {
-      setSaving(false)
+      e.preventDefault()
+      const factor = e.deltaY > 0 ? 0.95 : 1.05
+      setDraft((prev) => ({
+        ...prev,
+        scale: Math.max(0.1, Math.min(5, prev.scale * factor)),
+      }))
     }
-  }
+    window.addEventListener('wheel', handleWheel, { capture: true, passive: false })
+    return () => window.removeEventListener('wheel', handleWheel, true)
+  }, [])
 
   const handleReset = () => {
     setDraft({ scale: 1, rotation: 0, offsetX: 0, offsetY: 0 })
   }
+
+  const dirty = JSON.stringify(draft) !== lastSavedRef.current
 
   return (
     <div
@@ -2065,7 +2103,7 @@ function PhiAlignmentEditor({
       {/* Canvas */}
       <canvas
         ref={canvasRef}
-        style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, cursor: 'grab' }}
+        style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, cursor: 'grab', touchAction: 'none' }}
         className={css({
           display: 'block',
           margin: '0 auto 12px',
@@ -2073,11 +2111,10 @@ function PhiAlignmentEditor({
           borderRadius: '4px',
           border: '1px solid #30363d',
         })}
-        onMouseDown={handleMouseDown}
-        onWheel={handleWheel}
+        onDragStart={(e) => e.preventDefault()}
       />
 
-      {/* Readout + buttons */}
+      {/* Readout + status + buttons */}
       <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' })}>
         <span
           data-element="alignment-readout"
@@ -2089,26 +2126,30 @@ function PhiAlignmentEditor({
         >
           S:{draft.scale.toFixed(2)} R:{draft.rotation.toFixed(1)} X:{draft.offsetX.toFixed(2)} Y:{draft.offsetY.toFixed(2)}
         </span>
-        <div className={css({ marginLeft: 'auto', display: 'flex', gap: '8px' })}>
-          <button
-            data-action="save-alignment"
-            onClick={handleSave}
-            disabled={saving}
+        {saveError && (
+          <span
+            data-element="save-error"
             className={css({
-              fontSize: '12px',
-              backgroundColor: '#238636',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '6px 16px',
-              cursor: 'pointer',
+              fontSize: '11px',
+              color: '#f85149',
               fontWeight: '600',
-              '&:hover': { backgroundColor: '#2ea043' },
-              '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+            Save failed: {saveError}
+          </span>
+        )}
+        {dirty && !saveError && (
+          <span
+            data-element="save-pending"
+            className={css({
+              fontSize: '11px',
+              color: '#d29922',
+            })}
+          >
+            Saving...
+          </span>
+        )}
+        <div className={css({ marginLeft: 'auto', display: 'flex', gap: '8px' })}>
           <button
             data-action="reset-alignment"
             onClick={handleReset}
