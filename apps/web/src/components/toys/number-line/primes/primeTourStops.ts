@@ -86,7 +86,9 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
     blurb: 'Skip counting shakes the non-primes right off the number line!',
     ttsText:
       'Okay, here\'s a super clever trick from a long, long time ago. ' +
-      'You know skip counting? Well, watch what happens when we try it on the number line! ' +
+      'You know skip counting? See those little arcs above the numbers? ' +
+      'That\'s our hopping path! Our number hopper is going to bounce along it ' +
+      'and knock out every number it lands on. Ready? Here we go! ' +
       'Starting at two — two, four, six, eight, ten — see them shaking off? ' +
       'Bye bye! They can all be split into twos, so they\'re not prime. ' +
       'Now starting at three — six? Already gone! The twos got it! Nine — shake it off! ' +
@@ -105,11 +107,13 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
       'When noting already-gone numbers, use a quick playful "oh!" like spotting an empty seat.',
     narrationSegments: [
       {
-        // Seg 0: intro — no sieve animation, no tail needed.
-        // Builds anticipation without naming specific numbers (no visual yet).
+        // Seg 0: intro — no sieve animation yet, but the path arcs are fading in.
+        // Introduces the hopping path as a visual element, then builds anticipation.
         ttsText:
           'Okay, here\'s a super clever trick from a long, long time ago. ' +
-          'You know skip counting? Well, watch what happens when we try it on the number line!',
+          'You know skip counting? See those little arcs above the numbers? ' +
+          'That\'s our hopping path! Our number hopper is going to bounce along it ' +
+          'and knock out every number it lands on. Ready? Here we go!',
         animationDurationMs: 4000,
       },
       {

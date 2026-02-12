@@ -570,7 +570,13 @@ export function renderSieveOverlay(
     ctx.fill()
   }
 
-  // --- Layer 2a: Viewport-wide skip arcs ---
+  // --- Shared arc peak height for path + hopper ---
+  // Both Layer 2a (path arcs) and Layer 2b (hopper) use this so they align exactly.
+  function computeArcPeak(screenDist: number): number {
+    return Math.min(30, Math.max(8, Math.abs(screenDist) * 0.35))
+  }
+
+  // --- Layer 2a: Viewport-wide skip arcs (the "hopper path") ---
   // Repeating arcs across the visible range at the current skip distance.
   // During transitions between factors the skip distance morphs smoothly.
   {
@@ -623,9 +629,6 @@ export function renderSieveOverlay(
 
     // Draw the repeating arcs
     if (skipDist !== null && arcAlpha > 0.01) {
-      const screenSkip = skipDist * state.pixelsPerUnit
-      const arcPeak = Math.min(30, Math.max(8, screenSkip * 0.35))
-
       // Start from the leftmost visible skip boundary
       const startN = Math.floor(leftValue / skipDist) * skipDist
       const endN = rightValue + skipDist
@@ -635,6 +638,7 @@ export function renderSieveOverlay(
         const aToSX = numberToScreenX(n + skipDist, state.center, state.pixelsPerUnit, cssWidth)
         if (aToSX < -50 || aFromSX > cssWidth + 50) continue
 
+        const arcPeak = computeArcPeak(aToSX - aFromSX)
         ctx.beginPath()
         ctx.moveTo(aFromSX, centerY)
         ctx.quadraticCurveTo((aFromSX + aToSX) / 2, centerY - arcPeak, aToSX, centerY)
@@ -646,7 +650,7 @@ export function renderSieveOverlay(
   }
 
   // --- Layer 2b: Skip-counting hopper ---
-  // A dot that hops between multiples of the current factor.
+  // A dot that hops along the path arcs. Traces the exact same quadratic Bezier curve.
   // The hopper "stomps" new composites (full arc) and "skims" already-gone ones (low arc).
   {
     let hopperPhase: SievePhase | null = null
@@ -683,10 +687,12 @@ export function renderSieveOverlay(
       const toSX = numberToScreenX(toMultiple, state.center, state.pixelsPerUnit, cssWidth)
       const screenDist = toSX - fromSX
 
-      // Arc height: full stomp or low skim
-      const fullPeakHeight = Math.min(40, Math.max(12, Math.abs(screenDist) * 0.4))
-      const peakHeight = fullPeakHeight * skimScale
-      const arcHeight = Math.sin(Math.PI * hopT) * peakHeight
+      // Arc height: match the path arcs' quadratic Bezier exactly.
+      // Quadratic Bezier with control point at (midX, centerY - arcPeak):
+      //   y(t) = centerY - arcPeak * 2 * t * (1 - t)
+      // For skims, scale the peak down.
+      const arcPeak = computeArcPeak(screenDist) * skimScale
+      const arcHeight = arcPeak * 2 * hopT * (1 - hopT)
 
       // Hopper screen position
       const hopperSX = fromSX + hopT * screenDist
