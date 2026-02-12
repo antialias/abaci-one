@@ -19,25 +19,14 @@
  *   LABELS          0.92–1.00   Final reveal
  */
 
-export interface EDemoNarrationSegment {
-  /** Text sent to TTS for this segment */
-  ttsText: string
-  /** TTS tone override — falls back to E_DEMO_TONE */
-  ttsTone?: string
-  /** revealProgress value at which this segment starts */
-  startProgress: number
-  /** revealProgress value at which this segment ends */
-  endProgress: number
-  /** Minimum wall-clock time (ms) to sweep from start to end */
-  animationDurationMs: number
-}
+import type { DemoNarrationSegment } from './useConstantDemoNarration'
 
 /** Shared voice direction for the e demo narrator. */
 export const E_DEMO_TONE =
   'You are a warm, delighted nature guide for a really smart 5-year-old. ' +
   'Ground everything in growing plants and sharing cookies. Be full of wonder and encouragement.'
 
-export const E_DEMO_SEGMENTS: EDemoNarrationSegment[] = [
+export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Seed vine + Day 1 ──────────────────────────────────────────
   {
     // Seg 0: Seed vine appears (0.00–0.06) + Day 1 single hop (0.06–0.14)

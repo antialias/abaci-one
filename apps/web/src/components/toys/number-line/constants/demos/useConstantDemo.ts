@@ -4,6 +4,10 @@ import { goldenRatioDemoViewport } from './goldenRatioDemo'
 import { piDemoViewport } from './piDemo'
 import { tauDemoViewport } from './tauDemo'
 import { eDemoViewport } from './eDemo'
+import {
+  lerpViewport, snapViewport, computeViewportDeviation,
+  FADE_IN_MS, FADE_OUT_MS,
+} from '../../viewportAnimation'
 
 export type DemoPhase = 'idle' | 'animating' | 'presenting' | 'fading'
 
@@ -29,10 +33,6 @@ const INITIAL_STATE: DemoState = {
 const VIEWPORT_ANIM_MS = 1200
 /** Duration of subdivision reveal after viewport arrives (ms) */
 const REVEAL_ANIM_MS = 15000
-/** Duration of fade-out when user deviates (ms) */
-const FADE_OUT_MS = 600
-/** Duration of initial fade-in (ms) */
-const FADE_IN_MS = 400
 /** How far the user can deviate before the demo fades out (fraction of viewport) */
 const DEVIATION_THRESHOLD = 0.4
 
@@ -147,18 +147,11 @@ export function useConstantDemo(
       // Fade in
       ds.opacity = Math.min(1, elapsed / FADE_IN_MS)
 
-      // Viewport interpolation (smooth exponential)
-      const vpT = Math.min(1, elapsed / VIEWPORT_ANIM_MS)
-      const eased = 1 - Math.pow(1 - vpT, 3) // ease-out cubic
-      const src = sourceViewportRef.current
-      const tgt = targetViewportRef.current
-
-      // Interpolate center linearly
-      stateRef.current.center = src.center + (tgt.center - src.center) * eased
-      // Interpolate pixelsPerUnit logarithmically for smooth zoom
-      const logSrc = Math.log(src.pixelsPerUnit)
-      const logTgt = Math.log(tgt.pixelsPerUnit)
-      stateRef.current.pixelsPerUnit = Math.exp(logSrc + (logTgt - logSrc) * eased)
+      // Viewport interpolation
+      const vpT = lerpViewport(
+        sourceViewportRef.current, targetViewportRef.current,
+        elapsed, VIEWPORT_ANIM_MS, stateRef.current
+      )
 
       // Reveal progress: skip update when paused (user is scrubbing)
       if (!isPausedRef.current) {
@@ -173,22 +166,17 @@ export function useConstantDemo(
           ds.phase = 'presenting'
           ds.revealProgress = 1
           ds.opacity = 1
-          // Snap viewport exactly to target
-          stateRef.current.center = tgt.center
-          stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
+          snapViewport(targetViewportRef.current, stateRef.current)
         }
       }
+
+      // Suppress unused variable warning — vpT is used implicitly
+      // (lerpViewport mutates stateRef; vpT available for future use)
+      void vpT
     } else if (ds.phase === 'presenting') {
-      // Detect deviation from target viewport
-      const tgt = targetViewportRef.current
-      const current = stateRef.current
-
-      const centerDev = Math.abs(current.center - tgt.center) / (tgt.center || 1)
-      const zoomDev = Math.abs(Math.log(current.pixelsPerUnit / tgt.pixelsPerUnit))
-
-      // Combined deviation metric
-      const deviation = centerDev + zoomDev * 0.5
-
+      const deviation = computeViewportDeviation(
+        stateRef.current, targetViewportRef.current
+      )
       if (deviation > DEVIATION_THRESHOLD) {
         ds.phase = 'fading'
         fadeStartRef.current = now
@@ -214,9 +202,7 @@ export function useConstantDemo(
     ds.revealProgress = Math.max(0, Math.min(1, value))
 
     // Snap viewport to target (skip interpolation) when scrubbing
-    const tgt = targetViewportRef.current
-    stateRef.current.center = tgt.center
-    stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
+    snapViewport(targetViewportRef.current, stateRef.current)
 
     // Ensure opacity is full while scrubbing
     ds.opacity = 1

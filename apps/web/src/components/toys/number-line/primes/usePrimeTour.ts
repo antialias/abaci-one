@@ -1,11 +1,17 @@
 import { useRef, useCallback, useState, useEffect } from 'react'
 import type { NumberLineState } from '../types'
 import { PRIME_TOUR_STOPS, TOUR_TONE } from './primeTourStops'
-import type { PrimeTourStop, NarrationSegment } from './primeTourStops'
+import type { PrimeTourStop } from './primeTourStops'
 import { computeSieveViewports, getSieveViewportState } from './renderSieveOverlay'
 import type { SievePhaseViewports } from './renderSieveOverlay'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
+import {
+  lerpViewport, snapViewport, computeViewportDeviation,
+  FADE_IN_MS, FADE_OUT_MS,
+  SUBTITLE_TOP_OFFSET, SUBTITLE_BOTTOM_OFFSET,
+} from '../viewportAnimation'
+import { useNarrationSequencer } from '../useNarrationSequencer'
 
 export type TourPhase = 'idle' | 'flying' | 'dwelling' | 'fading'
 
@@ -33,17 +39,12 @@ const INITIAL_STATE: TourState = {
 
 // --- Animation timing ---
 const FLIGHT_MS = 1400
-const FADE_IN_MS = 400
-const FADE_OUT_MS = 600
 const DEVIATION_THRESHOLD = 0.5
 
 // --- Sieve speed debug tuning (module-level mutable) ---
 let sieveSpeed = 0.25
 export function getSieveSpeed(): number { return sieveSpeed }
 export function setSieveSpeed(v: number): void { sieveSpeed = Math.max(0.1, v) }
-
-// Subtitle offset from top edge when anchored to top during tour
-const TOUR_SUBTITLE_TOP_OFFSET = 16
 
 /**
  * Multi-stop guided tour through prime number visualizations.
@@ -71,17 +72,15 @@ export function usePrimeTour(
   // Sieve viewport animation keyframes (cached when ancient-trick dwell starts)
   const sieveViewportsRef = useRef<SievePhaseViewports[] | null>(null)
 
-  // Segment sequencing refs (for narrationSegments)
-  const segmentIndexRef = useRef(0)
-  const segmentStartMsRef = useRef(0)
-  const segmentTtsFinishedRef = useRef(false)
+  // Narration sequencer for segmented stops
+  const { start: seqStart, tick: seqTick, stop: seqStop } = useNarrationSequencer()
 
   // React state for overlay rendering (synced from ref in tickTour)
   const [currentStopIndex, setCurrentStopIndex] = useState<number | null>(null)
 
   const audioManager = useAudioManagerInstance()
 
-  // TTS speak function — we pass different text per stop via overrides
+  // TTS speak function — used for non-segmented (legacy) stops
   const speak = useTTS({ tone: TOUR_TONE, say: { en: '' } })
 
   const stopLoop = useCallback(() => {
@@ -128,7 +127,7 @@ export function usePrimeTour(
   /** Start the tour from stop 0. */
   const startTour = useCallback(() => {
     tourStateRef.current = { ...INITIAL_STATE }
-    audioManager.configure({ subtitleAnchor: 'top', subtitleBottomOffset: TOUR_SUBTITLE_TOP_OFFSET })
+    audioManager.configure({ subtitleAnchor: 'top', subtitleBottomOffset: SUBTITLE_TOP_OFFSET })
     flyToStop(0)
   }, [flyToStop, audioManager])
 
@@ -141,20 +140,23 @@ export function usePrimeTour(
       // Tour complete — fade out
       ts.phase = 'fading'
       fadeStartRef.current = performance.now()
+      seqStop()
       audioManager.stop()
       return
     }
+    seqStop()
     audioManager.stop()
     flyToStop(nextIdx)
-  }, [flyToStop, audioManager])
+  }, [flyToStop, seqStop, audioManager])
 
   /** Go back to the previous stop. */
   const prevStop = useCallback(() => {
     const ts = tourStateRef.current
     if (ts.stopIndex === null || ts.stopIndex <= 0) return
+    seqStop()
     audioManager.stop()
     flyToStop(ts.stopIndex - 1)
-  }, [flyToStop, audioManager])
+  }, [flyToStop, seqStop, audioManager])
 
   /** Gracefully exit the tour. */
   const exitTour = useCallback(() => {
@@ -162,10 +164,11 @@ export function usePrimeTour(
     if (ts.phase === 'idle') return
     ts.phase = 'fading'
     fadeStartRef.current = performance.now()
+    seqStop()
     audioManager.stop()
-  }, [audioManager])
+  }, [seqStop, audioManager])
 
-  /** Start TTS narration for the current stop. */
+  /** Start TTS narration for the current stop (non-segmented, legacy). */
   const speakCurrentStop = useCallback((stop: PrimeTourStop) => {
     ttsFinishedRef.current = false
     speak(
@@ -175,19 +178,6 @@ export function usePrimeTour(
     }).catch(() => {
       // TTS failed or was cancelled — still allow auto-advance
       ttsFinishedRef.current = true
-    })
-  }, [speak])
-
-  /** Start TTS narration for a single narration segment. */
-  const speakSegment = useCallback((segment: NarrationSegment, fallbackTone: string) => {
-    segmentTtsFinishedRef.current = false
-    speak(
-      { say: { en: segment.ttsText }, tone: segment.ttsTone ?? fallbackTone },
-    ).then(() => {
-      segmentTtsFinishedRef.current = true
-    }).catch(() => {
-      // TTS failed or was cancelled — segment still advances after animation
-      segmentTtsFinishedRef.current = true
     })
   }, [speak])
 
@@ -207,17 +197,10 @@ export function usePrimeTour(
       ts.opacity = Math.min(1, elapsed / FADE_IN_MS)
 
       // Viewport interpolation
-      const vpT = Math.min(1, elapsed / FLIGHT_MS)
-      const eased = 1 - Math.pow(1 - vpT, 3) // ease-out cubic
-      const src = sourceViewportRef.current
-      const tgt = targetViewportRef.current
-
-      // Center: linear interpolation
-      stateRef.current.center = src.center + (tgt.center - src.center) * eased
-      // PPU: logarithmic interpolation for smooth zoom
-      const logSrc = Math.log(src.pixelsPerUnit)
-      const logTgt = Math.log(tgt.pixelsPerUnit)
-      stateRef.current.pixelsPerUnit = Math.exp(logSrc + (logTgt - logSrc) * eased)
+      const vpT = lerpViewport(
+        sourceViewportRef.current, targetViewportRef.current,
+        elapsed, FLIGHT_MS, stateRef.current
+      )
 
       ts.flightProgress = vpT
 
@@ -228,8 +211,7 @@ export function usePrimeTour(
         ts.opacity = 1
         ts.dwellStartMs = now
         ts.virtualDwellMs = 0
-        stateRef.current.center = tgt.center
-        stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
+        snapViewport(targetViewportRef.current, stateRef.current)
         dwellStartRef.current = now
 
         // Start TTS narration
@@ -243,11 +225,8 @@ export function usePrimeTour(
           }
 
           if (stop.narrationSegments && stop.narrationSegments.length > 0) {
-            // Segmented narration: init segment 0
-            segmentIndexRef.current = 0
-            segmentStartMsRef.current = now
-            segmentTtsFinishedRef.current = false
-            speakSegment(stop.narrationSegments[0], stop.ttsTone)
+            // Segmented narration: drive via shared sequencer
+            seqStart(stop.narrationSegments, stop.ttsTone)
           } else {
             // Single TTS clip (legacy)
             speakCurrentStop(stop)
@@ -259,11 +238,9 @@ export function usePrimeTour(
       if (!stop) return
 
       // Detect user deviation from target viewport
-      const tgt = targetViewportRef.current
-      const current = stateRef.current
-      const centerDev = Math.abs(current.center - tgt.center) / (Math.abs(tgt.center) || 1)
-      const zoomDev = Math.abs(Math.log(current.pixelsPerUnit / tgt.pixelsPerUnit))
-      const deviation = centerDev + zoomDev * 0.5
+      const deviation = computeViewportDeviation(
+        stateRef.current, targetViewportRef.current
+      )
 
       if (deviation > DEVIATION_THRESHOLD) {
         exitTour()
@@ -273,34 +250,14 @@ export function usePrimeTour(
       const segments = stop.narrationSegments
       const speedMul = stop.id === 'ancient-trick' ? sieveSpeed : 1
       if (segments && segments.length > 0) {
-        // --- Segmented narration: compute virtual time ---
-        const segIdx = segmentIndexRef.current
-        const seg = segments[segIdx]
-        const segElapsed = (now - segmentStartMsRef.current) * speedMul
-
-        // Check if current segment is complete (both TTS and animation done)
-        if (segmentTtsFinishedRef.current && segElapsed >= seg.animationDurationMs) {
-          const nextSegIdx = segIdx + 1
-          if (nextSegIdx < segments.length) {
-            // Advance to next segment
-            segmentIndexRef.current = nextSegIdx
-            segmentStartMsRef.current = now
-            segmentTtsFinishedRef.current = false
-            audioManager.stop()
-            speakSegment(segments[nextSegIdx], stop.ttsTone)
-          } else {
-            // All segments complete — signal for auto-advance
+        // --- Segmented narration: drive via shared sequencer ---
+        const result = seqTick(speedMul)
+        if (result) {
+          ts.virtualDwellMs = result.virtualTimeMs
+          if (result.allDone) {
             ttsFinishedRef.current = true
           }
         }
-
-        // Compute virtual time: sum of completed segments + clamped current
-        let virtualMs = 0
-        for (let i = 0; i < segmentIndexRef.current; i++) {
-          virtualMs += segments[i].animationDurationMs
-        }
-        virtualMs += Math.min(segElapsed, seg.animationDurationMs)
-        ts.virtualDwellMs = virtualMs
       } else {
         // Non-segmented: virtual time = wall-clock dwell time
         ts.virtualDwellMs = (now - dwellStartRef.current) * speedMul
@@ -334,12 +291,12 @@ export function usePrimeTour(
       if (ts.opacity <= 0) {
         tourStateRef.current = { ...INITIAL_STATE }
         setCurrentStopIndex(null)
-        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: 64 })
+        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET })
         stopLoop()
         return
       }
     }
-  }, [stateRef, stopLoop, speakCurrentStop, speakSegment, audioManager, nextStop, exitTour])
+  }, [stateRef, stopLoop, speakCurrentStop, seqStart, seqTick, audioManager, nextStop, exitTour])
 
   /** The prime value the tour wants hovered (for forcing tooltip/arcs), or null. */
   const forcedHoverValue = (() => {
@@ -354,7 +311,7 @@ export function usePrimeTour(
   useEffect(() => {
     return () => {
       if (tourStateRef.current.phase !== 'idle') {
-        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: 64 })
+        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET })
       }
     }
   }, [audioManager])

@@ -22,7 +22,12 @@ import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTiming
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
-import { useEDemoNarration } from './constants/demos/useEDemoNarration'
+import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
+import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
+import { E_DEMO_SEGMENTS, E_DEMO_TONE } from './constants/demos/eDemoNarration'
+import { PI_DEMO_SEGMENTS, PI_DEMO_TONE } from './constants/demos/piDemoNarration'
+import { TAU_DEMO_SEGMENTS, TAU_DEMO_TONE } from './constants/demos/tauDemoNarration'
+import { PHI_DEMO_SEGMENTS, PHI_DEMO_TONE } from './constants/demos/phiDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
@@ -53,6 +58,14 @@ function scrubberToProgress(s: number): number {
 function setScrubberLogBase(base: number): void {
   scrubberLogBase = Math.max(1, base)
   scrubberLogDenom = Math.log(Math.max(1.01, scrubberLogBase))
+}
+
+// Narration configs for all constant demos (must be module-level for ref stability)
+const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
+  e: { segments: E_DEMO_SEGMENTS, tone: E_DEMO_TONE },
+  pi: { segments: PI_DEMO_SEGMENTS, tone: PI_DEMO_TONE },
+  tau: { segments: TAU_DEMO_SEGMENTS, tone: TAU_DEMO_TONE },
+  phi: { segments: PHI_DEMO_SEGMENTS, tone: PHI_DEMO_TONE },
 }
 
 const INITIAL_STATE: NumberLineState = {
@@ -140,11 +153,8 @@ export function NumberLine() {
   const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress } = useConstantDemo(
     stateRef, cssWidthRef, cssHeightRef, demoRedraw
   )
-  // --- e Demo narration ---
-  const { startNarration: startENarration, stopNarration: stopENarration, isNarratingRef: isENarratingRef } =
-    useEDemoNarration(demoStateRef, setRevealProgress)
-  // Track whether narration has been triggered for this demo session
-  const eNarrationTriggeredRef = useRef(false)
+  // --- Constant demo narration (all constants) ---
+  const narration = useConstantDemoNarration(demoStateRef, setRevealProgress, NARRATION_CONFIGS)
 
   // --- Demo scrubber state ---
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
@@ -357,18 +367,11 @@ export function NumberLine() {
     // Tick the constant demo state machine (updates viewport during animation)
     tickDemo()
 
-    // Auto-start e demo narration once viewport fly-in is ~60% done (revealProgress > 0)
+    // Auto-start narration when viewport fly-in is ~60% done (revealProgress > 0)
     {
       const ds = demoStateRef.current
-      if (
-        ds.constantId === 'e' &&
-        ds.phase === 'animating' &&
-        ds.revealProgress > 0 &&
-        !eNarrationTriggeredRef.current &&
-        !isENarratingRef.current
-      ) {
-        eNarrationTriggeredRef.current = true
-        startENarration()
+      if (ds.phase === 'animating' && ds.revealProgress > 0) {
+        narration.startIfNeeded(ds.constantId)
       }
     }
 
@@ -867,10 +870,9 @@ export function NumberLine() {
 
   const handleExploreConstant = useCallback((constantId: string) => {
     exitTour() // mutual exclusion: cancel tour when starting demo
-    stopENarration() // stop any active e demo narration
-    eNarrationTriggeredRef.current = false // reset trigger for new demo session
+    narration.reset() // stop narration + reset trigger for new demo session
     startDemo(constantId)
-  }, [startDemo, exitTour, stopENarration])
+  }, [startDemo, exitTour, narration])
 
   // --- Debug tuning handlers for golden ratio demo ---
   const handleDecayChange = useCallback((v: number) => {
@@ -925,7 +927,7 @@ export function NumberLine() {
   const handleScrubberPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    stopENarration() // stop TTS narration when user scrubs
+    narration.stop() // stop TTS narration when user scrubs
     isDraggingScrubberRef.current = true
     const progress = scrubberProgressFromPointer(e.clientX)
     setRevealProgress(progress)
@@ -940,7 +942,7 @@ export function NumberLine() {
         : 'rgba(168, 85, 247, 0.6)'
       scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
     }
-  }, [scrubberProgressFromPointer, setRevealProgress, stopENarration])
+  }, [scrubberProgressFromPointer, setRevealProgress, narration])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDraggingScrubberRef.current) return
@@ -963,7 +965,7 @@ export function NumberLine() {
   const handleScrubberKeyDown = useCallback((e: React.KeyboardEvent) => {
     const ds = demoStateRef.current
     if (ds.phase === 'idle') return
-    stopENarration() // stop TTS narration when user scrubs via keyboard
+    narration.stop() // stop TTS narration when user scrubs via keyboard
     let progress = ds.revealProgress
     switch (e.key) {
       case 'ArrowRight':
@@ -988,7 +990,7 @@ export function NumberLine() {
         return
     }
     setRevealProgress(progress)
-  }, [demoStateRef, setRevealProgress, stopENarration])
+  }, [demoStateRef, setRevealProgress, narration])
 
   const handleScrubberFocus = useCallback(() => {
     if (scrubberTrackRef.current) {
