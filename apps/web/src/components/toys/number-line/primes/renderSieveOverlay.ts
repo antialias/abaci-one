@@ -418,26 +418,105 @@ export function renderSieveOverlay(
     ctx.fill()
   }
 
-  // --- Layer 2: Sweep line + factor spotlight ---
-  const activeSweep = getActiveSweep(dwellElapsedMs, maxN)
-  if (activeSweep) {
-    const sweepScreenX = numberToScreenX(
-      activeSweep.sweepX,
-      state.center,
-      state.pixelsPerUnit,
-      cssWidth
-    )
+  // --- Layer 2: Skip-counting hopper + factor spotlight ---
+  // A dot arcs between multiples of the current factor, visualizing skip
+  // counting. When it lands on a composite, the flash/shake/fall triggers.
+  {
+    let hopperPhase: SievePhase | null = null
+    for (let i = SIEVE_PHASES.length - 1; i >= 0; i--) {
+      const phase = SIEVE_PHASES[i]
+      if (dwellElapsedMs < phase.startMs) continue
+      const lp = clamp01((dwellElapsedMs - phase.startMs) / phase.durationMs)
+      if (lp >= 1) continue
+      hopperPhase = phase
+      break
+    }
 
-    // Sweep line (thicker)
-    ctx.beginPath()
-    ctx.moveTo(sweepScreenX, 0)
-    ctx.lineTo(sweepScreenX, cssHeight)
-    ctx.strokeStyle = primeColorRgba(activeSweep.factor, 0.3, isDark)
-    ctx.lineWidth = 3
-    ctx.stroke()
+    if (hopperPhase) {
+      const p = hopperPhase.factor
+      const linearProgress = clamp01(
+        (dwellElapsedMs - hopperPhase.startMs) / hopperPhase.durationMs
+      )
+      const progress = sweepEase(linearProgress, p)
+      const sweepStart = p
+      const sweepRange = maxN - sweepStart
+      const sweepValue = sweepStart + sweepRange * progress
+
+      // Which two multiples of p are we between?
+      const fromMultiple = Math.max(p, Math.floor(sweepValue / p) * p)
+      const toMultiple = fromMultiple + p
+      const hopT = clamp01((sweepValue - fromMultiple) / p)
+
+      // Convert to screen space
+      const fromSX = numberToScreenX(fromMultiple, state.center, state.pixelsPerUnit, cssWidth)
+      const toSX = numberToScreenX(toMultiple, state.center, state.pixelsPerUnit, cssWidth)
+      const screenDist = toSX - fromSX
+
+      // Arc height scales with screen distance of the hop
+      const peakHeight = Math.min(40, Math.max(12, Math.abs(screenDist) * 0.4))
+      const arcHeight = Math.sin(Math.PI * hopT) * peakHeight
+
+      // Hopper screen position
+      const hopperSX = fromSX + hopT * screenDist
+      const hopperY = centerY - arcHeight
+
+      // Draw fading trail arcs for recent completed hops
+      const currentHopIndex = Math.floor(sweepValue / p)
+      for (let k = Math.max(1, currentHopIndex - 3); k < currentHopIndex; k++) {
+        const tFrom = k * p
+        const tTo = (k + 1) * p
+        const age = currentHopIndex - k
+        const trailAlpha = 0.12 * (1 - age / 4)
+        if (trailAlpha <= 0.01) continue
+
+        const tFromSX = numberToScreenX(tFrom, state.center, state.pixelsPerUnit, cssWidth)
+        const tToSX = numberToScreenX(tTo, state.center, state.pixelsPerUnit, cssWidth)
+        const tDist = tToSX - tFromSX
+        if (Math.abs(tDist) < 3) continue
+
+        const tPeak = Math.min(40, Math.max(12, Math.abs(tDist) * 0.4))
+        ctx.beginPath()
+        ctx.moveTo(tFromSX, centerY)
+        ctx.quadraticCurveTo((tFromSX + tToSX) / 2, centerY - tPeak, tToSX, centerY)
+        ctx.strokeStyle = primeColorRgba(p, trailAlpha, isDark)
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+
+      // Dotted arc showing current hop path
+      if (Math.abs(screenDist) > 3) {
+        ctx.beginPath()
+        ctx.moveTo(fromSX, centerY)
+        ctx.quadraticCurveTo((fromSX + toSX) / 2, centerY - peakHeight, toSX, centerY)
+        ctx.strokeStyle = primeColorRgba(p, 0.2, isDark)
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([4, 4])
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+
+      // Hopper dot
+      const dotRadius = 6
+      ctx.beginPath()
+      ctx.arc(hopperSX, hopperY, dotRadius, 0, Math.PI * 2)
+      ctx.fillStyle = primeColorRgba(p, 0.9, isDark)
+      ctx.fill()
+
+      // Glow around hopper
+      const glowRadius = dotRadius * 2.5
+      const glow = ctx.createRadialGradient(
+        hopperSX, hopperY, 0, hopperSX, hopperY, glowRadius
+      )
+      glow.addColorStop(0, primeColorRgba(p, 0.35, isDark))
+      glow.addColorStop(1, primeColorRgba(p, 0, isDark))
+      ctx.beginPath()
+      ctx.arc(hopperSX, hopperY, glowRadius, 0, Math.PI * 2)
+      ctx.fillStyle = glow
+      ctx.fill()
+    }
   }
 
-  // Factor spotlight glow
+  // Factor spotlight glow (pulsing highlight on the prime factor being used)
   for (const phase of SIEVE_PHASES) {
     if (dwellElapsedMs < phase.startMs) break
     const phaseProgress = clamp01(
