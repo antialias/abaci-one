@@ -11,10 +11,12 @@
  *     Pivot      0.06–0.15  segment swings to vertical
  *     Sweep      0.15–0.255 arc traces full circle
  *     Treads     0.255–0.30 tire marks sprout
- *   ROLLING (0.30–0.92):
+ *   ROLLING (0.30–0.82):
  *     Circle rolls rightward, circumference unrolls onto axis
- *   LABELS (0.92–1.00):
+ *   LABELS (0.82–0.90):
  *     "pi", "one turn", "C = pid" fade in
+ *   ZOOM (0.90–1.00):
+ *     Irrationality zoom — digits never end
  */
 
 import type { DemoNarrationSegment } from './useConstantDemoNarration'
@@ -73,8 +75,8 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Watch the blue paint it leaves behind on the ground — ' +
       'that\'s how far it\'s traveled!',
     startProgress: 0.30,
-    endProgress: 0.60,
-    animationDurationMs: 7000,
+    endProgress: 0.55,
+    animationDurationMs: 6000,
   },
   {
     // Seg 5: Second half of roll, approaching pi
@@ -82,21 +84,34 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Keep rolling, keep rolling... almost done with one full spin. ' +
       'Where will it stop? ' +
       'A little bit past three!',
-    startProgress: 0.60,
-    endProgress: 0.92,
-    animationDurationMs: 7000,
+    startProgress: 0.55,
+    endProgress: 0.82,
+    animationDurationMs: 6000,
   },
 
   // ── Labels ────────────────────────────────────────────────────
   {
-    // Seg 6: Final reveal
+    // Seg 6: Pi reveal
     ttsText:
       'Three and a little bit more! That special number is called pi. ' +
-      'It\'s about three point one four. ' +
       'Whenever a wheel makes one full turn, it rolls exactly pi times its width. ' +
       'Every wheel in the whole world follows that rule!',
-    startProgress: 0.92,
+    startProgress: 0.82,
+    endProgress: 0.90,
+    animationDurationMs: 7000,
+  },
+
+  // ── Irrationality zoom ────────────────────────────────────────
+  {
+    // Seg 7: Zoom in on the digits
+    ttsText:
+      'But here\'s the really amazing thing. ' +
+      'If we zoom in close, pi is past three point one four. ' +
+      'Even closer — past three point one four one five nine! ' +
+      'The numbers keep going and never, ever stop. ' +
+      'Pi is a truly special number that goes on forever!',
+    startProgress: 0.90,
     endProgress: 1.00,
-    animationDurationMs: 8000,
+    animationDurationMs: 7000,
   },
 ]

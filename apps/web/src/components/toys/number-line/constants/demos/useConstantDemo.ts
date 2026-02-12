@@ -41,6 +41,101 @@ const DEVIATION_THRESHOLD = 0.4
 /** Constants that have demos available */
 export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2'])
 
+// ── Viewport zoom keyframes ────────────────────────────────────────
+//
+// Demos that zoom into their constant's decimal expansion define
+// keyframes here. The tick function interpolates through them,
+// driving the ACTUAL number-line viewport (center + pixelsPerUnit).
+
+interface ViewportKeyframe {
+  /** revealProgress at which this viewport should be reached */
+  progress: number
+  center: number
+  pixelsPerUnit: number
+}
+
+/** Compute PPU needed to fit a [lo, hi] range across 75% of the screen width. */
+function ppuForRange(cssWidth: number, lo: number, hi: number): number {
+  return cssWidth * 0.75 / (hi - lo)
+}
+
+/**
+ * Build zoom keyframes for a given demo.
+ * Returns null if the demo has no zoom phase.
+ */
+function getZoomKeyframes(
+  constantId: string,
+  cssWidth: number,
+  cssHeight: number
+): ViewportKeyframe[] | null {
+  if (constantId === 'sqrt2') {
+    const base = sqrt2DemoViewport(cssWidth, cssHeight)
+    return [
+      // Start at base viewport (matches the demo's initial fly-in target)
+      { progress: 0.80, ...base },
+      // Progressive zoom into √2 ≈ 1.41421356...
+      { progress: 0.84, center: 1.5,    pixelsPerUnit: ppuForRange(cssWidth, 1, 2) },
+      { progress: 0.87, center: 1.45,   pixelsPerUnit: ppuForRange(cssWidth, 1.4, 1.5) },
+      { progress: 0.90, center: 1.415,  pixelsPerUnit: ppuForRange(cssWidth, 1.41, 1.42) },
+      { progress: 0.91, center: 1.4145, pixelsPerUnit: ppuForRange(cssWidth, 1.414, 1.415) },
+      // Zoom back out for the reveal phase (√2 label, star, formula)
+      { progress: 0.935, ...base },
+    ]
+  }
+
+  if (constantId === 'pi') {
+    const base = piDemoViewport(cssWidth, cssHeight)
+    return [
+      { progress: 0.90, ...base },
+      // Progressive zoom into π ≈ 3.14159265...
+      { progress: 0.925, center: 3.5,    pixelsPerUnit: ppuForRange(cssWidth, 3, 4) },
+      { progress: 0.95,  center: 3.15,   pixelsPerUnit: ppuForRange(cssWidth, 3.1, 3.2) },
+      { progress: 0.975, center: 3.145,  pixelsPerUnit: ppuForRange(cssWidth, 3.14, 3.15) },
+      { progress: 1.0,   center: 3.1415, pixelsPerUnit: ppuForRange(cssWidth, 3.141, 3.142) },
+    ]
+  }
+
+  return null
+}
+
+/**
+ * Interpolate between viewport keyframes at the given progress.
+ * Returns null if progress is before the first keyframe.
+ * Uses smoothstep easing and log-space PPU interpolation for smooth zoom.
+ */
+function interpolateViewportKeyframes(
+  keyframes: ViewportKeyframe[],
+  progress: number
+): { center: number; pixelsPerUnit: number } | null {
+  if (keyframes.length === 0 || progress < keyframes[0].progress) return null
+
+  // Past the last keyframe — hold at last value
+  if (progress >= keyframes[keyframes.length - 1].progress) {
+    const last = keyframes[keyframes.length - 1]
+    return { center: last.center, pixelsPerUnit: last.pixelsPerUnit }
+  }
+
+  // Find the two keyframes we're between
+  for (let i = 0; i < keyframes.length - 1; i++) {
+    const a = keyframes[i]
+    const b = keyframes[i + 1]
+    if (progress >= a.progress && progress < b.progress) {
+      const t = (progress - a.progress) / (b.progress - a.progress)
+      // Smoothstep easing
+      const st = t * t * (3 - 2 * t)
+      // Linear center interpolation
+      const center = a.center + (b.center - a.center) * st
+      // Log-space PPU interpolation for perceptually smooth zoom
+      const logA = Math.log(a.pixelsPerUnit)
+      const logB = Math.log(b.pixelsPerUnit)
+      const pixelsPerUnit = Math.exp(logA + (logB - logA) * st)
+      return { center, pixelsPerUnit }
+    }
+  }
+
+  return null
+}
+
 /**
  * Hook managing the constant demonstration lifecycle.
  *
@@ -179,6 +274,26 @@ export function useConstantDemo(
       // Suppress unused variable warning — vpT is used implicitly
       // (lerpViewport mutates stateRef; vpT available for future use)
       void vpT
+
+      // Apply zoom keyframes — overrides lerpViewport for demos with
+      // irrationality zoom phases (√2, π). The keyframes drive the
+      // actual number-line viewport to zoom into the constant's position.
+      if (ds.constantId) {
+        const kfs = getZoomKeyframes(
+          ds.constantId, cssWidthRef.current, cssHeightRef.current
+        )
+        if (kfs) {
+          const zoomVp = interpolateViewportKeyframes(kfs, ds.revealProgress)
+          if (zoomVp) {
+            stateRef.current.center = zoomVp.center
+            stateRef.current.pixelsPerUnit = zoomVp.pixelsPerUnit
+            // Update source+target so lerpViewport converges here next frame
+            // and deviation detection uses the zoom viewport as reference
+            sourceViewportRef.current = { ...zoomVp }
+            targetViewportRef.current = { ...zoomVp }
+          }
+        }
+      }
     } else if (ds.phase === 'presenting') {
       const deviation = computeViewportDeviation(
         stateRef.current, targetViewportRef.current
@@ -198,7 +313,7 @@ export function useConstantDemo(
         return
       }
     }
-  }, [stateRef, stopLoop])
+  }, [stateRef, stopLoop, cssWidthRef, cssHeightRef])
 
   const setRevealProgress = useCallback((value: number) => {
     const ds = demoStateRef.current
@@ -207,8 +322,27 @@ export function useConstantDemo(
     isPausedRef.current = true
     ds.revealProgress = Math.max(0, Math.min(1, value))
 
-    // Snap viewport to target (skip interpolation) when scrubbing
-    snapViewport(targetViewportRef.current, stateRef.current)
+    // Apply zoom keyframes if scrubbing into a zoom phase
+    let handled = false
+    if (ds.constantId) {
+      const kfs = getZoomKeyframes(
+        ds.constantId, cssWidthRef.current, cssHeightRef.current
+      )
+      if (kfs) {
+        const zoomVp = interpolateViewportKeyframes(kfs, ds.revealProgress)
+        if (zoomVp) {
+          stateRef.current.center = zoomVp.center
+          stateRef.current.pixelsPerUnit = zoomVp.pixelsPerUnit
+          sourceViewportRef.current = { ...zoomVp }
+          targetViewportRef.current = { ...zoomVp }
+          handled = true
+        }
+      }
+    }
+    if (!handled) {
+      // Snap viewport to target (skip interpolation) when scrubbing
+      snapViewport(targetViewportRef.current, stateRef.current)
+    }
 
     // Ensure opacity is full while scrubbing
     ds.opacity = 1
@@ -219,7 +353,7 @@ export function useConstantDemo(
     }
 
     onRedraw()
-  }, [stateRef, onRedraw])
+  }, [stateRef, onRedraw, cssWidthRef, cssHeightRef])
 
   return { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress }
 }

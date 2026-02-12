@@ -591,36 +591,37 @@ export function renderSqrt2Overlay(
   }
 
   // ── Seg 7: Zoom in on decimals ──
+  // The actual number-line viewport zoom is driven by useConstantDemo.
+  // Here we just overlay a floating decimal expansion at the top of the screen.
   if (revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin) {
     const zoomP = mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomEnd)
+    const fadeIn = smoothstep(Math.min(1, zoomP * 4))
 
-    // Show the diagonal line flat on the number line
-    drawDiagonal(ctx, toX, axisY, ppu, isDark, opacity, Math.PI / 4, true)
+    // Decimal expansion typing out
+    const decimalStr = '1.41421356\u2026'
+    const charsToShow = Math.min(
+      decimalStr.length,
+      Math.floor(1 + zoomP * (decimalStr.length - 1))
+    )
+    const displayText = '\u221A2 = ' + decimalStr.substring(0, charsToShow)
 
-    // Progressive decimal reveal
-    const decimals = '1.41421356...'
-    const charsVisible = Math.min(decimals.length, Math.floor(1 + zoomP * (decimals.length - 1)))
-    const displayText = decimals.substring(0, charsVisible)
-
-    const sqrt2X = toX(SQRT2)
-    const fs = Math.max(14, Math.min(20, ppu * 0.17))
-    ctx.font = `bold ${fs}px system-ui, sans-serif`
+    const fs = Math.max(16, Math.min(24, cssWidth * 0.03))
+    ctx.font = `bold ${fs}px system-ui, monospace`
     ctx.fillStyle = diagCol(isDark)
     ctx.textAlign = 'center'
-    ctx.textBaseline = 'bottom'
-    ctx.globalAlpha = opacity
-    ctx.fillText(displayText, sqrt2X, axisY - 10)
+    ctx.textBaseline = 'top'
+    ctx.globalAlpha = opacity * fadeIn
+    ctx.fillText(displayText, cssWidth / 2, 20)
 
-    // "It never ends!" label
+    // Subtitle
     if (zoomP > 0.7) {
       const neverP = smoothstep(mapRange(zoomP, 0.7, 0.9))
-      const lfs = Math.max(10, Math.min(13, ppu * 0.11))
-      ctx.font = `italic ${lfs}px system-ui, sans-serif`
+      const subFs = Math.max(11, Math.min(15, cssWidth * 0.02))
+      ctx.font = `italic ${subFs}px system-ui, sans-serif`
       ctx.fillStyle = subtextCol(isDark)
       ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
       ctx.globalAlpha = opacity * neverP * 0.8
-      ctx.fillText('The digits never stop!', sqrt2X, axisY + 10)
+      ctx.fillText('The digits never stop!', cssWidth / 2, 20 + fs + 6)
     }
   }
 
