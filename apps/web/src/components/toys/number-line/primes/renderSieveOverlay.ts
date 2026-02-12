@@ -15,10 +15,11 @@ export const SIEVE_PHASES: SievePhase[] = [
   { factor: 2, startMs: 4000, durationMs: 5000 },     // seg 1: sweep 4000–9000, tail 9000–10200
   { factor: 3, startMs: 10200, durationMs: 3000 },    // seg 2: sweep 10200–13200, tail 13200–14400
   { factor: 5, startMs: 14400, durationMs: 1800 },    // seg 3a: sweep 14400–16200
-  { factor: 7, startMs: 16600, durationMs: 1300 },    // seg 3b: sweep 16600–17900, tail 17900–19100
+  { factor: 7, startMs: 16600, durationMs: 1300 },    // seg 3b: sweep 16600–17900
+  { factor: 11, startMs: 18300, durationMs: 800 },    // seg 3c: sweep 18300–19100, tail 19100–20300
 ]
 
-export const CELEBRATION_START_MS = 19100
+export const CELEBRATION_START_MS = 20300
 
 /**
  * Fixed maximum N for sweep calculations. All sweep progress, composite mark
@@ -26,7 +27,7 @@ export const CELEBRATION_START_MS = 19100
  * viewport tracking in getSieveViewportState. Viewport-dependent bounds are
  * only used for visibility culling (deciding which composites to draw).
  */
-export const SWEEP_MAX_N = 120
+export const SWEEP_MAX_N = 130
 
 // --- Per-composite animation ---
 
@@ -249,12 +250,43 @@ function lerpViewport(a: SieveViewport, b: SieveViewport, t: number): SieveViewp
 }
 
 /**
+ * Clamp a sieve viewport so the visible range stays within bounds.
+ * Left edge gets a 10% margin so the origin isn't flush with the screen edge.
+ * Right edge stays at SWEEP_MAX_N to avoid showing un-sieved composites.
+ */
+function clampSieveViewport(vp: SieveViewport, cssWidth: number): SieveViewport {
+  const halfRange = cssWidth / (2 * vp.pixelsPerUnit)
+  let { center, pixelsPerUnit } = vp
+
+  // 10% of visible width as left margin (origin isn't pinned to screen edge)
+  const leftMargin = halfRange * 0.2  // 10% of full width = 20% of halfRange
+
+  // If the viewport is wider than the usable range, zoom in to fit
+  const usableRange = SWEEP_MAX_N + leftMargin
+  if (2 * halfRange > usableRange) {
+    pixelsPerUnit = cssWidth / usableRange
+    const newHalf = cssWidth / (2 * pixelsPerUnit)
+    center = -leftMargin + newHalf
+    return { center, pixelsPerUnit }
+  }
+
+  // Shift center so edges don't exceed boundaries
+  if (center + halfRange > SWEEP_MAX_N) center = SWEEP_MAX_N - halfRange
+  if (center - halfRange < -leftMargin) center = -leftMargin + halfRange
+
+  return { center, pixelsPerUnit }
+}
+
+/**
  * Map virtual dwell time → interpolated viewport for the sieve animation.
  *
  * During each sweep phase: interpolate start → end using eased progress
  * (same easing as the sweep itself, so slow sweep = zoomed in).
  * During gaps/tails between phases: quick zoom-in to next start.
  * During celebration: zoom out to wide view.
+ *
+ * All returned viewports are clamped so the visible range stays within
+ * [0, SWEEP_MAX_N], preventing un-sieved composites from appearing.
  */
 export function getSieveViewportState(
   virtualDwellMs: number,
@@ -274,7 +306,7 @@ export function getSieveViewportState(
   // Before first phase: hold at factor 2's tracking start (centered on 2)
   const firstPhase = SIEVE_PHASES[0]
   if (virtualDwellMs < firstPhase.startMs) {
-    return { center: firstPhase.factor, pixelsPerUnit: trackingPpu }
+    return clampSieveViewport({ center: firstPhase.factor, pixelsPerUnit: trackingPpu }, cssWidth)
   }
 
   // During celebration: interpolate last end → celebration viewport
@@ -285,7 +317,7 @@ export function getSieveViewportState(
     const celebT = clamp01((virtualDwellMs - CELEBRATION_START_MS) / celebDuration)
     const eased = easeOutCubic(celebT)
     const lastKf = keyframes[keyframes.length - 1]
-    return lerpViewport(lastKf.end, celebrationVp, eased)
+    return clampSieveViewport(lerpViewport(lastKf.end, celebrationVp, eased), cssWidth)
   }
 
   // Find which phase or gap we're in
@@ -306,7 +338,7 @@ export function getSieveViewportState(
 
         if (easedT <= followEndEasedT) {
           // Pure tracking: center on hopper, tight zoom
-          return { center: sweepValue, pixelsPerUnit: trackingPpu }
+          return clampSieveViewport({ center: sweepValue, pixelsPerUnit: trackingPpu }, cssWidth)
         }
 
         // Transition from tracking to regular keyframe viewport
@@ -315,10 +347,10 @@ export function getSieveViewportState(
         const eased = easeOutCubic(transitionT)
         const trackVp: SieveViewport = { center: sweepValue, pixelsPerUnit: trackingPpu }
         const regularVp = lerpViewport(kf.start, kf.end, easedT)
-        return lerpViewport(trackVp, regularVp, eased)
+        return clampSieveViewport(lerpViewport(trackVp, regularVp, eased), cssWidth)
       }
 
-      return lerpViewport(kf.start, kf.end, easedT)
+      return clampSieveViewport(lerpViewport(kf.start, kf.end, easedT), cssWidth)
     }
 
     // In a gap/tail after this phase but before the next
@@ -331,7 +363,7 @@ export function getSieveViewportState(
 
       // By end of any phase (including factor 2's tracking), the viewport
       // has fully blended to kf.end, so the gap transition is uniform.
-      return lerpViewport(kf.end, nextKf.start, eased)
+      return clampSieveViewport(lerpViewport(kf.end, nextKf.start, eased), cssWidth)
     }
   }
 
@@ -341,7 +373,7 @@ export function getSieveViewportState(
     const tailT = clamp01((virtualDwellMs - lastPhaseEnd) / tailDuration)
     const eased = easeOutCubic(tailT)
     const lastKf = keyframes[keyframes.length - 1]
-    return lerpViewport(lastKf.end, celebrationVp, eased)
+    return clampSieveViewport(lerpViewport(lastKf.end, celebrationVp, eased), cssWidth)
   }
 
   return null
@@ -438,6 +470,28 @@ export function computeSieveTickTransforms(
 
       transforms.set(m, { opacity, offsetX, offsetY, rotation })
     }
+
+    // Once this factor's sweep is complete, hide ALL its multiples up to maxN
+    // (covers composites beyond SWEEP_MAX_N visible when viewport zooms out)
+    if (linearProgress >= 1) {
+      for (let m = firstMultiple; m <= maxN; m += p) {
+        if (alreadyMarked.has(m)) continue
+        alreadyMarked.add(m)
+        transforms.set(m, { opacity: 0, offsetX: 0, offsetY: 0, rotation: 0 })
+      }
+    }
+  }
+
+  // Safety net: once all sweeps are complete, hide ANY remaining composite
+  // not caught by factors 2,3,5,7 (e.g. 121=11², 169=13²)
+  const lastPhase = SIEVE_PHASES[SIEVE_PHASES.length - 1]
+  const allSweepsComplete = dwellElapsedMs >= lastPhase.startMs + lastPhase.durationMs
+  if (allSweepsComplete) {
+    for (let n = 4; n <= maxN; n++) {
+      if (transforms.has(n)) continue
+      if (smallestPrimeFactor(n) === n) continue // prime — leave alone
+      transforms.set(n, { opacity: 0, offsetX: 0, offsetY: 0, rotation: 0 })
+    }
   }
 
   return transforms
@@ -516,9 +570,84 @@ export function renderSieveOverlay(
     ctx.fill()
   }
 
-  // --- Layer 2: Skip-counting hopper + factor spotlight ---
-  // A dot arcs between multiples of the current factor, visualizing skip
-  // counting. When it lands on a composite, the flash/shake/fall triggers.
+  // --- Layer 2a: Viewport-wide skip arcs ---
+  // Repeating arcs across the visible range at the current skip distance.
+  // During transitions between factors the skip distance morphs smoothly.
+  {
+    let skipDist: number | null = null
+    let arcColorFactor = 2
+    let arcAlpha = 1
+
+    // Determine effective skip distance + color for the current time
+    for (let i = 0; i < SIEVE_PHASES.length; i++) {
+      const phase = SIEVE_PHASES[i]
+      const phaseEnd = phase.startMs + phase.durationMs
+
+      // During a sweep phase
+      if (dwellElapsedMs >= phase.startMs && dwellElapsedMs < phaseEnd) {
+        skipDist = phase.factor
+        arcColorFactor = phase.factor
+        break
+      }
+
+      // In a gap/tail between phases: morph skip distance
+      const nextPhase = SIEVE_PHASES[i + 1]
+      if (nextPhase && dwellElapsedMs >= phaseEnd && dwellElapsedMs < nextPhase.startMs) {
+        const gapT = clamp01((dwellElapsedMs - phaseEnd) / (nextPhase.startMs - phaseEnd))
+        const eased = easeOutCubic(gapT)
+        skipDist = lerp(phase.factor, nextPhase.factor, eased)
+        arcColorFactor = gapT < 0.5 ? phase.factor : nextPhase.factor
+        break
+      }
+    }
+
+    // Before first phase: fade in arcs at factor 2 spacing
+    if (skipDist === null && dwellElapsedMs < SIEVE_PHASES[0].startMs) {
+      skipDist = SIEVE_PHASES[0].factor
+      arcColorFactor = SIEVE_PHASES[0].factor
+      arcAlpha = clamp01(dwellElapsedMs / 1500) // fade in over 1.5s
+    }
+
+    // After last phase: fade out during celebration
+    if (skipDist === null && dwellElapsedMs >= CELEBRATION_START_MS) {
+      arcAlpha = 0
+    }
+    // Between last phase end and celebration: hold last factor, start fading
+    const lastP = SIEVE_PHASES[SIEVE_PHASES.length - 1]
+    const lastEnd = lastP.startMs + lastP.durationMs
+    if (skipDist === null && dwellElapsedMs >= lastEnd && dwellElapsedMs < CELEBRATION_START_MS) {
+      skipDist = lastP.factor
+      arcColorFactor = lastP.factor
+      arcAlpha = 1 - clamp01((dwellElapsedMs - lastEnd) / (CELEBRATION_START_MS - lastEnd))
+    }
+
+    // Draw the repeating arcs
+    if (skipDist !== null && arcAlpha > 0.01) {
+      const screenSkip = skipDist * state.pixelsPerUnit
+      const arcPeak = Math.min(30, Math.max(8, screenSkip * 0.35))
+
+      // Start from the leftmost visible skip boundary
+      const startN = Math.floor(leftValue / skipDist) * skipDist
+      const endN = rightValue + skipDist
+
+      for (let n = startN; n < endN; n += skipDist) {
+        const aFromSX = numberToScreenX(n, state.center, state.pixelsPerUnit, cssWidth)
+        const aToSX = numberToScreenX(n + skipDist, state.center, state.pixelsPerUnit, cssWidth)
+        if (aToSX < -50 || aFromSX > cssWidth + 50) continue
+
+        ctx.beginPath()
+        ctx.moveTo(aFromSX, centerY)
+        ctx.quadraticCurveTo((aFromSX + aToSX) / 2, centerY - arcPeak, aToSX, centerY)
+        ctx.strokeStyle = primeColorRgba(arcColorFactor, 0.15 * arcAlpha, isDark)
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+    }
+  }
+
+  // --- Layer 2b: Skip-counting hopper ---
+  // A dot that hops between multiples of the current factor.
+  // The hopper "stomps" new composites (full arc) and "skims" already-gone ones (low arc).
   {
     let hopperPhase: SievePhase | null = null
     for (let i = SIEVE_PHASES.length - 1; i >= 0; i--) {
@@ -545,59 +674,52 @@ export function renderSieveOverlay(
       const toMultiple = fromMultiple + p
       const hopT = clamp01((sweepValue - fromMultiple) / p)
 
+      // Skim vs. stomp: is the landing target already eliminated by an earlier factor?
+      const targetAlreadyGone = toMultiple > p && smallestPrimeFactor(toMultiple) < p
+      const skimScale = targetAlreadyGone ? 0.12 : 1
+
       // Convert to screen space
       const fromSX = numberToScreenX(fromMultiple, state.center, state.pixelsPerUnit, cssWidth)
       const toSX = numberToScreenX(toMultiple, state.center, state.pixelsPerUnit, cssWidth)
       const screenDist = toSX - fromSX
 
-      // Arc height scales with screen distance of the hop
-      const peakHeight = Math.min(40, Math.max(12, Math.abs(screenDist) * 0.4))
+      // Arc height: full stomp or low skim
+      const fullPeakHeight = Math.min(40, Math.max(12, Math.abs(screenDist) * 0.4))
+      const peakHeight = fullPeakHeight * skimScale
       const arcHeight = Math.sin(Math.PI * hopT) * peakHeight
 
       // Hopper screen position
       const hopperSX = fromSX + hopT * screenDist
       const hopperY = centerY - arcHeight
 
-      // Draw fading trail arcs for recent completed hops
-      const currentHopIndex = Math.floor(sweepValue / p)
-      for (let k = Math.max(1, currentHopIndex - 3); k < currentHopIndex; k++) {
-        const tFrom = k * p
-        const tTo = (k + 1) * p
-        const age = currentHopIndex - k
-        const trailAlpha = 0.12 * (1 - age / 4)
-        if (trailAlpha <= 0.01) continue
-
-        const tFromSX = numberToScreenX(tFrom, state.center, state.pixelsPerUnit, cssWidth)
-        const tToSX = numberToScreenX(tTo, state.center, state.pixelsPerUnit, cssWidth)
-        const tDist = tToSX - tFromSX
-        if (Math.abs(tDist) < 3) continue
-
-        const tPeak = Math.min(40, Math.max(12, Math.abs(tDist) * 0.4))
-        ctx.beginPath()
-        ctx.moveTo(tFromSX, centerY)
-        ctx.quadraticCurveTo((tFromSX + tToSX) / 2, centerY - tPeak, tToSX, centerY)
-        ctx.strokeStyle = primeColorRgba(p, trailAlpha, isDark)
-        ctx.lineWidth = 1
-        ctx.stroke()
+      // Ghost label for already-gone composites: brief fade-in/out near landing
+      if (targetAlreadyGone && hopT > 0.4) {
+        const ghostAlpha = Math.sin(Math.PI * clamp01((hopT - 0.4) / 0.6)) * 0.55
+        if (ghostAlpha > 0.01) {
+          ctx.save()
+          ctx.globalAlpha = ghostAlpha * tourOpacity
+          ctx.font = 'bold 13px system-ui, sans-serif'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+          ctx.fillStyle = isDark ? '#888' : '#999'
+          ctx.fillText(String(toMultiple), toSX, centerY + 5)
+          const textWidth = ctx.measureText(String(toMultiple)).width
+          ctx.beginPath()
+          ctx.moveTo(toSX - textWidth / 2 - 2, centerY + 12)
+          ctx.lineTo(toSX + textWidth / 2 + 2, centerY + 12)
+          ctx.strokeStyle = isDark ? '#888' : '#999'
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+          ctx.restore()
+        }
       }
 
-      // Dotted arc showing current hop path
-      if (Math.abs(screenDist) > 3) {
-        ctx.beginPath()
-        ctx.moveTo(fromSX, centerY)
-        ctx.quadraticCurveTo((fromSX + toSX) / 2, centerY - peakHeight, toSX, centerY)
-        ctx.strokeStyle = primeColorRgba(p, 0.2, isDark)
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([4, 4])
-        ctx.stroke()
-        ctx.setLineDash([])
-      }
-
-      // Hopper dot
-      const dotRadius = 6
+      // Hopper dot (smaller + translucent for skims)
+      const dotRadius = targetAlreadyGone ? 3.5 : 6
+      const dotAlpha = targetAlreadyGone ? 0.35 : 0.9
       ctx.beginPath()
       ctx.arc(hopperSX, hopperY, dotRadius, 0, Math.PI * 2)
-      ctx.fillStyle = primeColorRgba(p, 0.9, isDark)
+      ctx.fillStyle = primeColorRgba(p, dotAlpha, isDark)
       ctx.fill()
 
       // Glow around hopper
@@ -605,7 +727,7 @@ export function renderSieveOverlay(
       const glow = ctx.createRadialGradient(
         hopperSX, hopperY, 0, hopperSX, hopperY, glowRadius
       )
-      glow.addColorStop(0, primeColorRgba(p, 0.35, isDark))
+      glow.addColorStop(0, primeColorRgba(p, targetAlreadyGone ? 0.2 : 0.35, isDark))
       glow.addColorStop(1, primeColorRgba(p, 0, isDark))
       ctx.beginPath()
       ctx.arc(hopperSX, hopperY, glowRadius, 0, Math.PI * 2)

@@ -89,15 +89,20 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
       'You know skip counting? Well, watch what happens when we try it on the number line! ' +
       'Starting at two — two, four, six, eight, ten — see them shaking off? ' +
       'Bye bye! They can all be split into twos, so they\'re not prime. ' +
-      'Now starting at three — three, six, nine, twelve — shake \'em out! ' +
-      'Faster! Starting at five — five, ten, fifteen, twenty... And seven — seven, fourteen, twenty-one! ' +
+      'Now starting at three — six? Already gone! The twos got it! Nine — shake it off! ' +
+      'Twelve? Gone too! See how some are already knocked out? ' +
+      'Faster! Fives — ten? Gone! Fifteen? Gone! Twenty-five — there it goes! ' +
+      'And sevens — forty-nine, that\'s seven times seven — shake it off! ' +
+      'Elevens — they\'re almost all gone already! ' +
+      'One-twenty-one, eleven times eleven — there it goes! ' +
       'Now look what\'s left standing. Those are our primes! ' +
       'The numbers that couldn\'t be shaken out, no matter how hard we tried. ' +
       'A man named Eratosthenes invented this game thousands of years ago, ' +
       'and we still use it today!',
     ttsTone:
       'Excited game-show energy building to wonder. Start playful and familiar with skip counting, ' +
-      'build momentum as the sieve speeds up, then awe at the primes left standing.',
+      'build momentum as the sieve speeds up, then awe at the primes left standing. ' +
+      'When noting already-gone numbers, use a quick playful "oh!" like spotting an empty seat.',
     narrationSegments: [
       {
         // Seg 0: intro — no sieve animation, no tail needed.
@@ -108,27 +113,34 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
         animationDurationMs: 4000,
       },
       {
-        // Seg 1: factor 2 sweep (5000ms) + 1200ms tail for last composites to fall.
+        // Seg 1: factor 2 sweep (5000ms) + 600ms tail for last composites to fall.
         // Names "two" right at the start so it coincides with the factor 2 spotlight.
+        // All multiples of 2 are new — no already-gone composites.
         ttsText:
           'Starting at two — two, four, six, eight, ten — see them shaking off? ' +
           'Bye bye! They can all be split into twos, so they\'re not prime.',
         animationDurationMs: 6200,
       },
       {
-        // Seg 2: factor 3 sweep (3000ms) + 1200ms tail.
-        // Names "three" right at the start so it coincides with the factor 3 spotlight.
+        // Seg 2: factor 3 sweep (3000ms) + 600ms tail.
+        // Acknowledges already-gone composites (6, 12 were eliminated by factor 2).
+        // Celebrates new eliminations (9, 15, 21).
         ttsText:
-          'Now starting at three — three, six, nine, twelve — shake \'em out!',
+          'Now starting at three — six? Already gone! The twos got it! ' +
+          'Nine — shake it off! Twelve? Gone too! ' +
+          'See how some are already knocked out?',
         animationDurationMs: 4200,
       },
       {
-        // Seg 3: factors 5+7 sweeps (2000+1500=3500ms) + 1200ms tail.
-        // Names "five" first (sweep starts immediately), then "seven" mid-segment.
+        // Seg 3: factors 5+7+11 sweeps. Most multiples are already gone.
+        // Calls out the key new eliminations (25 for factor 5, 49 for factor 7, 121 for factor 11).
         ttsText:
-          'Faster! Starting at five — five, ten, fifteen, twenty... ' +
-          'And seven — seven, fourteen, twenty-one!',
-        animationDurationMs: 4700,
+          'Faster! Fives — ten? Gone! Fifteen? Gone! ' +
+          'Twenty-five — there it goes! ' +
+          'And sevens — forty-nine, that\'s seven times seven — shake it off! ' +
+          'Elevens — they\'re almost all gone already! ' +
+          'One-twenty-one, eleven times eleven — there it goes!',
+        animationDurationMs: 5900,
       },
       {
         // Seg 4: celebration — no tail needed
@@ -140,7 +152,7 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
         animationDurationMs: 5000,
       },
     ],
-    minDwellMs: 25000,
+    minDwellMs: 27000,
     autoAdvance: true,
   },
   {

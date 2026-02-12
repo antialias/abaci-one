@@ -11,7 +11,7 @@ import type { NumberLineState } from '../types'
 const SIEVE_INITIAL_STATE: NumberLineState = { center: 13, pixelsPerUnit: 50 }
 const CELEBRATION_VP = { center: 55, pixelsPerUnit: 5 }
 
-const TOTAL_MS = 26000 // enough to see celebration phase
+const TOTAL_MS = 28000 // enough to see celebration phase (incl. factor 11)
 
 // --- Storybook harness ---
 
@@ -120,7 +120,7 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
     lastFrameRef.current = null
   }, [])
 
-  // Phase label (matches virtual timeline with 1200ms fall-animation tails between sweeps)
+  // Phase label (matches virtual timeline with fall-animation tails between sweeps)
   const phase =
     elapsedMs < 4000
       ? 'Waiting (skip counting intro)'
@@ -138,9 +138,13 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
                   ? 'Composites falling / zoom transition'
                   : elapsedMs < 17900
                     ? 'Skip count by 7s (quick!)'
-                    : elapsedMs < 19100
+                    : elapsedMs < 18300
                       ? 'Composites falling...'
-                      : 'Prime celebration!'
+                      : elapsedMs < 19100
+                        ? 'Skip count by 11s (lightning!)'
+                        : elapsedMs < 20300
+                          ? 'Composites falling...'
+                          : 'Prime celebration!'
 
   return (
     <div data-component="sieve-story-harness">
