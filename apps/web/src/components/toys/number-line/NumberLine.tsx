@@ -867,8 +867,10 @@ export function NumberLine() {
 
   const handleExploreConstant = useCallback((constantId: string) => {
     exitTour() // mutual exclusion: cancel tour when starting demo
+    stopENarration() // stop any active e demo narration
+    eNarrationTriggeredRef.current = false // reset trigger for new demo session
     startDemo(constantId)
-  }, [startDemo, exitTour])
+  }, [startDemo, exitTour, stopENarration])
 
   // --- Debug tuning handlers for golden ratio demo ---
   const handleDecayChange = useCallback((v: number) => {
@@ -938,7 +940,7 @@ export function NumberLine() {
         : 'rgba(168, 85, 247, 0.6)'
       scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
     }
-  }, [scrubberProgressFromPointer, setRevealProgress])
+  }, [scrubberProgressFromPointer, setRevealProgress, stopENarration])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDraggingScrubberRef.current) return
@@ -986,7 +988,7 @@ export function NumberLine() {
         return
     }
     setRevealProgress(progress)
-  }, [demoStateRef, setRevealProgress])
+  }, [demoStateRef, setRevealProgress, stopENarration])
 
   const handleScrubberFocus = useCallback(() => {
     if (scrubberTrackRef.current) {
