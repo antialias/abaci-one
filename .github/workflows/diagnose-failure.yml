@@ -50,4 +50,4 @@ jobs:
             - Failed logs file: /tmp/failed-logs-truncated.txt
             - Run summary file: /tmp/run-summary.txt
             - Existing fixbot issues file: /tmp/existing-fixbot-issues.json
-          claude_args: "--max-turns 15 --model claude-sonnet-4-5-20250929 --allowedTools Read,Bash"
+          claude_args: "--max-turns 15"
