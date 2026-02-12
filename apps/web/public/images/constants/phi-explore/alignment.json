@@ -3,6 +3,88 @@
     "scale": 0.55,
     "rotation": 9,
     "offsetX": 0.25,
-    "offsetY": -0.29
+    "offsetY": -0.29,
+    "light": {
+      "scale": 1,
+      "rotation": -222.8936446287632,
+      "offsetX": 0.14501510574018128,
+      "offsetY": -0.027190332326283984
+    },
+    "dark": {
+      "scale": 1,
+      "rotation": -513.7480546620438,
+      "offsetX": -0.11116459411014551,
+      "offsetY": -0.01776819484539116
+    }
+  },
+  "galaxy": {
+    "light": {
+      "scale": 1,
+      "rotation": 0,
+      "offsetX": 0,
+      "offsetY": 0.02416918429003021
+    },
+    "dark": {
+      "scale": 1,
+      "rotation": -76.46832925932573,
+      "offsetX": -0.006042296072507553,
+      "offsetY": 0
+    }
+  },
+  "hurricane": {
+    "light": {
+      "scale": 1,
+      "rotation": -22.50830811055247,
+      "offsetX": -0.0030211480362537764,
+      "offsetY": 0.0030211480362537764
+    },
+    "dark": {
+      "scale": 1,
+      "rotation": -46.353149181396326,
+      "offsetX": -0.0030211480362537764,
+      "offsetY": 0.0030211480362537764
+    }
+  },
+  "fiddlehead": {
+    "light": {
+      "scale": 1,
+      "rotation": 0.5089814783293284,
+      "offsetX": 0.07167367621122556,
+      "offsetY": -0.0004257081590119949
+    },
+    "dark": {
+      "scale": 1,
+      "rotation": 0.5089814783293284,
+      "offsetX": 0.02416918429003021,
+      "offsetY": 0.09365558912386707
+    }
+  },
+  "rams-horn": {
+    "light": {
+      "scale": 1,
+      "rotation": 0,
+      "offsetX": -0.06948640483383685,
+      "offsetY": -0.1148036253776435
+    },
+    "dark": {
+      "scale": 1,
+      "rotation": 0,
+      "offsetX": 0.1148036253776435,
+      "offsetY": -0.08459214501510574
+    }
+  },
+  "wave": {
+    "light": {
+      "scale": 1,
+      "rotation": 0,
+      "offsetX": 0.027190332326283987,
+      "offsetY": 0.0030211480362537764
+    },
+    "dark": {
+      "scale": 1,
+      "rotation": 0,
+      "offsetX": 0,
+      "offsetY": -0.006042296072507554
+    }
   }
 }

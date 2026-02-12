@@ -1483,7 +1483,7 @@ function PhiExploreCard({
   onTogglePrompt,
   onRegenerate,
   provider,
-  isAligning,
+  aligningTheme,
   onToggleAlign,
 }: {
   subject: PhiExploreImageStatus
@@ -1493,8 +1493,8 @@ function PhiExploreCard({
   onTogglePrompt: () => void
   onRegenerate: () => void
   provider: string
-  isAligning: boolean
-  onToggleAlign: () => void
+  aligningTheme: 'light' | 'dark' | null
+  onToggleAlign: (theme: 'light' | 'dark') => void
 }) {
   const variants: Array<{ key: string; label: string; suffix: string; exists: boolean }> = [
     { key: 'base', label: 'base', suffix: '', exists: subject.exists },
@@ -1668,23 +1668,42 @@ function PhiExploreCard({
           >
             Prompt
           </button>
-          {subject.exists && (
+          {subject.lightExists && (
             <button
-              data-action={`align-phi-${subject.id}`}
-              onClick={onToggleAlign}
+              data-action={`align-phi-${subject.id}-light`}
+              onClick={() => onToggleAlign('light')}
               className={css({
                 fontSize: '11px',
-                backgroundColor: isAligning ? '#1f6feb' : '#21262d',
-                color: isAligning ? '#fff' : '#8b949e',
+                backgroundColor: aligningTheme === 'light' ? '#1f6feb' : '#21262d',
+                color: aligningTheme === 'light' ? '#fff' : '#8b949e',
                 border: '1px solid',
-                borderColor: isAligning ? '#1f6feb' : '#30363d',
+                borderColor: aligningTheme === 'light' ? '#1f6feb' : '#30363d',
                 borderRadius: '4px',
                 padding: '4px 8px',
                 cursor: 'pointer',
-                '&:hover': { backgroundColor: isAligning ? '#388bfd' : '#30363d' },
+                '&:hover': { backgroundColor: aligningTheme === 'light' ? '#388bfd' : '#30363d' },
               })}
             >
-              Align
+              Align L
+            </button>
+          )}
+          {subject.darkExists && (
+            <button
+              data-action={`align-phi-${subject.id}-dark`}
+              onClick={() => onToggleAlign('dark')}
+              className={css({
+                fontSize: '11px',
+                backgroundColor: aligningTheme === 'dark' ? '#1f6feb' : '#21262d',
+                color: aligningTheme === 'dark' ? '#fff' : '#8b949e',
+                border: '1px solid',
+                borderColor: aligningTheme === 'dark' ? '#1f6feb' : '#30363d',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                '&:hover': { backgroundColor: aligningTheme === 'dark' ? '#388bfd' : '#30363d' },
+              })}
+            >
+              Align D
             </button>
           )}
         </div>
@@ -1715,16 +1734,18 @@ function PhiExploreCard({
 // --- Alignment Editor ---
 
 const ARC_SWEEP = Math.PI / 2
-const CANVAS_WIDTH = 500
+const CANVAS_WIDTH = 600
 const CANVAS_HEIGHT = Math.round(CANVAS_WIDTH / RECT_RATIO)
 
 function PhiAlignmentEditor({
   subjectId,
+  theme,
   alignment,
   onSave,
   onClose,
 }: {
   subjectId: string
+  theme: 'light' | 'dark'
   alignment: AlignmentConfig
   onSave: (alignment: AlignmentConfig) => void
   onClose: () => void
@@ -1735,21 +1756,47 @@ function PhiAlignmentEditor({
   const imgRef = useRef<HTMLImageElement | null>(null)
   const imgLoadedRef = useRef(false)
 
-  // Load the subject image
+  // Refs for mouse interaction (avoid re-renders during drag)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+
+  const layoutRef = useRef<{
+    convCx: number
+    convCy: number
+    mapScale: number
+    boxH: number
+    spiralW: number
+    ox: number
+    oy: number
+  } | null>(null)
+
+  const dragRef = useRef<{
+    mode: 'pan' | 'rotate'
+    startClientX: number
+    startClientY: number
+    startOffsetX: number
+    startOffsetY: number
+    startRotation: number
+    startAngle: number
+    capturedScale: number
+    capturedRotationRad: number
+  } | null>(null)
+
+  // Load the themed image
   useEffect(() => {
+    imgLoadedRef.current = false
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       imgRef.current = img
       imgLoadedRef.current = true
-      // Trigger a redraw
-      drawCanvas()
+      redraw()
     }
-    img.src = `/images/constants/phi-explore/${subjectId}.png?t=${Date.now()}`
+    img.src = `/images/constants/phi-explore/${subjectId}-${theme}.png?t=${Date.now()}`
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjectId])
+  }, [subjectId, theme])
 
-  const drawCanvas = useCallback(() => {
+  const redraw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -1759,59 +1806,59 @@ function PhiAlignmentEditor({
     canvas.width = CANVAS_WIDTH * dpr
     canvas.height = CANVAS_HEIGHT * dpr
     ctx.scale(dpr, dpr)
-
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-    // Map subdivision coords to canvas pixels.
-    // Subdivisions live in [0, RECT_RATIO] × [-1, 0].
-    // We want padding around the rectangle.
+    // Map subdivision coords [0, RECT_RATIO] × [-1, 0] to canvas with padding
     const pad = 20
     const drawW = CANVAS_WIDTH - pad * 2
     const drawH = CANVAS_HEIGHT - pad * 2
-    // Scale so [0, RECT_RATIO] maps to drawW and [-1, 0] maps to drawH
-    const scale = Math.min(drawW / RECT_RATIO, drawH / 1)
-    const ox = pad + (drawW - RECT_RATIO * scale) / 2
-    const oy = pad + (drawH - 1 * scale) / 2
+    const mapScale = Math.min(drawW / RECT_RATIO, drawH / 1)
+    const ox = pad + (drawW - RECT_RATIO * mapScale) / 2
+    const oy = pad + (drawH - 1 * mapScale) / 2
 
-    // Sub coords → canvas
-    const toCanvasX = (x: number) => ox + x * scale
-    const toCanvasY = (y: number) => oy + (-y) * scale  // flip y: sub y=-1 → bottom, y=0 → top
+    const toCanvasX = (x: number) => ox + x * mapScale
+    const toCanvasY = (y: number) => oy + (-y) * mapScale
 
-    // Spiral bounding box center in canvas coords
-    const spiralCx = toCanvasX(RECT_RATIO / 2)
-    const spiralCy = toCanvasY(-0.5)
-    const spiralW = RECT_RATIO * scale
-    const spiralH = 1 * scale
+    // Spiral convergence point in canvas coords
+    const convCx = toCanvasX(SPIRAL_CONVERGENCE.x)
+    const convCy = toCanvasY(SPIRAL_CONVERGENCE.y)
+    const boxH = 1 * mapScale
+    const spiralW = RECT_RATIO * mapScale
+
+    // Store layout for mouse handlers
+    layoutRef.current = { convCx, convCy, mapScale, boxH, spiralW, ox, oy }
 
     // --- Draw image with transforms ---
+    // Transform: rotate + scale around convergence point, then image at offset position
     if (imgRef.current && imgLoadedRef.current) {
       ctx.save()
 
-      // Clip to the spiral bounding box area (with some margin)
+      // Clip to golden rectangle area (with margin)
       ctx.beginPath()
-      ctx.rect(ox - 2, oy - 2, RECT_RATIO * scale + 4, 1 * scale + 4)
+      ctx.rect(ox - 2, oy - 2, spiralW + 4, boxH + 4)
       ctx.clip()
 
-      // Translate to spiral center, apply user transforms
-      ctx.translate(spiralCx + draft.offsetX * spiralW, spiralCy + draft.offsetY * spiralH)
+      // Rotate + scale around the convergence point
+      ctx.translate(convCx, convCy)
       ctx.rotate((draft.rotation * Math.PI) / 180)
       ctx.scale(draft.scale, draft.scale)
+      ctx.translate(-convCx, -convCy)
 
-      // Draw image centered
+      // Draw image at its offset position
       const img = imgRef.current
       const imgAspect = img.naturalWidth / img.naturalHeight
-      const boxAspect = spiralW / spiralH
+      const boxAspect = spiralW / boxH
       let imgDrawW: number, imgDrawH: number
       if (imgAspect > boxAspect) {
-        // Image wider → fit height
-        imgDrawH = spiralH
-        imgDrawW = spiralH * imgAspect
+        imgDrawH = boxH
+        imgDrawW = boxH * imgAspect
       } else {
-        // Image taller → fit width
         imgDrawW = spiralW
         imgDrawH = spiralW / imgAspect
       }
-      ctx.drawImage(img, -imgDrawW / 2, -imgDrawH / 2, imgDrawW, imgDrawH)
+      const imgCx = convCx + draft.offsetX * boxH
+      const imgCy = convCy + draft.offsetY * boxH
+      ctx.drawImage(img, imgCx - imgDrawW / 2, imgCy - imgDrawH / 2, imgDrawW, imgDrawH)
       ctx.restore()
     }
 
@@ -1819,31 +1866,146 @@ function PhiAlignmentEditor({
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.7)'
     ctx.lineWidth = 2
     for (const sub of SUBDIVISIONS) {
-      const r = sub.side * scale
+      const r = sub.side * mapScale
       if (r < 1) continue
-
       const cx = toCanvasX(sub.arcCx)
       const cy = toCanvasY(sub.arcCy)
-
-      // Negate angles because canvas y-axis is flipped relative to subdivision coords
       const startAngle = -sub.arcStartAngle
       const endAngle = -(sub.arcStartAngle + ARC_SWEEP)
-
       ctx.beginPath()
       ctx.arc(cx, cy, r, startAngle, endAngle, true)
       ctx.stroke()
     }
 
-    // Draw bounding rectangle outline
+    // Bounding rectangle outline
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)'
     ctx.lineWidth = 1
-    ctx.strokeRect(toCanvasX(0), toCanvasY(0), RECT_RATIO * scale, 1 * scale)
+    ctx.strokeRect(toCanvasX(0), toCanvasY(0), spiralW, boxH)
+
+    // Convergence point crosshair
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'
+    ctx.lineWidth = 1.5
+    const crossSize = 10
+    ctx.beginPath()
+    ctx.moveTo(convCx - crossSize, convCy)
+    ctx.lineTo(convCx + crossSize, convCy)
+    ctx.moveTo(convCx, convCy - crossSize)
+    ctx.lineTo(convCx, convCy + crossSize)
+    ctx.stroke()
+    // Small circle at convergence
+    ctx.beginPath()
+    ctx.arc(convCx, convCy, 3, 0, Math.PI * 2)
+    ctx.stroke()
   }, [draft])
 
-  // Redraw on every draft change
+  // Redraw on draft changes
   useEffect(() => {
-    drawCanvas()
-  }, [drawCanvas])
+    redraw()
+  }, [redraw])
+
+  // --- Mouse event handlers ---
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const layout = layoutRef.current
+    const canvas = canvasRef.current
+    if (!layout || !canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const cx = e.clientX - rect.left
+    const cy = e.clientY - rect.top
+    const d = draftRef.current
+
+    if (e.altKey) {
+      // Alt+click: position the clicked image point at the convergence point
+      const { convCx, convCy, boxH } = layout
+      const s = d.scale
+      const r = (d.rotation * Math.PI) / 180
+      const u = (cx - convCx) / s
+      const v = (cy - convCy) / s
+      const newOffsetXPx = d.offsetX * boxH - u * Math.cos(r) - v * Math.sin(r)
+      const newOffsetYPx = d.offsetY * boxH + u * Math.sin(r) - v * Math.cos(r)
+      setDraft((prev) => ({
+        ...prev,
+        offsetX: newOffsetXPx / boxH,
+        offsetY: newOffsetYPx / boxH,
+      }))
+      return
+    }
+
+    const mode = e.shiftKey ? 'rotate' : 'pan'
+    const startAngle =
+      mode === 'rotate' ? Math.atan2(cy - layout.convCy, cx - layout.convCx) : 0
+
+    dragRef.current = {
+      mode,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startOffsetX: d.offsetX,
+      startOffsetY: d.offsetY,
+      startRotation: d.rotation,
+      startAngle,
+      capturedScale: d.scale,
+      capturedRotationRad: (d.rotation * Math.PI) / 180,
+    }
+  }, [])
+
+  // Window-level move/up listeners for drag
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current
+      const layout = layoutRef.current
+      const canvas = canvasRef.current
+      if (!drag || !layout || !canvas) return
+
+      if (drag.mode === 'pan') {
+        const dx = e.clientX - drag.startClientX
+        const dy = e.clientY - drag.startClientY
+        const { boxH } = layout
+        const s = drag.capturedScale
+        const r = drag.capturedRotationRad
+        // Convert screen delta to offset delta (accounting for rotation+scale)
+        const dox = (dx * Math.cos(r) + dy * Math.sin(r)) / (boxH * s)
+        const doy = (-dx * Math.sin(r) + dy * Math.cos(r)) / (boxH * s)
+        setDraft((prev) => ({
+          ...prev,
+          offsetX: drag.startOffsetX + dox,
+          offsetY: drag.startOffsetY + doy,
+        }))
+      } else {
+        const rect = canvas.getBoundingClientRect()
+        const cx = e.clientX - rect.left
+        const cy = e.clientY - rect.top
+        const currentAngle = Math.atan2(cy - layout.convCy, cx - layout.convCx)
+        const delta = ((currentAngle - drag.startAngle) * 180) / Math.PI
+        setDraft((prev) => ({
+          ...prev,
+          rotation: drag.startRotation + delta,
+        }))
+      }
+    }
+
+    const handleMouseUp = () => {
+      dragRef.current = null
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const factor = e.deltaY > 0 ? 0.95 : 1.05
+    setDraft((prev) => ({
+      ...prev,
+      scale: Math.max(0.1, Math.min(5, prev.scale * factor)),
+    }))
+  }, [])
+
+  // --- Save / Reset ---
 
   const handleSave = async () => {
     setSaving(true)
@@ -1851,7 +2013,7 @@ function PhiAlignmentEditor({
       const res = await fetch('/api/admin/constant-images/phi-explore/alignment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectId, alignment: draft }),
+        body: JSON.stringify({ subjectId, theme, alignment: draft }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -1869,51 +2031,11 @@ function PhiAlignmentEditor({
     setDraft({ scale: 1, rotation: 0, offsetX: 0, offsetY: 0 })
   }
 
-  const sliderRow = (
-    label: string,
-    field: keyof AlignmentConfig,
-    min: number,
-    max: number,
-    step: number
-  ) => (
-    <div
-      data-element={`slider-${field}`}
-      className={css({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-      })}
-    >
-      <span className={css({ fontSize: '11px', color: '#8b949e', width: '60px', flexShrink: 0 })}>
-        {label}
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={draft[field]}
-        onChange={(e) => setDraft((prev) => ({ ...prev, [field]: parseFloat(e.target.value) }))}
-        className={css({ flex: 1, accentColor: '#8957e5' })}
-      />
-      <span
-        className={css({
-          fontSize: '11px',
-          color: '#c9d1d9',
-          width: '50px',
-          textAlign: 'right',
-          fontFamily: 'monospace',
-        })}
-      >
-        {draft[field].toFixed(field === 'rotation' ? 1 : 2)}
-      </span>
-    </div>
-  )
-
   return (
     <div
       data-element="phi-alignment-editor"
       data-subject-id={subjectId}
+      data-theme={theme}
       className={css({
         backgroundColor: '#161b22',
         border: '1px solid #30363d',
@@ -1922,81 +2044,105 @@ function PhiAlignmentEditor({
         padding: '16px',
       })}
     >
+      {/* Interaction hints */}
+      <div
+        data-element="alignment-hints"
+        className={css({
+          fontSize: '11px',
+          color: '#8b949e',
+          marginBottom: '8px',
+          display: 'flex',
+          gap: '16px',
+          flexWrap: 'wrap',
+        })}
+      >
+        <span>Drag: pan</span>
+        <span>Scroll: scale</span>
+        <span>Shift+drag: rotate</span>
+        <span>Alt+click: set spiral center</span>
+      </div>
+
       {/* Canvas */}
       <canvas
         ref={canvasRef}
-        style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
+        style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, cursor: 'grab' }}
         className={css({
           display: 'block',
-          margin: '0 auto 16px',
+          margin: '0 auto 12px',
           backgroundColor: '#0d1117',
           borderRadius: '4px',
           border: '1px solid #30363d',
         })}
+        onMouseDown={handleMouseDown}
+        onWheel={handleWheel}
       />
 
-      {/* Sliders */}
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' })}>
-        {sliderRow('Scale', 'scale', 0.2, 3.0, 0.01)}
-        {sliderRow('Rotation', 'rotation', -180, 180, 0.5)}
-        {sliderRow('Offset X', 'offsetX', -1.0, 1.0, 0.01)}
-        {sliderRow('Offset Y', 'offsetY', -1.0, 1.0, 0.01)}
-      </div>
-
-      {/* Buttons */}
-      <div className={css({ display: 'flex', gap: '8px' })}>
-        <button
-          data-action="save-alignment"
-          onClick={handleSave}
-          disabled={saving}
+      {/* Readout + buttons */}
+      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' })}>
+        <span
+          data-element="alignment-readout"
           className={css({
-            fontSize: '12px',
-            backgroundColor: '#238636',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '6px 16px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            '&:hover': { backgroundColor: '#2ea043' },
-            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-          })}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-        <button
-          data-action="reset-alignment"
-          onClick={handleReset}
-          className={css({
-            fontSize: '12px',
-            backgroundColor: '#21262d',
-            color: '#c9d1d9',
-            border: '1px solid #30363d',
-            borderRadius: '6px',
-            padding: '6px 16px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            '&:hover': { backgroundColor: '#30363d' },
-          })}
-        >
-          Reset
-        </button>
-        <button
-          data-action="close-alignment"
-          onClick={onClose}
-          className={css({
-            fontSize: '12px',
-            backgroundColor: '#21262d',
+            fontSize: '11px',
             color: '#8b949e',
-            border: '1px solid #30363d',
-            borderRadius: '6px',
-            padding: '6px 16px',
-            cursor: 'pointer',
-            '&:hover': { backgroundColor: '#30363d' },
+            fontFamily: 'monospace',
           })}
         >
-          Close
-        </button>
+          S:{draft.scale.toFixed(2)} R:{draft.rotation.toFixed(1)} X:{draft.offsetX.toFixed(2)} Y:{draft.offsetY.toFixed(2)}
+        </span>
+        <div className={css({ marginLeft: 'auto', display: 'flex', gap: '8px' })}>
+          <button
+            data-action="save-alignment"
+            onClick={handleSave}
+            disabled={saving}
+            className={css({
+              fontSize: '12px',
+              backgroundColor: '#238636',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 16px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              '&:hover': { backgroundColor: '#2ea043' },
+              '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            data-action="reset-alignment"
+            onClick={handleReset}
+            className={css({
+              fontSize: '12px',
+              backgroundColor: '#21262d',
+              color: '#c9d1d9',
+              border: '1px solid #30363d',
+              borderRadius: '6px',
+              padding: '6px 16px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              '&:hover': { backgroundColor: '#30363d' },
+            })}
+          >
+            Reset
+          </button>
+          <button
+            data-action="close-alignment"
+            onClick={onClose}
+            className={css({
+              fontSize: '12px',
+              backgroundColor: '#21262d',
+              color: '#8b949e',
+              border: '1px solid #30363d',
+              borderRadius: '6px',
+              padding: '6px 16px',
+              cursor: 'pointer',
+              '&:hover': { backgroundColor: '#30363d' },
+            })}
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   )
