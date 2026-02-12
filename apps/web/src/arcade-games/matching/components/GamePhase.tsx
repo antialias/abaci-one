@@ -1,18 +1,43 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useViewerId } from '@/hooks/useViewerId'
 import { MemoryGrid } from '@/components/matching/MemoryGrid'
 import { css } from '../../../../styled-system/css'
 import { useMatching } from '../Provider'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { GameCard } from './GameCard'
+import type { GameCard as GameCardType } from '../types'
+
+// Abacus-specific smart dimming logic (extracted from MemoryGrid)
+function shouldDimAbacusCard(card: GameCardType, firstFlippedCard: GameCardType): boolean {
+  // If first card is abacus, only numeral cards should be clickable
+  if (firstFlippedCard.type === 'abacus' && card.type !== 'number') {
+    return true
+  }
+  // If first card is numeral, only abacus cards should be clickable
+  if (firstFlippedCard.type === 'number' && card.type !== 'abacus') {
+    return true
+  }
+  return false
+}
 
 export function GamePhase() {
   const { state, flipCard, hoverCard, gameMode } = useMatching()
   const { data: viewerId } = useViewerId()
 
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
+
+  // Only apply dimming for abacus-numeral mode
+  const dimCard = useCallback(
+    (card: GameCardType, firstFlipped: GameCardType) => {
+      if (state.gameType === 'abacus-numeral') {
+        return shouldDimAbacusCard(card, firstFlipped)
+      }
+      return false
+    },
+    [state.gameType]
+  )
 
   return (
     <div
@@ -44,6 +69,7 @@ export function GamePhase() {
           hoverCard={hoverCard}
           viewerId={viewerId}
           gameMode={gameMode}
+          shouldDimCard={dimCard}
           renderCard={({ card, isFlipped, isMatched, onClick, disabled }) => (
             <GameCard
               card={card}

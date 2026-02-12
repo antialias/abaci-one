@@ -84,7 +84,6 @@ export interface MemoryGridState<TCard = any> {
   flippedCards: TCard[]
   showMismatchFeedback: boolean
   isProcessingMove: boolean
-  gameType: string
   playerMetadata?: Record<string, { emoji: string; name: string; color?: string; userId?: string }>
   playerHovers?: Record<string, string | null>
   currentPlayer?: string
@@ -102,6 +101,9 @@ export interface MemoryGridProps<TCard = any> {
   viewerId?: string | null
   gameMode?: 'single' | 'multiplayer'
 
+  // Smart dimming (optional) — externalizes game-specific dimming logic
+  shouldDimCard?: (card: TCard, firstFlippedCard: TCard) => boolean
+
   // Card rendering
   renderCard: (props: {
     card: TCard
@@ -117,7 +119,7 @@ export interface MemoryGridProps<TCard = any> {
  * Conditionally enables multiplayer presence features (hover avatars) when configured.
  */
 export function MemoryGrid<
-  TCard extends { id: string; matched: boolean; type: string; number: number },
+  TCard extends { id: string; matched: boolean },
 >({
   state,
   gridConfig,
@@ -127,6 +129,7 @@ export function MemoryGrid<
   hoverCard,
   viewerId,
   gameMode = 'single',
+  shouldDimCard,
 }: MemoryGridProps<TCard>) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
   const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
@@ -209,40 +212,19 @@ export function MemoryGrid<
           const shouldShake =
             state.showMismatchFeedback && state.flippedCards.some((c) => c.id === card.id)
 
-          // Smart card filtering for abacus-numeral mode
+          // Smart card filtering via shouldDimCard prop
           let isValidForSelection = true
           let isDimmed = false
 
           if (
-            state.gameType === 'abacus-numeral' &&
+            shouldDimCard &&
             state.flippedCards.length === 1 &&
             !isFlipped &&
             !isMatched
           ) {
             const firstFlippedCard = state.flippedCards[0]
-
-            // If first card is abacus, only numeral cards should be clickable
-            if (firstFlippedCard.type === 'abacus' && card.type !== 'number') {
-              isValidForSelection = false
-              isDimmed = true
-            }
-            // If first card is numeral, only abacus cards should be clickable
-            else if (firstFlippedCard.type === 'number' && card.type !== 'abacus') {
-              isValidForSelection = false
-              isDimmed = true
-            }
-            // Also check if it's a potential match by number
-            else if (
-              (firstFlippedCard.type === 'abacus' &&
-                card.type === 'number' &&
-                card.number !== firstFlippedCard.number) ||
-              (firstFlippedCard.type === 'number' &&
-                card.type === 'abacus' &&
-                card.number !== firstFlippedCard.number)
-            ) {
-              // Don't completely disable, but could add subtle visual hint for non-matching numbers
-              // For now, keep all valid type combinations clickable
-            }
+            isDimmed = shouldDimCard(card, firstFlippedCard)
+            isValidForSelection = !isDimmed
           }
 
           return (
@@ -251,8 +233,8 @@ export function MemoryGrid<
               ref={enableMultiplayerPresence ? setCardRef(card.id) : undefined}
               data-component="matching-card"
               data-card-id={card.id}
-              data-card-number={card.number}
-              data-card-type={card.type}
+              data-card-number={(card as any).number}
+              data-card-type={(card as any).type}
               data-card-matched={isMatched ? 'true' : 'false'}
               data-card-flipped={isFlipped ? 'true' : 'false'}
               className={css({
