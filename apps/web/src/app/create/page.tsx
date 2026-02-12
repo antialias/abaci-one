@@ -31,6 +31,12 @@ const cardThemes = {
     checkBg: 'cyan.100',
     checkColor: 'cyan.600',
   },
+  musicFlashcards: {
+    gradient: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
+    shadowColor: 'rgba(236, 72, 153, 0.4)',
+    checkBg: 'pink.100',
+    checkColor: 'pink.600',
+  },
 } as const
 
 type CardType = keyof typeof cardThemes
@@ -346,6 +352,20 @@ export default function CreateHubPage() {
                 t('visionAbacus.feature3'),
               ]}
               buttonText={t('visionAbacus.button')}
+            />
+
+            <CreatorCard
+              type="musicFlashcards"
+              href="/create/music-flashcards"
+              emoji="🎵"
+              title="Music Flashcards"
+              description="Generate printable flashcards for learning to read music notation on treble and bass clef."
+              features={[
+                'Treble & bass clef support',
+                'Violin first position preset',
+                'Multiple layout options',
+              ]}
+              buttonText="Create Music Cards"
             />
           </div>
         </div>
