@@ -7,16 +7,20 @@ import type { NumberLineState } from '../../types'
 const TOTAL_DURATION_S = 15
 
 function getPhaseLabel(p: number): string {
-  if (p < 0.06) return 'Seed: vine appears at length 1'
-  if (p < 0.19) return 'n=1: one big growth spurt → 2'
-  if (p < 0.35) return 'n=2: two rounds → 2.25 — new leaves grew leaves!'
-  if (p < 0.45) return 'n=3: three rounds → 2.370'
-  if (p < 0.55) return 'n=4: four rounds → 2.441'
-  if (p < 0.64) return 'n=8: eight rounds → 2.566'
-  if (p < 0.71) return 'n=16: sixteen rounds → 2.638'
-  if (p < 0.82) return 'Smooth: every leaf growing at once → e'
-  if (p < 0.92) return 'Convergence: all results cluster at e'
-  return 'Labels: formula and annotations'
+  if (p < 0.06) return 'Can the vine reach the star?'
+  if (p < 0.14) return 'Day 1: One BIG leap! → 2 (Not quite!)'
+  if (p < 0.40) return 'Day 2: Share the work! Hop → rest (bigger vine!) → bigger hop!'
+  if (p < 0.47) return 'Day 3: More helpers! → 2.370'
+  if (p < 0.53) return 'Day 4: Even more helpers! → 2.441'
+  if (p < 0.57) return 'Day 5: More and more! → 2.488'
+  if (p < 0.61) return 'Day 6: So many helpers! → 2.522'
+  if (p < 0.64) return 'Day 7: A whole team! → 2.566'
+  if (p < 0.67) return 'Day 8: A bigger team! → 2.613'
+  if (p < 0.70) return 'Day 9: A huge team! → 2.653'
+  if (p < 0.73) return 'Day 10: Everybody helps! → 2.692'
+  if (p < 0.83) return 'The secret: everyone grows together!'
+  if (p < 0.92) return 'Each day, the vine got closer...'
+  return 'The perfect growth number: e ≈ 2.718'
 }
 
 function drawBackground(
