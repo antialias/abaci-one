@@ -23,6 +23,7 @@ import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
 import { renderGammaOverlay } from './constants/demos/gammaDemo'
+import { renderSqrt2Overlay } from './constants/demos/sqrt2Demo'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
 import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
 import { E_DEMO_SEGMENTS, E_DEMO_TONE } from './constants/demos/eDemoNarration'
@@ -30,6 +31,7 @@ import { PI_DEMO_SEGMENTS, PI_DEMO_TONE } from './constants/demos/piDemoNarratio
 import { TAU_DEMO_SEGMENTS, TAU_DEMO_TONE } from './constants/demos/tauDemoNarration'
 import { PHI_DEMO_SEGMENTS, PHI_DEMO_TONE } from './constants/demos/phiDemoNarration'
 import { GAMMA_DEMO_SEGMENTS, GAMMA_DEMO_TONE } from './constants/demos/gammaDemoNarration'
+import { SQRT2_DEMO_SEGMENTS, SQRT2_DEMO_TONE } from './constants/demos/sqrt2DemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
@@ -69,6 +71,7 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   tau: { segments: TAU_DEMO_SEGMENTS, tone: TAU_DEMO_TONE },
   phi: { segments: PHI_DEMO_SEGMENTS, tone: PHI_DEMO_TONE },
   gamma: { segments: GAMMA_DEMO_SEGMENTS, tone: GAMMA_DEMO_TONE },
+  sqrt2: { segments: SQRT2_DEMO_SEGMENTS, tone: SQRT2_DEMO_TONE },
 }
 
 const INITIAL_STATE: NumberLineState = {
@@ -432,7 +435,9 @@ export function NumberLine() {
         ? tourTs.virtualDwellMs
         : tourTs.phase === 'fading' ? Infinity : 0
       const viewportRight = stateRef.current.center + cssWidth / (2 * stateRef.current.pixelsPerUnit)
-      sieveTransforms = computeSieveTickTransforms(SWEEP_MAX_N, sieveDwellElapsed, cssHeight, viewportRight)
+      // Use max of SWEEP_MAX_N and viewport edge so composites beyond 120 are also hidden
+      const sieveMaxN = Math.max(SWEEP_MAX_N, Math.ceil(viewportRight) + 5)
+      sieveTransforms = computeSieveTickTransforms(sieveMaxN, sieveDwellElapsed, cssHeight, viewportRight)
       // Smoothly ramp tick uniformity over first 2s (ease-out quad)
       const rawT = Math.min(1, sieveDwellElapsed / 2000)
       sieveUniformity = rawT * (2 - rawT)
@@ -492,6 +497,12 @@ export function NumberLine() {
     }
     if (ds.phase !== 'idle' && ds.constantId === 'gamma') {
       renderGammaOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+    if (ds.phase !== 'idle' && ds.constantId === 'sqrt2') {
+      renderSqrt2Overlay(
         ctx, stateRef.current, cssWidth, cssHeight,
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )
