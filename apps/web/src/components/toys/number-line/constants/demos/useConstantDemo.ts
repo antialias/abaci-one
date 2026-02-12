@@ -6,6 +6,7 @@ import { tauDemoViewport } from './tauDemo'
 import { eDemoViewport } from './eDemo'
 import { gammaDemoViewport } from './gammaDemo'
 import { sqrt2DemoViewport } from './sqrt2Demo'
+import { ramanujanDemoViewport } from './ramanujanDemo'
 import {
   lerpViewport, snapViewport, computeViewportDeviation,
   FADE_IN_MS, FADE_OUT_MS,
@@ -39,7 +40,7 @@ const REVEAL_ANIM_MS = 15000
 const DEVIATION_THRESHOLD = 0.4
 
 /** Constants that have demos available */
-export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2'])
+export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'])
 
 // ── Viewport zoom keyframes ────────────────────────────────────────
 //
@@ -98,6 +99,22 @@ function getZoomKeyframes(
       { progress: 0.975, center: 3.14155,    pixelsPerUnit: ppuForRange(cssWidth, 3.1415, 3.1416) },
       { progress: 0.99,  center: 3.141595,   pixelsPerUnit: ppuForRange(cssWidth, 3.14159, 3.14160) },
       { progress: 1.0,   center: 3.1415925,  pixelsPerUnit: ppuForRange(cssWidth, 3.141592, 3.141593) },
+    ]
+  }
+
+  if (constantId === 'ramanujan') {
+    const base = ramanujanDemoViewport(cssWidth, cssHeight)
+    return [
+      // Phase 0: divergence view [0,15]
+      { progress: 0.00, ...base },
+      // Phase 1-3: shift to derivation work area [−3,5]
+      { progress: 0.10, center: 1,     pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
+      // Hold derivation view through phases 1-3
+      { progress: 0.70, center: 1,     pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
+      // Phase 4: zoom into reveal at [−0.5,0.5]
+      { progress: 0.85, center: -0.04, pixelsPerUnit: ppuForRange(cssWidth, -0.5, 0.5) },
+      // Hold reveal view
+      { progress: 1.00, center: -0.04, pixelsPerUnit: ppuForRange(cssWidth, -0.5, 0.5) },
     ]
   }
 
@@ -210,6 +227,8 @@ export function useConstantDemo(
       target = gammaDemoViewport(cssWidth, cssHeight)
     } else if (constantId === 'sqrt2') {
       target = sqrt2DemoViewport(cssWidth, cssHeight)
+    } else if (constantId === 'ramanujan') {
+      target = ramanujanDemoViewport(cssWidth, cssHeight)
     }
 
     // Store source viewport for interpolation

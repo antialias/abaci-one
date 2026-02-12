@@ -24,6 +24,7 @@ import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
 import { renderGammaOverlay } from './constants/demos/gammaDemo'
 import { renderSqrt2Overlay } from './constants/demos/sqrt2Demo'
+import { renderRamanujanOverlay } from './constants/demos/ramanujanDemo'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
 import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
@@ -33,6 +34,7 @@ import { TAU_DEMO_SEGMENTS, TAU_DEMO_TONE } from './constants/demos/tauDemoNarra
 import { PHI_DEMO_SEGMENTS, PHI_DEMO_TONE } from './constants/demos/phiDemoNarration'
 import { GAMMA_DEMO_SEGMENTS, GAMMA_DEMO_TONE } from './constants/demos/gammaDemoNarration'
 import { SQRT2_DEMO_SEGMENTS, SQRT2_DEMO_TONE } from './constants/demos/sqrt2DemoNarration'
+import { RAMANUJAN_DEMO_SEGMENTS, RAMANUJAN_DEMO_TONE } from './constants/demos/ramanujanDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
@@ -73,6 +75,7 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   phi: { segments: PHI_DEMO_SEGMENTS, tone: PHI_DEMO_TONE },
   gamma: { segments: GAMMA_DEMO_SEGMENTS, tone: GAMMA_DEMO_TONE },
   sqrt2: { segments: SQRT2_DEMO_SEGMENTS, tone: SQRT2_DEMO_TONE },
+  ramanujan: { segments: RAMANUJAN_DEMO_SEGMENTS, tone: RAMANUJAN_DEMO_TONE },
 }
 
 const INITIAL_STATE: NumberLineState = {
@@ -505,6 +508,12 @@ export function NumberLine() {
     }
     if (ds.phase !== 'idle' && ds.constantId === 'sqrt2') {
       renderSqrt2Overlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+    if (ds.phase !== 'idle' && ds.constantId === 'ramanujan') {
+      renderRamanujanOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )
