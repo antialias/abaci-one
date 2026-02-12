@@ -20,13 +20,21 @@ export const SIEVE_PHASES: SievePhase[] = [
 
 export const CELEBRATION_START_MS = 19100
 
+/**
+ * Fixed maximum N for sweep calculations. All sweep progress, composite mark
+ * timing, and hopper position use this constant so they stay in sync with the
+ * viewport tracking in getSieveViewportState. Viewport-dependent bounds are
+ * only used for visibility culling (deciding which composites to draw).
+ */
+export const SWEEP_MAX_N = 120
+
 // --- Per-composite animation ---
 
 /** Timing constants for each composite's animation after being marked */
-const FLASH_DURATION = 300
-const SHAKE_DURATION = 200 // 300–500ms after mark
-const FALL_DURATION = 700 // 500–1200ms after mark
-const ANIM_TOTAL = FLASH_DURATION + SHAKE_DURATION + FALL_DURATION // 1200ms
+const FLASH_DURATION = 120
+const SHAKE_DURATION = 130 // 120–250ms after mark
+const FALL_DURATION = 350  // 250–600ms after mark
+const ANIM_TOTAL = FLASH_DURATION + SHAKE_DURATION + FALL_DURATION // 600ms
 
 interface CompositeAnimState {
   factor: number // which prime factor marked it
@@ -63,11 +71,22 @@ function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3)
 }
 
+// --- Sieve debug tuning (module-level, same pattern as goldenRatioDemo) ---
+
+let sieveTrackingRange = 20
+let sieveFollowHops = 15
+
+export function getSieveTrackingRange(): number { return sieveTrackingRange }
+export function setSieveTrackingRange(v: number): void { sieveTrackingRange = Math.max(5, v) }
+export function getSieveFollowHops(): number { return sieveFollowHops }
+export function setSieveFollowHops(v: number): void { sieveFollowHops = Math.max(1, Math.round(v)) }
+
 // --- Compute marked composites with exact mark times ---
 
 function computeCompositeStates(
   maxN: number,
-  dwellElapsedMs: number
+  dwellElapsedMs: number,
+  viewportRight?: number
 ): Map<number, CompositeAnimState> {
   const composites = new Map<number, CompositeAnimState>()
 
@@ -100,6 +119,16 @@ function computeCompositeStates(
       const markTimeMs = phase.startMs + linearFraction * phase.durationMs
 
       composites.set(m, { factor: p, markTimeMs })
+    }
+
+    // Once the hopper has left the viewport, mark ALL remaining multiples
+    // of this factor as already fallen. This prevents un-eliminated composites
+    // from being visible when the viewport zooms out.
+    if (viewportRight !== undefined && maxReached > viewportRight) {
+      for (let m = firstMultiple; m <= maxN; m += p) {
+        if (composites.has(m)) continue
+        composites.set(m, { factor: p, markTimeMs: dwellElapsedMs - ANIM_TOTAL - 1 })
+      }
     }
   }
 
@@ -230,14 +259,22 @@ function lerpViewport(a: SieveViewport, b: SieveViewport, t: number): SieveViewp
 export function getSieveViewportState(
   virtualDwellMs: number,
   keyframes: SievePhaseViewports[],
-  celebrationVp: SieveViewport
+  celebrationVp: SieveViewport,
+  cssWidth = 800,
+  maxN = 120
 ): SieveViewport | null {
   if (keyframes.length === 0) return null
 
-  // Before first phase: hold at factor 2's start viewport
+  // --- Factor 2 hopper-tracking ---
+  // Follow the hopper closely for the first N hops, showing M integers
+  // around it so kids can see skip counting clearly. Tunable via debug panel.
+  const followUntilValue = 2 + sieveFollowHops * 2
+  const trackingPpu = cssWidth / (sieveTrackingRange * 1.4)
+
+  // Before first phase: hold at factor 2's tracking start (centered on 2)
   const firstPhase = SIEVE_PHASES[0]
   if (virtualDwellMs < firstPhase.startMs) {
-    return keyframes[0].start
+    return { center: firstPhase.factor, pixelsPerUnit: trackingPpu }
   }
 
   // During celebration: interpolate last end → celebration viewport
@@ -261,6 +298,26 @@ export function getSieveViewportState(
     if (virtualDwellMs >= phase.startMs && virtualDwellMs < phaseEnd) {
       const linearT = clamp01((virtualDwellMs - phase.startMs) / phase.durationMs)
       const easedT = sweepEase(linearT, phase.factor)
+
+      // Factor 2: track the hopper for the first 15 hops
+      if (phase.factor === 2) {
+        const sweepValue = phase.factor + (maxN - phase.factor) * easedT
+        const followEndEasedT = (followUntilValue - phase.factor) / (maxN - phase.factor)
+
+        if (easedT <= followEndEasedT) {
+          // Pure tracking: center on hopper, tight zoom
+          return { center: sweepValue, pixelsPerUnit: trackingPpu }
+        }
+
+        // Transition from tracking to regular keyframe viewport
+        const transitionRange = 0.15
+        const transitionT = clamp01((easedT - followEndEasedT) / transitionRange)
+        const eased = easeOutCubic(transitionT)
+        const trackVp: SieveViewport = { center: sweepValue, pixelsPerUnit: trackingPpu }
+        const regularVp = lerpViewport(kf.start, kf.end, easedT)
+        return lerpViewport(trackVp, regularVp, eased)
+      }
+
       return lerpViewport(kf.start, kf.end, easedT)
     }
 
@@ -271,6 +328,9 @@ export function getSieveViewportState(
       const gapT = clamp01((virtualDwellMs - phaseEnd) / gapDuration)
       const eased = easeOutCubic(gapT)
       const nextKf = keyframes[i + 1]
+
+      // By end of any phase (including factor 2's tracking), the viewport
+      // has fully blended to kf.end, so the gap transition is uniform.
       return lerpViewport(kf.end, nextKf.start, eased)
     }
   }
@@ -299,46 +359,85 @@ export interface SieveTickTransform {
 /**
  * Compute per-tick transforms for the main renderer during the sieve animation.
  * Composites shake and fall off; primes are unaffected (not in the map).
+ *
+ * Animation is POSITION-BASED, not timestamp-based: progress is derived
+ * directly from how far the hopper has traveled past each composite
+ * (`hopsPast = (sweepValue - m) / factor`). This guarantees zero latency
+ * between the hopper landing on a number and its shake/fall starting,
+ * because they share the exact same sweepValue.
  */
 export function computeSieveTickTransforms(
   maxN: number,
   dwellElapsedMs: number,
-  cssHeight: number
+  cssHeight: number,
+  viewportRight?: number
 ): Map<number, SieveTickTransform> {
-  const composites = computeCompositeStates(maxN, dwellElapsedMs)
   const transforms = new Map<number, SieveTickTransform>()
+  const alreadyMarked = new Set<number>()
 
-  for (const [value, anim] of composites) {
-    const localTime = dwellElapsedMs - anim.markTimeMs
-    if (localTime < 0) continue // not yet marked
+  // Animation thresholds in "hops past" units
+  const SHAKE_HOPS = 0.3
+  const FALL_HOPS = 0.7
+  const TOTAL_HOPS = SHAKE_HOPS + FALL_HOPS // 1.0 hop to fully disappear
 
-    let opacity = 1
-    let offsetX = 0
-    let offsetY = 0
-    let rotation = 0
+  for (const phase of SIEVE_PHASES) {
+    if (dwellElapsedMs < phase.startMs) break
+    const p = phase.factor
+    const firstMultiple = p * 2
+    const sweepStart = p
+    const sweepRange = SWEEP_MAX_N - sweepStart
+    if (sweepRange <= 0) continue
 
-    if (localTime <= FLASH_DURATION) {
-      // Flash phase: tick stays put, overlay draws glow ring
-      opacity = 1
-    } else if (localTime <= FLASH_DURATION + SHAKE_DURATION) {
-      // Shake phase: horizontal oscillation
-      const shakeT = (localTime - FLASH_DURATION) / SHAKE_DURATION
-      offsetX = decayingSin(shakeT, 4, 2) * 3
-    } else if (localTime <= ANIM_TOTAL) {
-      // Fall phase: gravity drop
-      const fallT = (localTime - FLASH_DURATION - SHAKE_DURATION) / FALL_DURATION
-      const easedFall = easeInQuad(fallT)
-      const driftDirection = value % 2 === 0 ? 1 : -1
-      offsetX = driftDirection * easedFall * 8
-      offsetY = easedFall * (cssHeight * 0.8)
-      rotation = driftDirection * easedFall * 0.6
-      opacity = 0.6 * (1 - fallT)
-    } else {
-      // After fall: fully hidden
-      opacity = 0
+    const linearProgress = clamp01(
+      (dwellElapsedMs - phase.startMs) / phase.durationMs
+    )
+    const sweepValue = sweepStart + sweepRange * sweepEase(linearProgress, p)
+
+    // Once hopper leaves viewport, all remaining multiples are instantly gone
+    const hopperOffScreen = viewportRight !== undefined && sweepValue > viewportRight
+
+    for (let m = firstMultiple; m <= maxN; m += p) {
+      if (alreadyMarked.has(m)) continue
+
+      // Hopper hasn't reached this composite yet
+      if (!hopperOffScreen && sweepValue < m) break // multiples are ascending
+
+      alreadyMarked.add(m)
+
+      // Off-screen bulk elimination: instantly hidden
+      if (hopperOffScreen && sweepValue < m) {
+        transforms.set(m, { opacity: 0, offsetX: 0, offsetY: 0, rotation: 0 })
+        continue
+      }
+
+      // How many hops past this composite the hopper has traveled
+      const hopsPast = (sweepValue - m) / p
+
+      let opacity = 1
+      let offsetX = 0
+      let offsetY = 0
+      let rotation = 0
+
+      if (hopsPast <= SHAKE_HOPS) {
+        // Shake: starts the instant the hopper lands
+        const shakeT = hopsPast / SHAKE_HOPS
+        offsetX = decayingSin(shakeT, 4, 2) * 3
+      } else if (hopsPast <= TOTAL_HOPS) {
+        // Fall: gravity drop
+        const fallT = (hopsPast - SHAKE_HOPS) / FALL_HOPS
+        const easedFall = easeInQuad(fallT)
+        const driftDirection = m % 2 === 0 ? 1 : -1
+        offsetX = driftDirection * easedFall * 8
+        offsetY = easedFall * (cssHeight * 0.8)
+        rotation = driftDirection * easedFall * 0.6
+        opacity = 0.6 * (1 - fallT)
+      } else {
+        // Fully hidden
+        opacity = 0
+      }
+
+      transforms.set(m, { opacity, offsetX, offsetY, rotation })
     }
-
-    transforms.set(value, { opacity, offsetX, offsetY, rotation })
   }
 
   return transforms
@@ -367,18 +466,17 @@ export function renderSieveOverlay(
 
   const centerY = cssHeight / 2
 
-  // Visible range in number-line units (with buffer so the sweep covers
-  // composites at the very edge — avoids a frozen margin where ticks are
-  // rendered by the main number line but the sieve sweep hasn't reached).
+  // Visible range in number-line units (used only for visibility culling)
   const EDGE_BUFFER = 5
   const halfRange = cssWidth / (2 * state.pixelsPerUnit)
   const leftValue = state.center - halfRange
   const rightValue = state.center + halfRange
-  const minN = Math.max(2, Math.floor(leftValue) - EDGE_BUFFER)
-  const maxN = Math.ceil(rightValue) + EDGE_BUFFER
+  const visibleMin = Math.max(2, Math.floor(leftValue) - EDGE_BUFFER)
+  const visibleMax = Math.ceil(rightValue) + EDGE_BUFFER
 
-  // Compute all composite animation states
-  const composites = computeCompositeStates(maxN, dwellElapsedMs)
+  // Compute all composite animation states using fixed sweep range
+  // (SWEEP_MAX_N keeps timing in sync with viewport tracking)
+  const composites = computeCompositeStates(SWEEP_MAX_N, dwellElapsedMs, rightValue)
 
   // --- Layer 0: Celebration axis wash (dims composites drawn by main renderer) ---
   if (dwellElapsedMs >= CELEBRATION_START_MS) {
@@ -395,7 +493,7 @@ export function renderSieveOverlay(
   // The main renderer handles tick+label transforms (shake, fall, hide).
   // The overlay only draws the glow marking effect during the flash phase.
   for (const [value, anim] of composites) {
-    if (value < minN || value > maxN) continue
+    if (value < visibleMin || value > visibleMax) continue
 
     const localTime = dwellElapsedMs - anim.markTimeMs
     if (localTime < 0 || localTime > FLASH_DURATION) continue
@@ -439,7 +537,7 @@ export function renderSieveOverlay(
       )
       const progress = sweepEase(linearProgress, p)
       const sweepStart = p
-      const sweepRange = maxN - sweepStart
+      const sweepRange = SWEEP_MAX_N - sweepStart
       const sweepValue = sweepStart + sweepRange * progress
 
       // Which two multiples of p are we between?
@@ -552,7 +650,7 @@ export function renderSieveOverlay(
     const celebrationElapsed = dwellElapsedMs - CELEBRATION_START_MS
     const celebrationRamp = clamp01(celebrationElapsed / 800)
 
-    for (let n = minN; n <= maxN; n++) {
+    for (let n = visibleMin; n <= visibleMax; n++) {
       if (n < 2) continue
       if (smallestPrimeFactor(n) !== n) continue // not a prime
 

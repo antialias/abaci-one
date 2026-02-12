@@ -22,6 +22,7 @@ import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTiming
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
+import { useEDemoNarration } from './constants/demos/useEDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
@@ -29,10 +30,10 @@ import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
 import { computeInterestingPrimes } from './primes/interestingness'
 import type { InterestingPrime } from './primes/interestingness'
-import { usePrimeTour } from './primes/usePrimeTour'
+import { usePrimeTour, getSieveSpeed, setSieveSpeed } from './primes/usePrimeTour'
 import { PRIME_TOUR_STOPS } from './primes/primeTourStops'
 import { renderTourSpotlight } from './primes/renderTourSpotlight'
-import { renderSieveOverlay, computeSieveTickTransforms } from './primes/renderSieveOverlay'
+import { renderSieveOverlay, computeSieveTickTransforms, SWEEP_MAX_N, getSieveTrackingRange, setSieveTrackingRange, getSieveFollowHops, setSieveFollowHops } from './primes/renderSieveOverlay'
 import type { SieveTickTransform } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
@@ -73,6 +74,11 @@ export function NumberLine() {
   // Debug controls for golden ratio demo tuning
   const [debugDecay, setDebugDecay] = useState(getStepTimingDecay)
   const [debugLogBase, setDebugLogBase] = useState(scrubberLogBase)
+
+  // Debug controls for sieve tuning
+  const [debugTrackingRange, setDebugTrackingRange] = useState(getSieveTrackingRange)
+  const [debugFollowHops, setDebugFollowHops] = useState(getSieveFollowHops)
+  const [debugSieveSpeed, setDebugSieveSpeed] = useState(getSieveSpeed)
   // Readout: arc counts at scrubber 50% and 75% — recomputed when params change
   const arcReadout = useMemo(() => {
     const p50 = scrubberToProgress(0.5)
@@ -134,6 +140,12 @@ export function NumberLine() {
   const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress } = useConstantDemo(
     stateRef, cssWidthRef, cssHeightRef, demoRedraw
   )
+  // --- e Demo narration ---
+  const { startNarration: startENarration, stopNarration: stopENarration, isNarratingRef: isENarratingRef } =
+    useEDemoNarration(demoStateRef, setRevealProgress)
+  // Track whether narration has been triggered for this demo session
+  const eNarrationTriggeredRef = useRef(false)
+
   // --- Demo scrubber state ---
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
   const scrubberFillRef = useRef<HTMLDivElement>(null)
@@ -345,6 +357,21 @@ export function NumberLine() {
     // Tick the constant demo state machine (updates viewport during animation)
     tickDemo()
 
+    // Auto-start e demo narration once viewport fly-in is ~60% done (revealProgress > 0)
+    {
+      const ds = demoStateRef.current
+      if (
+        ds.constantId === 'e' &&
+        ds.phase === 'animating' &&
+        ds.revealProgress > 0 &&
+        !eNarrationTriggeredRef.current &&
+        !isENarratingRef.current
+      ) {
+        eNarrationTriggeredRef.current = true
+        startENarration()
+      }
+    }
+
     // Tick the prime tour state machine (updates viewport during flights)
     tickTour()
 
@@ -398,9 +425,8 @@ export function NumberLine() {
       const sieveDwellElapsed = tourTs.phase === 'dwelling'
         ? tourTs.virtualDwellMs
         : tourTs.phase === 'fading' ? Infinity : 0
-      const halfRange = cssWidth / (2 * stateRef.current.pixelsPerUnit)
-      const sieveMaxN = Math.ceil(stateRef.current.center + halfRange) + 5
-      sieveTransforms = computeSieveTickTransforms(sieveMaxN, sieveDwellElapsed, cssHeight)
+      const viewportRight = stateRef.current.center + cssWidth / (2 * stateRef.current.pixelsPerUnit)
+      sieveTransforms = computeSieveTickTransforms(SWEEP_MAX_N, sieveDwellElapsed, cssHeight, viewportRight)
       // Smoothly ramp tick uniformity over first 2s (ease-out quad)
       const rawT = Math.min(1, sieveDwellElapsed / 2000)
       sieveUniformity = rawT * (2 - rawT)
@@ -857,6 +883,25 @@ export function NumberLine() {
     scheduleRedraw()
   }, [scheduleRedraw])
 
+  // --- Debug tuning handlers for sieve animation ---
+  const handleTrackingRangeChange = useCallback((v: number) => {
+    setDebugTrackingRange(v)
+    setSieveTrackingRange(v)
+    scheduleRedraw()
+  }, [scheduleRedraw])
+
+  const handleFollowHopsChange = useCallback((v: number) => {
+    setDebugFollowHops(v)
+    setSieveFollowHops(v)
+    scheduleRedraw()
+  }, [scheduleRedraw])
+
+  const handleSieveSpeedChange = useCallback((v: number) => {
+    setDebugSieveSpeed(v)
+    setSieveSpeed(v)
+    scheduleRedraw()
+  }, [scheduleRedraw])
+
   // --- Prime Tour handlers ---
   const handleStartTour = useCallback(() => {
     cancelDemo() // mutual exclusion: cancel demo when starting tour
@@ -878,6 +923,7 @@ export function NumberLine() {
   const handleScrubberPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    stopENarration() // stop TTS narration when user scrubs
     isDraggingScrubberRef.current = true
     const progress = scrubberProgressFromPointer(e.clientX)
     setRevealProgress(progress)
@@ -915,6 +961,7 @@ export function NumberLine() {
   const handleScrubberKeyDown = useCallback((e: React.KeyboardEvent) => {
     const ds = demoStateRef.current
     if (ds.phase === 'idle') return
+    stopENarration() // stop TTS narration when user scrubs via keyboard
     let progress = ds.revealProgress
     switch (e.key) {
       case 'ArrowRight':
@@ -1242,6 +1289,40 @@ export function NumberLine() {
             <div style={{ fontSize: 10, opacity: 0.6, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
               50% → {arcReadout.at50} arcs · 75% → {arcReadout.at75} arcs · total {NUM_LEVELS}
             </div>
+          </div>
+          <div
+            data-element="sieve-tuning-section"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 2 }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.5, marginBottom: 6 }}>
+              Sieve Tuning
+            </div>
+            <DebugSlider
+              label="Tracking range"
+              value={debugTrackingRange}
+              min={5}
+              max={60}
+              step={1}
+              onChange={handleTrackingRangeChange}
+              formatValue={v => `${v} ints`}
+            />
+            <DebugSlider
+              label="Follow hops"
+              value={debugFollowHops}
+              min={1}
+              max={40}
+              step={1}
+              onChange={handleFollowHopsChange}
+            />
+            <DebugSlider
+              label="Speed"
+              value={debugSieveSpeed}
+              min={0.25}
+              max={4}
+              step={0.25}
+              onChange={handleSieveSpeedChange}
+              formatValue={v => `${v}x`}
+            />
           </div>
         </ToyDebugPanel>
         {(() => {

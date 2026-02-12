@@ -37,6 +37,11 @@ const FADE_IN_MS = 400
 const FADE_OUT_MS = 600
 const DEVIATION_THRESHOLD = 0.5
 
+// --- Sieve speed debug tuning (module-level mutable) ---
+let sieveSpeed = 0.25
+export function getSieveSpeed(): number { return sieveSpeed }
+export function setSieveSpeed(v: number): void { sieveSpeed = Math.max(0.1, v) }
+
 // Subtitle offset from top edge when anchored to top during tour
 const TOUR_SUBTITLE_TOP_OFFSET = 16
 
@@ -266,11 +271,12 @@ export function usePrimeTour(
       }
 
       const segments = stop.narrationSegments
+      const speedMul = stop.id === 'ancient-trick' ? sieveSpeed : 1
       if (segments && segments.length > 0) {
         // --- Segmented narration: compute virtual time ---
         const segIdx = segmentIndexRef.current
         const seg = segments[segIdx]
-        const segElapsed = now - segmentStartMsRef.current
+        const segElapsed = (now - segmentStartMsRef.current) * speedMul
 
         // Check if current segment is complete (both TTS and animation done)
         if (segmentTtsFinishedRef.current && segElapsed >= seg.animationDurationMs) {
@@ -297,7 +303,7 @@ export function usePrimeTour(
         ts.virtualDwellMs = virtualMs
       } else {
         // Non-segmented: virtual time = wall-clock dwell time
-        ts.virtualDwellMs = now - dwellStartRef.current
+        ts.virtualDwellMs = (now - dwellStartRef.current) * speedMul
       }
 
       // Animate viewport during sieve animation (ancient-trick stop)
@@ -305,7 +311,9 @@ export function usePrimeTour(
         const vpState = getSieveViewportState(
           ts.virtualDwellMs,
           sieveViewportsRef.current,
-          { center: 55, pixelsPerUnit: 5 }
+          { center: 55, pixelsPerUnit: 5 },
+          cssWidthRef.current,
+          120
         )
         if (vpState) {
           stateRef.current.center = vpState.center

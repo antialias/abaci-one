@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { renderSieveOverlay, computeSieveViewports, getSieveViewportState, computeSieveTickTransforms } from './renderSieveOverlay'
+import { renderSieveOverlay, computeSieveViewports, getSieveViewportState, computeSieveTickTransforms, SWEEP_MAX_N } from './renderSieveOverlay'
 import { renderNumberLine } from '../renderNumberLine'
 import { computeTickMarks } from '../numberLineTicks'
 import { computePrimeInfos } from './sieve'
@@ -72,16 +72,17 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
     const vpState = getSieveViewportState(
       elapsedMs,
       sieveViewportsRef.current,
-      CELEBRATION_VP
+      CELEBRATION_VP,
+      width,
+      120
     )
     const state: NumberLineState = vpState
       ? { center: vpState.center, pixelsPerUnit: vpState.pixelsPerUnit }
       : SIEVE_INITIAL_STATE
 
     // Compute sieve tick transforms + prime infos for the real number line
-    const halfRange = width / (2 * state.pixelsPerUnit)
-    const sieveMaxN = Math.ceil(state.center + halfRange) + 5
-    const sieveTransforms = computeSieveTickTransforms(sieveMaxN, elapsedMs, height)
+    const storyViewportRight = state.center + width / (2 * state.pixelsPerUnit)
+    const sieveTransforms = computeSieveTickTransforms(SWEEP_MAX_N, elapsedMs, height, storyViewportRight)
     const ticks = computeTickMarks(state, width, DEFAULT_TICK_THRESHOLDS)
     const primeInfos = computePrimeInfos(ticks)
     // Smooth ramp: ease-out quad over first 2s
