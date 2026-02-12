@@ -29,7 +29,8 @@ function isValidVoiceChain(chain: unknown): chain is VoiceSource[] {
         typeof entry === 'object' &&
         entry.type === 'custom' &&
         typeof entry.name === 'string') ||
-      (entry && typeof entry === 'object' && entry.type === 'browser-tts')
+      (entry && typeof entry === 'object' && entry.type === 'browser-tts') ||
+      (entry && typeof entry === 'object' && entry.type === 'subtitle')
   )
 }
 

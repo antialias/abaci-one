@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { TtsAudioManager } from '@/lib/audio/TtsAudioManager'
+import { SubtitleOverlay } from '@/components/audio/SubtitleOverlay'
 
 const LS_KEY_ENABLED = 'audio-help-enabled'
 const LS_KEY_VOLUME = 'audio-help-volume'
@@ -77,7 +78,12 @@ export function AudioManagerProvider({ children }: { children: ReactNode }) {
     }
   }, [manager])
 
-  return <AudioManagerContext.Provider value={manager}>{children}</AudioManagerContext.Provider>
+  return (
+    <AudioManagerContext.Provider value={manager}>
+      {children}
+      <SubtitleOverlay />
+    </AudioManagerContext.Provider>
+  )
 }
 
 /**

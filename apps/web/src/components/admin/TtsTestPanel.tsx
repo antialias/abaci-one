@@ -146,7 +146,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
   const servingVoiceLabel = useMemo(() => {
     for (const entry of availability) {
       if (entry.hasClip) {
-        return entry.source.type === 'browser-tts' ? 'browser-tts' : entry.source.name
+        return 'name' in entry.source ? entry.source.name : entry.source.type
       }
     }
     return availability.length > 0 ? 'none' : 'browser-tts'
@@ -713,7 +713,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                   let foundFirst = false
                   return availability.map((entry, idx) => {
                     const voiceName =
-                      entry.source.type === 'browser-tts' ? 'browser-tts' : entry.source.name
+                      'name' in entry.source ? entry.source.name : entry.source.type
                     const isFirst = entry.hasClip && !foundFirst
                     if (entry.hasClip) foundFirst = true
 

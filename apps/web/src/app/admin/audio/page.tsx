@@ -482,7 +482,9 @@ export default function AdminAudioPage() {
                             ? s.name
                             : s.type === 'custom'
                               ? `${s.name} (mic)`
-                              : 'browser'
+                              : s.type === 'subtitle'
+                                ? 'subtitle'
+                                : 'browser'
                         )
                         .join(' \u2192 ')}
                     </span>
@@ -540,7 +542,9 @@ export default function AdminAudioPage() {
                               ? source.name
                               : source.type === 'custom'
                                 ? source.name
-                                : 'Browser TTS'}
+                                : source.type === 'subtitle'
+                                  ? 'Subtitles'
+                                  : 'Browser TTS'}
                           </span>
                           <span
                             className={css({
@@ -596,6 +600,17 @@ export default function AdminAudioPage() {
                                 })}
                               >
                                 Custom (microphone)
+                              </span>
+                            ) : source.type === 'subtitle' ? (
+                              <span
+                                className={css({
+                                  padding: '2px 8px',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#e3b34133',
+                                  color: '#e3b341',
+                                })}
+                              >
+                                On-screen text
                               </span>
                             ) : (
                               <span
@@ -711,6 +726,7 @@ export default function AdminAudioPage() {
                             })}
                           >
                             {(() => {
+                              const hasSubtitle = voiceChain.some((vc) => vc.type === 'subtitle')
                               const hasBrowser = voiceChain.some((vc) => vc.type === 'browser-tts')
                               const chainPregenNames = new Set(
                                 voiceChain
@@ -924,6 +940,58 @@ export default function AdminAudioPage() {
                                           backgroundColor: '#3fb950',
                                         })}
                                       />
+                                    </div>
+                                  </DropdownMenu.Item>
+                                )
+                              }
+
+                              // Subtitles — show text on screen as last-resort fallback
+                              if (!hasSubtitle) {
+                                sections.push(
+                                  <DropdownMenu.Item
+                                    key="subtitle"
+                                    data-action="add-voice-subtitle"
+                                    onSelect={() => addToVoiceChain({ type: 'subtitle' })}
+                                    className={css({
+                                      padding: '8px 12px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      outline: 'none',
+                                      '&:hover': { backgroundColor: '#21262d' },
+                                      '&:focus': { backgroundColor: '#21262d' },
+                                    })}
+                                  >
+                                    <div
+                                      className={css({
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '4px',
+                                      })}
+                                    >
+                                      <span
+                                        className={css({
+                                          color: '#f0f6fc',
+                                          fontWeight: '600',
+                                          fontSize: '13px',
+                                        })}
+                                      >
+                                        Subtitles
+                                      </span>
+                                      <span
+                                        className={css({
+                                          fontSize: '11px',
+                                          padding: '1px 6px',
+                                          borderRadius: '8px',
+                                          backgroundColor: '#e3b34133',
+                                          color: '#e3b341',
+                                        })}
+                                      >
+                                        always available
+                                      </span>
+                                    </div>
+                                    <div className={css({ color: '#8b949e', fontSize: '12px' })}>
+                                      Shows text on screen instead of speaking
                                     </div>
                                   </DropdownMenu.Item>
                                 )

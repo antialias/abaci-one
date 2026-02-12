@@ -11,6 +11,7 @@ export interface ManagerSnapshot {
   isPlaying: boolean
   isEnabled: boolean
   volume: number
+  subtitleText: string | null
 }
 
 /** Locale -> fallback text map (BCP 47 keys). */
@@ -81,11 +82,17 @@ export class TtsAudioManager {
   // Sequence cancellation flag
   private _sequenceCancelled = false
 
+  // Subtitle display state
+  private _subtitleText: string | null = null
+  private _subtitleTimer: ReturnType<typeof setTimeout> | null = null
+  private _subtitleResolve: (() => void) | null = null
+
   // Cached snapshot for useSyncExternalStore -- must be referentially stable
   private _cachedSnapshot: ManagerSnapshot = {
     isPlaying: false,
     isEnabled: false,
     volume: 0.8,
+    subtitleText: null,
   }
 
   // -- Configuration --
@@ -387,6 +394,27 @@ export class TtsAudioManager {
           const ok = await this.speakBrowserTts(resolved.fallbackText)
           console.log(`[TtsAudioManager] chain[${i}] browser-tts result:`, ok)
           if (ok) return true
+        } else if (source.type === 'subtitle') {
+          console.log(
+            `[TtsAudioManager] chain[${i}] subtitle: "${resolved.fallbackText.slice(0, 30)}"`
+          )
+          this._subtitleText = resolved.fallbackText
+          this.notify()
+
+          const readingMs = this.estimateReadingTimeMs(resolved.fallbackText)
+          await new Promise<void>((resolve) => {
+            this._subtitleResolve = resolve
+            this._subtitleTimer = setTimeout(() => {
+              this._subtitleResolve = null
+              resolve()
+            }, readingMs)
+          })
+
+          this._subtitleText = null
+          this._subtitleTimer = null
+          this._subtitleResolve = null
+          this.notify()
+          return true
         }
       }
       // All chain entries exhausted
@@ -458,6 +486,9 @@ export class TtsAudioManager {
 
     // Cancel any in-flight playback before starting new speech.
     this._sequenceCancelled = true
+    if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
+    if (this._subtitleResolve) { this._subtitleResolve(); this._subtitleResolve = null }
+    this._subtitleText = null
     if (this._currentAudio) {
       this._currentAudio.pause()
       this._currentAudio = null
@@ -496,6 +527,13 @@ export class TtsAudioManager {
   private speakBrowserTts(text: string): Promise<boolean> {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       console.log('[TtsAudioManager] speakBrowserTts: not available')
+      return Promise.resolve(false)
+    }
+
+    // Fast-fail when no active user gesture — speechSynthesis.speak() silently
+    // no-ops without user activation on most browsers.
+    if (navigator.userActivation && !navigator.userActivation.isActive) {
+      console.log('[TtsAudioManager] speakBrowserTts: no user activation, skipping')
       return Promise.resolve(false)
     }
 
@@ -576,6 +614,10 @@ export class TtsAudioManager {
       speechSynthesis.cancel()
     }
     this._activeUtterances.clear()
+    // Clear subtitle display
+    if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
+    if (this._subtitleResolve) { this._subtitleResolve(); this._subtitleResolve = null }
+    this._subtitleText = null
     if (this._isPlaying) {
       this.setPlaying(false)
     }
@@ -604,7 +646,7 @@ export class TtsAudioManager {
     return this._voiceChain.map((source) => ({
       source,
       hasClip:
-        source.type === 'browser-tts'
+        source.type === 'browser-tts' || source.type === 'subtitle'
           ? true
           : source.type === 'pregenerated' || source.type === 'custom'
             ? (this._pregenClipIds.get(source.name)?.has(clipId) ?? false)
@@ -627,12 +669,18 @@ export class TtsAudioManager {
     }
   }
 
+  private estimateReadingTimeMs(text: string): number {
+    const words = text.trim().split(/\s+/).length
+    return Math.max(1500, (words / 200) * 60_000) // ~200 WPM, 1.5s floor
+  }
+
   private notify(): void {
     // Rebuild cached snapshot so useSyncExternalStore sees a new reference
     this._cachedSnapshot = {
       isPlaying: this._isPlaying,
       isEnabled: this._isEnabled,
       volume: this._volume,
+      subtitleText: this._subtitleText,
     }
     for (const listener of this.listeners) {
       listener()
