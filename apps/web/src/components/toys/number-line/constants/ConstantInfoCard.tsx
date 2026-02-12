@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MathConstant } from './constantsData'
 import { useTTS } from '@/hooks/useTTS'
+import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { DEMO_AVAILABLE } from './demos/useConstantDemo'
 
 interface ConstantInfoCardProps {
@@ -35,6 +36,7 @@ export function ConstantInfoCard({
   onExplore,
 }: ConstantInfoCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const audioManager = useAudioManagerInstance()
 
   // TTS: auto-speak on mount
   const speak = useTTS(`constant-${constant.id}`, {
@@ -43,8 +45,15 @@ export function ConstantInfoCard({
   })
 
   useEffect(() => {
+    console.log(`[ConstantInfoCard] 🟢 MOUNT effect — calling speak() for "${constant.id}"`)
     speak()
-  }, [speak])
+    return () => {
+      console.log(`[ConstantInfoCard] 🔴 CLEANUP — calling audioManager.stop() for "${constant.id}"`)
+      // Cancel in-flight audio on unmount (prevents React strict mode
+      // double-mount from producing two overlapping narrations)
+      audioManager.stop()
+    }
+  }, [speak, audioManager])
 
   // Dismiss on click outside
   useEffect(() => {
