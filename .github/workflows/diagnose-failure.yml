@@ -27,6 +27,14 @@ jobs:
           gh run view "$RUN_ID" --log-failed 2>/dev/null | tail -500 > /tmp/failed-logs-truncated.txt || echo "Could not fetch failed logs" > /tmp/failed-logs-truncated.txt
           gh run view "$RUN_ID" > /tmp/run-summary.txt || echo "Could not fetch run summary" > /tmp/run-summary.txt
 
+      - name: Ensure labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create fixbot --color 0075ca --description "Automated fix needed" --force || true
+          gh label create needs-human --color d73a4a --description "Needs human intervention" --force || true
+          gh label create bug --color d73a4a --description "Something isn't working" --force || true
+
       - name: Fetch existing fixbot issues
         env:
           GH_TOKEN: ${{ github.token }}

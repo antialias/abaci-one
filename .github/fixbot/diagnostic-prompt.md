@@ -47,14 +47,9 @@ Do NOT use simple string matching. Two issues about TypeScript errors in differe
 
 ### If this is a NEW failure (no matching existing issue):
 
-First, ensure the required labels exist:
-```bash
-gh label create fixbot --color 0075ca --description "Automated fix needed" --force
-gh label create needs-human --color d73a4a --description "Needs human intervention" --force
-gh label create bug --color d73a4a --description "Something isn't working" --force
-```
+The required labels (`fixbot`, `needs-human`, `bug`) are pre-created by the workflow. Just create the issue.
 
-Then create an issue using exactly this format (read .github/fixbot/issue-template.md for the template):
+Create an issue using exactly this format (read .github/fixbot/issue-template.md for the template):
 
 ```bash
 gh issue create \
