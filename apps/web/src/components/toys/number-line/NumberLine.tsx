@@ -21,6 +21,7 @@ import { useConstantDemo } from './constants/demos/useConstantDemo'
 import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress } from './constants/demos/goldenRatioDemo'
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
+import { renderEOverlay } from './constants/demos/eDemo'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
@@ -31,7 +32,8 @@ import type { InterestingPrime } from './primes/interestingness'
 import { usePrimeTour } from './primes/usePrimeTour'
 import { PRIME_TOUR_STOPS } from './primes/primeTourStops'
 import { renderTourSpotlight } from './primes/renderTourSpotlight'
-import { renderSieveOverlay } from './primes/renderSieveOverlay'
+import { renderSieveOverlay, computeSieveTickTransforms } from './primes/renderSieveOverlay'
+import type { SieveTickTransform } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 
@@ -389,6 +391,21 @@ export function NumberLine() {
       highlightSet = new Set(tourStop.highlightValues)
     }
 
+    // Compute sieve tick transforms during ancient-trick tour stop
+    let sieveTransforms: Map<number, SieveTickTransform> | undefined
+    let sieveUniformity = 0
+    if (tourTs.phase !== 'idle' && tourStop?.id === 'ancient-trick') {
+      const sieveDwellElapsed = tourTs.phase === 'dwelling'
+        ? tourTs.virtualDwellMs
+        : tourTs.phase === 'fading' ? Infinity : 0
+      const halfRange = cssWidth / (2 * stateRef.current.pixelsPerUnit)
+      const sieveMaxN = Math.ceil(stateRef.current.center + halfRange) + 5
+      sieveTransforms = computeSieveTickTransforms(sieveMaxN, sieveDwellElapsed, cssHeight)
+      // Smoothly ramp tick uniformity over first 2s (ease-out quad)
+      const rawT = Math.min(1, sieveDwellElapsed / 2000)
+      sieveUniformity = rawT * (2 - rawT)
+    }
+
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
@@ -398,7 +415,7 @@ export function NumberLine() {
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
       renderTarget, collisionFadeMapRef.current, renderConstants,
       primeInfos, effectiveHovered, interestingPrimes, primePairArcs,
-      highlightSet, highlightedArcSet
+      highlightSet, highlightedArcSet, sieveTransforms, sieveUniformity
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -431,6 +448,12 @@ export function NumberLine() {
     }
     if (ds.phase !== 'idle' && ds.constantId === 'tau') {
       renderTauOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+    if (ds.phase !== 'idle' && ds.constantId === 'e') {
+      renderEOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )

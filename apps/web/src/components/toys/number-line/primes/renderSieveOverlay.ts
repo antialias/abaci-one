@@ -287,28 +287,61 @@ export function getSieveViewportState(
   return null
 }
 
-// --- Number label helper ---
+// --- Per-tick transforms for main renderer ---
 
-function drawNumberLabel(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  value: number,
-  factor: number,
-  alpha: number,
-  scale: number,
-  isDark: boolean
-): void {
-  if (alpha <= 0.01) return
-  const fontSize = 10 * scale
-  ctx.save()
-  ctx.globalAlpha *= alpha
-  ctx.font = `bold ${fontSize}px sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'bottom'
-  ctx.fillStyle = primeColorRgba(factor, 1, isDark)
-  ctx.fillText(String(value), x, y)
-  ctx.restore()
+export interface SieveTickTransform {
+  opacity: number    // 0 = hidden, 1 = normal
+  offsetX: number    // horizontal shake (px)
+  offsetY: number    // vertical fall (px)
+  rotation: number   // radians
+}
+
+/**
+ * Compute per-tick transforms for the main renderer during the sieve animation.
+ * Composites shake and fall off; primes are unaffected (not in the map).
+ */
+export function computeSieveTickTransforms(
+  maxN: number,
+  dwellElapsedMs: number,
+  cssHeight: number
+): Map<number, SieveTickTransform> {
+  const composites = computeCompositeStates(maxN, dwellElapsedMs)
+  const transforms = new Map<number, SieveTickTransform>()
+
+  for (const [value, anim] of composites) {
+    const localTime = dwellElapsedMs - anim.markTimeMs
+    if (localTime < 0) continue // not yet marked
+
+    let opacity = 1
+    let offsetX = 0
+    let offsetY = 0
+    let rotation = 0
+
+    if (localTime <= FLASH_DURATION) {
+      // Flash phase: tick stays put, overlay draws glow ring
+      opacity = 1
+    } else if (localTime <= FLASH_DURATION + SHAKE_DURATION) {
+      // Shake phase: horizontal oscillation
+      const shakeT = (localTime - FLASH_DURATION) / SHAKE_DURATION
+      offsetX = decayingSin(shakeT, 4, 2) * 3
+    } else if (localTime <= ANIM_TOTAL) {
+      // Fall phase: gravity drop
+      const fallT = (localTime - FLASH_DURATION - SHAKE_DURATION) / FALL_DURATION
+      const easedFall = easeInQuad(fallT)
+      const driftDirection = value % 2 === 0 ? 1 : -1
+      offsetX = driftDirection * easedFall * 8
+      offsetY = easedFall * (cssHeight * 0.8)
+      rotation = driftDirection * easedFall * 0.6
+      opacity = 0.6 * (1 - fallT)
+    } else {
+      // After fall: fully hidden
+      opacity = 0
+    }
+
+    transforms.set(value, { opacity, offsetX, offsetY, rotation })
+  }
+
+  return transforms
 }
 
 // --- Main renderer ---
@@ -358,130 +391,31 @@ export function renderSieveOverlay(
     ctx.fillRect(0, 0, cssWidth, cssHeight)
   }
 
-  // --- Layer 0.5: Static numbers already on the line ---
-  // All integers >= 2 not yet eliminated by the sweep are rendered as
-  // colored discs + labels. Numbers feel "present" from the start —
-  // the sweep shakes them out, and primes are the invincible survivors.
-  {
-    // Fade out during celebration (celebration layer takes over for primes)
-    const staticFade = dwellElapsedMs >= CELEBRATION_START_MS
-      ? Math.max(0, 1 - (dwellElapsedMs - CELEBRATION_START_MS) / 800)
-      : 1
-
-    if (staticFade > 0.01) {
-      const showLabels = state.pixelsPerUnit >= 20
-
-      for (let n = Math.max(2, minN); n <= maxN; n++) {
-        // Skip numbers being animated or already eliminated
-        if (composites.has(n)) continue
-
-        const sx = numberToScreenX(n, state.center, state.pixelsPerUnit, cssWidth)
-        if (sx < -10 || sx > cssWidth + 10) continue
-
-        const spf = smallestPrimeFactor(n)
-        const isPrime = spf === n
-        const colorFactor = isPrime ? n : spf
-        const alpha = 0.5 * staticFade
-
-        // Disc on axis
-        ctx.beginPath()
-        ctx.arc(sx, centerY, 3, 0, Math.PI * 2)
-        ctx.fillStyle = primeColorRgba(colorFactor, alpha, isDark)
-        ctx.fill()
-
-        // Label above axis (only when zoomed in enough to read)
-        if (showLabels) {
-          drawNumberLabel(ctx, sx, centerY - 10, n, colorFactor, alpha, 1, isDark)
-        }
-      }
-    }
-  }
-
-  // --- Layer 1: Falling composites (the main show) ---
+  // --- Layer 1: Flash glow ring on composites as sweep reaches them ---
+  // The main renderer handles tick+label transforms (shake, fall, hide).
+  // The overlay only draws the glow marking effect during the flash phase.
   for (const [value, anim] of composites) {
     if (value < minN || value > maxN) continue
 
     const localTime = dwellElapsedMs - anim.markTimeMs
-    if (localTime < 0 || localTime > ANIM_TOTAL) continue // not yet marked or already gone
+    if (localTime < 0 || localTime > FLASH_DURATION) continue
 
     const baseX = numberToScreenX(value, state.center, state.pixelsPerUnit, cssWidth)
-    const discRadius = 4
-    const labelOffsetY = -10 // above axis
+    const t = localTime / FLASH_DURATION
+    const glowRadius = 12 + 8 * easeOutQuint(t)
+    const glowAlpha = (0.5 + 0.3 * (1 - t))
 
-    // Determine animation phase
-    if (localTime <= FLASH_DURATION) {
-      // --- Flash phase: pop in ---
-      const t = localTime / FLASH_DURATION
-      const scale = 1 + 0.5 * easeOutQuint(t)
-      const alpha = 0.5 + 0.3 * (1 - t) // brighter at start, settles
+    const gradient = ctx.createRadialGradient(
+      baseX, centerY, 0,
+      baseX, centerY, glowRadius
+    )
+    gradient.addColorStop(0, primeColorRgba(anim.factor, glowAlpha, isDark))
+    gradient.addColorStop(1, primeColorRgba(anim.factor, 0, isDark))
 
-      // Colored disc
-      ctx.beginPath()
-      ctx.arc(baseX, centerY, discRadius * scale, 0, Math.PI * 2)
-      ctx.fillStyle = primeColorRgba(anim.factor, alpha, isDark)
-      ctx.fill()
-
-      // Number label pops in above
-      drawNumberLabel(
-        ctx, baseX, centerY + labelOffsetY,
-        value, anim.factor, alpha, scale, isDark
-      )
-    } else if (localTime <= FLASH_DURATION + SHAKE_DURATION) {
-      // --- Shake phase: horizontal oscillation ---
-      const shakeT = (localTime - FLASH_DURATION) / SHAKE_DURATION
-      const shakeOffset = decayingSin(shakeT, 4, 2) * 3 // 3px amplitude, decaying
-
-      const sx = baseX + shakeOffset
-      const alpha = 0.6
-
-      ctx.beginPath()
-      ctx.arc(sx, centerY, discRadius, 0, Math.PI * 2)
-      ctx.fillStyle = primeColorRgba(anim.factor, alpha, isDark)
-      ctx.fill()
-
-      drawNumberLabel(
-        ctx, sx, centerY + labelOffsetY,
-        value, anim.factor, alpha, 1, isDark
-      )
-    } else {
-      // --- Fall phase: gravity drop ---
-      const fallT = (localTime - FLASH_DURATION - SHAKE_DURATION) / FALL_DURATION
-      const easedFall = easeInQuad(fallT)
-
-      // Fall distance: drop below canvas
-      const fallDistance = easedFall * (cssHeight * 0.8)
-      const fallY = centerY + fallDistance
-
-      // Horizontal drift: alternates direction based on value parity
-      const driftDirection = value % 2 === 0 ? 1 : -1
-      const driftX = baseX + driftDirection * easedFall * 8
-
-      // Rotation
-      const rotation = driftDirection * easedFall * 0.6 // ~35 degrees max
-
-      // Fade out
-      const alpha = 0.6 * (1 - fallT)
-
-      if (alpha > 0.01) {
-        ctx.save()
-        ctx.translate(driftX, fallY)
-        ctx.rotate(rotation)
-
-        // Disc
-        ctx.beginPath()
-        ctx.arc(0, 0, discRadius, 0, Math.PI * 2)
-        ctx.fillStyle = primeColorRgba(anim.factor, alpha, isDark)
-        ctx.fill()
-
-        // Label falls with disc
-        drawNumberLabel(
-          ctx, 0, labelOffsetY,
-          value, anim.factor, alpha, 1 - fallT * 0.3, isDark
-        )
-
-        ctx.restore()
-      }
-    }
+    ctx.beginPath()
+    ctx.arc(baseX, centerY, glowRadius, 0, Math.PI * 2)
+    ctx.fillStyle = gradient
+    ctx.fill()
   }
 
   // --- Layer 2: Sweep line + factor spotlight ---
@@ -563,17 +497,7 @@ export function renderSieveOverlay(
       ctx.fillStyle = gradient
       ctx.fill()
 
-      // Prime number labels emerge with staggered entrance
-      const staggerDelay = (n - minN) * 30 // 30ms per position
-      const labelEntrance = clamp01((celebrationElapsed - staggerDelay) / 400)
-      if (labelEntrance > 0) {
-        const labelScale = easeOutQuint(labelEntrance)
-        const labelAlpha = labelEntrance * celebrationRamp
-        drawNumberLabel(
-          ctx, sx, centerY - 12,
-          n, n, labelAlpha, labelScale, isDark
-        )
-      }
+      // Prime labels are drawn by the main renderer — no overlay labels needed
     }
   }
 

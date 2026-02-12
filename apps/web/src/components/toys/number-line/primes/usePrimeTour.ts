@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import type { NumberLineState } from '../types'
 import { PRIME_TOUR_STOPS, TOUR_TONE } from './primeTourStops'
 import type { PrimeTourStop, NarrationSegment } from './primeTourStops'
@@ -36,6 +36,9 @@ const FLIGHT_MS = 1400
 const FADE_IN_MS = 400
 const FADE_OUT_MS = 600
 const DEVIATION_THRESHOLD = 0.5
+
+// Subtitle offset from top edge when anchored to top during tour
+const TOUR_SUBTITLE_TOP_OFFSET = 16
 
 /**
  * Multi-stop guided tour through prime number visualizations.
@@ -120,8 +123,9 @@ export function usePrimeTour(
   /** Start the tour from stop 0. */
   const startTour = useCallback(() => {
     tourStateRef.current = { ...INITIAL_STATE }
+    audioManager.configure({ subtitleAnchor: 'top', subtitleBottomOffset: TOUR_SUBTITLE_TOP_OFFSET })
     flyToStop(0)
-  }, [flyToStop])
+  }, [flyToStop, audioManager])
 
   /** Advance to the next stop (or finish if on last). */
   const nextStop = useCallback(() => {
@@ -322,6 +326,7 @@ export function usePrimeTour(
       if (ts.opacity <= 0) {
         tourStateRef.current = { ...INITIAL_STATE }
         setCurrentStopIndex(null)
+        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: 64 })
         stopLoop()
         return
       }
@@ -336,6 +341,15 @@ export function usePrimeTour(
     const stop = PRIME_TOUR_STOPS[ts.stopIndex]
     return stop?.hoverValue ?? null
   })()
+
+  // Reset subtitle offset if component unmounts mid-tour
+  useEffect(() => {
+    return () => {
+      if (tourStateRef.current.phase !== 'idle') {
+        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: 64 })
+      }
+    }
+  }, [audioManager])
 
   return {
     tourState: tourStateRef,

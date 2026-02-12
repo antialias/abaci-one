@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { renderSieveOverlay, computeSieveViewports, getSieveViewportState } from './renderSieveOverlay'
-import { numberToScreenX } from '../numberLineTicks'
-import { smallestPrimeFactor } from './sieve'
-import { primeColorRgba } from './primeColors'
+import { renderSieveOverlay, computeSieveViewports, getSieveViewportState, computeSieveTickTransforms } from './renderSieveOverlay'
+import { renderNumberLine } from '../renderNumberLine'
+import { computeTickMarks } from '../numberLineTicks'
+import { computePrimeInfos } from './sieve'
+import { DEFAULT_TICK_THRESHOLDS } from '../types'
 import type { NumberLineState } from '../types'
 
 // Initial viewport matches the zoomed-in ancient-trick start
@@ -11,80 +12,6 @@ const SIEVE_INITIAL_STATE: NumberLineState = { center: 13, pixelsPerUnit: 50 }
 const CELEBRATION_VP = { center: 55, pixelsPerUnit: 5 }
 
 const TOTAL_MS = 26000 // enough to see celebration phase
-
-/**
- * Draw a minimal number line background so the sieve overlay has context.
- * Just an axis line + integer tick marks with labels, colored by SPF.
- */
-function drawBackground(
-  ctx: CanvasRenderingContext2D,
-  state: NumberLineState,
-  cssWidth: number,
-  cssHeight: number,
-  isDark: boolean
-) {
-  const bg = isDark ? '#1a1a2e' : '#f8f8f8'
-  const axisColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'
-  const labelColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'
-
-  // Clear
-  ctx.fillStyle = bg
-  ctx.fillRect(0, 0, cssWidth, cssHeight)
-
-  const centerY = cssHeight / 2
-
-  // Axis line
-  ctx.beginPath()
-  ctx.moveTo(0, centerY)
-  ctx.lineTo(cssWidth, centerY)
-  ctx.strokeStyle = axisColor
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  // Integer ticks
-  const halfRange = cssWidth / (2 * state.pixelsPerUnit)
-  const minN = Math.max(1, Math.floor(state.center - halfRange))
-  const maxN = Math.ceil(state.center + halfRange)
-
-  ctx.font = '9px sans-serif'
-  ctx.textAlign = 'center'
-
-  // At low ppu (e.g. 5), label every 5th or 10th number to avoid crowding
-  const labelEvery = state.pixelsPerUnit < 15 ? 10 : state.pixelsPerUnit < 30 ? 5 : 1
-
-  for (let n = minN; n <= maxN; n++) {
-    const sx = numberToScreenX(n, state.center, state.pixelsPerUnit, cssWidth)
-
-    // Tick line — skip minor ticks at very low ppu to avoid a solid bar
-    if (state.pixelsPerUnit < 8 && n % 5 !== 0) continue
-
-    const tickH = n % 5 === 0 ? 10 : 6
-    ctx.beginPath()
-    ctx.moveTo(sx, centerY - tickH)
-    ctx.lineTo(sx, centerY + tickH)
-
-    if (n >= 2) {
-      const spf = smallestPrimeFactor(n)
-      const isPrime = spf === n
-      ctx.strokeStyle = isPrime
-        ? primeColorRgba(n, isDark ? 0.9 : 0.8, isDark)
-        : primeColorRgba(spf, isDark ? 0.5 : 0.4, isDark)
-      ctx.lineWidth = isPrime ? 2 : 1
-    } else {
-      ctx.strokeStyle = axisColor
-      ctx.lineWidth = 1
-    }
-    ctx.stroke()
-
-    // Label — show primes + every Nth number
-    const spf = n >= 2 ? smallestPrimeFactor(n) : 0
-    const isPrime = n >= 2 && spf === n
-    if (n >= 2 && (isPrime || n % labelEvery === 0)) {
-      ctx.fillStyle = labelColor
-      ctx.fillText(String(n), sx, centerY + tickH + 12)
-    }
-  }
-}
 
 // --- Storybook harness ---
 
@@ -151,7 +78,24 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
       ? { center: vpState.center, pixelsPerUnit: vpState.pixelsPerUnit }
       : SIEVE_INITIAL_STATE
 
-    drawBackground(ctx, state, width, height, dark)
+    // Compute sieve tick transforms + prime infos for the real number line
+    const halfRange = width / (2 * state.pixelsPerUnit)
+    const sieveMaxN = Math.ceil(state.center + halfRange) + 5
+    const sieveTransforms = computeSieveTickTransforms(sieveMaxN, elapsedMs, height)
+    const ticks = computeTickMarks(state, width, DEFAULT_TICK_THRESHOLDS)
+    const primeInfos = computePrimeInfos(ticks)
+    // Smooth ramp: ease-out quad over first 2s
+    const rawT = Math.min(1, elapsedMs / 2000)
+    const sieveUniformity = rawT * (2 - rawT)
+
+    // Render the real number line with sieve transforms applied
+    renderNumberLine(
+      ctx, state, width, height, dark, DEFAULT_TICK_THRESHOLDS,
+      0, 0, 0.5,
+      undefined, undefined, undefined,
+      primeInfos, undefined, undefined, undefined,
+      undefined, undefined, sieveTransforms, sieveUniformity
+    )
     renderSieveOverlay(ctx, state, width, height, dark, elapsedMs, 1)
   }, [width, height, dark, elapsedMs])
 

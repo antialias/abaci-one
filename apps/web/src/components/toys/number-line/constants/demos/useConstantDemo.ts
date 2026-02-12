@@ -3,6 +3,7 @@ import type { NumberLineState } from '../../types'
 import { goldenRatioDemoViewport } from './goldenRatioDemo'
 import { piDemoViewport } from './piDemo'
 import { tauDemoViewport } from './tauDemo'
+import { eDemoViewport } from './eDemo'
 
 export type DemoPhase = 'idle' | 'animating' | 'presenting' | 'fading'
 
@@ -36,7 +37,7 @@ const FADE_IN_MS = 400
 const DEVIATION_THRESHOLD = 0.4
 
 /** Constants that have demos available */
-export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau'])
+export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e'])
 
 /**
  * Hook managing the constant demonstration lifecycle.
@@ -100,6 +101,8 @@ export function useConstantDemo(
       target = piDemoViewport(cssWidth, cssHeight)
     } else if (constantId === 'tau') {
       target = tauDemoViewport(cssWidth, cssHeight)
+    } else if (constantId === 'e') {
+      target = eDemoViewport(cssWidth, cssHeight)
     }
 
     // Store source viewport for interpolation

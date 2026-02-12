@@ -203,6 +203,69 @@ const FRAME_SNAPSHOTS = computeFrameSnapshots()
 /** Number of steps before a frame fully fades out */
 const FRAME_FADE_STEPS = 4
 
+// --- Sweep transform (shared with renderPhiExploreImage) ---
+
+export interface SweepTransform {
+  effRotation: number
+  effScale: number
+  tipX: number
+  tipY: number
+}
+
+/**
+ * Compute the sweep transform for a given revealProgress.
+ *
+ * This maps subdivision coords to number-line coords via rotation + uniform
+ * scale, anchoring the current compass arm tip at the NL origin (0,0) and
+ * the pivot at (1,0). Exported so renderPhiExploreImage can reuse it.
+ */
+export function computeSweepTransform(revealProgress: number): SweepTransform {
+  const sweepProgress = Math.min(1, revealProgress / SWEEP_PHASE)
+
+  let animStep = NUM_LEVELS
+  let stepT = 0
+
+  for (let i = 0; i < NUM_LEVELS; i++) {
+    if (sweepProgress < STEP_TIMINGS[i].end) {
+      animStep = i
+      stepT = Math.max(0, Math.min(1,
+        (sweepProgress - STEP_TIMINGS[i].start) /
+        (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
+      ))
+      break
+    }
+  }
+
+  let armPivotX: number, armPivotY: number, armAngle: number, armSide: number
+
+  if (animStep < NUM_LEVELS) {
+    const currSub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
+    const prevSub = animStep > 0
+      ? SUBDIVISIONS[NUM_LEVELS - animStep]
+      : currSub
+
+    armPivotX = lerp(prevSub.arcCx, currSub.arcCx, stepT)
+    armPivotY = lerp(prevSub.arcCy, currSub.arcCy, stepT)
+    armSide = lerp(prevSub.side, currSub.side, stepT)
+
+    const transitionAngle = currSub.arcStartAngle + ARC_SWEEP
+    armAngle = transitionAngle - ARC_SWEEP * stepT
+  } else {
+    const sub = SUBDIVISIONS[0]
+    armPivotX = sub.arcCx
+    armPivotY = sub.arcCy
+    armSide = sub.side
+    armAngle = sub.arcStartAngle
+  }
+
+  const tipX = armPivotX + armSide * Math.cos(armAngle)
+  const tipY = armPivotY + armSide * Math.sin(armAngle)
+  const effRotation = Math.PI - armAngle
+  const effScale = 1 / armSide
+
+  return { effRotation, effScale, tipX, tipY }
+}
+
 // --- Animation timing ---
 
 /** Fraction of revealProgress for compass sweeps; remainder for rectangle fade. */

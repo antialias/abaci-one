@@ -6,6 +6,7 @@ import { primeColorRgba } from './primes/primeColors'
 import type { PrimePairArc } from './primes/specialPrimes'
 import { MERSENNE_PRIMES, ARC_COLORS } from './primes/specialPrimes'
 import type { InterestingPrime } from './primes/interestingness'
+import type { SieveTickTransform } from './primes/renderSieveOverlay'
 
 export interface RenderTarget {
   value: number
@@ -119,7 +120,10 @@ export function renderNumberLine(
   interestingPrimes?: InterestingPrime[],
   primePairArcs?: PrimePairArc[],
   highlightedPrimes?: Set<number>,
-  highlightedArcs?: Set<string>
+  highlightedArcs?: Set<string>,
+  sieveTransforms?: Map<number, SieveTickTransform>,
+  /** 0-1 blend toward uniform tick sizes during sieve (smooth ramp-in) */
+  sieveUniformity = 0
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -153,6 +157,37 @@ export function renderNumberLine(
 
   // Compute ticks
   const ticks = computeTickMarks(state, cssWidth, thresholds)
+
+  // During sieve animation: smoothly blend integer ticks toward uniform
+  // prominence. The normal tick system uses magnitude-based hierarchy (powers
+  // of 10) which hides individual integers at low zoom. The sieve needs every
+  // integer visible so composites can shake/fall and primes remain standing.
+  // sieveUniformity (0-1) controls the blend so the transition is gradual.
+  // Gate on sieveUniformity alone — the transform map may still be empty
+  // during the intro before factor 2's sweep marks any composites.
+  const u = sieveUniformity
+  if (u > 0) {
+    const UNIFORM_PROMINENCE = 0.7
+    const halfRange = cssWidth / (2 * state.pixelsPerUnit)
+    const minInt = Math.max(1, Math.floor(state.center - halfRange) - 1)
+    const maxInt = Math.ceil(state.center + halfRange) + 1
+    const existingValues = new Set(ticks.map(t => t.value))
+
+    // Inject missing integer ticks (fade in with uniformity blend)
+    for (let n = minInt; n <= maxInt; n++) {
+      if (!existingValues.has(n)) {
+        ticks.push({ value: n, power: 0, prominence: UNIFORM_PROMINENCE * u, opacity: u })
+      }
+    }
+
+    // Blend existing integer ticks toward uniform prominence
+    for (const tick of ticks) {
+      if (Number.isInteger(tick.value) && tick.value >= 1 && existingValues.has(tick.value)) {
+        tick.prominence += (UNIFORM_PROMINENCE - tick.prominence) * u
+        tick.opacity += (1 - tick.opacity) * u
+      }
+    }
+  }
 
   // Pre-compute screen positions
   const ticksWithX = ticks.map((tick) => ({
@@ -270,6 +305,10 @@ export function renderNumberLine(
   for (const { tick, x } of ticksWithX) {
     if (x < -50 || x > cssWidth + 50) continue
 
+    // Apply sieve transforms: skip fully hidden ticks
+    const sxf = sieveTransforms?.get(tick.value)
+    if (sxf && sxf.opacity <= 0.01) continue
+
     let height = getTickHeight(tick.prominence, cssHeight)
     if (height > maxTickHeight) maxTickHeight = height
     let lineWidth = getTickLineWidth(tick.prominence)
@@ -284,10 +323,26 @@ export function renderNumberLine(
       lineWidth += 0.5
     }
 
-    ctx.globalAlpha = tick.opacity
+    // Apply sieve transform (shake, fall, rotation)
+    const hasXf = sxf && (sxf.offsetX !== 0 || sxf.offsetY !== 0 || sxf.rotation !== 0)
+    if (hasXf) {
+      ctx.save()
+      ctx.translate(x + sxf.offsetX, sxf.offsetY)
+      ctx.translate(0, centerY)
+      ctx.rotate(sxf.rotation)
+      ctx.translate(0, -centerY)
+    }
+
+    ctx.globalAlpha = tick.opacity * (sxf?.opacity ?? 1)
     ctx.beginPath()
-    ctx.moveTo(x, centerY - height)
-    ctx.lineTo(x, centerY + height)
+    if (hasXf) {
+      // Already translated to (x + offsetX, 0), draw relative to 0
+      ctx.moveTo(0, centerY - height)
+      ctx.lineTo(0, centerY + height)
+    } else {
+      ctx.moveTo(x, centerY - height)
+      ctx.lineTo(x, centerY + height)
+    }
 
     if (primeInfo && primeInfo.classification !== 'one') {
       // Color by smallest prime factor
@@ -302,17 +357,23 @@ export function renderNumberLine(
 
     // Hover highlight: subtle glow ring
     if (isHovered && primeInfo && primeInfo.classification !== 'one') {
-      ctx.save()
-      ctx.globalAlpha = 0.25 * tick.opacity
+      const savedAlpha = ctx.globalAlpha
+      ctx.globalAlpha = 0.25 * tick.opacity * (sxf?.opacity ?? 1)
       ctx.strokeStyle = primeColorRgba(primeInfo.smallestPrimeFactor, 1, isDark)
       ctx.lineWidth = lineWidth + 3
       ctx.beginPath()
-      ctx.moveTo(x, centerY - height)
-      ctx.lineTo(x, centerY + height)
+      if (hasXf) {
+        ctx.moveTo(0, centerY - height)
+        ctx.lineTo(0, centerY + height)
+      } else {
+        ctx.moveTo(x, centerY - height)
+        ctx.lineTo(x, centerY + height)
+      }
       ctx.stroke()
-      ctx.restore()
+      ctx.globalAlpha = savedAlpha
     }
 
+    if (hasXf) ctx.restore()
     ctx.globalAlpha = 1
   }
 
@@ -325,13 +386,23 @@ export function renderNumberLine(
 
   for (const info of labelInfos) {
     const { tick, x, label, fontSize, fontWeight, labelWidth, angle, height } = info
-    const isVisible = labelVisible.has(info)
+
+    // Apply sieve transforms: skip fully hidden labels
+    const sxf = sieveTransforms?.get(tick.value)
+    if (sxf && sxf.opacity <= 0.01) continue
+
+    // During sieve: skip collision detection entirely. Composites are already
+    // hidden by the opacity<=0.01 check above; only primes remain, and they
+    // should all show labels regardless of overlap at low zoom.
+    const sieveActive = u > 0
+    const hasSieveXf = sxf && (sxf.offsetX !== 0 || sxf.offsetY !== 0 || sxf.rotation !== 0)
+    const isVisible = sieveActive || hasSieveXf || labelVisible.has(info)
     seenValues.add(tick.value)
 
     // Compute collision opacity (1 = fully visible, 0 = collision-hidden)
     let collisionOpacity = isVisible ? 1 : 0
 
-    if (collisionFadeMap) {
+    if (collisionFadeMap && !sieveActive && !hasSieveXf) {
       let entry = collisionFadeMap.get(tick.value)
       if (!entry) {
         // First time seeing this label — no fade, just snap to current state
@@ -362,7 +433,7 @@ export function renderNumberLine(
     const labelAlpha = getTickAlpha(tick.prominence)
 
     ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.globalAlpha = tick.opacity * collisionOpacity
+    ctx.globalAlpha = tick.opacity * collisionOpacity * (sxf?.opacity ?? 1)
 
     const labelPrimeInfo = primeInfos?.get(tick.value)
     if (labelPrimeInfo && labelPrimeInfo.classification !== 'one') {
@@ -378,8 +449,14 @@ export function renderNumberLine(
     const xOffset = -labelWidth / 2 * (1 - tAngle)
 
     ctx.save()
-    ctx.translate(x, labelY)
-    ctx.rotate(angle)
+    if (hasSieveXf) {
+      // Apply sieve transform: translate + rotate around the label's position
+      ctx.translate(x + sxf.offsetX, labelY + sxf.offsetY)
+      ctx.rotate(sxf.rotation + angle)
+    } else {
+      ctx.translate(x, labelY)
+      ctx.rotate(angle)
+    }
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     ctx.fillText(label, xOffset, 0)
