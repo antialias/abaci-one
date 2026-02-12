@@ -160,6 +160,7 @@ export function useConstantDemoNarration(
     if (triggeredForRef.current === constantId) return
     if (!configs[constantId]) return
 
+    console.log(`[DemoNarration] startIfNeeded → starting narration for "${constantId}"`)
     triggeredForRef.current = constantId
     startNarration(constantId)
   }, [configs, startNarration])

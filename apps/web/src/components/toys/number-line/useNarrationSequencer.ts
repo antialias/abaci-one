@@ -56,7 +56,8 @@ export function useNarrationSequencer() {
 
   /** Speak a segment's TTS text, flagging ttsFinished when done. */
   const speakSegment = useCallback(
-    (seg: SequencerSegment, tone: string) => {
+    (seg: SequencerSegment, tone: string, segIdx?: number) => {
+      console.log(`[NarrationSeq] speakSegment[${segIdx ?? '?'}]: "${seg.ttsText.slice(0, 50)}"`)
       ttsFinishedRef.current = false
       speak(
         { say: { en: seg.ttsText }, tone: seg.ttsTone ?? tone },
@@ -77,13 +78,14 @@ export function useNarrationSequencer() {
   const start = useCallback(
     (segments: SequencerSegment[], tone: string) => {
       if (segments.length === 0) return
+      console.log(`[NarrationSeq] START — ${segments.length} segments`)
       activeRef.current = true
       segmentsRef.current = segments
       toneRef.current = tone
       segmentIndexRef.current = 0
       segmentStartMsRef.current = performance.now()
       ttsFinishedRef.current = false
-      speakSegment(segments[0], tone)
+      speakSegment(segments[0], tone, 0)
     },
     [speakSegment]
   )
@@ -128,11 +130,12 @@ export function useNarrationSequencer() {
         const nextIdx = segIdx + 1
         if (nextIdx < segments.length) {
           // Advance to next segment
+          console.log(`[NarrationSeq] advancing to segment[${nextIdx}]`)
           segmentIndexRef.current = nextIdx
           segmentStartMsRef.current = now
           ttsFinishedRef.current = false
           audioManager.stop()
-          speakSegment(segments[nextIdx], toneRef.current)
+          speakSegment(segments[nextIdx], toneRef.current, nextIdx)
         } else {
           allDone = true
           activeRef.current = false

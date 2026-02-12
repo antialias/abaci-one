@@ -24,6 +24,7 @@ import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
 import { renderGammaOverlay } from './constants/demos/gammaDemo'
 import { renderSqrt2Overlay } from './constants/demos/sqrt2Demo'
+import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
 import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
 import { E_DEMO_SEGMENTS, E_DEMO_TONE } from './constants/demos/eDemoNarration'
@@ -84,6 +85,7 @@ export function NumberLine() {
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
   const rafRef = useRef<number>(0)
   const { resolvedTheme } = useTheme()
+  const audioManager = useAudioManagerInstance()
   const phiExploreRef = usePhiExploreImage(resolvedTheme)
 
   // Debug controls for tick thresholds
@@ -885,14 +887,18 @@ export function NumberLine() {
   }, [tappedConstantId])
 
   const handleDismissInfoCard = useCallback(() => {
+    console.log('[NumberLine] handleDismissInfoCard — calling audioManager.stop()')
+    audioManager.stop()
     setTappedConstantId(null)
-  }, [])
+  }, [audioManager])
 
   const handleExploreConstant = useCallback((constantId: string) => {
-    exitTour() // mutual exclusion: cancel tour when starting demo
-    narration.reset() // stop narration + reset trigger for new demo session
+    console.log('[NumberLine] handleExploreConstant — calling audioManager.stop() then startDemo', constantId)
+    audioManager.stop()
+    exitTour()
+    narration.reset()
     startDemo(constantId)
-  }, [startDemo, exitTour, narration])
+  }, [audioManager, startDemo, exitTour, narration])
 
   // --- Debug tuning handlers for golden ratio demo ---
   const handleDecayChange = useCallback((v: number) => {

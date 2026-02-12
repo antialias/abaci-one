@@ -361,19 +361,26 @@ export class TtsAudioManager {
       audio.volume = this._volume
       this._currentAudio = audio
       console.log(`[TTS:mp3:${speakId}] ▶ playMp3 START`, { url: url.slice(-60) })
+
+      // Only clear _currentAudio if it's still THIS element — a newer
+      // speak() call may have already overwritten it with a different one.
+      const clearIfOwned = () => {
+        if (this._currentAudio === audio) this._currentAudio = null
+      }
+
       audio.onended = () => {
         console.log(`[TTS:mp3:${speakId}] ✓ playMp3 ENDED`, { url: url.slice(-60) })
-        this._currentAudio = null
+        clearIfOwned()
         resolve(true)
       }
       audio.onerror = (e) => {
         console.warn(`[TTS:mp3:${speakId}] ✗ playMp3 ERROR`, { url: url.slice(-60), error: e })
-        this._currentAudio = null
+        clearIfOwned()
         resolve(false)
       }
       audio.play().catch((err) => {
         console.warn(`[TTS:mp3:${speakId}] ✗ playMp3 play() REJECTED`, { url: url.slice(-60), err })
-        this._currentAudio = null
+        clearIfOwned()
         resolve(false)
       })
     })

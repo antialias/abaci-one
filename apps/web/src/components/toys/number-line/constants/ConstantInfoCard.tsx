@@ -215,6 +215,7 @@ export function ConstantInfoCard({
         <button
           data-action="explore-constant"
           onClick={() => {
+            console.log(`[ConstantInfoCard] 🔵 EXPLORE clicked for "${constant.id}"`)
             onExplore(constant.id)
             onDismiss()
           }}
