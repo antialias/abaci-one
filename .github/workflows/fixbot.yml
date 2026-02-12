@@ -1,0 +1,63 @@
+name: Fixbot
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  fix:
+    if: github.event.label.name == 'fixbot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @soroban/abacus-react
+        run: pnpm --filter @soroban/abacus-react run build
+
+      - name: Generate build artifacts
+        working-directory: apps/web
+        run: |
+          node scripts/generate-build-info.js
+          npx @pandacss/dev
+
+      - name: Fetch issue details
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue view "$ISSUE_NUMBER" --json number,title,body,comments,labels > /tmp/issue-details.json
+
+      - name: Run Claude fix agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          branch_prefix: "fixbot/"
+          prompt: |
+            Read the instructions at .github/fixbot/fix-prompt.md and follow them precisely.
+
+            Context for this fix:
+            - Issue number: ${{ github.event.issue.number }}
+            - Issue title: ${{ github.event.issue.title }}
+            - Repository: ${{ github.repository }}
+            - Issue details file: /tmp/issue-details.json
+          claude_args: "--max-turns 30 --model claude-opus-4-6 --allowedTools Read,Write,Edit,Glob,Grep,Bash"

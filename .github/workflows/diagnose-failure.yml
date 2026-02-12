@@ -1,0 +1,51 @@
+name: Diagnose CI Failure
+
+on:
+  workflow_run:
+    workflows: ["Unit Test Coverage", "Build and Deploy"]
+    types: [completed]
+
+jobs:
+  diagnose:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download failed logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh run view "$RUN_ID" --log-failed 2>/dev/null | tail -500 > /tmp/failed-logs-truncated.txt || echo "Could not fetch failed logs" > /tmp/failed-logs-truncated.txt
+          gh run view "$RUN_ID" > /tmp/run-summary.txt || echo "Could not fetch run summary" > /tmp/run-summary.txt
+
+      - name: Fetch existing fixbot issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --label fixbot --state open --json number,title,body,comments > /tmp/existing-fixbot-issues.json || echo "[]" > /tmp/existing-fixbot-issues.json
+
+      - name: Run Claude diagnostic
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Read the instructions at .github/fixbot/diagnostic-prompt.md and follow them precisely.
+
+            Context for this run:
+            - Failed workflow: ${{ github.event.workflow_run.name }}
+            - Workflow run ID: ${{ github.event.workflow_run.id }}
+            - Head SHA: ${{ github.event.workflow_run.head_sha }}
+            - Head branch: ${{ github.event.workflow_run.head_branch }}
+            - Repository: ${{ github.repository }}
+            - Failed logs file: /tmp/failed-logs-truncated.txt
+            - Run summary file: /tmp/run-summary.txt
+            - Existing fixbot issues file: /tmp/existing-fixbot-issues.json
+          claude_args: "--max-turns 15 --model claude-sonnet-4-5-20250929 --allowedTools Read,Bash"
