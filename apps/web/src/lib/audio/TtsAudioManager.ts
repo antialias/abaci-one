@@ -109,6 +109,9 @@ export class TtsAudioManager {
   // Currently playing Audio element (for mp3 playback)
   private _currentAudio: HTMLAudioElement | null = null
 
+  // Duration (ms) of the currently playing audio clip, set from loadedmetadata
+  private _currentAudioDurationMs: number | null = null
+
   // Sequence cancellation flag
   private _sequenceCancelled = false
 
@@ -339,6 +342,18 @@ export class TtsAudioManager {
     }
   }
 
+  // -- Audio duration (for adaptive animation timing) --
+
+  /**
+   * Duration (ms) of the currently playing audio clip.
+   * Set from the Audio element's `loadedmetadata` event during `playMp3()`.
+   * Returns null when no audio is playing, duration is unknown, or playback
+   * uses browser TTS / subtitle-only (which don't expose duration upfront).
+   */
+  getCurrentAudioDurationMs(): number | null {
+    return this._currentAudioDurationMs
+  }
+
   // -- Playback --
 
   /**
@@ -361,6 +376,13 @@ export class TtsAudioManager {
       audio.volume = this._volume
       this._currentAudio = audio
       console.log(`[TTS:mp3:${speakId}] ▶ playMp3 START`, { url: url.slice(-60) })
+
+      // Expose audio duration for adaptive animation timing
+      audio.addEventListener('loadedmetadata', () => {
+        if (this._currentAudio === audio) {
+          this._currentAudioDurationMs = audio.duration * 1000
+        }
+      })
 
       // Only clear _currentAudio if it's still THIS element — a newer
       // speak() call may have already overwritten it with a different one.
@@ -637,6 +659,7 @@ export class TtsAudioManager {
     // Cancel any in-flight playback before starting new speech.
     console.log(`[TTS:speak:${speakId}] 🛑 cancelling previous (currentAudio=${!!this._currentAudio})`)
     this._sequenceCancelled = true
+    this._currentAudioDurationMs = null
     if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
     if (this._subtitleResolve) { this._subtitleResolve(); this._subtitleResolve = null }
     this._subtitleText = null
@@ -854,6 +877,7 @@ export class TtsAudioManager {
     this._activeSpeakId = -1
     // Cancel any running sequence
     this._sequenceCancelled = true
+    this._currentAudioDurationMs = null
     // Stop any playing mp3
     if (this._currentAudio) {
       this._currentAudio.pause()
