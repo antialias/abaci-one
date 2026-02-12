@@ -6,6 +6,7 @@ import { SubtitleOverlay } from '@/components/audio/SubtitleOverlay'
 
 const LS_KEY_ENABLED = 'audio-help-enabled'
 const LS_KEY_VOLUME = 'audio-help-volume'
+const LS_KEY_SUBTITLE_SPEED = 'audio-subtitle-speed'
 
 function readLocalStorage(key: string, fallback: string): string {
   if (typeof window === 'undefined') return fallback
@@ -25,11 +26,13 @@ export function AudioManagerProvider({ children }: { children: ReactNode }) {
   }
   const manager = managerRef.current
 
-  // Apply persisted enabled / volume on first render
+  // Apply persisted enabled / volume / subtitle speed on first render
   useEffect(() => {
     const enabled = readLocalStorage(LS_KEY_ENABLED, 'false') === 'true'
     const volume = Number(readLocalStorage(LS_KEY_VOLUME, '80')) / 100
-    manager.configure({ enabled, volume })
+    const subtitleDurationMultiplier =
+      Number(readLocalStorage(LS_KEY_SUBTITLE_SPEED, '1')) || 1
+    manager.configure({ enabled, volume, subtitleDurationMultiplier })
   }, [manager])
 
   // Flush collected clips on visibility change and before unload

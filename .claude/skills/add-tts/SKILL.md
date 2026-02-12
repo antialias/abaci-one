@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Glob, Grep, Edit, Write
 
 # Adding TTS Audio to a Feature
 
-This skill walks you through adding text-to-speech audio to a feature in the app. The TTS system handles playback (pre-generated mp3s first, browser SpeechSynthesis fallback), collection of (text, tone) pairs, and admin generation of high-quality OpenAI TTS mp3s.
+This skill walks you through adding text-to-speech audio to a feature in the app. The TTS system plays audio via a **voice chain** (pregenerated mp3 → on-demand generation via OpenAI → browser SpeechSynthesis → subtitles). Clips are collected at runtime, persisted to the database, and generated as high-quality OpenAI TTS mp3s — either on-the-fly during playback (if the `generate` chain entry is configured) or in batch from the admin panel.
 
 ## Before You Start
 
@@ -197,12 +197,28 @@ Write tones as **voice-actor stage directions**. Be specific about emotion, pace
 | File | Role |
 |------|------|
 | `src/hooks/useTTS.ts` | Primary hook — declare (text, tone), get speak function |
-| `src/hooks/useAudioManager.ts` | Reactive state — isEnabled, isPlaying, volume, stop() |
-| `src/lib/audio/TtsAudioManager.ts` | Core engine — voice chain, playback, collection |
-| `src/contexts/AudioManagerContext.tsx` | React context — singleton manager |
+| `src/hooks/useAudioManager.ts` | Reactive state — isEnabled, isPlaying, volume, subtitles, stop() |
+| `src/lib/audio/TtsAudioManager.ts` | Core engine — voice chain, playback, collection, subtitles |
+| `src/lib/audio/voiceSource.ts` | Voice source class hierarchy — polymorphic `generate()` per voice type |
+| `src/contexts/AudioManagerContext.tsx` | React context — singleton manager, boot-time manifest loading |
 | `src/lib/audio/termsToSentence.ts` | `[5, 3]` → `"five plus three"` |
 | `src/lib/audio/buildFeedbackText.ts` | Correct/incorrect feedback sentences |
 | `src/lib/audio/numberToEnglish.ts` | `42` → `"forty two"` |
+
+## Voice Chain
+
+Audio plays through the voice chain in order. The typical chain is:
+
+```
+pregenerated voice (nova) → auto-generate → browser TTS → subtitles
+```
+
+- **Pregenerated**: instant playback from pre-generated mp3 on disk
+- **Auto-generate**: calls OpenAI on-the-fly if the pregenerated mp3 is missing, caches result
+- **Browser TTS**: uses the browser's built-in speech synthesis
+- **Subtitles**: shows text on screen with a reading-time timer
+
+You don't need to think about this when adding TTS to a feature — just use `useTTS()` and the chain handles fallback automatically. The admin configures the chain at `/admin/audio`.
 
 ## Reference Implementations
 
