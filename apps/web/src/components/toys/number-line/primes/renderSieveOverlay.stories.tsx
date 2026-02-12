@@ -1,15 +1,16 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { renderSieveOverlay } from './renderSieveOverlay'
+import { renderSieveOverlay, computeSieveViewports, getSieveViewportState } from './renderSieveOverlay'
 import { numberToScreenX } from '../numberLineTicks'
 import { smallestPrimeFactor } from './sieve'
 import { primeColorRgba } from './primeColors'
 import type { NumberLineState } from '../types'
 
-// Match the viewport from the updated ancient-trick tour stop
-const SIEVE_STATE: NumberLineState = { center: 55, pixelsPerUnit: 5 }
+// Initial viewport matches the zoomed-in ancient-trick start
+const SIEVE_INITIAL_STATE: NumberLineState = { center: 13, pixelsPerUnit: 50 }
+const CELEBRATION_VP = { center: 55, pixelsPerUnit: 5 }
 
-const TOTAL_MS = 24000 // enough to see celebration phase
+const TOTAL_MS = 26000 // enough to see celebration phase
 
 /**
  * Draw a minimal number line background so the sieve overlay has context.
@@ -121,6 +122,12 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  // Cache sieve viewports once (depends on width)
+  const sieveViewportsRef = useRef(computeSieveViewports(width, 120))
+  useEffect(() => {
+    sieveViewportsRef.current = computeSieveViewports(width, 120)
+  }, [width])
+
   // Render
   useEffect(() => {
     const canvas = canvasRef.current
@@ -134,8 +141,18 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
     const ctx = canvas.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    drawBackground(ctx, SIEVE_STATE, width, height, dark)
-    renderSieveOverlay(ctx, SIEVE_STATE, width, height, dark, elapsedMs, 1)
+    // Compute dynamic viewport from sieve animation keyframes
+    const vpState = getSieveViewportState(
+      elapsedMs,
+      sieveViewportsRef.current,
+      CELEBRATION_VP
+    )
+    const state: NumberLineState = vpState
+      ? { center: vpState.center, pixelsPerUnit: vpState.pixelsPerUnit }
+      : SIEVE_INITIAL_STATE
+
+    drawBackground(ctx, state, width, height, dark)
+    renderSieveOverlay(ctx, state, width, height, dark, elapsedMs, 1)
   }, [width, height, dark, elapsedMs])
 
   const handleScrub = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,25 +175,27 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
     lastFrameRef.current = null
   }, [])
 
-  // Phase label
+  // Phase label (matches virtual timeline with 1200ms fall-animation tails between sweeps)
   const phase =
     elapsedMs < 4000
       ? 'Waiting (skip counting intro)'
       : elapsedMs < 9000
         ? 'Skip count by 2s (slow)'
-        : elapsedMs < 10000
-          ? 'Pause between 2 and 3'
-          : elapsedMs < 13000
+        : elapsedMs < 10200
+          ? 'Composites falling...'
+          : elapsedMs < 13200
             ? 'Skip count by 3s (faster)'
-            : elapsedMs < 14000
-              ? 'Pause between 3 and 5'
-              : elapsedMs < 16000
+            : elapsedMs < 14400
+              ? 'Composites falling...'
+              : elapsedMs < 16200
                 ? 'Skip count by 5s (faster!)'
-                : elapsedMs < 16500
-                  ? 'Pause between 5 and 7'
-                  : elapsedMs < 18000
+                : elapsedMs < 16600
+                  ? 'Composites falling / zoom transition'
+                  : elapsedMs < 17900
                     ? 'Skip count by 7s (quick!)'
-                    : 'Prime celebration!'
+                    : elapsedMs < 19100
+                      ? 'Composites falling...'
+                      : 'Prime celebration!'
 
   return (
     <div data-component="sieve-story-harness">

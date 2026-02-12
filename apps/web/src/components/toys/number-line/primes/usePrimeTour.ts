@@ -1,7 +1,9 @@
 import { useRef, useCallback, useState } from 'react'
 import type { NumberLineState } from '../types'
 import { PRIME_TOUR_STOPS, TOUR_TONE } from './primeTourStops'
-import type { PrimeTourStop } from './primeTourStops'
+import type { PrimeTourStop, NarrationSegment } from './primeTourStops'
+import { computeSieveViewports, getSieveViewportState } from './renderSieveOverlay'
+import type { SievePhaseViewports } from './renderSieveOverlay'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 
@@ -16,6 +18,8 @@ export interface TourState {
   opacity: number
   /** performance.now() when dwelling began — used for phase timing */
   dwellStartMs: number
+  /** Gated elapsed time for overlays — pauses between segments when TTS is still playing */
+  virtualDwellMs: number
 }
 
 const INITIAL_STATE: TourState = {
@@ -24,6 +28,7 @@ const INITIAL_STATE: TourState = {
   flightProgress: 0,
   opacity: 0,
   dwellStartMs: 0,
+  virtualDwellMs: 0,
 }
 
 // --- Animation timing ---
@@ -54,6 +59,14 @@ export function usePrimeTour(
   const rafRef = useRef<number>(0)
   const dwellStartRef = useRef(0)
   const ttsFinishedRef = useRef(false)
+
+  // Sieve viewport animation keyframes (cached when ancient-trick dwell starts)
+  const sieveViewportsRef = useRef<SievePhaseViewports[] | null>(null)
+
+  // Segment sequencing refs (for narrationSegments)
+  const segmentIndexRef = useRef(0)
+  const segmentStartMsRef = useRef(0)
+  const segmentTtsFinishedRef = useRef(false)
 
   // React state for overlay rendering (synced from ref in tickTour)
   const [currentStopIndex, setCurrentStopIndex] = useState<number | null>(null)
@@ -96,6 +109,7 @@ export function usePrimeTour(
       flightProgress: 0,
       opacity: tourStateRef.current.opacity, // preserve during mid-tour transitions
       dwellStartMs: 0,
+      virtualDwellMs: 0,
     }
     animStartRef.current = performance.now()
     ttsFinishedRef.current = false
@@ -155,6 +169,19 @@ export function usePrimeTour(
     })
   }, [speak])
 
+  /** Start TTS narration for a single narration segment. */
+  const speakSegment = useCallback((segment: NarrationSegment, fallbackTone: string) => {
+    segmentTtsFinishedRef.current = false
+    speak(
+      { say: { en: segment.ttsText }, tone: segment.ttsTone ?? fallbackTone },
+    ).then(() => {
+      segmentTtsFinishedRef.current = true
+    }).catch(() => {
+      // TTS failed or was cancelled — segment still advances after animation
+      segmentTtsFinishedRef.current = true
+    })
+  }, [speak])
+
   /**
    * Called every frame from draw() to update animation and detect deviation.
    */
@@ -191,6 +218,7 @@ export function usePrimeTour(
         ts.flightProgress = 1
         ts.opacity = 1
         ts.dwellStartMs = now
+        ts.virtualDwellMs = 0
         stateRef.current.center = tgt.center
         stateRef.current.pixelsPerUnit = tgt.pixelsPerUnit
         dwellStartRef.current = now
@@ -198,7 +226,23 @@ export function usePrimeTour(
         // Start TTS narration
         const stop = PRIME_TOUR_STOPS[ts.stopIndex!]
         if (stop) {
-          speakCurrentStop(stop)
+          // Cache sieve viewport keyframes for ancient-trick stop
+          if (stop.id === 'ancient-trick') {
+            sieveViewportsRef.current = computeSieveViewports(cssWidthRef.current, 120)
+          } else {
+            sieveViewportsRef.current = null
+          }
+
+          if (stop.narrationSegments && stop.narrationSegments.length > 0) {
+            // Segmented narration: init segment 0
+            segmentIndexRef.current = 0
+            segmentStartMsRef.current = now
+            segmentTtsFinishedRef.current = false
+            speakSegment(stop.narrationSegments[0], stop.ttsTone)
+          } else {
+            // Single TTS clip (legacy)
+            speakCurrentStop(stop)
+          }
         }
       }
     } else if (ts.phase === 'dwelling') {
@@ -217,6 +261,55 @@ export function usePrimeTour(
         return
       }
 
+      const segments = stop.narrationSegments
+      if (segments && segments.length > 0) {
+        // --- Segmented narration: compute virtual time ---
+        const segIdx = segmentIndexRef.current
+        const seg = segments[segIdx]
+        const segElapsed = now - segmentStartMsRef.current
+
+        // Check if current segment is complete (both TTS and animation done)
+        if (segmentTtsFinishedRef.current && segElapsed >= seg.animationDurationMs) {
+          const nextSegIdx = segIdx + 1
+          if (nextSegIdx < segments.length) {
+            // Advance to next segment
+            segmentIndexRef.current = nextSegIdx
+            segmentStartMsRef.current = now
+            segmentTtsFinishedRef.current = false
+            audioManager.stop()
+            speakSegment(segments[nextSegIdx], stop.ttsTone)
+          } else {
+            // All segments complete — signal for auto-advance
+            ttsFinishedRef.current = true
+          }
+        }
+
+        // Compute virtual time: sum of completed segments + clamped current
+        let virtualMs = 0
+        for (let i = 0; i < segmentIndexRef.current; i++) {
+          virtualMs += segments[i].animationDurationMs
+        }
+        virtualMs += Math.min(segElapsed, seg.animationDurationMs)
+        ts.virtualDwellMs = virtualMs
+      } else {
+        // Non-segmented: virtual time = wall-clock dwell time
+        ts.virtualDwellMs = now - dwellStartRef.current
+      }
+
+      // Animate viewport during sieve animation (ancient-trick stop)
+      if (stop.id === 'ancient-trick' && sieveViewportsRef.current) {
+        const vpState = getSieveViewportState(
+          ts.virtualDwellMs,
+          sieveViewportsRef.current,
+          { center: 55, pixelsPerUnit: 5 }
+        )
+        if (vpState) {
+          stateRef.current.center = vpState.center
+          stateRef.current.pixelsPerUnit = vpState.pixelsPerUnit
+          targetViewportRef.current = { ...vpState } // keep deviation detection in sync
+        }
+      }
+
       // Auto-advance: TTS finished AND minDwellMs elapsed
       const dwellElapsed = now - dwellStartRef.current
       if (stop.autoAdvance && ttsFinishedRef.current && dwellElapsed >= stop.minDwellMs) {
@@ -233,7 +326,7 @@ export function usePrimeTour(
         return
       }
     }
-  }, [stateRef, stopLoop, speakCurrentStop, nextStop, exitTour])
+  }, [stateRef, stopLoop, speakCurrentStop, speakSegment, audioManager, nextStop, exitTour])
 
   /** The prime value the tour wants hovered (for forcing tooltip/arcs), or null. */
   const forcedHoverValue = (() => {

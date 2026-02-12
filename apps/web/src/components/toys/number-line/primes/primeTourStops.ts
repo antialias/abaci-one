@@ -7,6 +7,15 @@ export interface HighlightPhase {
   arcs?: [number, number][]
 }
 
+export interface NarrationSegment {
+  /** TTS text for this segment */
+  ttsText: string
+  /** TTS tone override (falls back to stop.ttsTone) */
+  ttsTone?: string
+  /** Virtual time this animation phase occupies (ms) */
+  animationDurationMs: number
+}
+
 export interface PrimeTourStop {
   id: string
   viewport: { center: number; pixelsPerUnit: number }
@@ -21,6 +30,13 @@ export interface PrimeTourStop {
    * When absent, highlightValues applies immediately (legacy mode).
    */
   highlightPhases?: HighlightPhase[]
+  /**
+   * When present, TTS is split into sequential segments. Each segment's
+   * animation phase only starts after the previous segment's TTS **and**
+   * animation have both finished. The stop's ttsText is kept as full
+   * concatenated script for display/fallback.
+   */
+  narrationSegments?: NarrationSegment[]
   dimOthers?: number
   minDwellMs: number
   autoAdvance: boolean
@@ -66,16 +82,15 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
   },
   {
     id: 'ancient-trick',
-    viewport: { center: 55, pixelsPerUnit: 5 },
+    viewport: { center: 13, pixelsPerUnit: 50 },
     blurb: 'Skip counting shakes the non-primes right off the number line!',
     ttsText:
       'Okay, here\'s a super clever trick from a long, long time ago. ' +
-      'You know skip counting? Like when you count by twos — two, four, six, eight? ' +
-      'Well, watch this! We\'re going to skip count by two, and every number we land on ' +
-      'gets shaken right off the number line! ' +
-      'See them falling? Four, six, eight, ten — bye bye! They can all be split into twos, so they\'re not prime. ' +
-      'Now let\'s speed it up! Skip count by three — nine, fifteen, twenty-one — shake \'em out! ' +
-      'Faster! Count by fives! And sevens! ' +
+      'You know skip counting? Well, watch what happens when we try it on the number line! ' +
+      'Starting at two — two, four, six, eight, ten — see them shaking off? ' +
+      'Bye bye! They can all be split into twos, so they\'re not prime. ' +
+      'Now starting at three — three, six, nine, twelve — shake \'em out! ' +
+      'Faster! Starting at five — five, ten, fifteen, twenty... And seven — seven, fourteen, twenty-one! ' +
       'Now look what\'s left standing. Those are our primes! ' +
       'The numbers that couldn\'t be shaken out, no matter how hard we tried. ' +
       'A man named Eratosthenes invented this game thousands of years ago, ' +
@@ -83,7 +98,49 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
     ttsTone:
       'Excited game-show energy building to wonder. Start playful and familiar with skip counting, ' +
       'build momentum as the sieve speeds up, then awe at the primes left standing.',
-    minDwellMs: 5000,
+    narrationSegments: [
+      {
+        // Seg 0: intro — no sieve animation, no tail needed.
+        // Builds anticipation without naming specific numbers (no visual yet).
+        ttsText:
+          'Okay, here\'s a super clever trick from a long, long time ago. ' +
+          'You know skip counting? Well, watch what happens when we try it on the number line!',
+        animationDurationMs: 4000,
+      },
+      {
+        // Seg 1: factor 2 sweep (5000ms) + 1200ms tail for last composites to fall.
+        // Names "two" right at the start so it coincides with the factor 2 spotlight.
+        ttsText:
+          'Starting at two — two, four, six, eight, ten — see them shaking off? ' +
+          'Bye bye! They can all be split into twos, so they\'re not prime.',
+        animationDurationMs: 6200,
+      },
+      {
+        // Seg 2: factor 3 sweep (3000ms) + 1200ms tail.
+        // Names "three" right at the start so it coincides with the factor 3 spotlight.
+        ttsText:
+          'Now starting at three — three, six, nine, twelve — shake \'em out!',
+        animationDurationMs: 4200,
+      },
+      {
+        // Seg 3: factors 5+7 sweeps (2000+1500=3500ms) + 1200ms tail.
+        // Names "five" first (sweep starts immediately), then "seven" mid-segment.
+        ttsText:
+          'Faster! Starting at five — five, ten, fifteen, twenty... ' +
+          'And seven — seven, fourteen, twenty-one!',
+        animationDurationMs: 4700,
+      },
+      {
+        // Seg 4: celebration — no tail needed
+        ttsText:
+          'Now look what\'s left standing. Those are our primes! ' +
+          'The numbers that couldn\'t be shaken out, no matter how hard we tried. ' +
+          'A man named Eratosthenes invented this game thousands of years ago, ' +
+          'and we still use it today!',
+        animationDurationMs: 5000,
+      },
+    ],
+    minDwellMs: 25000,
     autoAdvance: true,
   },
   {
