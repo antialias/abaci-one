@@ -15,8 +15,8 @@ import { useViewerId } from '@/hooks/useViewerId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
   buildPlayerOwnershipFromRoomData,
-} from '../../player-ownership.client'
-import type { GameMove } from '../../validation/types'
+} from '../player-ownership.client'
+import type { GameMove } from '../validation/types'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
 import type {

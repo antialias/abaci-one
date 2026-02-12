@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useRecordGameResult } from '@/hooks/useRecordGameResult'
-import type { GameResult } from '../../../arcade/stats/types'
+import type { GameResult } from '@/lib/arcade/stats/types'
 import type {
   BaseMatchingCard,
   BaseMatchingConfig,
