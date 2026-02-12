@@ -71,6 +71,47 @@ export function renderPiOverlay(
   // Canvas rotation: +2*pi*t (clockwise on screen = rightward rolling)
   const rotation = 2 * Math.PI * t
 
+  // --- Tread marks (tire texture) ---
+  // Evenly spaced around circumference. Each tread is identified by its
+  // contact-order fraction s = i/NUM_TREADS: tread i touches down when t >= s.
+  // On the circle: radial hash extending outward from rim.
+  // On the line: vertical tick at x = s * pi.
+  const NUM_TREADS = 24
+  const treadLen = Math.max(3, Math.min(8, screenR * 0.14))
+
+  function drawTreads(alpha: number) {
+    ctx.globalAlpha = alpha
+    ctx.strokeStyle = circumColor
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([])
+
+    for (let i = 0; i < NUM_TREADS; i++) {
+      const s = i / NUM_TREADS  // contact-order fraction
+
+      if (s < t) {
+        // Tread has touched down — vertical tick on the flat line
+        const lineX = toX(s * Math.PI)
+        const lineY = toY(0)
+        ctx.beginPath()
+        ctx.moveTo(lineX, lineY - treadLen)
+        ctx.lineTo(lineX, lineY + treadLen)
+        ctx.stroke()
+      } else {
+        // Tread still on circle — radial hash extending outward
+        // Current canvas angle: pi/2 + 2*pi*(t - s)
+        const angle = Math.PI / 2 + 2 * Math.PI * (t - s)
+        const ix = ccx + screenR * Math.cos(angle)
+        const iy = ccy + screenR * Math.sin(angle)
+        const ox = ccx + (screenR + treadLen) * Math.cos(angle)
+        const oy = ccy + (screenR + treadLen) * Math.sin(angle)
+        ctx.beginPath()
+        ctx.moveTo(ix, iy)
+        ctx.lineTo(ox, oy)
+        ctx.stroke()
+      }
+    }
+  }
+
   // === Phase 1: Circle + diameter appear ===
   if (circleAlpha > 0) {
     ctx.globalAlpha = opacity * circleAlpha
@@ -90,6 +131,9 @@ export function renderPiOverlay(
       ctx.strokeStyle = circumColor
       ctx.lineWidth = 3
       ctx.stroke()
+
+      // Treads on full circle
+      drawTreads(opacity * circleAlpha)
     }
 
     // Diameter spoke (rotates with the circle)
@@ -153,6 +197,9 @@ export function renderPiOverlay(
     ctx.lineWidth = 3
     ctx.setLineDash([])
     ctx.stroke()
+
+    // Treads — split between circle and flat line
+    drawTreads(opacity)
 
     // Contact point marker (where circumference meets the axis)
     const contactSx = toX(t * Math.PI)
