@@ -58,9 +58,9 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Pi',
     value: Math.PI,
     revealPrecision: 2,
-    description: 'If you walk straight across a round pond, that is one step, but walking all the way around the edge takes a little more than three steps. No matter how giant the pond is or how tiny a raindrop is, the walk around the outside is always exactly that many times longer than the walk across. This number is the universal rule that locks every circle into its perfect shape, connecting the edge to the center. It is the secret recipe that tells nature exactly how to make things round.',
+    description: 'Every circle has a diameter — that\'s the distance all the way across, from one side to the other. If you walk straight across a round pond, that\'s one diameter. Walking all the way around the edge takes a little more than three of those. No matter how big the pond, the walk around is always exactly pi times the walk across. Pi ties every circle\'s trip around to its distance across.',
     ttsExplanation:
-      'This is pi! If you wrap a string around any circle, it will be pi times as long as the distance across. Pi starts with 3.14159 and goes on forever without repeating.',
+      'This is pi! Every circle has a diameter — that\'s the distance all the way across, from one side to the other. If you wrap a string around any circle, the string will be exactly pi times as long as that distance across. Watch: this circle is one diameter wide, and when it rolls one full turn, it covers exactly pi on the number line. Pi starts with 3.14159 and goes on forever without repeating.',
     category: 'math',
     mathml: '<math><mi>π</mi></math>',
     metaphorPrompt:
@@ -148,9 +148,9 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Tau',
     value: 2 * Math.PI,
     revealPrecision: 2,
-    description: 'While the number Pi is like walking only halfway around a circle, this number represents one whole, perfect spin around the center. It compares the path all the way around the edge to the short stick from the center, making it the number of one complete turn. Instead of stopping halfway, it describes the full journey of a spinning wheel returning to where it started. It is the true heartbeat of a circle, representing one entire revolution.',
+    description: 'Every circle has a radius — that\'s the distance from the center to the edge, which is half the distance across. One full trip around any circle is exactly tau times the radius. Pi uses the whole distance across, but tau uses just the half, so tau is exactly 2 times pi. Tau is the number of one complete turn.',
     ttsExplanation:
-      "This is tau! It equals 2 times pi, about 6.283. Some mathematicians think tau is more natural than pi because it represents one full turn around a circle. Instead of saying a half turn is pi, a full turn is simply tau!",
+      "This is tau! Every circle has a radius — that's the distance from the center to the edge, which is half the distance across. If you wrap a string around any circle, the string will be exactly tau times as long as the radius. Watch: this circle has a radius of one, so it's two wide. When it rolls one full turn, it covers exactly tau on the number line. The pi circle was smaller because pi measures against the whole distance across. Tau measures against just the half, so tau is exactly 2 times pi!",
     category: 'math',
     mathml: '<math><mi>τ</mi></math>',
     metaphorPrompt:

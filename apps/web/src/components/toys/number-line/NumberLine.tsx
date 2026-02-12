@@ -20,6 +20,9 @@ import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
 import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress } from './constants/demos/goldenRatioDemo'
 import { renderPiOverlay } from './constants/demos/piDemo'
+import { renderTauOverlay } from './constants/demos/tauDemo'
+import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
+import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
@@ -59,6 +62,7 @@ export function NumberLine() {
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
   const rafRef = useRef<number>(0)
   const { resolvedTheme } = useTheme()
+  const phiExploreRef = usePhiExploreImage(resolvedTheme)
 
   // Debug controls for tick thresholds
   const [anchorMax, setAnchorMax] = useState(DEFAULT_TICK_THRESHOLDS.anchorMax)
@@ -399,6 +403,20 @@ export function NumberLine() {
 
     // Render constant demo overlay (golden ratio, etc.)
     const ds = demoStateRef.current
+
+    // Render phi explore image behind the spiral (fades in during final 25%)
+    if (ds.phase !== 'idle' && ds.constantId === 'phi' && ds.revealProgress > 0.75) {
+      const pe = phiExploreRef.current
+      if (pe) {
+        const t = (ds.revealProgress - 0.75) / 0.25 // 0→1 over final quarter
+        const imageOpacity = t * t * (3 - 2 * t) * ds.opacity // smoothstep × demo opacity
+        renderPhiExploreImage(
+          ctx, stateRef.current, cssWidth, cssHeight,
+          ds.revealProgress, imageOpacity, pe.image, pe.alignment
+        )
+      }
+    }
+
     if (ds.phase !== 'idle' && ds.constantId === 'phi') {
       renderGoldenRatioOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
@@ -411,11 +429,17 @@ export function NumberLine() {
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )
     }
+    if (ds.phase !== 'idle' && ds.constantId === 'tau') {
+      renderTauOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
 
     // Render sieve animation during ancient-trick tour stop
     if (tourTs.phase !== 'idle' && tourStop?.id === 'ancient-trick') {
       const sieveDwellElapsed = tourTs.phase === 'dwelling'
-        ? performance.now() - tourTs.dwellStartMs
+        ? tourTs.virtualDwellMs
         : tourTs.phase === 'fading' ? Infinity
         : 0
       renderSieveOverlay(
@@ -839,8 +863,10 @@ export function NumberLine() {
     // Active-state feedback: scale up + glow
     if (scrubberThumbVisualRef.current) {
       scrubberThumbVisualRef.current.style.transform = 'scale(1.4)'
-      const glowColor = demoStateRef.current.constantId === 'pi'
-        ? 'rgba(96, 165, 250, 0.6)' : 'rgba(168, 85, 247, 0.6)'
+      const cid = demoStateRef.current.constantId
+      const glowColor = cid === 'pi' ? 'rgba(96, 165, 250, 0.6)'
+        : cid === 'tau' ? 'rgba(45, 212, 191, 0.6)'
+        : 'rgba(168, 85, 247, 0.6)'
       scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
     }
   }, [scrubberProgressFromPointer, setRevealProgress])
@@ -909,9 +935,13 @@ export function NumberLine() {
   const activeDemoId = demoStateRef.current.constantId
   const scrubberTrackColor = activeDemoId === 'pi'
     ? (resolvedTheme === 'dark' ? 'rgba(96, 165, 250, 0.3)' : 'rgba(37, 99, 235, 0.3)')
+    : activeDemoId === 'tau'
+    ? (resolvedTheme === 'dark' ? 'rgba(45, 212, 191, 0.3)' : 'rgba(13, 148, 136, 0.3)')
     : (resolvedTheme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(109, 40, 217, 0.3)')
   const scrubberFillColor = activeDemoId === 'pi'
     ? (resolvedTheme === 'dark' ? '#60a5fa' : '#2563eb')
+    : activeDemoId === 'tau'
+    ? (resolvedTheme === 'dark' ? '#2dd4bf' : '#0d9488')
     : (resolvedTheme === 'dark' ? '#fbbf24' : '#a855f7')
 
   return (
@@ -988,7 +1018,10 @@ export function NumberLine() {
             data-element="demo-scrubber"
             role="slider"
             aria-label={demoStateRef.current.constantId === 'pi'
-              ? 'Pi unrolling progress' : 'Golden ratio convergence progress'}
+              ? 'Pi unrolling progress'
+              : demoStateRef.current.constantId === 'tau'
+              ? 'Tau unrolling progress'
+              : 'Golden ratio convergence progress'}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={0}
