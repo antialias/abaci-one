@@ -73,11 +73,14 @@ function getZoomKeyframes(
     return [
       // Start at base viewport (matches the demo's initial fly-in target)
       { progress: 0.80, ...base },
-      // Progressive zoom into √2 ≈ 1.41421356...
-      { progress: 0.84, center: 1.5,    pixelsPerUnit: ppuForRange(cssWidth, 1, 2) },
-      { progress: 0.87, center: 1.45,   pixelsPerUnit: ppuForRange(cssWidth, 1.4, 1.5) },
-      { progress: 0.90, center: 1.415,  pixelsPerUnit: ppuForRange(cssWidth, 1.41, 1.42) },
-      { progress: 0.91, center: 1.4145, pixelsPerUnit: ppuForRange(cssWidth, 1.414, 1.415) },
+      // Progressive zoom into √2 ≈ 1.4142135623730951...
+      { progress: 0.82,  center: 1.5,       pixelsPerUnit: ppuForRange(cssWidth, 1, 2) },
+      { progress: 0.835, center: 1.45,      pixelsPerUnit: ppuForRange(cssWidth, 1.4, 1.5) },
+      { progress: 0.85,  center: 1.415,     pixelsPerUnit: ppuForRange(cssWidth, 1.41, 1.42) },
+      { progress: 0.865, center: 1.4145,    pixelsPerUnit: ppuForRange(cssWidth, 1.414, 1.415) },
+      { progress: 0.88,  center: 1.41425,   pixelsPerUnit: ppuForRange(cssWidth, 1.4142, 1.4143) },
+      { progress: 0.895, center: 1.414215,  pixelsPerUnit: ppuForRange(cssWidth, 1.41421, 1.41422) },
+      { progress: 0.91,  center: 1.4142135, pixelsPerUnit: ppuForRange(cssWidth, 1.414213, 1.414214) },
       // Zoom back out for the reveal phase (√2 label, star, formula)
       { progress: 0.935, ...base },
     ]
@@ -87,11 +90,14 @@ function getZoomKeyframes(
     const base = piDemoViewport(cssWidth, cssHeight)
     return [
       { progress: 0.90, ...base },
-      // Progressive zoom into π ≈ 3.14159265...
-      { progress: 0.925, center: 3.5,    pixelsPerUnit: ppuForRange(cssWidth, 3, 4) },
-      { progress: 0.95,  center: 3.15,   pixelsPerUnit: ppuForRange(cssWidth, 3.1, 3.2) },
-      { progress: 0.975, center: 3.145,  pixelsPerUnit: ppuForRange(cssWidth, 3.14, 3.15) },
-      { progress: 1.0,   center: 3.1415, pixelsPerUnit: ppuForRange(cssWidth, 3.141, 3.142) },
+      // Progressive zoom into π ≈ 3.14159265358979...
+      { progress: 0.915, center: 3.5,        pixelsPerUnit: ppuForRange(cssWidth, 3, 4) },
+      { progress: 0.93,  center: 3.15,       pixelsPerUnit: ppuForRange(cssWidth, 3.1, 3.2) },
+      { progress: 0.945, center: 3.145,      pixelsPerUnit: ppuForRange(cssWidth, 3.14, 3.15) },
+      { progress: 0.96,  center: 3.1415,     pixelsPerUnit: ppuForRange(cssWidth, 3.141, 3.142) },
+      { progress: 0.975, center: 3.14155,    pixelsPerUnit: ppuForRange(cssWidth, 3.1415, 3.1416) },
+      { progress: 0.99,  center: 3.141595,   pixelsPerUnit: ppuForRange(cssWidth, 3.14159, 3.14160) },
+      { progress: 1.0,   center: 3.1415925,  pixelsPerUnit: ppuForRange(cssWidth, 3.141592, 3.141593) },
     ]
   }
 

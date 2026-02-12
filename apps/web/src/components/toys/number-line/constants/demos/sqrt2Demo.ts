@@ -598,7 +598,7 @@ export function renderSqrt2Overlay(
     const fadeIn = smoothstep(Math.min(1, zoomP * 4))
 
     // Decimal expansion typing out
-    const decimalStr = '1.41421356\u2026'
+    const decimalStr = '1.4142135623\u2026'
     const charsToShow = Math.min(
       decimalStr.length,
       Math.floor(1 + zoomP * (decimalStr.length - 1))

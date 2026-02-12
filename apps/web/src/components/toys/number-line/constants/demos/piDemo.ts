@@ -121,7 +121,7 @@ export function renderPiOverlay(
     const smoothFadeIn = fadeIn * fadeIn * (3 - 2 * fadeIn)
 
     // Decimal expansion typing out
-    const decimalStr = '3.14159265\u2026'
+    const decimalStr = '3.14159265358\u2026'
     const charsToShow = Math.min(
       decimalStr.length,
       Math.floor(1 + zoomP * (decimalStr.length - 1))
