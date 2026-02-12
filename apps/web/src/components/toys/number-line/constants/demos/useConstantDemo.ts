@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react'
 import type { NumberLineState } from '../../types'
 import { goldenRatioDemoViewport } from './goldenRatioDemo'
+import { piDemoViewport } from './piDemo'
 
 export type DemoPhase = 'idle' | 'animating' | 'presenting' | 'fading'
 
@@ -34,7 +35,7 @@ const FADE_IN_MS = 400
 const DEVIATION_THRESHOLD = 0.4
 
 /** Constants that have demos available */
-export const DEMO_AVAILABLE = new Set(['phi'])
+export const DEMO_AVAILABLE = new Set(['phi', 'pi'])
 
 /**
  * Hook managing the constant demonstration lifecycle.
@@ -94,6 +95,8 @@ export function useConstantDemo(
     let target = { center: 0, pixelsPerUnit: 100 }
     if (constantId === 'phi') {
       target = goldenRatioDemoViewport(cssWidth, cssHeight)
+    } else if (constantId === 'pi') {
+      target = piDemoViewport(cssWidth, cssHeight)
     }
 
     // Store source viewport for interpolation

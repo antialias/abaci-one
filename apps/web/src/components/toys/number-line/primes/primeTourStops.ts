@@ -66,16 +66,24 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
   },
   {
     id: 'ancient-trick',
-    viewport: { center: 50, pixelsPerUnit: 12 },
-    blurb: 'A long, long time ago, a clever person in Greece invented a game to find every prime.',
+    viewport: { center: 55, pixelsPerUnit: 5 },
+    blurb: 'Skip counting shakes the non-primes right off the number line!',
     ttsText:
-      'Okay, so how do we find all these primes? ' +
-      'A man named Eratosthenes, way back when people rode chariots, invented a super clever game. ' +
-      'It\'s like a strainer for numbers! You pour all the numbers in, ' +
-      'shake out the ones that aren\'t prime, and the special building blocks are the ones left behind. ' +
-      'We still use his idea today!',
-    ttsTone: 'Cozy storyteller. Like sharing the origin story of a famous superhero.',
-    minDwellMs: 3000,
+      'Okay, here\'s a super clever trick from a long, long time ago. ' +
+      'You know skip counting? Like when you count by twos — two, four, six, eight? ' +
+      'Well, watch this! We\'re going to skip count by two, and every number we land on ' +
+      'gets shaken right off the number line! ' +
+      'See them falling? Four, six, eight, ten — bye bye! They can all be split into twos, so they\'re not prime. ' +
+      'Now let\'s speed it up! Skip count by three — nine, fifteen, twenty-one — shake \'em out! ' +
+      'Faster! Count by fives! And sevens! ' +
+      'Now look what\'s left standing. Those are our primes! ' +
+      'The numbers that couldn\'t be shaken out, no matter how hard we tried. ' +
+      'A man named Eratosthenes invented this game thousands of years ago, ' +
+      'and we still use it today!',
+    ttsTone:
+      'Excited game-show energy building to wonder. Start playful and familiar with skip counting, ' +
+      'build momentum as the sieve speeds up, then awe at the primes left standing.',
+    minDwellMs: 5000,
     autoAdvance: true,
   },
   {

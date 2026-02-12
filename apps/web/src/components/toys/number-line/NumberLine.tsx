@@ -19,6 +19,7 @@ import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
 import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress } from './constants/demos/goldenRatioDemo'
+import { renderPiOverlay } from './constants/demos/piDemo'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
@@ -27,6 +28,7 @@ import type { InterestingPrime } from './primes/interestingness'
 import { usePrimeTour } from './primes/usePrimeTour'
 import { PRIME_TOUR_STOPS } from './primes/primeTourStops'
 import { renderTourSpotlight } from './primes/renderTourSpotlight'
+import { renderSieveOverlay } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 
@@ -403,6 +405,24 @@ export function NumberLine() {
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )
     }
+    if (ds.phase !== 'idle' && ds.constantId === 'pi') {
+      renderPiOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+
+    // Render sieve animation during ancient-trick tour stop
+    if (tourTs.phase !== 'idle' && tourStop?.id === 'ancient-trick') {
+      const sieveDwellElapsed = tourTs.phase === 'dwelling'
+        ? performance.now() - tourTs.dwellStartMs
+        : tourTs.phase === 'fading' ? Infinity
+        : 0
+      renderSieveOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', sieveDwellElapsed, tourTs.opacity
+      )
+    }
 
     // Render tour spotlight (dim overlay + pulse glow)
     if (tourTs.phase !== 'idle' && highlightSet && highlightSet.size > 0 && dimAmount > 0) {
@@ -430,18 +450,22 @@ export function NumberLine() {
     if (scrubberThumbRef.current) {
       scrubberThumbRef.current.style.left = `${scrubberPct}%`
     }
-    // Convergence gap indicator
+    // Convergence gap indicator (phi only)
     if (scrubberGapRef.current) {
-      const gap = convergenceGapAtProgress(ds.revealProgress)
-      const maxWidth = 60
-      scrubberGapRef.current.style.width = `${gap * maxWidth}px`
-      scrubberGapRef.current.style.left = `calc(${scrubberPct}% - ${(gap * maxWidth) / 2}px)`
-      // Color: warm (red/amber) when large gap, cool (green) when converged
-      const r = Math.round(220 * gap + 34 * (1 - gap))
-      const g = Math.round(80 * gap + 197 * (1 - gap))
-      const b = Math.round(40 * gap + 94 * (1 - gap))
-      scrubberGapRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
-      scrubberGapRef.current.style.opacity = isActive && ds.opacity > 0.1 ? '1' : '0'
+      if (ds.constantId === 'phi') {
+        const gap = convergenceGapAtProgress(ds.revealProgress)
+        const maxWidth = 60
+        scrubberGapRef.current.style.width = `${gap * maxWidth}px`
+        scrubberGapRef.current.style.left = `calc(${scrubberPct}% - ${(gap * maxWidth) / 2}px)`
+        // Color: warm (red/amber) when large gap, cool (green) when converged
+        const r = Math.round(220 * gap + 34 * (1 - gap))
+        const g = Math.round(80 * gap + 197 * (1 - gap))
+        const b = Math.round(40 * gap + 94 * (1 - gap))
+        scrubberGapRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
+        scrubberGapRef.current.style.opacity = isActive && ds.opacity > 0.1 ? '1' : '0'
+      } else {
+        scrubberGapRef.current.style.opacity = '0'
+      }
     }
     // Sync React state for conditional rendering (batch with rAF)
     if (isActive && !demoActive) setDemoActive(true)
@@ -815,7 +839,9 @@ export function NumberLine() {
     // Active-state feedback: scale up + glow
     if (scrubberThumbVisualRef.current) {
       scrubberThumbVisualRef.current.style.transform = 'scale(1.4)'
-      scrubberThumbVisualRef.current.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.6)'
+      const glowColor = demoStateRef.current.constantId === 'pi'
+        ? 'rgba(96, 165, 250, 0.6)' : 'rgba(168, 85, 247, 0.6)'
+      scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
     }
   }, [scrubberProgressFromPointer, setRevealProgress])
 
@@ -879,9 +905,14 @@ export function NumberLine() {
     }
   }, [])
 
-  // Colors for scrubber (match golden ratio demo palette)
-  const scrubberTrackColor = resolvedTheme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(109, 40, 217, 0.3)'
-  const scrubberFillColor = resolvedTheme === 'dark' ? '#fbbf24' : '#a855f7'
+  // Colors for scrubber (adapts to active demo)
+  const activeDemoId = demoStateRef.current.constantId
+  const scrubberTrackColor = activeDemoId === 'pi'
+    ? (resolvedTheme === 'dark' ? 'rgba(96, 165, 250, 0.3)' : 'rgba(37, 99, 235, 0.3)')
+    : (resolvedTheme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(109, 40, 217, 0.3)')
+  const scrubberFillColor = activeDemoId === 'pi'
+    ? (resolvedTheme === 'dark' ? '#60a5fa' : '#2563eb')
+    : (resolvedTheme === 'dark' ? '#fbbf24' : '#a855f7')
 
   return (
     <div ref={wrapperRef} data-component="number-line-wrapper" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
@@ -956,7 +987,8 @@ export function NumberLine() {
             ref={scrubberTrackRef}
             data-element="demo-scrubber"
             role="slider"
-            aria-label="Golden ratio convergence progress"
+            aria-label={demoStateRef.current.constantId === 'pi'
+              ? 'Pi unrolling progress' : 'Golden ratio convergence progress'}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={0}

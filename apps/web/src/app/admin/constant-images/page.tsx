@@ -7,6 +7,32 @@ import { AdminNav } from '@/components/AdminNav'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { ImageGenerateOutput } from '@/lib/tasks/image-generate'
 import type { PhiExploreGenerateOutput } from '@/lib/tasks/phi-explore-generate'
+import {
+  SUBDIVISIONS,
+  RECT_RATIO,
+} from '@/components/toys/number-line/constants/demos/goldenRatioDemo'
+
+interface AlignmentConfig {
+  scale: number
+  rotation: number
+  offsetX: number
+  offsetY: number
+}
+
+const DEFAULT_ALIGNMENT: AlignmentConfig = { scale: 1, rotation: 0, offsetX: 0, offsetY: 0 }
+
+type AlignmentData = Record<string, Record<string, AlignmentConfig>>
+
+interface AlignmentKey {
+  subjectId: string
+  theme: 'light' | 'dark'
+}
+
+// Spiral convergence point from the innermost subdivision
+const SPIRAL_CONVERGENCE = {
+  x: SUBDIVISIONS[SUBDIVISIONS.length - 1].arcCx,
+  y: SUBDIVISIONS[SUBDIVISIONS.length - 1].arcCy,
+}
 
 type PipelinePhase = 'base' | 'light' | 'dark'
 
@@ -75,6 +101,9 @@ export default function ConstantImagesPage() {
   const [phiPolledTaskError, setPhiPolledTaskError] = useState<string | null>(null)
   const [phiPolledTaskStatus, setPhiPolledTaskStatus] = useState<string | null>(null)
   const [phiLastResult, setPhiLastResult] = useState<PhiExploreGenerateOutput | null>(null)
+  // Alignment editor state
+  const [alignmentData, setAlignmentData] = useState<AlignmentData>({})
+  const [aligningKey, setAligningKey] = useState<AlignmentKey | null>(null)
 
   const providerInitRef = useRef(false)
   const pipelineAdvancingRef = useRef(false)
@@ -187,10 +216,18 @@ export default function ConstantImagesPage() {
   // Fetch status on mount and after task completes
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/constant-images/status')
-      if (!res.ok) throw new Error(`Failed to fetch status: ${res.status}`)
-      const data: StatusResponse = await res.json()
+      const [statusRes, alignRes] = await Promise.all([
+        fetch('/api/admin/constant-images/status'),
+        fetch('/api/admin/constant-images/phi-explore/alignment'),
+      ])
+      if (!statusRes.ok) throw new Error(`Failed to fetch status: ${statusRes.status}`)
+      const data: StatusResponse = await statusRes.json()
       setStatus(data)
+
+      if (alignRes.ok) {
+        const alignData = await alignRes.json()
+        setAlignmentData(alignData)
+      }
 
       // Auto-select first available provider/model (once)
       if (!providerInitRef.current) {
@@ -1091,20 +1128,46 @@ export default function ConstantImagesPage() {
                 gap: '16px',
               })}
             >
-              {status.phiExplore.map((subject) => (
-                <PhiExploreCard
-                  key={subject.id}
-                  subject={subject}
-                  isGenerating={isPhiGenerating}
-                  isCurrentlyGenerating={phiGeneratingSet.has(subject.id)}
-                  isExpanded={phiExpandedPrompts.has(subject.id)}
-                  onTogglePrompt={() => togglePhiPrompt(subject.id)}
-                  onRegenerate={() =>
-                    handlePhiGenerate({ targets: [{ subjectId: subject.id }], forceRegenerate: true })
-                  }
-                  provider={provider}
-                />
-              ))}
+              {status.phiExplore.map((subject) => {
+                const aligningTheme = aligningKey?.subjectId === subject.id ? aligningKey.theme : null
+                return (
+                  <div key={subject.id}>
+                    <PhiExploreCard
+                      subject={subject}
+                      isGenerating={isPhiGenerating}
+                      isCurrentlyGenerating={phiGeneratingSet.has(subject.id)}
+                      isExpanded={phiExpandedPrompts.has(subject.id)}
+                      onTogglePrompt={() => togglePhiPrompt(subject.id)}
+                      onRegenerate={() =>
+                        handlePhiGenerate({ targets: [{ subjectId: subject.id }], forceRegenerate: true })
+                      }
+                      provider={provider}
+                      aligningTheme={aligningTheme}
+                      onToggleAlign={(theme) =>
+                        setAligningKey((prev) =>
+                          prev?.subjectId === subject.id && prev.theme === theme
+                            ? null
+                            : { subjectId: subject.id, theme }
+                        )
+                      }
+                    />
+                    {aligningTheme && (
+                      <PhiAlignmentEditor
+                        subjectId={subject.id}
+                        theme={aligningTheme}
+                        alignment={alignmentData[subject.id]?.[aligningTheme] ?? DEFAULT_ALIGNMENT}
+                        onSave={(alignment) => {
+                          setAlignmentData((prev) => ({
+                            ...prev,
+                            [subject.id]: { ...prev[subject.id], [aligningTheme]: alignment },
+                          }))
+                        }}
+                        onClose={() => setAligningKey(null)}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
@@ -1420,6 +1483,8 @@ function PhiExploreCard({
   onTogglePrompt,
   onRegenerate,
   provider,
+  isAligning,
+  onToggleAlign,
 }: {
   subject: PhiExploreImageStatus
   isGenerating: boolean
@@ -1428,6 +1493,8 @@ function PhiExploreCard({
   onTogglePrompt: () => void
   onRegenerate: () => void
   provider: string
+  isAligning: boolean
+  onToggleAlign: () => void
 }) {
   const variants: Array<{ key: string; label: string; suffix: string; exists: boolean }> = [
     { key: 'base', label: 'base', suffix: '', exists: subject.exists },
@@ -1601,6 +1668,25 @@ function PhiExploreCard({
           >
             Prompt
           </button>
+          {subject.exists && (
+            <button
+              data-action={`align-phi-${subject.id}`}
+              onClick={onToggleAlign}
+              className={css({
+                fontSize: '11px',
+                backgroundColor: isAligning ? '#1f6feb' : '#21262d',
+                color: isAligning ? '#fff' : '#8b949e',
+                border: '1px solid',
+                borderColor: isAligning ? '#1f6feb' : '#30363d',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                '&:hover': { backgroundColor: isAligning ? '#388bfd' : '#30363d' },
+              })}
+            >
+              Align
+            </button>
+          )}
         </div>
 
         {/* Expanded prompt */}
@@ -1621,6 +1707,296 @@ function PhiExploreCard({
             {subject.prompt}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// --- Alignment Editor ---
+
+const ARC_SWEEP = Math.PI / 2
+const CANVAS_WIDTH = 500
+const CANVAS_HEIGHT = Math.round(CANVAS_WIDTH / RECT_RATIO)
+
+function PhiAlignmentEditor({
+  subjectId,
+  alignment,
+  onSave,
+  onClose,
+}: {
+  subjectId: string
+  alignment: AlignmentConfig
+  onSave: (alignment: AlignmentConfig) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState<AlignmentConfig>(alignment)
+  const [saving, setSaving] = useState(false)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const imgRef = useRef<HTMLImageElement | null>(null)
+  const imgLoadedRef = useRef(false)
+
+  // Load the subject image
+  useEffect(() => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      imgRef.current = img
+      imgLoadedRef.current = true
+      // Trigger a redraw
+      drawCanvas()
+    }
+    img.src = `/images/constants/phi-explore/${subjectId}.png?t=${Date.now()}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectId])
+
+  const drawCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = CANVAS_WIDTH * dpr
+    canvas.height = CANVAS_HEIGHT * dpr
+    ctx.scale(dpr, dpr)
+
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+    // Map subdivision coords to canvas pixels.
+    // Subdivisions live in [0, RECT_RATIO] × [-1, 0].
+    // We want padding around the rectangle.
+    const pad = 20
+    const drawW = CANVAS_WIDTH - pad * 2
+    const drawH = CANVAS_HEIGHT - pad * 2
+    // Scale so [0, RECT_RATIO] maps to drawW and [-1, 0] maps to drawH
+    const scale = Math.min(drawW / RECT_RATIO, drawH / 1)
+    const ox = pad + (drawW - RECT_RATIO * scale) / 2
+    const oy = pad + (drawH - 1 * scale) / 2
+
+    // Sub coords → canvas
+    const toCanvasX = (x: number) => ox + x * scale
+    const toCanvasY = (y: number) => oy + (-y) * scale  // flip y: sub y=-1 → bottom, y=0 → top
+
+    // Spiral bounding box center in canvas coords
+    const spiralCx = toCanvasX(RECT_RATIO / 2)
+    const spiralCy = toCanvasY(-0.5)
+    const spiralW = RECT_RATIO * scale
+    const spiralH = 1 * scale
+
+    // --- Draw image with transforms ---
+    if (imgRef.current && imgLoadedRef.current) {
+      ctx.save()
+
+      // Clip to the spiral bounding box area (with some margin)
+      ctx.beginPath()
+      ctx.rect(ox - 2, oy - 2, RECT_RATIO * scale + 4, 1 * scale + 4)
+      ctx.clip()
+
+      // Translate to spiral center, apply user transforms
+      ctx.translate(spiralCx + draft.offsetX * spiralW, spiralCy + draft.offsetY * spiralH)
+      ctx.rotate((draft.rotation * Math.PI) / 180)
+      ctx.scale(draft.scale, draft.scale)
+
+      // Draw image centered
+      const img = imgRef.current
+      const imgAspect = img.naturalWidth / img.naturalHeight
+      const boxAspect = spiralW / spiralH
+      let imgDrawW: number, imgDrawH: number
+      if (imgAspect > boxAspect) {
+        // Image wider → fit height
+        imgDrawH = spiralH
+        imgDrawW = spiralH * imgAspect
+      } else {
+        // Image taller → fit width
+        imgDrawW = spiralW
+        imgDrawH = spiralW / imgAspect
+      }
+      ctx.drawImage(img, -imgDrawW / 2, -imgDrawH / 2, imgDrawW, imgDrawH)
+      ctx.restore()
+    }
+
+    // --- Draw spiral overlay ---
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.7)'
+    ctx.lineWidth = 2
+    for (const sub of SUBDIVISIONS) {
+      const r = sub.side * scale
+      if (r < 1) continue
+
+      const cx = toCanvasX(sub.arcCx)
+      const cy = toCanvasY(sub.arcCy)
+
+      // Negate angles because canvas y-axis is flipped relative to subdivision coords
+      const startAngle = -sub.arcStartAngle
+      const endAngle = -(sub.arcStartAngle + ARC_SWEEP)
+
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, startAngle, endAngle, true)
+      ctx.stroke()
+    }
+
+    // Draw bounding rectangle outline
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(toCanvasX(0), toCanvasY(0), RECT_RATIO * scale, 1 * scale)
+  }, [draft])
+
+  // Redraw on every draft change
+  useEffect(() => {
+    drawCanvas()
+  }, [drawCanvas])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/admin/constant-images/phi-explore/alignment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectId, alignment: draft }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      onSave(draft)
+    } catch (err) {
+      console.error('Failed to save alignment:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleReset = () => {
+    setDraft({ scale: 1, rotation: 0, offsetX: 0, offsetY: 0 })
+  }
+
+  const sliderRow = (
+    label: string,
+    field: keyof AlignmentConfig,
+    min: number,
+    max: number,
+    step: number
+  ) => (
+    <div
+      data-element={`slider-${field}`}
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+      })}
+    >
+      <span className={css({ fontSize: '11px', color: '#8b949e', width: '60px', flexShrink: 0 })}>
+        {label}
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={draft[field]}
+        onChange={(e) => setDraft((prev) => ({ ...prev, [field]: parseFloat(e.target.value) }))}
+        className={css({ flex: 1, accentColor: '#8957e5' })}
+      />
+      <span
+        className={css({
+          fontSize: '11px',
+          color: '#c9d1d9',
+          width: '50px',
+          textAlign: 'right',
+          fontFamily: 'monospace',
+        })}
+      >
+        {draft[field].toFixed(field === 'rotation' ? 1 : 2)}
+      </span>
+    </div>
+  )
+
+  return (
+    <div
+      data-element="phi-alignment-editor"
+      data-subject-id={subjectId}
+      className={css({
+        backgroundColor: '#161b22',
+        border: '1px solid #30363d',
+        borderTop: 'none',
+        borderRadius: '0 0 8px 8px',
+        padding: '16px',
+      })}
+    >
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
+        style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
+        className={css({
+          display: 'block',
+          margin: '0 auto 16px',
+          backgroundColor: '#0d1117',
+          borderRadius: '4px',
+          border: '1px solid #30363d',
+        })}
+      />
+
+      {/* Sliders */}
+      <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' })}>
+        {sliderRow('Scale', 'scale', 0.2, 3.0, 0.01)}
+        {sliderRow('Rotation', 'rotation', -180, 180, 0.5)}
+        {sliderRow('Offset X', 'offsetX', -1.0, 1.0, 0.01)}
+        {sliderRow('Offset Y', 'offsetY', -1.0, 1.0, 0.01)}
+      </div>
+
+      {/* Buttons */}
+      <div className={css({ display: 'flex', gap: '8px' })}>
+        <button
+          data-action="save-alignment"
+          onClick={handleSave}
+          disabled={saving}
+          className={css({
+            fontSize: '12px',
+            backgroundColor: '#238636',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 16px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            '&:hover': { backgroundColor: '#2ea043' },
+            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+          })}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+        <button
+          data-action="reset-alignment"
+          onClick={handleReset}
+          className={css({
+            fontSize: '12px',
+            backgroundColor: '#21262d',
+            color: '#c9d1d9',
+            border: '1px solid #30363d',
+            borderRadius: '6px',
+            padding: '6px 16px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            '&:hover': { backgroundColor: '#30363d' },
+          })}
+        >
+          Reset
+        </button>
+        <button
+          data-action="close-alignment"
+          onClick={onClose}
+          className={css({
+            fontSize: '12px',
+            backgroundColor: '#21262d',
+            color: '#8b949e',
+            border: '1px solid #30363d',
+            borderRadius: '6px',
+            padding: '6px 16px',
+            cursor: 'pointer',
+            '&:hover': { backgroundColor: '#30363d' },
+          })}
+        >
+          Close
+        </button>
       </div>
     </div>
   )

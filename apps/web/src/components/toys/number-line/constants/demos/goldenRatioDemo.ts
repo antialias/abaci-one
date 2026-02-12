@@ -12,7 +12,7 @@ for (let i = 2; i <= NUM_LEVELS; i++) {
   FIB.push(FIB[i - 1] + FIB[i - 2])
 }
 /** Starting rectangle ratio F(n+1)/F(n) — converges to φ */
-const RECT_RATIO = FIB[NUM_LEVELS] / FIB[NUM_LEVELS - 1]
+export const RECT_RATIO = FIB[NUM_LEVELS] / FIB[NUM_LEVELS - 1]
 
 /**
  * Target viewport for the golden ratio demo.
@@ -27,7 +27,7 @@ export function goldenRatioDemoViewport(_cssWidth: number, cssHeight: number) {
 
 // --- Subdivision computation ---
 
-interface Subdivision {
+export interface Subdivision {
   /** Square top-left in number-line coords (y=0 is axis) */
   sx: number
   sy: number
@@ -116,7 +116,7 @@ function computeSubdivisions(): Subdivision[] {
 }
 
 // Pre-compute once
-const SUBDIVISIONS = computeSubdivisions()
+export const SUBDIVISIONS = computeSubdivisions()
 
 /** Every arc sweeps exactly 90° */
 const ARC_SWEEP = Math.PI / 2
