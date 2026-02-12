@@ -20,7 +20,7 @@ import { isHashClipId } from '@/lib/audio/clipHash'
 import { ALL_VOICES, VOICE_PROVIDERS, getVoiceMeta } from '@/lib/audio/voices'
 import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../../styled-system/css'
-import type { VoiceSource } from '@/lib/audio/voiceSource'
+import type { VoiceSourceData } from '@/lib/audio/voiceSource'
 
 interface AudioStatus {
   activeVoice: string
@@ -33,7 +33,7 @@ export default function AdminAudioPage() {
   const [status, setStatus] = useState<AudioStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [voiceChain, setVoiceChain] = useState<VoiceSource[]>([])
+  const [voiceChain, setVoiceChain] = useState<VoiceSourceData[]>([])
   const [voiceChainDirty, setVoiceChainDirty] = useState(false)
   const [showVoiceChain, setShowVoiceChain] = useState(false)
   const [showTtsTest, setShowTtsTest] = useState(false)
@@ -47,6 +47,8 @@ export default function AdminAudioPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('')
   const [micStream, setMicStream] = useState<MediaStream | null>(null)
   const ccAudioRef = useRef<HTMLAudioElement | null>(null)
+  const [reportingVoice, setReportingVoice] = useState<string | null>(null)
+  const reportAudioRef = useRef<HTMLAudioElement | null>(null)
   const queryClient = useQueryClient()
   const { data: session } = useSession()
 
@@ -125,10 +127,48 @@ export default function AdminAudioPage() {
     setVoiceChainDirty(true)
   }
 
-  const addToVoiceChain = (source: VoiceSource) => {
+  const addToVoiceChain = (source: VoiceSourceData) => {
     setVoiceChain((prev) => [...prev, source])
     setVoiceChainDirty(true)
   }
+
+  const handleReportIn = useCallback(async (voiceName: string) => {
+    if (reportAudioRef.current) {
+      reportAudioRef.current.pause()
+      reportAudioRef.current = null
+    }
+    setReportingVoice(voiceName)
+    try {
+      const res = await fetch('/api/admin/audio/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voice: voiceName,
+          text: `Hey! I'm ${voiceName}, reporting for duty. You picked me, great choice.`,
+          tone: 'Sassy, confident, and a little cheeky. Short punchy delivery with loads of personality. Have fun with it.',
+        }),
+      })
+      if (!res.ok) {
+        setReportingVoice(null)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      reportAudioRef.current = audio
+      audio.onended = () => {
+        setReportingVoice(null)
+        URL.revokeObjectURL(url)
+      }
+      audio.onerror = () => {
+        setReportingVoice(null)
+        URL.revokeObjectURL(url)
+      }
+      audio.play()
+    } catch {
+      setReportingVoice(null)
+    }
+  }, [])
 
   const isCcGenerating = ccTaskState?.status === 'pending' || ccTaskState?.status === 'running'
 
@@ -482,9 +522,11 @@ export default function AdminAudioPage() {
                             ? s.name
                             : s.type === 'custom'
                               ? `${s.name} (mic)`
-                              : s.type === 'subtitle'
-                                ? 'subtitle'
-                                : 'browser'
+                              : s.type === 'generate'
+                                ? 'generate'
+                                : s.type === 'subtitle'
+                                  ? 'subtitle'
+                                  : 'browser'
                         )
                         .join(' \u2192 ')}
                     </span>
@@ -542,9 +584,11 @@ export default function AdminAudioPage() {
                               ? source.name
                               : source.type === 'custom'
                                 ? source.name
-                                : source.type === 'subtitle'
-                                  ? 'Subtitles'
-                                  : 'Browser TTS'}
+                                : source.type === 'generate'
+                                  ? 'Auto-generate'
+                                  : source.type === 'subtitle'
+                                    ? 'Subtitles'
+                                    : 'Browser TTS'}
                           </span>
                           <span
                             className={css({
@@ -601,6 +645,17 @@ export default function AdminAudioPage() {
                               >
                                 Custom (microphone)
                               </span>
+                            ) : source.type === 'generate' ? (
+                              <span
+                                className={css({
+                                  padding: '2px 8px',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#d2992233',
+                                  color: '#d29922',
+                                })}
+                              >
+                                On-demand via API
+                              </span>
                             ) : source.type === 'subtitle' ? (
                               <span
                                 className={css({
@@ -625,6 +680,28 @@ export default function AdminAudioPage() {
                               </span>
                             )}
                           </span>
+                          {source.type === 'pregenerated' && (
+                            <button
+                              data-action={`report-in-${source.name}`}
+                              onClick={() => handleReportIn(source.name)}
+                              disabled={reportingVoice === source.name}
+                              className={css({
+                                background: 'none',
+                                border: '1px solid #30363d',
+                                borderRadius: '6px',
+                                color: reportingVoice === source.name ? '#58a6ff' : '#8b949e',
+                                cursor: reportingVoice === source.name ? 'wait' : 'pointer',
+                                fontSize: '11px',
+                                padding: '2px 8px',
+                                whiteSpace: 'nowrap',
+                                '&:hover': { borderColor: '#58a6ff', color: '#58a6ff' },
+                                '&:disabled': { opacity: 0.7 },
+                              })}
+                              title={`Hear ${source.name} introduce itself`}
+                            >
+                              {reportingVoice === source.name ? '\u25B6 ...' : '\u{1F399} Report in'}
+                            </button>
+                          )}
                           <button
                             data-action="chain-move-up"
                             onClick={() => moveVoiceChainEntry(idx, -1)}
@@ -728,6 +805,7 @@ export default function AdminAudioPage() {
                             {(() => {
                               const hasSubtitle = voiceChain.some((vc) => vc.type === 'subtitle')
                               const hasBrowser = voiceChain.some((vc) => vc.type === 'browser-tts')
+                              const hasGenerate = voiceChain.some((vc) => vc.type === 'generate')
                               const chainPregenNames = new Set(
                                 voiceChain
                                   .filter((vc) => vc.type === 'pregenerated')
@@ -755,7 +833,7 @@ export default function AdminAudioPage() {
                                 return { provider, modelGroups }
                               }).filter((g) => g.modelGroups.length > 0)
 
-                              const hasAnyAvailable = providerGroups.length > 0 || !hasBrowser
+                              const hasAnyAvailable = providerGroups.length > 0 || !hasBrowser || !hasGenerate
                               if (!hasAnyAvailable) {
                                 return (
                                   <DropdownMenu.Label
@@ -878,6 +956,58 @@ export default function AdminAudioPage() {
                               }
 
                               const sections: React.ReactNode[] = []
+
+                              // Auto-generate — on-demand via OpenAI API
+                              if (!hasGenerate) {
+                                sections.push(
+                                  <DropdownMenu.Item
+                                    key="generate"
+                                    data-action="add-voice-generate"
+                                    onSelect={() => addToVoiceChain({ type: 'generate' })}
+                                    className={css({
+                                      padding: '8px 12px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      outline: 'none',
+                                      '&:hover': { backgroundColor: '#21262d' },
+                                      '&:focus': { backgroundColor: '#21262d' },
+                                    })}
+                                  >
+                                    <div
+                                      className={css({
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '4px',
+                                      })}
+                                    >
+                                      <span
+                                        className={css({
+                                          color: '#f0f6fc',
+                                          fontWeight: '600',
+                                          fontSize: '13px',
+                                        })}
+                                      >
+                                        Auto-generate
+                                      </span>
+                                      <span
+                                        className={css({
+                                          fontSize: '11px',
+                                          padding: '1px 6px',
+                                          borderRadius: '8px',
+                                          backgroundColor: '#d2992233',
+                                          color: '#d29922',
+                                        })}
+                                      >
+                                        on-demand via API
+                                      </span>
+                                    </div>
+                                    <div className={css({ color: '#8b949e', fontSize: '12px' })}>
+                                      Generates missing clips via OpenAI when needed
+                                    </div>
+                                  </DropdownMenu.Item>
+                                )
+                              }
 
                               // Browser TTS — always first (always healthy)
                               if (!hasBrowser) {
@@ -1116,7 +1246,7 @@ export default function AdminAudioPage() {
                                   return
                                 }
                                 setVoiceChain((prev) => [
-                                  { type: 'custom', name } as VoiceSource,
+                                  { type: 'custom', name } as VoiceSourceData,
                                   ...prev,
                                 ])
                                 setVoiceChainDirty(true)
@@ -1155,7 +1285,7 @@ export default function AdminAudioPage() {
                                 return
                               }
                               setVoiceChain((prev) => [
-                                { type: 'custom', name } as VoiceSource,
+                                { type: 'custom', name } as VoiceSourceData,
                                 ...prev,
                               ])
                               setVoiceChainDirty(true)

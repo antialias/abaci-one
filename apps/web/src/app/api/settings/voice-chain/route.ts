@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
 
-import type { VoiceSource } from '@/lib/audio/voiceSource'
+import type { VoiceSourceData } from '@/lib/audio/voiceSource'
 
 async function ensureDefaultSettings() {
   const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
@@ -17,7 +17,7 @@ async function ensureDefaultSettings() {
   }
 }
 
-function isValidVoiceChain(chain: unknown): chain is VoiceSource[] {
+function isValidVoiceChain(chain: unknown): chain is VoiceSourceData[] {
   if (!Array.isArray(chain)) return false
   return chain.every(
     (entry) =>
@@ -30,7 +30,8 @@ function isValidVoiceChain(chain: unknown): chain is VoiceSource[] {
         entry.type === 'custom' &&
         typeof entry.name === 'string') ||
       (entry && typeof entry === 'object' && entry.type === 'browser-tts') ||
-      (entry && typeof entry === 'object' && entry.type === 'subtitle')
+      (entry && typeof entry === 'object' && entry.type === 'subtitle') ||
+      (entry && typeof entry === 'object' && entry.type === 'generate')
   )
 }
 
@@ -50,7 +51,7 @@ export async function GET() {
       .limit(1)
 
     const raw = settings?.voiceChain ?? DEFAULT_APP_SETTINGS.voiceChain
-    const voiceChain: VoiceSource[] = raw
+    const voiceChain: VoiceSourceData[] = raw
       ? JSON.parse(raw)
       : [{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }]
 
@@ -66,7 +67,7 @@ export async function GET() {
  *
  * Updates the voice chain configuration.
  *
- * Body: { voiceChain: VoiceSource[] }
+ * Body: { voiceChain: VoiceSourceData[] }
  */
 export async function PATCH(request: NextRequest) {
   try {

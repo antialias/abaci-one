@@ -8,7 +8,7 @@ import { useTTS } from '@/hooks/useTTS'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import { useGenerateCollectedClips, collectedClipKeys } from '@/hooks/useCollectedClips'
 import type { CollectedClipGenerateOutput } from '@/lib/tasks/collected-clip-generate'
-import type { VoiceSource, TtsSay } from '@/lib/audio/TtsAudioManager'
+import type { VoiceSourceData, TtsSay } from '@/lib/audio/TtsAudioManager'
 import { computeClipHash } from '@/lib/audio/clipHash'
 import { getClipMeta } from '@/lib/audio/audioClipRegistry'
 import { ALL_VOICES } from '@/lib/audio/voices'
@@ -58,7 +58,7 @@ type InputMode = 'say-text' | 'clip-id' | 'clip-id-say'
 // ---------------------------------------------------------------------------
 
 interface TtsTestPanelProps {
-  voiceChain: VoiceSource[]
+  voiceChain: VoiceSourceData[]
 }
 
 export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {

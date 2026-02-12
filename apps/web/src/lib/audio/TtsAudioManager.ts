@@ -2,9 +2,16 @@ import { AUDIO_MANIFEST_MAP } from './audioManifest'
 import { getClipMeta } from './audioClipRegistry'
 import { computeClipHash, resolveCanonicalText } from './clipHash'
 
+export type SubtitleAnchor = 'top' | 'bottom'
+
 export interface TtsAudioManagerConfig {
   volume: number
   enabled: boolean
+  subtitleDurationMultiplier: number
+  /** Bottom offset in pixels for subtitle positioning (default 64). */
+  subtitleBottomOffset: number
+  /** Anchor subtitles to top or bottom of viewport (default 'bottom'). */
+  subtitleAnchor: SubtitleAnchor
 }
 
 export interface ManagerSnapshot {
@@ -12,6 +19,12 @@ export interface ManagerSnapshot {
   isEnabled: boolean
   volume: number
   subtitleText: string | null
+  subtitleDurationMultiplier: number
+  subtitleDurationMs: number
+  /** Bottom offset in pixels for subtitle positioning. */
+  subtitleBottomOffset: number
+  /** Anchor subtitles to top or bottom of viewport. */
+  subtitleAnchor: SubtitleAnchor
 }
 
 /** Locale -> fallback text map (BCP 47 keys). */
@@ -48,10 +61,23 @@ export interface CollectedClip {
   lastSeen: Date
 }
 
-export type { VoiceSource } from './voiceSource'
-import type { VoiceSource } from './voiceSource'
+export type { VoiceSourceData } from './voiceSource'
+import type { VoiceSourceData } from './voiceSource'
+import {
+  type VoiceSource,
+  PregeneratedVoice,
+  CustomVoice,
+  hydrateVoiceChain,
+} from './voiceSource'
 
 type Listener = () => void
+
+type ChainAttemptOutcome = 'no-clip' | 'play-error' | 'unavailable' | 'skipped'
+
+interface ChainAttempt {
+  source: VoiceSource
+  outcome: ChainAttemptOutcome
+}
 
 /** Resolved segment ready for playback. */
 interface ResolvedSegment {
@@ -69,6 +95,10 @@ export class TtsAudioManager {
   private _isPlaying = false
   private _isEnabled = false
   private _volume = 0.8
+  private _subtitleDurationMultiplier = 1
+  private _currentSubtitleDurationMs = 0
+  private _subtitleBottomOffset = 64
+  private _subtitleAnchor: SubtitleAnchor = 'bottom'
 
   // Voice chain: ordered fallback list for playback
   private _voiceChain: VoiceSource[] = []
@@ -93,6 +123,10 @@ export class TtsAudioManager {
     isEnabled: false,
     volume: 0.8,
     subtitleText: null,
+    subtitleDurationMultiplier: 1,
+    subtitleDurationMs: 0,
+    subtitleBottomOffset: 64,
+    subtitleAnchor: 'bottom',
   }
 
   // -- Configuration --
@@ -112,6 +146,29 @@ export class TtsAudioManager {
         this.stop()
       }
     }
+    if (config.subtitleDurationMultiplier !== undefined) {
+      this._subtitleDurationMultiplier = config.subtitleDurationMultiplier
+      changed = true
+      // Restart the active subtitle timer so the new speed takes effect immediately
+      if (this._subtitleText && this._subtitleResolve) {
+        if (this._subtitleTimer) clearTimeout(this._subtitleTimer)
+        const newMs = this.estimateReadingTimeMs(this._subtitleText)
+        this._currentSubtitleDurationMs = newMs
+        const resolve = this._subtitleResolve
+        this._subtitleTimer = setTimeout(() => {
+          this._subtitleResolve = null
+          resolve()
+        }, newMs)
+      }
+    }
+    if (config.subtitleBottomOffset !== undefined) {
+      this._subtitleBottomOffset = config.subtitleBottomOffset
+      changed = true
+    }
+    if (config.subtitleAnchor !== undefined) {
+      this._subtitleAnchor = config.subtitleAnchor
+      changed = true
+    }
 
     if (changed) this.notify()
   }
@@ -122,13 +179,13 @@ export class TtsAudioManager {
    * Load the pre-generated clip manifest for the given voice chain.
    * Fetches from the manifest endpoint to populate `_pregenClipIds`.
    */
-  async loadPregenManifest(voiceChain: VoiceSource[]): Promise<void> {
-    this._voiceChain = voiceChain
+  async loadPregenManifest(voiceChainData: VoiceSourceData[]): Promise<void> {
+    this._voiceChain = hydrateVoiceChain(voiceChainData)
 
-    const diskVoices = voiceChain
+    const diskVoices = this._voiceChain
       .filter(
-        (s): s is { type: 'pregenerated'; name: string } | { type: 'custom'; name: string } =>
-          s.type === 'pregenerated' || s.type === 'custom'
+        (s): s is PregeneratedVoice | CustomVoice =>
+          s instanceof PregeneratedVoice || s instanceof CustomVoice
       )
       .map((s) => s.name)
 
@@ -373,10 +430,12 @@ export class TtsAudioManager {
       chainLength: this._voiceChain.length,
     })
 
+    const log: ChainAttempt[] = []
+
     if (this._voiceChain.length > 0) {
       for (let i = 0; i < this._voiceChain.length; i++) {
         const source = this._voiceChain[i]
-        if (source.type === 'pregenerated' || source.type === 'custom') {
+        if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false
           console.log(
@@ -385,7 +444,9 @@ export class TtsAudioManager {
           if (hasClip) {
             const ok = await this.playMp3(`/api/audio/clips/${source.name}/${resolved.clipId}`)
             if (ok) return true
-            // playback failed, try next in chain
+            log.push({ source, outcome: 'play-error' })
+          } else {
+            log.push({ source, outcome: 'no-clip' })
           }
         } else if (source.type === 'browser-tts') {
           console.log(
@@ -394,14 +455,16 @@ export class TtsAudioManager {
           const ok = await this.speakBrowserTts(resolved.fallbackText)
           console.log(`[TtsAudioManager] chain[${i}] browser-tts result:`, ok)
           if (ok) return true
+          log.push({ source, outcome: 'unavailable' })
         } else if (source.type === 'subtitle') {
           console.log(
             `[TtsAudioManager] chain[${i}] subtitle: "${resolved.fallbackText.slice(0, 30)}"`
           )
+          const readingMs = this.estimateReadingTimeMs(resolved.fallbackText)
           this._subtitleText = resolved.fallbackText
+          this._currentSubtitleDurationMs = readingMs
           this.notify()
 
-          const readingMs = this.estimateReadingTimeMs(resolved.fallbackText)
           await new Promise<void>((resolve) => {
             this._subtitleResolve = resolve
             this._subtitleTimer = setTimeout(() => {
@@ -413,8 +476,31 @@ export class TtsAudioManager {
           this._subtitleText = null
           this._subtitleTimer = null
           this._subtitleResolve = null
+          this._currentSubtitleDurationMs = 0
           this.notify()
           return true
+        } else if (source.type === 'generate') {
+          // Read the log to find voices that had no clip and can generate on-demand.
+          // Each voice class decides for itself (e.g. PregeneratedVoice → yes, CustomVoice → not yet).
+          const missed = log
+            .filter((a) => a.outcome === 'no-clip' && a.source.canGenerate())
+            .map((a) => a.source)
+
+          console.log(
+            `[TtsAudioManager] chain[${i}] generate: missed=${JSON.stringify(missed.map((s) => s.toJSON()))}`
+          )
+
+          if (missed.length > 0) {
+            const [primary, ...others] = missed
+            const ok = await this.generateAndPlay(primary, resolved)
+            if (ok) {
+              if (others.length > 0) this.generateInBackground(others, resolved)
+              return true
+            }
+            log.push({ source, outcome: 'play-error' })
+          } else {
+            log.push({ source, outcome: 'skipped' })
+          }
         }
       }
       // All chain entries exhausted
@@ -547,22 +633,39 @@ export class TtsAudioManager {
       voiceCount: voices.length,
     })
 
+    // Fast-fail: no voices loaded means speak() will silently no-op
+    if (voices.length === 0) {
+      console.log('[TtsAudioManager] speakBrowserTts: no voices available, skipping')
+      return Promise.resolve(false)
+    }
+
     return new Promise<boolean>((resolve) => {
       let settled = false
       const settle = (value: boolean) => {
         if (settled) return
         settled = true
-        clearTimeout(timeout)
+        clearTimeout(safetyTimeout)
+        clearTimeout(startTimeout)
         resolve(value)
       }
 
       // Safety timeout — if browser hangs, don't block the UI forever
-      const timeout = setTimeout(() => {
+      const safetyTimeout = setTimeout(() => {
         console.log('[TtsAudioManager] speakBrowserTts: safety timeout (10s)')
         speechSynthesis.cancel()
         this._activeUtterances.delete(utterance)
         settle(false)
       }, 10_000)
+
+      // Start detection — if speaking hasn't started after 1.5s, it silently failed
+      const startTimeout = setTimeout(() => {
+        if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+          console.log('[TtsAudioManager] speakBrowserTts: speech never started (1.5s), bailing')
+          speechSynthesis.cancel()
+          this._activeUtterances.delete(utterance)
+          settle(false)
+        }
+      }, 1500)
 
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.volume = this._volume
@@ -600,6 +703,70 @@ export class TtsAudioManager {
   // Prevent GC of in-flight utterances — Chrome may corrupt the speech
   // queue if a queued SpeechSynthesisUtterance is garbage-collected.
   private _activeUtterances = new Set<SpeechSynthesisUtterance>()
+
+  /**
+   * Generate a clip on-demand via the voice's `generate()` method and play it.
+   * On success, also adds the clip to the pregen cache so future
+   * playback hits the pregenerated path directly.
+   */
+  private async generateAndPlay(
+    source: VoiceSource,
+    resolved: ResolvedSegment
+  ): Promise<boolean> {
+    let blobUrl: string | null = null
+    try {
+      console.log(
+        `[TtsAudioManager] generateAndPlay: source=${JSON.stringify(source.toJSON())} clipId="${resolved.clipId}"`
+      )
+      const blob = await source.generate(resolved.clipId, resolved.fallbackText, resolved.tone)
+      if (!blob) {
+        console.log('[TtsAudioManager] generateAndPlay: generate returned null')
+        return false
+      }
+      blobUrl = URL.createObjectURL(blob)
+      const ok = await this.playMp3(blobUrl)
+      if (ok && (source instanceof PregeneratedVoice || source instanceof CustomVoice)) {
+        this.addToPregenCache(source.name, resolved.clipId)
+      }
+      return ok
+    } catch (err) {
+      console.error('[TtsAudioManager] generateAndPlay error:', err)
+      return false
+    } finally {
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
+    }
+  }
+
+  /**
+   * Fire-and-forget generation for additional voices that were missed.
+   * On success, adds the clip to the pregen cache for future playback.
+   */
+  private generateInBackground(sources: VoiceSource[], resolved: ResolvedSegment): void {
+    for (const source of sources) {
+      source
+        .generate(resolved.clipId, resolved.fallbackText, resolved.tone)
+        .then((blob) => {
+          if (blob && (source instanceof PregeneratedVoice || source instanceof CustomVoice)) {
+            this.addToPregenCache(source.name, resolved.clipId)
+            console.log(
+              `[TtsAudioManager] generateInBackground: cached "${source.name}/${resolved.clipId}"`
+            )
+          }
+        })
+        .catch(() => {
+          // Silent — background generation is best-effort
+        })
+    }
+  }
+
+  private addToPregenCache(voice: string, clipId: string): void {
+    let ids = this._pregenClipIds.get(voice)
+    if (!ids) {
+      ids = new Set()
+      this._pregenClipIds.set(voice, ids)
+    }
+    ids.add(clipId)
+  }
 
   stop(): void {
     // Cancel any running sequence
@@ -642,16 +809,28 @@ export class TtsAudioManager {
    * Return per-voice clip availability for the current voice chain.
    * Read-only — mirrors what `playOneSegment` checks internally.
    */
-  getClipAvailability(clipId: string): Array<{ source: VoiceSource; hasClip: boolean }> {
+  getClipAvailability(clipId: string): Array<{ source: VoiceSourceData; hasClip: boolean }> {
     return this._voiceChain.map((source) => ({
-      source,
+      source: source.toJSON(),
       hasClip:
-        source.type === 'browser-tts' || source.type === 'subtitle'
-          ? true
-          : source.type === 'pregenerated' || source.type === 'custom'
-            ? (this._pregenClipIds.get(source.name)?.has(clipId) ?? false)
-            : false,
+        source instanceof PregeneratedVoice || source instanceof CustomVoice
+          ? (this._pregenClipIds.get(source.name)?.has(clipId) ?? false)
+          : true, // browser-tts, subtitle, generate are always "available"
     }))
+  }
+
+  /**
+   * Dismiss the current subtitle early, advancing to the next segment.
+   */
+  dismissSubtitle(): void {
+    if (this._subtitleTimer) {
+      clearTimeout(this._subtitleTimer)
+      this._subtitleTimer = null
+    }
+    if (this._subtitleResolve) {
+      this._subtitleResolve()
+      this._subtitleResolve = null
+    }
   }
 
   // -- Cleanup --
@@ -671,7 +850,8 @@ export class TtsAudioManager {
 
   private estimateReadingTimeMs(text: string): number {
     const words = text.trim().split(/\s+/).length
-    return Math.max(1500, (words / 200) * 60_000) // ~200 WPM, 1.5s floor
+    const baseMs = (words / 200) * 60_000
+    return Math.max(1500, baseMs * this._subtitleDurationMultiplier)
   }
 
   private notify(): void {
@@ -681,6 +861,10 @@ export class TtsAudioManager {
       isEnabled: this._isEnabled,
       volume: this._volume,
       subtitleText: this._subtitleText,
+      subtitleDurationMultiplier: this._subtitleDurationMultiplier,
+      subtitleDurationMs: this._currentSubtitleDurationMs,
+      subtitleBottomOffset: this._subtitleBottomOffset,
+      subtitleAnchor: this._subtitleAnchor,
     }
     for (const listener of this.listeners) {
       listener()
