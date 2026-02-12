@@ -94,7 +94,7 @@ function drawMusicCard(
   }
   
   // Draw note (filled ellipse)
-  doc.setFillColor(0)
+  doc.setFillColor('0')
   doc.ellipse(noteX, noteY, 4, 3, 'F')
   
   // Draw note name in corner if requested
