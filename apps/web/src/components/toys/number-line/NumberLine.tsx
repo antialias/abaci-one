@@ -22,12 +22,14 @@ import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTiming
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
+import { renderGammaOverlay } from './constants/demos/gammaDemo'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
 import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
 import { E_DEMO_SEGMENTS, E_DEMO_TONE } from './constants/demos/eDemoNarration'
 import { PI_DEMO_SEGMENTS, PI_DEMO_TONE } from './constants/demos/piDemoNarration'
 import { TAU_DEMO_SEGMENTS, TAU_DEMO_TONE } from './constants/demos/tauDemoNarration'
 import { PHI_DEMO_SEGMENTS, PHI_DEMO_TONE } from './constants/demos/phiDemoNarration'
+import { GAMMA_DEMO_SEGMENTS, GAMMA_DEMO_TONE } from './constants/demos/gammaDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
@@ -66,6 +68,7 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   pi: { segments: PI_DEMO_SEGMENTS, tone: PI_DEMO_TONE },
   tau: { segments: TAU_DEMO_SEGMENTS, tone: TAU_DEMO_TONE },
   phi: { segments: PHI_DEMO_SEGMENTS, tone: PHI_DEMO_TONE },
+  gamma: { segments: GAMMA_DEMO_SEGMENTS, tone: GAMMA_DEMO_TONE },
 }
 
 const INITIAL_STATE: NumberLineState = {
@@ -483,6 +486,12 @@ export function NumberLine() {
     }
     if (ds.phase !== 'idle' && ds.constantId === 'e') {
       renderEOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+    if (ds.phase !== 'idle' && ds.constantId === 'gamma') {
+      renderGammaOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )

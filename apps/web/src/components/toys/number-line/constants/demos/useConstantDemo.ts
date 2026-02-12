@@ -4,6 +4,7 @@ import { goldenRatioDemoViewport } from './goldenRatioDemo'
 import { piDemoViewport } from './piDemo'
 import { tauDemoViewport } from './tauDemo'
 import { eDemoViewport } from './eDemo'
+import { gammaDemoViewport } from './gammaDemo'
 import {
   lerpViewport, snapViewport, computeViewportDeviation,
   FADE_IN_MS, FADE_OUT_MS,
@@ -37,7 +38,7 @@ const REVEAL_ANIM_MS = 15000
 const DEVIATION_THRESHOLD = 0.4
 
 /** Constants that have demos available */
-export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e'])
+export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e', 'gamma'])
 
 /**
  * Hook managing the constant demonstration lifecycle.
@@ -103,6 +104,8 @@ export function useConstantDemo(
       target = tauDemoViewport(cssWidth, cssHeight)
     } else if (constantId === 'e') {
       target = eDemoViewport(cssWidth, cssHeight)
+    } else if (constantId === 'gamma') {
+      target = gammaDemoViewport(cssWidth, cssHeight)
     }
 
     // Store source viewport for interpolation
