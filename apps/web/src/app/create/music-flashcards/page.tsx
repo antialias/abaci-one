@@ -208,7 +208,7 @@ export default function MusicFlashcardsPage() {
                 </div>
 
                 {/* Show Note Names */}
-                <div className={hstack({ gap: '3', align: 'center' })}>
+                <div className={hstack({ gap: '3', alignItems: 'center' })}>
                   <input
                     type="checkbox"
                     id="showNames"
