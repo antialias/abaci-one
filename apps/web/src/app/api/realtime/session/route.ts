@@ -149,6 +149,22 @@ export async function POST(request: Request) {
           },
           {
             type: 'function',
+            name: 'switch_speaker',
+            description:
+              'Switch which number character you are speaking as during a conference call. Call this BEFORE speaking as a different number — it changes your voice and the visual indicator showing who is talking. NEVER start speaking as a different number without calling this first. The child sees which number is talking, and it MUST match what you say. After calling this, your next response will be in that character\'s voice.',
+            parameters: {
+              type: 'object',
+              properties: {
+                number: {
+                  type: 'number',
+                  description: 'The number to speak as (must be on the current call)',
+                },
+              },
+              required: ['number'],
+            },
+          },
+          {
+            type: 'function',
             name: 'start_exploration',
             description:
               `Prepare an animated visual exploration of a mathematical constant on the number line. The animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. The number closest to the constant's value will be designated narrator. You will receive the full narration script and segment-by-segment cues. Available constants: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}.`,

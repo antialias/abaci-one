@@ -143,13 +143,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const [currentSpeaker, setCurrentSpeaker] = useState<number | null>(null)
   const currentSpeakerRef = useRef<number | null>(null)
 
-  // Voice rotation state for conference calls
+  // Voice assignments for conference calls (number → voice name)
   const voiceAssignmentsRef = useRef<Map<number, string>>(new Map())
-  const rotationRef = useRef<{
-    speakerQueue: number[]   // remaining characters to speak this round
-    isRotating: boolean       // are we in the middle of rotation?
-    hadToolCall: boolean      // did this response contain a tool call?
-  }>({ speakerQueue: [], isRotating: false, hadToolCall: false })
 
   // Refs for cleanup
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -246,7 +241,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     setCurrentSpeaker(null)
     currentSpeakerRef.current = null
     voiceAssignmentsRef.current.clear()
-    rotationRef.current = { speakerQueue: [], isRotating: false, hadToolCall: false }
     scenarioRef.current = null
     transcriptsRef.current = []
     goodbyeRequestedRef.current = false
@@ -481,43 +475,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
       }
 
-      // Helper: switch voice and prompt next speaker in rotation
-      const promptNextSpeaker = () => {
-        const rot = rotationRef.current
-        const allNumbers = conferenceNumbersRef.current
-        if (rot.speakerQueue.length === 0 || allNumbers.length <= 1) {
-          // Rotation complete — switch voice back to first character (who responds to user next)
-          rot.isRotating = false
-          currentSpeakerRef.current = allNumbers[0] ?? null
-          setCurrentSpeaker(allNumbers[0] ?? null)
-          const firstVoice = voiceAssignmentsRef.current.get(allNumbers[0])
-          if (firstVoice) {
-            dc.send(JSON.stringify({
-              type: 'session.update',
-              session: {
-                voice: firstVoice,
-                instructions: generateConferencePrompt(allNumbers, allNumbers[0], childProfileRef.current),
-              },
-            }))
-          }
-          return
-        }
-
-        const nextSpeaker = rot.speakerQueue.shift()!
-        currentSpeakerRef.current = nextSpeaker
-        setCurrentSpeaker(nextSpeaker)
-        const nextVoice = voiceAssignmentsRef.current.get(nextSpeaker)
-
-        dc.send(JSON.stringify({
-          type: 'session.update',
-          session: {
-            voice: nextVoice,
-            instructions: generateConferencePrompt(allNumbers, nextSpeaker, childProfileRef.current),
-          },
-        }))
-        dc.send(JSON.stringify({ type: 'response.create' }))
-      }
-
       dc.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
@@ -563,43 +520,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }
           }
 
-          // --- Track tool calls within a response ---
-          if (msg.type === 'response.function_call_arguments.done') {
-            rotationRef.current.hadToolCall = true
-          }
-
-          // User started speaking: abort rotation
-          if (msg.type === 'input_audio_buffer.speech_started') {
-            const rot = rotationRef.current
-            if (rot.isRotating) {
-              rot.speakerQueue = []
-              rot.isRotating = false
-            }
-          }
-
-          // Response completed: maybe continue rotation
-          if (msg.type === 'response.done') {
-            const rot = rotationRef.current
-            const allNumbers = conferenceNumbersRef.current
-
-            // Only rotate in conference mode (>1 number), and not after tool calls
-            if (allNumbers.length > 1 && !rot.hadToolCall) {
-              if (rot.isRotating) {
-                // Continue rotation to next speaker
-                promptNextSpeaker()
-              } else {
-                // Start a new rotation: all characters except the one who just spoke
-                const justSpoke = currentSpeakerRef.current
-                rot.speakerQueue = allNumbers.filter(n => n !== justSpoke)
-                rot.isRotating = true
-                promptNextSpeaker()
-              }
-            }
-
-            // Reset tool call tracker for next response
-            rot.hadToolCall = false
-          }
-
           // --- Tool call handling ---
           if (msg.type !== 'response.function_call_arguments.done') return
 
@@ -622,10 +542,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // Handle model calling hang_up tool — graceful goodbye
           if (msg.name === 'hang_up') {
-            // Stop any rotation in progress
-            rotationRef.current.speakerQueue = []
-            rotationRef.current.isRotating = false
-
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
@@ -644,10 +560,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // Handle model calling transfer_call tool — hand off to another number
           if (msg.name === 'transfer_call') {
-            // Stop any rotation in progress
-            rotationRef.current.speakerQueue = []
-            rotationRef.current.isRotating = false
-
             let targetNumber: number
             try {
               const args = JSON.parse(msg.arguments || '{}')
@@ -693,10 +605,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // Handle model calling add_to_call tool — conference mode (batch)
           if (msg.name === 'add_to_call') {
-            // Stop any rotation in progress
-            rotationRef.current.speakerQueue = []
-            rotationRef.current.isRotating = false
-
             let targetNumbers: number[]
             try {
               const args = JSON.parse(msg.arguments || '{}')
@@ -776,10 +684,11 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               },
             }))
 
-            // Prompt the model to greet as all new participants
+            // Prompt the model to greet as all new participants, using switch_speaker for each
+            const existingNumbers = conferenceNumbersRef.current.filter(n => !newNumbers.includes(n))
             const introText = newNumbers.length === 1
-              ? `[System: ${newNumbers[0]} just joined the conference call! Speak as ${newNumbers[0]} introducing yourself, then the other numbers will react.]`
-              : `[System: ${joinedNames} just joined the conference call! Speak as ${firstNew.number} first, introducing yourself. The other new numbers (${newNumbers.slice(1).join(', ')}) will each get a turn to introduce themselves next, then the existing numbers will react.]`
+              ? `[System: ${newNumbers[0]} just joined the conference call! You are now speaking as ${newNumbers[0]} — introduce yourself to the child. After that, use switch_speaker to let other numbers on the call welcome them.]`
+              : `[System: ${joinedNames} just joined the conference call! You are now speaking as ${firstNew.number} — introduce yourself. After that, use switch_speaker for each other new number (${newNumbers.slice(1).join(', ')}) to introduce themselves, then switch_speaker for existing numbers (${existingNumbers.join(', ')}) to react. Each character gets 1-2 sentences max.]`
 
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
@@ -790,6 +699,63 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   type: 'input_text',
                   text: introText,
                 }],
+              },
+            }))
+            dc.send(JSON.stringify({ type: 'response.create' }))
+          }
+
+          // Handle model calling switch_speaker tool — explicit character switch in conference
+          if (msg.name === 'switch_speaker') {
+            let targetNumber: number
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              targetNumber = Number(args.number)
+              if (!isFinite(targetNumber)) throw new Error('invalid')
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Invalid number' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              return
+            }
+
+            const allNumbers = conferenceNumbersRef.current
+            if (!allNumbers.includes(targetNumber)) {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: `${targetNumber} is not on the call` }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              return
+            }
+
+            // Switch speaker identity, voice, and visual indicator
+            currentSpeakerRef.current = targetNumber
+            setCurrentSpeaker(targetNumber)
+            const voice = voiceAssignmentsRef.current.get(targetNumber)
+
+            dc.send(JSON.stringify({
+              type: 'session.update',
+              session: {
+                voice,
+                instructions: generateConferencePrompt(allNumbers, targetNumber, childProfileRef.current),
+              },
+            }))
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: msg.call_id,
+                output: JSON.stringify({ success: true, now_speaking_as: targetNumber }),
               },
             }))
             dc.send(JSON.stringify({ type: 'response.create' }))
@@ -1125,7 +1091,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       currentSpeakerRef.current = number
       setCurrentSpeaker(number)
       voiceAssignmentsRef.current.set(number, getVoiceForNumber(number))
-      rotationRef.current = { speakerQueue: [], isRotating: false, hadToolCall: false }
       deadlineRef.current = Date.now() + BASE_TIMEOUT_MS
 
       // Start countdown timer
@@ -1239,13 +1204,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     // Clean up voice assignment
     voiceAssignmentsRef.current.delete(numberToRemove)
 
-    // Clean up rotation queue
-    const rot = rotationRef.current
-    rot.speakerQueue = rot.speakerQueue.filter(n => n !== numberToRemove)
-    if (rot.speakerQueue.length === 0) {
-      rot.isRotating = false
-    }
-
     // If the removed number was the current speaker, switch to first remaining
     if (currentSpeakerRef.current === numberToRemove) {
       currentSpeakerRef.current = updated[0]
@@ -1258,8 +1216,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       const soloVoice = voiceAssignmentsRef.current.get(soloNumber) ?? getVoiceForNumber(soloNumber)
       currentSpeakerRef.current = soloNumber
       setCurrentSpeaker(soloNumber)
-      rot.speakerQueue = []
-      rot.isRotating = false
 
       dc.send(JSON.stringify({
         type: 'session.update',
