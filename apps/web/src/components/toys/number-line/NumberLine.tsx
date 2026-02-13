@@ -108,14 +108,21 @@ const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
 }
 
 // Display metadata for recommendation cards
-const DEMO_DISPLAY: Record<string, { symbol: string; name: string; value: number }> = {
-  phi:       { symbol: 'φ',    name: 'Golden Ratio',      value: 1.618033988749895 },
-  pi:        { symbol: 'π',    name: 'Pi',                value: Math.PI },
-  tau:       { symbol: 'τ',    name: 'Tau',               value: 2 * Math.PI },
-  e:         { symbol: 'e',    name: "Euler's Number",    value: Math.E },
-  gamma:     { symbol: 'γ',    name: 'Euler-Mascheroni',  value: 0.5772156649 },
-  sqrt2:     { symbol: '√2',   name: 'Root 2',            value: Math.SQRT2 },
-  ramanujan: { symbol: '−1⁄12', name: 'Ramanujan',        value: -1 / 12 },
+const DEMO_DISPLAY: Record<string, { symbol: string; name: string; value: number; visualDesc?: string }> = {
+  phi:       { symbol: 'φ',    name: 'Golden Ratio',      value: 1.618033988749895,
+    visualDesc: 'A compass arm draws a Fibonacci golden-rectangle spiral on the number line. It spins 90-degree arcs, adding progressively larger colored squares that build outward. The rectangle\'s aspect ratio visibly converges toward phi (~1.618). It does NOT show phi growing larger — it shows the SHAPE settling into the golden ratio.' },
+  pi:        { symbol: 'π',    name: 'Pi',                value: Math.PI,
+    visualDesc: 'A circle rolls along the number line. The distance it travels in one full rotation marks out pi (~3.14159). Then the view zooms into pi\'s position on the number line, revealing more and more decimal digits as we zoom deeper.' },
+  tau:       { symbol: 'τ',    name: 'Tau',               value: 2 * Math.PI,
+    visualDesc: 'Similar to the pi demo but showing tau (2π ≈ 6.283). A full turn of a circle traces out tau on the number line. The view zooms into tau\'s position, revealing its decimal expansion.' },
+  e:         { symbol: 'e',    name: "Euler's Number",    value: Math.E,
+    visualDesc: 'Shows compound interest growth on the number line. Starts with simple doubling, then splits into more and more compounding intervals. The result converges toward e (~2.718). The view zooms into e\'s position to reveal its decimal digits.' },
+  gamma:     { symbol: 'γ',    name: 'Euler-Mascheroni',  value: 0.5772156649,
+    visualDesc: 'Shows the gap between the harmonic series (1 + 1/2 + 1/3 + ...) and the natural logarithm. Bars represent harmonic terms stacking up on the number line. The gap between the staircase and the smooth curve converges to gamma (~0.577).' },
+  sqrt2:     { symbol: '√2',   name: 'Root 2',            value: Math.SQRT2,
+    visualDesc: 'Shows a unit square on the number line with its diagonal. The diagonal length is √2. The view zooms into √2\'s position (~1.41421), revealing more decimal digits and showing it never terminates or repeats — it\'s irrational.' },
+  ramanujan: { symbol: '−1⁄12', name: 'Ramanujan',        value: -1 / 12,
+    visualDesc: 'Shows the surprising Ramanujan summation: 1+2+3+4+... = −1/12. Partial sums grow on the number line (getting bigger and bigger), but the animation reveals how a special mathematical technique (analytic continuation) assigns the value −1/12 to the divergent series.' },
 }
 
 // Narration configs for all constant demos (must be module-level for ref stability)
@@ -1400,9 +1407,14 @@ export function NumberLine() {
             `Do NOT talk over the narrator mid-segment.`
           : ''
 
+        const visualDesc = display.visualDesc
+          ? `\n\nWHAT THE ANIMATION SHOWS: ${display.visualDesc}`
+          : ''
+
         sendSystemMessage(
           `[System: An animated exploration of ${display.symbol} (${display.name}) is ready to play. ` +
-          `The number line is showing the starting position. The animation is PAUSED — it will not play until you call resume_exploration.\n\n` +
+          `The number line is showing the starting position. The animation is PAUSED — it will not play until you call resume_exploration.` +
+          `${visualDesc}\n\n` +
           `${narrator} is the designated narrator!\n\n` +
           `NARRATOR (${narrator}): First, introduce this constant to the child in your own words. ` +
           `Tell them what they're about to see and why it's special to you. ` +
