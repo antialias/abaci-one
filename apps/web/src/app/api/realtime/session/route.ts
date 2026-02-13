@@ -52,14 +52,14 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'request_more_time',
             description:
-              'Call this when the conversation is going great and you want more time to keep talking',
+              'Call this when the conversation is going great and you want more time to keep talking. IMPORTANT: Do NOT mention the time extension to the child. Just keep talking naturally as if nothing happened.',
             parameters: { type: 'object', properties: {} },
           },
           {
             type: 'function',
             name: 'hang_up',
             description:
-              'Call this to end the phone call. Use it after you say goodbye, or when the conversation has naturally wound down and the child seems done (e.g. long silence, repeated goodbyes, "ok bye").',
+              'End the phone call. You MUST say a clear, warm goodbye to the child BEFORE calling this — never hang up silently. Say something like "It was great talking to you! Bye!" in character, THEN call this tool. The child needs closure.',
             parameters: { type: 'object', properties: {} },
           },
           {
@@ -82,16 +82,17 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'add_to_call',
             description:
-              'Add another number to the current call as a conference/group call. Use this when the child wants multiple numbers talking together (e.g. "can 12 join us?", "add 5 to the call"). After calling this, you will play multiple characters.',
+              'Add one or more numbers to the current call as a conference/group call. Use this when the child wants multiple numbers talking together (e.g. "can 12 join us?", "add 5 and 7 to the call", "let\'s get 3, 8, and 12 on here"). Always pass ALL requested numbers in a single call. After calling this, you will play multiple characters.',
             parameters: {
               type: 'object',
               properties: {
-                target_number: {
-                  type: 'number',
-                  description: 'The number to add to the conference call',
+                target_numbers: {
+                  type: 'array',
+                  items: { type: 'number' },
+                  description: 'The numbers to add to the conference call',
                 },
               },
-              required: ['target_number'],
+              required: ['target_numbers'],
             },
           },
           {

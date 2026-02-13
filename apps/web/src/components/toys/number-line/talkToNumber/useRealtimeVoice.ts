@@ -377,7 +377,16 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         const micTrack = streamRef.current?.getAudioTracks()[0]
         console.log('[voice] mic at dc open — enabled:', micTrack?.enabled, 'muted:', micTrack?.muted, 'readyState:', micTrack?.readyState)
       }
-      dc.onclose = () => console.log('[voice] data channel closed')
+      dc.onclose = () => {
+        console.log('[voice] data channel closed — cleaning up')
+        // Data channel closed unexpectedly (HMR, network, server timeout).
+        // Only trigger hangUp if we're still in an active-ish state;
+        // if we're already idle/ending, cleanup already happened.
+        const st = stateRef.current
+        if (st === 'ringing' || st === 'active') {
+          hangUp()
+        }
+      }
 
       // Helper: switch voice and prompt next speaker in rotation
       const promptNextSpeaker = () => {
@@ -439,6 +448,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           if (msg.type === 'session.created') {
             const td = msg.session?.turn_detection
             console.log('[voice] ✅ session.created — turn_detection:', JSON.stringify(td))
+            // Prompt the model to speak first (like answering a phone call)
+            dc.send(JSON.stringify({ type: 'response.create' }))
           }
           if (msg.type === 'session.updated') {
             const td = msg.session?.turn_detection
@@ -517,7 +528,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               item: {
                 type: 'function_call_output',
                 call_id: msg.call_id,
-                output: JSON.stringify({ success: true, message: 'You got 2 more minutes!' }),
+                output: JSON.stringify({ success: true, message: 'Time extended. Do NOT mention this to the child — just keep the conversation going naturally.' }),
               },
             }))
             dc.send(JSON.stringify({ type: 'response.create' }))
@@ -594,39 +605,68 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }, TRANSFER_DELAY_MS)
           }
 
-          // Handle model calling add_to_call tool — conference mode
+          // Handle model calling add_to_call tool — conference mode (batch)
           if (msg.name === 'add_to_call') {
             // Stop any rotation in progress
             rotationRef.current.speakerQueue = []
             rotationRef.current.isRotating = false
 
-            let targetNumber: number
+            let targetNumbers: number[]
             try {
               const args = JSON.parse(msg.arguments || '{}')
-              targetNumber = Number(args.target_number)
-              if (!isFinite(targetNumber)) throw new Error('invalid')
+              const raw = args.target_numbers
+              if (!Array.isArray(raw) || raw.length === 0) throw new Error('invalid')
+              targetNumbers = raw.map((v: unknown) => {
+                const n = Number(v)
+                if (!isFinite(n)) throw new Error('invalid')
+                return n
+              })
             } catch {
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({ success: false, error: 'Invalid number' }),
+                  output: JSON.stringify({ success: false, error: 'Invalid target_numbers array' }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))
               return
             }
 
-            // Add to conference list
-            const updated = [...conferenceNumbersRef.current, targetNumber]
+            // Dedupe: skip numbers already on the call
+            const existing = new Set(conferenceNumbersRef.current)
+            const newNumbers = targetNumbers.filter(n => !existing.has(n))
+
+            if (newNumbers.length === 0) {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: true, message: 'All those numbers are already on the call!' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              return
+            }
+
+            // Add all new numbers to conference list
+            const updated = [...conferenceNumbersRef.current, ...newNumbers]
             conferenceNumbersRef.current = updated
             setConferenceNumbers(updated)
 
-            // Assign a unique voice for the new number
+            // Assign unique voices for each new number
             const takenVoices = new Set(voiceAssignmentsRef.current.values())
-            const newVoice = assignUniqueVoice(targetNumber, takenVoices)
-            voiceAssignmentsRef.current.set(targetNumber, newVoice)
+            const newVoiceEntries: { number: number; voice: string }[] = []
+            for (const n of newNumbers) {
+              const voice = assignUniqueVoice(n, takenVoices)
+              voiceAssignmentsRef.current.set(n, voice)
+              takenVoices.add(voice)
+              newVoiceEntries.push({ number: n, voice })
+            }
+
+            const joinedNames = newNumbers.join(', ')
 
             // Acknowledge the tool call
             dc.send(JSON.stringify({
@@ -634,22 +674,27 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               item: {
                 type: 'function_call_output',
                 call_id: msg.call_id,
-                output: JSON.stringify({ success: true, message: `${targetNumber} has joined the call!` }),
+                output: JSON.stringify({ success: true, message: `${joinedNames} joined the call!` }),
               },
             }))
 
-            // Switch to new number's voice so they greet everyone in their own voice
-            currentSpeakerRef.current = targetNumber
-            setCurrentSpeaker(targetNumber)
+            // Switch to first new number's voice so they greet everyone
+            const firstNew = newVoiceEntries[0]
+            currentSpeakerRef.current = firstNew.number
+            setCurrentSpeaker(firstNew.number)
             dc.send(JSON.stringify({
               type: 'session.update',
               session: {
-                voice: newVoice,
-                instructions: generateConferencePrompt(updated, targetNumber),
+                voice: firstNew.voice,
+                instructions: generateConferencePrompt(updated, firstNew.number),
               },
             }))
 
-            // Prompt the model to greet as the new participant
+            // Prompt the model to greet as all new participants
+            const introText = newNumbers.length === 1
+              ? `[System: ${newNumbers[0]} just joined the conference call! Speak as ${newNumbers[0]} introducing yourself, then the other numbers will react.]`
+              : `[System: ${joinedNames} just joined the conference call! Speak as ${firstNew.number} first, introducing yourself. The other new numbers (${newNumbers.slice(1).join(', ')}) will each get a turn to introduce themselves next, then the existing numbers will react.]`
+
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
@@ -657,7 +702,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 role: 'user',
                 content: [{
                   type: 'input_text',
-                  text: `[System: ${targetNumber} just joined the conference call! Speak as ${targetNumber} introducing yourself, then the other numbers will react.]`,
+                  text: introText,
                 }],
               },
             }))
@@ -866,7 +911,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               role: 'user',
               content: [{
                 type: 'input_text',
-                text: '[System: Only 15 seconds left in the call. Wrap up naturally or use request_more_time if you want to keep talking.]',
+                text: '[System: Only 15 seconds left. If the conversation is going well, silently call request_more_time. Otherwise give a gentle in-character hint that you might have to go soon — but do NOT mention timers, countdowns, or the time system directly.]',
               }],
             },
           }))
@@ -984,6 +1029,18 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }))
     dc.send(JSON.stringify({ type: 'response.create' }))
   }, [hangUp])
+
+  // Detect orphaned state after HMR: state survived hot reload but
+  // WebRTC resources (refs) were destroyed by the unmount/remount cycle.
+  // Reset to idle so the UI doesn't show a phantom call.
+  useEffect(() => {
+    if (state !== 'idle' && state !== 'error' && !pcRef.current) {
+      console.log('[voice] orphaned state detected (state=%s, no PC) — resetting to idle', state)
+      setState('idle')
+      setError(null)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // mount only
 
   // Cleanup on unmount
   useEffect(() => {
