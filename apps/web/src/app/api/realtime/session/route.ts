@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         model: 'gpt-4o-realtime-preview-2024-12-17',
         voice: getVoiceForNumber(number),
         instructions,
+        input_audio_transcription: { model: 'whisper-1' },
         turn_detection: {
           type: 'server_vad',
           threshold: 0.8,             // Higher = less sensitive (default 0.5). Prevents echo/ambient triggering.
@@ -183,6 +184,13 @@ export async function POST(request: Request) {
               },
               required: ['center'],
             },
+          },
+          {
+            type: 'function',
+            name: 'evolve_story',
+            description:
+              'Call this when the conversation hits a natural lull — you\'ve been chatting about the same thread for a while, the current topic is winding down, or there\'s a comfortable pause. The system will generate a fresh story development or twist for you to weave in. Do NOT call this while you\'re in the middle of an active back-and-forth with the child or waiting for their answer. Wait for a quiet moment. You\'ll get back a development, a new tension, and a suggestion — use them however feels natural.',
+            parameters: { type: 'object', properties: {} },
           },
           {
             type: 'function',

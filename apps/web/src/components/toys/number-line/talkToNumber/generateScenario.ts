@@ -7,6 +7,11 @@
 
 import type { ExplorationDescriptor } from './explorationRegistry'
 
+export interface TranscriptEntry {
+  role: 'child' | 'number'
+  text: string
+}
+
 export interface GeneratedScenario {
   situation: string
   hook: string
@@ -64,9 +69,13 @@ Respond with JSON matching this schema:
 
 const EVOLUTION_PROMPT = `You advance a story happening during a phone call between a child (age 5-10) and a number character.
 
+You will receive the recent conversation with [Number] and [Child] labels showing who said what.
+
+Read the conversation carefully. If the number just asked the child a question, or the child just said something meaningful, the development MUST connect to that — never ignore what the child contributed. The development should feel like a natural continuation, not an interruption or topic change.
+
 Given the current scenario and recent conversation, generate a new development that:
 - Raises the stakes or introduces a twist
-- Feels natural given what's been discussed
+- Feels natural given what's been discussed — especially what the child said
 - Suggests a concrete next action the number and child can do TOGETHER (look at somewhere on the number line, try a calculation, think about a puzzle). Do NOT suggest calling or adding other numbers — that should only happen if the child asks.
 - Stays age-appropriate and math-connected
 - Keeps the CHILD as the central participant — the number should want the child's help/opinion, not another number's
@@ -159,7 +168,7 @@ export async function evolveScenario(
   apiKey: string,
   number: number,
   currentScenario: GeneratedScenario,
-  recentTranscripts: string[],
+  recentTranscripts: TranscriptEntry[],
   conferenceNumbers: number[],
 ): Promise<ScenarioEvolution | null> {
   try {
@@ -188,7 +197,7 @@ Original scenario:
 ${JSON.stringify(currentScenario)}
 
 Recent conversation (most recent last):
-${recentTranscripts.slice(-3).map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
+${recentTranscripts.map((t, i) => `${i + 1}. [${t.role === 'child' ? 'Child' : 'Number'}] "${t.text}"`).join('\n')}`,
           },
         ],
       }),

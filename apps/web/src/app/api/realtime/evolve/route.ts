@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { evolveScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
-import type { GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
+import type { GeneratedScenario, TranscriptEntry } from '@/components/toys/number-line/talkToNumber/generateScenario'
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const { number, scenario, recentTranscripts, conferenceNumbers } = body as {
       number: number
       scenario: GeneratedScenario
-      recentTranscripts: string[]
+      recentTranscripts: TranscriptEntry[]
       conferenceNumbers: number[]
     }
 

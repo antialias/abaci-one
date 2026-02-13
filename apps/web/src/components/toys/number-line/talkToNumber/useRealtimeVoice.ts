@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { playRingTone } from './ringTone'
 import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber, assignUniqueVoice } from './generateNumberPersonality'
-import type { GeneratedScenario } from './generateScenario'
+import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
 import { EXPLORATION_IDS } from './explorationRegistry'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
@@ -101,13 +101,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const deadlineRef = useRef<number>(0)
   const extensionUsedRef = useRef(false)
   const warningSentRef = useRef(false)
+  const goodbyeRequestedRef = useRef(false)
   const hangUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stateRef = useRef<CallState>('idle')
 
-  // Scenario + heartbeat state
+  // Scenario + transcript state
   const scenarioRef = useRef<GeneratedScenario | null>(null)
-  const transcriptsRef = useRef<string[]>([]) // ring buffer, last 5
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const transcriptsRef = useRef<TranscriptEntry[]>([]) // ring buffer, last 12
   const calledNumberRef = useRef<number>(0)
 
   // Keep stateRef in sync
@@ -157,12 +157,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       timerRef.current = null
     }
 
-    // Clear heartbeat
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current)
-      heartbeatRef.current = null
-    }
-
     setTimeRemaining(null)
     setIsSpeaking(false)
     setConferenceNumbers([])
@@ -173,6 +167,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     rotationRef.current = { speakerQueue: [], isRotating: false, hadToolCall: false }
     scenarioRef.current = null
     transcriptsRef.current = []
+    goodbyeRequestedRef.current = false
   }, [])
 
   const hangUp = useCallback(() => {
@@ -189,6 +184,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     setError(null)
     extensionUsedRef.current = false
     warningSentRef.current = false
+    goodbyeRequestedRef.current = false
 
     // 1. Get microphone permission
     let stream: MediaStream
@@ -243,7 +239,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       }
       const data = await res.json()
       clientSecret = data.clientSecret
-      // Store scenario for heartbeat evolutions
+      // Store scenario for evolve_story tool
       scenarioRef.current = data.scenario ?? null
       calledNumberRef.current = number
       if (data.scenario) {
@@ -424,13 +420,21 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             console.error('[voice] server error:', JSON.stringify(msg.error))
           }
 
-          // Collect transcripts for heartbeat evolution
+          // Collect transcripts for evolve_story tool (both sides)
           if (msg.type === 'response.audio_transcript.done') {
             if (msg.transcript) {
               const buf = transcriptsRef.current
-              buf.push(msg.transcript)
-              if (buf.length > 5) buf.shift()
-              console.log('[scenario] transcript collected (%d in buffer): "%s"', buf.length, msg.transcript.slice(0, 60))
+              buf.push({ role: 'number', text: msg.transcript })
+              if (buf.length > 12) buf.shift()
+              console.log('[scenario] [number] transcript (%d in buffer): "%s"', buf.length, msg.transcript.slice(0, 60))
+            }
+          }
+          if (msg.type === 'conversation.item.input_audio_transcription.completed') {
+            if (msg.transcript) {
+              const buf = transcriptsRef.current
+              buf.push({ role: 'child', text: msg.transcript })
+              if (buf.length > 12) buf.shift()
+              console.log('[scenario] [child] transcript (%d in buffer): "%s"', buf.length, msg.transcript.slice(0, 60))
             }
           }
 
@@ -785,6 +789,82 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }
           }
 
+          // Handle model calling evolve_story tool — generate a story development on demand
+          if (msg.name === 'evolve_story') {
+            if (!scenarioRef.current) {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'No active scenario to evolve' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+            } else {
+              const recent = transcriptsRef.current.slice(-10)
+              console.log('[scenario] evolve_story tool called — sending %d recent transcripts', recent.length)
+
+              // Fire async without blocking the message handler
+              fetch('/api/realtime/evolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  number: calledNumberRef.current,
+                  scenario: scenarioRef.current,
+                  recentTranscripts: recent,
+                  conferenceNumbers: conferenceNumbersRef.current,
+                }),
+              })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`)))
+                .then(data => {
+                  if (!data.evolution) {
+                    console.log('[scenario] evolve_story: no evolution returned')
+                    dc.send(JSON.stringify({
+                      type: 'conversation.item.create',
+                      item: {
+                        type: 'function_call_output',
+                        call_id: msg.call_id,
+                        output: JSON.stringify({ success: true, message: 'The story is flowing well — no twist needed right now. Keep going with the current thread.' }),
+                      },
+                    }))
+                    dc.send(JSON.stringify({ type: 'response.create' }))
+                    return
+                  }
+
+                  const { development, newTension, suggestion } = data.evolution
+                  console.log('[scenario] evolve_story: evolution received', { development, newTension, suggestion })
+                  dc.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: msg.call_id,
+                      output: JSON.stringify({
+                        success: true,
+                        development,
+                        newTension,
+                        suggestion,
+                        message: 'Weave this development into the conversation naturally. Do not dump it all at once — let it unfold.',
+                      }),
+                    },
+                  }))
+                  dc.send(JSON.stringify({ type: 'response.create' }))
+                })
+                .catch(err => {
+                  console.warn('[scenario] evolve_story: failed', err)
+                  dc.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: msg.call_id,
+                      output: JSON.stringify({ success: false, error: 'Could not generate evolution right now. Keep the conversation going on your own.' }),
+                    },
+                  }))
+                  dc.send(JSON.stringify({ type: 'response.create' }))
+                })
+            }
+          }
+
           // Handle model calling indicate tool — highlight numbers/range on the number line
           if (msg.name === 'indicate') {
             try {
@@ -865,9 +945,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       ringRef.current = null
 
       // Go active
-      console.log('[scenario] call active — scenario: %s, heartbeat: %s',
+      console.log('[scenario] call active — scenario: %s, evolve_story tool: %s',
         scenarioRef.current ? scenarioRef.current.archetype : 'none',
-        scenarioRef.current ? 'will start in 30s' : 'disabled')
+        scenarioRef.current ? 'available' : 'disabled (no scenario)')
       setState('active')
       conferenceNumbersRef.current = [number]
       setConferenceNumbers([number])
@@ -911,69 +991,35 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           dcRef.current.send(JSON.stringify({ type: 'response.create' }))
         }
 
-        // Time's up
+        // Time's up — request a graceful goodbye instead of cutting the line
         if (remaining <= 0) {
-          hangUp()
-        }
-      }, 1000)
+          if (!goodbyeRequestedRef.current) {
+            // First expiry: ask the model to say goodbye
+            goodbyeRequestedRef.current = true
 
-      // Start heartbeat for scenario evolution (every 30s)
-      if (scenarioRef.current) {
-        heartbeatRef.current = setInterval(async () => {
-          // Skip if not active, no scenario, or exploration is playing
-          if (stateRef.current !== 'active') return
-          if (!scenarioRef.current) return
-          if (isExplorationActiveRef?.current) return
-          if (!dcRef.current || dcRef.current.readyState !== 'open') return
-
-          const recent = transcriptsRef.current.slice(-3)
-          if (recent.length === 0) return // no conversation yet
-
-          try {
-            console.log('[scenario] heartbeat firing — sending %d recent transcripts', recent.length)
-            const res = await fetch('/api/realtime/evolve', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                number: calledNumberRef.current,
-                scenario: scenarioRef.current,
-                recentTranscripts: recent,
-                conferenceNumbers: conferenceNumbersRef.current,
-              }),
-            })
-            if (!res.ok) {
-              console.warn('[scenario] heartbeat: API error %d', res.status)
-              return
-            }
-            const data = await res.json()
-            if (!data.evolution) {
-              console.log('[scenario] heartbeat: no evolution returned')
-              return
-            }
-
-            // Inject evolution as a system message (don't prompt a response — let model weave it in naturally)
-            const { development, newTension, suggestion } = data.evolution
-            console.log('[scenario] heartbeat: evolution received', { development, newTension, suggestion })
-            const dc = dcRef.current
-            if (dc && dc.readyState === 'open') {
-              dc.send(JSON.stringify({
+            if (dcRef.current?.readyState === 'open') {
+              dcRef.current.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'message',
                   role: 'user',
                   content: [{
                     type: 'input_text',
-                    text: `[Story update — weave this into the conversation naturally: ${development} ${newTension} Consider: ${suggestion}]`,
+                    text: '[System: Time is up. You MUST say a quick, warm goodbye to the child RIGHT NOW, then call the hang_up tool. Keep it to one sentence — "It was great talking to you, bye!" — then hang_up immediately.]',
                   }],
                 },
               }))
-              console.log('[scenario] heartbeat: injected into conversation')
+              dcRef.current.send(JSON.stringify({ type: 'response.create' }))
             }
-          } catch (err) {
-            console.warn('[scenario] heartbeat: failed', err)
+
+            // Give the model a 10s grace period to say goodbye
+            deadlineRef.current = Date.now() + 10_000
+          } else {
+            // Grace period exhausted — force hangup
+            hangUp()
           }
-        }, 30_000)
-      }
+        }
+      }, 1000)
 
       // Handle connection closure
       pc.onconnectionstatechange = () => {
