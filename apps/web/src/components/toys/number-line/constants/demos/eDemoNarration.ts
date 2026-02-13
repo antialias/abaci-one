@@ -37,6 +37,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.00,
     endProgress: 0.14,
     animationDurationMs: 7000,
+    scrubberLabel: 'Vine sprouts',
   },
 
   // ── Day 2: compound growth explanation (5 segments) ────────────
@@ -49,6 +50,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.14,
     endProgress: 0.21,
     animationDurationMs: 5000,
+    scrubberLabel: 'Split in two',
   },
   {
     // Seg 2: Day 2 hop 1 — first piece grows
@@ -58,6 +60,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.21,
     endProgress: 0.27,
     animationDurationMs: 4000,
+    scrubberLabel: 'First hop',
   },
   {
     // Seg 3: Day 2 rest — explain compound growth insight
@@ -67,6 +70,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.27,
     endProgress: 0.32,
     animationDurationMs: 5000,
+    scrubberLabel: 'The magic part',
   },
   {
     // Seg 4: Day 2 hop 2 — second piece grows (bigger hop!)
@@ -76,6 +80,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.32,
     endProgress: 0.37,
     animationDurationMs: 4500,
+    scrubberLabel: 'Bigger hop!',
   },
   {
     // Seg 5: Day 2 result
@@ -85,6 +90,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.37,
     endProgress: 0.40,
     animationDurationMs: 4500,
+    scrubberLabel: 'Two beats one',
   },
 
   // ── Days 3–4 ──────────────────────────────────────────────────
@@ -96,6 +102,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.40,
     endProgress: 0.47,
     animationDurationMs: 5000,
+    scrubberLabel: 'Three helpers',
   },
   {
     // Seg 7: Day 4 (n=4)
@@ -105,6 +112,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.47,
     endProgress: 0.53,
     animationDurationMs: 4500,
+    scrubberLabel: 'Four helpers',
   },
 
   // ── Days 5–6 (grouped) ────────────────────────────────────────
@@ -116,6 +124,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.53,
     endProgress: 0.61,
     animationDurationMs: 5000,
+    scrubberLabel: 'More helpers',
   },
 
   // ── Days 7–10 (grouped) ───────────────────────────────────────
@@ -127,6 +136,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.61,
     endProgress: 0.73,
     animationDurationMs: 5500,
+    scrubberLabel: 'Going fast!',
   },
 
   // ── Smooth growth (n → ∞) ─────────────────────────────────────
@@ -138,6 +148,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.73,
     endProgress: 0.83,
     animationDurationMs: 6000,
+    scrubberLabel: 'Smooth growth',
   },
 
   // ── Convergence ───────────────────────────────────────────────
@@ -150,6 +161,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.83,
     endProgress: 0.92,
     animationDurationMs: 6000,
+    scrubberLabel: 'Converging',
   },
 
   // ── Final reveal ──────────────────────────────────────────────
@@ -163,5 +175,6 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.92,
     endProgress: 1.00,
     animationDurationMs: 8000,
+    scrubberLabel: "It's e!",
   },
 ]

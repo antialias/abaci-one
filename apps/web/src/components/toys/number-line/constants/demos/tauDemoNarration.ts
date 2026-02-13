@@ -34,6 +34,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.00,
     endProgress: 0.06,
     animationDurationMs: 5000,
+    scrubberLabel: 'The radius',
   },
   {
     // Seg 1: Pivot — stick swings up to vertical
@@ -43,6 +44,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.06,
     endProgress: 0.15,
     animationDurationMs: 3500,
+    scrubberLabel: 'Stand it up',
   },
   {
     // Seg 2: Sweep — teal arc traces with compass arm
@@ -53,6 +55,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.15,
     endProgress: 0.255,
     animationDurationMs: 5000,
+    scrubberLabel: 'Draw the circle',
   },
   {
     // Seg 3: Treads appear
@@ -61,6 +64,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.255,
     endProgress: 0.30,
     animationDurationMs: 2500,
+    scrubberLabel: 'Tire treads',
   },
 
   // ── Rolling ───────────────────────────────────────────────────
@@ -72,6 +76,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.30,
     endProgress: 0.55,
     animationDurationMs: 5500,
+    scrubberLabel: 'Rolling!',
   },
   {
     // Seg 5: Passing the pi halfway mark
@@ -81,6 +86,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.55,
     endProgress: 0.72,
     animationDurationMs: 5000,
+    scrubberLabel: 'Passing pi',
   },
   {
     // Seg 6: Final stretch of rolling
@@ -90,6 +96,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.72,
     endProgress: 0.92,
     animationDurationMs: 5000,
+    scrubberLabel: 'Keep going',
   },
 
   // ── Labels ────────────────────────────────────────────────────
@@ -104,5 +111,6 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.92,
     endProgress: 1.00,
     animationDurationMs: 8000,
+    scrubberLabel: "It's tau!",
   },
 ]

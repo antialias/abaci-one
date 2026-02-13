@@ -37,6 +37,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.00,
     endProgress: 0.12,
     animationDurationMs: 5000,
+    scrubberLabel: 'Spiral begins',
   },
   {
     // Seg 1: More inner arcs, colored frames appearing
@@ -47,6 +48,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.12,
     endProgress: 0.28,
     animationDurationMs: 5500,
+    scrubberLabel: 'Squares grow',
   },
 
   // ── Growth becoming visible ───────────────────────────────────
@@ -60,6 +62,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.28,
     endProgress: 0.45,
     animationDurationMs: 6000,
+    scrubberLabel: 'The secret recipe',
   },
   {
     // Seg 3: Mid-spiral, shape settling
@@ -70,6 +73,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.45,
     endProgress: 0.60,
     animationDurationMs: 5000,
+    scrubberLabel: 'Perfect shape',
   },
 
   // ── Outer squares, convergence ────────────────────────────────
@@ -82,6 +86,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.60,
     endProgress: 0.78,
     animationDurationMs: 6500,
+    scrubberLabel: 'Found in nature',
   },
   {
     // Seg 5: Final convergence — arcs fly by
@@ -92,6 +97,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.78,
     endProgress: 0.92,
     animationDurationMs: 5000,
+    scrubberLabel: 'Settling down',
   },
 
   // ── Reveal ────────────────────────────────────────────────────
@@ -107,5 +113,6 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.92,
     endProgress: 1.00,
     animationDurationMs: 9000,
+    scrubberLabel: 'The golden ratio',
   },
 ]

@@ -37,6 +37,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.00,
     endProgress: 0.06,
     animationDurationMs: 5000,
+    scrubberLabel: 'The red stick',
   },
   {
     // Seg 1: Pivot — stick swings up to become vertical diameter
@@ -46,6 +47,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.06,
     endProgress: 0.15,
     animationDurationMs: 4000,
+    scrubberLabel: 'Tip it up',
   },
   {
     // Seg 2: Sweep — blue arc traces the full circle
@@ -56,6 +58,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.15,
     endProgress: 0.255,
     animationDurationMs: 5000,
+    scrubberLabel: 'Draw the circle',
   },
   {
     // Seg 3: Treads appear
@@ -65,6 +68,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.255,
     endProgress: 0.30,
     animationDurationMs: 3000,
+    scrubberLabel: 'Tire treads',
   },
 
   // ── Rolling ───────────────────────────────────────────────────
@@ -77,6 +81,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.30,
     endProgress: 0.55,
     animationDurationMs: 6000,
+    scrubberLabel: 'Rolling!',
   },
   {
     // Seg 5: Second half of roll, approaching pi
@@ -87,6 +92,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.55,
     endProgress: 0.82,
     animationDurationMs: 6000,
+    scrubberLabel: 'Almost there',
   },
 
   // ── Labels ────────────────────────────────────────────────────
@@ -99,6 +105,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.82,
     endProgress: 0.90,
     animationDurationMs: 7000,
+    scrubberLabel: 'It\'s pi!',
   },
 
   // ── Irrationality zoom ────────────────────────────────────────
@@ -113,5 +120,6 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.90,
     endProgress: 1.00,
     animationDurationMs: 7000,
+    scrubberLabel: 'Digits go forever',
   },
 ]

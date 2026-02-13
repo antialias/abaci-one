@@ -171,6 +171,37 @@ export function useNarrationSequencer() {
     [speakSegment]
   )
 
+  /**
+   * Begin sequencing from an arbitrary segment index.
+   * Pre-populates completedEffDurationsRef with designed durations for
+   * skipped segments so virtualTimeMs stays consistent.
+   *
+   * @param offsetMs  Pre-advance the segment timer by this many ms so
+   *                  that animFrac starts mid-segment rather than at 0.
+   *                  Used when resuming from a scrubbed position.
+   */
+  const startFrom = useCallback(
+    (segments: SequencerSegment[], tone: string, fromIndex: number, offsetMs = 0) => {
+      if (segments.length === 0 || fromIndex >= segments.length) return
+      activeRef.current = true
+      segmentsRef.current = segments
+      toneRef.current = tone
+      segmentIndexRef.current = fromIndex
+      // Backdate the start time so segElapsed begins at offsetMs
+      segmentStartMsRef.current = performance.now() - offsetMs
+      ttsFinishedRef.current = false
+      segAudioDurRef.current = null
+      // Pre-fill completed durations for skipped segments using designed durations
+      const effDurations: number[] = []
+      for (let i = 0; i < fromIndex; i++) {
+        effDurations[i] = segments[i].animationDurationMs
+      }
+      completedEffDurationsRef.current = effDurations
+      speakSegment(segments[fromIndex], tone, fromIndex)
+    },
+    [speakSegment]
+  )
+
   /** Stop sequencing and cancel current TTS playback. */
   const stop = useCallback(() => {
     if (!activeRef.current) return
@@ -275,5 +306,5 @@ export function useNarrationSequencer() {
     [audioManager, speakSegment]
   )
 
-  return { start, tick, stop }
+  return { start, startFrom, tick, stop }
 }

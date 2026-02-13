@@ -34,6 +34,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.00,
     endProgress: 0.10,
     animationDurationMs: 4000,
+    scrubberLabel: 'Starting at zero',
   },
 
   // ── The long path ───────────────────────────────────────────────
@@ -45,6 +46,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.10,
     endProgress: 0.25,
     animationDurationMs: 6000,
+    scrubberLabel: 'The long way',
   },
 
   // ── The shortcut ────────────────────────────────────────────────
@@ -55,6 +57,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.25,
     endProgress: 0.35,
     animationDurationMs: 5000,
+    scrubberLabel: 'The shortcut',
   },
 
   // ── Measuring the shortcut ──────────────────────────────────────
@@ -65,6 +68,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.35,
     endProgress: 0.50,
     animationDurationMs: 6000,
+    scrubberLabel: 'Measuring it',
   },
 
   // ── The mystery spot ────────────────────────────────────────────
@@ -75,6 +79,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.50,
     endProgress: 0.60,
     animationDurationMs: 5000,
+    scrubberLabel: 'Mystery number',
   },
 
   // ── Why it's that long ──────────────────────────────────────────
@@ -86,6 +91,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.60,
     endProgress: 0.80,
     animationDurationMs: 8000,
+    scrubberLabel: 'Area proof',
   },
 
   // ── The never-ending number ─────────────────────────────────────
@@ -97,6 +103,7 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.80,
     endProgress: 0.92,
     animationDurationMs: 6000,
+    scrubberLabel: 'Digits go forever',
   },
 
   // ── The reveal ──────────────────────────────────────────────────
@@ -108,5 +115,6 @@ export const SQRT2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.92,
     endProgress: 1.00,
     animationDurationMs: 6000,
+    scrubberLabel: 'Square root of two',
   },
 ]

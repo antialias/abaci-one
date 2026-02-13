@@ -116,6 +116,10 @@ export class TtsAudioManager {
   // Set by preloadForSpeak(), consumed by playMp3() for instant playback.
   private _preloadedAudio: { url: string; audio: HTMLAudioElement } | null = null
 
+  // Pending seek: if set, playMp3() applies this seek after audio starts.
+  // Set by seekNextAudio(), consumed (cleared) by playMp3().
+  private _pendingSeekMs: number | null = null
+
   // Sequence cancellation flag
   private _sequenceCancelled = false
 
@@ -365,6 +369,16 @@ export class TtsAudioManager {
   }
 
   /**
+   * Request that the next audio clip starts playback from `timeMs` into
+   * the clip rather than from the beginning. Consumed (cleared) by
+   * playMp3() once applied. Use before calling speak() to resume
+   * mid-sentence after a scrub.
+   */
+  seekNextAudio(timeMs: number): void {
+    this._pendingSeekMs = timeMs > 0 ? timeMs : null
+  }
+
+  /**
    * Preload audio for an upcoming speak() call so it starts instantly.
    *
    * Resolves the input through the voice chain and, if a pre-generated mp3
@@ -454,6 +468,24 @@ export class TtsAudioManager {
         clearIfOwned()
         resolve(false)
       })
+
+      // Apply pending seek (set by seekNextAudio) — works even before
+      // the audio is fully loaded; the browser buffers and seeks.
+      if (this._pendingSeekMs !== null) {
+        const seekSec = this._pendingSeekMs / 1000
+        this._pendingSeekMs = null
+        // If metadata is already loaded, seek immediately
+        if (audio.readyState >= 1 && isFinite(audio.duration)) {
+          audio.currentTime = Math.min(seekSec, audio.duration)
+        } else {
+          // Wait for metadata then seek
+          audio.addEventListener('loadedmetadata', () => {
+            if (this._currentAudio === audio && isFinite(audio.duration)) {
+              audio.currentTime = Math.min(seekSec, audio.duration)
+            }
+          }, { once: true })
+        }
+      }
     })
   }
 
@@ -809,6 +841,7 @@ export class TtsAudioManager {
     // Cancel any running sequence
     this._sequenceCancelled = true
     this._currentAudioDurationMs = null
+    this._pendingSeekMs = null
     // Stop any playing mp3
     if (this._currentAudio) {
       this._currentAudio.pause()

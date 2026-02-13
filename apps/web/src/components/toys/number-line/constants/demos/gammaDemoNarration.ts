@@ -35,6 +35,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.00,
     endProgress: 0.10,
     animationDurationMs: 5000,
+    scrubberLabel: 'One whole cookie',
   },
 
   // ── Two friends ─────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.10,
     endProgress: 0.20,
     animationDurationMs: 5500,
+    scrubberLabel: 'Two friends share',
   },
 
   // ── Three friends + the question ────────────────────────────────
@@ -57,6 +59,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.20,
     endProgress: 0.34,
     animationDurationMs: 7000,
+    scrubberLabel: 'Three friends',
   },
 
   // ── The slide emerges ───────────────────────────────────────────
@@ -68,6 +71,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.34,
     endProgress: 0.48,
     animationDurationMs: 7000,
+    scrubberLabel: 'The sharing slide',
   },
 
   // ── The extra bits ──────────────────────────────────────────────
@@ -79,6 +83,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.48,
     endProgress: 0.57,
     animationDurationMs: 5500,
+    scrubberLabel: 'The extra bits',
   },
 
   // ── Rapid cascade ───────────────────────────────────────────────
@@ -90,6 +95,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.57,
     endProgress: 0.65,
     animationDurationMs: 5000,
+    scrubberLabel: 'More friends',
   },
 
   // ── Collection ──────────────────────────────────────────────────
@@ -101,6 +107,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.65,
     endProgress: 0.86,
     animationDurationMs: 8000,
+    scrubberLabel: 'Collecting extras',
   },
 
   // ── The reveal ──────────────────────────────────────────────────
@@ -113,5 +120,6 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     startProgress: 0.86,
     endProgress: 1.00,
     animationDurationMs: 7000,
+    scrubberLabel: "It's gamma!",
   },
 ]
