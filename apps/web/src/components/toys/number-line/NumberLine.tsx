@@ -1560,11 +1560,36 @@ export function NumberLine() {
     fly.raf = requestAnimationFrame(tick)
   }
 
-  // Assign indicate implementation — replaces any active indicator and drives redraws
+  // Assign indicate implementation — replaces any active indicator and drives redraws.
+  // Auto-zooms to ensure indicated content is visible with 10% margin on each side.
   indicateFnRef.current = (numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => {
     const holdMs = durationSeconds != null ? Math.max(1, Math.min(30, durationSeconds)) * 1000 : 4000
+
+    // Compute bounding extent of all indicated content
+    const allValues = [...numbers]
+    if (range) { allValues.push(range.from, range.to) }
+    if (allValues.length > 0) {
+      const minVal = Math.min(...allValues)
+      const maxVal = Math.max(...allValues)
+      const cssWidth = cssWidthRef.current
+      const ppu = stateRef.current.pixelsPerUnit
+      const viewCenter = stateRef.current.center
+      const halfView = cssWidth / (2 * ppu)
+      const viewMin = viewCenter - halfView
+      const viewMax = viewCenter + halfView
+
+      // If any indicated content falls outside the current viewport, zoom to fit with margin
+      if (minVal < viewMin || maxVal > viewMax) {
+        const span = maxVal - minVal
+        const center = (minVal + maxVal) / 2
+        // Add 10% margin on each side (total span / 0.8 gives 10% per side)
+        const rangeWithMargin = Math.max(span / 0.8, 0.01)
+        lookAtFnRef.current(center, rangeWithMargin)
+      }
+    }
+
     indicatorRef.current = { numbers, range, startMs: performance.now(), holdMs }
-    // Drive redraws for the indicator's ~5.2s lifecycle
+    // Drive redraws for the indicator's lifecycle
     const tick = () => {
       if (!indicatorRef.current) return
       draw()
