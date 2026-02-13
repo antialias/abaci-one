@@ -39,18 +39,16 @@ export async function POST(request: Request) {
     try {
       const viewerId = await getViewerId()
       const activePlayers = await getActivePlayers(viewerId)
-      // Only use profile when exactly one player is active (unambiguous)
-      const player = activePlayers.length === 1 ? activePlayers[0] : null
+      // Use the first active player's profile (number line is single-player)
+      const player = activePlayers.length > 0 ? activePlayers[0] : null
       if (player) {
         childProfile = {
           name: player.name,
           age: player.age ?? undefined,
         }
-        console.log('[realtime/session] child profile:', player.name, 'age:', player.age)
       }
     } catch {
       // Viewer lookup can fail for unauthenticated users — not critical
-      console.log('[realtime/session] could not look up child profile')
     }
 
     // Validate recommended explorations (filter to known IDs)
@@ -62,7 +60,6 @@ export async function POST(request: Request) {
     let scenario: Awaited<ReturnType<typeof generateScenario>>
     if (previousScenario?.situation && previousScenario?.hook) {
       scenario = previousScenario as GeneratedScenario
-      console.log('[scenario] reusing previous scenario:', scenario!.archetype, '—', scenario!.hook)
     } else {
       scenario = await generateScenario(
         apiKey,
@@ -73,11 +70,6 @@ export async function POST(request: Request) {
         recommendedExplorations?.length ? recommendedExplorations : undefined,
         childProfile,
       )
-      if (scenario) {
-        console.log('[scenario] scenario generated:', scenario.archetype, '—', scenario.hook)
-      } else {
-        console.log('[scenario] no scenario generated, using static personality')
-      }
     }
 
     const instructions = generateNumberPersonality(number, scenario, childProfile)
@@ -151,7 +143,7 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'switch_speaker',
             description:
-              'Switch which number character you are speaking as during a conference call. Call this BEFORE speaking as a different number — it changes your voice and the visual indicator showing who is talking. NEVER start speaking as a different number without calling this first. The child sees which number is talking, and it MUST match what you say. After calling this, your next response will be in that character\'s voice.',
+              'Switch which number character you are speaking as during a conference call. Call this BEFORE speaking as a different number — it updates the visual indicator showing the child who is talking. NEVER start speaking as a different character without calling this first. The child sees which number is talking on screen, and it MUST match what you say.',
             parameters: {
               type: 'object',
               properties: {

@@ -14,7 +14,7 @@ export function PlayerPicker({ isDark }: { isDark: boolean }) {
 
   const allPlayers = getAllPlayers()
   const activePlayers = getActivePlayers()
-  const activePlayer = activePlayers.length === 1 ? activePlayers[0] : null
+  const activePlayer = activePlayers.length > 0 ? activePlayers[0] : null
 
   if (isLoading || allPlayers.length === 0) return null
 
@@ -90,38 +90,41 @@ export function PlayerPicker({ isDark }: { isDark: boolean }) {
               overflow: 'hidden',
             }}
           >
-            {allPlayers.map(p => (
-              <button
-                key={p.id}
-                data-action="select-player"
-                onClick={() => handleSelect(p)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: 'none',
-                  background: activePlayer?.id === p.id
-                    ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)')
-                    : 'transparent',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: activePlayer?.id === p.id ? 600 : 400,
-                  color: textColor,
-                  transition: 'background 0.1s',
-                }}
-                onPointerEnter={e => {
-                  if (activePlayer?.id !== p.id) e.currentTarget.style.background = bgHover
-                }}
-                onPointerLeave={e => {
-                  if (activePlayer?.id !== p.id) e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{p.emoji}</span>
-                <span>{p.name}</span>
-              </button>
-            ))}
+            {allPlayers.map(p => {
+              const isSelected = activePlayer?.id === p.id
+              return (
+                <button
+                  key={p.id}
+                  data-action="select-player"
+                  onClick={() => handleSelect(p)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: 'none',
+                    background: isSelected
+                      ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)')
+                      : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: isSelected ? 600 : 400,
+                    color: textColor,
+                    transition: 'background 0.1s',
+                  }}
+                  onPointerEnter={e => {
+                    if (!isSelected) e.currentTarget.style.background = bgHover
+                  }}
+                  onPointerLeave={e => {
+                    if (!isSelected) e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>{p.emoji}</span>
+                  <span>{p.name}</span>
+                </button>
+              )
+            })}
           </div>
         </>
       )}
