@@ -10,11 +10,14 @@ import { NextResponse } from 'next/server'
 import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { generateScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
+import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
+import { getViewerId } from '@/lib/viewer'
+import { getActivePlayers } from '@/lib/arcade/player-manager'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { number, recommendedExplorations: rawRecommended } = body
+    const { number, recommendedExplorations: rawRecommended, previousScenario } = body
 
     if (typeof number !== 'number' || !isFinite(number)) {
       return NextResponse.json(
@@ -31,27 +34,53 @@ export async function POST(request: Request) {
       )
     }
 
+    // Look up the child's profile from the active player
+    let childProfile: ChildProfile | undefined
+    try {
+      const viewerId = await getViewerId()
+      const activePlayers = await getActivePlayers(viewerId)
+      // Only use profile when exactly one player is active (unambiguous)
+      const player = activePlayers.length === 1 ? activePlayers[0] : null
+      if (player) {
+        childProfile = {
+          name: player.name,
+          age: player.age ?? null,
+        }
+        console.log('[realtime/session] child profile:', childProfile.name, 'age:', childProfile.age)
+      }
+    } catch {
+      // Viewer lookup can fail for unauthenticated users — not critical
+      console.log('[realtime/session] could not look up child profile')
+    }
+
     // Validate recommended explorations (filter to known IDs)
     const recommendedExplorations: string[] | undefined = Array.isArray(rawRecommended)
       ? rawRecommended.filter((id: unknown) => typeof id === 'string' && EXPLORATION_IDS.has(id as string))
       : undefined
 
-    // Generate a dynamic scenario (runs in parallel with nothing — fires before the session call)
-    const scenario = await generateScenario(
-      apiKey,
-      number,
-      getTraitSummary(number),
-      getNeighborsSummary(number),
-      AVAILABLE_EXPLORATIONS,
-      recommendedExplorations?.length ? recommendedExplorations : undefined,
-    )
-    if (scenario) {
-      console.log('[scenario] scenario generated:', scenario.archetype, '—', scenario.hook)
+    // Reuse scenario from a prior call to the same number, or generate a new one
+    let scenario: Awaited<ReturnType<typeof generateScenario>>
+    if (previousScenario?.situation && previousScenario?.hook) {
+      scenario = previousScenario
+      console.log('[scenario] reusing previous scenario:', scenario.archetype, '—', scenario.hook)
     } else {
-      console.log('[scenario] no scenario generated, using static personality')
+      scenario = await generateScenario(
+        apiKey,
+        number,
+        getTraitSummary(number),
+        getNeighborsSummary(number),
+        AVAILABLE_EXPLORATIONS,
+        recommendedExplorations?.length ? recommendedExplorations : undefined,
+        childProfile,
+      )
+      if (scenario) {
+        console.log('[scenario] scenario generated:', scenario.archetype, '—', scenario.hook)
+      } else {
+        console.log('[scenario] no scenario generated, using static personality')
+      }
     }
 
-    const instructions = generateNumberPersonality(number, scenario)
+    const instructions = generateNumberPersonality(number, scenario, childProfile)
 
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
@@ -189,7 +218,30 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'evolve_story',
             description:
-              'Call this when the conversation hits a natural lull — you\'ve been chatting about the same thread for a while, the current topic is winding down, or there\'s a comfortable pause. The system will generate a fresh story development or twist for you to weave in. Do NOT call this while you\'re in the middle of an active back-and-forth with the child or waiting for their answer. Wait for a quiet moment. You\'ll get back a development, a new tension, and a suggestion — use them however feels natural.',
+              'Call this PROACTIVELY to get a fresh story development. Do NOT wait for awkward silence — call it after 4-6 exchanges when the initial topic is settling, when the child gives a short answer, when you feel the conversation could use a new thread, or during any natural breath. Call it even when things are going okay — fresh material keeps the conversation engaging. The only bad time to call this is in the middle of a rapid back-and-forth exchange. You\'ll get back a development, a new tension, and a suggestion to weave in naturally.',
+            parameters: { type: 'object', properties: {} },
+          },
+          {
+            type: 'function',
+            name: 'start_find_number',
+            description:
+              'Start a "find the number" game on the number line. Set a target number and challenge the child to find where it lives. The target will be shown in the UI but the child must navigate (pan/zoom) to find its location. You will receive live updates about the child\'s proximity (far, warm, hot, found) and can give verbal hints. Great for teaching number sense!',
+            parameters: {
+              type: 'object',
+              properties: {
+                target: {
+                  type: 'number',
+                  description: 'The target number to find. Can be integer (42), decimal (3.14), negative (-7), etc.',
+                },
+              },
+              required: ['target'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'stop_find_number',
+            description:
+              'Stop the current "find the number" game and clear the target from the number line.',
             parameters: { type: 'object', properties: {} },
           },
           {
@@ -236,6 +288,7 @@ export async function POST(request: Request) {
       clientSecret: data.client_secret?.value ?? data.client_secret,
       expiresAt: data.client_secret?.expires_at ?? Date.now() / 1000 + 60,
       scenario,
+      childProfile: childProfile ?? null,
     })
   } catch (error) {
     console.error('[realtime/session] Error:', error)
