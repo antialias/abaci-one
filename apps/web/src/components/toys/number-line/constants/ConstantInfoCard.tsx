@@ -20,6 +20,8 @@ interface ConstantInfoCardProps {
   onDismiss: () => void
   /** Called when user taps "Explore" to launch the constant's demo */
   onExplore?: (constantId: string) => void
+  /** Called when user taps "Call" to start a voice conversation with this number */
+  onCallNumber?: (value: number) => void
 }
 
 const CARD_WIDTH = 220
@@ -34,6 +36,7 @@ export function ConstantInfoCard({
   isDark,
   onDismiss,
   onExplore,
+  onCallNumber,
 }: ConstantInfoCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const audioManager = useAudioManagerInstance()
@@ -234,6 +237,32 @@ export function ConstantInfoCard({
           }}
         >
           Explore
+        </button>
+      )}
+
+      {/* Call button — voice conversation with the constant */}
+      {onCallNumber && (
+        <button
+          data-action="call-constant"
+          onClick={() => {
+            onCallNumber(constant.value)
+            onDismiss()
+          }}
+          style={{
+            marginTop: 6,
+            padding: '10px 12px',
+            minHeight: 44,
+            fontSize: 13,
+            fontWeight: 600,
+            color: isDark ? '#e9d5ff' : '#6d28d9',
+            backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+            border: `1px solid ${isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.25)'}`,
+            borderRadius: 8,
+            cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          Call {constant.name}
         </button>
       )}
 

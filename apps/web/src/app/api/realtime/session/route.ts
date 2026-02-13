@@ -1,0 +1,117 @@
+/**
+ * API route that creates an ephemeral session token for OpenAI Realtime API.
+ *
+ * POST /api/realtime/session
+ * Body: { number: number }
+ * Returns: { clientSecret: string, expiresAt: number }
+ */
+
+import { NextResponse } from 'next/server'
+import { generateNumberPersonality, getVoiceForNumber } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const { number } = body
+
+    if (typeof number !== 'number' || !isFinite(number)) {
+      return NextResponse.json(
+        { error: 'number must be a finite number' },
+        { status: 400 }
+      )
+    }
+
+    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 503 }
+      )
+    }
+
+    const instructions = generateNumberPersonality(number)
+
+    const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-realtime-preview-2024-12-17',
+        voice: getVoiceForNumber(number),
+        instructions,
+        tools: [
+          {
+            type: 'function',
+            name: 'request_more_time',
+            description:
+              'Call this when the conversation is going great and you want more time to keep talking',
+            parameters: { type: 'object', properties: {} },
+          },
+          {
+            type: 'function',
+            name: 'hang_up',
+            description:
+              'Call this to end the phone call. Use it after you say goodbye, or when the conversation has naturally wound down and the child seems done (e.g. long silence, repeated goodbyes, "ok bye").',
+            parameters: { type: 'object', properties: {} },
+          },
+          {
+            type: 'function',
+            name: 'transfer_call',
+            description:
+              'Transfer the phone call to another number. Use this when the child asks to talk to a different number (e.g. "can I talk to 7?"). Say something like "Sure, let me transfer you!" then call this tool.',
+            parameters: {
+              type: 'object',
+              properties: {
+                target_number: {
+                  type: 'number',
+                  description: 'The number to transfer the call to',
+                },
+              },
+              required: ['target_number'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'add_to_call',
+            description:
+              'Add another number to the current call as a conference/group call. Use this when the child wants multiple numbers talking together (e.g. "can 12 join us?", "add 5 to the call"). After calling this, you will play multiple characters.',
+            parameters: {
+              type: 'object',
+              properties: {
+                target_number: {
+                  type: 'number',
+                  description: 'The number to add to the conference call',
+                },
+              },
+              required: ['target_number'],
+            },
+          },
+        ],
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      console.error('[realtime/session] OpenAI error:', response.status, errText)
+      return NextResponse.json(
+        { error: `OpenAI error: ${response.status}` },
+        { status: 502 }
+      )
+    }
+
+    const data = await response.json()
+
+    return NextResponse.json({
+      clientSecret: data.client_secret?.value ?? data.client_secret,
+      expiresAt: data.client_secret?.expires_at ?? Date.now() / 1000 + 60,
+    })
+  } catch (error) {
+    console.error('[realtime/session] Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

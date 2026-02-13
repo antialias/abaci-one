@@ -12,10 +12,13 @@ interface UseNumberLineTouchOptions {
   onTap?: (screenX: number, screenY: number) => void
   /** Called on mousemove (when not dragging) with CSS px coordinates. (-1, -1) signals mouse left. */
   onHover?: (screenX: number, screenY: number) => void
+  /** Called when a long-press (≥500ms hold, <10px movement) is detected. Coordinates are CSS px relative to canvas. */
+  onLongPress?: (screenX: number, screenY: number) => void
 }
 
 const TAP_MAX_DURATION_MS = 300
 const TAP_MAX_DISTANCE_PX = 10
+const LONG_PRESS_MS = 500
 
 // Zoom limits — 1e14 allows viewing down to ~femto-scale (power -15)
 // while staying well within float64's ~15 significant digits
@@ -32,7 +35,7 @@ function clampPixelsPerUnit(ppu: number): number {
  *
  * All math uses absolute anchor-based computations (not deltas) to prevent drift.
  */
-export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity, onTap, onHover }: UseNumberLineTouchOptions) {
+export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity, onTap, onHover, onLongPress }: UseNumberLineTouchOptions) {
   // Anchor state for single-finger drag / mouse drag
   const dragAnchorRef = useRef<number | null>(null)
 
@@ -41,6 +44,9 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
 
   // Tap detection state
   const tapStartRef = useRef<{ time: number; x: number; y: number; cancelled: boolean } | null>(null)
+
+  // Long-press timer
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const getCanvasWidth = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect().width ?? 0
@@ -72,6 +78,16 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
         pinchAnchorsRef.current = null
         // Start tap detection
         tapStartRef.current = { time: performance.now(), x, y, cancelled: false }
+        // Start long-press timer
+        if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+        longPressTimerRef.current = setTimeout(() => {
+          const tap = tapStartRef.current
+          if (tap && !tap.cancelled) {
+            tap.cancelled = true // prevent tap from also firing
+            onLongPress?.(tap.x, tap.y)
+          }
+          longPressTimerRef.current = null
+        }, LONG_PRESS_MS)
       } else if (e.touches.length === 2) {
         // Two fingers: anchor both numbers
         const x1 = e.touches[0].clientX - rect.left
@@ -85,8 +101,12 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
           id2: e.touches[1].identifier,
         }
         dragAnchorRef.current = null
-        // Cancel tap on second finger
+        // Cancel tap and long-press on second finger
         if (tapStartRef.current) tapStartRef.current.cancelled = true
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current)
+          longPressTimerRef.current = null
+        }
       }
     }
 
@@ -97,7 +117,7 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       const canvasWidth = rect.width
       const state = stateRef.current
 
-      // Cancel tap if finger moved too far
+      // Cancel tap and long-press if finger moved too far
       if (tapStartRef.current && !tapStartRef.current.cancelled && e.touches.length === 1) {
         const tx = e.touches[0].clientX - rect.left
         const ty = e.touches[0].clientY - rect.top
@@ -105,6 +125,10 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
         const dy = ty - tapStartRef.current.y
         if (Math.sqrt(dx * dx + dy * dy) > TAP_MAX_DISTANCE_PX) {
           tapStartRef.current.cancelled = true
+          if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current)
+            longPressTimerRef.current = null
+          }
         }
       }
 
@@ -172,6 +196,11 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
         dragAnchorRef.current = anchorNumber
         pinchAnchorsRef.current = null
       } else if (e.touches.length === 0) {
+        // Clear long-press timer
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current)
+          longPressTimerRef.current = null
+        }
         // Fire tap if conditions met
         const tap = tapStartRef.current
         if (tap && !tap.cancelled) {
@@ -190,6 +219,7 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
 
     let mouseAnchor: number | null = null
     let mouseDownInfo: { time: number; x: number; y: number; cancelled: boolean } | null = null
+    let mouseLongPressTimer: ReturnType<typeof setTimeout> | null = null
 
     function handleMouseDown(e: MouseEvent) {
       if (e.button !== 0) return // left button only
@@ -202,6 +232,15 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       mouseAnchor = screenXToNumber(x, state.center, state.pixelsPerUnit, canvasWidth)
       mouseDownInfo = { time: performance.now(), x, y, cancelled: false }
       canvas!.style.cursor = 'grabbing'
+      // Start long-press timer for mouse
+      if (mouseLongPressTimer) clearTimeout(mouseLongPressTimer)
+      mouseLongPressTimer = setTimeout(() => {
+        if (mouseDownInfo && !mouseDownInfo.cancelled) {
+          mouseDownInfo.cancelled = true
+          onLongPress?.(mouseDownInfo.x, mouseDownInfo.y)
+        }
+        mouseLongPressTimer = null
+      }, LONG_PRESS_MS)
     }
 
     function handleMouseMove(e: MouseEvent) {
@@ -216,17 +255,26 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       stateRef.current = state
       onStateChange()
 
-      // Cancel mouse tap if moved too far
+      // Cancel mouse tap and long-press if moved too far
       if (mouseDownInfo && !mouseDownInfo.cancelled) {
         const dx = x - mouseDownInfo.x
         const dy = y - mouseDownInfo.y
         if (Math.sqrt(dx * dx + dy * dy) > TAP_MAX_DISTANCE_PX) {
           mouseDownInfo.cancelled = true
+          if (mouseLongPressTimer) {
+            clearTimeout(mouseLongPressTimer)
+            mouseLongPressTimer = null
+          }
         }
       }
     }
 
     function handleMouseUp(e: MouseEvent) {
+      // Clear long-press timer
+      if (mouseLongPressTimer) {
+        clearTimeout(mouseLongPressTimer)
+        mouseLongPressTimer = null
+      }
       // Fire tap if conditions met
       if (mouseDownInfo && !mouseDownInfo.cancelled) {
         const elapsed = performance.now() - mouseDownInfo.time
@@ -313,6 +361,8 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       canvas.removeEventListener('wheel', handleWheel)
       canvas.removeEventListener('mousemove', handleCanvasMouseMove)
       canvas.removeEventListener('mouseleave', handleCanvasMouseLeave)
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+      if (mouseLongPressTimer) clearTimeout(mouseLongPressTimer)
     }
-  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, onTap, onHover, getCanvasWidth, getCanvasRect])
+  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, onTap, onHover, onLongPress, getCanvasWidth, getCanvasRect])
 }

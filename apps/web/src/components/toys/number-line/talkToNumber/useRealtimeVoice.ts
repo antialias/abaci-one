@@ -221,13 +221,21 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           source.connect(analyser)
           const dataArray = new Uint8Array(analyser.frequencyBinCount)
 
+          let lastSpeakingLog = 0
           const checkSpeaking = () => {
             if (stateRef.current !== 'active') return
             analyser.getByteFrequencyData(dataArray)
             let sum = 0
             for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
             const avg = sum / dataArray.length
-            setIsSpeaking(avg > 15)
+            const nowSpeaking = avg > 15
+            // Log speaking state changes (throttled to 1/sec)
+            const now = Date.now()
+            if (now - lastSpeakingLog > 1000) {
+              lastSpeakingLog = now
+              console.log('[voice] audio level avg=%.1f isSpeaking=%s currentSpeaker=%s', avg, nowSpeaking, currentSpeakerRef.current)
+            }
+            setIsSpeaking(nowSpeaking)
             requestAnimationFrame(checkSpeaking)
           }
           requestAnimationFrame(checkSpeaking)
@@ -249,6 +257,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           rot.isRotating = false
           currentSpeakerRef.current = allNumbers[0] ?? null
           setCurrentSpeaker(allNumbers[0] ?? null)
+          console.log('[voice] rotation complete, currentSpeaker →', allNumbers[0] ?? null)
           const firstVoice = voiceAssignmentsRef.current.get(allNumbers[0])
           if (firstVoice) {
             dc.send(JSON.stringify({
@@ -265,6 +274,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         const nextSpeaker = rot.speakerQueue.shift()!
         currentSpeakerRef.current = nextSpeaker
         setCurrentSpeaker(nextSpeaker)
+        console.log('[voice] rotation next, currentSpeaker →', nextSpeaker, 'remaining queue:', [...rot.speakerQueue])
         const nextVoice = voiceAssignmentsRef.current.get(nextSpeaker)
 
         dc.send(JSON.stringify({
@@ -280,6 +290,28 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       dc.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
+
+          // --- Debug logging ---
+          // Log all message types (except noisy audio deltas)
+          if (!msg.type?.includes('audio_buffer') && !msg.type?.includes('audio.delta')) {
+            console.log('[voice] dc msg:', msg.type, msg.type === 'response.audio_transcript.delta' ? msg.delta : '')
+          }
+          // Log full transcript when a response finishes
+          if (msg.type === 'response.audio_transcript.done') {
+            console.log('[voice] transcript done:', msg.transcript)
+          }
+          // Log response.done output items for debugging
+          if (msg.type === 'response.done' && msg.response?.output) {
+            for (const item of msg.response.output) {
+              if (item.type === 'message' && item.content) {
+                for (const part of item.content) {
+                  if (part.transcript) {
+                    console.log('[voice] response.done transcript:', part.transcript)
+                  }
+                }
+              }
+            }
+          }
 
           // --- Track tool calls within a response ---
           if (msg.type === 'response.function_call_arguments.done') {
@@ -300,6 +332,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           if (msg.type === 'response.done') {
             const rot = rotationRef.current
             const allNumbers = conferenceNumbersRef.current
+            console.log('[voice] response.done — conferenceNumbers:', [...allNumbers], 'isRotating:', rot.isRotating, 'hadToolCall:', rot.hadToolCall, 'currentSpeaker:', currentSpeakerRef.current)
 
             // Only rotate in conference mode (>1 number), and not after tool calls
             if (allNumbers.length > 1 && !rot.hadToolCall) {
@@ -527,6 +560,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       setConferenceNumbers([number])
       currentSpeakerRef.current = number
       setCurrentSpeaker(number)
+      console.log('[voice] go active, currentSpeaker →', number)
       voiceAssignmentsRef.current.set(number, getVoiceForNumber(number))
       rotationRef.current = { speakerQueue: [], isRotating: false, hadToolCall: false }
       deadlineRef.current = Date.now() + BASE_TIMEOUT_MS

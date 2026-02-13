@@ -84,6 +84,7 @@ function CallBox({
   isDark: boolean
 }) {
   const speaking = isCurrentSpeaker && isSpeaking
+  console.log('[CallBox] num=%s isCurrentSpeaker=%s isSpeaking=%s speaking=%s', num, isCurrentSpeaker, isSpeaking, speaking)
   const accentColor = isDark ? '#a855f7' : '#7c3aed'
   const textColor = isDark ? '#f3f4f6' : '#1f2937'
   const bg = isDark ? 'rgba(20, 20, 30, 0.85)' : 'rgba(255, 255, 255, 0.85)'
