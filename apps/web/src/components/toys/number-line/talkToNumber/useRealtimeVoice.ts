@@ -142,7 +142,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const conferenceNumbersRef = useRef<number[]>([])
   const [currentSpeaker, setCurrentSpeaker] = useState<number | null>(null)
   const currentSpeakerRef = useRef<number | null>(null)
-
+  // Pending speaker: set by switch_speaker/add_to_call, committed when new audio starts
+  const pendingSpeakerRef = useRef<number | null>(null)
 
   // Refs for cleanup
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -236,6 +237,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     conferenceNumbersRef.current = []
     setCurrentSpeaker(null)
     currentSpeakerRef.current = null
+    pendingSpeakerRef.current = null
 
     scenarioRef.current = null
     transcriptsRef.current = []
@@ -399,6 +401,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           // barge in / interrupt. Full gain restores after ~250ms of model silence.
           let modelSilenceSince = 0
           let micAttenuated = false
+          let wasSpeaking = false
           const MIC_RESTORE_DELAY_MS = 250
           const ATTENUATED_GAIN = 0.15
           const FULL_GAIN = 1.0
@@ -416,6 +419,19 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const avg = sum / dataArray.length
               const nowSpeaking = avg > 15
               setIsSpeaking(nowSpeaking)
+
+              // Commit pending speaker on audio onset (silence → speaking transition).
+              // This ensures the visual indicator switches only when the NEW character's
+              // audio actually starts playing, not when the tool call fires (which can
+              // happen while the previous character's audio is still in the buffer).
+              if (nowSpeaking && !wasSpeaking && pendingSpeakerRef.current !== null) {
+                const ps = pendingSpeakerRef.current
+                pendingSpeakerRef.current = null
+                currentSpeakerRef.current = ps
+                setCurrentSpeaker(ps)
+                console.log('[conference] speaker indicator committed: %d (audio onset)', ps)
+              }
+              wasSpeaking = nowSpeaking
 
               // Soft echo gate: reduce/restore mic gain based on model audio
               const gain = micGainRef.current
@@ -654,11 +670,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               },
             }))
 
-            // Set first new number as current speaker
+            // Defer speaker indicator to first new number — committed on audio onset.
             // NOTE: voice can't be changed mid-session (OpenAI Realtime API limitation),
             // so the model differentiates characters through speech patterns only.
-            currentSpeakerRef.current = newNumbers[0]
-            setCurrentSpeaker(newNumbers[0])
+            pendingSpeakerRef.current = newNumbers[0]
             dc.send(JSON.stringify({
               type: 'session.update',
               session: {
@@ -720,14 +735,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               return
             }
 
-            // Switch speaker identity and visual indicator
-            // NOTE: OpenAI Realtime API locks the voice once audio is present —
-            // we can only update instructions, not voice. The model differentiates
-            // characters through speech patterns (cadence, word choice, personality).
+            // Defer speaker indicator until new audio starts playing.
+            // The model's previous character audio may still be in the WebRTC buffer,
+            // so we queue the switch and commit it on the next silence→speaking transition.
             const prevSpeaker = currentSpeakerRef.current
-            currentSpeakerRef.current = targetNumber
-            setCurrentSpeaker(targetNumber)
-            console.log('[conference] switch_speaker: %d → %d', prevSpeaker, targetNumber)
+            pendingSpeakerRef.current = targetNumber
+            console.log('[conference] switch_speaker: %d → %d (pending audio onset)', prevSpeaker, targetNumber)
 
             dc.send(JSON.stringify({
               type: 'session.update',

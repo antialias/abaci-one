@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
@@ -25,7 +25,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // If so, prevent changing isActive status (players are locked during games)
     if (body.isActive !== undefined) {
       const activeSession = await db.query.arcadeSessions.findFirst({
-        where: eq(schema.arcadeSessions.userId, viewerId),
+        where: and(
+          eq(schema.arcadeSessions.userId, viewerId),
+          eq(schema.arcadeSessions.isActive, true),
+          gt(schema.arcadeSessions.expiresAt, new Date()),
+        ),
       })
 
       if (activeSession) {
