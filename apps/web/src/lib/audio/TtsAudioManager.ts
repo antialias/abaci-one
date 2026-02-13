@@ -112,10 +112,14 @@ export class TtsAudioManager {
   // Duration (ms) of the currently playing audio clip, set from loadedmetadata
   private _currentAudioDurationMs: number | null = null
 
+  // Preloaded Audio element for the next expected speak() call.
+  // Set by preloadForSpeak(), consumed by playMp3() for instant playback.
+  private _preloadedAudio: { url: string; audio: HTMLAudioElement } | null = null
+
   // Sequence cancellation flag
   private _sequenceCancelled = false
 
-  // Debug: monotonically increasing speak call ID for tracing concurrent calls
+  // Monotonically increasing speak call ID for stale detection
   private _speakSeq = 0
   private _activeSpeakId = 0
 
@@ -346,12 +350,53 @@ export class TtsAudioManager {
 
   /**
    * Duration (ms) of the currently playing audio clip.
-   * Set from the Audio element's `loadedmetadata` event during `playMp3()`.
-   * Returns null when no audio is playing, duration is unknown, or playback
-   * uses browser TTS / subtitle-only (which don't expose duration upfront).
+   * Reads directly from the live Audio element when available (immune to
+   * speak()'s cached field reset race). Falls back to the cached value
+   * from loadedmetadata for edge cases.
+   * Returns null when no audio is playing or duration is unknown.
    */
   getCurrentAudioDurationMs(): number | null {
+    const audio = this._currentAudio
+    if (audio && audio.readyState >= 1) {
+      const d = audio.duration
+      if (isFinite(d) && d > 0) return d * 1000
+    }
     return this._currentAudioDurationMs
+  }
+
+  /**
+   * Preload audio for an upcoming speak() call so it starts instantly.
+   *
+   * Resolves the input through the voice chain and, if a pre-generated mp3
+   * is available, creates an Audio element with `preload='auto'` to start
+   * fetching in the background. When speak() is later called for the same
+   * clip, playMp3() uses the already-buffered element — zero load latency.
+   *
+   * No-op when audio is disabled or when the clip requires generation /
+   * browser TTS / subtitle-only playback.
+   */
+  preloadForSpeak(input: TtsInput, config?: TtsConfig): void {
+    if (!this._isEnabled) return
+    const segments = Array.isArray(input) ? input : [input]
+    if (segments.length !== 1) return
+
+    const resolved = this.resolveSegment(segments[0], config)
+
+    for (const source of this._voiceChain) {
+      if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
+        const clipIds = this._pregenClipIds.get(source.name)
+        if (clipIds?.has(resolved.clipId)) {
+          const url = `/api/audio/clips/${source.name}/${resolved.clipId}`
+          if (this._preloadedAudio?.url === url) return // already preloading
+          if (this._preloadedAudio) this._preloadedAudio.audio.src = ''
+          const audio = new Audio(url)
+          audio.preload = 'auto'
+          audio.volume = this._volume
+          this._preloadedAudio = { url, audio }
+          return
+        }
+      }
+    }
   }
 
   // -- Playback --
@@ -361,21 +406,24 @@ export class TtsAudioManager {
    * Returns true if playback completed, false on error.
    */
   private playMp3(url: string): Promise<boolean> {
-    const speakId = this._activeSpeakId
     return new Promise<boolean>((resolve) => {
       // Pause any orphaned audio element before creating a new one
       if (this._currentAudio) {
-        console.warn(`[TTS:mp3:${speakId}] ⚠️ ORPHANED AUDIO — pausing previous element before creating new one`, {
-          previousSrc: this._currentAudio.src?.slice(-60),
-          previousPaused: this._currentAudio.paused,
-        })
         this._currentAudio.pause()
         this._currentAudio = null
       }
-      const audio = new Audio(url)
+
+      // Use preloaded element if available — instant playback, no network wait
+      let audio: HTMLAudioElement
+      if (this._preloadedAudio?.url === url) {
+        audio = this._preloadedAudio.audio
+        this._preloadedAudio = null
+      } else {
+        audio = new Audio(url)
+      }
+
       audio.volume = this._volume
       this._currentAudio = audio
-      console.log(`[TTS:mp3:${speakId}] ▶ playMp3 START`, { url: url.slice(-60) })
 
       // Expose audio duration for adaptive animation timing
       audio.addEventListener('loadedmetadata', () => {
@@ -383,6 +431,10 @@ export class TtsAudioManager {
           this._currentAudioDurationMs = audio.duration * 1000
         }
       })
+      // For preloaded elements, metadata is already available
+      if (audio.readyState >= 1 && this._currentAudio === audio) {
+        this._currentAudioDurationMs = audio.duration * 1000
+      }
 
       // Only clear _currentAudio if it's still THIS element — a newer
       // speak() call may have already overwritten it with a different one.
@@ -391,17 +443,14 @@ export class TtsAudioManager {
       }
 
       audio.onended = () => {
-        console.log(`[TTS:mp3:${speakId}] ✓ playMp3 ENDED`, { url: url.slice(-60) })
         clearIfOwned()
         resolve(true)
       }
-      audio.onerror = (e) => {
-        console.warn(`[TTS:mp3:${speakId}] ✗ playMp3 ERROR`, { url: url.slice(-60), error: e })
+      audio.onerror = () => {
         clearIfOwned()
         resolve(false)
       }
-      audio.play().catch((err) => {
-        console.warn(`[TTS:mp3:${speakId}] ✗ playMp3 play() REJECTED`, { url: url.slice(-60), err })
+      audio.play().catch(() => {
         clearIfOwned()
         resolve(false)
       })
@@ -467,68 +516,43 @@ export class TtsAudioManager {
     return { clipId, fallbackText, tone: effectiveTone }
   }
 
-  /**
-   * Try playing a single resolved segment via the voice chain.
-   * Returns true if something played, false if chain exhausted.
-   */
   /** Check if this speak call has been superseded by a newer one. */
   private _isStale(speakId: number): boolean {
     return speakId !== this._activeSpeakId
   }
 
+  /**
+   * Try playing a single resolved segment via the voice chain.
+   * Returns true if something played, false if chain exhausted.
+   */
   private async playOneSegment(resolved: ResolvedSegment, speakId: number): Promise<boolean> {
     if (this._isStale(speakId)) return false
-
-    console.log(`[TTS:chain:${speakId}] 🔗 playOneSegment START`, {
-      clipId: resolved.clipId,
-      chainLength: this._voiceChain.length,
-      chain: this._voiceChain.map(s => s.toJSON()),
-      pregenVoices: [...this._pregenClipIds.entries()].map(([v, ids]) => ({ voice: v, clipCount: ids.size, hasThisClip: ids.has(resolved.clipId) })),
-    })
 
     const log: ChainAttempt[] = []
 
     if (this._voiceChain.length > 0) {
       for (let i = 0; i < this._voiceChain.length; i++) {
-        if (this._isStale(speakId)) {
-          console.log(`[TTS:chain:${speakId}] ⏹ STALE at chain[${i}] (active=${this._activeSpeakId})`)
-          return false
-        }
+        if (this._isStale(speakId)) return false
 
         const source = this._voiceChain[i]
         if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false
-          console.log(
-            `[TTS:chain:${speakId}] chain[${i}] ${source.type} "${source.name}": hasClip=${hasClip}`
-          )
           if (hasClip) {
             const url = `/api/audio/clips/${source.name}/${resolved.clipId}`
-            console.log(`[TTS:chain:${speakId}] chain[${i}] → playMp3("${source.name}/${resolved.clipId}")`)
             const ok = await this.playMp3(url)
-            if (this._isStale(speakId)) {
-              console.log(`[TTS:chain:${speakId}] ⏹ STALE after playMp3 at chain[${i}] (active=${this._activeSpeakId})`)
-              return false
-            }
-            console.log(`[TTS:chain:${speakId}] chain[${i}] playMp3 result: ok=${ok}`)
+            if (this._isStale(speakId)) return false
             if (ok) return true
             log.push({ source, outcome: 'play-error' })
           } else {
             log.push({ source, outcome: 'no-clip' })
           }
         } else if (source.type === 'browser-tts') {
-          console.log(
-            `[TTS:chain:${speakId}] chain[${i}] browser-tts: "${resolved.fallbackText.slice(0, 40)}"`
-          )
           const ok = await this.speakBrowserTts(resolved.fallbackText)
           if (this._isStale(speakId)) return false
-          console.log(`[TTS:chain:${speakId}] chain[${i}] browser-tts result: ok=${ok}`)
           if (ok) return true
           log.push({ source, outcome: 'unavailable' })
         } else if (source.type === 'subtitle') {
-          console.log(
-            `[TTS:chain:${speakId}] chain[${i}] subtitle: "${resolved.fallbackText.slice(0, 40)}"`
-          )
           const readingMs = this.estimateReadingTimeMs(resolved.fallbackText)
           this._subtitleText = resolved.fallbackText
           this._currentSubtitleDurationMs = readingMs
@@ -549,25 +573,16 @@ export class TtsAudioManager {
           this.notify()
           return !this._isStale(speakId)
         } else if (source.type === 'generate') {
-          // Read the log to find voices that had no clip and can generate on-demand.
-          // Each voice class decides for itself (e.g. PregeneratedVoice → yes, CustomVoice → not yet).
           const missed = log
             .filter((a) => a.outcome === 'no-clip' && a.source.canGenerate())
             .map((a) => a.source)
 
-          console.log(
-            `[TTS:chain:${speakId}] chain[${i}] generate: missed=${JSON.stringify(missed.map((s) => s.toJSON()))}`
-          )
-
           if (missed.length > 0) {
             const [primary, ...others] = missed
-            console.log(`[TTS:chain:${speakId}] chain[${i}] → generateAndPlay("${(primary as PregeneratedVoice).name ?? 'unknown'}")`)
             const ok = await this.generateAndPlay(primary, resolved, speakId)
             if (this._isStale(speakId)) return false
-            console.log(`[TTS:chain:${speakId}] chain[${i}] generateAndPlay result: ok=${ok}`)
             if (ok) {
               if (others.length > 0) {
-                console.log(`[TTS:chain:${speakId}] chain[${i}] → generateInBackground for ${others.length} other voices`)
                 this.generateInBackground(others, resolved)
               }
               return true
@@ -578,27 +593,18 @@ export class TtsAudioManager {
           }
         }
       }
-      // All chain entries exhausted
-      console.warn(`[TTS:chain:${speakId}] ⚠️ voice chain EXHAUSTED — nothing played!`, {
-        log: log.map(a => ({ source: a.source.toJSON(), outcome: a.outcome })),
-      })
       return false
     }
 
     // No voice chain -- fall back to browser TTS
     if (this._isStale(speakId)) return false
-    console.log(`[TTS:chain:${speakId}] no voice chain, falling back to browser TTS`)
-    const ok = await this.speakBrowserTts(resolved.fallbackText)
-    console.log(`[TTS:chain:${speakId}] fallback browser-tts result: ok=${ok}`)
-    return ok
+    return await this.speakBrowserTts(resolved.fallbackText)
   }
 
   /**
    * Play a sequence of resolved segments with inter-segment gaps.
    */
   private async playSequence(segments: ResolvedSegment[], speakId: number): Promise<void> {
-    // speak() already cancelled previous playback and waited a frame
-    // if browser TTS was active, so we just reset the sequence flag.
     this._isPlaying = true
     this._sequenceCancelled = false
     this.notify()
@@ -621,31 +627,14 @@ export class TtsAudioManager {
     this.register(input, config)
 
     const speakId = ++this._speakSeq
-    const prevSpeakId = this._activeSpeakId
     this._activeSpeakId = speakId
 
-    console.log(`[TTS:speak:${speakId}] 🎤 SPEAK CALLED (prev=${prevSpeakId})`, {
-      isEnabled: this._isEnabled,
-      input: typeof input === 'string' ? input : JSON.stringify(input).slice(0, 100),
-      currentAudioSrc: this._currentAudio?.src?.slice(-60) ?? null,
-      currentAudioPaused: this._currentAudio?.paused ?? null,
-      voiceChain: this._voiceChain.map(s => s.toJSON()),
-      stack: new Error().stack?.split('\n').slice(1, 5).map(l => l.trim()),
-    })
-
-    if (!this._isEnabled) {
-      console.log(`[TTS:speak:${speakId}] ⏭ TTS disabled, returning early`)
-      return
-    }
+    if (!this._isEnabled) return
 
     const segments = Array.isArray(input) ? input : [input]
     if (segments.length === 0) return
 
     const resolved = segments.map((seg) => this.resolveSegment(seg, config))
-    console.log(
-      `[TTS:speak:${speakId}] resolved:`,
-      resolved.map((r) => ({ clipId: r.clipId, fallbackText: r.fallbackText.slice(0, 30) }))
-    )
 
     // Increment play counts
     for (const r of resolved) {
@@ -657,7 +646,6 @@ export class TtsAudioManager {
     }
 
     // Cancel any in-flight playback before starting new speech.
-    console.log(`[TTS:speak:${speakId}] 🛑 cancelling previous (currentAudio=${!!this._currentAudio})`)
     this._sequenceCancelled = true
     this._currentAudioDurationMs = null
     if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
@@ -677,7 +665,6 @@ export class TtsAudioManager {
       'speechSynthesis' in window &&
       (speechSynthesis.speaking || speechSynthesis.pending)
     ) {
-      console.log('[TtsAudioManager] cancelling in-flight browser TTS before new speak')
       speechSynthesis.cancel()
       this._activeUtterances.clear()
       await new Promise<void>((r) => setTimeout(r, 50))
@@ -685,9 +672,7 @@ export class TtsAudioManager {
 
     if (resolved.length === 1) {
       this.setPlaying(true)
-      console.log(`[TTS:speak:${speakId}] ▶ playing single segment...`)
       await this.playOneSegment(resolved[0], speakId)
-      console.log(`[TTS:speak:${speakId}] ■ single segment done (activeSpeakId now=${this._activeSpeakId})`)
       if (!this._isStale(speakId)) this.setPlaying(false)
     } else {
       await this.playSequence(resolved, speakId)
@@ -700,30 +685,16 @@ export class TtsAudioManager {
    */
   private speakBrowserTts(text: string): Promise<boolean> {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      console.log('[TtsAudioManager] speakBrowserTts: not available')
       return Promise.resolve(false)
     }
 
-    // Fast-fail when no active user gesture — speechSynthesis.speak() silently
-    // no-ops without user activation on most browsers.
+    // Fast-fail when no active user gesture
     if (navigator.userActivation && !navigator.userActivation.isActive) {
-      console.log('[TtsAudioManager] speakBrowserTts: no user activation, skipping')
       return Promise.resolve(false)
     }
 
     const voices = speechSynthesis.getVoices()
-    console.log('[TtsAudioManager] speakBrowserTts:', {
-      text: text.slice(0, 40),
-      volume: this._volume,
-      speaking: speechSynthesis.speaking,
-      pending: speechSynthesis.pending,
-      paused: speechSynthesis.paused,
-      voiceCount: voices.length,
-    })
-
-    // Fast-fail: no voices loaded means speak() will silently no-op
     if (voices.length === 0) {
-      console.log('[TtsAudioManager] speakBrowserTts: no voices available, skipping')
       return Promise.resolve(false)
     }
 
@@ -739,7 +710,6 @@ export class TtsAudioManager {
 
       // Safety timeout — if browser hangs, don't block the UI forever
       const safetyTimeout = setTimeout(() => {
-        console.log('[TtsAudioManager] speakBrowserTts: safety timeout (10s)')
         speechSynthesis.cancel()
         this._activeUtterances.delete(utterance)
         settle(false)
@@ -748,7 +718,6 @@ export class TtsAudioManager {
       // Start detection — if speaking hasn't started after 1.5s, it silently failed
       const startTimeout = setTimeout(() => {
         if (!speechSynthesis.speaking && !speechSynthesis.pending) {
-          console.log('[TtsAudioManager] speakBrowserTts: speech never started (1.5s), bailing')
           speechSynthesis.cancel()
           this._activeUtterances.delete(utterance)
           settle(false)
@@ -759,32 +728,16 @@ export class TtsAudioManager {
       utterance.volume = this._volume
       utterance.rate = 0.9
       utterance.onend = () => {
-        console.log('[TtsAudioManager] speakBrowserTts: onend')
         this._activeUtterances.delete(utterance)
         settle(true)
       }
-      utterance.onerror = (e) => {
-        console.log(
-          '[TtsAudioManager] speakBrowserTts: onerror',
-          (e as SpeechSynthesisErrorEvent).error
-        )
+      utterance.onerror = () => {
         this._activeUtterances.delete(utterance)
         settle(false)
       }
 
-      // Keep a strong reference so the utterance isn't GC'd before it finishes.
-      // Using a Set (not a single var) because concurrent speak() calls can
-      // create multiple in-flight utterances queued in speechSynthesis.
       this._activeUtterances.add(utterance)
-
-      // Speak synchronously — must stay in the user-gesture call stack
       speechSynthesis.speak(utterance)
-      console.log(
-        '[TtsAudioManager] speakBrowserTts: speak() called, speaking:',
-        speechSynthesis.speaking,
-        'pending:',
-        speechSynthesis.pending
-      )
     })
   }
 
@@ -804,31 +757,18 @@ export class TtsAudioManager {
   ): Promise<boolean> {
     let blobUrl: string | null = null
     try {
-      console.log(
-        `[TTS:gen:${speakId}] generateAndPlay: source=${JSON.stringify(source.toJSON())} clipId="${resolved.clipId}"`
-      )
       const blob = await source.generate(resolved.clipId, resolved.fallbackText, resolved.tone)
-      if (this._isStale(speakId)) {
-        console.log(`[TTS:gen:${speakId}] ⏹ STALE after generate()`)
-        return false
-      }
-      if (!blob) {
-        console.log(`[TTS:gen:${speakId}] generate returned null`)
-        return false
-      }
-      console.log(`[TTS:gen:${speakId}] ✓ generated blob, size=${blob.size}, playing...`)
+      if (this._isStale(speakId)) return false
+      if (!blob) return false
       blobUrl = URL.createObjectURL(blob)
       const ok = await this.playMp3(blobUrl)
-      if (this._isStale(speakId)) {
-        console.log(`[TTS:gen:${speakId}] ⏹ STALE after playMp3`)
-        return false
-      }
+      if (this._isStale(speakId)) return false
       if (ok && (source instanceof PregeneratedVoice || source instanceof CustomVoice)) {
         this.addToPregenCache(source.name, resolved.clipId)
       }
       return ok
     } catch (err) {
-      console.error(`[TTS:gen:${speakId}] generateAndPlay error:`, err)
+      console.error('[TTS] generateAndPlay error:', err)
       return false
     } finally {
       if (blobUrl) URL.revokeObjectURL(blobUrl)
@@ -846,9 +786,6 @@ export class TtsAudioManager {
         .then((blob) => {
           if (blob && (source instanceof PregeneratedVoice || source instanceof CustomVoice)) {
             this.addToPregenCache(source.name, resolved.clipId)
-            console.log(
-              `[TtsAudioManager] generateInBackground: cached "${source.name}/${resolved.clipId}"`
-            )
           }
         })
         .catch(() => {
@@ -867,12 +804,6 @@ export class TtsAudioManager {
   }
 
   stop(): void {
-    console.log(`[TTS:stop] 🛑 STOP called (activeSpeakId=${this._activeSpeakId})`, {
-      currentAudioSrc: this._currentAudio?.src?.slice(-60) ?? null,
-      currentAudioPaused: this._currentAudio?.paused ?? null,
-      isPlaying: this._isPlaying,
-      stack: new Error().stack?.split('\n').slice(1, 4).map(l => l.trim()),
-    })
     // Invalidate any in-flight speak call so its chain stops
     this._activeSpeakId = -1
     // Cancel any running sequence
@@ -892,6 +823,11 @@ export class TtsAudioManager {
     if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
     if (this._subtitleResolve) { this._subtitleResolve(); this._subtitleResolve = null }
     this._subtitleText = null
+    // Clear preloaded audio
+    if (this._preloadedAudio) {
+      this._preloadedAudio.audio.src = ''
+      this._preloadedAudio = null
+    }
     if (this._isPlaying) {
       this.setPlaying(false)
     }

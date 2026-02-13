@@ -6,9 +6,11 @@ import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 
 /**
  * Max ratio of effective duration to designed duration (stretch).
- * 1.8 means animation won't slow below ~0.56× designed speed.
+ * 3.0 means animation won't slow below ~0.33× designed speed.
+ * Generous to accommodate TTS clips that are significantly longer
+ * than the designed animation (e.g. 9.5s audio for a 5s animation).
  */
-const MAX_STRETCH_RATIO = 1.8
+const MAX_STRETCH_RATIO = 3.0
 
 /**
  * Min ratio of effective duration to designed duration (compress).
@@ -113,21 +115,40 @@ export function useNarrationSequencer() {
   // so virtualTimeMs stays consistent after segment advancement.
   const completedEffDurationsRef = useRef<number[]>([])
 
+  // Timing ref: when did the current segment's TTS audio finish?
+  const ttsFinishedAtRef = useRef(0)
+
+  // Latched audio duration for the current segment — set once when
+  // metadata becomes available, stays stable for the rest of the segment
+  // to prevent animFrac jumps when duration changes from null to real.
+  const segAudioDurRef = useRef<number | null>(null)
+
   /** Speak a segment's TTS text, flagging ttsFinished when done. */
   const speakSegment = useCallback(
     (seg: SequencerSegment, tone: string, segIdx?: number) => {
-      console.log(`[NarrationSeq] speakSegment[${segIdx ?? '?'}]: "${seg.ttsText.slice(0, 50)}"`)
       ttsFinishedRef.current = false
       speak(
         { say: { en: seg.ttsText }, tone: seg.ttsTone ?? tone },
       ).then(() => {
+        ttsFinishedAtRef.current = performance.now()
         ttsFinishedRef.current = true
       }).catch(() => {
+        ttsFinishedAtRef.current = performance.now()
         // TTS failed or cancelled — still allow segment advancement
         ttsFinishedRef.current = true
       })
+
+      // Preload next segment's audio so the transition is instant (no network wait)
+      if (segIdx !== undefined) {
+        const nextSeg = segmentsRef.current[segIdx + 1]
+        if (nextSeg) {
+          audioManager.preloadForSpeak(
+            { say: { en: nextSeg.ttsText }, tone: nextSeg.ttsTone ?? tone }
+          )
+        }
+      }
     },
-    [speak]
+    [speak, audioManager]
   )
 
   /**
@@ -137,7 +158,6 @@ export function useNarrationSequencer() {
   const start = useCallback(
     (segments: SequencerSegment[], tone: string) => {
       if (segments.length === 0) return
-      console.log(`[NarrationSeq] START — ${segments.length} segments`)
       activeRef.current = true
       segmentsRef.current = segments
       toneRef.current = tone
@@ -145,6 +165,7 @@ export function useNarrationSequencer() {
       segmentStartMsRef.current = performance.now()
       ttsFinishedRef.current = false
       completedEffDurationsRef.current = []
+      segAudioDurRef.current = null
       speakSegment(segments[0], tone, 0)
     },
     [speakSegment]
@@ -180,8 +201,13 @@ export function useNarrationSequencer() {
       const segElapsed =
         (now - segmentStartMsRef.current) * speedMultiplier
 
-      // Adaptive timing: adjust animation pace to match actual TTS audio length
-      const audioDurationMs = audioManager.getCurrentAudioDurationMs()
+      // Adaptive timing: latch audio duration once known, then use it for
+      // the rest of the segment to prevent animFrac jumps.
+      if (segAudioDurRef.current === null) {
+        const dur = audioManager.getCurrentAudioDurationMs()
+        if (dur !== null) segAudioDurRef.current = dur
+      }
+      const audioDurationMs = segAudioDurRef.current
       const effectiveDuration = computeEffectiveDuration(seg, audioDurationMs)
 
       const animFrac = Math.min(1, segElapsed / effectiveDuration)
@@ -201,12 +227,13 @@ export function useNarrationSequencer() {
 
         const nextIdx = segIdx + 1
         if (nextIdx < segments.length) {
-          // Advance to next segment
-          console.log(`[NarrationSeq] advancing to segment[${nextIdx}]`)
+          // Advance to next segment — speak() handles cancellation internally
+          // and won't clear the preloaded audio cache, so the next clip
+          // starts instantly from the already-buffered Audio element.
           segmentIndexRef.current = nextIdx
           segmentStartMsRef.current = now
           ttsFinishedRef.current = false
-          audioManager.stop()
+          segAudioDurRef.current = null
           speakSegment(segments[nextIdx], toneRef.current, nextIdx)
           advancedToNext = true
         } else {
