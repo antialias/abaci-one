@@ -122,6 +122,7 @@ kubectl get applications -n argocd
 | Daily practice | `docs/DAILY_PRACTICE_SYSTEM.md` |
 | Background tasks | `.claude/reference/background-tasks.md` |
 | TTS audio system | `.claude/reference/tts-audio-system.md` |
+| Number line guided experiences | `.claude/reference/number-line-guided-experiences.md` |
 
 ---
 

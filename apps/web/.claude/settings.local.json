@@ -177,11 +177,26 @@
       "mcp__kubernetes__exec_in_pod",
       "mcp__kubernetes__kubectl_get",
       "Bash(git rm:*)",
-      "Skill(fix-css)"
+      "Skill(fix-css)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff --name-only)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff --name-only -- 'apps/web/src/components/toys/number-line/primes/' 'apps/web/src/components/toys/number-line/renderNumberLine.ts' 'apps/web/src/components/toys/number-line/NumberLine.tsx')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards ls-files:*)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status -- 'apps/web/src/components/toys/number-line/')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status --short -- 'apps/web/src/components/toys/number-line/primes/')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status -u -- 'apps/web/src/components/toys/number-line/primes/')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards status -u --short)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards show HEAD:apps/web/src/components/toys/number-line/primes/interestingness.ts)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff --stat -- 'apps/web/src/components/toys/number-line/primes/')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff --stat -- 'apps/web/src/components/toys/number-line/NumberLine.tsx' 'apps/web/src/components/toys/number-line/renderNumberLine.ts')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff -- 'apps/web/src/components/toys/number-line/renderNumberLine.ts')",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff -- 'apps/web/src/components/toys/number-line/NumberLine.tsx')",
+      "Bash(env:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }
