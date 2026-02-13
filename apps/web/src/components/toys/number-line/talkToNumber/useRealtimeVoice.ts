@@ -15,6 +15,17 @@ interface UseRealtimeVoiceOptions {
   onTransfer?: (targetNumber: number) => void
   /** Called when the model starts a constant exploration */
   onStartExploration?: (constantId: string) => void
+  /** Called when the model pauses the exploration animation */
+  onPauseExploration?: () => void
+  /** Called when the model resumes the exploration animation */
+  onResumeExploration?: () => void
+  /** Called when the model seeks to a specific segment (0-indexed) */
+  onSeekExploration?: (segmentIndex: number) => void
+  /** Called when the model wants to pan/zoom the number line */
+  onLookAt?: (center: number, range: number) => void
+  /** Ref that reports whether an exploration animation is currently active.
+   *  When true, the call timer pauses the countdown (won't expire mid-video). */
+  isExplorationActiveRef?: React.RefObject<boolean>
 }
 
 interface UseRealtimeVoiceReturn {
@@ -42,6 +53,15 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onTransferRef.current = options?.onTransfer
   const onStartExplorationRef = useRef(options?.onStartExploration)
   onStartExplorationRef.current = options?.onStartExploration
+  const onPauseExplorationRef = useRef(options?.onPauseExploration)
+  onPauseExplorationRef.current = options?.onPauseExploration
+  const onResumeExplorationRef = useRef(options?.onResumeExploration)
+  onResumeExplorationRef.current = options?.onResumeExploration
+  const onSeekExplorationRef = useRef(options?.onSeekExploration)
+  onSeekExplorationRef.current = options?.onSeekExploration
+  const onLookAtRef = useRef(options?.onLookAt)
+  onLookAtRef.current = options?.onLookAt
+  const isExplorationActiveRef = options?.isExplorationActiveRef
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
@@ -140,17 +160,39 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const dial = useCallback(async (number: number) => {
     // Don't start a new call if one is in progress (allow from transferring state)
     const cur = stateRef.current as CallState
-    if (cur !== 'idle' && cur !== 'error' && cur !== 'transferring') return
+    if (cur !== 'idle' && cur !== 'error' && cur !== 'transferring') {
+      console.log('[voice] dial() rejected — state is', cur, '(expected idle/error/transferring)')
+      return
+    }
 
     setError(null)
     extensionUsedRef.current = false
     warningSentRef.current = false
 
     // 1. Get microphone permission
+    console.log('[voice] dial(%d) — requesting mic with echo cancellation', number)
     let stream: MediaStream
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
       streamRef.current = stream
+      // Log actual constraints the browser applied
+      const micTrack = stream.getAudioTracks()[0]
+      if (micTrack) {
+        const settings = micTrack.getSettings()
+        console.log('[voice] mic track settings:', {
+          echoCancellation: settings.echoCancellation,
+          noiseSuppression: settings.noiseSuppression,
+          autoGainControl: settings.autoGainControl,
+          deviceId: settings.deviceId,
+          sampleRate: settings.sampleRate,
+        })
+      }
     } catch (err) {
       setError(
         err instanceof DOMException && err.name === 'NotAllowedError'
@@ -168,9 +210,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     try {
       const audioCtx = new AudioContext()
       audioCtxRef.current = audioCtx
+      console.log('[voice] AudioContext created, state:', audioCtx.state, 'sampleRate:', audioCtx.sampleRate)
       ringRef.current = playRingTone(audioCtx)
-    } catch {
-      // Ring tone is nice-to-have, not critical
+    } catch (err) {
+      console.warn('[voice] ring tone failed:', err)
     }
 
     // 3. Fetch ephemeral token
@@ -207,6 +250,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       // Add mic track
       stream.getAudioTracks().forEach(track => {
+        console.log('[voice] adding mic track to PC:', track.label, 'enabled:', track.enabled, 'muted:', track.muted)
         pc.addTrack(track, stream)
       })
 
@@ -215,20 +259,53 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       audioEl.autoplay = true
       audioElRef.current = audioEl
 
+      // Log audio element state changes
+      audioEl.onplay = () => console.log('[voice] audioEl: play event')
+      audioEl.onpause = () => console.log('[voice] audioEl: pause event')
+      audioEl.onplaying = () => console.log('[voice] audioEl: playing event')
+      audioEl.onwaiting = () => console.log('[voice] audioEl: waiting event')
+      audioEl.onstalled = () => console.log('[voice] audioEl: stalled event')
+      audioEl.onerror = () => console.error('[voice] audioEl: error event', audioEl.error)
+
       pc.ontrack = (event) => {
+        console.log('[voice] ontrack fired — streams:', event.streams.length, 'track kind:', event.track.kind, 'readyState:', event.track.readyState)
         audioEl.srcObject = event.streams[0]
+        console.log('[voice] audioEl.srcObject set, autoplay:', audioEl.autoplay, 'paused:', audioEl.paused, 'readyState:', audioEl.readyState)
+
+        // Explicit play() — autoplay may be blocked if the user-gesture
+        // context expired during async setup (token fetch, SDP exchange).
+        audioEl.play().then(() => {
+          console.log('[voice] audioEl.play() succeeded, paused:', audioEl.paused)
+        }).catch((err) => {
+          console.error('[voice] audioEl.play() FAILED:', err.name, err.message)
+        })
 
         // Simple speaking detection via audio activity
         try {
           const audioCtx = audioCtxRef.current ?? new AudioContext()
           audioCtxRef.current = audioCtx
+          console.log('[voice] ontrack AudioContext state:', audioCtx.state)
+          // Resume AudioContext if suspended (autoplay policy)
+          if (audioCtx.state === 'suspended') {
+            console.log('[voice] AudioContext suspended — resuming...')
+            audioCtx.resume().then(() => {
+              console.log('[voice] AudioContext resumed, state:', audioCtx.state)
+            })
+          }
           const source = audioCtx.createMediaStreamSource(event.streams[0])
           const analyser = audioCtx.createAnalyser()
           analyser.fftSize = 256
           source.connect(analyser)
           const dataArray = new Uint8Array(analyser.frequencyBinCount)
 
-          let lastSpeakingLog = 0
+          let speakingLogTimer = 0
+          // Software echo gate: mute mic while model outputs audio so the
+          // speaker sound doesn't feed back and trigger speech_started.
+          // The mic unmutes after ~250ms of silence for responsive barge-in.
+          let modelSilenceSince = 0
+          let micMuted = false
+          const MIC_UNMUTE_DELAY_MS = 250 // keep mic muted briefly after model stops
+
           const checkSpeaking = () => {
             const st = stateRef.current
             // Stop the loop on terminal states
@@ -241,25 +318,66 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
               const avg = sum / dataArray.length
               const nowSpeaking = avg > 15
-              // Log speaking state changes (throttled to 1/sec)
-              const now = Date.now()
-              if (now - lastSpeakingLog > 1000) {
-                lastSpeakingLog = now
-                console.log('[voice] audio level avg=%.1f isSpeaking=%s currentSpeaker=%s', avg, nowSpeaking, currentSpeakerRef.current)
-              }
               setIsSpeaking(nowSpeaking)
+
+              // Software echo gate: mute/unmute mic track based on model audio
+              const micTrack = streamRef.current?.getAudioTracks()[0]
+              if (micTrack) {
+                const now = performance.now()
+                if (nowSpeaking) {
+                  // Model is outputting audio → mute mic to prevent echo
+                  modelSilenceSince = 0
+                  if (!micMuted) {
+                    micTrack.enabled = false
+                    micMuted = true
+                    console.log('[voice] 🔇 mic MUTED (model speaking, echo gate)')
+                  }
+                } else {
+                  // Model silent — start/continue unmute delay
+                  if (micMuted) {
+                    if (modelSilenceSince === 0) modelSilenceSince = now
+                    if (now - modelSilenceSince > MIC_UNMUTE_DELAY_MS) {
+                      micTrack.enabled = true
+                      micMuted = false
+                      console.log('[voice] 🔊 mic UNMUTED (model silent)')
+                    }
+                  }
+                }
+              }
+
+              // Periodic log of audio levels (every ~0.5s = 30 frames)
+              speakingLogTimer++
+              if (speakingLogTimer % 30 === 0) {
+                const micTrackState = streamRef.current?.getAudioTracks()[0]
+                console.log('[voice] 📊 avg:', avg.toFixed(1), 'modelSpeaking:', nowSpeaking, 'micMuted:', micMuted, 'mic.enabled:', micTrackState?.enabled, 'mic.muted:', micTrackState?.muted)
+              }
             }
             requestAnimationFrame(checkSpeaking)
           }
           requestAnimationFrame(checkSpeaking)
-        } catch {
-          // Speaking detection is nice-to-have
+        } catch (err) {
+          console.warn('[voice] speaking detection setup failed:', err)
         }
+      }
+
+      // Log WebRTC connection state transitions
+      pc.oniceconnectionstatechange = () => {
+        console.log('[voice] ICE connection state:', pc.iceConnectionState)
+      }
+      pc.onsignalingstatechange = () => {
+        console.log('[voice] signaling state:', pc.signalingState)
       }
 
       // Create data channel for Realtime API events
       const dc = pc.createDataChannel('oai-events')
       dcRef.current = dc
+      dc.onopen = () => {
+        console.log('[voice] data channel opened')
+        // Log mic track state at connection time
+        const micTrack = streamRef.current?.getAudioTracks()[0]
+        console.log('[voice] mic at dc open — enabled:', micTrack?.enabled, 'muted:', micTrack?.muted, 'readyState:', micTrack?.readyState)
+      }
+      dc.onclose = () => console.log('[voice] data channel closed')
 
       // Helper: switch voice and prompt next speaker in rotation
       const promptNextSpeaker = () => {
@@ -300,30 +418,39 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         dc.send(JSON.stringify({ type: 'response.create' }))
       }
 
+      // Track mic mute state at the dc.onmessage level so we can log it
+      let dcMicMuted = false
+      const getMicEnabled = () => streamRef.current?.getAudioTracks()[0]?.enabled ?? 'N/A'
+
       dc.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
 
-          // --- Debug logging ---
-          // Log all message types (except noisy audio deltas)
-          if (!msg.type?.includes('audio_buffer') && !msg.type?.includes('audio.delta')) {
-            console.log('[voice] dc msg:', msg.type, msg.type === 'response.audio_transcript.delta' ? msg.delta : '')
+          // --- Log ALL event types for debugging ---
+          const quietEvents = new Set([
+            'response.audio.delta',           // very frequent audio chunks
+            'response.audio_transcript.delta', // frequent transcript deltas
+          ])
+          if (!quietEvents.has(msg.type)) {
+            console.log('[voice] DC event:', msg.type, 'mic.enabled:', getMicEnabled())
           }
-          // Log full transcript when a response finishes
+
+          // --- Debug: log session lifecycle with full config ---
+          if (msg.type === 'session.created') {
+            const td = msg.session?.turn_detection
+            console.log('[voice] ✅ session.created — turn_detection:', JSON.stringify(td))
+          }
+          if (msg.type === 'session.updated') {
+            const td = msg.session?.turn_detection
+            console.log('[voice] session.updated — turn_detection:', JSON.stringify(td))
+          }
+          if (msg.type === 'error') {
+            console.error('[voice] ⚠️ server error:', JSON.stringify(msg.error))
+          }
+
+          // --- Debug: log transcript completions with speaker info ---
           if (msg.type === 'response.audio_transcript.done') {
-            console.log('[voice] transcript done:', msg.transcript)
-          }
-          // Log response.done output items for debugging
-          if (msg.type === 'response.done' && msg.response?.output) {
-            for (const item of msg.response.output) {
-              if (item.type === 'message' && item.content) {
-                for (const part of item.content) {
-                  if (part.transcript) {
-                    console.log('[voice] response.done transcript:', part.transcript)
-                  }
-                }
-              }
-            }
+            console.log('[voice] transcript done (currentSpeaker=%s):', currentSpeakerRef.current, msg.transcript)
           }
 
           // --- Track tool calls within a response ---
@@ -333,12 +460,23 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // --- User started speaking: abort rotation ---
           if (msg.type === 'input_audio_buffer.speech_started') {
+            console.log('[voice] ⚡ speech_started — mic.enabled:', getMicEnabled(), 'audioEl.paused:', audioElRef.current?.paused, 'audioEl.readyState:', audioElRef.current?.readyState)
             const rot = rotationRef.current
             if (rot.isRotating) {
               rot.speakerQueue = []
               rot.isRotating = false
               // Voice stays on whoever was last set — they'll respond to the user
             }
+          }
+          if (msg.type === 'input_audio_buffer.speech_stopped') {
+            console.log('[voice] 🔇 speech_stopped — mic.enabled:', getMicEnabled())
+          }
+          if (msg.type === 'input_audio_buffer.committed') {
+            console.log('[voice] 📤 input_audio_buffer committed')
+          }
+          // Log response cancellations (model interrupted mid-speech)
+          if (msg.type === 'response.cancelled') {
+            console.log('[voice] ❌ response.cancelled — model was interrupted')
           }
 
           // --- Response completed: maybe continue rotation ---
@@ -354,10 +492,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 promptNextSpeaker()
               } else {
                 // Start a new rotation: all characters except the one who just spoke
-                // The first character in the list responded to the user naturally,
-                // so rotate through the rest
-                const firstSpeaker = allNumbers[0]
-                rot.speakerQueue = allNumbers.filter(n => n !== firstSpeaker)
+                const justSpoke = currentSpeakerRef.current
+                rot.speakerQueue = allNumbers.filter(n => n !== justSpoke)
                 rot.isRotating = true
                 promptNextSpeaker()
               }
@@ -503,6 +639,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }))
 
             // Switch to new number's voice so they greet everyone in their own voice
+            currentSpeakerRef.current = targetNumber
+            setCurrentSpeaker(targetNumber)
             dc.send(JSON.stringify({
               type: 'session.update',
               session: {
@@ -552,12 +690,98 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               item: {
                 type: 'function_call_output',
                 call_id: msg.call_id,
-                output: JSON.stringify({ success: true, message: `Starting exploration of ${constantId}` }),
+                output: JSON.stringify({ success: true, message: `Exploration of ${constantId} is ready but PAUSED. Give the child a brief intro, then you MUST call resume_exploration to start the animation playing. Do NOT begin narrating the script until after you call resume_exploration.` }),
               },
             }))
             dc.send(JSON.stringify({ type: 'response.create' }))
 
             onStartExplorationRef.current?.(constantId)
+          }
+
+          // Handle pause/resume/seek exploration tools
+          if (msg.name === 'pause_exploration') {
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: msg.call_id,
+                output: JSON.stringify({ success: true, message: 'Exploration paused' }),
+              },
+            }))
+            dc.send(JSON.stringify({ type: 'response.create' }))
+            onPauseExplorationRef.current?.()
+          }
+
+          if (msg.name === 'resume_exploration') {
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: msg.call_id,
+                output: JSON.stringify({ success: true, message: 'Exploration resumed' }),
+              },
+            }))
+            dc.send(JSON.stringify({ type: 'response.create' }))
+            onResumeExplorationRef.current?.()
+          }
+
+          if (msg.name === 'seek_exploration') {
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              const segNum = Number(args.segment_number)
+              if (!isFinite(segNum) || segNum < 1) throw new Error('invalid')
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: true, message: `Jumped to segment ${segNum} (paused)` }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              // Convert 1-indexed to 0-indexed for the callback
+              onSeekExplorationRef.current?.(segNum - 1)
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Invalid segment_number' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+            }
+          }
+
+          // Handle model calling look_at tool — pan/zoom the number line
+          if (msg.name === 'look_at') {
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              const center = Number(args.center)
+              if (!isFinite(center)) throw new Error('invalid center')
+              const range = Number(args.range) || 20
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: true, message: `Looking at ${center} (range ${range})` }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              onLookAtRef.current?.(center, Math.abs(range))
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Invalid center value' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+            }
           }
         } catch {
           // Ignore parse errors
@@ -565,10 +789,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       }
 
       // Create offer
+      console.log('[voice] creating SDP offer...')
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
 
       // Send to OpenAI Realtime API
+      console.log('[voice] sending SDP offer to OpenAI...')
       const sdpResponse = await fetch(
         'https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
         {
@@ -587,6 +813,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       const answerSdp = await sdpResponse.text()
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
+      console.log('[voice] SDP exchange complete, connectionState:', pc.connectionState, 'iceConnectionState:', pc.iceConnectionState)
 
       // Wait a moment for the ring effect, then go active
       await new Promise(resolve => setTimeout(resolve, 1500))
@@ -602,18 +829,25 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       ringRef.current = null
 
       // Go active
+      console.log('[voice] going active — audioEl paused:', audioEl.paused, 'audioEl.readyState:', audioEl.readyState, 'audioCtx state:', audioCtxRef.current?.state)
       setState('active')
       conferenceNumbersRef.current = [number]
       setConferenceNumbers([number])
       currentSpeakerRef.current = number
       setCurrentSpeaker(number)
-      console.log('[voice] go active, currentSpeaker →', number)
       voiceAssignmentsRef.current.set(number, getVoiceForNumber(number))
       rotationRef.current = { speakerQueue: [], isRotating: false, hadToolCall: false }
       deadlineRef.current = Date.now() + BASE_TIMEOUT_MS
 
       // Start countdown timer
       timerRef.current = setInterval(() => {
+        // Freeze the countdown while an exploration is playing — push deadline
+        // forward so the call doesn't expire mid-video.
+        if (isExplorationActiveRef?.current) {
+          deadlineRef.current = Math.max(deadlineRef.current, Date.now() + WARNING_BEFORE_END_MS + 5000)
+          warningSentRef.current = false
+        }
+
         const remaining = Math.max(0, deadlineRef.current - Date.now())
         setTimeRemaining(Math.ceil(remaining / 1000))
 
@@ -647,6 +881,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       // Handle connection closure
       pc.onconnectionstatechange = () => {
+        console.log('[voice] connectionState changed:', pc.connectionState)
         if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
           hangUp()
         }

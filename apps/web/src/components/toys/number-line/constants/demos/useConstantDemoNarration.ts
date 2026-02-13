@@ -56,7 +56,7 @@ export function useConstantDemoNarration(
   const audioManager = useAudioManagerInstance()
 
   // Shared narration sequencer (handles TTS + segment gating)
-  const { start: seqStart, startFrom: seqStartFrom, tick: seqTick, stop: seqStop } = useNarrationSequencer()
+  const { start: seqStart, startFrom: seqStartFrom, tick: seqTick, stop: seqStop, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef } = useNarrationSequencer()
 
   // Narration state refs
   const isNarratingRef = useRef(false)
@@ -265,5 +265,5 @@ export function useConstantDemoNarration(
     }
   }, [seqStop, audioManager])
 
-  return { startIfNeeded, stop: stopNarration, resume: resumeNarration, isNarrating: isNarratingRef, markTriggered, reset }
+  return { startIfNeeded, stop: stopNarration, resume: resumeNarration, isNarrating: isNarratingRef, markTriggered, reset, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef }
 }

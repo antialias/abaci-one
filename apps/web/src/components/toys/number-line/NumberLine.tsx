@@ -108,14 +108,14 @@ const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
 }
 
 // Display metadata for recommendation cards
-const DEMO_DISPLAY: Record<string, { symbol: string; name: string }> = {
-  phi:       { symbol: 'φ',    name: 'Golden Ratio' },
-  pi:        { symbol: 'π',    name: 'Pi' },
-  tau:       { symbol: 'τ',    name: 'Tau' },
-  e:         { symbol: 'e',    name: "Euler's Number" },
-  gamma:     { symbol: 'γ',    name: 'Euler-Mascheroni' },
-  sqrt2:     { symbol: '√2',   name: 'Root 2' },
-  ramanujan: { symbol: '−1⁄12', name: 'Ramanujan' },
+const DEMO_DISPLAY: Record<string, { symbol: string; name: string; value: number }> = {
+  phi:       { symbol: 'φ',    name: 'Golden Ratio',      value: 1.618033988749895 },
+  pi:        { symbol: 'π',    name: 'Pi',                value: Math.PI },
+  tau:       { symbol: 'τ',    name: 'Tau',               value: 2 * Math.PI },
+  e:         { symbol: 'e',    name: "Euler's Number",    value: Math.E },
+  gamma:     { symbol: 'γ',    name: 'Euler-Mascheroni',  value: 0.5772156649 },
+  sqrt2:     { symbol: '√2',   name: 'Root 2',            value: Math.SQRT2 },
+  ramanujan: { symbol: '−1⁄12', name: 'Ramanujan',        value: -1 / 12 },
 }
 
 // Narration configs for all constant demos (must be module-level for ref stability)
@@ -275,24 +275,69 @@ export function NumberLine() {
   const handleVoiceTransfer = useCallback((targetNumber: number) => {
     setCallingNumber(targetNumber)
   }, [])
-  // Ref-based forward declaration so useRealtimeVoice can trigger exploration
+  // Tracks whether a demo exploration is active (for call timer freeze)
+  const isExplorationActiveRef = useRef(false)
+
+  // Ref-based forward declarations so useRealtimeVoice can control exploration
   const exploreFnRef = useRef<(constantId: string) => void>(() => {})
+  const pauseFnRef = useRef<() => void>(() => {})
+  const resumeFnRef = useRef<() => void>(() => {})
+  const seekFnRef = useRef<(segmentIndex: number) => void>(() => {})
+  const lookAtFnRef = useRef<(center: number, range: number) => void>(() => {})
   const handleVoiceExploration = useCallback((constantId: string) => {
     exploreFnRef.current(constantId)
   }, [])
+  const handleVoicePause = useCallback(() => { pauseFnRef.current() }, [])
+  const handleVoiceResume = useCallback(() => { resumeFnRef.current() }, [])
+  const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
+  const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
   const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
+    onPauseExploration: handleVoicePause,
+    onResumeExploration: handleVoiceResume,
+    onSeekExploration: handleVoiceSeek,
+    onLookAt: handleVoiceLookAt,
+    isExplorationActiveRef,
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
   const voiceStateRef = useRef<CallState>('idle')
   voiceStateRef.current = voiceState
-  // Clear callingNumber when call ends (e.g. model hangs up)
+  const conferenceNumbersRef = useRef<number[]>([])
+  conferenceNumbersRef.current = conferenceNumbers
+  const isSpeakingRef = useRef(false)
+  isSpeakingRef.current = isSpeaking
+  // Track when the voice agent last stopped speaking (for segment gate release)
+  const agentLastSpokeRef = useRef(0)
+  // Debug: log overlay render condition changes
   useEffect(() => {
-    if (voiceState === 'idle' && callingNumber !== null) {
+    const shouldShow = callingNumber !== null && voiceState !== 'idle'
+    console.log('[NumberLine] overlay condition — callingNumber:', callingNumber, 'voiceState:', voiceState, 'shouldShow:', shouldShow)
+  }, [callingNumber, voiceState])
+  // Clear callingNumber when call ends (e.g. model hangs up).
+  // Only clear when voiceState *transitions* to idle (not on initial mount
+  // or when callingNumber is set before dial() goes async).
+  const prevVoiceStateRef = useRef<CallState>('idle')
+  useEffect(() => {
+    const prev = prevVoiceStateRef.current
+    prevVoiceStateRef.current = voiceState
+    // Only clear if we transitioned TO idle FROM a non-idle state
+    if (voiceState === 'idle' && prev !== 'idle' && callingNumber !== null) {
+      console.log('[NumberLine] clearing callingNumber because voiceState transitioned', prev, '→ idle')
       setCallingNumber(null)
     }
   }, [voiceState, callingNumber])
+  // Mute TTS narration audio during voice calls — the sequencer still runs
+  // (pacing the animation) but skips actual audio playback so the voice
+  // agent can narrate instead.
+  useEffect(() => {
+    narration.mutedRef.current = voiceState === 'active'
+    // If a call just connected and narration is already playing, stop the
+    // current TTS clip (sequencer will continue muted from next segment)
+    if (voiceState === 'active' && narration.isNarrating.current) {
+      audioManager.stop()
+    }
+  }, [voiceState, narration, audioManager])
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -483,24 +528,37 @@ export function NumberLine() {
       }
     }
 
-    // Feed narration segment updates to voice agent during active call
+    // Track whether an exploration is active (used by call timer to freeze countdown)
+    isExplorationActiveRef.current = demoStateRef.current.phase !== 'idle' && demoStateRef.current.phase !== 'fading'
+
+    // Feed narration segment updates to voice agent during active call.
+    // Uses the sequencer's actual segment index (not revealProgress) to gate
+    // cues — prevents premature firing when animation finishes a segment
+    // before the voice agent does.
     if (voiceStateRef.current === 'active') {
       const ds = demoStateRef.current
       if (ds.phase !== 'idle' && ds.constantId) {
         const cfg = NARRATION_CONFIGS[ds.constantId]
         if (cfg) {
-          // Find current segment index
-          let segIdx = -1
-          for (let i = cfg.segments.length - 1; i >= 0; i--) {
-            if (ds.revealProgress >= cfg.segments[i].startProgress) { segIdx = i; break }
-          }
-          // Send update when entering a new segment
+          // Use the narration sequencer's real segment index
+          const segIdx = narration.isNarrating.current
+            ? narration.segmentIndexRef.current
+            : -1
+          // Send cue when the sequencer advances to a new segment
           if (segIdx >= 0 && segIdx !== voiceExplorationSegmentRef.current) {
             voiceExplorationSegmentRef.current = segIdx
             const seg = cfg.segments[segIdx]
             const label = seg.scrubberLabel || `Part ${segIdx + 1}`
+            const isLast = segIdx === cfg.segments.length - 1
             sendSystemMessage(
-              `[System: Exploration now showing: "${label}" (${Math.round(ds.revealProgress * 100)}% progress)]`
+              `[System: Segment ${segIdx + 1}/${cfg.segments.length} — "${label}" is now playing.\n` +
+              `NARRATOR — say this now (in your own voice, keeping pace with the animation): ${seg.ttsText}\n` +
+              `The animation is playing alongside you. When you finish speaking, pause briefly so the next segment can start.` +
+              (conferenceNumbersRef.current.length > 1
+                ? `\nOther participants: after the narrator finishes this part, you may add a brief reaction${isLast ? ' before the wrap-up' : ''}.`
+                : '') +
+              `]`,
+              true
             )
           }
           // Notify when exploration completes
@@ -509,9 +567,25 @@ export function NumberLine() {
             const display = DEMO_DISPLAY[ds.constantId]
             sendSystemMessage(
               `[System: The ${display?.name ?? ds.constantId} exploration has finished! ` +
-              `Ask the child what they thought, what surprised them, or if they want to explore another constant.]`,
+              `Everyone can discuss now — narrator, share why you love this constant. ` +
+              `Others, ask questions or share what surprised you. ` +
+              `Ask the child what they thought or if they want to explore another constant.]`,
               true
             )
+          }
+
+          // Auto-release the TTS gate when the voice agent stops speaking.
+          // The muted sequencer holds at each segment boundary (ttsFinished=false)
+          // so the animation waits for the agent. Once the agent is silent for ~1s
+          // we advance to the next segment automatically.
+          if (narration.mutedRef.current && narration.isNarrating.current) {
+            const now = performance.now()
+            if (isSpeakingRef.current) {
+              agentLastSpokeRef.current = now
+            } else if (agentLastSpokeRef.current > 0 && now - agentLastSpokeRef.current > 1000) {
+              narration.releaseTtsGate()
+              agentLastSpokeRef.current = 0 // reset so we don't re-release next frame
+            }
           }
         }
       }
@@ -1057,6 +1131,7 @@ export function NumberLine() {
 
   // --- Long-press handler for "Talk to a Number" ---
   const handleCanvasLongPress = useCallback((screenX: number, _screenY: number) => {
+    console.log('[NumberLine] handleCanvasLongPress fired, screenX:', screenX, 'current callingNumber:', callingNumber, 'voiceState:', voiceStateRef.current)
     const cssWidth = cssWidthRef.current
     const state = stateRef.current
     const value = screenXToNumber(screenX, state.center, state.pixelsPerUnit, cssWidth)
@@ -1065,9 +1140,10 @@ export function NumberLine() {
     const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
     const dist = Math.abs(screenX - nearestScreenX)
     const numberToCall = dist < 30 ? nearest : parseFloat(value.toPrecision(6))
+    console.log('[NumberLine] calling setCallingNumber(%s) and dial(%s)', numberToCall, numberToCall)
     setCallingNumber(numberToCall)
     dial(numberToCall)
-  }, [dial])
+  }, [dial, callingNumber])
 
   // Touch/mouse/wheel handling
   const handleStateChange = useCallback(() => {
@@ -1227,6 +1303,34 @@ export function NumberLine() {
     }
   }, [conferenceNumbers, voiceState, draw])
 
+  // Assign look_at implementation now that callFlyRef and stateRef are in scope
+  lookAtFnRef.current = (center: number, range: number) => {
+    const cssWidth = cssWidthRef.current
+    if (cssWidth <= 0) return
+
+    const targetPpu = cssWidth / Math.max(range, 0.01)
+
+    const src: Viewport = { center: stateRef.current.center, pixelsPerUnit: stateRef.current.pixelsPerUnit }
+    const tgt: Viewport = { center, pixelsPerUnit: targetPpu }
+    const startMs = performance.now()
+    const durationMs = 800
+
+    if (callFlyRef.current) cancelAnimationFrame(callFlyRef.current.raf)
+
+    const fly = callFlyRef.current = { src, tgt, startMs, raf: 0 }
+    const tick = () => {
+      const elapsed = performance.now() - fly.startMs
+      const t = lerpViewport(fly.src, fly.tgt, elapsed, durationMs, stateRef.current)
+      draw()
+      if (t < 1) {
+        fly.raf = requestAnimationFrame(tick)
+      } else {
+        callFlyRef.current = null
+      }
+    }
+    fly.raf = requestAnimationFrame(tick)
+  }
+
   // Find tapped constant data for info card
   const tappedConstant = useMemo(
     () => tappedConstantId ? MATH_CONSTANTS.find(c => c.id === tappedConstantId) ?? null : null,
@@ -1257,31 +1361,97 @@ export function NumberLine() {
     audioManager.stop()
     exitTour()
     narration.reset()
-    startDemo(constantId)
 
-    // If on a voice call, send narration context so the agent knows what's being shown
-    if (voiceStateRef.current === 'active') {
+    const onCall = voiceStateRef.current === 'active'
+
+    if (onCall) {
+      // Start paused at progress 0 — narrator introduces first, then calls resume
+      restoreDemo(constantId, 0)
+      narration.markTriggered(constantId) // suppress narration auto-start
+    } else {
+      startDemo(constantId)
+    }
+
+    // If on a voice call, send narration context and designate a narrator
+    if (onCall) {
       const cfg = NARRATION_CONFIGS[constantId]
       const display = DEMO_DISPLAY[constantId]
       if (cfg && display) {
-        const script = cfg.segments.map((seg, i) => {
+        // Build an outline of segment labels (no full text — text arrives per-segment)
+        const outline = cfg.segments.map((seg, i) => {
           const label = seg.scrubberLabel || `Part ${i + 1}`
-          const pct = `${Math.round(seg.startProgress * 100)}–${Math.round(seg.endProgress * 100)}%`
-          return `${i + 1}. "${label}" (${pct}): ${seg.ttsText}`
+          return `${i + 1}. "${label}"`
         }).join('\n')
+
+        // Pick the narrator: the number closest to the constant's value
+        const nums = conferenceNumbersRef.current
+        let narrator = nums[0] ?? callingNumber
+        if (nums.length > 1) {
+          let bestDist = Infinity
+          for (const n of nums) {
+            const d = Math.abs(n - display.value)
+            if (d < bestDist) { bestDist = d; narrator = n }
+          }
+        }
+        const others = nums.filter(n => n !== narrator)
+        const othersDesc = others.length > 0
+          ? `\n\nOTHER PARTICIPANTS (${others.join(', ')}): You are the audience. Make brief, in-character reactions between segments — ` +
+            `ask a quick question, or relate it to yourselves. Keep interjections to one short sentence. ` +
+            `Do NOT talk over the narrator mid-segment.`
+          : ''
+
         sendSystemMessage(
-          `[System: An animated exploration of ${display.symbol} (${display.name}) is now playing on the number line. ` +
-          `The child is watching a narrated animation. Here is the full narration script so you know exactly what's being shown and said:\n\n` +
-          `${script}\n\n` +
-          `Stay quiet during the animation — the narration is being spoken aloud. ` +
-          `When the exploration finishes, you'll receive a notification. Then discuss what you both just saw!]`
+          `[System: An animated exploration of ${display.symbol} (${display.name}) is ready to play. ` +
+          `The number line is showing the starting position. The animation is PAUSED — it will not play until you call resume_exploration.\n\n` +
+          `${narrator} is the designated narrator!\n\n` +
+          `NARRATOR (${narrator}): First, introduce this constant to the child in your own words. ` +
+          `Tell them what they're about to see and why it's special to you. ` +
+          `Keep the intro to 2-3 sentences. When the child seems ready (they say "ok!", "let's go!", ` +
+          `or you feel the moment is right), call resume_exploration to start the animation.\n\n` +
+          `HOW THIS WORKS: Once playing, you will receive narration text ONE SEGMENT AT A TIME. ` +
+          `Each segment arrives with a "[System: Segment N — ...]" message containing exactly what to say. ` +
+          `Read that text in your own voice and character, keeping pace with the animation playing on screen. ` +
+          `Do NOT read ahead or improvise the narration — wait for each segment's cue. ` +
+          `When you finish a segment, PAUSE BRIEFLY (1-2 seconds of silence) so the system knows you're done ` +
+          `and can advance to the next segment. The animation and your narration play together — ` +
+          `whichever finishes first waits for the other before the next segment starts.\n\n` +
+          `CHECK-INS: Every few segments, briefly check in with the child — "You see that?", "Pretty cool, right?". ` +
+          `Keep it light and quick (don't pause the animation for this). ` +
+          `If the child seems lost or disengaged, it's OK to wrap up early.\n\n` +
+          `PLAYBACK CONTROLS: You can pause_exploration, resume_exploration, or seek_exploration to a segment number. ` +
+          `Use your judgment — quick questions can be answered while the animation plays. ` +
+          `But if the child seems confused or wants to linger, pause or seek.` +
+          `${othersDesc}\n\n` +
+          `SEGMENT OUTLINE (${cfg.segments.length} parts):\n${outline}]`,
+          true // prompt a response so the narrator introduces the constant
         )
       }
       voiceExplorationSegmentRef.current = -1
     }
-  }, [audioManager, startDemo, exitTour, narration, sendSystemMessage])
-  // Keep ref pointed at latest handleExploreConstant
+  }, [audioManager, startDemo, restoreDemo, exitTour, narration, sendSystemMessage])
+  // Keep refs pointed at latest implementations for voice agent callbacks
   exploreFnRef.current = handleExploreConstant
+  pauseFnRef.current = () => {
+    if (narration.isNarrating.current) narration.stop()
+  }
+  resumeFnRef.current = () => {
+    const ds = demoStateRef.current
+    if (ds.constantId && ds.revealProgress < 1) {
+      agentLastSpokeRef.current = 0 // reset so silence detection doesn't fire from stale data
+      narration.resume(ds.constantId)
+    }
+  }
+  seekFnRef.current = (segmentIndex: number) => {
+    const ds = demoStateRef.current
+    if (!ds.constantId) return
+    const cfg = NARRATION_CONFIGS[ds.constantId]
+    if (!cfg || segmentIndex < 0 || segmentIndex >= cfg.segments.length) return
+    // Stop current narration, seek to segment start, leave paused
+    if (narration.isNarrating.current) narration.stop()
+    setRevealProgress(cfg.segments[segmentIndex].startProgress)
+    // Update the voice agent's segment tracker so the segment cue re-fires on resume
+    voiceExplorationSegmentRef.current = segmentIndex - 1
+  }
 
   // Track which narration segment was last reported to the voice agent
   const voiceExplorationSegmentRef = useRef(-1)

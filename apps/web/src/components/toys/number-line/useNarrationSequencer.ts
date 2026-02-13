@@ -105,6 +105,7 @@ export function useNarrationSequencer() {
   const speak = useTTS({ tone: '', say: { en: '' } })
 
   const activeRef = useRef(false)
+  const mutedRef = useRef(false)
   const segmentsRef = useRef<SequencerSegment[]>([])
   const toneRef = useRef('')
   const segmentIndexRef = useRef(0)
@@ -127,6 +128,14 @@ export function useNarrationSequencer() {
   const speakSegment = useCallback(
     (seg: SequencerSegment, tone: string, segIdx?: number) => {
       ttsFinishedRef.current = false
+
+      // When muted, leave ttsFinished = false — the sequencer will hold at
+      // the segment boundary (animFrac = 1) until releaseTtsGate() is called.
+      // This lets the voice agent talk at their own pace.
+      if (mutedRef.current) {
+        return
+      }
+
       speak(
         { say: { en: seg.ttsText }, tone: seg.ttsTone ?? tone },
       ).then(() => {
@@ -306,5 +315,14 @@ export function useNarrationSequencer() {
     [audioManager, speakSegment]
   )
 
-  return { start, startFrom, tick, stop }
+  /** Release the TTS gate so the sequencer advances past the current segment.
+   *  Used when muted: external code (e.g. voice-agent silence detection) calls
+   *  this to signal the narrator finished speaking for the current segment. */
+  const releaseTtsGate = useCallback(() => {
+    if (!activeRef.current) return
+    ttsFinishedAtRef.current = performance.now()
+    ttsFinishedRef.current = true
+  }, [])
+
+  return { start, startFrom, tick, stop, mutedRef, releaseTtsGate, segmentIndexRef }
 }

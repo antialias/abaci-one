@@ -41,6 +41,12 @@ export async function POST(request: Request) {
         model: 'gpt-4o-realtime-preview-2024-12-17',
         voice: getVoiceForNumber(number),
         instructions,
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.8,             // Higher = less sensitive (default 0.5). Prevents echo/ambient triggering.
+          prefix_padding_ms: 300,     // Audio to include before detected speech start
+          silence_duration_ms: 700,   // How long silence before turn ends (default 500)
+        },
         tools: [
           {
             type: 'function',
@@ -92,7 +98,7 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'start_exploration',
             description:
-              'Start an animated visual exploration of a mathematical constant on the number line. The child will see a narrated animation while you watch together. You will receive the full narration script so you know exactly what is being shown and said. Stay quiet during the animation — when it finishes you will be notified and can discuss what you both just saw. Available constants: phi (Golden Ratio), pi, tau, e (Euler\'s Number), gamma (Euler-Mascheroni), sqrt2 (Square Root of 2), ramanujan (Ramanujan Summation / −1/12).',
+              'Prepare an animated visual exploration of a mathematical constant on the number line. The animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. The number closest to the constant\'s value will be designated narrator. You will receive the full narration script and segment-by-segment cues. Available constants: phi (Golden Ratio), pi, tau, e (Euler\'s Number), gamma (Euler-Mascheroni), sqrt2 (Square Root of 2), ramanujan (Ramanujan Summation / −1/12).',
             parameters: {
               type: 'object',
               properties: {
@@ -103,6 +109,56 @@ export async function POST(request: Request) {
                 },
               },
               required: ['constant_id'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'pause_exploration',
+            description:
+              'Pause the currently playing exploration animation. Use this when the child asks a question that needs the animation stopped to discuss, or when you want to linger on something interesting. Use your judgment — simple questions can be answered while the animation keeps playing.',
+            parameters: { type: 'object', properties: {} },
+          },
+          {
+            type: 'function',
+            name: 'resume_exploration',
+            description:
+              'Resume the exploration animation from where it was paused. Call this after you\'ve finished discussing a paused moment and are ready to continue.',
+            parameters: { type: 'object', properties: {} },
+          },
+          {
+            type: 'function',
+            name: 'seek_exploration',
+            description:
+              'Jump the exploration animation to a specific segment by number (1-indexed, matching the script you received). The animation pauses at that segment so you can discuss it. Use this when the child asks to see a specific part again, e.g. "show me the part about the spiral" — find the matching segment number from the script and seek to it.',
+            parameters: {
+              type: 'object',
+              properties: {
+                segment_number: {
+                  type: 'number',
+                  description: 'Which segment to jump to (1-indexed)',
+                },
+              },
+              required: ['segment_number'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'look_at',
+            description:
+              'Pan and zoom the number line to show a specific region. The child sees the number line animate smoothly to the new view. Use this whenever you\'re talking about a specific number or region — e.g. "let me show you where I live", "look over at 100", "let\'s zoom out and see the big picture". You control what the child sees.',
+            parameters: {
+              type: 'object',
+              properties: {
+                center: {
+                  type: 'number',
+                  description: 'The number to center the view on',
+                },
+                range: {
+                  type: 'number',
+                  description: 'How wide a range to show (in number-line units). E.g. range=10 shows roughly 5 units on each side of center. Default: 20. Use small values (2-5) to zoom in close, large values (50-1000) to zoom out.',
+                },
+              },
+              required: ['center'],
             },
           },
         ],
