@@ -7,8 +7,8 @@
  * Now powered by the matching-pairs framework with a thin variant definition.
  */
 
-import { getGameTheme } from '@/lib/arcade/game-sdk'
-import type { GameManifest } from '@/lib/arcade/game-sdk'
+import { getGameTheme } from '@/lib/arcade/game-themes'
+import type { GameManifest } from '@/lib/arcade/manifest-schema'
 import { defineMatchingPairsGame } from '@/lib/arcade/matching-pairs-framework'
 import { abacusVariant } from './variant'
 import type { AbacusConfig } from './types'
