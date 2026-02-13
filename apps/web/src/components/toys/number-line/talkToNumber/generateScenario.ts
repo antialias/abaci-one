@@ -1,9 +1,11 @@
 /**
  * Dynamic scenario generation for phone calls.
  *
- * Calls GPT-5-mini to generate a compelling opening scenario and periodic
+ * Calls GPT-4o-mini to generate a compelling opening scenario and periodic
  * evolutions that keep the conversation engaging.
  */
+
+import type { ExplorationDescriptor } from './explorationRegistry'
 
 export interface GeneratedScenario {
   situation: string
@@ -29,8 +31,10 @@ The number has just answered the phone. Generate a compelling scenario — somet
 
 RULES:
 - Age-appropriate, exciting, and math-connected
-- The scenario should naturally involve 1-2 other nearby numbers
-- When it makes sense, connect to one of these explorations the child can watch: phi (Golden Ratio spirals), pi (circles), tau (full turns), e (growth), gamma (Euler-Mascheroni harmonic series), sqrt2 (diagonal of a square), ramanujan (the surprising -1/12)
+- The scenario should be about the number's OWN life — something it was personally dealing with. Think: a personal puzzle, something weird it noticed, a project it's working on, a discovery it just made.
+- Other numbers can be MENTIONED in passing (e.g. "my neighbor 7 said something weird earlier") but should NOT be central characters the number urgently needs to call or bring into the conversation. The scenario is between THIS number and the CHILD — not between numbers.
+- involvedNumbers should usually be empty or contain at most 1 number with a minor background role. Do NOT create scenarios that depend on calling or adding other numbers to resolve.
+- You MAY optionally note a loose connection to one of these explorations IF it genuinely fits: phi (Golden Ratio spirals), pi (circles), tau (full turns), e (growth), gamma (Euler-Mascheroni harmonic series), sqrt2 (diagonal of a square), ramanujan (the surprising -1/12). But most scenarios should have relevantExploration: null. The exploration should NEVER be the main plot.
 - Pick an archetype that fits: mystery, puzzle, discovery, quest, emergency, celebration
 - The hook should be a single intriguing sentence the number can say right after answering
 - Keep the situation to 2-3 sentences max
@@ -50,8 +54,9 @@ const EVOLUTION_PROMPT = `You advance a story happening during a phone call betw
 Given the current scenario and recent conversation, generate a new development that:
 - Raises the stakes or introduces a twist
 - Feels natural given what's been discussed
-- Suggests a concrete next action (call another number, start an exploration, look at somewhere on the number line)
+- Suggests a concrete next action the number and child can do TOGETHER (look at somewhere on the number line, try a calculation, think about a puzzle). Do NOT suggest calling or adding other numbers — that should only happen if the child asks.
 - Stays age-appropriate and math-connected
+- Keeps the CHILD as the central participant — the number should want the child's help/opinion, not another number's
 
 Respond with JSON matching this schema:
 {
