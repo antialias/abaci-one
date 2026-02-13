@@ -72,7 +72,7 @@ export async function generateScenario(
 ): Promise<GeneratedScenario | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 30000)
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -81,9 +81,9 @@ export async function generateScenario(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini',
-        reasoning_effort: 'low',
-        max_completion_tokens: 500,
+        model: 'gpt-4o-mini',
+        temperature: 1.0,
+        max_tokens: 500,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SCENARIO_PROMPT },
@@ -101,7 +101,8 @@ Nearby interesting numbers: ${neighborsSummary}`,
     clearTimeout(timeout)
 
     if (!response.ok) {
-      console.warn('[scenario] API error:', response.status)
+      const errBody = await response.text().catch(() => '(no body)')
+      console.warn('[scenario] generate API error:', response.status, errBody)
       return null
     }
 
@@ -120,7 +121,7 @@ Nearby interesting numbers: ${neighborsSummary}`,
     return parsed
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      console.warn('[scenario] timed out (8s)')
+      console.warn('[scenario] timed out (30s)')
     } else {
       console.warn('[scenario] failed:', err)
     }
@@ -141,7 +142,7 @@ export async function evolveScenario(
 ): Promise<ScenarioEvolution | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 30000)
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -150,9 +151,9 @@ export async function evolveScenario(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini',
-        reasoning_effort: 'low',
-        max_completion_tokens: 300,
+        model: 'gpt-4o-mini',
+        temperature: 1.0,
+        max_tokens: 300,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: EVOLUTION_PROMPT },
@@ -175,7 +176,8 @@ ${recentTranscripts.slice(-3).map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
     clearTimeout(timeout)
 
     if (!response.ok) {
-      console.warn('[scenario] API error:', response.status)
+      const errBody = await response.text().catch(() => '(no body)')
+      console.warn('[scenario] evolve API error:', response.status, errBody)
       return null
     }
 
@@ -193,7 +195,7 @@ ${recentTranscripts.slice(-3).map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
     return parsed
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      console.warn('[scenario] timed out (8s)')
+      console.warn('[scenario] timed out (30s)')
     } else {
       console.warn('[scenario] failed:', err)
     }
