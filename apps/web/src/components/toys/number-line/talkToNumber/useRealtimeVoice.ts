@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { playRingTone } from './ringTone'
-import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber, assignUniqueVoice } from './generateNumberPersonality'
+import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber } from './generateNumberPersonality'
 import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
 import type { ChildProfile } from './childProfile'
 import { EXPLORATION_IDS } from './explorationRegistry'
@@ -143,8 +143,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const [currentSpeaker, setCurrentSpeaker] = useState<number | null>(null)
   const currentSpeakerRef = useRef<number | null>(null)
 
-  // Voice assignments for conference calls (number → voice name)
-  const voiceAssignmentsRef = useRef<Map<number, string>>(new Map())
 
   // Refs for cleanup
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -186,8 +184,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         scenario: scenarioRef.current ? { ...scenarioRef.current } : null,
         timestamp: Date.now(),
       })
-      console.log('[session] saved call record for %d (%d transcripts, %d total calls in session)',
-        calledNumberRef.current, transcriptsRef.current.length, sessionHistoryRef.current.length)
     }
 
     // Cancel pending hang-up timer
@@ -240,7 +236,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     conferenceNumbersRef.current = []
     setCurrentSpeaker(null)
     currentSpeakerRef.current = null
-    voiceAssignmentsRef.current.clear()
+
     scenarioRef.current = null
     transcriptsRef.current = []
     goodbyeRequestedRef.current = false
@@ -327,16 +323,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       childProfileRef.current = data.childProfile ?? undefined
       calledNumberRef.current = number
       if (data.scenario) {
-        console.log('[scenario] generated for %d:', number, {
-          archetype: data.scenario.archetype,
-          hook: data.scenario.hook,
-          involvedNumbers: data.scenario.involvedNumbers,
-          exploration: data.scenario.relevantExploration?.constantId ?? 'none',
-          mood: data.scenario.openingMood,
-        })
-        console.log('[scenario] situation:', data.scenario.situation)
-      } else {
-        console.log('[scenario] none generated — using static personality for %d', number)
+        console.log('[voice] scenario for %d: %s', number, data.scenario.archetype)
       }
     } catch (err) {
       cleanup()
@@ -492,7 +479,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   content: [{ type: 'input_text', text: historyText }],
                 },
               }))
-              console.log('[session] injected %d prior call records into conversation', history.length)
+              console.log('[conference] injected %d prior call records', history.length)
             }
 
             // Prompt the model to speak first (like answering a phone call)
@@ -508,7 +495,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const buf = transcriptsRef.current
               buf.push({ role: 'number', text: msg.transcript })
               if (buf.length > 12) buf.shift()
-              console.log('[scenario] [number] transcript (%d in buffer): "%s"', buf.length, msg.transcript.slice(0, 60))
             }
           }
           if (msg.type === 'conversation.item.input_audio_transcription.completed') {
@@ -516,8 +502,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const buf = transcriptsRef.current
               buf.push({ role: 'child', text: msg.transcript })
               if (buf.length > 12) buf.shift()
-              console.log('[scenario] [child] transcript (%d in buffer): "%s"', buf.length, msg.transcript.slice(0, 60))
             }
+          }
+
+          // Log all tool calls for debugging conference flow
+          if (msg.type === 'response.function_call_arguments.done') {
+            console.log('[conference] tool call: %s, args: %s, speaker: %s, conference: %s',
+              msg.name, msg.arguments?.slice(0, 80), currentSpeakerRef.current, conferenceNumbersRef.current.join(','))
           }
 
           // --- Tool call handling ---
@@ -650,17 +641,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             conferenceNumbersRef.current = updated
             setConferenceNumbers(updated)
 
-            // Assign unique voices for each new number
-            const takenVoices = new Set(voiceAssignmentsRef.current.values())
-            const newVoiceEntries: { number: number; voice: string }[] = []
-            for (const n of newNumbers) {
-              const voice = assignUniqueVoice(n, takenVoices)
-              voiceAssignmentsRef.current.set(n, voice)
-              takenVoices.add(voice)
-              newVoiceEntries.push({ number: n, voice })
-            }
-
             const joinedNames = newNumbers.join(', ')
+            console.log('[conference] add_to_call: adding %s, all on call: %s', joinedNames, updated.join(', '))
 
             // Acknowledge the tool call
             dc.send(JSON.stringify({
@@ -672,15 +654,15 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               },
             }))
 
-            // Switch to first new number's voice so they greet everyone
-            const firstNew = newVoiceEntries[0]
-            currentSpeakerRef.current = firstNew.number
-            setCurrentSpeaker(firstNew.number)
+            // Set first new number as current speaker
+            // NOTE: voice can't be changed mid-session (OpenAI Realtime API limitation),
+            // so the model differentiates characters through speech patterns only.
+            currentSpeakerRef.current = newNumbers[0]
+            setCurrentSpeaker(newNumbers[0])
             dc.send(JSON.stringify({
               type: 'session.update',
               session: {
-                voice: firstNew.voice,
-                instructions: generateConferencePrompt(updated, firstNew.number, childProfileRef.current),
+                instructions: generateConferencePrompt(updated, newNumbers[0], childProfileRef.current),
               },
             }))
 
@@ -688,7 +670,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             const existingNumbers = conferenceNumbersRef.current.filter(n => !newNumbers.includes(n))
             const introText = newNumbers.length === 1
               ? `[System: ${newNumbers[0]} just joined the conference call! You are now speaking as ${newNumbers[0]} — introduce yourself to the child. After that, use switch_speaker to let other numbers on the call welcome them.]`
-              : `[System: ${joinedNames} just joined the conference call! You are now speaking as ${firstNew.number} — introduce yourself. After that, use switch_speaker for each other new number (${newNumbers.slice(1).join(', ')}) to introduce themselves, then switch_speaker for existing numbers (${existingNumbers.join(', ')}) to react. Each character gets 1-2 sentences max.]`
+              : `[System: ${joinedNames} just joined the conference call! You are now speaking as ${newNumbers[0]} — introduce yourself. After that, use switch_speaker for each other new number (${newNumbers.slice(1).join(', ')}) to introduce themselves, then switch_speaker for existing numbers (${existingNumbers.join(', ')}) to react. Each character gets 1-2 sentences max.]`
 
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
@@ -738,15 +720,18 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               return
             }
 
-            // Switch speaker identity, voice, and visual indicator
+            // Switch speaker identity and visual indicator
+            // NOTE: OpenAI Realtime API locks the voice once audio is present —
+            // we can only update instructions, not voice. The model differentiates
+            // characters through speech patterns (cadence, word choice, personality).
+            const prevSpeaker = currentSpeakerRef.current
             currentSpeakerRef.current = targetNumber
             setCurrentSpeaker(targetNumber)
-            const voice = voiceAssignmentsRef.current.get(targetNumber)
+            console.log('[conference] switch_speaker: %d → %d', prevSpeaker, targetNumber)
 
             dc.send(JSON.stringify({
               type: 'session.update',
               session: {
-                voice,
                 instructions: generateConferencePrompt(allNumbers, targetNumber, childProfileRef.current),
               },
             }))
@@ -894,7 +879,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               dc.send(JSON.stringify({ type: 'response.create' }))
             } else {
               const recent = transcriptsRef.current.slice(-10)
-              console.log('[scenario] evolve_story tool called — sending %d recent transcripts', recent.length)
 
               // Fire async without blocking the message handler
               fetch('/api/realtime/evolve', {
@@ -910,7 +894,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 .then(res => res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`)))
                 .then(data => {
                   if (!data.evolution) {
-                    console.log('[scenario] evolve_story: no evolution returned')
                     dc.send(JSON.stringify({
                       type: 'conversation.item.create',
                       item: {
@@ -924,7 +907,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   }
 
                   const { development, newTension, suggestion } = data.evolution
-                  console.log('[scenario] evolve_story: evolution received', { development, newTension, suggestion })
                   dc.send(JSON.stringify({
                     type: 'conversation.item.create',
                     item: {
@@ -942,7 +924,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   dc.send(JSON.stringify({ type: 'response.create' }))
                 })
                 .catch(err => {
-                  console.warn('[scenario] evolve_story: failed', err)
+                  console.warn('[voice] evolve_story failed', err)
                   dc.send(JSON.stringify({
                     type: 'conversation.item.create',
                     item: {
@@ -1082,15 +1064,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       ringRef.current = null
 
       // Go active
-      console.log('[scenario] call active — scenario: %s, evolve_story tool: %s',
-        scenarioRef.current ? scenarioRef.current.archetype : 'none',
-        scenarioRef.current ? 'available' : 'disabled (no scenario)')
+      console.log('[conference] call active — number: %d, voice: %s', number, getVoiceForNumber(number))
       setState('active')
       conferenceNumbersRef.current = [number]
       setConferenceNumbers([number])
       currentSpeakerRef.current = number
       setCurrentSpeaker(number)
-      voiceAssignmentsRef.current.set(number, getVoiceForNumber(number))
+
       deadlineRef.current = Date.now() + BASE_TIMEOUT_MS
 
       // Start countdown timer
@@ -1202,7 +1182,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     setConferenceNumbers(updated)
 
     // Clean up voice assignment
-    voiceAssignmentsRef.current.delete(numberToRemove)
+
 
     // If the removed number was the current speaker, switch to first remaining
     if (currentSpeakerRef.current === numberToRemove) {
@@ -1213,29 +1193,23 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     if (updated.length === 1) {
       // Revert to single-call mode
       const soloNumber = updated[0]
-      const soloVoice = voiceAssignmentsRef.current.get(soloNumber) ?? getVoiceForNumber(soloNumber)
       currentSpeakerRef.current = soloNumber
       setCurrentSpeaker(soloNumber)
 
       dc.send(JSON.stringify({
         type: 'session.update',
         session: {
-          voice: soloVoice,
           instructions: generateNumberPersonality(soloNumber),
         },
       }))
     } else {
       // Update conference prompt for remaining numbers
-      const firstVoice = voiceAssignmentsRef.current.get(updated[0])
-      if (firstVoice) {
-        dc.send(JSON.stringify({
-          type: 'session.update',
-          session: {
-            voice: firstVoice,
-            instructions: generateConferencePrompt(updated, updated[0], childProfileRef.current),
-          },
-        }))
-      }
+      dc.send(JSON.stringify({
+        type: 'session.update',
+        session: {
+          instructions: generateConferencePrompt(updated, updated[0], childProfileRef.current),
+        },
+      }))
     }
 
     // Notify the model that someone left
