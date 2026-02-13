@@ -18,7 +18,7 @@ import { computeAllConstantVisibilities } from './constants/computeConstantVisib
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo, DEMO_AVAILABLE } from './constants/demos/useConstantDemo'
-import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress } from './constants/demos/goldenRatioDemo'
+import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress, computeSweepTransform } from './constants/demos/goldenRatioDemo'
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
 import { renderEOverlay } from './constants/demos/eDemo'
@@ -37,6 +37,7 @@ import { SQRT2_DEMO_SEGMENTS, SQRT2_DEMO_TONE } from './constants/demos/sqrt2Dem
 import { RAMANUJAN_DEMO_SEGMENTS, RAMANUJAN_DEMO_TONE } from './constants/demos/ramanujanDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
+import { usePhiCenteringMode } from './constants/demos/usePhiCenteringMode'
 import { computePrimeInfos, smallestPrimeFactor } from './primes/sieve'
 import { PrimeTooltip } from './primes/PrimeTooltip'
 import { computePrimePairArcs, getSpecialPrimeLabels, LABEL_COLORS, PRIME_TYPE_DESCRIPTIONS } from './primes/specialPrimes'
@@ -183,6 +184,10 @@ export function NumberLine() {
   const { resolvedTheme } = useTheme()
   const audioManager = useAudioManagerInstance()
   const phiExploreRef = usePhiExploreImage(resolvedTheme)
+  const centering = usePhiCenteringMode(resolvedTheme)
+  // Ref so the memoized draw callback can always read latest centering state
+  const centeringRef = useRef(centering)
+  centeringRef.current = centering
 
   // Debug controls for tick thresholds
   const [anchorMax, setAnchorMax] = useState(DEFAULT_TICK_THRESHOLDS.anchorMax)
@@ -770,7 +775,14 @@ export function NumberLine() {
     const ds = demoStateRef.current
 
     // Render phi explore image behind the spiral (fades in during final 25%)
-    if (ds.phase !== 'idle' && ds.constantId === 'phi' && ds.revealProgress > 0.75) {
+    // When centering mode is active, override with centering data and force full opacity
+    const ct = centeringRef.current
+    if (ct.enabled && ct.image) {
+      renderPhiExploreImage(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        1.0, 1.0, ct.image, ct.alignment
+      )
+    } else if (ds.phase !== 'idle' && ds.constantId === 'phi' && ds.revealProgress > 0.75) {
       const pe = phiExploreRef.current
       if (pe) {
         const t = (ds.revealProgress - 0.75) / 0.25 // 0→1 over final quarter
@@ -782,7 +794,13 @@ export function NumberLine() {
       }
     }
 
-    if (ds.phase !== 'idle' && ds.constantId === 'phi') {
+    // Render golden spiral overlay — always at full reveal when centering
+    if (ct.enabled) {
+      renderGoldenRatioOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', 1.0, 1.0
+      )
+    } else if (ds.phase !== 'idle' && ds.constantId === 'phi') {
       renderGoldenRatioOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
@@ -1021,6 +1039,11 @@ export function NumberLine() {
       draw()
     })
   }, [draw])
+
+  // Redraw when centering mode state changes
+  useEffect(() => {
+    if (centering.enabled) scheduleRedraw()
+  }, [centering.enabled, centering.image, centering.alignment, centering.subjectId, centering.theme, scheduleRedraw])
 
   // Decay loop for zoom velocity — keeps redrawing until the wash fades out
   const startDecay = useCallback(() => {
@@ -1715,6 +1738,61 @@ export function NumberLine() {
     scheduleRedraw()
   }, [scheduleRedraw])
 
+  // --- Phi centering drag/scroll handlers ---
+  const centeringDragRef = useRef<{ startX: number; startY: number; startAlignment: { offsetX: number; offsetY: number; rotation: number }; shift: boolean } | null>(null)
+  const phiFinalEffScale = useMemo(() => computeSweepTransform(1.0).effScale, [])
+
+  const handleCenteringMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const al = centeringRef.current.alignment
+    centeringDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startAlignment: { offsetX: al.offsetX, offsetY: al.offsetY, rotation: al.rotation },
+      shift: e.shiftKey,
+    }
+  }, [])
+
+  const handleCenteringMouseMove = useCallback((e: React.MouseEvent) => {
+    const drag = centeringDragRef.current
+    if (!drag) return
+    e.preventDefault()
+    e.stopPropagation()
+    const dx = e.clientX - drag.startX
+    const dy = e.clientY - drag.startY
+    const boxH = phiFinalEffScale * stateRef.current.pixelsPerUnit
+    if (boxH < 1) return
+
+    if (drag.shift) {
+      // Shift+drag: rotate. Horizontal movement → degrees.
+      // Renderer negates rotation, so subtract to make visual match drag direction.
+      const degreeDelta = dx * 0.5
+      centering.updateAlignment({ rotation: drag.startAlignment.rotation - degreeDelta })
+    } else {
+      // Normal drag: offset. Renderer negates offsetY, so subtract dy.
+      const offsetDeltaX = dx / boxH
+      const offsetDeltaY = -dy / boxH
+      centering.updateAlignment({
+        offsetX: drag.startAlignment.offsetX + offsetDeltaX,
+        offsetY: drag.startAlignment.offsetY + offsetDeltaY,
+      })
+    }
+  }, [centering, phiFinalEffScale])
+
+  const handleCenteringMouseUp = useCallback(() => {
+    centeringDragRef.current = null
+  }, [])
+
+  const handleCenteringWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const delta = -e.deltaY
+    const factor = Math.pow(1.01, delta)
+    const al = centeringRef.current.alignment
+    centering.updateAlignment({ scale: al.scale * factor })
+  }, [centering])
+
   // --- Prime Tour handlers ---
   const handleStartTour = useCallback(() => {
     cancelDemo() // mutual exclusion: cancel demo when starting tour
@@ -1949,6 +2027,22 @@ export function NumberLine() {
             touchAction: 'none',
           }}
         />
+        {centering.enabled && (
+          <div
+            data-element="centering-overlay"
+            onMouseDown={handleCenteringMouseDown}
+            onMouseMove={handleCenteringMouseMove}
+            onMouseUp={handleCenteringMouseUp}
+            onMouseLeave={handleCenteringMouseUp}
+            onWheel={handleCenteringWheel}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              cursor: centeringDragRef.current ? 'grabbing' : 'grab',
+              zIndex: 5,
+            }}
+          />
+        )}
         <div
           ref={constantMarkersRef}
           data-element="constant-markers"
@@ -2562,6 +2656,118 @@ export function NumberLine() {
             <div style={{ fontSize: 10, opacity: 0.6, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
               50% → {arcReadout.at50} arcs · 75% → {arcReadout.at75} arcs · total {NUM_LEVELS}
             </div>
+          </div>
+          <div
+            data-element="phi-centering-section"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 2 }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.5, marginBottom: 6 }}>
+              Phi Image Centering
+            </div>
+            <label data-element="centering-toggle" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <input
+                type="checkbox"
+                checked={centering.enabled}
+                onChange={e => centering.setEnabled(e.target.checked)}
+              />
+              Enable Centering
+            </label>
+            {centering.enabled && (
+              <>
+                <div data-element="centering-subject" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4 }}>
+                  <span style={{ opacity: 0.7, minWidth: 50 }}>Subject:</span>
+                  <button
+                    data-action="centering-prev-subject"
+                    onClick={centering.prevSubject}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'inherit', borderRadius: 4, padding: '2px 6px', cursor: 'pointer', fontSize: 12 }}
+                  >
+                    ◀
+                  </button>
+                  <span style={{ flex: 1, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                    {centering.subjectId}
+                  </span>
+                  <button
+                    data-action="centering-next-subject"
+                    onClick={centering.nextSubject}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'inherit', borderRadius: 4, padding: '2px 6px', cursor: 'pointer', fontSize: 12 }}
+                  >
+                    ▶
+                  </button>
+                </div>
+                <div data-element="centering-theme" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginTop: 4 }}>
+                  <span style={{ opacity: 0.7, minWidth: 50 }}>Theme:</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <input
+                      type="radio"
+                      name="centering-theme"
+                      checked={centering.theme === 'light'}
+                      onChange={() => centering.setTheme('light')}
+                    />
+                    light
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <input
+                      type="radio"
+                      name="centering-theme"
+                      checked={centering.theme === 'dark'}
+                      onChange={() => centering.setTheme('dark')}
+                    />
+                    dark
+                  </label>
+                </div>
+                <DebugSlider
+                  label="Scale"
+                  value={centering.alignment.scale}
+                  min={0.1}
+                  max={3}
+                  step={0.01}
+                  onChange={v => centering.updateAlignment({ scale: v })}
+                  formatValue={v => v.toFixed(3)}
+                />
+                <DebugSlider
+                  label="Rotation"
+                  value={centering.alignment.rotation}
+                  min={-720}
+                  max={720}
+                  step={0.5}
+                  onChange={v => centering.updateAlignment({ rotation: v })}
+                  formatValue={v => `${v.toFixed(1)}°`}
+                />
+                <DebugSlider
+                  label="Offset X"
+                  value={centering.alignment.offsetX}
+                  min={-1}
+                  max={1}
+                  step={0.001}
+                  onChange={v => centering.updateAlignment({ offsetX: v })}
+                  formatValue={v => v.toFixed(3)}
+                />
+                <DebugSlider
+                  label="Offset Y"
+                  value={centering.alignment.offsetY}
+                  min={-1}
+                  max={1}
+                  step={0.001}
+                  onChange={v => centering.updateAlignment({ offsetY: v })}
+                  formatValue={v => v.toFixed(3)}
+                />
+                <div data-element="centering-actions" style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <button
+                    data-action="centering-reset"
+                    onClick={centering.resetAlignment}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'inherit', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}
+                  >
+                    Reset
+                  </button>
+                  <span style={{ fontSize: 10, opacity: 0.6, display: 'flex', alignItems: 'center' }}>
+                    {centering.saving ? 'Saving...' : centering.dirty ? 'Unsaved' : 'Saved'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4 }}>
+                  Drag=move · Shift+drag=rotate · Scroll=scale
+                </div>
+              </>
+            )}
           </div>
           <div
             data-element="sieve-tuning-section"
