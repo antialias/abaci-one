@@ -4,7 +4,7 @@
  */
 
 import { complementRaceValidator } from '@/arcade-games/complement-race/Validator'
-import { matchingGameValidator } from '@/arcade-games/matching/Validator'
+import { matchingGameValidator } from '@/arcade-games/matching'
 import { memoryQuizGameValidator } from '@/arcade-games/memory-quiz/Validator'
 import { cardSortingValidator } from '@/arcade-games/card-sorting/Validator'
 import { rithmomachiaValidator } from '@/arcade-games/rithmomachia/Validator'

@@ -3,14 +3,14 @@
 import { useViewerId } from '@/hooks/useViewerId'
 import { css } from '../../../../styled-system/css'
 import { gamePlurals } from '@/utils/pluralization'
-import { useMatching } from '../Provider'
+import { useMatchingPairs } from '../index'
 
 interface PlayerStatusBarProps {
   className?: string
 }
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
-  const { state } = useMatching()
+  const { state } = useMatchingPairs()
   const { data: viewerId } = useViewerId()
 
   // Get active players from game state (not GameModeContext)

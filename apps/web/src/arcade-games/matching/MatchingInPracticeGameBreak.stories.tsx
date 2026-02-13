@@ -15,8 +15,10 @@ import { viewerKeys } from '@/hooks/useViewerId'
 import { roomKeys, type RoomData } from '@/hooks/useRoomData'
 import { AppNavBar } from '@/components/AppNavBar'
 import { PracticeSubNav, type GameBreakHudData } from '@/components/practice'
-import { MatchingProvider } from './Provider'
-import { MemoryPairsGame } from './components/MemoryPairsGame'
+import { matchingGame } from './index'
+
+const MatchingProvider = matchingGame.Provider
+const MatchingGameComponent = matchingGame.GameComponent
 import { generateGameCards } from './utils/cardGeneration'
 import type { MatchingState, PlayerMetadata } from './types'
 import { css } from '../../../styled-system/css'
@@ -337,7 +339,7 @@ function MatchingGameStoryWrapper({
                       <ViewportProvider width={1440} height={900}>
                         <GameModeProvider {...gameModeProps}>
                           <MatchingProvider>
-                            <MemoryPairsGame />
+                            <MatchingGameComponent />
                           </MatchingProvider>
                         </GameModeProvider>
                       </ViewportProvider>
@@ -410,7 +412,7 @@ function IsolatedGameWrapper({ phase, theme = 'light' }: IsolatedGameWrapperProp
                     })}
                   >
                     <MatchingProvider>
-                      <MemoryPairsGame />
+                      <MatchingGameComponent />
                     </MatchingProvider>
                   </div>
                 </GameModeProvider>
