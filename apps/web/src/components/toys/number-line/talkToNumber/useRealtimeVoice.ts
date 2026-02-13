@@ -142,8 +142,11 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const conferenceNumbersRef = useRef<number[]>([])
   const [currentSpeaker, setCurrentSpeaker] = useState<number | null>(null)
   const currentSpeakerRef = useRef<number | null>(null)
-  // Pending speaker: set by switch_speaker/add_to_call, committed when new audio starts
+  // Pending speaker: set by switch_speaker/add_to_call, committed when new audio starts.
+  // Three commit triggers (first one wins): 1) response.audio_transcript.delta event,
+  // 2) acoustic silence→speaking transition, 3) fallback timeout (1s).
   const pendingSpeakerRef = useRef<number | null>(null)
+  const pendingSpeakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Refs for cleanup
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -238,10 +241,29 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     setCurrentSpeaker(null)
     currentSpeakerRef.current = null
     pendingSpeakerRef.current = null
+    if (pendingSpeakerTimerRef.current) {
+      clearTimeout(pendingSpeakerTimerRef.current)
+      pendingSpeakerTimerRef.current = null
+    }
 
     scenarioRef.current = null
     transcriptsRef.current = []
     goodbyeRequestedRef.current = false
+  }, [])
+
+  /** Queue a speaker switch — committed on audio onset, transcript delta, or 1s timeout. */
+  const setPendingSpeaker = useCallback((speaker: number) => {
+    pendingSpeakerRef.current = speaker
+    if (pendingSpeakerTimerRef.current) clearTimeout(pendingSpeakerTimerRef.current)
+    pendingSpeakerTimerRef.current = setTimeout(() => {
+      pendingSpeakerTimerRef.current = null
+      if (pendingSpeakerRef.current === speaker) {
+        pendingSpeakerRef.current = null
+        currentSpeakerRef.current = speaker
+        setCurrentSpeaker(speaker)
+        console.log('[conference] speaker indicator committed: %d (timeout fallback)', speaker)
+      }
+    }, 1000)
   }, [])
 
   const hangUp = useCallback(() => {
@@ -427,6 +449,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               if (nowSpeaking && !wasSpeaking && pendingSpeakerRef.current !== null) {
                 const ps = pendingSpeakerRef.current
                 pendingSpeakerRef.current = null
+                if (pendingSpeakerTimerRef.current) {
+                  clearTimeout(pendingSpeakerTimerRef.current)
+                  pendingSpeakerTimerRef.current = null
+                }
                 currentSpeakerRef.current = ps
                 setCurrentSpeaker(ps)
                 console.log('[conference] speaker indicator committed: %d (audio onset)', ps)
@@ -512,6 +538,21 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               buf.push({ role: 'number', text: msg.transcript })
               if (buf.length > 12) buf.shift()
             }
+          }
+
+          // Commit pending speaker when new response audio starts generating.
+          // This is more reliable than acoustic silence→speaking detection since
+          // WebRTC may bridge audio gaps, preventing the transition from being seen.
+          if (msg.type === 'response.audio_transcript.delta' && pendingSpeakerRef.current !== null) {
+            const ps = pendingSpeakerRef.current
+            pendingSpeakerRef.current = null
+            if (pendingSpeakerTimerRef.current) {
+              clearTimeout(pendingSpeakerTimerRef.current)
+              pendingSpeakerTimerRef.current = null
+            }
+            currentSpeakerRef.current = ps
+            setCurrentSpeaker(ps)
+            console.log('[conference] speaker indicator committed: %d (transcript delta)', ps)
           }
           if (msg.type === 'conversation.item.input_audio_transcription.completed') {
             if (msg.transcript) {
@@ -673,7 +714,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             // Defer speaker indicator to first new number — committed on audio onset.
             // NOTE: voice can't be changed mid-session (OpenAI Realtime API limitation),
             // so the model differentiates characters through speech patterns only.
-            pendingSpeakerRef.current = newNumbers[0]
+            setPendingSpeaker(newNumbers[0])
             dc.send(JSON.stringify({
               type: 'session.update',
               session: {
@@ -739,7 +780,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             // The model's previous character audio may still be in the WebRTC buffer,
             // so we queue the switch and commit it on the next silence→speaking transition.
             const prevSpeaker = currentSpeakerRef.current
-            pendingSpeakerRef.current = targetNumber
+            setPendingSpeaker(targetNumber)
             console.log('[conference] switch_speaker: %d → %d (pending audio onset)', prevSpeaker, targetNumber)
 
             dc.send(JSON.stringify({
