@@ -207,8 +207,12 @@ function RingAnimation({ isDark }: { isDark: boolean }) {
   )
 }
 
+const MIN_BOX_GAP = 8 // minimum pixels between adjacent call boxes
+
 /**
- * Position call box DOM elements at their number's screen-X position.
+ * Position call box DOM elements at their number's screen-X position,
+ * resolving overlaps so boxes never stack on top of each other.
+ *
  * Called from the draw() rAF loop for smooth pan/zoom tracking.
  */
 export function updateCallBoxPositions(
@@ -219,9 +223,10 @@ export function updateCallBoxPositions(
   canvasHeight: number,
 ) {
   const children = container.children
-  const boxHalfWidth = 65 // approximate half of call box width
   const topY = canvasHeight / 2 - 80
 
+  // 1. Gather boxes with their natural X and measured width
+  const boxes: { el: HTMLElement; naturalX: number; width: number; x: number }[] = []
   for (let i = 0; i < children.length; i++) {
     const el = children[i] as HTMLElement
     const numStr = el.dataset.callBoxNumber
@@ -229,13 +234,52 @@ export function updateCallBoxPositions(
     const num = Number(numStr)
     if (!isFinite(num)) continue
 
-    const screenX = numberToScreenX(num, center, pixelsPerUnit, canvasWidth)
-    // Clamp to keep boxes within canvas bounds
-    const clampedX = Math.max(boxHalfWidth, Math.min(canvasWidth - boxHalfWidth, screenX))
+    const naturalX = numberToScreenX(num, center, pixelsPerUnit, canvasWidth)
+    // Use measured width (el.offsetWidth), falling back to estimate
+    const width = el.offsetWidth || 130
+    boxes.push({ el, naturalX, width, x: naturalX })
+  }
 
-    el.style.left = `${clampedX}px`
-    el.style.top = `${topY}px`
-    el.style.transform = 'translate(-50%, -100%)'
+  if (boxes.length === 0) return
+
+  // 2. Sort by natural screen-X position (left to right)
+  boxes.sort((a, b) => a.naturalX - b.naturalX)
+
+  // 3. Left-to-right sweep: push boxes right to resolve overlaps
+  for (let i = 1; i < boxes.length; i++) {
+    const prev = boxes[i - 1]
+    const curr = boxes[i]
+    const minCenter = prev.x + prev.width / 2 + MIN_BOX_GAP + curr.width / 2
+    if (curr.x < minCenter) {
+      curr.x = minCenter
+    }
+  }
+
+  // 4. Re-center the group: shift all boxes so the group's center of
+  //    displacement stays as close to its natural center as possible
+  const naturalCenter = boxes.reduce((s, b) => s + b.naturalX, 0) / boxes.length
+  const resolvedCenter = boxes.reduce((s, b) => s + b.x, 0) / boxes.length
+  const shift = naturalCenter - resolvedCenter
+  for (const b of boxes) b.x += shift
+
+  // 5. Right-to-left sweep: if shifting caused new overlaps on the left, fix them
+  for (let i = boxes.length - 2; i >= 0; i--) {
+    const curr = boxes[i]
+    const next = boxes[i + 1]
+    const maxCenter = next.x - next.width / 2 - MIN_BOX_GAP - curr.width / 2
+    if (curr.x > maxCenter) {
+      curr.x = maxCenter
+    }
+  }
+
+  // 6. Clamp to canvas bounds and apply
+  for (const b of boxes) {
+    const halfW = b.width / 2
+    b.x = Math.max(halfW, Math.min(canvasWidth - halfW, b.x))
+
+    b.el.style.left = `${b.x}px`
+    b.el.style.top = `${topY}px`
+    b.el.style.transform = 'translate(-50%, -100%)'
   }
 }
 

@@ -525,6 +525,40 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }))
             dc.send(JSON.stringify({ type: 'response.create' }))
           }
+
+          // Handle model calling start_exploration tool — kick off a constant demo
+          if (msg.name === 'start_exploration') {
+            let constantId: string
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              constantId = String(args.constant_id)
+              const valid = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'])
+              if (!valid.has(constantId)) throw new Error('invalid')
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Invalid constant_id' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              return
+            }
+
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: msg.call_id,
+                output: JSON.stringify({ success: true, message: `Starting exploration of ${constantId}` }),
+              },
+            }))
+            dc.send(JSON.stringify({ type: 'response.create' }))
+
+            onStartExplorationRef.current?.(constantId)
+          }
         } catch {
           // Ignore parse errors
         }
@@ -624,6 +658,22 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }
   }, [cleanup, hangUp])
 
+  const sendSystemMessage = useCallback((text: string, promptResponse = false) => {
+    const dc = dcRef.current
+    if (!dc || dc.readyState !== 'open') return
+    dc.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text }],
+      },
+    }))
+    if (promptResponse) {
+      dc.send(JSON.stringify({ type: 'response.create' }))
+    }
+  }, [])
+
   const removeFromCall = useCallback((numberToRemove: number) => {
     const dc = dcRef.current
     if (!dc || dc.readyState !== 'open') return
@@ -707,5 +757,5 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }
   }, [cleanup])
 
-  return { state, error, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall }
+  return { state, error, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage }
 }

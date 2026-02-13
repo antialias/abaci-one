@@ -88,6 +88,23 @@ export async function POST(request: Request) {
               required: ['target_number'],
             },
           },
+          {
+            type: 'function',
+            name: 'start_exploration',
+            description:
+              'Start an animated visual exploration of a mathematical constant on the number line. The child will see a narrated animation while you watch together. You will receive the full narration script so you know exactly what is being shown and said. Stay quiet during the animation — when it finishes you will be notified and can discuss what you both just saw. Available constants: phi (Golden Ratio), pi, tau, e (Euler\'s Number), gamma (Euler-Mascheroni), sqrt2 (Square Root of 2), ramanujan (Ramanujan Summation / −1/12).',
+            parameters: {
+              type: 'object',
+              properties: {
+                constant_id: {
+                  type: 'string',
+                  enum: ['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'],
+                  description: 'Which mathematical constant to explore',
+                },
+              },
+              required: ['constant_id'],
+            },
+          },
         ],
       }),
     })

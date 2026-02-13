@@ -275,8 +275,14 @@ export function NumberLine() {
   const handleVoiceTransfer = useCallback((targetNumber: number) => {
     setCallingNumber(targetNumber)
   }, [])
-  const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall } = useRealtimeVoice({
+  // Ref-based forward declaration so useRealtimeVoice can trigger exploration
+  const exploreFnRef = useRef<(constantId: string) => void>(() => {})
+  const handleVoiceExploration = useCallback((constantId: string) => {
+    exploreFnRef.current(constantId)
+  }, [])
+  const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
+    onStartExploration: handleVoiceExploration,
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
   const voiceStateRef = useRef<CallState>('idle')
@@ -474,6 +480,40 @@ export function NumberLine() {
         updateDemoUrlParams(ds.constantId, ds.revealProgress)
       } else {
         updateDemoUrlParams(null, 0)
+      }
+    }
+
+    // Feed narration segment updates to voice agent during active call
+    if (voiceStateRef.current === 'active') {
+      const ds = demoStateRef.current
+      if (ds.phase !== 'idle' && ds.constantId) {
+        const cfg = NARRATION_CONFIGS[ds.constantId]
+        if (cfg) {
+          // Find current segment index
+          let segIdx = -1
+          for (let i = cfg.segments.length - 1; i >= 0; i--) {
+            if (ds.revealProgress >= cfg.segments[i].startProgress) { segIdx = i; break }
+          }
+          // Send update when entering a new segment
+          if (segIdx >= 0 && segIdx !== voiceExplorationSegmentRef.current) {
+            voiceExplorationSegmentRef.current = segIdx
+            const seg = cfg.segments[segIdx]
+            const label = seg.scrubberLabel || `Part ${segIdx + 1}`
+            sendSystemMessage(
+              `[System: Exploration now showing: "${label}" (${Math.round(ds.revealProgress * 100)}% progress)]`
+            )
+          }
+          // Notify when exploration completes
+          if (ds.revealProgress >= 1 && voiceExplorationSegmentRef.current !== cfg.segments.length) {
+            voiceExplorationSegmentRef.current = cfg.segments.length
+            const display = DEMO_DISPLAY[ds.constantId]
+            sendSystemMessage(
+              `[System: The ${display?.name ?? ds.constantId} exploration has finished! ` +
+              `Ask the child what they thought, what surprised them, or if they want to explore another constant.]`,
+              true
+            )
+          }
+        }
       }
     }
 
@@ -1218,7 +1258,33 @@ export function NumberLine() {
     exitTour()
     narration.reset()
     startDemo(constantId)
-  }, [audioManager, startDemo, exitTour, narration])
+
+    // If on a voice call, send narration context so the agent knows what's being shown
+    if (voiceStateRef.current === 'active') {
+      const cfg = NARRATION_CONFIGS[constantId]
+      const display = DEMO_DISPLAY[constantId]
+      if (cfg && display) {
+        const script = cfg.segments.map((seg, i) => {
+          const label = seg.scrubberLabel || `Part ${i + 1}`
+          const pct = `${Math.round(seg.startProgress * 100)}–${Math.round(seg.endProgress * 100)}%`
+          return `${i + 1}. "${label}" (${pct}): ${seg.ttsText}`
+        }).join('\n')
+        sendSystemMessage(
+          `[System: An animated exploration of ${display.symbol} (${display.name}) is now playing on the number line. ` +
+          `The child is watching a narrated animation. Here is the full narration script so you know exactly what's being shown and said:\n\n` +
+          `${script}\n\n` +
+          `Stay quiet during the animation — the narration is being spoken aloud. ` +
+          `When the exploration finishes, you'll receive a notification. Then discuss what you both just saw!]`
+        )
+      }
+      voiceExplorationSegmentRef.current = -1
+    }
+  }, [audioManager, startDemo, exitTour, narration, sendSystemMessage])
+  // Keep ref pointed at latest handleExploreConstant
+  exploreFnRef.current = handleExploreConstant
+
+  // Track which narration segment was last reported to the voice agent
+  const voiceExplorationSegmentRef = useRef(-1)
 
   // --- Debug tuning handlers for golden ratio demo ---
   const handleDecayChange = useCallback((v: number) => {

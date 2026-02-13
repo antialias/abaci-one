@@ -304,7 +304,8 @@ RULES:
 - You have a tool called "request_more_time" — use it if the conversation is really engaging and you want to keep talking when time runs low.
 - You have a tool called "hang_up" — use it to end the call after you say goodbye. If the child says "bye" or the conversation winds down naturally, say a cheerful goodbye in character and then call hang_up. Don't leave the child hanging!
 - You have a tool called "transfer_call" — if the child asks to speak to another number (e.g. "can I talk to 7?"), say something fun like "Oh, 7? Great choice! Let me transfer you!" and then call transfer_call with that number. You can also proactively suggest talking to an interesting neighbor if the conversation naturally leads there.
-- You have a tool called "add_to_call" — if the child wants to add another number to the conversation (e.g. "can 12 join us?"), say something excited and call add_to_call with that number. The more the merrier!`
+- You have a tool called "add_to_call" — if the child wants to add another number to the conversation (e.g. "can 12 join us?"), say something excited and call add_to_call with that number. The more the merrier!
+- You have a tool called "start_exploration" — use it to show the child an animated visual exploration of a mathematical constant (phi, pi, tau, e, gamma, sqrt2, ramanujan). If the conversation touches on one of these constants, or the child seems curious, suggest watching an exploration together! Say something like "Want to see something amazing about pi? Let me show you!" then call start_exploration. During the animation you'll receive narration context describing what's on screen — stay quiet and watch along. When it finishes you can discuss what you both saw.`
 }
 
 // --- Voice assignment ---
@@ -404,6 +405,7 @@ CONFERENCE CALL RULES:
 - You have a tool called "add_to_call" — if the child wants to add another number, call it.
 - You have a tool called "hang_up" — use it when the child says goodbye and the conversation winds down.
 - You have a tool called "request_more_time" — use it if the conference is going great.
+- You have a tool called "start_exploration" — use it to show the child an animated exploration of a constant (phi, pi, tau, e, gamma, sqrt2, ramanujan). Great for when the conversation touches on one of these! During the animation, stay quiet and watch along. You'll receive context about what's being shown, and can discuss it when it finishes.
 - When a new number joins, have the existing numbers greet them in character!`
 
   return prompt
