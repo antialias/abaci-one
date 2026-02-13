@@ -1453,9 +1453,12 @@ export function NumberLine() {
           `When you finish a segment, PAUSE BRIEFLY (1-2 seconds of silence) so the system knows you're done ` +
           `and can advance to the next segment. The animation and your narration play together — ` +
           `whichever finishes first waits for the other before the next segment starts.\n\n` +
-          `CHECK-INS: Every few segments, briefly check in with the child — "You see that?", "Pretty cool, right?". ` +
-          `Keep it light and quick (don't pause the animation for this). ` +
-          `If the child seems lost or disengaged, it's OK to wrap up early.\n\n` +
+          `CHECK-INS: Every 2-3 segments, pause the animation and genuinely check in with the child. ` +
+          `Don't just say "Pretty cool, right?" — ask something that tests whether they're following: ` +
+          `"So what do you think happens next?", "Does that make sense — why it stops there?", ` +
+          `"Any questions about that part?", "What did you notice?" ` +
+          `If they ask a question, take the time to answer it in character before resuming. ` +
+          `If they seem lost, back up and re-explain simply. If they seem disengaged, it's OK to wrap up early.\n\n` +
           `PLAYBACK CONTROLS: You can pause_exploration, resume_exploration, or seek_exploration to a segment number. ` +
           `Use your judgment — quick questions can be answered while the animation plays. ` +
           `But if the child seems confused or wants to linger, pause or seek.` +
