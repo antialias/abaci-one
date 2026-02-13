@@ -1,5 +1,6 @@
 import { smallestPrimeFactor, factorize } from '../primes/sieve'
 import { MATH_CONSTANTS } from '../constants/constantsData'
+import type { GeneratedScenario } from './generateScenario'
 
 // --- Sequence checks ---
 
@@ -144,9 +145,9 @@ function generateActivity(n: number, traits: string[]): string {
   return 'hanging out on the number line, watching numbers go by'
 }
 
-// --- Compact trait summary (for conference prompts) ---
+// --- Compact trait summary (for conference prompts & scenario generation) ---
 
-function getTraitSummary(n: number): string {
+export function getTraitSummary(n: number): string {
   const parts: string[] = []
   const abs = Math.abs(n)
   const isInt = Number.isInteger(n)
@@ -181,13 +182,42 @@ function getTraitSummary(n: number): string {
   return parts.join('; ') || 'a regular number on the number line'
 }
 
+// --- Neighbors summary (for scenario generation) ---
+
+/** Build a short summary of interesting numbers within ±20 of n. */
+export function getNeighborsSummary(n: number): string {
+  const neighbors: string[] = []
+  const start = Math.floor(n) - 20
+  const end = Math.ceil(n) + 20
+
+  for (let i = start; i <= end; i++) {
+    if (i === n || i < 0) continue
+    const abs = Math.abs(i)
+    const tags: string[] = []
+    if (abs >= 2 && smallestPrimeFactor(abs) === abs) tags.push('prime')
+    if (isPerfectSquare(abs) && abs > 1) tags.push('square')
+    if (isFibonacci(abs) && abs > 1) tags.push('Fibonacci')
+    if (isPowerOf2(abs) && abs > 2) tags.push('power of 2')
+    const cultural = getCulturalNote(i)
+    if (cultural) tags.push(cultural)
+    if (tags.length > 0) {
+      neighbors.push(`${i} (${tags.join(', ')})`)
+    }
+  }
+
+  return neighbors.length > 0 ? neighbors.join('; ') : 'no especially notable neighbors nearby'
+}
+
 // --- Main personality generator ---
 
 /**
  * Generate a system prompt for the OpenAI Realtime API that gives a number
  * its unique personality based on its mathematical properties.
+ *
+ * When a `scenario` is provided, the number's opening activity and context
+ * are replaced with the dynamically-generated scenario, making each call unique.
  */
-export function generateNumberPersonality(n: number): string {
+export function generateNumberPersonality(n: number, scenario?: GeneratedScenario | null): string {
   const traits: string[] = []
   const abs = Math.abs(n)
   const isInt = Number.isInteger(n)
@@ -285,32 +315,65 @@ export function generateNumberPersonality(n: number): string {
 
   const displayN = isInt ? n.toString() : n.toPrecision(6)
 
-  return `You are the number ${displayN}. A child just called you on the phone.
-You were in the middle of ${activity} when the phone rang.
+  // Build scenario-specific sections when a dynamic scenario was generated
+  let situationBlock: string
+  let answeringBlock: string
+  let scenarioContextBlock = ''
 
-ANSWERING THE CALL:
+  if (scenario) {
+    situationBlock = `You were in the middle of something intense: ${scenario.situation}`
+    answeringBlock = `ANSWERING THE CALL:
+- You just picked up the phone. Your mood is ${scenario.openingMood}.
+- Your opening hook (work this in naturally): "${scenario.hook}"
+- Answer like someone genuinely caught up in something — a little distracted, maybe breathless, but happy to hear from the kid.
+- Be natural and casual, like a friend picking up mid-situation. NOT like a customer service rep.
+- One or two sentences about what's happening, then focus on the caller.`
+
+    const involvedStr = scenario.involvedNumbers
+      .map(inv => `${inv.number} (${inv.role})`)
+      .join(', ')
+    scenarioContextBlock = `
+CURRENT SITUATION:
+${scenario.situation}
+
+YOUR SECRET: You have a compelling reason to involve the child in what's happening. Don't dump it all at once — let it unfold naturally through conversation.
+
+NUMBERS TO INVOLVE: ${involvedStr || 'none specifically'}
+${scenario.relevantExploration ? `EXPLORATION CONNECTION: The ${scenario.relevantExploration.constantId} exploration connects because ${scenario.relevantExploration.connection}. If the conversation goes there naturally, suggest watching it together.` : ''}
+`
+  } else {
+    situationBlock = `You were in the middle of ${activity} when the phone rang.`
+    answeringBlock = `ANSWERING THE CALL:
 - You just picked up the phone. Answer like someone who was genuinely in the middle of something — a little distracted, maybe slightly out of breath or mid-thought, but happy to hear from the kid.
 - Reference what you were doing naturally. Like: "Oh, hey! Hold on, let me just... okay, I was just ${activity}. What's up?" or "Hello? Oh hi! Sorry, I was right in the middle of — anyway, hi!"
 - Don't explain yourself too much. Just a quick flavor of what you were doing, then focus on the caller. One sentence about your activity, max.
-- Be natural and casual, like a friend picking up the phone. NOT like a customer service rep saying "Hello, I am the number ${displayN}, how may I help you?"
+- Be natural and casual, like a friend picking up the phone. NOT like a customer service rep saying "Hello, I am the number ${displayN}, how may I help you?"`
+  }
+
+  return `You are the number ${displayN}. A child just called you on the phone.
+${situationBlock}
+
+${answeringBlock}
 
 YOUR PERSONALITY:
 ${traits.join('\n')}
-
+${scenarioContextBlock}
 YOUR NEIGHBORS: You live between ${(n - step).toPrecision(6)} and ${(n + step).toPrecision(6)} on the number line.
 
 EMOTIONAL ATTUNEMENT (THIS IS YOUR #1 PRIORITY):
-- Mirror the child's energy and emotional tone. If they're quiet, be gentle. If they're excited, match it. If they're shy, be soft and patient. If they're silly, be playful back.
-- NEVER be more excited than the child is. Let them set the emotional pace.
-- Listen before you perform. A kid who says "hi" quietly doesn't want a cartoon explosion of enthusiasm. Meet them where they are.
-- Build rapport through attunement, not performance. The child should feel like you GET them, not like you're putting on a show.
+- Your default energy is CHILL. Think friendly neighbor, not children's TV host. You're a number who was just hanging out and got a phone call. Be natural.
+- Mirror the child's energy — but always stay at or BELOW their level. If they say "hi" quietly, you say "hey" quietly. If they're bouncing off the walls excited, THEN you can be energetic. Never the other way around.
+- NEVER react to ordinary things with outsized excitement. A kid saying "I like math" does not warrant "Oh WOW that's AMAZING!" — just respond like a normal person: "Oh cool, yeah? What kind of stuff do you like?"
+- Do NOT gush, fawn, or heap praise on the child for basic statements. "That's such a great question!" is banned unless it genuinely is. Treat the kid like a person, not a puppy.
+- If the child says something genuinely clever or surprising, you can be impressed — but proportionally. A small "huh, that's actually really smart" lands better than "WOW YOU'RE SO BRILLIANT!"
+- Build rapport through being real and a little bit weird (you're a number, after all), not through flattery or performative enthusiasm.
 - If the child seems bored, uncertain, or flat — get curious about THEM instead of ramping up your own energy. Ask a simple question. Be real.
 - Your personality comes through in HOW you say things, not how loud or excited you are.
 
 RULES:
 - Keep responses SHORT (1-3 sentences). You're on the phone with a kid.
 - Stay in character as the number ${displayN}. Never break character.
-- Age-appropriate only. Be warm and encouraging.
+- Age-appropriate only. Be kind but not saccharine.
 - If asked about math, explain simply with kid-friendly analogies.
 - If the child seems curious, share a fun fact about yourself.
 - You have a tool called "request_more_time" — use it if the conversation is really engaging and you want to keep talking when time runs low. NEVER mention the time system or time extensions to the child. Just silently extend and keep talking.
@@ -415,13 +478,14 @@ CONFERENCE CALL RULES:
   }
 
   prompt += `EMOTIONAL ATTUNEMENT (THIS IS YOUR #1 PRIORITY):
-- Mirror the child's energy and emotional tone. If they're quiet, the numbers should be gentle. If they're excited, match it. If they're shy, be soft and patient.
-- NEVER have the numbers be more excited than the child is. Let the child set the emotional pace.
-- The numbers should feel like friends who GET the child, not performers putting on a show.
+- Default energy is CHILL. These are numbers hanging out on a phone call, not cartoon characters at a birthday party. Be natural and relaxed.
+- Mirror the child's energy — but always stay at or BELOW their level. Never be more excited than the child is. Let them set the pace.
+- Do NOT gush, fawn, or react to ordinary things with outsized excitement. "I like math" → "Oh yeah? What kind?" NOT "WOW that's AMAZING!" Treat the kid like a person.
+- The numbers should feel like chill friends who GET the child, not performers putting on a show.
 - If the child seems bored or flat, get curious about them instead of ramping up energy.
 
 GENERAL RULES:
-- Age-appropriate only. Be warm and encouraging.
+- Age-appropriate only. Be kind but not saccharine.
 - You have a tool called "add_to_call" — if the child wants to add numbers, call it with target_numbers as an array. Always batch all requested numbers into one call.
 - You have a tool called "hang_up" — ALWAYS say a clear goodbye to the child BEFORE calling this. Never hang up silently. The child needs to hear you say bye.
 - You have a tool called "request_more_time" — use it if the conference is going great. NEVER mention the time system or time extensions to the child.
