@@ -176,6 +176,31 @@ export async function POST(request: Request) {
               required: ['center'],
             },
           },
+          {
+            type: 'function',
+            name: 'indicate',
+            description:
+              'Highlight specific numbers or a range on the number line with a temporary glowing visual indicator. Use this to point things out — "see these primes?", "this whole area here", "look, I live right here". The highlight fades after a few seconds. You can combine with look_at to first navigate, then highlight.',
+            parameters: {
+              type: 'object',
+              properties: {
+                numbers: {
+                  type: 'array',
+                  items: { type: 'number' },
+                  description: 'Specific numbers to highlight with glowing dots on the number line',
+                },
+                range: {
+                  type: 'object',
+                  properties: {
+                    from: { type: 'number', description: 'Start of the range to highlight' },
+                    to: { type: 'number', description: 'End of the range to highlight' },
+                  },
+                  required: ['from', 'to'],
+                  description: 'A range to highlight as a shaded band on the number line',
+                },
+              },
+            },
+          },
         ],
       }),
     })

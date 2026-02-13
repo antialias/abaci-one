@@ -5,7 +5,7 @@ import { useTheme } from '../../../contexts/ThemeContext'
 import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant, PrimeTickInfo } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { renderNumberLine } from './renderNumberLine'
-import type { RenderTarget } from './renderNumberLine'
+import type { RenderTarget, RenderIndicator } from './renderNumberLine'
 import { useNumberLineTouch } from './useNumberLineTouch'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 import { computeProximity } from './findTheNumber/computeProximity'
@@ -310,6 +310,7 @@ export function NumberLine() {
   const resumeFnRef = useRef<() => void>(() => {})
   const seekFnRef = useRef<(segmentIndex: number) => void>(() => {})
   const lookAtFnRef = useRef<(center: number, range: number) => void>(() => {})
+  const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }) => void>(() => {})
   const handleVoiceExploration = useCallback((constantId: string) => {
     exploreFnRef.current(constantId)
   }, [])
@@ -317,6 +318,7 @@ export function NumberLine() {
   const handleVoiceResume = useCallback(() => { resumeFnRef.current() }, [])
   const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
   const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
+  const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }) => { indicateFnRef.current(numbers, range) }, [])
   const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
@@ -324,6 +326,7 @@ export function NumberLine() {
     onResumeExploration: handleVoiceResume,
     onSeekExploration: handleVoiceSeek,
     onLookAt: handleVoiceLookAt,
+    onIndicate: handleVoiceIndicate,
     isExplorationActiveRef,
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
@@ -377,6 +380,8 @@ export function NumberLine() {
   const proximityRef = useRef<ProximityResult | null>(null)
   // Ref to hold the current render target (computed in draw, used by renderNumberLine)
   const renderTargetRef = useRef<RenderTarget | undefined>(undefined)
+  // Indicator state: temporary highlights triggered by the voice agent's `indicate` tool
+  const indicatorRef = useRef<{ numbers: number[]; range?: { from: number; to: number }; startMs: number } | null>(null)
   // Animation frame for game loop (continuous redraws while game is active)
   const gameRafRef = useRef<number>(0)
 
@@ -686,6 +691,31 @@ export function NumberLine() {
       sieveUniformity = rawT * (2 - rawT)
     }
 
+    // Compute indicator fade lifecycle: 200ms fade-in, 4s hold, 1s fade-out
+    let renderIndicator: RenderIndicator | undefined
+    const ind = indicatorRef.current
+    if (ind) {
+      const elapsed = performance.now() - ind.startMs
+      const FADE_IN = 200
+      const HOLD = 4000
+      const FADE_OUT = 1000
+      const total = FADE_IN + HOLD + FADE_OUT
+      let alpha: number
+      if (elapsed < FADE_IN) {
+        alpha = elapsed / FADE_IN
+      } else if (elapsed < FADE_IN + HOLD) {
+        alpha = 1
+      } else if (elapsed < total) {
+        alpha = 1 - (elapsed - FADE_IN - HOLD) / FADE_OUT
+      } else {
+        alpha = 0
+        indicatorRef.current = null
+      }
+      if (alpha > 0) {
+        renderIndicator = { numbers: ind.numbers, range: ind.range, alpha }
+      }
+    }
+
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
     ctx.scale(dpr, dpr)
@@ -695,7 +725,8 @@ export function NumberLine() {
       displayVelocityRef.current, displayHueRef.current, zoomFocalXRef.current,
       renderTarget, collisionFadeMapRef.current, renderConstants,
       primeInfos, effectiveHovered, interestingPrimes, primePairArcs,
-      highlightSet, highlightedArcSet, sieveTransforms, sieveUniformity
+      highlightSet, highlightedArcSet, sieveTransforms, sieveUniformity,
+      renderIndicator
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -1362,6 +1393,18 @@ export function NumberLine() {
       }
     }
     fly.raf = requestAnimationFrame(tick)
+  }
+
+  // Assign indicate implementation — replaces any active indicator and drives redraws
+  indicateFnRef.current = (numbers: number[], range?: { from: number; to: number }) => {
+    indicatorRef.current = { numbers, range, startMs: performance.now() }
+    // Drive redraws for the indicator's ~5.2s lifecycle
+    const tick = () => {
+      if (!indicatorRef.current) return
+      draw()
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
   }
 
   // Find tapped constant data for info card

@@ -24,6 +24,8 @@ interface UseRealtimeVoiceOptions {
   onSeekExploration?: (segmentIndex: number) => void
   /** Called when the model wants to pan/zoom the number line */
   onLookAt?: (center: number, range: number) => void
+  /** Called when the model wants to highlight numbers/range on the number line */
+  onIndicate?: (numbers: number[], range?: { from: number; to: number }) => void
   /** Ref that reports whether an exploration animation is currently active.
    *  When true, the call timer pauses the countdown (won't expire mid-video). */
   isExplorationActiveRef?: React.RefObject<boolean>
@@ -62,6 +64,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onSeekExplorationRef.current = options?.onSeekExploration
   const onLookAtRef = useRef(options?.onLookAt)
   onLookAtRef.current = options?.onLookAt
+  const onIndicateRef = useRef(options?.onIndicate)
+  onIndicateRef.current = options?.onIndicate
   const isExplorationActiveRef = options?.isExplorationActiveRef
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -766,6 +770,41 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   type: 'function_call_output',
                   call_id: msg.call_id,
                   output: JSON.stringify({ success: false, error: 'Invalid center value' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+            }
+          }
+
+          // Handle model calling indicate tool — highlight numbers/range on the number line
+          if (msg.name === 'indicate') {
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              const numbers: number[] = Array.isArray(args.numbers)
+                ? args.numbers.filter((v: unknown) => typeof v === 'number' && isFinite(v as number))
+                : []
+              let range: { from: number; to: number } | undefined
+              if (args.range && typeof args.range === 'object' && isFinite(Number(args.range.from)) && isFinite(Number(args.range.to))) {
+                range = { from: Number(args.range.from), to: Number(args.range.to) }
+              }
+              if (numbers.length === 0 && !range) throw new Error('must provide numbers or range')
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: true, message: `Indicating ${numbers.length} numbers${range ? ` and range ${range.from}–${range.to}` : ''}` }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              onIndicateRef.current?.(numbers, range)
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Must provide at least numbers (array) or range ({ from, to })' }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))

@@ -15,6 +15,13 @@ export interface RenderTarget {
   opacity: number
 }
 
+export interface RenderIndicator {
+  numbers: number[]
+  range?: { from: number; to: number }
+  /** Pre-computed overall alpha (0-1) handling fade-in/hold/fade-out lifecycle */
+  alpha: number
+}
+
 /** Base RGB components for dynamic alpha composition */
 interface RenderColors {
   axisLine: string
@@ -123,7 +130,8 @@ export function renderNumberLine(
   highlightedArcs?: Set<string>,
   sieveTransforms?: Map<number, SieveTickTransform>,
   /** 0-1 blend toward uniform tick sizes during sieve (smooth ramp-in) */
-  sieveUniformity = 0
+  sieveUniformity = 0,
+  indicator?: RenderIndicator,
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -154,6 +162,47 @@ export function renderNumberLine(
   ctx.strokeStyle = colors.axisLine
   ctx.lineWidth = 1
   ctx.stroke()
+
+  // Indicator pass: range band + point glows (drawn behind ticks)
+  if (indicator && indicator.alpha > 0) {
+    const a = indicator.alpha
+    const accentHue = 200 // blue accent
+    const accentSat = 90
+    const accentLumRange = isDark ? 55 : 50
+    const accentLumPoint = isDark ? 65 : 55
+
+    // Range band
+    if (indicator.range) {
+      const fromX = numberToScreenX(indicator.range.from, state.center, state.pixelsPerUnit, cssWidth)
+      const toX = numberToScreenX(indicator.range.to, state.center, state.pixelsPerUnit, cssWidth)
+      const left = Math.min(fromX, toX)
+      const right = Math.max(fromX, toX)
+      ctx.fillStyle = `hsla(${accentHue}, ${accentSat}%, ${accentLumRange}%, ${a * 0.15})`
+      ctx.fillRect(left, 0, right - left, cssHeight)
+      // Brighter edge lines
+      ctx.strokeStyle = `hsla(${accentHue}, ${accentSat}%, ${accentLumRange}%, ${a * 0.35})`
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(left, 0); ctx.lineTo(left, cssHeight)
+      ctx.moveTo(right, 0); ctx.lineTo(right, cssHeight)
+      ctx.stroke()
+    }
+
+    // Point glows
+    const pulsePhase = (Date.now() % 2000) / 2000
+    const pulseScale = 1 + 0.15 * Math.sin(pulsePhase * Math.PI * 2)
+    for (const n of indicator.numbers) {
+      const x = numberToScreenX(n, state.center, state.pixelsPerUnit, cssWidth)
+      if (x < -30 || x > cssWidth + 30) continue
+      const radius = 20 * pulseScale
+      const glow = ctx.createRadialGradient(x, centerY, 0, x, centerY, radius)
+      glow.addColorStop(0, `hsla(${accentHue}, ${accentSat}%, ${accentLumPoint}%, ${a * 0.7})`)
+      glow.addColorStop(0.5, `hsla(${accentHue}, ${accentSat}%, ${accentLumPoint}%, ${a * 0.25})`)
+      glow.addColorStop(1, `hsla(${accentHue}, ${accentSat}%, ${accentLumPoint}%, 0)`)
+      ctx.fillStyle = glow
+      ctx.fillRect(x - radius, centerY - radius, radius * 2, radius * 2)
+    }
+  }
 
   // Compute ticks
   const ticks = computeTickMarks(state, cssWidth, thresholds)
