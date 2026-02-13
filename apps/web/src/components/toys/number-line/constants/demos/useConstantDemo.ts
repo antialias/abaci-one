@@ -105,16 +105,21 @@ function getZoomKeyframes(
   if (constantId === 'ramanujan') {
     const base = ramanujanDemoViewport(cssWidth, cssHeight)
     return [
-      // Phase 0: divergence view [0,15]
+      // Phase 0: divergence view [0,15] — dots accelerate off-screen
       { progress: 0.00, ...base },
-      // Phase 1-3: shift to derivation work area [−3,5]
-      { progress: 0.10, center: 1,     pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
-      // Hold derivation view through phases 1-3
-      { progress: 0.70, center: 1,     pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
-      // Phase 4: zoom into reveal at [−0.5,0.5]
-      { progress: 0.85, center: -0.04, pixelsPerUnit: ppuForRange(cssWidth, -0.5, 0.5) },
-      // Hold reveal view
-      { progress: 1.00, center: -0.04, pixelsPerUnit: ppuForRange(cssWidth, -0.5, 0.5) },
+      // Phases 1-2: transition to s-parameter view [−0.5,6]
+      { progress: 0.10, center: 2.75, pixelsPerUnit: ppuForRange(cssWidth, -0.5, 6) },
+      // Phases 3-5: hold view for curve + pole [−1,6]
+      { progress: 0.25, center: 2.5,  pixelsPerUnit: ppuForRange(cssWidth, -1, 6) },
+      { progress: 0.48, center: 2.5,  pixelsPerUnit: ppuForRange(cssWidth, -1, 6) },
+      // Phases 6-7: widen for extension past pole [−3,5]
+      { progress: 0.55, center: 1,    pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
+      { progress: 0.68, center: 1,    pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
+      // Phases 8-9: follow curve to s=−1 [−3,3]
+      { progress: 0.76, center: 0,    pixelsPerUnit: ppuForRange(cssWidth, -3, 3) },
+      // Phases 10-11: zoom tight for −1/12 reveal [−2,1]
+      { progress: 0.85, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
+      { progress: 1.00, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
     ]
   }
 
@@ -182,6 +187,8 @@ export function useConstantDemo(
   cancelDemo: () => void
   /** Pauses auto-play and sets revealProgress to the given value (0-1) */
   setRevealProgress: (value: number) => void
+  /** Signal that the user has zoomed/panned — demo will fade out */
+  markUserInteraction: () => void
 } {
   const demoStateRef = useRef<DemoState>({ ...INITIAL_STATE })
   const animStartRef = useRef(0)
@@ -190,6 +197,7 @@ export function useConstantDemo(
   const rafRef = useRef<number>(0)
   const fadeStartRef = useRef(0)
   const isPausedRef = useRef(false)
+  const userInteractedRef = useRef(false)
 
   const stopLoop = useCallback(() => {
     if (rafRef.current) {
@@ -270,6 +278,32 @@ export function useConstantDemo(
     const elapsed = now - animStartRef.current
 
     if (ds.phase === 'animating') {
+      // User zoomed/panned on the number line → dismiss the demo.
+      // Checked BEFORE lerpViewport/zoom-keyframes so the user's
+      // viewport position is preserved (not overwritten).
+      if (userInteractedRef.current) {
+        userInteractedRef.current = false
+        ds.phase = 'fading'
+        // Start the fade from the current opacity (may be < 1 during fly-in)
+        fadeStartRef.current = now - (1 - ds.opacity) * FADE_OUT_MS
+        return
+      }
+
+      // When paused (narration driving progress, or user scrubbed),
+      // don't override the viewport — setRevealProgress() handles positioning.
+      if (isPausedRef.current) {
+        // When reveal is complete, transition to 'presenting' so
+        // deviation detection continues via the normal path.
+        if (ds.revealProgress >= 1) {
+          ds.phase = 'presenting'
+          ds.opacity = 1
+          snapViewport(targetViewportRef.current, stateRef.current)
+        }
+        return
+      }
+
+      // --- Normal auto-play flow ---
+
       // Fade in
       ds.opacity = Math.min(1, elapsed / FADE_IN_MS)
 
@@ -279,21 +313,18 @@ export function useConstantDemo(
         elapsed, VIEWPORT_ANIM_MS, stateRef.current
       )
 
-      // Reveal progress: skip update when paused (user is scrubbing)
-      if (!isPausedRef.current) {
-        const revealStart = VIEWPORT_ANIM_MS * 0.6
-        if (elapsed > revealStart) {
-          ds.revealProgress = Math.min(1, (elapsed - revealStart) / REVEAL_ANIM_MS)
-        }
+      const revealStart = VIEWPORT_ANIM_MS * 0.6
+      if (elapsed > revealStart) {
+        ds.revealProgress = Math.min(1, (elapsed - revealStart) / REVEAL_ANIM_MS)
+      }
 
-        // Transition to presenting when both viewport and reveal are done
-        const totalDuration = revealStart + REVEAL_ANIM_MS
-        if (elapsed >= totalDuration) {
-          ds.phase = 'presenting'
-          ds.revealProgress = 1
-          ds.opacity = 1
-          snapViewport(targetViewportRef.current, stateRef.current)
-        }
+      // Transition to presenting when both viewport and reveal are done
+      const totalDuration = revealStart + REVEAL_ANIM_MS
+      if (elapsed >= totalDuration) {
+        ds.phase = 'presenting'
+        ds.revealProgress = 1
+        ds.opacity = 1
+        snapViewport(targetViewportRef.current, stateRef.current)
       }
 
       // Suppress unused variable warning — vpT is used implicitly
@@ -320,6 +351,13 @@ export function useConstantDemo(
         }
       }
     } else if (ds.phase === 'presenting') {
+      // User zoomed/panned → dismiss
+      if (userInteractedRef.current) {
+        userInteractedRef.current = false
+        ds.phase = 'fading'
+        fadeStartRef.current = now - (1 - ds.opacity) * FADE_OUT_MS
+        return
+      }
       const deviation = computeViewportDeviation(
         stateRef.current, targetViewportRef.current
       )
@@ -380,5 +418,11 @@ export function useConstantDemo(
     onRedraw()
   }, [stateRef, onRedraw, cssWidthRef, cssHeightRef])
 
-  return { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress }
+  const markUserInteraction = useCallback(() => {
+    const ds = demoStateRef.current
+    if (ds.phase === 'idle' || ds.phase === 'fading') return
+    userInteractedRef.current = true
+  }, [])
+
+  return { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress, markUserInteraction }
 }

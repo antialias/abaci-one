@@ -161,7 +161,7 @@ export function NumberLine() {
   // Use a ref to break the circular dependency: demo needs draw(), but draw() is defined later
   const drawFnRef = useRef<() => void>(() => {})
   const demoRedraw = useCallback(() => drawFnRef.current(), [])
-  const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress } = useConstantDemo(
+  const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress, markUserInteraction } = useConstantDemo(
     stateRef, cssWidthRef, cssHeightRef, demoRedraw
   )
   // --- Constant demo narration (all constants) ---
@@ -822,10 +822,15 @@ export function NumberLine() {
   }, [draw])
 
   // Touch/mouse/wheel handling
+  const handleStateChange = useCallback(() => {
+    markUserInteraction()
+    scheduleRedraw()
+  }, [markUserInteraction, scheduleRedraw])
+
   useNumberLineTouch({
     stateRef,
     canvasRef,
-    onStateChange: scheduleRedraw,
+    onStateChange: handleStateChange,
     onZoomVelocity: handleZoomVelocity,
     onTap: handleCanvasTap,
     onHover: handleHover,
