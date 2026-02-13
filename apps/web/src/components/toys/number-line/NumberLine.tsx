@@ -621,16 +621,12 @@ export function NumberLine() {
           if (segIdx >= 0 && segIdx !== voiceExplorationSegmentRef.current) {
             voiceExplorationSegmentRef.current = segIdx
             const seg = cfg.segments[segIdx]
-            const label = seg.scrubberLabel || `Part ${segIdx + 1}`
             const isLast = segIdx === cfg.segments.length - 1
             sendSystemMessage(
-              `[System: Segment ${segIdx + 1}/${cfg.segments.length} — "${label}" is now playing.\n` +
-              `NARRATOR — say this now (in your own voice, keeping pace with the animation): ${seg.ttsText}\n` +
-              `The animation is playing alongside you. When you finish speaking, pause briefly so the next segment can start.` +
-              (conferenceNumbersRef.current.length > 1
-                ? `\nOther participants: after the narrator finishes this part, you may add a brief reaction${isLast ? ' before the wrap-up' : ''}.`
-                : '') +
-              `]`,
+              seg.ttsText +
+              (conferenceNumbersRef.current.length > 1 && isLast
+                ? '\nEveryone say a quick reaction before wrapping up.'
+                : ''),
               true
             )
           }
@@ -1644,12 +1640,6 @@ export function NumberLine() {
       const cfg = NARRATION_CONFIGS[constantId]
       const display = DEMO_DISPLAY[constantId]
       if (cfg && display) {
-        // Build an outline of segment labels (no full text — text arrives per-segment)
-        const outline = cfg.segments.map((seg, i) => {
-          const label = seg.scrubberLabel || `Part ${i + 1}`
-          return `${i + 1}. "${label}"`
-        }).join('\n')
-
         // Pick the narrator: the number closest to the constant's value
         const nums = conferenceNumbersRef.current
         let narrator = nums[0] ?? callingNumber
@@ -1672,32 +1662,25 @@ export function NumberLine() {
           : ''
 
         sendSystemMessage(
-          `[System: An animated exploration of ${display.symbol} (${display.name}) is ready to play. ` +
-          `The number line is showing the starting position. The animation is PAUSED — it will not play until you call resume_exploration.` +
+          `An animated exploration of ${display.symbol} (${display.name}) is ready to play. ` +
+          `The animation is PAUSED — it will not play until you call resume_exploration.` +
           `${visualDesc}\n\n` +
-          `${narrator} is the designated narrator!\n\n` +
-          `NARRATOR (${narrator}): Give the child a brief, excited intro — why this constant is special to you personally. ` +
-          `Do NOT describe or preview what the animation will show. The visuals should be a surprise that unfolds as you narrate. ` +
+          `${narrator} is the designated narrator. Give the child a brief, excited intro — why this constant is special to you personally. ` +
+          `Do NOT describe or preview what the animation will show. The visuals should be a surprise. ` +
           `Something like "Oh, I've been wanting to show you this!" or "This is one of my favorite things about living near ${display.symbol}." ` +
           `Keep it to 1-2 sentences, then call resume_exploration when the moment feels right.\n\n` +
-          `HOW THIS WORKS: Once playing, you will receive narration text ONE SEGMENT AT A TIME. ` +
-          `Each segment arrives with a "[System: Segment N — ...]" message containing exactly what to say. ` +
-          `Read that text in your own voice and character, keeping pace with the animation playing on screen. ` +
-          `Do NOT read ahead or improvise the narration — wait for each segment's cue. ` +
-          `When you finish a segment, PAUSE BRIEFLY (1-2 seconds of silence) so the system knows you're done ` +
-          `and can advance to the next segment. The animation and your narration play together — ` +
-          `whichever finishes first waits for the other before the next segment starts.\n\n` +
-          `CHECK-INS: Every 2-3 segments, pause the animation and genuinely check in with the child. ` +
-          `Don't just say "Pretty cool, right?" — ask something that tests whether they're following: ` +
-          `"So what do you think happens next?", "Does that make sense — why it stops there?", ` +
-          `"Any questions about that part?", "What did you notice?" ` +
-          `If they ask a question, take the time to answer it in character before resuming. ` +
-          `If they seem lost, back up and re-explain simply. If they seem disengaged, it's OK to wrap up early.\n\n` +
-          `PLAYBACK CONTROLS: You can pause_exploration, resume_exploration, or seek_exploration to a segment number. ` +
-          `Use your judgment — quick questions can be answered while the animation plays. ` +
-          `But if the child seems confused or wants to linger, pause or seek.` +
-          `${othersDesc}\n\n` +
-          `SEGMENT OUTLINE (${cfg.segments.length} parts):\n${outline}]`,
+          `NARRATION RULES — READ CAREFULLY:\n` +
+          `Once the animation is playing, you will receive messages containing narration text. ` +
+          `Your ONLY job is to speak those exact words out loud in your character's voice. ` +
+          `Do NOT add introductions, labels, announcements, or commentary before or after the narration. ` +
+          `Do NOT say what part you are on. Do NOT announce transitions. ` +
+          `Just say the words you receive, then go silent for a moment so the next part can arrive. ` +
+          `The animation advances automatically when you go quiet.\n\n` +
+          `Every few parts, pause the animation and check in with the child — ` +
+          `"What do you think happens next?", "Does that make sense?", "Any questions?" ` +
+          `If they ask something, answer it in character before resuming. ` +
+          `If they seem lost or disengaged, it's OK to wrap up early.` +
+          `${othersDesc}`,
           true // prompt a response so the narrator introduces the constant
         )
       }
