@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { playRingTone } from './ringTone'
 import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber, assignUniqueVoice } from './generateNumberPersonality'
+import type { GeneratedScenario } from './generateScenario'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
 
@@ -94,6 +95,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const hangUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stateRef = useRef<CallState>('idle')
 
+  // Scenario + heartbeat state
+  const scenarioRef = useRef<GeneratedScenario | null>(null)
+  const transcriptsRef = useRef<string[]>([]) // ring buffer, last 5
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const calledNumberRef = useRef<number>(0)
+
   // Keep stateRef in sync
   useEffect(() => {
     stateRef.current = state
@@ -141,6 +148,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       timerRef.current = null
     }
 
+    // Clear heartbeat
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current)
+      heartbeatRef.current = null
+    }
+
     setTimeRemaining(null)
     setIsSpeaking(false)
     setConferenceNumbers([])
@@ -149,6 +162,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     currentSpeakerRef.current = null
     voiceAssignmentsRef.current.clear()
     rotationRef.current = { speakerQueue: [], isRotating: false, hadToolCall: false }
+    scenarioRef.current = null
+    transcriptsRef.current = []
   }, [])
 
   const hangUp = useCallback(() => {
@@ -160,17 +175,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const dial = useCallback(async (number: number) => {
     // Don't start a new call if one is in progress (allow from transferring state)
     const cur = stateRef.current as CallState
-    if (cur !== 'idle' && cur !== 'error' && cur !== 'transferring') {
-      console.log('[voice] dial() rejected — state is', cur, '(expected idle/error/transferring)')
-      return
-    }
+    if (cur !== 'idle' && cur !== 'error' && cur !== 'transferring') return
 
     setError(null)
     extensionUsedRef.current = false
     warningSentRef.current = false
 
     // 1. Get microphone permission
-    console.log('[voice] dial(%d) — requesting mic with echo cancellation', number)
     let stream: MediaStream
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -181,18 +192,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         },
       })
       streamRef.current = stream
-      // Log actual constraints the browser applied
-      const micTrack = stream.getAudioTracks()[0]
-      if (micTrack) {
-        const settings = micTrack.getSettings()
-        console.log('[voice] mic track settings:', {
-          echoCancellation: settings.echoCancellation,
-          noiseSuppression: settings.noiseSuppression,
-          autoGainControl: settings.autoGainControl,
-          deviceId: settings.deviceId,
-          sampleRate: settings.sampleRate,
-        })
-      }
     } catch (err) {
       setError(
         err instanceof DOMException && err.name === 'NotAllowedError'
@@ -207,16 +206,16 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     setState('ringing')
 
     // Play ring tone
+    const ringStartedAt = Date.now()
     try {
       const audioCtx = new AudioContext()
       audioCtxRef.current = audioCtx
-      console.log('[voice] AudioContext created, state:', audioCtx.state, 'sampleRate:', audioCtx.sampleRate)
       ringRef.current = playRingTone(audioCtx)
-    } catch (err) {
-      console.warn('[voice] ring tone failed:', err)
+    } catch {
+      // Ring tone is cosmetic — ignore failures
     }
 
-    // 3. Fetch ephemeral token
+    // 3. Fetch ephemeral token (includes scenario generation — may take several seconds)
     let clientSecret: string
     try {
       const res = await fetch('/api/realtime/session', {
@@ -230,6 +229,21 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       }
       const data = await res.json()
       clientSecret = data.clientSecret
+      // Store scenario for heartbeat evolutions
+      scenarioRef.current = data.scenario ?? null
+      calledNumberRef.current = number
+      if (data.scenario) {
+        console.log('[scenario] generated for %d:', number, {
+          archetype: data.scenario.archetype,
+          hook: data.scenario.hook,
+          involvedNumbers: data.scenario.involvedNumbers,
+          exploration: data.scenario.relevantExploration?.constantId ?? 'none',
+          mood: data.scenario.openingMood,
+        })
+        console.log('[scenario] situation:', data.scenario.situation)
+      } else {
+        console.log('[scenario] none generated — using static personality for %d', number)
+      }
     } catch (err) {
       cleanup()
       setError(err instanceof Error ? err.message : 'Failed to connect')
@@ -249,48 +263,31 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       pcRef.current = pc
 
       // Add mic track
-      stream.getAudioTracks().forEach(track => {
-        console.log('[voice] adding mic track to PC:', track.label, 'enabled:', track.enabled, 'muted:', track.muted)
-        pc.addTrack(track, stream)
-      })
+      stream.getAudioTracks().forEach(track => pc.addTrack(track, stream))
 
       // Create audio element for remote audio
       const audioEl = document.createElement('audio')
       audioEl.autoplay = true
       audioElRef.current = audioEl
 
-      // Log audio element state changes
-      audioEl.onplay = () => console.log('[voice] audioEl: play event')
-      audioEl.onpause = () => console.log('[voice] audioEl: pause event')
-      audioEl.onplaying = () => console.log('[voice] audioEl: playing event')
-      audioEl.onwaiting = () => console.log('[voice] audioEl: waiting event')
-      audioEl.onstalled = () => console.log('[voice] audioEl: stalled event')
-      audioEl.onerror = () => console.error('[voice] audioEl: error event', audioEl.error)
+      audioEl.onerror = () => console.error('[voice] audio playback error', audioEl.error)
 
       pc.ontrack = (event) => {
-        console.log('[voice] ontrack fired — streams:', event.streams.length, 'track kind:', event.track.kind, 'readyState:', event.track.readyState)
         audioEl.srcObject = event.streams[0]
-        console.log('[voice] audioEl.srcObject set, autoplay:', audioEl.autoplay, 'paused:', audioEl.paused, 'readyState:', audioEl.readyState)
 
         // Explicit play() — autoplay may be blocked if the user-gesture
         // context expired during async setup (token fetch, SDP exchange).
-        audioEl.play().then(() => {
-          console.log('[voice] audioEl.play() succeeded, paused:', audioEl.paused)
-        }).catch((err) => {
-          console.error('[voice] audioEl.play() FAILED:', err.name, err.message)
+        audioEl.play().catch((err) => {
+          console.error('[voice] audio play failed:', err.name, err.message)
         })
 
         // Simple speaking detection via audio activity
         try {
           const audioCtx = audioCtxRef.current ?? new AudioContext()
           audioCtxRef.current = audioCtx
-          console.log('[voice] ontrack AudioContext state:', audioCtx.state)
           // Resume AudioContext if suspended (autoplay policy)
           if (audioCtx.state === 'suspended') {
-            console.log('[voice] AudioContext suspended — resuming...')
-            audioCtx.resume().then(() => {
-              console.log('[voice] AudioContext resumed, state:', audioCtx.state)
-            })
+            audioCtx.resume()
           }
           const source = audioCtx.createMediaStreamSource(event.streams[0])
           const analyser = audioCtx.createAnalyser()
@@ -298,7 +295,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           source.connect(analyser)
           const dataArray = new Uint8Array(analyser.frequencyBinCount)
 
-          let speakingLogTimer = 0
           // Software echo gate: mute mic while model outputs audio so the
           // speaker sound doesn't feed back and trigger speech_started.
           // The mic unmutes after ~250ms of silence for responsive barge-in.
@@ -330,7 +326,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   if (!micMuted) {
                     micTrack.enabled = false
                     micMuted = true
-                    console.log('[voice] 🔇 mic MUTED (model speaking, echo gate)')
                   }
                 } else {
                   // Model silent — start/continue unmute delay
@@ -339,46 +334,24 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                     if (now - modelSilenceSince > MIC_UNMUTE_DELAY_MS) {
                       micTrack.enabled = true
                       micMuted = false
-                      console.log('[voice] 🔊 mic UNMUTED (model silent)')
                     }
                   }
                 }
               }
 
-              // Periodic log of audio levels (every ~0.5s = 30 frames)
-              speakingLogTimer++
-              if (speakingLogTimer % 30 === 0) {
-                const micTrackState = streamRef.current?.getAudioTracks()[0]
-                console.log('[voice] 📊 avg:', avg.toFixed(1), 'modelSpeaking:', nowSpeaking, 'micMuted:', micMuted, 'mic.enabled:', micTrackState?.enabled, 'mic.muted:', micTrackState?.muted)
-              }
             }
             requestAnimationFrame(checkSpeaking)
           }
           requestAnimationFrame(checkSpeaking)
-        } catch (err) {
-          console.warn('[voice] speaking detection setup failed:', err)
+        } catch {
+          // Speaking detection is non-critical
         }
-      }
-
-      // Log WebRTC connection state transitions
-      pc.oniceconnectionstatechange = () => {
-        console.log('[voice] ICE connection state:', pc.iceConnectionState)
-      }
-      pc.onsignalingstatechange = () => {
-        console.log('[voice] signaling state:', pc.signalingState)
       }
 
       // Create data channel for Realtime API events
       const dc = pc.createDataChannel('oai-events')
       dcRef.current = dc
-      dc.onopen = () => {
-        console.log('[voice] data channel opened')
-        // Log mic track state at connection time
-        const micTrack = streamRef.current?.getAudioTracks()[0]
-        console.log('[voice] mic at dc open — enabled:', micTrack?.enabled, 'muted:', micTrack?.muted, 'readyState:', micTrack?.readyState)
-      }
       dc.onclose = () => {
-        console.log('[voice] data channel closed — cleaning up')
         // Data channel closed unexpectedly (HMR, network, server timeout).
         // Only trigger hangUp if we're still in an active-ish state;
         // if we're already idle/ending, cleanup already happened.
@@ -397,7 +370,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           rot.isRotating = false
           currentSpeakerRef.current = allNumbers[0] ?? null
           setCurrentSpeaker(allNumbers[0] ?? null)
-          console.log('[voice] rotation complete, currentSpeaker →', allNumbers[0] ?? null)
           const firstVoice = voiceAssignmentsRef.current.get(allNumbers[0])
           if (firstVoice) {
             dc.send(JSON.stringify({
@@ -414,7 +386,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         const nextSpeaker = rot.speakerQueue.shift()!
         currentSpeakerRef.current = nextSpeaker
         setCurrentSpeaker(nextSpeaker)
-        console.log('[voice] rotation next, currentSpeaker →', nextSpeaker, 'remaining queue:', [...rot.speakerQueue])
         const nextVoice = voiceAssignmentsRef.current.get(nextSpeaker)
 
         dc.send(JSON.stringify({
@@ -427,41 +398,26 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         dc.send(JSON.stringify({ type: 'response.create' }))
       }
 
-      // Track mic mute state at the dc.onmessage level so we can log it
-      let dcMicMuted = false
-      const getMicEnabled = () => streamRef.current?.getAudioTracks()[0]?.enabled ?? 'N/A'
-
       dc.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
 
-          // --- Log ALL event types for debugging ---
-          const quietEvents = new Set([
-            'response.audio.delta',           // very frequent audio chunks
-            'response.audio_transcript.delta', // frequent transcript deltas
-          ])
-          if (!quietEvents.has(msg.type)) {
-            console.log('[voice] DC event:', msg.type, 'mic.enabled:', getMicEnabled())
-          }
-
-          // --- Debug: log session lifecycle with full config ---
           if (msg.type === 'session.created') {
-            const td = msg.session?.turn_detection
-            console.log('[voice] ✅ session.created — turn_detection:', JSON.stringify(td))
             // Prompt the model to speak first (like answering a phone call)
             dc.send(JSON.stringify({ type: 'response.create' }))
           }
-          if (msg.type === 'session.updated') {
-            const td = msg.session?.turn_detection
-            console.log('[voice] session.updated — turn_detection:', JSON.stringify(td))
-          }
           if (msg.type === 'error') {
-            console.error('[voice] ⚠️ server error:', JSON.stringify(msg.error))
+            console.error('[voice] server error:', JSON.stringify(msg.error))
           }
 
-          // --- Debug: log transcript completions with speaker info ---
+          // Collect transcripts for heartbeat evolution
           if (msg.type === 'response.audio_transcript.done') {
-            console.log('[voice] transcript done (currentSpeaker=%s):', currentSpeakerRef.current, msg.transcript)
+            if (msg.transcript) {
+              const buf = transcriptsRef.current
+              buf.push(msg.transcript)
+              if (buf.length > 5) buf.shift()
+              console.log('[scenario] transcript collected (%d in buffer): "%s"', buf.length, msg.transcript.slice(0, 60))
+            }
           }
 
           // --- Track tool calls within a response ---
@@ -469,32 +425,19 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             rotationRef.current.hadToolCall = true
           }
 
-          // --- User started speaking: abort rotation ---
+          // User started speaking: abort rotation
           if (msg.type === 'input_audio_buffer.speech_started') {
-            console.log('[voice] ⚡ speech_started — mic.enabled:', getMicEnabled(), 'audioEl.paused:', audioElRef.current?.paused, 'audioEl.readyState:', audioElRef.current?.readyState)
             const rot = rotationRef.current
             if (rot.isRotating) {
               rot.speakerQueue = []
               rot.isRotating = false
-              // Voice stays on whoever was last set — they'll respond to the user
             }
           }
-          if (msg.type === 'input_audio_buffer.speech_stopped') {
-            console.log('[voice] 🔇 speech_stopped — mic.enabled:', getMicEnabled())
-          }
-          if (msg.type === 'input_audio_buffer.committed') {
-            console.log('[voice] 📤 input_audio_buffer committed')
-          }
-          // Log response cancellations (model interrupted mid-speech)
-          if (msg.type === 'response.cancelled') {
-            console.log('[voice] ❌ response.cancelled — model was interrupted')
-          }
 
-          // --- Response completed: maybe continue rotation ---
+          // Response completed: maybe continue rotation
           if (msg.type === 'response.done') {
             const rot = rotationRef.current
             const allNumbers = conferenceNumbersRef.current
-            console.log('[voice] response.done — conferenceNumbers:', [...allNumbers], 'isRotating:', rot.isRotating, 'hadToolCall:', rot.hadToolCall, 'currentSpeaker:', currentSpeakerRef.current)
 
             // Only rotate in conference mode (>1 number), and not after tool calls
             if (allNumbers.length > 1 && !rot.hadToolCall) {
@@ -833,13 +776,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
       }
 
-      // Create offer
-      console.log('[voice] creating SDP offer...')
+      // Create offer and send to OpenAI Realtime API
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
-
-      // Send to OpenAI Realtime API
-      console.log('[voice] sending SDP offer to OpenAI...')
       const sdpResponse = await fetch(
         'https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
         {
@@ -858,10 +797,14 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       const answerSdp = await sdpResponse.text()
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
-      console.log('[voice] SDP exchange complete, connectionState:', pc.connectionState, 'iceConnectionState:', pc.iceConnectionState)
 
-      // Wait a moment for the ring effect, then go active
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Ensure minimum ring time (1.5s) — scenario generation may have already
+      // used most of this, so we only wait the remainder.
+      const MIN_RING_MS = 1500
+      const elapsed = Date.now() - ringStartedAt
+      if (elapsed < MIN_RING_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_RING_MS - elapsed))
+      }
 
       // Check if still ringing (user might have hung up)
       if ((stateRef.current as CallState) !== 'ringing') {
@@ -874,7 +817,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       ringRef.current = null
 
       // Go active
-      console.log('[voice] going active — audioEl paused:', audioEl.paused, 'audioEl.readyState:', audioEl.readyState, 'audioCtx state:', audioCtxRef.current?.state)
+      console.log('[scenario] call active — scenario: %s, heartbeat: %s',
+        scenarioRef.current ? scenarioRef.current.archetype : 'none',
+        scenarioRef.current ? 'will start in 30s' : 'disabled')
       setState('active')
       conferenceNumbersRef.current = [number]
       setConferenceNumbers([number])
@@ -924,9 +869,66 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
       }, 1000)
 
+      // Start heartbeat for scenario evolution (every 30s)
+      if (scenarioRef.current) {
+        heartbeatRef.current = setInterval(async () => {
+          // Skip if not active, no scenario, or exploration is playing
+          if (stateRef.current !== 'active') return
+          if (!scenarioRef.current) return
+          if (isExplorationActiveRef?.current) return
+          if (!dcRef.current || dcRef.current.readyState !== 'open') return
+
+          const recent = transcriptsRef.current.slice(-3)
+          if (recent.length === 0) return // no conversation yet
+
+          try {
+            console.log('[scenario] heartbeat firing — sending %d recent transcripts', recent.length)
+            const res = await fetch('/api/realtime/evolve', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                number: calledNumberRef.current,
+                scenario: scenarioRef.current,
+                recentTranscripts: recent,
+                conferenceNumbers: conferenceNumbersRef.current,
+              }),
+            })
+            if (!res.ok) {
+              console.warn('[scenario] heartbeat: API error %d', res.status)
+              return
+            }
+            const data = await res.json()
+            if (!data.evolution) {
+              console.log('[scenario] heartbeat: no evolution returned')
+              return
+            }
+
+            // Inject evolution as a system message (don't prompt a response — let model weave it in naturally)
+            const { development, newTension, suggestion } = data.evolution
+            console.log('[scenario] heartbeat: evolution received', { development, newTension, suggestion })
+            const dc = dcRef.current
+            if (dc && dc.readyState === 'open') {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'user',
+                  content: [{
+                    type: 'input_text',
+                    text: `[Story update — weave this into the conversation naturally: ${development} ${newTension} Consider: ${suggestion}]`,
+                  }],
+                },
+              }))
+              console.log('[scenario] heartbeat: injected into conversation')
+            }
+          } catch (err) {
+            console.warn('[scenario] heartbeat: failed', err)
+          }
+        }, 30_000)
+      }
+
       // Handle connection closure
       pc.onconnectionstatechange = () => {
-        console.log('[voice] connectionState changed:', pc.connectionState)
         if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
           hangUp()
         }
@@ -1035,7 +1037,6 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   // Reset to idle so the UI doesn't show a phantom call.
   useEffect(() => {
     if (state !== 'idle' && state !== 'error' && !pcRef.current) {
-      console.log('[voice] orphaned state detected (state=%s, no PC) — resetting to idle', state)
       setState('idle')
       setError(null)
     }

@@ -933,7 +933,8 @@
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards commit -m \"$\\(cat <<''EOF''\nfix: use PAT for diagnostic agent to trigger fixbot workflow\n\nEvents created by GITHUB_TOKEN don''t trigger other workflows.\nUsing FIXBOT_PAT ensures issue labeled events propagate to fixbot.yml.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(gh pr view:*)",
       "Bash(gh pr diff:*)",
-      "Bash(gh pr merge:*)"
+      "Bash(gh pr merge:*)",
+      "WebFetch(domain:developers.openai.com)"
     ],
     "deny": [],
     "ask": []

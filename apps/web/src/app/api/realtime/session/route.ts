@@ -3,11 +3,12 @@
  *
  * POST /api/realtime/session
  * Body: { number: number }
- * Returns: { clientSecret: string, expiresAt: number }
+ * Returns: { clientSecret: string, expiresAt: number, scenario: GeneratedScenario | null }
  */
 
 import { NextResponse } from 'next/server'
-import { generateNumberPersonality, getVoiceForNumber } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
+import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
+import { generateScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +30,20 @@ export async function POST(request: Request) {
       )
     }
 
-    const instructions = generateNumberPersonality(number)
+    // Generate a dynamic scenario (runs in parallel with nothing — fires before the session call)
+    const scenario = await generateScenario(
+      apiKey,
+      number,
+      getTraitSummary(number),
+      getNeighborsSummary(number),
+    )
+    if (scenario) {
+      console.log('[scenario] scenario generated:', scenario.archetype, '—', scenario.hook)
+    } else {
+      console.log('[scenario] no scenario generated, using static personality')
+    }
+
+    const instructions = generateNumberPersonality(number, scenario)
 
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
@@ -180,6 +194,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       clientSecret: data.client_secret?.value ?? data.client_secret,
       expiresAt: data.client_secret?.expires_at ?? Date.now() / 1000 + 60,
+      scenario,
     })
   } catch (error) {
     console.error('[realtime/session] Error:', error)

@@ -136,6 +136,25 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   ramanujan: { segments: RAMANUJAN_DEMO_SEGMENTS, tone: RAMANUJAN_DEMO_TONE },
 }
 
+/** After finishing an exploration, suggest one of these related constants. */
+const EXPLORATION_RECOMMENDATIONS: Record<string, { id: string; reason: string }[]> = {
+  pi:        [{ id: 'tau',   reason: 'tau is 2π — the "full turn" version of pi' },
+              { id: 'e',     reason: "Euler's number shows up in the famous equation e^(iπ)+1=0" },
+              { id: 'phi',   reason: 'phi is another famous irrational number from geometry' }],
+  tau:       [{ id: 'pi',    reason: 'pi is the more famous half of tau' },
+              { id: 'sqrt2', reason: 'another irrational number hiding in simple geometry' }],
+  e:         [{ id: 'pi',    reason: 'e and π are connected by the beautiful equation e^(iπ)+1=0' },
+              { id: 'gamma', reason: 'the Euler-Mascheroni constant is e\'s mysterious little sibling' }],
+  phi:       [{ id: 'sqrt2', reason: 'another irrational number you can find with just a square' },
+              { id: 'pi',    reason: 'the two most famous numbers in geometry' }],
+  gamma:     [{ id: 'e',     reason: 'gamma is deeply connected to Euler\'s number e' },
+              { id: 'ramanujan', reason: 'both are surprising results that feel impossible at first' }],
+  sqrt2:     [{ id: 'phi',   reason: 'both are irrational numbers discovered by the ancient Greeks' },
+              { id: 'pi',    reason: 'another irrational number, but from circles instead of squares' }],
+  ramanujan: [{ id: 'gamma', reason: 'another constant that makes you go "wait, really?"' },
+              { id: 'e',     reason: 'Euler\'s number — Ramanujan loved working with it' }],
+}
+
 const INITIAL_STATE: NumberLineState = {
   center: 0,
   pixelsPerUnit: 100,
@@ -572,11 +591,18 @@ export function NumberLine() {
           if (ds.revealProgress >= 1 && voiceExplorationSegmentRef.current !== cfg.segments.length) {
             voiceExplorationSegmentRef.current = cfg.segments.length
             const display = DEMO_DISPLAY[ds.constantId]
+            const recs = EXPLORATION_RECOMMENDATIONS[ds.constantId] ?? []
+            const recText = recs.length > 0
+              ? ` If the child seems into it, casually suggest one of these: ${recs.map(r => {
+                  const d = DEMO_DISPLAY[r.id]
+                  return `${d?.name ?? r.id} (${r.reason})`
+                }).join('; ')}. Don't list them all — just pick whichever feels most natural for the conversation and mention it casually.`
+              : ''
             sendSystemMessage(
               `[System: The ${display?.name ?? ds.constantId} exploration has finished! ` +
               `Everyone can discuss now — narrator, share why you love this constant. ` +
               `Others, ask questions or share what surprised you. ` +
-              `Ask the child what they thought or if they want to explore another constant.]`,
+              `Ask the child what they thought.${recText}]`,
               true
             )
           }
@@ -1408,7 +1434,7 @@ export function NumberLine() {
           : ''
 
         const visualDesc = display.visualDesc
-          ? `\n\nWHAT THE ANIMATION SHOWS: ${display.visualDesc}`
+          ? `\n\nWHAT THE ANIMATION SHOWS (for YOUR reference only — do NOT describe this to the child): ${display.visualDesc}`
           : ''
 
         sendSystemMessage(
@@ -1416,10 +1442,10 @@ export function NumberLine() {
           `The number line is showing the starting position. The animation is PAUSED — it will not play until you call resume_exploration.` +
           `${visualDesc}\n\n` +
           `${narrator} is the designated narrator!\n\n` +
-          `NARRATOR (${narrator}): First, introduce this constant to the child in your own words. ` +
-          `Tell them what they're about to see and why it's special to you. ` +
-          `Keep the intro to 2-3 sentences. When the child seems ready (they say "ok!", "let's go!", ` +
-          `or you feel the moment is right), call resume_exploration to start the animation.\n\n` +
+          `NARRATOR (${narrator}): Give the child a brief, excited intro — why this constant is special to you personally. ` +
+          `Do NOT describe or preview what the animation will show. The visuals should be a surprise that unfolds as you narrate. ` +
+          `Something like "Oh, I've been wanting to show you this!" or "This is one of my favorite things about living near ${display.symbol}." ` +
+          `Keep it to 1-2 sentences, then call resume_exploration when the moment feels right.\n\n` +
           `HOW THIS WORKS: Once playing, you will receive narration text ONE SEGMENT AT A TIME. ` +
           `Each segment arrives with a "[System: Segment N — ...]" message containing exactly what to say. ` +
           `Read that text in your own voice and character, keeping pace with the animation playing on screen. ` +
