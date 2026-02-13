@@ -79,7 +79,7 @@ interface UseRealtimeVoiceOptions {
   /** Called when the model wants to pan/zoom the number line */
   onLookAt?: (center: number, range: number) => void
   /** Called when the model wants to highlight numbers/range on the number line */
-  onIndicate?: (numbers: number[], range?: { from: number; to: number }) => void
+  onIndicate?: (numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => void
   /** Called when the model starts a "find the number" game */
   onStartFindNumber?: (target: number) => void
   /** Called when the model stops the "find the number" game */
@@ -1002,16 +1002,19 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 range = { from: Number(args.range.from), to: Number(args.range.to) }
               }
               if (numbers.length === 0 && !range) throw new Error('must provide numbers or range')
+              const durationSeconds = typeof args.duration_seconds === 'number' && isFinite(args.duration_seconds) && args.duration_seconds > 0
+                ? args.duration_seconds
+                : undefined
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({ success: true, message: `Indicating ${numbers.length} numbers${range ? ` and range ${range.from}–${range.to}` : ''}` }),
+                  output: JSON.stringify({ success: true, message: `Indicating ${numbers.length} numbers${range ? ` and range ${range.from}–${range.to}` : ''}${durationSeconds ? ` for ${durationSeconds}s` : ''}` }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))
-              onIndicateRef.current?.(numbers, range)
+              onIndicateRef.current?.(numbers, range, durationSeconds)
             } catch {
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
@@ -1036,7 +1039,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({ success: true, message: `Find-the-number game started! Target: ${target}. The child CANNOT see the target — they only see "Find the mystery number!" Give them verbal clues: describe what makes this number special, hint at its value, say warmer/colder as they navigate. You will receive proximity updates with zone and direction info.` }),
+                  output: JSON.stringify({ success: true, message: `Find-the-number game started! Target: ${target}. The child CANNOT see the target — they only see "Find the mystery number!" Give them verbal clues about the number's neighborhood and properties. RULES: 1) Say "higher numbers" or "lower numbers" for direction — NEVER say "left" or "right" (children confuse screen directions). 2) Instead of saying "zoom in", hint at the number's precision — e.g. "it has a decimal" or "think about what's between 3 and 4." 3) Give neighborhood hints: "it's between 20 and 30", "near a multiple of 5", "close to a number you already know." You will receive proximity updates with the child's visible range and distance.` }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))

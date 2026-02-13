@@ -160,6 +160,22 @@ const INITIAL_STATE: NumberLineState = {
   pixelsPerUnit: 100,
 }
 
+/** Determine decimal precision of a target number (for hint phrasing). */
+function getTargetPrecisionForHint(target: number): number {
+  if (Number.isInteger(target)) return 0
+  const str = target.toString()
+  const dot = str.indexOf('.')
+  if (dot === -1) return 0
+  return Math.min(str.slice(dot + 1).length, 6)
+}
+
+/** Format a number for approximate display in voice hints. */
+function formatApprox(n: number): string {
+  if (Math.abs(n) >= 100) return String(Math.round(n))
+  if (Math.abs(n) >= 10) return String(Math.round(n * 10) / 10)
+  return String(Math.round(n * 100) / 100)
+}
+
 export function NumberLine() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
@@ -310,7 +326,7 @@ export function NumberLine() {
   const resumeFnRef = useRef<() => void>(() => {})
   const seekFnRef = useRef<(segmentIndex: number) => void>(() => {})
   const lookAtFnRef = useRef<(center: number, range: number) => void>(() => {})
-  const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }) => void>(() => {})
+  const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => void>(() => {})
   const startFindNumberFnRef = useRef<(target: number) => void>(() => {})
   const stopFindNumberFnRef = useRef<() => void>(() => {})
   const handleVoiceFindNumberStart = useCallback((target: number) => { startFindNumberFnRef.current(target) }, [])
@@ -322,7 +338,7 @@ export function NumberLine() {
   const handleVoiceResume = useCallback(() => { resumeFnRef.current() }, [])
   const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
   const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
-  const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }) => { indicateFnRef.current(numbers, range) }, [])
+  const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => { indicateFnRef.current(numbers, range, durationSeconds) }, [])
   const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
@@ -398,7 +414,7 @@ export function NumberLine() {
   // Ref to hold the current render target (computed in draw, used by renderNumberLine)
   const renderTargetRef = useRef<RenderTarget | undefined>(undefined)
   // Indicator state: temporary highlights triggered by the voice agent's `indicate` tool
-  const indicatorRef = useRef<{ numbers: number[]; range?: { from: number; to: number }; startMs: number } | null>(null)
+  const indicatorRef = useRef<{ numbers: number[]; range?: { from: number; to: number }; startMs: number; holdMs: number } | null>(null)
   // Track whether the current find-the-number game was started by the voice model
   // (to avoid sending redundant system messages back to the model, and to hide the target in the UI)
   const [gameStartedByModel, setGameStartedByModel] = useState(false)
@@ -712,13 +728,13 @@ export function NumberLine() {
       sieveUniformity = rawT * (2 - rawT)
     }
 
-    // Compute indicator fade lifecycle: 200ms fade-in, 4s hold, 1s fade-out
+    // Compute indicator fade lifecycle: 200ms fade-in, hold (configurable), 1s fade-out
     let renderIndicator: RenderIndicator | undefined
     const ind = indicatorRef.current
     if (ind) {
       const elapsed = performance.now() - ind.startMs
       const FADE_IN = 200
-      const HOLD = 4000
+      const HOLD = ind.holdMs
       const FADE_OUT = 1000
       const total = FADE_IN + HOLD + FADE_OUT
       let alpha: number
@@ -1117,7 +1133,7 @@ export function NumberLine() {
     if (gameState === 'active' && prev !== 'active' && !gameStartedByModelRef.current) {
       const target = targetRef.current?.value
       if (target !== undefined) {
-        sendSystemMessage(`[Game update: The child started a find-the-number game! Target: ${target}. You will receive proximity updates — give verbal hints!]`)
+        sendSystemMessage(`[Game update: The child started a find-the-number game! Target: ${target}. Give verbal hints about the number's neighborhood and properties. Say "higher numbers"/"lower numbers" for direction — NEVER "left"/"right". Instead of "zoom in", hint at precision: "it has a decimal", "between 3 and 4". You will receive proximity updates.]`)
       }
     }
     // Child gave up or game ended
@@ -1144,14 +1160,50 @@ export function NumberLine() {
       sendSystemMessage('[Game update: The child found the number! Celebrate with them!]', true)
     } else {
       const prox = proximityRef.current
+      const { center, pixelsPerUnit } = stateRef.current
+      const halfRange = cssWidthRef.current / (2 * pixelsPerUnit)
+      const viewLeft = center - halfRange
+      const viewRight = center + halfRange
+
+      // Direction hint: use lower/higher numbers, not left/right
       const dir = prox?.targetDirection
-      const dirHint = dir === 'left' ? 'The number is to the LEFT of the screen — the child should scroll left.'
-        : dir === 'right' ? 'The number is to the RIGHT of the screen — the child should scroll right.'
-        : 'The number is on screen.'
-      const zoomHint = prox?.needsMoreZoom ? ' The child needs to ZOOM IN more.' : ''
-      sendSystemMessage(`[Game update: zone=${audioZone}. ${dirHint}${zoomHint}]`)
+      const dirHint = dir === 'left'
+        ? 'The target is at a LOWER number than what\'s on screen — the child needs to move toward smaller numbers (scroll left).'
+        : dir === 'right'
+          ? 'The target is at a HIGHER number than what\'s on screen — the child needs to move toward bigger numbers (scroll right).'
+          : 'The target is somewhere on screen right now.'
+
+      // Distance hint: how far off-center the child is
+      const dist = Math.abs(target - center)
+      const distHint = dist > 100 ? `About ${Math.round(dist)} away from where the child is looking.`
+        : dist > 10 ? `Roughly ${Math.round(dist)} units away.`
+        : dist > 1 ? `Only about ${Math.round(dist * 10) / 10} away — getting close!`
+        : `Very close — less than 1 unit away!`
+
+      // Precision hint: instead of "zoom in", explain what the child needs
+      let precisionHint = ''
+      if (prox?.needsMoreZoom) {
+        const precision = getTargetPrecisionForHint(target)
+        if (precision >= 2) {
+          precisionHint = ' The target has hundredths-level precision — the child needs to zoom in enough to see individual hundredths (like 3.14 vs 3.15).'
+        } else if (precision === 1) {
+          precisionHint = ' The target has a decimal digit — the child needs to zoom in enough to see tenths (like 2.3 vs 2.4).'
+        } else {
+          precisionHint = ' The child needs to zoom in a bit more to spot the exact number.'
+        }
+      }
+
+      // Viewport context: what range is currently visible
+      const viewHint = `The child is currently looking at numbers from about ${formatApprox(viewLeft)} to ${formatApprox(viewRight)}.`
+
+      sendSystemMessage(
+        `[Game update: zone=${audioZone}. ${viewHint} ${dirHint} ${distHint}${precisionHint}\n` +
+        `IMPORTANT: Say "lower numbers" or "higher numbers" when giving direction hints, NOT "left" or "right" — children often confuse screen directions. ` +
+        `Instead of telling the child to "zoom in", give them useful hints about the number's neighborhood — for example, "it's between 30 and 40" or "think about multiples of 5". ` +
+        `Let their curiosity guide them!]`
+      )
     }
-  }, [audioZone, voiceState, sendSystemMessage])
+  }, [audioZone, voiceState, sendSystemMessage, stateRef, cssWidthRef])
 
   // Audio feedback for the game (muted during active voice calls — model gives verbal hints)
   useFindTheNumberAudio(audioZone, proximityRef, voiceState === 'active')
@@ -1486,8 +1538,9 @@ export function NumberLine() {
   }
 
   // Assign indicate implementation — replaces any active indicator and drives redraws
-  indicateFnRef.current = (numbers: number[], range?: { from: number; to: number }) => {
-    indicatorRef.current = { numbers, range, startMs: performance.now() }
+  indicateFnRef.current = (numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => {
+    const holdMs = durationSeconds != null ? Math.max(1, Math.min(30, durationSeconds)) * 1000 : 4000
+    indicatorRef.current = { numbers, range, startMs: performance.now(), holdMs }
     // Drive redraws for the indicator's ~5.2s lifecycle
     const tick = () => {
       if (!indicatorRef.current) return

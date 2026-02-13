@@ -225,7 +225,7 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'start_find_number',
             description:
-              'Start a "find the number" game on the number line. Set a target number and challenge the child to find where it lives. The target is HIDDEN from the child — they only see "Find the mystery number!" You must give verbal clues to help them: describe the number, give hints about its value, say warmer/colder as they navigate. You will receive live proximity updates (zone, direction, zoom needs). Great for teaching number sense!',
+              'Start a "find the number" game on the number line. Set a target number and challenge the child to find where it lives. The target is HIDDEN from the child — they only see "Find the mystery number!" You will receive proximity updates with zone (far/warm/hot/found), visible range, and distance info. IMPORTANT HINTS: Always say "go toward higher/lower numbers" instead of "left/right" — children confuse screen directions. Instead of saying "zoom in", give useful clues about the number\'s neighborhood: "it\'s between 30 and 40", "think about multiples of 10", "it\'s close to a number you know". Great for teaching number sense!',
             parameters: {
               type: 'object',
               properties: {
@@ -248,7 +248,7 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'indicate',
             description:
-              'Highlight specific numbers or a range on the number line with a temporary glowing visual indicator. Use this to point things out — "see these primes?", "this whole area here", "look, I live right here". The highlight fades after a few seconds. You can combine with look_at to first navigate, then highlight.',
+              'Highlight specific numbers or a range on the number line with a temporary glowing visual indicator. Use this to point things out — "see these primes?", "this whole area here", "look, I live right here". IMPORTANT: If the numbers or range you want to highlight are outside what the child can currently see, call look_at FIRST to navigate there, THEN call indicate — otherwise the highlight will be invisible. You can control how long the highlight stays visible with duration_seconds.',
             parameters: {
               type: 'object',
               properties: {
@@ -265,6 +265,10 @@ export async function POST(request: Request) {
                   },
                   required: ['from', 'to'],
                   description: 'A range to highlight as a shaded band on the number line',
+                },
+                duration_seconds: {
+                  type: 'number',
+                  description: 'How long the highlight stays visible (default 4). Use longer durations (8-15) when explaining something about the highlighted region, shorter (2-3) for quick "look here" moments.',
                 },
               },
             },
