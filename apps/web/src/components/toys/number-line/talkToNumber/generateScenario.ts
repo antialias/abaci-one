@@ -25,7 +25,19 @@ export interface ScenarioEvolution {
   suggestion: string
 }
 
-const SCENARIO_PROMPT = `You generate opening scenarios for a phone call between a child (age 5-10) and a number on a number line.
+function buildScenarioPrompt(
+  explorations: ExplorationDescriptor[],
+  recommendedExplorations?: string[],
+): string {
+  const explorationList = explorations
+    .map(e => `${e.id} (${e.name} — ${e.shortDesc})`)
+    .join(', ')
+
+  const recommendedNote = recommendedExplorations?.length
+    ? `\nThe user currently sees recommendations for these explorations on screen: ${recommendedExplorations.join(', ')}. You may loosely reference one if it fits, but it should NOT be the main plot.`
+    : ''
+
+  return `You generate opening scenarios for a phone call between a child (age 5-10) and a number on a number line.
 
 The number has just answered the phone. Generate a compelling scenario — something the number was in the middle of when the phone rang. It should feel like dropping into the middle of a story.
 
@@ -34,7 +46,7 @@ RULES:
 - The scenario should be about the number's OWN life — something it was personally dealing with. Think: a personal puzzle, something weird it noticed, a project it's working on, a discovery it just made.
 - Other numbers can be MENTIONED in passing (e.g. "my neighbor 7 said something weird earlier") but should NOT be central characters the number urgently needs to call or bring into the conversation. The scenario is between THIS number and the CHILD — not between numbers.
 - involvedNumbers should usually be empty or contain at most 1 number with a minor background role. Do NOT create scenarios that depend on calling or adding other numbers to resolve.
-- You MAY optionally note a loose connection to one of these explorations IF it genuinely fits: phi (Golden Ratio spirals), pi (circles), tau (full turns), e (growth), gamma (Euler-Mascheroni harmonic series), sqrt2 (diagonal of a square), ramanujan (the surprising -1/12). But most scenarios should have relevantExploration: null. The exploration should NEVER be the main plot.
+- You MAY optionally note a loose connection to one of these explorations IF it genuinely fits: ${explorationList}. But most scenarios should have relevantExploration: null. The exploration should NEVER be the main plot.${recommendedNote}
 - Pick an archetype that fits: mystery, puzzle, discovery, quest, emergency, celebration
 - The hook should be a single intriguing sentence the number can say right after answering
 - Keep the situation to 2-3 sentences max
@@ -48,6 +60,7 @@ Respond with JSON matching this schema:
   "archetype": "mystery",
   "openingMood": "breathless and excited"
 }`
+}
 
 const EVOLUTION_PROMPT = `You advance a story happening during a phone call between a child (age 5-10) and a number character.
 
@@ -74,10 +87,14 @@ export async function generateScenario(
   number: number,
   traitsSummary: string,
   neighborsSummary: string,
+  availableExplorations: ExplorationDescriptor[],
+  recommendedExplorations?: string[],
 ): Promise<GeneratedScenario | null> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
+
+    const prompt = buildScenarioPrompt(availableExplorations, recommendedExplorations)
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -91,7 +108,7 @@ export async function generateScenario(
         max_tokens: 500,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: SCENARIO_PROMPT },
+          { role: 'system', content: prompt },
           {
             role: 'user',
             content: `Number: ${number}

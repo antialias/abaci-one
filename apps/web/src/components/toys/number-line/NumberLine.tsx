@@ -1193,6 +1193,15 @@ export function NumberLine() {
     setTappedIntValue(null)
   }, [draw])
 
+  // Helper: get currently visible exploration recommendations (if any)
+  const getVisibleRecommendations = useCallback((): string[] | undefined => {
+    const ds = demoStateRef.current
+    if (ds.revealProgress >= 1 && ds.constantId) {
+      return DEMO_RECOMMENDATIONS[ds.constantId]
+    }
+    return undefined
+  }, [demoStateRef])
+
   // --- Long-press handler for "Talk to a Number" ---
   const handleCanvasLongPress = useCallback((screenX: number, _screenY: number) => {
     console.log('[NumberLine] handleCanvasLongPress fired, screenX:', screenX, 'current callingNumber:', callingNumber, 'voiceState:', voiceStateRef.current)
@@ -1206,8 +1215,8 @@ export function NumberLine() {
     const numberToCall = dist < 30 ? nearest : parseFloat(value.toPrecision(6))
     console.log('[NumberLine] calling setCallingNumber(%s) and dial(%s)', numberToCall, numberToCall)
     setCallingNumber(numberToCall)
-    dial(numberToCall)
-  }, [dial, callingNumber])
+    dial(numberToCall, { recommendedExplorations: getVisibleRecommendations() })
+  }, [dial, callingNumber, getVisibleRecommendations])
 
   // Touch/mouse/wheel handling
   const handleStateChange = useCallback(() => {
@@ -1429,8 +1438,8 @@ export function NumberLine() {
     setCallingNumber(n)
     setTappedConstantId(null)
     setTappedIntValue(null)
-    dial(n)
-  }, [dial])
+    dial(n, { recommendedExplorations: getVisibleRecommendations() })
+  }, [dial, getVisibleRecommendations])
 
   const handleExploreConstant = useCallback((constantId: string) => {
     console.log('[NumberLine] handleExploreConstant — calling audioManager.stop() then startDemo', constantId)

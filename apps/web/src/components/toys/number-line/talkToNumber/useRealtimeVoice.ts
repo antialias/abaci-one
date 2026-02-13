@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { playRingTone } from './ringTone'
 import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber, assignUniqueVoice } from './generateNumberPersonality'
 import type { GeneratedScenario } from './generateScenario'
+import { EXPLORATION_IDS } from './explorationRegistry'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
 
@@ -31,10 +32,14 @@ interface UseRealtimeVoiceOptions {
   isExplorationActiveRef?: React.RefObject<boolean>
 }
 
+interface DialOptions {
+  recommendedExplorations?: string[]
+}
+
 interface UseRealtimeVoiceReturn {
   state: CallState
   error: string | null
-  dial: (number: number) => void
+  dial: (number: number, options?: DialOptions) => void
   hangUp: () => void
   timeRemaining: number | null
   isSpeaking: boolean
@@ -176,7 +181,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     setError(null)
   }, [cleanup])
 
-  const dial = useCallback(async (number: number) => {
+  const dial = useCallback(async (number: number, options?: DialOptions) => {
     // Don't start a new call if one is in progress (allow from transferring state)
     const cur = stateRef.current as CallState
     if (cur !== 'idle' && cur !== 'error' && cur !== 'transferring') return
@@ -225,7 +230,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       const res = await fetch('/api/realtime/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number }),
+        body: JSON.stringify({
+          number,
+          ...(options?.recommendedExplorations?.length && {
+            recommendedExplorations: options.recommendedExplorations,
+          }),
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Server error' }))
@@ -662,8 +672,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             try {
               const args = JSON.parse(msg.arguments || '{}')
               constantId = String(args.constant_id)
-              const valid = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'])
-              if (!valid.has(constantId)) throw new Error('invalid')
+              if (!EXPLORATION_IDS.has(constantId)) throw new Error('invalid')
             } catch {
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',

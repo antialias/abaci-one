@@ -9,11 +9,12 @@
 import { NextResponse } from 'next/server'
 import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { generateScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
+import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { number } = body
+    const { number, recommendedExplorations: rawRecommended } = body
 
     if (typeof number !== 'number' || !isFinite(number)) {
       return NextResponse.json(
@@ -30,12 +31,19 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate recommended explorations (filter to known IDs)
+    const recommendedExplorations: string[] | undefined = Array.isArray(rawRecommended)
+      ? rawRecommended.filter((id: unknown) => typeof id === 'string' && EXPLORATION_IDS.has(id as string))
+      : undefined
+
     // Generate a dynamic scenario (runs in parallel with nothing — fires before the session call)
     const scenario = await generateScenario(
       apiKey,
       number,
       getTraitSummary(number),
       getNeighborsSummary(number),
+      AVAILABLE_EXPLORATIONS,
+      recommendedExplorations?.length ? recommendedExplorations : undefined,
     )
     if (scenario) {
       console.log('[scenario] scenario generated:', scenario.archetype, '—', scenario.hook)
@@ -113,13 +121,13 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'start_exploration',
             description:
-              'Prepare an animated visual exploration of a mathematical constant on the number line. The animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. The number closest to the constant\'s value will be designated narrator. You will receive the full narration script and segment-by-segment cues. Available constants: phi (Golden Ratio), pi, tau, e (Euler\'s Number), gamma (Euler-Mascheroni), sqrt2 (Square Root of 2), ramanujan (Ramanujan Summation / −1/12).',
+              `Prepare an animated visual exploration of a mathematical constant on the number line. The animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. The number closest to the constant's value will be designated narrator. You will receive the full narration script and segment-by-segment cues. Available constants: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}.`,
             parameters: {
               type: 'object',
               properties: {
                 constant_id: {
                   type: 'string',
-                  enum: ['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'],
+                  enum: AVAILABLE_EXPLORATIONS.map(e => e.id),
                   description: 'Which mathematical constant to explore',
                 },
               },
