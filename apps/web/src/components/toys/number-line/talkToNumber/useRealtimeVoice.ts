@@ -13,6 +13,8 @@ const TRANSFER_DELAY_MS = 1500 // show "Transferring..." before redialing
 interface UseRealtimeVoiceOptions {
   /** Called when the model transfers the call to another number */
   onTransfer?: (targetNumber: number) => void
+  /** Called when the model starts a constant exploration */
+  onStartExploration?: (constantId: string) => void
 }
 
 interface UseRealtimeVoiceReturn {
@@ -30,11 +32,16 @@ interface UseRealtimeVoiceReturn {
   currentSpeaker: number | null
   /** Remove a single number from a conference call */
   removeFromCall: (numberToRemove: number) => void
+  /** Send a system-level message to the voice agent (e.g. narration context).
+   *  Set promptResponse=true to have the model speak after receiving it. */
+  sendSystemMessage: (text: string, promptResponse?: boolean) => void
 }
 
 export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtimeVoiceReturn {
   const onTransferRef = useRef(options?.onTransfer)
   onTransferRef.current = options?.onTransfer
+  const onStartExplorationRef = useRef(options?.onStartExploration)
+  onStartExplorationRef.current = options?.onStartExploration
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
@@ -223,19 +230,25 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           let lastSpeakingLog = 0
           const checkSpeaking = () => {
-            if (stateRef.current !== 'active') return
-            analyser.getByteFrequencyData(dataArray)
-            let sum = 0
-            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
-            const avg = sum / dataArray.length
-            const nowSpeaking = avg > 15
-            // Log speaking state changes (throttled to 1/sec)
-            const now = Date.now()
-            if (now - lastSpeakingLog > 1000) {
-              lastSpeakingLog = now
-              console.log('[voice] audio level avg=%.1f isSpeaking=%s currentSpeaker=%s', avg, nowSpeaking, currentSpeakerRef.current)
+            const st = stateRef.current
+            // Stop the loop on terminal states
+            if (st === 'idle' || st === 'error' || st === 'ending') return
+
+            // Only analyse audio once active (keep loop alive during ringing)
+            if (st === 'active') {
+              analyser.getByteFrequencyData(dataArray)
+              let sum = 0
+              for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
+              const avg = sum / dataArray.length
+              const nowSpeaking = avg > 15
+              // Log speaking state changes (throttled to 1/sec)
+              const now = Date.now()
+              if (now - lastSpeakingLog > 1000) {
+                lastSpeakingLog = now
+                console.log('[voice] audio level avg=%.1f isSpeaking=%s currentSpeaker=%s', avg, nowSpeaking, currentSpeakerRef.current)
+              }
+              setIsSpeaking(nowSpeaking)
             }
-            setIsSpeaking(nowSpeaking)
             requestAnimationFrame(checkSpeaking)
           }
           requestAnimationFrame(checkSpeaking)

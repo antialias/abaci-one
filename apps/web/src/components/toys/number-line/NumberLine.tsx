@@ -52,6 +52,8 @@ import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLine
 import { useRealtimeVoice } from './talkToNumber/useRealtimeVoice'
 import type { CallState } from './talkToNumber/useRealtimeVoice'
 import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCallOverlay'
+import { lerpViewport } from './viewportAnimation'
+import type { Viewport } from './viewportAnimation'
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
@@ -1112,9 +1114,77 @@ export function NumberLine() {
     draw()
   }, [anchorMax, mediumMax, draw])
 
-  // Redraw when conference numbers change (so newly added call boxes get positioned)
+  // Animate viewport to fit all conference call participants
+  const callFlyRef = useRef<{ src: Viewport; tgt: Viewport; startMs: number; raf: number } | null>(null)
   useEffect(() => {
-    if (conferenceNumbers.length > 0 && voiceState === 'active') draw()
+    if (conferenceNumbers.length === 0 || voiceState !== 'active') {
+      // Cancel any in-progress fly animation
+      if (callFlyRef.current) {
+        cancelAnimationFrame(callFlyRef.current.raf)
+        callFlyRef.current = null
+      }
+      return
+    }
+
+    const cssWidth = cssWidthRef.current
+    if (cssWidth <= 0) return
+
+    // Compute target viewport that fits all numbers with padding
+    const lo = Math.min(...conferenceNumbers)
+    const hi = Math.max(...conferenceNumbers)
+    const span = hi - lo
+    const center = (lo + hi) / 2
+
+    let targetPpu: number
+    if (span === 0) {
+      // Single number — zoom to show ~10 units of context
+      targetPpu = cssWidth / 10
+    } else {
+      // Fit the range with 30% padding on each side
+      targetPpu = cssWidth * 0.4 / span
+    }
+    // Don't zoom in more than current level if we already fit
+    const currentPpu = stateRef.current.pixelsPerUnit
+    const screenLo = (center - lo) * currentPpu
+    const screenHi = (hi - center) * currentPpu
+    const alreadyFits = screenLo < cssWidth * 0.4 && screenHi < cssWidth * 0.4
+      && Math.abs(stateRef.current.center - center) * currentPpu < cssWidth * 0.3
+    if (alreadyFits && conferenceNumbers.length <= 1) {
+      draw()
+      return
+    }
+
+    // Clamp: don't zoom out excessively, don't zoom in past current level
+    targetPpu = Math.min(targetPpu, Math.max(currentPpu, cssWidth / 10))
+
+    const src: Viewport = { center: stateRef.current.center, pixelsPerUnit: stateRef.current.pixelsPerUnit }
+    const tgt: Viewport = { center, pixelsPerUnit: targetPpu }
+    const startMs = performance.now()
+    const durationMs = 800
+
+    // Cancel previous animation
+    if (callFlyRef.current) cancelAnimationFrame(callFlyRef.current.raf)
+
+    const fly = callFlyRef.current = { src, tgt, startMs, raf: 0 }
+
+    const tick = () => {
+      const elapsed = performance.now() - fly.startMs
+      const t = lerpViewport(fly.src, fly.tgt, elapsed, durationMs, stateRef.current)
+      draw()
+      if (t < 1) {
+        fly.raf = requestAnimationFrame(tick)
+      } else {
+        callFlyRef.current = null
+      }
+    }
+    fly.raf = requestAnimationFrame(tick)
+
+    return () => {
+      if (callFlyRef.current) {
+        cancelAnimationFrame(callFlyRef.current.raf)
+        callFlyRef.current = null
+      }
+    }
   }, [conferenceNumbers, voiceState, draw])
 
   // Find tapped constant data for info card
