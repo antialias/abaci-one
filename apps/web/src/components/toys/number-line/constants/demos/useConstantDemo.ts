@@ -42,6 +42,22 @@ const DEVIATION_THRESHOLD = 0.4
 /** Constants that have demos available */
 export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'])
 
+/** Compute the target viewport for a given constant's demo. */
+function getDemoViewport(
+  constantId: string,
+  cssWidth: number,
+  cssHeight: number
+): { center: number; pixelsPerUnit: number } {
+  if (constantId === 'phi') return goldenRatioDemoViewport(cssWidth, cssHeight)
+  if (constantId === 'pi') return piDemoViewport(cssWidth, cssHeight)
+  if (constantId === 'tau') return tauDemoViewport(cssWidth, cssHeight)
+  if (constantId === 'e') return eDemoViewport(cssWidth, cssHeight)
+  if (constantId === 'gamma') return gammaDemoViewport(cssWidth, cssHeight)
+  if (constantId === 'sqrt2') return sqrt2DemoViewport(cssWidth, cssHeight)
+  if (constantId === 'ramanujan') return ramanujanDemoViewport(cssWidth, cssHeight)
+  return { center: 0, pixelsPerUnit: 100 }
+}
+
 // ── Viewport zoom keyframes ────────────────────────────────────────
 //
 // Demos that zoom into their constant's decimal expansion define
@@ -105,21 +121,29 @@ function getZoomKeyframes(
   if (constantId === 'ramanujan') {
     const base = ramanujanDemoViewport(cssWidth, cssHeight)
     return [
-      // Phase 0: divergence view [0,15] — dots accelerate off-screen
-      { progress: 0.00, ...base },
-      // Phases 1-2: transition to s-parameter view [−0.5,6]
-      { progress: 0.10, center: 2.75, pixelsPerUnit: ppuForRange(cssWidth, -0.5, 6) },
-      // Phases 3-5: hold view for curve + pole [−1,6]
-      { progress: 0.25, center: 2.5,  pixelsPerUnit: ppuForRange(cssWidth, -1, 6) },
-      { progress: 0.48, center: 2.5,  pixelsPerUnit: ppuForRange(cssWidth, -1, 6) },
-      // Phases 6-7: widen for extension past pole [−3,5]
-      { progress: 0.55, center: 1,    pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
-      { progress: 0.68, center: 1,    pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
-      // Phases 8-9: follow curve to s=−1 [−3,3]
-      { progress: 0.76, center: 0,    pixelsPerUnit: ppuForRange(cssWidth, -3, 3) },
-      // Phases 10-11: zoom tight for −1/12 reveal [−2,1]
-      { progress: 0.85, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
-      { progress: 1.00, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
+      // Act 1: divergence [0,15] — hold wide view for racing dot
+      { progress: 0.000, ...base },
+      { progress: 0.075, ...base },  // Hold through diverge + early hook
+      // Act 2: harmonic/square convergence — zoom to s-parameter view [0,4]
+      { progress: 0.100, center: 2,    pixelsPerUnit: ppuForRange(cssWidth, 0, 4) },
+      // Act 3: knob/curve — widen to see s=2,3,4 points [−0.5,6.5]
+      { progress: 0.260, center: 3,    pixelsPerUnit: ppuForRange(cssWidth, -0.5, 6.5) },
+      // Act 4: pole — hold view for curve + approaching wall [−1,6]
+      { progress: 0.420, center: 2.5,  pixelsPerUnit: ppuForRange(cssWidth, -1, 6) },
+      // Act 5: bridge — failed attempts + smooth continuation [−3,5]
+      { progress: 0.520, center: 1,    pixelsPerUnit: ppuForRange(cssWidth, -3, 5) },
+      // Act 5→6 transition: crossing zero, flipper concept [−3,3]
+      { progress: 0.650, center: 0,    pixelsPerUnit: ppuForRange(cssWidth, -3, 3) },
+      // Act 6: flipper + connect — see both sides [−2,2]
+      { progress: 0.700, center: 0,    pixelsPerUnit: ppuForRange(cssWidth, -2, 2) },
+      // Act 7: volcano — tight on s=−1 [−2,1]
+      { progress: 0.810, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
+      // Act 7: trust — zoom OUT to see convergent points at s=2,3,4 [−1.5,5]
+      { progress: 0.850, center: 1.75, pixelsPerUnit: ppuForRange(cssWidth, -1.5, 5) },
+      // Act 7: reveal — zoom back tight for −1/12 starburst [−2,1]
+      { progress: 0.895, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
+      // Act 7: hold tight for recap + ghost note
+      { progress: 1.000, center: -0.5, pixelsPerUnit: ppuForRange(cssWidth, -2, 1) },
     ]
   }
 
@@ -182,6 +206,8 @@ export function useConstantDemo(
 ): {
   demoState: React.MutableRefObject<DemoState>
   startDemo: (constantId: string) => void
+  /** Restore a demo at a specific progress (skip fly-in, start paused) */
+  restoreDemo: (constantId: string, progress: number) => void
   /** Called every frame from draw() to update animation and detect deviation */
   tickDemo: () => void
   cancelDemo: () => void
@@ -218,26 +244,7 @@ export function useConstantDemo(
   const startDemo = useCallback((constantId: string) => {
     if (!DEMO_AVAILABLE.has(constantId)) return
 
-    const cssWidth = cssWidthRef.current
-    const cssHeight = cssHeightRef.current
-
-    // Compute target viewport for this constant's demo
-    let target = { center: 0, pixelsPerUnit: 100 }
-    if (constantId === 'phi') {
-      target = goldenRatioDemoViewport(cssWidth, cssHeight)
-    } else if (constantId === 'pi') {
-      target = piDemoViewport(cssWidth, cssHeight)
-    } else if (constantId === 'tau') {
-      target = tauDemoViewport(cssWidth, cssHeight)
-    } else if (constantId === 'e') {
-      target = eDemoViewport(cssWidth, cssHeight)
-    } else if (constantId === 'gamma') {
-      target = gammaDemoViewport(cssWidth, cssHeight)
-    } else if (constantId === 'sqrt2') {
-      target = sqrt2DemoViewport(cssWidth, cssHeight)
-    } else if (constantId === 'ramanujan') {
-      target = ramanujanDemoViewport(cssWidth, cssHeight)
-    }
+    const target = getDemoViewport(constantId, cssWidthRef.current, cssHeightRef.current)
 
     // Store source viewport for interpolation
     sourceViewportRef.current = {
@@ -418,11 +425,36 @@ export function useConstantDemo(
     onRedraw()
   }, [stateRef, onRedraw, cssWidthRef, cssHeightRef])
 
+  /**
+   * Restore a demo at a specific progress point (e.g. from URL params on reload).
+   * Unlike startDemo, this skips the fly-in animation, snaps the viewport
+   * immediately, and starts paused so the user can press play when ready.
+   */
+  const restoreDemo = useCallback((constantId: string, progress: number) => {
+    if (!DEMO_AVAILABLE.has(constantId)) return
+    const target = getDemoViewport(constantId, cssWidthRef.current, cssHeightRef.current)
+
+    // Snap viewport (skip fly-in animation)
+    sourceViewportRef.current = { ...target }
+    targetViewportRef.current = { ...target }
+    snapViewport(target, stateRef.current)
+
+    // Initialize state — phase 'animating' + isPaused so tickDemo holds position
+    demoStateRef.current = { phase: 'animating', constantId, revealProgress: 0, opacity: 1 }
+    isPausedRef.current = true
+    userInteractedRef.current = false
+    animStartRef.current = performance.now()
+    startLoop()
+
+    // Delegate to setRevealProgress for zoom keyframe handling + viewport snap
+    setRevealProgress(Math.max(0, Math.min(1, progress)))
+  }, [stateRef, cssWidthRef, cssHeightRef, startLoop, setRevealProgress])
+
   const markUserInteraction = useCallback(() => {
     const ds = demoStateRef.current
     if (ds.phase === 'idle' || ds.phase === 'fading') return
     userInteractedRef.current = true
   }, [])
 
-  return { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress, markUserInteraction }
+  return { demoState: demoStateRef, startDemo, restoreDemo, tickDemo, cancelDemo, setRevealProgress, markUserInteraction }
 }

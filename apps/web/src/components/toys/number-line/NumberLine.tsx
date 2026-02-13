@@ -17,7 +17,7 @@ import { MATH_CONSTANTS } from './constants/constantsData'
 import { computeAllConstantVisibilities } from './constants/computeConstantVisibility'
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
-import { useConstantDemo } from './constants/demos/useConstantDemo'
+import { useConstantDemo, DEMO_AVAILABLE } from './constants/demos/useConstantDemo'
 import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress } from './constants/demos/goldenRatioDemo'
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
@@ -49,6 +49,8 @@ import { renderSieveOverlay, computeSieveTickTransforms, SWEEP_MAX_N, getSieveTr
 import type { SieveTickTransform } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
+import { useRealtimeVoice } from './talkToNumber/useRealtimeVoice'
+import { PhoneCallOverlay } from './talkToNumber/PhoneCallOverlay'
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
@@ -65,6 +67,52 @@ function scrubberToProgress(s: number): number {
 function setScrubberLogBase(base: number): void {
   scrubberLogBase = Math.max(1, base)
   scrubberLogDenom = Math.log(Math.max(1.01, scrubberLogBase))
+}
+
+// ── URL param persistence for demo playback state ────────────────────
+let lastUrlUpdateMs = 0
+const URL_UPDATE_INTERVAL_MS = 1000
+
+function updateDemoUrlParams(constantId: string | null, progress: number) {
+  const now = performance.now()
+  // Debounce writes, but always allow immediate clears
+  if (constantId !== null && now - lastUrlUpdateMs < URL_UPDATE_INTERVAL_MS) return
+  lastUrlUpdateMs = now
+  const url = new URL(window.location.href)
+  if (constantId) {
+    url.searchParams.set('demo', constantId)
+    url.searchParams.set('p', progress.toFixed(3))
+  } else {
+    url.searchParams.delete('demo')
+    url.searchParams.delete('p')
+  }
+  if (url.href !== window.location.href) {
+    window.history.replaceState(window.history.state, '', url.href)
+  }
+}
+
+// ── "Explore next" recommendation graph ──────────────────────────────
+// Directed, strongly connected so every constant is reachable from any other.
+// Each entry maps constantId → [recommended ids] (2-3 per constant).
+const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
+  phi:       ['sqrt2', 'pi',       'e'],
+  pi:        ['tau',   'phi',      'ramanujan'],
+  tau:       ['pi',    'e',        'gamma'],
+  e:         ['gamma', 'pi',       'phi'],
+  gamma:     ['e',     'ramanujan', 'sqrt2'],
+  sqrt2:     ['phi',   'gamma',    'tau'],
+  ramanujan: ['pi',    'e',        'sqrt2'],
+}
+
+// Display metadata for recommendation cards
+const DEMO_DISPLAY: Record<string, { symbol: string; name: string }> = {
+  phi:       { symbol: 'φ',    name: 'Golden Ratio' },
+  pi:        { symbol: 'π',    name: 'Pi' },
+  tau:       { symbol: 'τ',    name: 'Tau' },
+  e:         { symbol: 'e',    name: "Euler's Number" },
+  gamma:     { symbol: 'γ',    name: 'Euler-Mascheroni' },
+  sqrt2:     { symbol: '√2',   name: 'Root 2' },
+  ramanujan: { symbol: '−1⁄12', name: 'Ramanujan' },
 }
 
 // Narration configs for all constant demos (must be module-level for ref stability)
@@ -161,11 +209,15 @@ export function NumberLine() {
   // Use a ref to break the circular dependency: demo needs draw(), but draw() is defined later
   const drawFnRef = useRef<() => void>(() => {})
   const demoRedraw = useCallback(() => drawFnRef.current(), [])
-  const { demoState: demoStateRef, startDemo, tickDemo, cancelDemo, setRevealProgress, markUserInteraction } = useConstantDemo(
+  const { demoState: demoStateRef, startDemo, restoreDemo, tickDemo, cancelDemo, setRevealProgress, markUserInteraction } = useConstantDemo(
     stateRef, cssWidthRef, cssHeightRef, demoRedraw
   )
   // --- Constant demo narration (all constants) ---
   const narration = useConstantDemoNarration(demoStateRef, setRevealProgress, NARRATION_CONFIGS)
+
+  // --- Demo URL restore (runs once on first resize) ---
+  const hasRestoredRef = useRef(false)
+  const [restoredFromUrl, setRestoredFromUrl] = useState(false)
 
   // --- Demo scrubber state ---
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
@@ -173,8 +225,14 @@ export function NumberLine() {
   const scrubberThumbRef = useRef<HTMLDivElement>(null)
   const scrubberThumbVisualRef = useRef<HTMLDivElement>(null)
   const scrubberGapRef = useRef<HTMLDivElement>(null)
+  const playPauseBtnRef = useRef<HTMLButtonElement>(null)
+  const timeDisplayRef = useRef<HTMLDivElement>(null)
+  const segmentTicksRef = useRef<HTMLDivElement>(null)
+  const segmentLabelRef = useRef<HTMLDivElement>(null)
+  const lastTickConstantIdRef = useRef<string | null>(null)
   const [demoActive, setDemoActive] = useState(false)
   const isDraggingScrubberRef = useRef(false)
+  const scrubberHoverProgressRef = useRef<number | null>(null)
 
   // --- Prime Tour state ---
   // Uses the same drawFnRef/demoRedraw pattern as useConstantDemo
@@ -208,6 +266,21 @@ export function NumberLine() {
   const renderedPrimePositionsRef = useRef<{ value: number; screenX: number; note?: string }[]>([])
   // Current interesting primes for the visible range
   const interestingPrimesRef = useRef<InterestingPrime[]>([])
+
+  // --- Talk to a Number state ---
+  const [callingNumber, setCallingNumber] = useState<number | null>(null)
+  const handleVoiceTransfer = useCallback((targetNumber: number) => {
+    setCallingNumber(targetNumber)
+  }, [])
+  const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, transferTarget, conferenceNumbers } = useRealtimeVoice({
+    onTransfer: handleVoiceTransfer,
+  })
+  // Clear callingNumber when call ends (e.g. model hangs up)
+  useEffect(() => {
+    if (voiceState === 'idle' && callingNumber !== null) {
+      setCallingNumber(null)
+    }
+  }, [voiceState, callingNumber])
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -383,6 +456,18 @@ export function NumberLine() {
       const ds = demoStateRef.current
       if (ds.phase === 'animating' && ds.revealProgress > 0) {
         narration.startIfNeeded(ds.constantId)
+      }
+    }
+
+    // Write demo state to URL params (debounced).
+    // Skip until restore has been attempted — otherwise the first draw()
+    // (which runs before restore) clears the params while demo is still idle.
+    if (hasRestoredRef.current) {
+      const ds = demoStateRef.current
+      if (ds.phase !== 'idle' && ds.constantId) {
+        updateDemoUrlParams(ds.constantId, ds.revealProgress)
+      } else {
+        updateDemoUrlParams(null, 0)
       }
     }
 
@@ -572,6 +657,98 @@ export function NumberLine() {
         scrubberGapRef.current.style.opacity = isActive && ds.opacity > 0.1 ? '1' : '0'
       } else {
         scrubberGapRef.current.style.opacity = '0'
+      }
+    }
+    // Sync play/pause button DOM
+    if (playPauseBtnRef.current) {
+      playPauseBtnRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
+      playPauseBtnRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
+      // Swap SVG path based on narrating state
+      const svgPath = playPauseBtnRef.current.querySelector('path')
+      if (svgPath) {
+        svgPath.setAttribute('d', narration.isNarrating.current
+          ? 'M6 4h4v16H6zm8 0h4v16h-4z'   // pause icon
+          : 'M8 5v14l11-7z'                 // play icon
+        )
+      }
+    }
+    // Sync time display DOM
+    if (timeDisplayRef.current) {
+      timeDisplayRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
+      const cfg = ds.constantId ? NARRATION_CONFIGS[ds.constantId] : null
+      if (cfg && cfg.segments.length > 0) {
+        // Compute elapsed and total designed time from revealProgress
+        let elapsedMs = 0
+        let totalMs = 0
+        for (const seg of cfg.segments) {
+          const segSpan = seg.endProgress - seg.startProgress
+          totalMs += seg.animationDurationMs
+          if (ds.revealProgress >= seg.endProgress) {
+            elapsedMs += seg.animationDurationMs
+          } else if (ds.revealProgress > seg.startProgress) {
+            const frac = segSpan > 0 ? (ds.revealProgress - seg.startProgress) / segSpan : 0
+            elapsedMs += frac * seg.animationDurationMs
+          }
+        }
+        const fmtTime = (ms: number) => {
+          const s = Math.round(ms / 1000)
+          const m = Math.floor(s / 60)
+          const sec = s % 60
+          return `${m}:${String(sec).padStart(2, '0')}`
+        }
+        timeDisplayRef.current.textContent = `${fmtTime(elapsedMs)} / ${fmtTime(totalMs)}`
+      } else {
+        timeDisplayRef.current.textContent = ''
+      }
+    }
+    // Sync segment tick marks (rebuild only when constantId changes)
+    if (segmentTicksRef.current) {
+      const cid = ds.constantId
+      if (cid !== lastTickConstantIdRef.current) {
+        lastTickConstantIdRef.current = cid
+        const cfg = cid ? NARRATION_CONFIGS[cid] : null
+        if (cfg && cfg.segments.length > 0) {
+          const boundaries = new Set<number>()
+          for (const seg of cfg.segments) {
+            if (seg.startProgress > 0.001 && seg.startProgress < 0.999) boundaries.add(seg.startProgress)
+            if (seg.endProgress > 0.001 && seg.endProgress < 0.999) boundaries.add(seg.endProgress)
+          }
+          const isDark = resolvedTheme === 'dark'
+          const tickColor = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'
+          let html = ''
+          for (const bp of boundaries) {
+            const pct = progressToScrubber(bp) * 100
+            html += `<div data-element="segment-tick" style="position:absolute;left:${pct.toFixed(3)}%;top:50%;width:1.5px;height:12px;transform:translateX(-50%) translateY(-50%);background:${tickColor};border-radius:0.75px;pointer-events:none"></div>`
+          }
+          segmentTicksRef.current.innerHTML = html
+        } else {
+          segmentTicksRef.current.innerHTML = ''
+        }
+      }
+    }
+    // Sync floating segment label (visible while scrubbing or hovering)
+    if (segmentLabelRef.current) {
+      // Determine which progress value to use for label lookup:
+      // dragging takes priority, then hover, otherwise hidden
+      const labelProgress = isDraggingScrubberRef.current
+        ? ds.revealProgress
+        : scrubberHoverProgressRef.current
+      if (labelProgress !== null && isActive && ds.constantId) {
+        const cfg = NARRATION_CONFIGS[ds.constantId]
+        const seg = cfg?.segments.find(
+          s => labelProgress >= s.startProgress && labelProgress < s.endProgress
+        ) ?? cfg?.segments[cfg.segments.length - 1] // fallback to last if at 1.0
+        if (seg?.scrubberLabel) {
+          const midProgress = (seg.startProgress + seg.endProgress) / 2
+          const midPct = progressToScrubber(midProgress) * 100
+          segmentLabelRef.current.style.opacity = '1'
+          segmentLabelRef.current.style.left = `${midPct}%`
+          segmentLabelRef.current.textContent = seg.scrubberLabel
+        } else {
+          segmentLabelRef.current.style.opacity = '0'
+        }
+      } else {
+        segmentLabelRef.current.style.opacity = '0'
       }
     }
     // Sync React state for conditional rendering (batch with rAF)
@@ -821,8 +998,23 @@ export function NumberLine() {
     setTappedIntValue(null)
   }, [draw])
 
+  // --- Long-press handler for "Talk to a Number" ---
+  const handleCanvasLongPress = useCallback((screenX: number, _screenY: number) => {
+    const cssWidth = cssWidthRef.current
+    const state = stateRef.current
+    const value = screenXToNumber(screenX, state.center, state.pixelsPerUnit, cssWidth)
+    // Snap to nearest integer if close enough
+    const nearest = Math.round(value)
+    const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
+    const dist = Math.abs(screenX - nearestScreenX)
+    const numberToCall = dist < 30 ? nearest : parseFloat(value.toPrecision(6))
+    setCallingNumber(numberToCall)
+    dial(numberToCall)
+  }, [dial])
+
   // Touch/mouse/wheel handling
   const handleStateChange = useCallback(() => {
+    setRestoredFromUrl(false)
     markUserInteraction()
     scheduleRedraw()
   }, [markUserInteraction, scheduleRedraw])
@@ -834,6 +1026,7 @@ export function NumberLine() {
     onZoomVelocity: handleZoomVelocity,
     onTap: handleCanvasTap,
     onHover: handleHover,
+    onLongPress: handleCanvasLongPress,
   })
 
   // ResizeObserver for responsive canvas sizing
@@ -849,6 +1042,22 @@ export function NumberLine() {
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
       draw()
+
+      // Restore demo from URL params on first resize (canvas dimensions now set)
+      if (!hasRestoredRef.current) {
+        hasRestoredRef.current = true
+        const params = new URLSearchParams(window.location.search)
+        const demoId = params.get('demo')
+        const progressStr = params.get('p')
+        if (demoId && DEMO_AVAILABLE.has(demoId)) {
+          const progress = progressStr !== null ? parseFloat(progressStr) : 0
+          if (!isNaN(progress)) {
+            restoreDemo(demoId, progress)
+            narration.markTriggered(demoId)
+            setRestoredFromUrl(true)
+          }
+        }
+      }
     }
 
     const observer = new ResizeObserver(resize)
@@ -906,6 +1115,13 @@ export function NumberLine() {
     setTappedConstantId(null)
   }, [audioManager])
 
+  const handleCallNumber = useCallback((n: number) => {
+    setCallingNumber(n)
+    setTappedConstantId(null)
+    setTappedIntValue(null)
+    dial(n)
+  }, [dial])
+
   const handleExploreConstant = useCallback((constantId: string) => {
     console.log('[NumberLine] handleExploreConstant — calling audioManager.stop() then startDemo', constantId)
     audioManager.stop()
@@ -956,20 +1172,51 @@ export function NumberLine() {
   }, [startTour, cancelDemo])
 
   // --- Scrubber pointer handlers ---
-  const scrubberProgressFromPointer = useCallback((clientX: number) => {
+  /** Snap progress to a segment boundary if within 20px on screen. */
+  const snapToSegmentBoundary = useCallback((rawProgress: number, clientX: number): number => {
+    const track = scrubberTrackRef.current
+    const cid = demoStateRef.current.constantId
+    if (!track || !cid) return rawProgress
+    const cfg = NARRATION_CONFIGS[cid]
+    if (!cfg) return rawProgress
+
+    const rect = track.getBoundingClientRect()
+    const boundaries: number[] = []
+    for (const seg of cfg.segments) {
+      boundaries.push(seg.startProgress, seg.endProgress)
+    }
+    // Deduplicate
+    const unique = [...new Set(boundaries)]
+
+    let bestProgress = rawProgress
+    let bestDist = 20 // 20px snap threshold
+    for (const bp of unique) {
+      const screenX = rect.left + progressToScrubber(bp) * rect.width
+      const dist = Math.abs(clientX - screenX)
+      if (dist < bestDist) {
+        bestDist = dist
+        bestProgress = bp
+      }
+    }
+    return bestProgress
+  }, [demoStateRef])
+
+  const scrubberProgressFromPointer = useCallback((clientX: number, snap = false) => {
     const track = scrubberTrackRef.current
     if (!track) return 0
     const rect = track.getBoundingClientRect()
     const linearPos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-    return scrubberToProgress(linearPos)
-  }, [])
+    const progress = scrubberToProgress(linearPos)
+    return snap ? snapToSegmentBoundary(progress, clientX) : progress
+  }, [snapToSegmentBoundary])
 
   const handleScrubberPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    setRestoredFromUrl(false)
     narration.stop() // stop TTS narration when user scrubs
     isDraggingScrubberRef.current = true
-    const progress = scrubberProgressFromPointer(e.clientX)
+    const progress = scrubberProgressFromPointer(e.clientX, true)
     setRevealProgress(progress)
     // Capture on the track element for reliable drag tracking
     scrubberTrackRef.current?.setPointerCapture(e.pointerId)
@@ -985,11 +1232,19 @@ export function NumberLine() {
   }, [scrubberProgressFromPointer, setRevealProgress, narration])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDraggingScrubberRef.current) return
-    e.preventDefault()
-    const progress = scrubberProgressFromPointer(e.clientX)
-    setRevealProgress(progress)
+    if (isDraggingScrubberRef.current) {
+      e.preventDefault()
+      const progress = scrubberProgressFromPointer(e.clientX, true)
+      setRevealProgress(progress)
+    } else {
+      // Track hover position for segment label display
+      scrubberHoverProgressRef.current = scrubberProgressFromPointer(e.clientX)
+    }
   }, [scrubberProgressFromPointer, setRevealProgress])
+
+  const handleScrubberPointerLeave = useCallback(() => {
+    scrubberHoverProgressRef.current = null
+  }, [])
 
   const handleScrubberPointerUp = useCallback((e: React.PointerEvent) => {
     if (!isDraggingScrubberRef.current) return
@@ -1000,11 +1255,28 @@ export function NumberLine() {
       scrubberThumbVisualRef.current.style.transform = 'scale(1)'
       scrubberThumbVisualRef.current.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)'
     }
-  }, [])
+    // Resume narration from the scrubbed position
+    const ds = demoStateRef.current
+    if (ds.constantId && ds.revealProgress < 1) {
+      narration.resume(ds.constantId)
+    }
+  }, [demoStateRef, narration])
 
   const handleScrubberKeyDown = useCallback((e: React.KeyboardEvent) => {
     const ds = demoStateRef.current
     if (ds.phase === 'idle') return
+
+    // Space/Enter: toggle play/pause
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault()
+      if (narration.isNarrating.current) {
+        narration.stop()
+      } else if (ds.constantId && ds.revealProgress < 1) {
+        narration.resume(ds.constantId)
+      }
+      return
+    }
+
     narration.stop() // stop TTS narration when user scrubs via keyboard
     let progress = ds.revealProgress
     switch (e.key) {
@@ -1031,6 +1303,52 @@ export function NumberLine() {
     }
     setRevealProgress(progress)
   }, [demoStateRef, setRevealProgress, narration])
+
+  const handlePlayPauseClick = useCallback(() => {
+    setRestoredFromUrl(false)
+    const ds = demoStateRef.current
+    if (ds.phase === 'idle') return
+    if (narration.isNarrating.current) {
+      narration.stop()
+    } else if (ds.constantId && ds.revealProgress < 1) {
+      narration.resume(ds.constantId)
+    }
+  }, [demoStateRef, narration])
+
+  const handleResumeFromUrl = useCallback(() => {
+    setRestoredFromUrl(false)
+    const ds = demoStateRef.current
+    if (ds.constantId && ds.revealProgress < 1) {
+      narration.resume(ds.constantId)
+    }
+  }, [demoStateRef, narration])
+
+  // --- Share button ---
+  const [shareFeedback, setShareFeedback] = useState(false)
+  const [shareAtCurrentTime, setShareAtCurrentTime] = useState(false)
+  const handleShare = useCallback(async () => {
+    const ds = demoStateRef.current
+    const url = new URL(window.location.href)
+    if (ds.constantId && ds.phase !== 'idle') {
+      url.searchParams.set('demo', ds.constantId)
+      if (shareAtCurrentTime && ds.revealProgress > 0) {
+        url.searchParams.set('p', ds.revealProgress.toFixed(3))
+      } else {
+        url.searchParams.delete('p')
+      }
+    }
+    const shareUrl = url.href
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ url: shareUrl })
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareFeedback(true)
+      setTimeout(() => setShareFeedback(false), 2000)
+    }
+  }, [demoStateRef, shareAtCurrentTime])
 
   const handleScrubberFocus = useCallback(() => {
     if (scrubberTrackRef.current) {
@@ -1124,9 +1442,326 @@ export function NumberLine() {
             isDark={resolvedTheme === 'dark'}
             onDismiss={handleDismissInfoCard}
             onExplore={handleExploreConstant}
+            onCallNumber={handleCallNumber}
           />
         )}
+        {callingNumber !== null && voiceState !== 'idle' && (
+          <PhoneCallOverlay
+            number={callingNumber}
+            state={voiceState}
+            timeRemaining={timeRemaining}
+            error={voiceError}
+            transferTarget={transferTarget}
+            conferenceNumbers={conferenceNumbers}
+            onHangUp={() => { hangUp(); setCallingNumber(null) }}
+            onRetry={() => dial(callingNumber)}
+            onDismiss={() => { hangUp(); setCallingNumber(null) }}
+            containerWidth={cssWidthRef.current}
+            containerHeight={cssHeightRef.current}
+            isDark={resolvedTheme === 'dark'}
+          />
+        )}
+        {demoActive && restoredFromUrl && (
+          <button
+            data-action="demo-resume-from-url"
+            onClick={handleResumeFromUrl}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              minHeight: 56,
+              minWidth: 56,
+              padding: '14px 32px',
+              fontSize: 16,
+              fontWeight: 600,
+              fontFamily: 'system-ui, sans-serif',
+              color: '#fff',
+              backgroundColor: scrubberFillColor,
+              border: 'none',
+              borderRadius: 28,
+              cursor: 'pointer',
+              boxShadow: `0 4px 20px ${scrubberFillColor}66`,
+              zIndex: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              transition: 'transform 0.15s, box-shadow 0.15s',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Resume
+          </button>
+        )}
         {demoActive && (
+          <div
+            data-element="demo-share-group"
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              zIndex: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: 4,
+            }}
+          >
+            <button
+              data-action="demo-share"
+              aria-label={shareAtCurrentTime ? 'Share demo at current time' : 'Share demo from start'}
+              onClick={handleShare}
+              style={{
+                minHeight: 44,
+                minWidth: 44,
+                padding: '10px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: 'system-ui, sans-serif',
+                color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.55)',
+                backgroundColor: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                border: `1px solid ${resolvedTheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
+                borderRadius: 10,
+                cursor: 'pointer',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'opacity 0.15s',
+              }}
+            >
+              {shareFeedback ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <polyline points="16 6 12 2 8 6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                  Share
+                </>
+              )}
+            </button>
+            {demoStateRef.current.revealProgress > 0 && (
+              <label
+                data-element="demo-share-timestamp-toggle"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 11,
+                  fontFamily: 'system-ui, sans-serif',
+                  color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={shareAtCurrentTime}
+                  onChange={e => setShareAtCurrentTime(e.target.checked)}
+                  style={{ margin: 0, accentColor: scrubberFillColor }}
+                />
+                at current time
+              </label>
+            )}
+          </div>
+        )}
+        {demoActive && demoStateRef.current.revealProgress >= 1 && demoStateRef.current.constantId && (
+          <div
+            data-element="demo-recommendations"
+            style={{
+              position: 'absolute',
+              bottom: 'max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px))',
+              left: 0,
+              right: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 10,
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              data-element="demo-recommendations-label"
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                fontFamily: 'system-ui, sans-serif',
+                color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.35)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Explore next
+            </div>
+            <div
+              data-element="demo-recommendations-cards"
+              style={{
+                display: 'flex',
+                gap: 10,
+                pointerEvents: 'auto',
+                width: '100%',
+                padding: '0 12px',
+                boxSizing: 'border-box',
+              }}
+            >
+              {(DEMO_RECOMMENDATIONS[demoStateRef.current.constantId] ?? []).map(id => {
+                const d = DEMO_DISPLAY[id]
+                if (!d) return null
+                const mc = MATH_CONSTANTS.find(c => c.id === id)
+                const isDark = resolvedTheme === 'dark'
+                const themeSuffix = isDark ? '-dark' : '-light'
+                const imgSrc = mc?.metaphorImage?.replace('.png', `${themeSuffix}.png`)
+                return (
+                  <button
+                    key={id}
+                    data-action={`explore-${id}`}
+                    onClick={() => handleExploreConstant(id)}
+                    style={{
+                      position: 'relative',
+                      flex: 1,
+                      height: 140,
+                      padding: 0,
+                      border: 'none',
+                      borderRadius: 14,
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      background: isDark ? '#1a1a2e' : '#e8e8f0',
+                    }}
+                  >
+                    {imgSrc ? (
+                      <img
+                        src={imgSrc}
+                        alt=""
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 48,
+                        opacity: 0.3,
+                        fontFamily: 'system-ui, sans-serif',
+                      }}>
+                        {d.symbol}
+                      </div>
+                    )}
+                    {/* Gradient scrim for text legibility */}
+                    <div style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: '70%',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 50%, transparent 100%)',
+                      pointerEvents: 'none',
+                    }} />
+                    {/* Text overlay */}
+                    <div style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      padding: '10px 12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: 2,
+                    }}>
+                      <span style={{
+                        fontSize: 22,
+                        fontWeight: 700,
+                        fontFamily: 'system-ui, sans-serif',
+                        color: '#fff',
+                        lineHeight: 1,
+                        textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+                      }}>{d.symbol}</span>
+                      <span style={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        fontFamily: 'system-ui, sans-serif',
+                        color: 'rgba(255,255,255,0.8)',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                      }}>{d.name}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        {demoActive && (
+          <>
+          <button
+            ref={playPauseBtnRef}
+            data-action="demo-play-pause"
+            aria-label="Play or pause demo"
+            onClick={handlePlayPauseClick}
+            style={{
+              position: 'absolute',
+              bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+              left: 16,
+              width: 44,
+              height: 44,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              opacity: 0,
+              pointerEvents: 'none',
+              transition: 'opacity 0.15s',
+              zIndex: 1,
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill={scrubberFillColor}>
+              <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
+            </svg>
+          </button>
+          <div
+            ref={timeDisplayRef}
+            data-element="demo-time-display"
+            aria-live="off"
+            style={{
+              position: 'absolute',
+              bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+              right: 12,
+              height: 48,
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: 11,
+              fontVariantNumeric: 'tabular-nums',
+              fontFamily: 'system-ui, sans-serif',
+              color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+              pointerEvents: 'none',
+              opacity: 0,
+              transition: 'opacity 0.15s',
+              whiteSpace: 'nowrap',
+              letterSpacing: '0.02em',
+            }}
+          />
           <div
             ref={scrubberTrackRef}
             data-element="demo-scrubber"
@@ -1144,14 +1779,15 @@ export function NumberLine() {
             onPointerMove={handleScrubberPointerMove}
             onPointerUp={handleScrubberPointerUp}
             onPointerCancel={handleScrubberPointerUp}
+            onPointerLeave={handleScrubberPointerLeave}
             onKeyDown={handleScrubberKeyDown}
             onFocus={handleScrubberFocus}
             onBlur={handleScrubberBlur}
             style={{
               position: 'absolute',
               bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-              left: 24,
-              right: 24,
+              left: 68,
+              right: 80,
               height: 48,
               display: 'flex',
               alignItems: 'center',
@@ -1173,6 +1809,40 @@ export function NumberLine() {
                 height: 6,
                 borderRadius: 3,
                 backgroundColor: scrubberTrackColor,
+              }}
+            />
+            {/* Segment boundary tick marks */}
+            <div
+              ref={segmentTicksRef}
+              data-element="demo-scrubber-segment-ticks"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: '100%',
+                pointerEvents: 'none',
+              }}
+            />
+            {/* Floating segment label (visible during scrubbing) */}
+            <div
+              ref={segmentLabelRef}
+              data-element="demo-scrubber-segment-label"
+              style={{
+                position: 'absolute',
+                bottom: '100%',
+                marginBottom: 6,
+                transform: 'translateX(-50%)',
+                fontSize: 11,
+                fontWeight: 500,
+                fontFamily: 'system-ui, sans-serif',
+                color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+                opacity: 0,
+                transition: 'opacity 0.12s',
+                textShadow: resolvedTheme === 'dark'
+                  ? '0 1px 4px rgba(0,0,0,0.8)'
+                  : '0 1px 3px rgba(255,255,255,0.9)',
               }}
             />
             {/* Filled portion */}
@@ -1233,6 +1903,7 @@ export function NumberLine() {
               />
             </div>
           </div>
+          </>
         )}
         {(() => {
           const tooltipValue = forcedHoverValue ?? hoveredValue
