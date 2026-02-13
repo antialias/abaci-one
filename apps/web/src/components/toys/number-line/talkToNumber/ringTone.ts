@@ -1,7 +1,7 @@
 /**
- * Synthesize a classic phone ring tone using the Web Audio API.
- * Two-tone burst (440Hz + 480Hz), ~2s on, ~4s off pattern.
- * No external audio files needed.
+ * Synthesize a caller-perspective phone ring tone using the Web Audio API.
+ * Classic North American ringback: two-tone (440Hz + 480Hz), ~1s on, ~0.25s
+ * off, repeating until stopped. No external audio files needed.
  */
 
 export function playRingTone(audioContext: AudioContext): { stop: () => void } {
@@ -10,7 +10,7 @@ export function playRingTone(audioContext: AudioContext): { stop: () => void } {
   gainNode.gain.value = 0
   gainNode.connect(audioContext.destination)
 
-  // Two oscillators for the classic ring
+  // Two oscillators for the classic dual-tone ring
   const osc1 = audioContext.createOscillator()
   osc1.frequency.value = 440
   osc1.type = 'sine'
@@ -24,33 +24,31 @@ export function playRingTone(audioContext: AudioContext): { stop: () => void } {
   osc1.start()
   osc2.start()
 
-  // Schedule ring bursts: ring for 1s, silence for 1.5s, repeat
+  // Caller-side ring pattern: ~1s on, ~0.25s off, repeating
   const ringDuration = 1.0
-  const silenceDuration = 1.5
+  const silenceDuration = 0.25
+  const cycleDuration = ringDuration + silenceDuration
   const ringVolume = 0.12
+  const RAMP_MS = 0.015 // 15ms ramp to avoid clicks
+
+  // Schedule several cycles ahead. The ringing will be stopped externally
+  // when the call connects, so we schedule plenty of cycles.
+  const maxCycles = 20 // ~25s of ringing, more than enough
   const now = audioContext.currentTime
 
-  for (let i = 0; i < 3; i++) {
-    const burstStart = now + i * (ringDuration + silenceDuration)
+  for (let i = 0; i < maxCycles; i++) {
+    const burstStart = now + i * cycleDuration
     // Ramp up
     gainNode.gain.setValueAtTime(0, burstStart)
-    gainNode.gain.linearRampToValueAtTime(ringVolume, burstStart + 0.02)
-    // Ring sustain — add subtle tremolo for more realistic ring
-    const tremoloRate = 20 // Hz
-    const tremoloDepth = ringVolume * 0.3
-    const steps = Math.floor(ringDuration * tremoloRate)
-    for (let j = 0; j <= steps; j++) {
-      const t = burstStart + 0.02 + (j / tremoloRate)
-      const v = ringVolume + tremoloDepth * Math.sin(j * Math.PI)
-      gainNode.gain.linearRampToValueAtTime(v, t)
-    }
+    gainNode.gain.linearRampToValueAtTime(ringVolume, burstStart + RAMP_MS)
+    // Hold
+    gainNode.gain.setValueAtTime(ringVolume, burstStart + ringDuration - RAMP_MS)
     // Ramp down
-    gainNode.gain.setValueAtTime(ringVolume, burstStart + ringDuration - 0.02)
     gainNode.gain.linearRampToValueAtTime(0, burstStart + ringDuration)
   }
 
-  // Auto-stop after all rings
-  const totalDuration = 3 * (ringDuration + silenceDuration)
+  // Auto-stop after all scheduled cycles (safety net)
+  const totalDuration = maxCycles * cycleDuration
   const stopTimer = setTimeout(() => {
     if (!stopped) cleanup()
   }, totalDuration * 1000 + 100)

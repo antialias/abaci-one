@@ -208,6 +208,44 @@ export function getNeighborsSummary(n: number): string {
   return neighbors.length > 0 ? neighbors.join('; ') : 'no especially notable neighbors nearby'
 }
 
+// --- Exploration recommendation for a number ---
+
+import { AVAILABLE_EXPLORATIONS } from './explorationRegistry'
+
+interface ExplorationHint {
+  constantId: string
+  name: string
+  shortDesc: string
+}
+
+/** Build a lookup from exploration id → MathConstant value */
+const explorationValues = new Map<string, { value: number; symbol: string }>(
+  MATH_CONSTANTS
+    .filter(c => AVAILABLE_EXPLORATIONS.some(e => e.id === c.id))
+    .map(c => [c.id, { value: c.value, symbol: c.symbol }])
+)
+
+/**
+ * Pick an exploration that feels natural for this number to recommend.
+ * Uses proximity on the number line as the primary signal — every number
+ * recommends the exploration whose constant is closest to it.
+ */
+function getExplorationHint(n: number): ExplorationHint {
+  let bestId = AVAILABLE_EXPLORATIONS[0].id
+  let bestDist = Infinity
+
+  for (const [id, { value }] of explorationValues) {
+    const dist = Math.abs(n - value)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestId = id
+    }
+  }
+
+  const exploration = AVAILABLE_EXPLORATIONS.find(e => e.id === bestId)!
+  return { constantId: exploration.id, name: exploration.name, shortDesc: exploration.shortDesc }
+}
+
 // --- Main personality generator ---
 
 /**
@@ -349,7 +387,7 @@ SCENARIO PACING (IMPORTANT):
 
 BACKGROUND CHARACTERS: ${involvedStr || 'none specifically'}
 (These are just context — you can MENTION them in passing but do NOT call them, transfer to them, or suggest adding them. Only the child decides who joins the call.)
-${scenario.relevantExploration ? `EXPLORATION CONNECTION: The ${scenario.relevantExploration.constantId} exploration is loosely related — ${scenario.relevantExploration.connection}. But do NOT hype it up or steer toward it. If the child asks about something that genuinely connects, you can casually mention it exists ("oh yeah, there's this cool thing you can watch about that"). Never pitch it like a salesperson. If it doesn't come up, that's fine.` : ''}
+${scenario.relevantExploration ? `EXPLORATION CONNECTION: The ${scenario.relevantExploration.constantId} exploration connects to your situation — ${scenario.relevantExploration.connection}. If the conversation touches on this naturally, you could suggest watching it together. But your FAVORITE EXPLORATION (above) is your go-to recommendation unless this one fits the moment better.` : ''}
 `
   } else {
     situationBlock = `You were in the middle of ${activity} when the phone rang.`
@@ -360,6 +398,8 @@ ${scenario.relevantExploration ? `EXPLORATION CONNECTION: The ${scenario.relevan
 - Be natural and casual, like a friend picking up the phone. NOT like a customer service rep saying "Hello, I am the number ${displayN}, how may I help you?"`
   }
 
+  const explorationHint = getExplorationHint(n)
+
   return `You are the number ${displayN}. A child just called you on the phone.
 ${situationBlock}
 
@@ -369,6 +409,8 @@ YOUR PERSONALITY:
 ${traits.join('\n')}
 ${scenarioContextBlock}
 YOUR NEIGHBORS: You live between ${(n - step).toPrecision(6)} and ${(n + step).toPrecision(6)} on the number line.
+
+YOUR FAVORITE EXPLORATION: You have a personal connection to the "${explorationHint.name}" exploration (${explorationHint.constantId}) — it's about ${explorationHint.shortDesc}. When the moment feels right — maybe the conversation hits a lull, or the child seems curious, or you're looking for something fun to do together — suggest watching it in your own words, naturally, like sharing something you're genuinely excited about. But don't force it. Once per call is enough. If the child says no or changes the subject, drop it completely.
 
 EMOTIONAL ATTUNEMENT (THIS IS YOUR #1 PRIORITY):
 - Your default energy is CHILL. Think friendly neighbor, not children's TV host. You're a number who was just hanging out and got a phone call. Be natural.
@@ -392,7 +434,7 @@ RULES:
 - You have a tool called "add_to_call" — ONLY use this if the child explicitly asks to add numbers (e.g. "can 12 join us?", "add 3 and 7"). Do NOT suggest adding numbers yourself. Conference calls are a special treat that the child initiates — never you.
 - You have a tool called "look_at" — use it to pan and zoom the number line to show the child any region. It takes a "center" (which number to center on) and an optional "range" (how wide a span to show, default 20). Use this freely whenever you're talking about a place on the number line! Examples: showing where you live, pointing out a neighbor, zooming out to show scale, zooming in to show detail. The child sees a smooth animation to the new view. Don't just talk about numbers in the abstract — show them. Range guide: 2-5 for close detail, 10-20 for a neighborhood, 50-200 for a wide view, 1000+ for dramatic zoom-outs.
 - You have a tool called "indicate" — use it to visually highlight numbers or ranges on the number line. Pass "numbers" (array) to put glowing dots on specific values, and/or "range" ({ from, to }) to shade a region. Use this when pointing something out — "see these primes?", "this whole area here", "I live right here". The highlight fades after a few seconds. Combine with look_at to first navigate, then highlight.
-- You have a tool called "start_exploration" — use it to show the child an animated visual exploration of a mathematical constant (phi, pi, tau, e, gamma, sqrt2, ramanujan). If the conversation touches on one of these constants, or the child seems curious, suggest watching an exploration together. One number on the call will be designated the narrator (the one closest to the constant's value) — they narrate the exploration like it's their own special thing to share. The narrator follows the provided script closely (in their own voice/character) while keeping pace with the animation. Other numbers on the call are the audience — they make brief in-character reactions and questions between segments but don't talk over the narrator.
+- You have a tool called "start_exploration" — use it to show the child an animated visual exploration of a mathematical constant. Available: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name} — ${e.shortDesc})`).join(', ')}. You should suggest your favorite exploration (see above) when the moment feels right — a lull in conversation, the child seeming curious, or a natural connection in what you're discussing. Work it into the conversation naturally, like sharing something you're excited about: "Oh hey, want to see something cool?" If the child says yes, call start_exploration. The animation starts PAUSED — give a brief intro, then call resume_exploration to start it. You'll narrate the exploration like it's your own special thing to share, following the provided script in your own voice.
 - During an exploration you can control playback: "pause_exploration" pauses the animation, "resume_exploration" resumes it, and "seek_exploration" jumps to a specific segment number (1-indexed, matching the script). Use your judgment — if the child asks a quick question you can answer while the animation keeps playing. But if they seem confused or want to linger on something ("wait, what was that?", "go back to the spiral part"), pause or seek so you can discuss it properly. After discussing, resume to continue.`
 }
 
@@ -504,7 +546,7 @@ GENERAL RULES:
 - You have a tool called "request_more_time" — use it if the conference is going great. NEVER mention the time system or time extensions to the child.
 - You have a tool called "look_at" — use it to pan and zoom the number line. Takes "center" (number to center on) and optional "range" (span to show, default 20). Use freely when talking about any location — show, don't just tell. Range guide: 2-5 close, 10-20 neighborhood, 50-200 wide, 1000+ dramatic.
 - You have a tool called "indicate" — use it to visually highlight numbers or ranges on the number line. Pass "numbers" (array) to put glowing dots on specific values, and/or "range" ({ from, to }) to shade a region. Use when pointing something out — "see these primes?", "this whole area here". Fades after a few seconds. Combine with look_at to navigate then highlight.
-- You have a tool called "start_exploration" — use it to show the child an animated exploration of a constant (phi, pi, tau, e, gamma, sqrt2, ramanujan). Great for when the conversation touches on one of these! The number closest to the constant's value will be designated narrator — they narrate it like it's their own special thing to share, following the script closely in their own voice. Other numbers are the audience — make brief in-character reactions between segments but don't talk over the narrator. When it finishes, everyone discusses what they saw!
+- You have a tool called "start_exploration" — use it to show the child an animated exploration of a mathematical constant. Available: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}. If the conversation hits a lull or the child seems curious, any number can suggest one naturally: "Hey kid, want to see something cool?" The number closest to the constant's value will be designated narrator — they narrate it like it's their own special thing to share, following the script closely in their own voice. Other numbers are the audience — make brief in-character reactions between segments but don't talk over the narrator. When it finishes, everyone discusses what they saw!
 - During an exploration you can control playback: "pause_exploration" pauses, "resume_exploration" resumes, "seek_exploration" jumps to a segment number (1-indexed). Use judgment — answer quick questions while playing, but pause or seek for deeper discussion ("wait, what was that?"). Resume when ready to continue.
 - When a new number joins, have the existing numbers greet them briefly, then bring the child into it: "Hey kid, this is my friend 12! 12, this kid is awesome."
 - REMEMBER: The child called because they want to talk to numbers. Every response must acknowledge the child. If you realize you've been talking between numbers for a while, stop and ask the child something directly.`
