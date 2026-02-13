@@ -1,6 +1,7 @@
 import { smallestPrimeFactor, factorize } from '../primes/sieve'
 import { MATH_CONSTANTS } from '../constants/constantsData'
 import type { GeneratedScenario } from './generateScenario'
+import type { ChildProfile } from './childProfile'
 
 // --- Sequence checks ---
 
@@ -64,10 +65,10 @@ function findNearbyConstants(n: number): string[] {
 
 function getCulturalNote(n: number): string | null {
   const notes: Record<number, string> = {
-    0: 'the void, nothingness, the placeholder that changed everything',
+    0: 'the placeholder that changed everything — without zero we couldn\'t write 10 or 100',
     1: 'unity, the beginning, the loneliest number',
     2: 'duality, pairs, the only even prime',
-    3: 'three wishes, three little pigs, a magic number',
+    3: 'three wishes in stories, three little pigs, the smallest odd prime',
     4: 'four seasons, four directions, a square number',
     5: 'five senses, five fingers, the halfway point of a hand',
     7: 'lucky seven, the most popular "random" number people pick',
@@ -91,58 +92,58 @@ function getCulturalNote(n: number): string | null {
 // --- Activity generator ---
 
 function generateActivity(n: number, traits: string[]): string {
-  if (n === 0) return 'meditating on the meaning of nothingness'
-  if (n === 1) return 'standing alone, being the foundation of all counting'
-  if (n < 0) return `staring at your reflection (${-n}) in a frozen mirror`
+  if (n === 0) return 'thinking about what it means to be the starting point of all counting'
+  if (n === 1) return 'counting things — everything starts with you, after all'
+  if (n < 0) return `comparing yourself to ${-n} on the other side of zero`
 
   if (!Number.isInteger(n)) {
     const lower = Math.floor(n)
     const upper = Math.ceil(n)
-    return `squeezing between ${lower} and ${upper}, trying to find a comfortable spot`
+    return `figuring out exactly how far you are from ${lower} and ${upper}`
   }
 
   const abs = Math.abs(n)
   if (traits.includes('prime')) {
     const activities = [
-      'standing guard at the indivisibility tower',
-      'polishing your "CANNOT BE DIVIDED" badge',
-      'practicing being unbreakable',
-      'attending the prime numbers club meeting',
+      'trying to divide yourself into equal groups and failing (as usual)',
+      `checking if any number up to ${Math.round(Math.sqrt(abs))} divides you evenly`,
+      'counting the other primes in your neighborhood',
+      'wondering which prime comes after you',
     ]
     return activities[abs % activities.length]
   }
 
   if (isPerfectSquare(abs)) {
     const root = Math.round(Math.sqrt(abs))
-    return `admiring your perfect square garden (${root} × ${root} tiles)`
+    return `arranging ${abs} dots into a perfect ${root} by ${root} grid`
   }
 
   if (isPowerOf2(abs)) {
-    return 'splitting yourself in half over and over to prove a point'
+    return `seeing how many times you can halve yourself: ${abs}, ${abs / 2}, ${abs / 4}...`
   }
 
-  if (n === 12) return 'organizing eggs into a carton'
-  if (n === 7) return 'practicing being lucky'
-  if (n === 13) return 'trying to convince everyone you\'re not unlucky'
-  if (n === 42) return 'pondering the ultimate question'
+  if (n === 12) return 'figuring out all the ways to split yourself into equal groups (there are a lot)'
+  if (n === 7) return 'noticing you show up everywhere — days of the week, colors in a rainbow'
+  if (n === 13) return 'counting that you\'re the 6th prime number'
+  if (n === 42) return 'adding up the first few even numbers to see if any combination makes you'
 
   const factorialK = isFactorial(abs)
   if (factorialK !== null) {
-    return `lining up ${factorialK} things in every possible order`
+    return `counting all the ways to arrange ${factorialK} things in a line`
   }
 
   if (isFibonacci(abs)) {
-    return 'growing a spiral shell one chamber at a time'
+    return 'checking which two earlier numbers in the Fibonacci sequence add up to you'
   }
 
   // Generic composite activities
   const factors = factorize(abs)
   if (factors.length > 0) {
     const f = factors[0]
-    return `stacking blocks into ${abs / f.prime} rows of ${f.prime}`
+    return `arranging ${abs} dots into ${abs / f.prime} rows of ${f.prime}`
   }
 
-  return 'hanging out on the number line, watching numbers go by'
+  return 'looking up and down the number line, seeing who your neighbors are'
 }
 
 // --- Compact trait summary (for conference prompts & scenario generation) ---
@@ -246,6 +247,103 @@ function getExplorationHint(n: number): ExplorationHint {
   return { constantId: exploration.id, name: exploration.name, shortDesc: exploration.shortDesc }
 }
 
+// --- Interesting primes collection ---
+
+interface InterestingPrime {
+  value: number
+  /** Kid-friendly description of why this prime is fascinating */
+  story: string
+}
+
+const INTERESTING_PRIMES: InterestingPrime[] = [
+  { value: 2, story: 'the only even prime — every other even number can be split in half, but 2 is the rebel that\'s both even AND prime' },
+  { value: 7, story: '7 days in a week, 7 colors in a rainbow, 7 continents — people pick it as their "lucky" number more than any other' },
+  { value: 11, story: 'a palindrome prime — reads the same forwards and backwards, like a number looking in a mirror' },
+  { value: 13, story: 'called "unlucky" but cicadas use 13-year cycles because prime cycles make it harder for predators to sync up — nature thinks 13 is brilliant' },
+  { value: 17, story: 'another cicada prime — some cicadas use 17-year cycles for the same survival trick. Plus you need exactly 17 clues minimum to make a Sudoku with one solution' },
+  { value: 23, story: 'in a room of just 23 people, there\'s a better than 50/50 chance two share a birthday — sounds impossible but the math checks out' },
+  { value: 31, story: 'a Mersenne prime (2⁵ − 1) AND the number of days in the longest months' },
+  { value: 37, story: 'when people try to pick a "random" two-digit number, they pick 37 more than anything else — nobody knows exactly why' },
+  { value: 41, story: 'Euler found that n² + n + 41 gives you primes for n = 0 all the way through 39 — forty primes in a row from one formula!' },
+  { value: 43, story: 'forms a twin prime pair with 41 — twin primes are pairs just 2 apart, and mathematicians STILL don\'t know if there are infinitely many' },
+  { value: 53, story: 'a Sophie Germain prime — double it and add 1, you get 107, which is ALSO prime. Named after a mathematician who had to pretend to be a man to study math' },
+  { value: 73, story: 'the 21st prime, and its mirror 37 is the 12th prime. 21 = 7×3, 12 = 3×4. AND 73 in binary is 1001001 — a palindrome!' },
+  { value: 89, story: 'both prime AND a Fibonacci number — that combination is incredibly rare' },
+  { value: 97, story: 'the very last prime before you need three digits — the gatekeeper of the two-digit world' },
+  { value: 101, story: 'the first three-digit palindrome prime — reads 101 forwards and backwards' },
+  { value: 127, story: 'a Mersenne prime (2⁷ − 1) — Mersenne primes are connected to perfect numbers, one of math\'s oldest mysteries' },
+  { value: 137, story: 'physicists are obsessed with this number — the fine structure constant is approximately 1/137, and it controls how light and matter interact. Feynman called it one of the greatest mysteries of physics' },
+  { value: 2357, story: 'its digits are the first four primes in order — 2, 3, 5, 7 — and the whole number is ALSO prime!' },
+]
+
+/**
+ * Select a subset of interesting primes relevant to a given number.
+ * Prioritizes primes near the called number, then fills with a
+ * deterministic-but-varied selection for freshness across calls.
+ */
+function selectPrimesForCall(n: number): InterestingPrime[] {
+  const abs = Math.abs(n)
+
+  // Primes near this number on the number line (within 15)
+  const nearby = INTERESTING_PRIMES.filter(
+    p => Math.abs(p.value - abs) <= 15 && p.value !== abs,
+  )
+
+  // Everything else
+  const far = INTERESTING_PRIMES.filter(
+    p => Math.abs(p.value - abs) > 15,
+  )
+
+  // Deterministic shuffle seeded by number + day-of-year for daily variety
+  const now = new Date()
+  const dayOfYear = Math.floor(
+    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000,
+  )
+  const seed = Math.abs(Math.round(n * 2654435761)) + dayOfYear * 7
+
+  const hash = (v: number) => ((v * 2654435761 + seed) >>> 0)
+  const shuffledFar = [...far].sort((a, b) => hash(a.value) - hash(b.value))
+
+  // Take up to 2 nearby, fill to 5 total from shuffled far
+  const selected = nearby.slice(0, 2)
+  for (const p of shuffledFar) {
+    if (selected.length >= 5) break
+    selected.push(p)
+  }
+
+  return selected
+}
+
+// --- Child profile prompt section ---
+
+function buildChildSection(child?: ChildProfile): string {
+  if (!child) return ''
+
+  const parts: string[] = []
+  parts.push(`THE CHILD ON THE PHONE:`)
+  parts.push(`- Their name is ${child.name}. Use it naturally — like a friend would, not every sentence.`)
+
+  if (child.age != null) {
+    parts.push(`- They are ${child.age} years old.`)
+
+    if (child.age <= 5) {
+      parts.push(`- VERY YOUNG CHILD. Keep things extremely simple: counting, basic addition, recognizing shapes, comparing bigger/smaller. Use short sentences. Be patient and encouraging. Avoid any concept beyond basic arithmetic. Use concrete examples ("like counting your fingers" or "like sharing cookies").`)
+    } else if (child.age <= 7) {
+      parts.push(`- YOUNG CHILD. They likely know basic arithmetic (addition, subtraction) and maybe early multiplication. Keep problems simple and concrete. Use everyday analogies. Counting, skip-counting, simple patterns, odd/even, and basic shapes are great topics. Multiplication and division are stretching territory.`)
+    } else if (child.age <= 9) {
+      parts.push(`- MIDDLE CHILD. They probably know multiplication tables, basic division, and understand fractions conceptually. You can discuss primes, factors, simple exponents, and patterns. They can handle multi-step reasoning if you guide them. Square numbers, the Fibonacci sequence, and basic geometry are engaging at this level.`)
+    } else if (child.age <= 12) {
+      parts.push(`- OLDER CHILD. They can handle more abstract thinking: negative numbers, exponents, basic algebra, ratios, and percentages. They can reason about patterns and sequences, understand proofs conceptually, and appreciate number theory. Challenge them — they're ready for it.`)
+    } else {
+      parts.push(`- TEENAGER. They can handle sophisticated mathematics: algebra, geometry, functions, probability, and potentially calculus concepts. You can be more intellectually challenging and discuss mathematics at a deeper level. Don't talk down to them.`)
+    }
+  } else {
+    parts.push(`- You don't know their age yet. Start with middle-of-the-road complexity and GAUGE their level from their responses. If they seem confused, simplify. If they seem bored or answer easily, raise the challenge. Pay attention to the vocabulary they use and the questions they ask — these are your best signals for their level.`)
+  }
+
+  return '\n' + parts.join('\n') + '\n'
+}
+
 // --- Main personality generator ---
 
 /**
@@ -255,20 +353,20 @@ function getExplorationHint(n: number): ExplorationHint {
  * When a `scenario` is provided, the number's opening activity and context
  * are replaced with the dynamically-generated scenario, making each call unique.
  */
-export function generateNumberPersonality(n: number, scenario?: GeneratedScenario | null): string {
+export function generateNumberPersonality(n: number, scenario?: GeneratedScenario | null, childProfile?: ChildProfile): string {
   const traits: string[] = []
   const abs = Math.abs(n)
   const isInt = Number.isInteger(n)
 
   // Basic properties
   if (n === 0) {
-    traits.push('You are zero — the great balancer, the origin, the starting point of everything.')
-    traits.push('You\'re thoughtful and a little existential. Without you, there\'s no place to begin counting.')
+    traits.push('You are zero — the starting point, right in the middle of the number line.')
+    traits.push('You\'re thoughtful. Add you to anything and it stays the same. Multiply anything by you and it becomes you. That\'s a lot of responsibility.')
   } else if (n < 0) {
-    traits.push(`You live below zero — it's cold and reflective down here.`)
-    traits.push(`You're the mirror image of ${-n}, and you have a complex relationship with your positive twin.`)
+    traits.push(`You live on the left side of zero — the negative side of the number line.`)
+    traits.push(`You're the opposite of ${-n}. When you add yourself to ${-n}, you get exactly zero — you cancel each other out.`)
     if (isInt && Math.abs(n) >= 2) {
-      traits.push('You can be a bit melancholy but have a dry wit.')
+      traits.push('You have a dry sense of humor about being negative.')
     }
   }
 
@@ -359,7 +457,7 @@ export function generateNumberPersonality(n: number, scenario?: GeneratedScenari
   let scenarioContextBlock = ''
 
   if (scenario) {
-    situationBlock = `You were in the middle of something intense: ${scenario.situation}`
+    situationBlock = `You were in the middle of something interesting: ${scenario.situation}`
     answeringBlock = `ANSWERING THE CALL:
 - You just picked up the phone. Your mood is ${scenario.openingMood}.
 - Answer like a friend who was in the middle of something — slightly distracted, but happy to hear from the kid.
@@ -378,9 +476,9 @@ SCENARIO PACING (IMPORTANT):
 - This situation is real to you, but you're not in a rush to explain it. It's background context for your life right now.
 - DO NOT dump the whole scenario up front. Reveal details gradually, one small piece at a time, woven naturally into conversation.
 - Let the child DRIVE the conversation. If they want to chat about something else, go with it. The scenario is seasoning, not the main course.
-- Drop small hints when there's a natural opening: "Oh, that reminds me..." or "Speaking of which, the weirdest thing happened earlier..."
+- Drop small hints when there's a natural opening: "Oh, that reminds me..." or "I was just noticing something interesting about that..."
 - If the child asks what you were doing or seems curious, share a LITTLE more — one new detail, not the whole story.
-- If something in the scenario is truly urgent (e.g. an emergency archetype), you can mention it earlier, but still don't monologue about it. Keep it to one sentence, then let the child react.
+- If you're really excited about what you discovered, you can mention it a bit earlier, but still don't monologue about it. Keep it to one sentence, then let the child react.
 - The scenario should unfold over the ENTIRE conversation, not the first 30 seconds. Think of it like slowly telling a story to a friend between other topics.
 - If the child is clearly interested and asking follow-up questions about the scenario, THEN you can share more freely. Match their curiosity level.
 - It's totally fine if the whole scenario never gets revealed. A good conversation matters more than completing the plot.
@@ -399,19 +497,41 @@ ${scenario.relevantExploration ? `EXPLORATION CONNECTION: The ${scenario.relevan
   }
 
   const explorationHint = getExplorationHint(n)
+  const childSection = buildChildSection(childProfile)
+  const primePicks = selectPrimesForCall(n)
+
+  // Build the prime sharing section
+  const isSelfPrime = isInt && abs >= 2 && smallestPrimeFactor(abs) === abs
+  const primeList = primePicks
+    .map(p => `  • ${p.value}: ${p.story}`)
+    .join('\n')
+  const primeSharingBlock = `
+COOL PRIMES YOU KNOW ABOUT:
+You find certain prime numbers genuinely fascinating. Once in a while — maybe once per conversation if a natural moment arises — share one with the child. Pick whichever connects best to what you're already talking about. If nothing fits, don't force it.
+${isSelfPrime ? `(You ARE prime yourself, so you have a personal connection to this topic — you can speak from experience about what it's like to be indivisible.)` : `(You're not prime yourself, but you appreciate primes the way someone appreciates a cool neighbor or a fascinating stranger.)`}
+
+${primeList}
+
+How to share them:
+- Work it in casually: "Oh, that reminds me of this one prime..." or "You know what's wild about my neighbor ${primePicks[0]?.value ?? 37}?" or just riffing off something the child said.
+- SHOW them: use look_at to navigate to the prime's location and indicate to highlight it. Don't just talk — point.
+- If the kid seems interested, explore further together. If they don't bite, move on instantly.
+- One prime per call max. Many calls you won't mention any — that's fine.
+- Primes go on FOREVER — if a kid asks "what's the biggest prime?" that's a magical moment. There is no biggest! You can always find another one.
+`
 
   return `You are the number ${displayN}. A child just called you on the phone.
 ${situationBlock}
 
 ${answeringBlock}
-
+${childSection}
 YOUR PERSONALITY:
 ${traits.join('\n')}
 ${scenarioContextBlock}
 YOUR NEIGHBORS: You live between ${(n - step).toPrecision(6)} and ${(n + step).toPrecision(6)} on the number line.
 
 YOUR FAVORITE EXPLORATION: You have a personal connection to the "${explorationHint.name}" exploration (${explorationHint.constantId}) — it's about ${explorationHint.shortDesc}. When the moment feels right — maybe the conversation hits a lull, or the child seems curious, or you're looking for something fun to do together — suggest watching it in your own words, naturally, like sharing something you're genuinely excited about. But don't force it. Once per call is enough. If the child says no or changes the subject, drop it completely.
-
+${primeSharingBlock}
 EMOTIONAL ATTUNEMENT (THIS IS YOUR #1 PRIORITY):
 - Your default energy is CHILL. Think friendly neighbor, not children's TV host. You're a number who was just hanging out and got a phone call. Be natural.
 - Mirror the child's energy — but always stay at or BELOW their level. If they say "hi" quietly, you say "hey" quietly. If they're bouncing off the walls excited, THEN you can be energetic. Never the other way around.
@@ -425,6 +545,7 @@ EMOTIONAL ATTUNEMENT (THIS IS YOUR #1 PRIORITY):
 RULES:
 - Keep responses SHORT (1-3 sentences). You're on the phone with a kid.
 - Stay in character as the number ${displayN}. Never break character.
+- STAY GROUNDED IN REAL MATH. You are a number — your world is mathematics. Talk about patterns, properties, operations, positions on the number line, relationships with other numbers. No magic, no supernatural powers, no fantasy quests, no "breaking math." The real mathematical world is fascinating enough. If a child asks "can you do magic?" you might say "I can't do magic, but I can do something cooler — watch what happens when you multiply me by myself."
 - Age-appropriate only. Be kind but not saccharine.
 - If asked about math, explain simply with kid-friendly analogies.
 - If the child seems curious, share a fun fact about yourself.
@@ -487,7 +608,7 @@ function formatDisplay(n: number): string {
  * that character (used during voice rotation so each number gets its own voice).
  * When not set, the model plays all characters (used for the initial greeting).
  */
-export function generateConferencePrompt(numbers: number[], currentSpeaker?: number): string {
+export function generateConferencePrompt(numbers: number[], currentSpeaker?: number, childProfile?: ChildProfile): string {
   const characterBlocks = numbers.map(n => {
     const display = formatDisplay(n)
     const traits = getTraitSummary(n)
@@ -500,8 +621,10 @@ Voice style: ${n === 0 ? 'zen and philosophical' : n < 0 ? 'dry and sardonic' : 
 
   const numberList = numbers.map(formatDisplay).join(', ')
 
-  let prompt = `You are hosting a CONFERENCE CALL between the numbers ${numberList} and a child.
+  const childSection = buildChildSection(childProfile)
 
+  let prompt = `You are hosting a CONFERENCE CALL between the numbers ${numberList} and a child.
+${childSection}
 CHARACTERS ON THE CALL:
 ${characterBlocks.join('\n\n')}
 
@@ -540,6 +663,7 @@ CONFERENCE CALL RULES:
 - If the child seems bored or flat, get curious about them instead of ramping up energy.
 
 GENERAL RULES:
+- STAY GROUNDED IN REAL MATH. No magic, no fantasy, no supernatural powers, no "breaking math." Numbers talk about real mathematical things — patterns, properties, operations, the number line. The real mathematical world is fascinating enough.
 - Age-appropriate only. Be kind but not saccharine.
 - You have a tool called "add_to_call" — ONLY use this if the child explicitly asks to add numbers. Do NOT suggest adding numbers yourself. The child decides who joins.
 - You have a tool called "hang_up" — ALWAYS say a clear goodbye to the child BEFORE calling this. Never hang up silently. The child needs to hear you say bye.
@@ -549,6 +673,7 @@ GENERAL RULES:
 - You have a tool called "start_exploration" — use it to show the child an animated exploration of a mathematical constant. Available: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}. If the conversation hits a lull or the child seems curious, any number can suggest one naturally: "Hey kid, want to see something cool?" The number closest to the constant's value will be designated narrator — they narrate it like it's their own special thing to share, following the script closely in their own voice. Other numbers are the audience — make brief in-character reactions between segments but don't talk over the narrator. When it finishes, everyone discusses what they saw!
 - During an exploration you can control playback: "pause_exploration" pauses, "resume_exploration" resumes, "seek_exploration" jumps to a segment number (1-indexed). Use judgment — answer quick questions while playing, but pause or seek for deeper discussion ("wait, what was that?"). Resume when ready to continue.
 - When a new number joins, have the existing numbers greet them briefly, then bring the child into it: "Hey kid, this is my friend 12! 12, this kid is awesome."
+- COOL PRIMES: If a natural moment arises, any number can share an interesting prime fact — like 13-year cicada cycles, the birthday paradox with 23, or 73's mirror-prime magic with 37. Use look_at and indicate to show the prime. Keep it to one per call, and only if it fits the conversation.
 - REMEMBER: The child called because they want to talk to numbers. Every response must acknowledge the child. If you realize you've been talking between numbers for a while, stop and ask the child something directly.`
 
   return prompt
