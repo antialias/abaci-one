@@ -12,6 +12,8 @@ interface FindTheNumberBarProps {
   onGiveUp: () => void
   gameState: FindTheNumberGameState
   isDark: boolean
+  /** When true, hide the target number (voice model gives clues instead) */
+  hideTarget?: boolean
 }
 
 function getRandomEmoji(): string {
@@ -31,6 +33,7 @@ export function FindTheNumberBar({
   onGiveUp,
   gameState,
   isDark,
+  hideTarget = false,
 }: FindTheNumberBarProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [inputValue, setInputValue] = useState('')
@@ -205,7 +208,9 @@ export function FindTheNumberBar({
             (e.currentTarget as HTMLElement).style.background = ''
           }}
         >
-          {displayEmoji} {formatNumber(displayNumber)}
+          {hideTarget && gameState !== 'found'
+            ? `🔍 Find the mystery number!`
+            : `${displayEmoji} ${formatNumber(displayNumber)}`}
         </div>
       ) : (
         /* --- Idle: tappable placeholder --- */

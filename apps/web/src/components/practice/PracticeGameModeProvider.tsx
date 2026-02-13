@@ -86,6 +86,7 @@ export function PracticeGameModeProvider({
         helpSettings: null,
         notes: null,
         isArchived: false,
+        age: null,
         familyCode: null,
       },
     ],

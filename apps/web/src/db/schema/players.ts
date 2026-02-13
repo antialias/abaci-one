@@ -92,6 +92,12 @@ export const players = sqliteTable(
     isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
 
     /**
+     * Child's age in years (optional, set by parent/teacher)
+     * Used to adapt voice agent conversations to appropriate level
+     */
+    age: integer('age'),
+
+    /**
      * Family code for sharing access to this player with other parents
      * Format: FAM-XXXXXX (6 alphanumeric chars)
      */

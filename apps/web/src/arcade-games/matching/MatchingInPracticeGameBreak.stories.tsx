@@ -91,6 +91,7 @@ const mockDBPlayer: DBPlayer = {
   notes: null,
   isArchived: false,
   familyCode: null,
+  age: null,
 }
 
 const mockRoomData: RoomData = {

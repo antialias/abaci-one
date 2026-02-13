@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
-import { generateScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
+import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
 import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
 import { getViewerId } from '@/lib/viewer'
@@ -44,9 +44,9 @@ export async function POST(request: Request) {
       if (player) {
         childProfile = {
           name: player.name,
-          age: player.age ?? null,
+          age: player.age ?? undefined,
         }
-        console.log('[realtime/session] child profile:', childProfile.name, 'age:', childProfile.age)
+        console.log('[realtime/session] child profile:', player.name, 'age:', player.age)
       }
     } catch {
       // Viewer lookup can fail for unauthenticated users — not critical
@@ -61,8 +61,8 @@ export async function POST(request: Request) {
     // Reuse scenario from a prior call to the same number, or generate a new one
     let scenario: Awaited<ReturnType<typeof generateScenario>>
     if (previousScenario?.situation && previousScenario?.hook) {
-      scenario = previousScenario
-      console.log('[scenario] reusing previous scenario:', scenario.archetype, '—', scenario.hook)
+      scenario = previousScenario as GeneratedScenario
+      console.log('[scenario] reusing previous scenario:', scenario!.archetype, '—', scenario!.hook)
     } else {
       scenario = await generateScenario(
         apiKey,
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'start_find_number',
             description:
-              'Start a "find the number" game on the number line. Set a target number and challenge the child to find where it lives. The target will be shown in the UI but the child must navigate (pan/zoom) to find its location. You will receive live updates about the child\'s proximity (far, warm, hot, found) and can give verbal hints. Great for teaching number sense!',
+              'Start a "find the number" game on the number line. Set a target number and challenge the child to find where it lives. The target is HIDDEN from the child — they only see "Find the mystery number!" You must give verbal clues to help them: describe the number, give hints about its value, say warmer/colder as they navigate. You will receive live proximity updates (zone, direction, zoom needs). Great for teaching number sense!',
             parameters: {
               type: 'object',
               properties: {

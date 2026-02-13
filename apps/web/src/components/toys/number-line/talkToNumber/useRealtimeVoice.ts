@@ -2,9 +2,62 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { playRingTone } from './ringTone'
 import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber, assignUniqueVoice } from './generateNumberPersonality'
 import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
+import type { ChildProfile } from './childProfile'
 import { EXPLORATION_IDS } from './explorationRegistry'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
+
+/** A record of a completed call, preserved across calls within a session. */
+interface CallRecord {
+  number: number
+  conferenceNumbers: number[]
+  transcripts: TranscriptEntry[]
+  scenario: GeneratedScenario | null
+  timestamp: number
+}
+
+/**
+ * Format session call history for injection into a new call's conversation context.
+ * Numbers that were previously called get full transcripts; the current number
+ * gets flagged as "you" so the model knows to pick up where it left off.
+ */
+function formatCallHistory(history: CallRecord[], currentNumber: number): string {
+  const lines: string[] = [
+    '[System — The child has had previous conversations this session. Here is what happened:\n',
+  ]
+
+  for (const record of history.slice(-5)) {
+    const isSelf = record.number === currentNumber
+    const header = isSelf
+      ? `=== Your earlier call (you are ${record.number}) ===`
+      : `=== Child's call with Number ${record.number} ===`
+    lines.push(header)
+
+    // Include last 10 transcript entries per call to keep context manageable
+    const transcripts = record.transcripts.slice(-10)
+    for (const t of transcripts) {
+      const speaker = t.role === 'child' ? 'Child' : `Number ${record.number}`
+      lines.push(`${speaker}: "${t.text}"`)
+    }
+    lines.push('')
+  }
+
+  const calledBefore = history.some(r => r.number === currentNumber)
+  if (calledBefore) {
+    lines.push(
+      'The child is calling you AGAIN. Greet them warmly — "Hey, you\'re back!" ' +
+      'Pick up where you left off naturally. Reference what you discussed before. ' +
+      'If they talked to other numbers, you may have heard about it on the number line.]'
+    )
+  } else {
+    lines.push(
+      'This is a new call to a number the child hasn\'t called before. ' +
+      'If the child mentions talking to other numbers, you may have heard about it on the number line.]'
+    )
+  }
+
+  return lines.join('\n')
+}
 
 const BASE_TIMEOUT_MS = 2 * 60 * 1000 // 2 minutes
 const EXTENSION_MS = 2 * 60 * 1000 // +2 minutes
@@ -27,6 +80,10 @@ interface UseRealtimeVoiceOptions {
   onLookAt?: (center: number, range: number) => void
   /** Called when the model wants to highlight numbers/range on the number line */
   onIndicate?: (numbers: number[], range?: { from: number; to: number }) => void
+  /** Called when the model starts a "find the number" game */
+  onStartFindNumber?: (target: number) => void
+  /** Called when the model stops the "find the number" game */
+  onStopFindNumber?: () => void
   /** Ref that reports whether an exploration animation is currently active.
    *  When true, the call timer pauses the countdown (won't expire mid-video). */
   isExplorationActiveRef?: React.RefObject<boolean>
@@ -71,6 +128,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onLookAtRef.current = options?.onLookAt
   const onIndicateRef = useRef(options?.onIndicate)
   onIndicateRef.current = options?.onIndicate
+  const onStartFindNumberRef = useRef(options?.onStartFindNumber)
+  onStartFindNumberRef.current = options?.onStartFindNumber
+  const onStopFindNumberRef = useRef(options?.onStopFindNumber)
+  onStopFindNumberRef.current = options?.onStopFindNumber
   const isExplorationActiveRef = options?.isExplorationActiveRef
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -97,6 +158,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const audioElRef = useRef<HTMLAudioElement | null>(null)
   const ringRef = useRef<{ stop: () => void } | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const micGainRef = useRef<GainNode | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const deadlineRef = useRef<number>(0)
   const extensionUsedRef = useRef(false)
@@ -106,9 +168,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const stateRef = useRef<CallState>('idle')
 
   // Scenario + transcript state
+  const childProfileRef = useRef<ChildProfile | undefined>(undefined)
   const scenarioRef = useRef<GeneratedScenario | null>(null)
   const transcriptsRef = useRef<TranscriptEntry[]>([]) // ring buffer, last 12
   const calledNumberRef = useRef<number>(0)
+
+  // Session history — persists across calls (NOT cleared by cleanup)
+  const sessionHistoryRef = useRef<CallRecord[]>([])
 
   // Keep stateRef in sync
   useEffect(() => {
@@ -116,6 +182,19 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   }, [state])
 
   const cleanup = useCallback(() => {
+    // Save call record to session history before clearing refs
+    if (calledNumberRef.current && transcriptsRef.current.length > 0) {
+      sessionHistoryRef.current.push({
+        number: calledNumberRef.current,
+        conferenceNumbers: [...conferenceNumbersRef.current],
+        transcripts: [...transcriptsRef.current],
+        scenario: scenarioRef.current ? { ...scenarioRef.current } : null,
+        timestamp: Date.now(),
+      })
+      console.log('[session] saved call record for %d (%d transcripts, %d total calls in session)',
+        calledNumberRef.current, transcriptsRef.current.length, sessionHistoryRef.current.length)
+    }
+
     // Cancel pending hang-up timer
     if (hangUpTimerRef.current) {
       clearTimeout(hangUpTimerRef.current)
@@ -138,7 +217,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       pcRef.current = null
     }
 
-    // Stop mic stream
+    // Disconnect mic gain node
+    micGainRef.current = null
+
+    // Stop mic stream (releases mic permission)
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop())
       streamRef.current = null
@@ -221,6 +303,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }
 
     // 3. Fetch ephemeral token (includes scenario generation — may take several seconds)
+    // If we've called this number before, reuse its scenario so the story continues
+    const priorCalls = sessionHistoryRef.current.filter(r => r.number === number)
+    const previousScenario = priorCalls.length > 0
+      ? priorCalls[priorCalls.length - 1].scenario
+      : null
+
     let clientSecret: string
     try {
       const res = await fetch('/api/realtime/session', {
@@ -228,6 +316,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           number,
+          ...(previousScenario && { previousScenario }),
           ...(options?.recommendedExplorations?.length && {
             recommendedExplorations: options.recommendedExplorations,
           }),
@@ -239,8 +328,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       }
       const data = await res.json()
       clientSecret = data.clientSecret
-      // Store scenario for evolve_story tool
+      // Store scenario and child profile
       scenarioRef.current = data.scenario ?? null
+      childProfileRef.current = data.childProfile ?? undefined
       calledNumberRef.current = number
       if (data.scenario) {
         console.log('[scenario] generated for %d:', number, {
@@ -272,8 +362,26 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       const pc = new RTCPeerConnection()
       pcRef.current = pc
 
-      // Add mic track
-      stream.getAudioTracks().forEach(track => pc.addTrack(track, stream))
+      // Route mic through a GainNode for soft echo suppression.
+      // Instead of hard-muting the mic while the model speaks, we reduce
+      // gain to ~15% — enough to suppress echo while still allowing the
+      // child to barge in / interrupt with their actual voice.
+      const audioCtx = audioCtxRef.current ?? new AudioContext()
+      audioCtxRef.current = audioCtx
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {})
+      }
+      const micSource = audioCtx.createMediaStreamSource(stream)
+      const micGain = audioCtx.createGain()
+      micGain.gain.value = 1.0
+      const micDest = audioCtx.createMediaStreamDestination()
+      micSource.connect(micGain)
+      micGain.connect(micDest)
+      micGainRef.current = micGain
+      const processedStream = micDest.stream
+
+      // Add processed mic track (routed through gain node, not raw mic)
+      processedStream.getAudioTracks().forEach(track => pc.addTrack(track, processedStream))
 
       // Create audio element for remote audio
       const audioEl = document.createElement('audio')
@@ -305,12 +413,14 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           source.connect(analyser)
           const dataArray = new Uint8Array(analyser.frequencyBinCount)
 
-          // Software echo gate: mute mic while model outputs audio so the
-          // speaker sound doesn't feed back and trigger speech_started.
-          // The mic unmutes after ~250ms of silence for responsive barge-in.
+          // Soft echo gate: attenuate (not mute) mic while model outputs audio.
+          // Reduces gain to ~15% so echo is suppressed but the child can still
+          // barge in / interrupt. Full gain restores after ~250ms of model silence.
           let modelSilenceSince = 0
-          let micMuted = false
-          const MIC_UNMUTE_DELAY_MS = 250 // keep mic muted briefly after model stops
+          let micAttenuated = false
+          const MIC_RESTORE_DELAY_MS = 250
+          const ATTENUATED_GAIN = 0.15
+          const FULL_GAIN = 1.0
 
           const checkSpeaking = () => {
             const st = stateRef.current
@@ -326,24 +436,24 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const nowSpeaking = avg > 15
               setIsSpeaking(nowSpeaking)
 
-              // Software echo gate: mute/unmute mic track based on model audio
-              const micTrack = streamRef.current?.getAudioTracks()[0]
-              if (micTrack) {
+              // Soft echo gate: reduce/restore mic gain based on model audio
+              const gain = micGainRef.current
+              if (gain) {
                 const now = performance.now()
                 if (nowSpeaking) {
-                  // Model is outputting audio → mute mic to prevent echo
+                  // Model is outputting audio → attenuate mic to suppress echo
                   modelSilenceSince = 0
-                  if (!micMuted) {
-                    micTrack.enabled = false
-                    micMuted = true
+                  if (!micAttenuated) {
+                    gain.gain.setTargetAtTime(ATTENUATED_GAIN, audioCtx.currentTime, 0.02)
+                    micAttenuated = true
                   }
                 } else {
-                  // Model silent — start/continue unmute delay
-                  if (micMuted) {
+                  // Model silent — restore full gain after brief delay
+                  if (micAttenuated) {
                     if (modelSilenceSince === 0) modelSilenceSince = now
-                    if (now - modelSilenceSince > MIC_UNMUTE_DELAY_MS) {
-                      micTrack.enabled = true
-                      micMuted = false
+                    if (now - modelSilenceSince > MIC_RESTORE_DELAY_MS) {
+                      gain.gain.setTargetAtTime(FULL_GAIN, audioCtx.currentTime, 0.05)
+                      micAttenuated = false
                     }
                   }
                 }
@@ -386,7 +496,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               type: 'session.update',
               session: {
                 voice: firstVoice,
-                instructions: generateConferencePrompt(allNumbers, allNumbers[0]),
+                instructions: generateConferencePrompt(allNumbers, allNumbers[0], childProfileRef.current),
               },
             }))
           }
@@ -402,7 +512,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           type: 'session.update',
           session: {
             voice: nextVoice,
-            instructions: generateConferencePrompt(allNumbers, nextSpeaker),
+            instructions: generateConferencePrompt(allNumbers, nextSpeaker, childProfileRef.current),
           },
         }))
         dc.send(JSON.stringify({ type: 'response.create' }))
@@ -413,6 +523,21 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           const msg = JSON.parse(event.data)
 
           if (msg.type === 'session.created') {
+            // Inject session history so the number remembers prior conversations
+            const history = sessionHistoryRef.current
+            if (history.length > 0) {
+              const historyText = formatCallHistory(history, number)
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'user',
+                  content: [{ type: 'input_text', text: historyText }],
+                },
+              }))
+              console.log('[session] injected %d prior call records into conversation', history.length)
+            }
+
             // Prompt the model to speak first (like answering a phone call)
             dc.send(JSON.stringify({ type: 'response.create' }))
           }
@@ -647,7 +772,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               type: 'session.update',
               session: {
                 voice: firstNew.voice,
-                instructions: generateConferencePrompt(updated, firstNew.number),
+                instructions: generateConferencePrompt(updated, firstNew.number, childProfileRef.current),
               },
             }))
 
@@ -899,6 +1024,49 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               dc.send(JSON.stringify({ type: 'response.create' }))
             }
           }
+
+          // Handle model calling start_find_number tool
+          if (msg.name === 'start_find_number') {
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              const target = Number(args.target)
+              if (!isFinite(target)) throw new Error('invalid target')
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: true, message: `Find-the-number game started! Target: ${target}. The child CANNOT see the target — they only see "Find the mystery number!" Give them verbal clues: describe what makes this number special, hint at its value, say warmer/colder as they navigate. You will receive proximity updates with zone and direction info.` }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              onStartFindNumberRef.current?.(target)
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Invalid target number' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+            }
+          }
+
+          // Handle model calling stop_find_number tool
+          if (msg.name === 'stop_find_number') {
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: msg.call_id,
+                output: JSON.stringify({ success: true, message: 'Find-the-number game stopped.' }),
+              },
+            }))
+            dc.send(JSON.stringify({ type: 'response.create' }))
+            onStopFindNumberRef.current?.()
+          }
         } catch {
           // Ignore parse errors
         }
@@ -1105,7 +1273,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           type: 'session.update',
           session: {
             voice: firstVoice,
-            instructions: generateConferencePrompt(updated, updated[0]),
+            instructions: generateConferencePrompt(updated, updated[0], childProfileRef.current),
           },
         }))
       }

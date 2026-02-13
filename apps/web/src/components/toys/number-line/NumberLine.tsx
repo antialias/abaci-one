@@ -311,6 +311,10 @@ export function NumberLine() {
   const seekFnRef = useRef<(segmentIndex: number) => void>(() => {})
   const lookAtFnRef = useRef<(center: number, range: number) => void>(() => {})
   const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }) => void>(() => {})
+  const startFindNumberFnRef = useRef<(target: number) => void>(() => {})
+  const stopFindNumberFnRef = useRef<() => void>(() => {})
+  const handleVoiceFindNumberStart = useCallback((target: number) => { startFindNumberFnRef.current(target) }, [])
+  const handleVoiceFindNumberStop = useCallback(() => { stopFindNumberFnRef.current() }, [])
   const handleVoiceExploration = useCallback((constantId: string) => {
     exploreFnRef.current(constantId)
   }, [])
@@ -327,6 +331,8 @@ export function NumberLine() {
     onSeekExploration: handleVoiceSeek,
     onLookAt: handleVoiceLookAt,
     onIndicate: handleVoiceIndicate,
+    onStartFindNumber: handleVoiceFindNumberStart,
+    onStopFindNumber: handleVoiceFindNumberStop,
     isExplorationActiveRef,
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
@@ -360,13 +366,24 @@ export function NumberLine() {
   // (pacing the animation) but skips actual audio playback so the voice
   // agent can narrate instead.
   useEffect(() => {
+    const wasMuted = narration.mutedRef.current
     narration.mutedRef.current = voiceState === 'active'
     // If a call just connected and narration is already playing, stop the
     // current TTS clip (sequencer will continue muted from next segment)
     if (voiceState === 'active' && narration.isNarrating.current) {
       audioManager.stop()
     }
-  }, [voiceState, narration, audioManager])
+    // Call ended while narration was playing muted — the sequencer is stuck
+    // because speakSegment returned early (muted) and ttsFinished is false.
+    // Resume TTS narration from the current position so audio plays again.
+    if (wasMuted && voiceState !== 'active') {
+      const ds = demoStateRef.current
+      if (ds.constantId && ds.phase !== 'idle' && ds.phase !== 'fading' && ds.revealProgress < 1) {
+        narration.stop()
+        narration.resume(ds.constantId)
+      }
+    }
+  }, [voiceState, narration, audioManager, demoStateRef])
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -382,6 +399,10 @@ export function NumberLine() {
   const renderTargetRef = useRef<RenderTarget | undefined>(undefined)
   // Indicator state: temporary highlights triggered by the voice agent's `indicate` tool
   const indicatorRef = useRef<{ numbers: number[]; range?: { from: number; to: number }; startMs: number } | null>(null)
+  // Track whether the current find-the-number game was started by the voice model
+  // (to avoid sending redundant system messages back to the model, and to hide the target in the UI)
+  const [gameStartedByModel, setGameStartedByModel] = useState(false)
+  const gameStartedByModelRef = useRef(false)
   // Animation frame for game loop (continuous redraws while game is active)
   const gameRafRef = useRef<number>(0)
 
@@ -1072,8 +1093,68 @@ export function NumberLine() {
     draw()
   }, [draw])
 
-  // Audio feedback for the game
-  useFindTheNumberAudio(audioZone, proximityRef)
+  // Wire forward refs for voice-model-initiated find-the-number games
+  const GAME_EMOJIS = ['⭐', '🚀', '💎', '🦄', '🌈', '🎯', '🔥', '🌸', '🐙', '🍕', '🎪', '🪐']
+  startFindNumberFnRef.current = (target: number) => {
+    const emoji = GAME_EMOJIS[Math.floor(Math.random() * GAME_EMOJIS.length)]
+    gameStartedByModelRef.current = true
+    setGameStartedByModel(true)
+    handleGameStart(target, emoji)
+  }
+  stopFindNumberFnRef.current = () => {
+    gameStartedByModelRef.current = false
+    setGameStartedByModel(false)
+    handleGameGiveUp()
+  }
+
+  // Push game lifecycle events to the voice model when the child starts/stops a game during a call
+  const prevGameStateForVoiceRef = useRef<FindTheNumberGameState>('idle')
+  useEffect(() => {
+    const prev = prevGameStateForVoiceRef.current
+    prevGameStateForVoiceRef.current = gameState
+    if (voiceState !== 'active') return
+    // Child started a game during a call (not model-initiated)
+    if (gameState === 'active' && prev !== 'active' && !gameStartedByModelRef.current) {
+      const target = targetRef.current?.value
+      if (target !== undefined) {
+        sendSystemMessage(`[Game update: The child started a find-the-number game! Target: ${target}. You will receive proximity updates — give verbal hints!]`)
+      }
+    }
+    // Child gave up or game ended
+    if (gameState === 'idle' && prev !== 'idle' && !gameStartedByModelRef.current) {
+      sendSystemMessage('[Game update: The child ended the find-the-number game.]')
+    }
+    // Reset model flag when game ends regardless of who started it
+    if (gameState === 'idle') {
+      gameStartedByModelRef.current = false
+      setGameStartedByModel(false)
+    }
+  }, [gameState, voiceState, sendSystemMessage])
+
+  // Push proximity zone updates to the voice model during active calls
+  const prevAudioZoneForVoiceRef = useRef<ProximityZone | null>(null)
+  useEffect(() => {
+    const prev = prevAudioZoneForVoiceRef.current
+    prevAudioZoneForVoiceRef.current = audioZone
+    if (voiceState !== 'active' || audioZone === null) return
+    if (audioZone === prev) return
+    const target = targetRef.current?.value
+    if (target === undefined) return
+    if (audioZone === 'found') {
+      sendSystemMessage('[Game update: The child found the number! Celebrate with them!]', true)
+    } else {
+      const prox = proximityRef.current
+      const dir = prox?.targetDirection
+      const dirHint = dir === 'left' ? 'The number is to the LEFT of the screen — the child should scroll left.'
+        : dir === 'right' ? 'The number is to the RIGHT of the screen — the child should scroll right.'
+        : 'The number is on screen.'
+      const zoomHint = prox?.needsMoreZoom ? ' The child needs to ZOOM IN more.' : ''
+      sendSystemMessage(`[Game update: zone=${audioZone}. ${dirHint}${zoomHint}]`)
+    }
+  }, [audioZone, voiceState, sendSystemMessage])
+
+  // Audio feedback for the game (muted during active voice calls — model gives verbal hints)
+  useFindTheNumberAudio(audioZone, proximityRef, voiceState === 'active')
 
   // --- Hover handler for prime tooltips (primes only) ---
   const handleHover = useCallback((hoverScreenX: number, _hoverScreenY: number) => {
@@ -1802,6 +1883,7 @@ export function NumberLine() {
         onGiveUp={handleGameGiveUp}
         gameState={gameState}
         isDark={resolvedTheme === 'dark'}
+        hideTarget={gameStartedByModel}
       />
       <div data-element="canvas-wrapper" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <canvas

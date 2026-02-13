@@ -18,9 +18,11 @@ const INACTIVITY_MS = 8_000
  */
 export function useFindTheNumberAudio(
   zone: ProximityZone | null,
-  proximityRef: RefObject<ProximityResult | null>
+  proximityRef: RefObject<ProximityResult | null>,
+  muted = false,
 ): void {
   const { isEnabled } = useAudioManager()
+  const shouldPlay = isEnabled && !muted
 
   // --- Zone transition clips ---
   const speakWarmer = useTTS('find-warmer', {
@@ -69,7 +71,7 @@ export function useFindTheNumberAudio(
 
   // Zone transition audio
   useEffect(() => {
-    if (!isEnabled || zone === null) {
+    if (!shouldPlay || zone === null) {
       prevZoneRef.current = zone
       return
     }
@@ -96,11 +98,11 @@ export function useFindTheNumberAudio(
         speakColder()
       }
     }
-  }, [zone, isEnabled, speakWarmer, speakVeryClose, speakFound, speakColder])
+  }, [zone, shouldPlay, speakWarmer, speakVeryClose, speakFound, speakColder])
 
   // Inactivity hint timer
   useEffect(() => {
-    if (!isEnabled || zone === null || zone === 'found') {
+    if (!shouldPlay || zone === null || zone === 'found') {
       if (hintTimerRef.current) {
         clearTimeout(hintTimerRef.current)
         hintTimerRef.current = null
@@ -163,7 +165,7 @@ export function useFindTheNumberAudio(
         hintTimerRef.current = null
       }
     }
-  }, [zone, isEnabled, proximityRef, speakZoomIn, speakZoomOut, speakScrollLeft, speakScrollRight, speakClose])
+  }, [zone, shouldPlay, proximityRef, speakZoomIn, speakZoomOut, speakScrollLeft, speakScrollRight, speakClose])
 
   // Reset on game end
   useEffect(() => {

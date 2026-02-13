@@ -30,6 +30,7 @@ describe('useUserPlayers hooks', () => {
     helpSettings: null,
     notes: null,
     familyCode: 'FAM-123456',
+    age: null,
   }
 
   const mockPlayerWithSkillData: StudentWithSkillData = {
@@ -72,6 +73,7 @@ describe('useUserPlayers hooks', () => {
       helpSettings: null,
       notes: null,
       familyCode: 'FAM-NEW123',
+      age: null,
     }
 
     describe('optimistic updates', () => {
