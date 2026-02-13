@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { renderSieveOverlay, computeSieveViewports, getSieveViewportState, computeSieveTickTransforms, SWEEP_MAX_N } from './renderSieveOverlay'
+import { renderSieveOverlay, computeSieveViewports, getSieveViewportState, computeSieveTickTransforms, SWEEP_MAX_N, COMPOSITION_START_MS } from './renderSieveOverlay'
 import { renderNumberLine } from '../renderNumberLine'
 import { computeTickMarks } from '../numberLineTicks'
 import { computePrimeInfos } from './sieve'
@@ -11,7 +11,7 @@ import type { NumberLineState } from '../types'
 const SIEVE_INITIAL_STATE: NumberLineState = { center: 13, pixelsPerUnit: 50 }
 const CELEBRATION_VP = { center: 55, pixelsPerUnit: 5 }
 
-const TOTAL_MS = 28000 // enough to see celebration phase (incl. factor 11)
+const TOTAL_MS = 36000 // enough to see celebration + composition reveal
 
 // --- Storybook harness ---
 
@@ -144,7 +144,9 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
                         ? 'Skip count by 11s (lightning!)'
                         : elapsedMs < 20300
                           ? 'Composites falling...'
-                          : 'Prime celebration!'
+                          : elapsedMs < COMPOSITION_START_MS
+                            ? 'Prime celebration!'
+                            : 'Composition reveal (2×2×3 = 12)'
 
   return (
     <div data-component="sieve-story-harness">

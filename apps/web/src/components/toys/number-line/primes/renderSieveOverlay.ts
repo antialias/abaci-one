@@ -20,6 +20,12 @@ export const SIEVE_PHASES: SievePhase[] = [
 ]
 
 export const CELEBRATION_START_MS = 20300
+export const COMPOSITION_START_MS = CELEBRATION_START_MS + 5000 // 25300 — after celebration settles
+
+/** The composite number used for the factorization reveal */
+const COMPOSITION_EXAMPLE = 12
+/** How long each factor's arc chain takes to draw (ms per arc) */
+const COMPOSITION_ARC_STAGGER_MS = 300
 
 /**
  * Fixed maximum N for sweep calculations. All sweep progress, composite mark
@@ -70,6 +76,40 @@ function sweepEase(t: number, factor: number): number {
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3)
+}
+
+/** Decompose n into its prime factors, e.g. 12 → [2, 2, 3] */
+function primeFactors(n: number): number[] {
+  const factors: number[] = []
+  let remaining = n
+  while (remaining > 1) {
+    const p = smallestPrimeFactor(remaining)
+    if (p <= 1) break
+    factors.push(p)
+    remaining /= p
+  }
+  return factors
+}
+
+/**
+ * Group prime factors into skip-counting chains for the composition reveal.
+ * e.g. 12 → [{ factor: 2, multiples: [2, 4, 6, 8, 10, 12] }, { factor: 3, multiples: [3, 6, 9, 12] }]
+ * Each chain shows the full skip-counting path from the factor up to N.
+ */
+function compositionChains(n: number): { factor: number; multiples: number[] }[] {
+  const factors = primeFactors(n)
+  const seen = new Set<number>()
+  const chains: { factor: number; multiples: number[] }[] = []
+  for (const f of factors) {
+    if (seen.has(f)) continue
+    seen.add(f)
+    const multiples: number[] = []
+    for (let m = f; m <= n; m += f) {
+      multiples.push(m)
+    }
+    chains.push({ factor: f, multiples })
+  }
+  return chains
 }
 
 // --- Sieve debug tuning (module-level, same pattern as goldenRatioDemo) ---
@@ -309,14 +349,25 @@ export function getSieveViewportState(
     return clampSieveViewport({ center: firstPhase.factor, pixelsPerUnit: trackingPpu }, cssWidth)
   }
 
-  // During celebration: interpolate last end → celebration viewport
+  // During celebration → composition: multi-phase viewport transition
   const lastPhase = SIEVE_PHASES[SIEVE_PHASES.length - 1]
   const lastPhaseEnd = lastPhase.startMs + lastPhase.durationMs
   if (virtualDwellMs >= CELEBRATION_START_MS) {
     const celebDuration = 1500
+    const lastKf = keyframes[keyframes.length - 1]
+
+    // Composition reveal: zoom into the example number
+    if (virtualDwellMs >= COMPOSITION_START_MS) {
+      const compVp: SieveViewport = { center: 7, pixelsPerUnit: cssWidth / (16 * 1.4) }
+      const compTransitionMs = 1500
+      const compT = clamp01((virtualDwellMs - COMPOSITION_START_MS) / compTransitionMs)
+      const eased = easeOutCubic(compT)
+      return clampSieveViewport(lerpViewport(celebrationVp, compVp, eased), cssWidth)
+    }
+
+    // Celebration zoom
     const celebT = clamp01((virtualDwellMs - CELEBRATION_START_MS) / celebDuration)
     const eased = easeOutCubic(celebT)
-    const lastKf = keyframes[keyframes.length - 1]
     return clampSieveViewport(lerpViewport(lastKf.end, celebrationVp, eased), cssWidth)
   }
 
@@ -483,7 +534,7 @@ export function computeSieveTickTransforms(
   }
 
   // Safety net: once all sweeps are complete, hide ANY remaining composite
-  // not caught by factors 2,3,5,7 (e.g. 121=11², 169=13²)
+  // not caught by factors 2,3,5,7,11 (e.g. 169=13²)
   const lastPhase = SIEVE_PHASES[SIEVE_PHASES.length - 1]
   const allSweepsComplete = dwellElapsedMs >= lastPhase.startMs + lastPhase.durationMs
   if (allSweepsComplete) {
@@ -491,6 +542,19 @@ export function computeSieveTickTransforms(
       if (transforms.has(n)) continue
       if (smallestPrimeFactor(n) === n) continue // prime — leave alone
       transforms.set(n, { opacity: 0, offsetX: 0, offsetY: 0, rotation: 0 })
+    }
+  }
+
+  // Composition reveal: fade the example composite back in as a ghost
+  if (dwellElapsedMs >= COMPOSITION_START_MS) {
+    const ghostT = clamp01((dwellElapsedMs - COMPOSITION_START_MS - 800) / 600) // delay + fade
+    if (ghostT > 0) {
+      transforms.set(COMPOSITION_EXAMPLE, {
+        opacity: ghostT * 0.5, // semi-transparent ghost
+        offsetX: 0,
+        offsetY: 0,
+        rotation: 0,
+      })
     }
   }
 
@@ -803,6 +867,130 @@ export function renderSieveOverlay(
       ctx.fill()
 
       // Prime labels are drawn by the main renderer — no overlay labels needed
+    }
+  }
+
+  // --- Layer 4: Composition reveal (after celebration) ---
+  // Shows skip-counting paths that reach the example composite, revealing its factorization.
+  if (dwellElapsedMs >= COMPOSITION_START_MS) {
+    const compElapsed = dwellElapsedMs - COMPOSITION_START_MS
+    const chains = compositionChains(COMPOSITION_EXAMPLE)
+    const factors = primeFactors(COMPOSITION_EXAMPLE)
+
+    // Viewport zoom-in transition (fade out celebration glow, fade in composition)
+    const compRamp = clamp01(compElapsed / 1000)
+
+    // Dim the celebration glows so composition arcs stand out
+    if (compRamp > 0) {
+      const dimAlpha = 0.3 * compRamp
+      ctx.fillStyle = isDark
+        ? `rgba(26, 26, 46, ${dimAlpha})`
+        : `rgba(248, 248, 248, ${dimAlpha})`
+      ctx.fillRect(0, 0, cssWidth, cssHeight)
+    }
+
+    // Draw skip-counting arc chains, staggered by factor
+    let arcTimeOffset = 500 // initial delay for viewport to settle
+    for (const chain of chains) {
+      const { factor, multiples } = chain
+      // Each arc in the chain appears sequentially
+      for (let i = 0; i < multiples.length - 1; i++) {
+        const arcStartMs = arcTimeOffset + i * COMPOSITION_ARC_STAGGER_MS
+        const arcT = clamp01((compElapsed - arcStartMs) / 400) // 400ms to draw each arc
+        if (arcT <= 0) continue
+
+        const fromN = multiples[i]
+        const toN = multiples[i + 1]
+        const fromSX = numberToScreenX(fromN, state.center, state.pixelsPerUnit, cssWidth)
+        const toSX = numberToScreenX(toN, state.center, state.pixelsPerUnit, cssWidth)
+
+        // Same arc shape as the hopper path
+        const arcPeak = computeArcPeak(toSX - fromSX)
+
+        // Draw the arc with growing alpha
+        const alpha = easeOutCubic(arcT) * 0.6
+        ctx.beginPath()
+        ctx.moveTo(fromSX, centerY)
+        ctx.quadraticCurveTo((fromSX + toSX) / 2, centerY - arcPeak, toSX, centerY)
+        ctx.strokeStyle = primeColorRgba(factor, alpha, isDark)
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+
+        // Small dot at each landing point
+        if (arcT > 0.5) {
+          const dotAlpha = clamp01((arcT - 0.5) * 2) * 0.7
+          ctx.beginPath()
+          ctx.arc(toSX, centerY, 3, 0, Math.PI * 2)
+          ctx.fillStyle = primeColorRgba(factor, dotAlpha, isDark)
+          ctx.fill()
+        }
+      }
+
+      // Offset the next factor's chain so they appear sequentially
+      arcTimeOffset += multiples.length * COMPOSITION_ARC_STAGGER_MS + 400
+    }
+
+    // Factorization label: "2 × 2 × 3 = 12"
+    const labelDelayMs = arcTimeOffset + 200
+    const labelT = clamp01((compElapsed - labelDelayMs) / 600)
+    if (labelT > 0) {
+      const exampleSX = numberToScreenX(COMPOSITION_EXAMPLE, state.center, state.pixelsPerUnit, cssWidth)
+      const labelAlpha = easeOutCubic(labelT)
+
+      // Build label like "2 × 2 × 3 = 12"
+      const labelStr = factors.join(' × ') + ' = ' + COMPOSITION_EXAMPLE
+
+      ctx.save()
+      ctx.globalAlpha = labelAlpha * tourOpacity
+      ctx.font = 'bold 16px system-ui, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      ctx.fillStyle = isDark ? '#e0e0e0' : '#333'
+
+      // Background pill for readability
+      const textWidth = ctx.measureText(labelStr).width
+      const pillPadX = 8
+      const pillPadY = 4
+      const pillY = centerY - 45
+      ctx.fillStyle = isDark ? 'rgba(26, 26, 46, 0.85)' : 'rgba(255, 255, 255, 0.85)'
+      const pillLeft = exampleSX - textWidth / 2 - pillPadX
+      const pillRight = exampleSX + textWidth / 2 + pillPadX
+      const pillTop = pillY - 16 - pillPadY
+      const pillBot = pillY + pillPadY
+      const pillRadius = 6
+      ctx.beginPath()
+      ctx.moveTo(pillLeft + pillRadius, pillTop)
+      ctx.lineTo(pillRight - pillRadius, pillTop)
+      ctx.quadraticCurveTo(pillRight, pillTop, pillRight, pillTop + pillRadius)
+      ctx.lineTo(pillRight, pillBot - pillRadius)
+      ctx.quadraticCurveTo(pillRight, pillBot, pillRight - pillRadius, pillBot)
+      ctx.lineTo(pillLeft + pillRadius, pillBot)
+      ctx.quadraticCurveTo(pillLeft, pillBot, pillLeft, pillBot - pillRadius)
+      ctx.lineTo(pillLeft, pillTop + pillRadius)
+      ctx.quadraticCurveTo(pillLeft, pillTop, pillLeft + pillRadius, pillTop)
+      ctx.closePath()
+      ctx.fill()
+
+      // Draw each factor in its prime color, operators in neutral
+      ctx.textBaseline = 'bottom'
+      let curX = exampleSX - textWidth / 2
+      for (let i = 0; i < factors.length; i++) {
+        const fStr = String(factors[i])
+        ctx.fillStyle = primeColorRgba(factors[i], 1, isDark)
+        ctx.fillText(fStr, curX + ctx.measureText(fStr).width / 2, pillY)
+        curX += ctx.measureText(fStr).width
+        if (i < factors.length - 1) {
+          ctx.fillStyle = isDark ? '#aaa' : '#666'
+          ctx.fillText(' × ', curX + ctx.measureText(' × ').width / 2, pillY)
+          curX += ctx.measureText(' × ').width
+        }
+      }
+      // " = 12"
+      const eqStr = ' = ' + COMPOSITION_EXAMPLE
+      ctx.fillStyle = isDark ? '#e0e0e0' : '#333'
+      ctx.fillText(eqStr, curX + ctx.measureText(eqStr).width / 2, pillY)
+
+      ctx.restore()
     }
   }
 

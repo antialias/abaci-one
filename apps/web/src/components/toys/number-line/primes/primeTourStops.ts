@@ -100,7 +100,13 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
       'Now look what\'s left standing. Those are our primes! ' +
       'The numbers that couldn\'t be shaken out, no matter how hard we tried. ' +
       'A man named Eratosthenes invented this game thousands of years ago, ' +
-      'and we still use it today!',
+      'and we still use it today! ' +
+      'But wait — do you see what just happened? ' +
+      'Two\'s path landed on twelve: two, four, six, eight, ten, twelve! ' +
+      'And three\'s path landed on it too: three, six, nine, twelve! ' +
+      'That means twelve is made of twos and threes. ' +
+      'Two times two times three equals twelve! ' +
+      'Every single number that fell off is a secret recipe made from primes.',
     ttsTone:
       'Excited game-show energy building to wonder. Start playful and familiar with skip counting, ' +
       'build momentum as the sieve speeds up, then awe at the primes left standing. ' +
@@ -147,7 +153,7 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
         animationDurationMs: 5900,
       },
       {
-        // Seg 4: celebration — no tail needed
+        // Seg 4: celebration
         ttsText:
           'Now look what\'s left standing. Those are our primes! ' +
           'The numbers that couldn\'t be shaken out, no matter how hard we tried. ' +
@@ -155,8 +161,20 @@ export const PRIME_TOUR_STOPS: PrimeTourStop[] = [
           'and we still use it today!',
         animationDurationMs: 5000,
       },
+      {
+        // Seg 5: composition reveal — shows how skip counting reveals factorization.
+        // Zooms into 12 and draws the skip-counting paths from 2 and 3.
+        ttsText:
+          'But wait — do you see what just happened? ' +
+          'Two\'s path landed on twelve: two, four, six, eight, ten, twelve! ' +
+          'And three\'s path landed on it too: three, six, nine, twelve! ' +
+          'That means twelve is made of twos and threes. ' +
+          'Two times two times three equals twelve! ' +
+          'Every single number that fell off is a secret recipe made from primes.',
+        animationDurationMs: 8000,
+      },
     ],
-    minDwellMs: 27000,
+    minDwellMs: 35000,
     autoAdvance: true,
   },
   {
