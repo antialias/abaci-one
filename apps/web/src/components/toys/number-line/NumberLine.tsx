@@ -50,7 +50,8 @@ import type { SieveTickTransform } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 import { useRealtimeVoice } from './talkToNumber/useRealtimeVoice'
-import { PhoneCallOverlay } from './talkToNumber/PhoneCallOverlay'
+import type { CallState } from './talkToNumber/useRealtimeVoice'
+import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCallOverlay'
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
@@ -272,9 +273,12 @@ export function NumberLine() {
   const handleVoiceTransfer = useCallback((targetNumber: number) => {
     setCallingNumber(targetNumber)
   }, [])
-  const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, transferTarget, conferenceNumbers } = useRealtimeVoice({
+  const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
   })
+  const callBoxContainerRef = useRef<HTMLDivElement>(null)
+  const voiceStateRef = useRef<CallState>('idle')
+  voiceStateRef.current = voiceState
   // Clear callingNumber when call ends (e.g. model hangs up)
   useEffect(() => {
     if (voiceState === 'idle' && callingNumber !== null) {
@@ -770,6 +774,17 @@ export function NumberLine() {
       )
     }
 
+    // Position call boxes at their number's screen-X
+    if (callBoxContainerRef.current && voiceStateRef.current === 'active') {
+      updateCallBoxPositions(
+        callBoxContainerRef.current,
+        stateRef.current.center,
+        stateRef.current.pixelsPerUnit,
+        cssWidth,
+        cssHeight,
+      )
+    }
+
     // Keep redrawing while collision fades are in progress
     if (fadeAnimating && !collisionRafRef.current) {
       collisionRafRef.current = requestAnimationFrame(() => {
@@ -1096,6 +1111,11 @@ export function NumberLine() {
   useEffect(() => {
     draw()
   }, [anchorMax, mediumMax, draw])
+
+  // Redraw when conference numbers change (so newly added call boxes get positioned)
+  useEffect(() => {
+    if (conferenceNumbers.length > 0 && voiceState === 'active') draw()
+  }, [conferenceNumbers, voiceState, draw])
 
   // Find tapped constant data for info card
   const tappedConstant = useMemo(
@@ -1453,12 +1473,16 @@ export function NumberLine() {
             error={voiceError}
             transferTarget={transferTarget}
             conferenceNumbers={conferenceNumbers}
+            currentSpeaker={currentSpeaker}
+            isSpeaking={isSpeaking}
             onHangUp={() => { hangUp(); setCallingNumber(null) }}
+            onRemoveFromCall={removeFromCall}
             onRetry={() => dial(callingNumber)}
             onDismiss={() => { hangUp(); setCallingNumber(null) }}
             containerWidth={cssWidthRef.current}
             containerHeight={cssHeightRef.current}
             isDark={resolvedTheme === 'dark'}
+            callBoxContainerRef={callBoxContainerRef}
           />
         )}
         {demoActive && restoredFromUrl && (
