@@ -2,6 +2,10 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { generateFamilyCode, parentChild } from '@/db/schema'
+import {
+  DEFAULT_SESSION_PREFERENCES,
+  playerSessionPreferences,
+} from '@/db/schema/player-session-preferences'
 import type { GameBreakSettings, GeneratedProblem } from '@/db/schema/session-plans'
 import {
   approveSessionPlan,
@@ -10,6 +14,7 @@ import {
   startSessionPlan,
 } from '@/lib/curriculum'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
+import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-games'
 import { getDbUserId } from '@/lib/viewer'
 
 /**
@@ -104,8 +109,28 @@ export async function POST(req: NextRequest) {
     // 4. Enable basic skills
     await setPracticingSkills(player.id, ['basic.+1', 'basic.+2', 'basic.+3'])
 
-    // If setupOnly, return player info without generating a session
+    // If setupOnly, save preset config as player session preferences
+    // so the StartPracticeModal initializes with the preset's settings
     if (setupOnly) {
+      await db.insert(playerSessionPreferences).values({
+        playerId: player.id,
+        config: JSON.stringify({
+          ...DEFAULT_SESSION_PREFERENCES,
+          durationMinutes: config.durationMinutes,
+          partWeights: {
+            abacus: config.enabledParts.abacus ? 1 : 0,
+            visualization: config.enabledParts.visualization ? 1 : 0,
+            linear: config.enabledParts.linear ? 1 : 0,
+          },
+          gameBreakEnabled: config.gameBreakSettings.enabled,
+          gameBreakMinutes: config.gameBreakSettings.maxDurationMinutes,
+          gameBreakSelectionMode: config.gameBreakSettings.selectionMode,
+          gameBreakSelectedGame: config.gameBreakSettings.selectedGame,
+          gameBreakEnabledGames: [...PRACTICE_APPROVED_GAMES],
+        }),
+        updatedAt: Date.now(),
+      })
+
       return NextResponse.json({
         playerId: player.id,
         playerName: player.name,
