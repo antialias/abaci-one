@@ -115,6 +115,12 @@ interface WrapperOverrides {
   existingPlan?: { targetDurationMinutes: number } | null
 }
 
+/** Default savedPreferences that enables game breaks with the mocked games */
+const defaultSavedPreferences: PlayerSessionPreferencesConfig = {
+  ...DEFAULT_SESSION_PREFERENCES,
+  gameBreakEnabledGames: ['game1', 'game2'],
+}
+
 function createWrapper(overrides: WrapperOverrides = {}) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -123,7 +129,7 @@ function createWrapper(overrides: WrapperOverrides = {}) {
         studentName="Test Student"
         focusDescription="Test focus"
         sessionMode={overrides.sessionMode ?? defaultSessionMode}
-        savedPreferences={overrides.savedPreferences}
+        savedPreferences={'savedPreferences' in overrides ? overrides.savedPreferences : defaultSavedPreferences}
         onSavePreferences={overrides.onSavePreferences}
         existingPlan={overrides.existingPlan as any}
       >
@@ -480,7 +486,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       expect(onSave).not.toHaveBeenCalled()
     })
 
-    it('includes all 10 persisted settings in the save payload', () => {
+    it('includes all 11 persisted settings in the save payload', () => {
       const onSave = vi.fn()
 
       const { result } = renderHook(() => useStartPracticeModal(), {
@@ -503,6 +509,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       expect(payload).toHaveProperty('gameBreakSelectionMode')
       expect(payload).toHaveProperty('gameBreakSelectedGame')
       expect(payload).toHaveProperty('gameBreakDifficultyPreset')
+      expect(payload).toHaveProperty('gameBreakEnabledGames')
     })
 
     it('batches rapid changes into the latest config snapshot', () => {
