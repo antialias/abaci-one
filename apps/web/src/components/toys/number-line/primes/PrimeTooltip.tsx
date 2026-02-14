@@ -18,6 +18,11 @@ interface PrimeTooltipProps {
   isDark: boolean
   /** Optional note from landmark/interestingness data (e.g., "Record gap of 72") */
   landmarkNote?: string
+  /** When provided, shows a "Take the tour!" link for prime numbers */
+  onStartTour?: () => void
+  /** Called when the mouse enters/leaves the tooltip (to prevent hover-clear) */
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
 }
 
 const TOOLTIP_PAD = 8
@@ -55,6 +60,9 @@ export function PrimeTooltip({
   containerWidth,
   isDark,
   landmarkNote,
+  onStartTour,
+  onMouseEnter,
+  onMouseLeave,
 }: PrimeTooltipProps) {
   const bg = isDark ? 'rgba(30, 30, 40, 0.92)' : 'rgba(255, 255, 255, 0.92)'
   const textColor = isDark ? '#f3f4f6' : '#1f2937'
@@ -62,8 +70,11 @@ export function PrimeTooltip({
   // Get special properties for primes
   const specialLabels = primeInfo.isPrime ? getSpecialPrimeLabels(value) : []
 
+  // Show tour link for primes
+  const showTourLink = primeInfo.isPrime && onStartTour
+
   // Wider tooltip when there are special properties or landmark notes
-  const tooltipWidth = (specialLabels.length > 0 || landmarkNote) ? 220 : 180
+  const tooltipWidth = (specialLabels.length > 0 || landmarkNote || showTourLink) ? 220 : 180
 
   // Clamp horizontal position
   const clampedX = Math.max(TOOLTIP_PAD, Math.min(containerWidth - tooltipWidth - TOOLTIP_PAD, screenX - tooltipWidth / 2))
@@ -118,6 +129,8 @@ export function PrimeTooltip({
   return (
     <div
       data-component="prime-tooltip"
+      onMouseEnter={showTourLink ? onMouseEnter : undefined}
+      onMouseLeave={showTourLink ? onMouseLeave : undefined}
       style={{
         position: 'absolute',
         left: clampedX,
@@ -131,7 +144,7 @@ export function PrimeTooltip({
           ? '0 2px 12px rgba(0,0,0,0.5)'
           : '0 2px 12px rgba(0,0,0,0.1)',
         zIndex: 10,
-        pointerEvents: 'none',
+        pointerEvents: showTourLink ? 'auto' : 'none',
         whiteSpace: 'nowrap',
       }}
     >
@@ -157,6 +170,35 @@ export function PrimeTooltip({
           }}
         >
           {landmarkNote}
+        </div>
+      )}
+      {showTourLink && (
+        <div
+          data-element="tour-link"
+          style={{
+            marginTop: 4,
+            paddingTop: 4,
+            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+          }}
+        >
+          <button
+            data-action="start-prime-tour"
+            onClick={onStartTour}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              margin: 0,
+              fontSize: 11,
+              fontWeight: 600,
+              color: isDark ? '#c4b5fd' : '#7c3aed',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+            }}
+          >
+            Explore primes
+          </button>
         </div>
       )}
     </div>
