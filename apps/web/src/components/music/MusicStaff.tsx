@@ -44,11 +44,11 @@ export function MusicStaff({
 
   // Note position
   const noteY = staffTop + (8 - position) * lineGap
-  const noteX = staffLeft + staffWidth * 0.6
+  const noteX = staffLeft + staffWidth * 0.72
 
-  // Note head dimensions (ellipse)
-  const noteRx = 4.5
-  const noteRy = 3.2
+  // Note head dimensions (ellipse) — sized to fill a staff space
+  const noteRx = 6
+  const noteRy = 4.2
 
   // Stem
   const stemHeight = lineGap * 7
@@ -57,15 +57,19 @@ export function MusicStaff({
   const stemY2 = stemDir === 'up' ? noteY - stemHeight : noteY + stemHeight
 
   // Clef positioning
-  const clefX = staffLeft + 6
+  // The staff spans from staffTop (top line) to staffTop + 8*lineGap (bottom line).
+  // The treble clef glyph (𝄞) visually centers around the G line (position 2).
+  // The bass clef glyph (𝄢) visually centers around the F line (position 6, i.e. 4th line).
+  // These Unicode glyphs are tall and need large font sizes to span the staff properly.
+  const staffHeight = lineGap * 8
+  const clefX = staffLeft + 2
   const clefSymbol = clef === 'treble' ? '\u{1D11E}' : '\u{1D122}'
-  // Treble clef centers on G line (position 2, the second line from bottom)
-  // Bass clef centers on F line (position 6, the fourth line from bottom — wait,
-  // actually in bass: position 6 = F3 which is the 4th line)
-  const trebleClefY = staffTop + (8 - 2) * lineGap + 2
-  const bassClefY = staffTop + (8 - 6) * lineGap + 2
+  const clefFontSize = clef === 'treble' ? staffHeight * 2.4 : staffHeight * 0.9
+  // Treble clef: anchor near bottom of staff — the glyph extends upward
+  const trebleClefY = staffTop + staffHeight * 0.85 - lineGap * 1.5
+  // Bass clef: anchor near the F line (4th line from bottom)
+  const bassClefY = staffTop + (8 - 4) * lineGap + lineGap * 0.3
   const clefY = clef === 'treble' ? trebleClefY : bassClefY
-  const clefFontSize = clef === 'treble' ? lineGap * 8 : lineGap * 5
 
   // Accidental positioning
   const accidentalSymbol =
@@ -78,6 +82,7 @@ export function MusicStaff({
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
+      overflow="visible"
       data-component="MusicStaff"
       data-clef={clef}
       data-note={`${pitchClass}${octave}`}
@@ -119,9 +124,9 @@ export function MusicStaff({
         return (
           <line
             key={`ledger-${pos}`}
-            x1={noteX - 9}
+            x1={noteX - 11}
             y1={y}
-            x2={noteX + 9}
+            x2={noteX + 11}
             y2={y}
             stroke="#333"
             strokeWidth={0.8}

@@ -22,33 +22,43 @@ export const musicVariant: MatchingPairsVariant<MusicCard, MusicConfig> = {
     }
     if (card.type === 'staff-note') {
       return {
-        gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
-        icon: '🎵',
+        gradient: 'linear-gradient(135deg, #2c3e80, #4a69bd)',
+        icon: '𝄞',
       }
     }
-    // note-name cards
+    // note-name cards — warm orange/amber to contrast the cool blue staff cards
     return {
-      gradient: 'linear-gradient(135deg, #9b59b6, #8e44ad)',
-      icon: '🎼',
+      gradient: 'linear-gradient(135deg, #e17055, #fdcb6e)',
+      icon: 'A♯',
     }
   },
 
   shouldDimCard: (card, firstFlippedCard) => {
-    // Staff-to-name mode: after flipping one type, dim cards of the same type
-    if (firstFlippedCard.type === 'staff-note' && card.type === 'staff-note') {
-      return true
-    }
+    // note-name flipped → dim other note-name cards (staff-to-name mode)
     if (firstFlippedCard.type === 'note-name' && card.type === 'note-name') {
       return true
     }
-    // Treble-to-bass mode: dim cards with the same clef
-    if (
-      firstFlippedCard.type === 'staff-note' &&
-      card.type === 'staff-note' &&
-      firstFlippedCard.clef === card.clef
-    ) {
-      return true
+
+    // staff-note flipped → behaviour depends on what the candidate card is
+    if (firstFlippedCard.type === 'staff-note') {
+      // Dim note-name cards? No — those are the match target in staff-to-name
+      if (card.type === 'note-name') {
+        return false
+      }
+
+      // Both are staff-note: dim if same clef (treble-to-bass mode),
+      // or dim if candidate has no clef differentiation (staff-to-name mode:
+      // the match target is a note-name card, so other staff-note cards are wrong)
+      if (card.type === 'staff-note') {
+        // If clefs differ, keep it available (treble-to-bass: it's the match target)
+        if (card.clef && firstFlippedCard.clef && card.clef !== firstFlippedCard.clef) {
+          return false
+        }
+        // Same clef or no clef → dim
+        return true
+      }
     }
+
     return false
   },
 

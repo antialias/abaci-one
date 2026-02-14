@@ -30,6 +30,7 @@ export const PRACTICE_APPROVED_GAMES = [
   'complement-race', // Fast-paced complement practice
   'card-sorting', // Single-player sorting challenge
   'matching', // Can be played solo, pairs matching
+  'music-matching', // Sight-reading practice, solo-friendly
 ] as const
 
 export type PracticeApprovedGameName = (typeof PRACTICE_APPROVED_GAMES)[number]

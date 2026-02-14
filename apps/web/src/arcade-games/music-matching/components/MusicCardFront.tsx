@@ -38,18 +38,6 @@ export function MusicCardFront({ card }: { card: MusicCard }) {
           height={70}
           showClef={true}
         />
-        <div
-          data-element="clef-label"
-          className={css({
-            fontSize: '10px',
-            color: 'gray.500',
-            marginTop: '2px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          })}
-        >
-          {card.clef} clef
-        </div>
       </div>
     )
   }
