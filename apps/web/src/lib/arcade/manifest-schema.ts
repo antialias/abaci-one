@@ -46,6 +46,27 @@ export const PracticeBreakConfigSchema = z
         hard: z.record(z.string(), z.unknown()).optional(),
       })
       .optional(),
+
+    /**
+     * Per-field UI metadata for the customize panel.
+     * Overrides the generic FIELD_CONFIG defaults in GameBreakCustomConfig.
+     * Games should specify this for any field that needs game-specific labels or options.
+     */
+    fieldConfig: z
+      .record(
+        z.string(),
+        z.object({
+          label: z.string(),
+          type: z.enum(['number', 'boolean', 'select']),
+          options: z
+            .array(z.object({ value: z.unknown(), label: z.string() }))
+            .optional(),
+          min: z.number().optional(),
+          max: z.number().optional(),
+          step: z.number().optional(),
+        })
+      )
+      .optional(),
   })
   .describe('Configuration for practice break behavior')
 

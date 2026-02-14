@@ -42,6 +42,26 @@ const manifest: GameManifest = {
       medium: { difficulty: 8, gameType: 'abacus-numeral' },
       hard: { difficulty: 12, gameType: 'complement-pairs' },
     },
+    fieldConfig: {
+      gameType: {
+        label: 'Match Type',
+        type: 'select',
+        options: [
+          { value: 'abacus-numeral', label: 'Abacus ↔ Number' },
+          { value: 'complement-pairs', label: 'Complement Pairs' },
+        ],
+      },
+      difficulty: {
+        label: 'Pairs',
+        type: 'select',
+        options: [
+          { value: 6, label: '6' },
+          { value: 8, label: '8' },
+          { value: 12, label: '12' },
+          { value: 15, label: '15' },
+        ],
+      },
+    },
   },
   resultsConfig: {
     supportsResults: true,

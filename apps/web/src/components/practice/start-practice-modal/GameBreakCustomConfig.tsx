@@ -209,7 +209,9 @@ export function GameBreakCustomConfig() {
           }}
         >
           {editableFields.map(([fieldKey, defaultValue]) => {
-            const fieldConfig = FIELD_CONFIG[fieldKey]
+            // Prefer game-specific fieldConfig from the manifest, fall back to static defaults
+            const gameFieldConfig = selectedGamePracticeConfig.fieldConfig?.[fieldKey]
+            const fieldConfig = gameFieldConfig ?? FIELD_CONFIG[fieldKey]
             const currentValue = resolvedGameConfig[fieldKey] ?? defaultValue
 
             // Render based on field type

@@ -448,7 +448,7 @@ function StartPracticeModalContent({
                   <div
                     data-section="config-expanded"
                     className={css({
-                      overflow: 'hidden',
+                      overflow: 'auto',
                       transition: 'all 0.3s ease',
                       '@media (max-height: 500px) and (min-width: 500px)': {
                         overflow: 'auto',

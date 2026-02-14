@@ -42,6 +42,35 @@ const manifest: GameManifest = {
       medium: { difficulty: 8, gameType: 'staff-to-name', clef: 'both' },
       hard: { difficulty: 12, gameType: 'treble-to-bass', clef: 'both' },
     },
+    fieldConfig: {
+      gameType: {
+        label: 'Match Type',
+        type: 'select',
+        options: [
+          { value: 'staff-to-name', label: 'Staff ↔ Name' },
+          { value: 'treble-to-bass', label: 'Treble ↔ Bass' },
+        ],
+      },
+      clef: {
+        label: 'Clef',
+        type: 'select',
+        options: [
+          { value: 'treble', label: 'Treble' },
+          { value: 'bass', label: 'Bass' },
+          { value: 'both', label: 'Both' },
+        ],
+      },
+      difficulty: {
+        label: 'Pairs',
+        type: 'select',
+        options: [
+          { value: 6, label: '6' },
+          { value: 8, label: '8' },
+          { value: 12, label: '12' },
+          { value: 15, label: '15' },
+        ],
+      },
+    },
   },
   resultsConfig: {
     supportsResults: true,
