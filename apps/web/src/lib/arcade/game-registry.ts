@@ -113,6 +113,7 @@ import { cardSortingGame } from '@/arcade-games/card-sorting'
 import { yjsDemoGame } from '@/arcade-games/yjs-demo'
 import { rithmomachiaGame } from '@/arcade-games/rithmomachia'
 import { knowYourWorldGame } from '@/arcade-games/know-your-world'
+import { musicMatchingGame } from '@/arcade-games/music-matching'
 
 registerGame(memoryQuizGame)
 registerGame(matchingGame)
@@ -121,3 +122,4 @@ registerGame(cardSortingGame)
 registerGame(yjsDemoGame)
 registerGame(rithmomachiaGame)
 registerGame(knowYourWorldGame)
+registerGame(musicMatchingGame)

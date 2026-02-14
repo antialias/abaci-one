@@ -13,6 +13,7 @@ import type { YjsDemoConfig } from '@/arcade-games/yjs-demo/types'
 import type { RithmomachiaConfig } from '@/arcade-games/rithmomachia/types'
 import type { KnowYourWorldConfig } from '@/arcade-games/know-your-world/types'
 import type { ComplementRaceGameConfig } from '@/arcade-games/complement-race/types'
+import type { MusicConfig } from '@/arcade-games/music-matching/types'
 
 // Re-export all config types
 export type { MemoryQuizConfig as MemoryQuizGameConfig } from '@/arcade-games/memory-quiz/types'
@@ -22,6 +23,7 @@ export type { YjsDemoConfig as YjsDemoGameConfig } from '@/arcade-games/yjs-demo
 export type { RithmomachiaConfig as RithmomachiaGameConfig } from '@/arcade-games/rithmomachia/types'
 export type { KnowYourWorldConfig } from '@/arcade-games/know-your-world/types'
 export type { ComplementRaceGameConfig } from '@/arcade-games/complement-race/types'
+export type { MusicConfig as MusicMatchingConfig } from '@/arcade-games/music-matching/types'
 
 // ============================================================================
 // Combined Types
@@ -38,6 +40,7 @@ export type GameConfigByName = {
   rithmomachia: RithmomachiaConfig
   'know-your-world': KnowYourWorldConfig
   'complement-race': ComplementRaceGameConfig
+  'music-matching': MusicConfig
 }
 
 /**
@@ -110,4 +113,11 @@ export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
   routeCount: 3,
   targetScore: 100,
   timeLimit: 300,
+}
+
+export const DEFAULT_MUSIC_MATCHING_CONFIG: MusicConfig = {
+  gameType: 'staff-to-name',
+  clef: 'treble',
+  difficulty: 6,
+  turnTimer: 30,
 }

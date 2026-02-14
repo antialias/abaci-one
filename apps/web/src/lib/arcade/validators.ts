@@ -31,6 +31,8 @@ const validatorLoaders = {
     (await import('@/arcade-games/rithmomachia/Validator')).rithmomachiaValidator,
   'know-your-world': async () =>
     (await import('@/arcade-games/know-your-world/Validator')).knowYourWorldValidator,
+  'music-matching': async () =>
+    (await import('@/arcade-games/music-matching/Validator')).musicMatchingValidator,
   // Add new games here - GameName type will auto-update
 } as const
 
