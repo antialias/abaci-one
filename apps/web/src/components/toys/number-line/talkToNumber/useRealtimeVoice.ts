@@ -360,7 +360,11 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       }
     } catch (err) {
       cleanup()
-      setError(err instanceof Error ? err.message : 'Failed to connect')
+      if (err instanceof Error) console.error('[voice] session error:', err.message)
+      // API route errors already have friendly messages; raw fetch failures need translation
+      const msg = err instanceof Error ? err.message : ''
+      const isFetchFailure = !msg || msg === 'Failed to fetch' || msg.startsWith('NetworkError')
+      setError(isFetchFailure ? `Couldn't reach ${number}. Check your internet and try again!` : msg)
       setErrorCode((err as Error & { code?: string }).code || 'session_error')
       setState('error')
       return
@@ -1119,7 +1123,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       )
 
       if (!sdpResponse.ok) {
-        throw new Error(`WebRTC connection failed: ${sdpResponse.status}`)
+        console.error('[voice] WebRTC SDP exchange failed:', sdpResponse.status)
+        throw new Error(`${number} couldn't pick up the phone. Try calling again!`)
       }
 
       const answerSdp = await sdpResponse.text()
@@ -1225,7 +1230,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       }
     } catch (err) {
       cleanup()
-      setError(err instanceof Error ? err.message : 'Connection failed')
+      if (err instanceof Error) console.error('[voice] connection error:', err.message)
+      setError(err instanceof Error ? err.message : `${number} couldn't pick up the phone. Try calling again!`)
       setErrorCode('connection_error')
       setState('error')
     }
