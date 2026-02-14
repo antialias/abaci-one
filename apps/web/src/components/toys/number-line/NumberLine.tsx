@@ -317,6 +317,8 @@ export function NumberLine() {
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
   const voiceStateRef = useRef<CallState>('idle')
   voiceStateRef.current = voiceState
+  // Pending tour — queued during a call, launched after hangup
+  const pendingTourRef = useRef<string | null>(null)
   const conferenceNumbersRef = useRef<number[]>([])
   conferenceNumbersRef.current = conferenceNumbers
   // Debug: log overlay render condition changes
@@ -332,11 +334,27 @@ export function NumberLine() {
     const prev = prevVoiceStateRef.current
     prevVoiceStateRef.current = voiceState
     // Only clear if we transitioned TO idle FROM a non-idle state
-    if (voiceState === 'idle' && prev !== 'idle' && callingNumber !== null) {
-      console.log('[NumberLine] clearing callingNumber because voiceState transitioned', prev, '→ idle')
-      setCallingNumber(null)
+    if (voiceState === 'idle' && prev !== 'idle') {
+      if (callingNumber !== null) {
+        console.log('[NumberLine] clearing callingNumber because voiceState transitioned', prev, '→ idle')
+        setCallingNumber(null)
+      }
+      // Launch pending tour after hangup
+      const tourId = pendingTourRef.current
+      if (tourId) {
+        pendingTourRef.current = null
+        console.log('[NumberLine] launching pending tour after hangup:', tourId)
+        // Small delay so the call UI clears first
+        setTimeout(() => {
+          cancelDemo()
+          setTappedConstantId(null)
+          setTappedIntValue(null)
+          setHoveredValue(null)
+          startTour()
+        }, 500)
+      }
     }
-  }, [voiceState, callingNumber])
+  }, [voiceState, callingNumber, cancelDemo, startTour])
   // TTS narration plays during voice calls — the pre-recorded narrator handles
   // content while the voice agent acts as a silent companion.
 
@@ -1540,30 +1558,20 @@ export function NumberLine() {
 
     // Route tour explorations to the prime tour handler
     if (!CONSTANT_IDS.has(explorationId)) {
-      cancelDemo() // mutual exclusion: cancel demo when starting tour
-      setTappedConstantId(null)
-      setTappedIntValue(null)
-      setHoveredValue(null)
-      tooltipHoveredRef.current = false
-      startTour()
-
-      // If on a voice call, send companion instructions for the tour
       const onCall = voiceStateRef.current === 'active'
       if (onCall) {
-        const display = DEMO_DISPLAY[explorationId]
-        if (display) {
-          const visualDesc = display.visualDesc
-            ? `\n\nWHAT THE ANIMATION SHOWS (for YOUR reference only — do NOT describe this to the child): ${display.visualDesc}`
-            : ''
-          sendSystemMessage(
-            `A guided tour of ${display.name} is starting.` +
-            `${visualDesc}\n\n` +
-            `Give the child a brief intro. Match the child's energy level. ` +
-            `Keep it to 1-2 sentences, then call resume_exploration.`,
-            true
-          )
-        }
-        voiceExplorationSegmentRef.current = -1
+        // Queue the tour to launch after the call ends — the agent will
+        // explain the tour, say goodbye, and hang up on its own.
+        console.log('[NumberLine] queuing tour for after hangup:', explorationId)
+        pendingTourRef.current = explorationId
+      } else {
+        // Not on a call — start the tour immediately
+        cancelDemo()
+        setTappedConstantId(null)
+        setTappedIntValue(null)
+        setHoveredValue(null)
+        tooltipHoveredRef.current = false
+        startTour()
       }
       return
     }
@@ -1573,9 +1581,11 @@ export function NumberLine() {
     narration.reset()
 
     const onCall = voiceStateRef.current === 'active'
+    console.log('[exploration] handleExploreConstant — onCall:', onCall, 'explorationId:', explorationId)
 
     if (onCall) {
       // Start paused at progress 0 — narrator introduces first, then calls resume
+      console.log('[exploration] starting PAUSED (restoreDemo + markTriggered)')
       restoreDemo(explorationId, 0)
       narration.markTriggered(explorationId) // suppress narration auto-start
     } else {
@@ -1594,6 +1604,7 @@ export function NumberLine() {
         // Companion rules are in the start_exploration tool output (not here)
         // so the model won't treat them as a "user message" to recite.
         // This message provides constant-specific context only.
+        console.log('[exploration] sending intro system message + response.create')
         sendSystemMessage(
           `An animated exploration of ${display.symbol} (${display.name}) is ready to play.` +
           `${visualDesc}\n\n` +
@@ -1614,7 +1625,9 @@ export function NumberLine() {
   }
   resumeFnRef.current = () => {
     const ds = demoStateRef.current
+    console.log('[exploration] resumeFnRef called — constantId:', ds.constantId, 'revealProgress:', ds.revealProgress)
     if (ds.constantId && ds.revealProgress < 1) {
+      console.log('[exploration] narration.resume() — TTS narration starts NOW')
       narration.resume(ds.constantId)
     }
   }

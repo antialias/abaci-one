@@ -3,7 +3,7 @@ import { playRingTone } from './ringTone'
 import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber } from './generateNumberPersonality'
 import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
 import type { ChildProfile } from './childProfile'
-import { EXPLORATION_IDS } from './explorationRegistry'
+import { EXPLORATION_IDS, CONSTANT_IDS, EXPLORATION_DISPLAY } from './explorationRegistry'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
 
@@ -135,6 +135,17 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const onStopFindNumberRef = useRef(options?.onStopFindNumber)
   onStopFindNumberRef.current = options?.onStopFindNumber
   const isExplorationActiveRef = options?.isExplorationActiveRef
+  // Cooldown: don't auto-pause exploration within N ms of a resume to prevent
+  // TTS narration echo (mic picks up speaker audio) from immediately re-pausing.
+  const lastResumeTimestampRef = useRef(0)
+  // Pending exploration actions — deferred until agent finishes speaking.
+  // response.function_call_arguments.done fires while audio is still streaming,
+  // so we queue the action and execute it on response.done + audio silence.
+  const pendingExplorationRef = useRef<{ type: 'start'; constantId: string } | { type: 'resume' } | null>(null)
+  // Tracks whether the agent's audio is currently playing on the client.
+  // Updated by the requestAnimationFrame audio-level loop, read by the
+  // pending exploration executor to wait for actual silence.
+  const agentAudioPlayingRef = useRef(false)
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
@@ -455,6 +466,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const avg = sum / dataArray.length
               const nowSpeaking = avg > 15
               setIsSpeaking(nowSpeaking)
+              agentAudioPlayingRef.current = nowSpeaking
 
               // Commit pending speaker on audio onset (silence → speaking transition).
               // This ensures the visual indicator switches only when the NEW character's
@@ -542,8 +554,15 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             dc.send(JSON.stringify({ type: 'response.create' }))
           }
           if (msg.type === 'error') {
-            console.error('[voice] server error:', JSON.stringify(msg.error))
             const errCode = msg.error?.code || msg.error?.type || 'unknown'
+            // response_cancel_not_active is harmless — we speculatively cancel
+            // in-progress responses during exploration transitions, and sometimes
+            // the response has already finished. Just log and continue.
+            if (errCode === 'response_cancel_not_active') {
+              console.log('[voice] response.cancel: no active response (harmless)')
+              return
+            }
+            console.error('[voice] server error:', JSON.stringify(msg.error))
             const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
             const isRateLimit = /rate_limit/i.test(errCode)
             cleanup()
@@ -559,6 +578,31 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }
             setState('error')
             return
+          }
+
+          // Log response lifecycle for exploration debugging
+          if (msg.type === 'response.created' || msg.type === 'response.done') {
+            console.log('[exploration] %s — response_id: %s, pending: %s',
+              msg.type, msg.response?.id, pendingExplorationRef.current ? JSON.stringify(pendingExplorationRef.current) : 'none')
+          }
+
+          // Execute deferred exploration actions once the agent finishes speaking.
+          // Tool calls fire mid-response (audio still streaming), so we queue
+          // start/resume actions and run them here when the response is complete.
+          if (msg.type === 'response.done') {
+            const pending = pendingExplorationRef.current
+            console.log('[exploration] response.done — pending:', pending ? JSON.stringify(pending) : 'none', 'response_id:', msg.response?.id)
+            if (pending) {
+              pendingExplorationRef.current = null
+              if (pending.type === 'start') {
+                console.log('[exploration] executing deferred start_exploration:', pending.constantId)
+                onStartExplorationRef.current?.(pending.constantId)
+              } else if (pending.type === 'resume') {
+                console.log('[exploration] executing deferred resume_exploration — narration starts NOW')
+                lastResumeTimestampRef.current = Date.now()
+                onResumeExplorationRef.current?.()
+              }
+            }
           }
 
           // Collect transcripts for evolve_story tool (both sides)
@@ -589,6 +633,15 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const buf = transcriptsRef.current
               buf.push({ role: 'child', text: msg.transcript })
               if (buf.length > 12) buf.shift()
+
+              // Auto-pause exploration when the child speaks — instant and reliable
+              // rather than depending on the agent calling pause_exploration via prompt.
+              // Cooldown: skip if exploration just resumed — TTS narration audio can leak
+              // through the mic and get transcribed as "child speech", causing an
+              // immediate re-pause. 3s is enough for echo to settle.
+              if (isExplorationActiveRef?.current && Date.now() - lastResumeTimestampRef.current > 3000) {
+                onPauseExplorationRef.current?.()
+              }
             }
           }
 
@@ -850,17 +903,51 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               return
             }
 
+            // Branch: tour explorations require hanging up first
+            if (!CONSTANT_IDS.has(constantId)) {
+              const display = EXPLORATION_DISPLAY[constantId]
+              const tourName = display?.name ?? constantId
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({
+                    success: true,
+                    requires_hangup: true,
+                    message: `The ${tourName} tour is a guided experience that will start after you hang up. ` +
+                      `Tell the child what they're about to see — get them excited! Then say a warm goodbye and call hang_up. ` +
+                      `The tour will launch automatically after the call ends. Invite the child to call you back anytime after watching it.`,
+                  }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              // Queue the tour to launch after hangup
+              onStartExplorationRef.current?.(constantId)
+              return
+            }
+
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
                 type: 'function_call_output',
                 call_id: msg.call_id,
-                output: JSON.stringify({ success: true, message: `Exploration of ${constantId} is ready but PAUSED. Give the child a brief intro, then you MUST call resume_exploration to start the animation playing. Do NOT begin narrating the script until after you call resume_exploration.` }),
+                output: JSON.stringify({
+                  success: true,
+                  message: `Exploration of ${constantId} is ready but PAUSED. Give the child a brief intro — match their energy level — then call resume_exploration to start.`,
+                  companion_rules: 'Once the animation is playing: a pre-recorded narrator tells the story. You stay SILENT during playback. ' +
+                    'You will receive context messages showing what the narrator is saying. ' +
+                    'If the child speaks, the animation pauses automatically — answer their question, then call resume_exploration. ' +
+                    'If the child seems disengaged, offer choices: keep watching, see a different one, or do something else. ' +
+                    'One brief reaction when it finishes, then move on. Do NOT narrate, announce segments, or repeat what the narrator says.',
+                }),
               },
             }))
-            dc.send(JSON.stringify({ type: 'response.create' }))
-
-            onStartExplorationRef.current?.(constantId)
+            // Defer until agent finishes speaking (response.done) — the tool call
+            // event fires while audio is still streaming, and we can't send
+            // response.create until the current response completes.
+            console.log('[exploration] start_exploration tool call — deferring until response.done, constantId:', constantId)
+            pendingExplorationRef.current = { type: 'start', constantId }
           }
 
           // Handle pause/resume/seek exploration tools
@@ -883,11 +970,14 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               item: {
                 type: 'function_call_output',
                 call_id: msg.call_id,
-                output: JSON.stringify({ success: true, message: 'Exploration resumed' }),
+                output: JSON.stringify({ success: true, message: 'Exploration resumed. The narrator is speaking now — stay completely silent until the child speaks or the exploration ends.' }),
               },
             }))
-            dc.send(JSON.stringify({ type: 'response.create' }))
-            onResumeExplorationRef.current?.()
+            // Defer narration start until agent finishes speaking (response.done).
+            // Do NOT send response.create — the narrator takes over and the agent
+            // stays silent until the child speaks or the exploration finishes.
+            console.log('[exploration] resume_exploration tool call — deferring until response.done')
+            pendingExplorationRef.current = { type: 'resume' }
           }
 
           if (msg.name === 'seek_exploration') {
@@ -1240,6 +1330,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const sendSystemMessage = useCallback((text: string, promptResponse = false) => {
     const dc = dcRef.current
     if (!dc || dc.readyState !== 'open') return
+    console.log('[exploration] sendSystemMessage — promptResponse:', promptResponse, 'text:', text.slice(0, 80) + '...')
     dc.send(JSON.stringify({
       type: 'conversation.item.create',
       item: {
@@ -1249,6 +1340,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       },
     }))
     if (promptResponse) {
+      console.log('[exploration] sending response.create')
       dc.send(JSON.stringify({ type: 'response.create' }))
     }
   }, [])

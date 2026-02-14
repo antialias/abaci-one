@@ -153,14 +153,14 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'start_exploration',
             description:
-              `Prepare an animated visual exploration of a mathematical constant on the number line. The animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. The number closest to the constant's value will be designated narrator. You will receive the full narration script and segment-by-segment cues. Available constants: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}.`,
+              `Launch an animated visual exploration on the number line. For constant explorations (phi, pi, tau, e, gamma, sqrt2, ramanujan): the animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. A pre-recorded narrator handles the narration. Stay quiet during playback. For tour explorations (primes): you will need to hang up first — the tour launches automatically after the call ends. Explain the tour to the child, say goodbye warmly, invite them to call back after watching, then call hang_up. Available explorations: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}.`,
             parameters: {
               type: 'object',
               properties: {
                 constant_id: {
                   type: 'string',
                   enum: AVAILABLE_EXPLORATIONS.map(e => e.id),
-                  description: 'Which mathematical constant to explore',
+                  description: 'Which exploration to launch',
                 },
               },
               required: ['constant_id'],
@@ -170,14 +170,14 @@ export async function POST(request: Request) {
             type: 'function',
             name: 'pause_exploration',
             description:
-              'Pause the currently playing exploration animation. Use this when the child asks a question that needs the animation stopped to discuss, or when you want to linger on something interesting. Use your judgment — simple questions can be answered while the animation keeps playing.',
+              'Pause the currently playing exploration animation. The animation also pauses automatically when the child speaks. Use this for deliberate pauses when you want to highlight something or linger on an interesting moment.',
             parameters: { type: 'object', properties: {} },
           },
           {
             type: 'function',
             name: 'resume_exploration',
             description:
-              'Resume the exploration animation from where it was paused. Call this after you\'ve finished discussing a paused moment and are ready to continue.',
+              'Resume the exploration animation from where it was paused. Call this after you\'ve answered the child\'s question and they\'re ready to continue watching.',
             parameters: { type: 'object', properties: {} },
           },
           {
