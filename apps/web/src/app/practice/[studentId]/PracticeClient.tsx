@@ -735,6 +735,7 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
               selectionMode={gameBreakSettings?.selectionMode ?? 'kid-chooses'}
               selectedGame={gameBreakSettings?.selectedGame ?? null}
               gameConfig={gameBreakGameConfig}
+              enabledGames={gameBreakSettings?.enabledGames}
             />
           ) : (
             <ActiveSession

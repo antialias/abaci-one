@@ -358,6 +358,13 @@ export interface GameBreakSettings {
   gameConfig?: PracticeBreakGameConfig
 
   /**
+   * Per-player allowlist of enabled game names.
+   * Only games in this list (that also pass manifest + system whitelist checks)
+   * will be available during game breaks.
+   */
+  enabledGames?: string[]
+
+  /**
    * Skip the setup phase and go directly to playing.
    * When true, games use getInitialStateForPracticeBreak() to create
    * a playing-ready state instead of showing the setup screen.

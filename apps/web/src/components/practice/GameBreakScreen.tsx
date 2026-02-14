@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { getGame } from '@/lib/arcade/game-registry'
-import {
-  getPracticeApprovedGames,
-  getRandomPracticeApprovedGame,
-} from '@/lib/arcade/practice-approved-games'
+import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import { useGameBreakRoom } from '@/hooks/useGameBreakRoom'
 import type { GameBreakSelectionMode, PracticeBreakGameConfig } from '@/db/schema/session-plans'
 import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
@@ -36,6 +33,8 @@ export interface GameBreakScreenProps {
    * Example: { 'matching': { difficulty: 6, gameType: 'abacus-numeral', skipSetupPhase: true } }
    */
   gameConfig?: PracticeBreakGameConfig
+  /** Per-player enabled game names (from session plan). Only these games are available. */
+  enabledGames?: string[]
 }
 
 type GameBreakPhase = 'initializing' | 'auto-starting' | 'selecting' | 'playing' | 'completed'
@@ -50,12 +49,17 @@ export function GameBreakScreen({
   selectionMode = 'kid-chooses',
   selectedGame = null,
   gameConfig,
+  enabledGames,
 }: GameBreakScreenProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Use practice-approved games instead of all available games
-  const availableGames = useMemo(() => getPracticeApprovedGames(), [])
+  // Use practice-approved games, filtered by per-player enabled list if provided
+  const availableGames = useMemo(() => {
+    const approved = getPracticeApprovedGames()
+    if (!enabledGames || enabledGames.length === 0) return approved
+    return approved.filter((g) => enabledGames.includes(g.manifest.name))
+  }, [enabledGames])
 
   // Track the game name to auto-start (resolved from 'random' if needed)
   const [autoStartGameName, setAutoStartGameName] = useState<string | null>(null)
@@ -83,8 +87,18 @@ export function GameBreakScreen({
           let gameName: string | null = null
 
           if (selectedGame === 'random' || selectedGame === null) {
-            // Pick a random practice-approved game
-            const randomGame = getRandomPracticeApprovedGame()
+            // Pick a random game from available (filtered by enabledGames)
+            const randomGame =
+              availableGames.length > 0
+                ? availableGames[Math.floor(Math.random() * availableGames.length)]
+                : undefined
+            gameName = randomGame?.manifest.name ?? null
+          } else if (
+            availableGames.length > 0 &&
+            !availableGames.some((g) => g.manifest.name === selectedGame)
+          ) {
+            // Pre-selected game not in enabled list, pick random fallback
+            const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)]
             gameName = randomGame?.manifest.name ?? null
           } else {
             // Use the pre-selected game

@@ -95,7 +95,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       activeSession={activeSession}
       currentPracticingSkillIds={currentPracticingSkillIds}
       problemHistory={problemHistory}
-      initialTab={tab as 'overview' | 'skills' | 'history' | undefined}
+      initialTab={tab as 'overview' | 'skills' | 'history' | 'settings' | undefined}
       userId={user.id}
     />
   )

@@ -16,6 +16,7 @@ export interface PlayerSessionPreferencesConfig {
   gameBreakSelectionMode: string
   gameBreakSelectedGame: string | null
   gameBreakDifficultyPreset: string | null
+  gameBreakEnabledGames?: string[]
 }
 
 export const DEFAULT_SESSION_PREFERENCES: PlayerSessionPreferencesConfig = {
@@ -29,6 +30,7 @@ export const DEFAULT_SESSION_PREFERENCES: PlayerSessionPreferencesConfig = {
   gameBreakSelectionMode: 'kid-chooses',
   gameBreakSelectedGame: null,
   gameBreakDifficultyPreset: 'medium',
+  gameBreakEnabledGames: [],
 }
 
 /**

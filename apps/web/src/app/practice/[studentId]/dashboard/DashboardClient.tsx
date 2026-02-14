@@ -63,12 +63,13 @@ import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
 import { css } from '../../../../../styled-system/css'
 import { ScoreboardTab } from './ScoreboardTab'
+import { SettingsTab } from './SettingsTab'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type TabId = 'overview' | 'skills' | 'history' | 'scoreboard' | 'notes'
+type TabId = 'overview' | 'skills' | 'history' | 'scoreboard' | 'notes' | 'settings'
 
 /**
  * Reason why BKT classification is unavailable.
@@ -481,6 +482,7 @@ function TabNavigation({
     { id: 'history', label: 'History', icon: '📈' },
     { id: 'scoreboard', label: 'Scoreboard', icon: '🏆' },
     { id: 'notes', label: 'Notes', icon: '📝' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
 
   return (
@@ -3130,6 +3132,15 @@ export function DashboardClient({
                   studentName={player.name}
                   playerId={player.id}
                   onNotesSaved={setCurrentNotes}
+                />
+              )}
+
+              {activeTab === 'settings' && (
+                <SettingsTab
+                  studentId={studentId}
+                  studentName={player.name}
+                  isDark={isDark}
+                  onManageSkills={() => setShowManualSkillModal(true)}
                 />
               )}
             </div>

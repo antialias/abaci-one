@@ -21,11 +21,67 @@ export function GameBreakSettings() {
     gameBreakSelectedGame,
     setGameBreakSelectedGame,
     practiceApprovedGames,
+    playerEnabledGames,
     hasSingleGame,
     singleGame,
   } = useStartPracticeModal()
 
-  if (!showGameBreakSettings) {
+  // Hide game break settings if fewer than 2 parts OR no games enabled
+  if (!showGameBreakSettings || playerEnabledGames.length === 0) {
+    if (playerEnabledGames.length === 0 && showGameBreakSettings) {
+      return (
+        <div
+          data-setting="game-break"
+          data-mode="no-games"
+          className={css({
+            padding: '0.625rem',
+            borderRadius: '10px',
+            '@media (max-width: 480px), (max-height: 700px)': {
+              padding: '0.5rem',
+              borderRadius: '8px',
+            },
+          })}
+          style={{
+            background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+          }}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.375rem 0.5rem',
+              fontSize: '0.6875rem',
+              fontWeight: '700',
+              '@media (max-width: 480px), (max-height: 700px)': {
+                padding: '0.25rem 0.375rem',
+                fontSize: '0.625rem',
+              },
+            })}
+          >
+            <span
+              className={css({
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              })}
+              style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+            >
+              Game Breaks
+            </span>
+            <span
+              className={css({
+                fontSize: '0.625rem',
+                fontStyle: 'italic',
+              })}
+              style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+            >
+              No games enabled — configure in Settings tab
+            </span>
+          </div>
+        </div>
+      )
+    }
     return null
   }
 
@@ -676,7 +732,7 @@ export function GameBreakSettings() {
                 {(() => {
                   if (gameBreakSelectedGame === 'random') return '🎲 Random'
                   if (gameBreakSelectedGame === null) return '✨ No default'
-                  const game = practiceApprovedGames.find(
+                  const game = playerEnabledGames.find(
                     (g) => g.manifest.name === gameBreakSelectedGame
                   )
                   return game
@@ -736,8 +792,8 @@ export function GameBreakSettings() {
                   >
                     <Select.ItemText>🎲 Random</Select.ItemText>
                   </Select.Item>
-                  {/* Practice-approved games */}
-                  {practiceApprovedGames.map((game) => (
+                  {/* Player-enabled games */}
+                  {playerEnabledGames.map((game) => (
                     <Select.Item
                       key={game.manifest.name}
                       value={game.manifest.name}

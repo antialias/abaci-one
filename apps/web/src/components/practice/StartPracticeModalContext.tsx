@@ -167,6 +167,8 @@ interface StartPracticeModalContextValue {
   enabledPartCount: number
   showGameBreakSettings: boolean
   practiceApprovedGames: GameInfo[]
+  /** Games enabled for this player (filtered from practiceApprovedGames by per-player allowlist) */
+  playerEnabledGames: GameInfo[]
   /** True when only one game is available for practice breaks */
   hasSingleGame: boolean
   /** The single game info when hasSingleGame is true, null otherwise */
@@ -409,8 +411,16 @@ export function StartPracticeModalProvider({
     () => practiceApprovedGamesOverride ?? getPracticeApprovedGames(),
     [practiceApprovedGamesOverride]
   )
-  const hasSingleGame = practiceApprovedGames.length === 1
-  const singleGame = hasSingleGame ? practiceApprovedGames[0] : null
+
+  // Per-player enabled games: filter approved games by the player's allowlist
+  const gameBreakEnabledGames = savedPreferences?.gameBreakEnabledGames ?? []
+  const playerEnabledGames = useMemo(() => {
+    if (gameBreakEnabledGames.length === 0) return []
+    return practiceApprovedGames.filter((g) => gameBreakEnabledGames.includes(g.manifest.name))
+  }, [practiceApprovedGames, gameBreakEnabledGames])
+
+  const hasSingleGame = playerEnabledGames.length === 1
+  const singleGame = hasSingleGame ? playerEnabledGames[0] : null
 
   // Get the selected game's practice break config
   const selectedGamePracticeConfig = useMemo<PracticeBreakConfig | null>(() => {
@@ -463,6 +473,25 @@ export function StartPracticeModalProvider({
     }
   }, [hasSingleGame, singleGame])
 
+  // If selected game is not in enabled list, reset to null
+  useEffect(() => {
+    if (
+      gameBreakSelectedGame &&
+      gameBreakSelectedGame !== 'random' &&
+      playerEnabledGames.length > 0 &&
+      !playerEnabledGames.some((g) => g.manifest.name === gameBreakSelectedGame)
+    ) {
+      setGameBreakSelectedGameRaw(null)
+    }
+  }, [gameBreakSelectedGame, playerEnabledGames])
+
+  // If no games enabled, force game breaks off
+  useEffect(() => {
+    if (playerEnabledGames.length === 0 && gameBreakEnabled) {
+      setGameBreakEnabled(false)
+    }
+  }, [playerEnabledGames.length, gameBreakEnabled])
+
   // Fire onSavePreferences callback whenever any persisted setting changes.
   // Use a ref for the callback so the effect only re-runs when settings change,
   // not when the callback identity changes (which would cause an infinite loop).
@@ -485,6 +514,7 @@ export function StartPracticeModalProvider({
       gameBreakSelectionMode,
       gameBreakSelectedGame: gameBreakSelectedGame === 'random' ? null : gameBreakSelectedGame,
       gameBreakDifficultyPreset,
+      gameBreakEnabledGames,
     }
     const configJson = JSON.stringify(config)
 
@@ -509,6 +539,7 @@ export function StartPracticeModalProvider({
     gameBreakSelectionMode,
     gameBreakSelectedGame,
     gameBreakDifficultyPreset,
+    gameBreakEnabledGames,
   ])
 
   // Derive partTimeWeights from partWeights for the API call
@@ -657,6 +688,7 @@ export function StartPracticeModalProvider({
                       [gameBreakSelectedGame]: resolvedGameConfig,
                     } as PracticeBreakGameConfig)
                   : undefined,
+              enabledGames: playerEnabledGames.map((g) => g.manifest.name),
               skipSetupPhase: true,
             },
           })
@@ -692,6 +724,7 @@ export function StartPracticeModalProvider({
     gameBreakSelectionMode,
     gameBreakSelectedGame,
     resolvedGameConfig,
+    playerEnabledGames,
     generatePlan,
     approvePlan,
     startPlan,
@@ -756,6 +789,7 @@ export function StartPracticeModalProvider({
     enabledPartCount,
     showGameBreakSettings,
     practiceApprovedGames,
+    playerEnabledGames,
     hasSingleGame,
     singleGame,
     modesSummary,
