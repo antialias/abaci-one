@@ -588,19 +588,49 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // Execute deferred exploration actions once the agent finishes speaking.
           // Tool calls fire mid-response (audio still streaming), so we queue
-          // start/resume actions and run them here when the response is complete.
+          // start/resume actions here. On response.done we wait for actual client-side
+          // audio silence (via the analyser node) before executing — response.done
+          // means the server finished generating, but buffered audio may still be
+          // playing through WebRTC.
           if (msg.type === 'response.done') {
             const pending = pendingExplorationRef.current
             console.log('[exploration] response.done — pending:', pending ? JSON.stringify(pending) : 'none', 'response_id:', msg.response?.id)
             if (pending) {
               pendingExplorationRef.current = null
-              if (pending.type === 'start') {
-                console.log('[exploration] executing deferred start_exploration:', pending.constantId)
-                onStartExplorationRef.current?.(pending.constantId)
-              } else if (pending.type === 'resume') {
-                console.log('[exploration] executing deferred resume_exploration — narration starts NOW')
-                lastResumeTimestampRef.current = Date.now()
-                onResumeExplorationRef.current?.()
+
+              const executePending = () => {
+                if (pending.type === 'start') {
+                  console.log('[exploration] executing deferred start_exploration:', pending.constantId)
+                  onStartExplorationRef.current?.(pending.constantId)
+                } else if (pending.type === 'resume') {
+                  console.log('[exploration] executing deferred resume_exploration — narration starts NOW')
+                  lastResumeTimestampRef.current = Date.now()
+                  onResumeExplorationRef.current?.()
+                }
+              }
+
+              // If agent audio is still playing, poll until it stops
+              if (agentAudioPlayingRef.current) {
+                console.log('[exploration] agent audio still playing — waiting for silence')
+                const startedWaiting = Date.now()
+                const waitForSilence = () => {
+                  // Safety timeout: don't wait more than 3s
+                  if (Date.now() - startedWaiting > 3000) {
+                    console.log('[exploration] silence wait timed out after 3s — executing anyway')
+                    executePending()
+                    return
+                  }
+                  if (agentAudioPlayingRef.current) {
+                    requestAnimationFrame(waitForSilence)
+                    return
+                  }
+                  console.log('[exploration] agent audio stopped — executing after %dms', Date.now() - startedWaiting)
+                  executePending()
+                }
+                requestAnimationFrame(waitForSilence)
+              } else {
+                console.log('[exploration] agent audio already silent — executing immediately')
+                executePending()
               }
             }
           }
@@ -914,10 +944,11 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   call_id: msg.call_id,
                   output: JSON.stringify({
                     success: true,
-                    requires_hangup: true,
-                    message: `The ${tourName} tour is a guided experience that will start after you hang up. ` +
-                      `Tell the child what they're about to see — get them excited! Then say a warm goodbye and call hang_up. ` +
-                      `The tour will launch automatically after the call ends. Invite the child to call you back anytime after watching it.`,
+                    message: `The ${tourName} tour is queued and will launch automatically after this call ends. ` +
+                      `RIGHT NOW: Tell the child about the tour — what they'll see, why it's exciting. ` +
+                      `Say a warm goodbye and invite them to call you back after watching it. ` +
+                      `IMPORTANT: Do NOT call hang_up yet. Speak to the child FIRST in this response. ` +
+                      `You will call hang_up in your NEXT turn, after the child has a chance to react.`,
                   }),
                 },
               }))
