@@ -10,16 +10,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { db, schema } from '@/db'
 import type { GameName } from './validators'
 import type { GameConfigByName } from './game-configs'
-import {
-  DEFAULT_MATCHING_CONFIG,
-  DEFAULT_MEMORY_QUIZ_CONFIG,
-  DEFAULT_COMPLEMENT_RACE_CONFIG,
-  DEFAULT_CARD_SORTING_CONFIG,
-  DEFAULT_RITHMOMACHIA_CONFIG,
-  DEFAULT_YIJS_DEMO_CONFIG,
-  DEFAULT_KNOW_YOUR_WORLD_CONFIG,
-  DEFAULT_MUSIC_MATCHING_CONFIG,
-} from './game-configs'
+import { DEFAULT_CONFIGS } from './game-configs'
 
 // Lazy-load game registry to avoid loading React components on server
 function getGame(gameName: string) {
@@ -44,29 +35,18 @@ function getGame(gameName: string) {
 type ExtendedGameName = GameName | 'complement-race'
 
 /**
- * Get default config for a game
+ * Get default config for a game.
+ * Reads from the DEFAULT_CONFIGS map in game-configs.ts — no switch needed.
+ * Adding a new game? Just add its default to DEFAULT_CONFIGS.
  */
 function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[ExtendedGameName] {
-  switch (gameName) {
-    case 'matching':
-      return DEFAULT_MATCHING_CONFIG
-    case 'memory-quiz':
-      return DEFAULT_MEMORY_QUIZ_CONFIG
-    case 'complement-race':
-      return DEFAULT_COMPLEMENT_RACE_CONFIG
-    case 'card-sorting':
-      return DEFAULT_CARD_SORTING_CONFIG
-    case 'rithmomachia':
-      return DEFAULT_RITHMOMACHIA_CONFIG
-    case 'yjs-demo':
-      return DEFAULT_YIJS_DEMO_CONFIG
-    case 'know-your-world':
-      return DEFAULT_KNOW_YOUR_WORLD_CONFIG
-    case 'music-matching':
-      return DEFAULT_MUSIC_MATCHING_CONFIG
-    default:
-      throw new Error(`Unknown game: ${gameName}`)
+  const defaults = DEFAULT_CONFIGS[gameName]
+  if (!defaults) {
+    throw new Error(
+      `Unknown game: ${gameName}. Add a DEFAULT_*_CONFIG to game-configs.ts and include it in DEFAULT_CONFIGS.`
+    )
   }
+  return defaults
 }
 
 /**

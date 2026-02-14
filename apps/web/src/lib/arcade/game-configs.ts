@@ -121,3 +121,19 @@ export const DEFAULT_MUSIC_MATCHING_CONFIG: MusicConfig = {
   difficulty: 6,
   turnTimer: 30,
 }
+
+// ============================================================================
+// Default Config Map — single source of truth for game-config-helpers.ts
+// Adding a new game? Just add its default here. No switch statements needed.
+// ============================================================================
+
+export const DEFAULT_CONFIGS: Record<string, GameConfigByName[keyof GameConfigByName]> = {
+  matching: DEFAULT_MATCHING_CONFIG,
+  'memory-quiz': DEFAULT_MEMORY_QUIZ_CONFIG,
+  'card-sorting': DEFAULT_CARD_SORTING_CONFIG,
+  'yjs-demo': DEFAULT_YIJS_DEMO_CONFIG,
+  rithmomachia: DEFAULT_RITHMOMACHIA_CONFIG,
+  'know-your-world': DEFAULT_KNOW_YOUR_WORLD_CONFIG,
+  'complement-race': DEFAULT_COMPLEMENT_RACE_CONFIG,
+  'music-matching': DEFAULT_MUSIC_MATCHING_CONFIG,
+}
