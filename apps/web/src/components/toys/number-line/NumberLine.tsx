@@ -305,15 +305,27 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => void>(() => {})
   const startFindNumberFnRef = useRef<(target: number) => void>(() => {})
   const stopFindNumberFnRef = useRef<() => void>(() => {})
+  // When true, indicate's auto-zoom is suppressed (game controls the viewport)
+  const suppressIndicateZoomRef = useRef(false)
   const handleVoiceGameStart = useCallback((gameId: string, params: Record<string, unknown>) => {
     setActiveGameId(gameId)
     if (gameId === 'find_number') {
       const target = Number(params.target)
       if (isFinite(target)) startFindNumberFnRef.current(target)
     }
+    if (gameId === 'guess_my_number') {
+      // Lock viewport to full game range so the child sees the indicate band shrink
+      const min = params.min !== undefined ? Number(params.min) : 1
+      const max = params.max !== undefined ? Number(params.max) : 100
+      const center = (min + max) / 2
+      const range = (max - min) * 1.15 // 15% margin
+      lookAtFnRef.current(center, range)
+      suppressIndicateZoomRef.current = true
+    }
   }, [])
   const handleVoiceGameEnd = useCallback((gameId: string) => {
     setActiveGameId(null)
+    suppressIndicateZoomRef.current = false
     if (gameId === 'find_number') {
       stopFindNumberFnRef.current()
     }
@@ -379,6 +391,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       }
       // Clear any active game when the call ends
       setActiveGameId(null)
+      suppressIndicateZoomRef.current = false
       // Launch pending tour after hangup
       const tourId = pendingTourRef.current
       if (tourId) {
@@ -1562,8 +1575,10 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       const viewMin = viewCenter - halfView
       const viewMax = viewCenter + halfView
 
-      // If any indicated content falls outside the current viewport, zoom to fit with margin
-      if (minVal < viewMin || maxVal > viewMax) {
+      // If any indicated content falls outside the current viewport, zoom to fit with margin.
+      // Suppressed during games that control the viewport (e.g. guess_my_number) so the
+      // child sees the indicate band shrinking within a fixed frame.
+      if (!suppressIndicateZoomRef.current && (minVal < viewMin || maxVal > viewMax)) {
         const span = maxVal - minVal
         const center = (minVal + maxVal) / 2
         // Add 10% margin on each side (total span / 0.8 gives 10% per side)
