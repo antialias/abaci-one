@@ -949,26 +949,25 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               return
             }
 
-            // Branch: tour explorations require hanging up first
+            // Branch: tour explorations — auto-hang-up and launch the tour.
+            // Don't give the agent another turn to speak (it rambles).
             if (!CONSTANT_IDS.has(constantId)) {
-              const display = EXPLORATION_DISPLAY[constantId]
-              const tourName = display?.name ?? constantId
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({
-                    success: true,
-                    message: `The ${tourName} tour will start right after this call. ` +
-                      `Say ONE short sentence like "Okay, it's all set — have fun! Call me back after!" then IMMEDIATELY call hang_up. ` +
-                      `Do NOT describe or preview the tour. Do NOT ramble. The child asked for it — just launch it.`,
-                  }),
+                  output: JSON.stringify({ success: true }),
                 },
               }))
-              dc.send(JSON.stringify({ type: 'response.create' }))
-              // Queue the tour to launch after hangup
+              // Queue the tour, then immediately end the call
               onStartExplorationRef.current?.(constantId)
+              setState('ending')
+              hangUpTimerRef.current = setTimeout(() => {
+                hangUpTimerRef.current = null
+                cleanup()
+                setState('idle')
+              }, HANG_UP_DELAY_MS)
               return
             }
 
