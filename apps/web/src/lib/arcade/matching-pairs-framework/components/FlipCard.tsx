@@ -65,7 +65,7 @@ export function FlipCard({
     alignItems: 'center',
     justifyContent: 'center',
     padding: '8px',
-    overflow: 'hidden',
+    overflow: 'visible',
     transition: 'all 0.2s ease',
   })
 
