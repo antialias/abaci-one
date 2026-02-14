@@ -5,14 +5,18 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { SeedStudentsSection } from '@/components/debug/SeedStudentsSection'
+import { StartPracticeModal } from '@/components/practice/StartPracticeModal'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useSessionMode } from '@/hooks/useSessionMode'
 import { css } from '../../../../styled-system/css'
 
 interface Preset {
   id: string
   label: string
   description: string
+  /** When true, opens the StartPracticeModal instead of auto-starting */
+  useModal?: boolean
 }
 
 const PRESETS: Preset[] = [
@@ -20,6 +24,7 @@ const PRESETS: Preset[] = [
     id: 'game-break',
     label: 'Game Break Test',
     description: '2 parts (1 problem each) with auto-start matching game break between them',
+    useModal: true,
   },
   {
     id: 'minimal',
@@ -35,15 +40,30 @@ export default function DebugPracticePage() {
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handlePreset = async (presetId: string) => {
-    setLoading(presetId)
+  // State for modal flow: stores the debug player created by setupOnly API call
+  const [debugPlayer, setDebugPlayer] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+
+  // Fetch session mode for the debug player (only enabled when we have one)
+  const { data: sessionModeData, isLoading: sessionModeLoading } = useSessionMode(
+    debugPlayer?.id ?? '',
+    !!debugPlayer
+  )
+
+  const handlePreset = async (preset: Preset) => {
+    setLoading(preset.id)
     setError(null)
 
     try {
       const res = await fetch('/api/debug/practice-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset: presetId }),
+        body: JSON.stringify({
+          preset: preset.id,
+          setupOnly: preset.useModal ?? false,
+        }),
       })
 
       if (!res.ok) {
@@ -52,12 +72,23 @@ export default function DebugPracticePage() {
       }
 
       const data = await res.json()
-      router.push(data.redirectUrl)
+
+      if (data.setupOnly) {
+        // Modal flow: store the player and let useSessionMode load
+        setDebugPlayer({ id: data.playerId, name: data.playerName })
+        // Loading state will clear when session mode arrives and modal opens
+      } else {
+        // Direct flow: navigate to practice
+        router.push(data.redirectUrl)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create debug session')
       setLoading(null)
     }
   }
+
+  // Clear loading state once session mode is ready (modal is about to open)
+  const showModal = !!debugPlayer && !!sessionModeData && !sessionModeLoading
 
   return (
     <PageWithNav>
@@ -123,65 +154,88 @@ export default function DebugPracticePage() {
           )}
 
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
-            {PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                data-action={`preset-${preset.id}`}
-                onClick={() => handlePreset(preset.id)}
-                disabled={loading !== null}
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  padding: '1rem 1.25rem',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                  borderRadius: '12px',
-                  textAlign: 'left',
-                  cursor: loading !== null ? 'wait' : 'pointer',
-                  opacity: loading !== null && loading !== preset.id ? 0.5 : 1,
-                  transition: 'all 0.2s',
-                  _hover: {
-                    backgroundColor: isDark ? 'gray.700' : 'gray.50',
-                  },
-                })}
-              >
-                <div className={css({ flex: 1 })}>
-                  <div
-                    className={css({
-                      fontWeight: '600',
-                      color: isDark ? 'white' : 'gray.800',
-                      marginBottom: '4px',
-                    })}
-                  >
-                    {preset.label}
+            {PRESETS.map((preset) => {
+              const isLoading =
+                loading === preset.id && !(preset.useModal && showModal)
+              return (
+                <button
+                  key={preset.id}
+                  data-action={`preset-${preset.id}`}
+                  onClick={() => handlePreset(preset)}
+                  disabled={loading !== null}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '1rem 1.25rem',
+                    backgroundColor: isDark ? 'gray.800' : 'white',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    borderRadius: '12px',
+                    textAlign: 'left',
+                    cursor: loading !== null ? 'wait' : 'pointer',
+                    opacity: loading !== null && loading !== preset.id ? 0.5 : 1,
+                    transition: 'all 0.2s',
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.50',
+                    },
+                  })}
+                >
+                  <div className={css({ flex: 1 })}>
+                    <div
+                      className={css({
+                        fontWeight: '600',
+                        color: isDark ? 'white' : 'gray.800',
+                        marginBottom: '4px',
+                      })}
+                    >
+                      {preset.label}
+                    </div>
+                    <div
+                      className={css({
+                        fontSize: '0.875rem',
+                        color: isDark ? 'gray.400' : 'gray.600',
+                      })}
+                    >
+                      {preset.description}
+                    </div>
                   </div>
-                  <div
-                    className={css({
-                      fontSize: '0.875rem',
-                      color: isDark ? 'gray.400' : 'gray.600',
-                    })}
-                  >
-                    {preset.description}
-                  </div>
-                </div>
-                {loading === preset.id && (
-                  <Loader2
-                    size={20}
-                    className={css({
-                      animation: 'spin 1s linear infinite',
-                      color: isDark ? 'gray.400' : 'gray.500',
-                    })}
-                  />
-                )}
-              </button>
-            ))}
+                  {isLoading && (
+                    <Loader2
+                      size={20}
+                      className={css({
+                        animation: 'spin 1s linear infinite',
+                        color: isDark ? 'gray.400' : 'gray.500',
+                      })}
+                    />
+                  )}
+                </button>
+              )
+            })}
           </div>
 
           <SeedStudentsSection isDark={isDark} />
         </div>
       </main>
+
+      {showModal && (
+        <StartPracticeModal
+          studentId={debugPlayer.id}
+          studentName={debugPlayer.name}
+          focusDescription={sessionModeData.sessionMode.focusDescription}
+          sessionMode={sessionModeData.sessionMode}
+          comfortLevel={sessionModeData.comfortLevel}
+          comfortByMode={sessionModeData.comfortByMode}
+          onClose={() => {
+            setDebugPlayer(null)
+            setLoading(null)
+          }}
+          onStarted={() => {
+            setDebugPlayer(null)
+            setLoading(null)
+          }}
+        />
+      )}
     </PageWithNav>
   )
 }

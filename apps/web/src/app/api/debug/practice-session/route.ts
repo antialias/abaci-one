@@ -56,11 +56,15 @@ type PresetName = keyof typeof PRESETS
  * 2. Initializes curriculum and enables basic skills
  * 3. Generates, approves, and starts a session with the specified preset
  * 4. Returns the player ID and redirect URL
+ *
+ * When `setupOnly: true`, skips session generation (steps 3-4) and returns
+ * player info so the caller can open the StartPracticeModal instead.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const preset = (body.preset as PresetName) || 'game-break'
+    const setupOnly = body.setupOnly === true
     const overrideProblemTerms = body.overrideProblemTerms as number[] | undefined
 
     if (!(preset in PRESETS)) {
@@ -99,6 +103,16 @@ export async function POST(req: NextRequest) {
 
     // 4. Enable basic skills
     await setPracticingSkills(player.id, ['basic.+1', 'basic.+2', 'basic.+3'])
+
+    // If setupOnly, return player info without generating a session
+    if (setupOnly) {
+      return NextResponse.json({
+        playerId: player.id,
+        playerName: player.name,
+        preset,
+        setupOnly: true,
+      })
+    }
 
     // 5. Generate session with preset config
     const plan = await generateSessionPlan({
