@@ -1101,6 +1101,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     proximityRef.current = null
     setAudioZone(null)
     setGameState('active')
+    setActiveGameId('find_number')
     draw()
   }, [draw])
 
@@ -1111,6 +1112,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     renderTargetRef.current = undefined
     setAudioZone(null)
     setGameState('idle')
+    setActiveGameId(null)
     draw()
   }, [draw])
 
@@ -2068,10 +2070,10 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
               data-component="game-session-banner"
               style={{
                 position: 'absolute',
-                top: 12,
+                top: 56,
                 left: '50%',
                 transform: 'translateX(-50%)',
-                zIndex: 15,
+                zIndex: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
