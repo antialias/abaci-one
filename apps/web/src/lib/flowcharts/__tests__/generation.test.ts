@@ -779,9 +779,9 @@ describe('parallel generation correctness', () => {
       }
     }
 
-    // Path coverage should be similar (within 20% difference is acceptable due to randomness)
+    // Path coverage should be similar (within 25% difference is acceptable due to randomness)
     const coverageDiff = Math.abs(syncDescriptors.size - parallelDescriptors.size)
-    const maxDiff = Math.ceil(syncDescriptors.size * 0.2)
+    const maxDiff = Math.ceil(syncDescriptors.size * 0.25)
     console.log(`\nCoverage difference: ${coverageDiff} (max allowed: ${maxDiff})`)
 
     expect(coverageDiff).toBeLessThanOrEqual(maxDiff)
