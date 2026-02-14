@@ -18,6 +18,7 @@ interface PrimeTooltipProps {
   isDark: boolean
   /** Optional note from landmark/interestingness data (e.g., "Record gap of 72") */
   landmarkNote?: string
+  onStartTour?: () => void
 }
 
 const TOOLTIP_PAD = 8
