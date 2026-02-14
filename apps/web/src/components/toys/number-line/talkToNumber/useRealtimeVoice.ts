@@ -960,11 +960,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   call_id: msg.call_id,
                   output: JSON.stringify({
                     success: true,
-                    message: `The ${tourName} tour is queued and will launch automatically after this call ends. ` +
-                      `RIGHT NOW: Tell the child about the tour — what they'll see, why it's exciting. ` +
-                      `Say a warm goodbye and invite them to call you back after watching it. ` +
-                      `IMPORTANT: Do NOT call hang_up yet. Speak to the child FIRST in this response. ` +
-                      `You will call hang_up in your NEXT turn, after the child has a chance to react.`,
+                    message: `The ${tourName} tour will start right after this call. ` +
+                      `Say ONE short sentence like "Okay, it's all set — have fun! Call me back after!" then IMMEDIATELY call hang_up. ` +
+                      `Do NOT describe or preview the tour. Do NOT ramble. The child asked for it — just launch it.`,
                   }),
                 },
               }))
