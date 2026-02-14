@@ -57,6 +57,7 @@ import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCa
 import { lerpViewport } from './viewportAnimation'
 import type { Viewport } from './viewportAnimation'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
@@ -145,6 +146,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
   const rafRef = useRef<number>(0)
   const { resolvedTheme } = useTheme()
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
   const audioManager = useAudioManagerInstance()
   const phiExploreRef = usePhiExploreImage(resolvedTheme)
   const centering = usePhiCenteringMode(resolvedTheme)
@@ -318,7 +320,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       .map(p => ({ id: p.id, name: p.name, emoji: p.emoji || '👤' }))
   }, [allPlayers])
 
-  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed } = useRealtimeVoice({
+  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
     onPauseExploration: handleVoicePause,
@@ -2749,6 +2751,53 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             />
           </div>
         </ToyDebugPanel>
+        {isVisualDebugEnabled && currentInstructions && (
+          <div
+            data-component="voice-context-debug"
+            style={{
+              position: 'fixed',
+              bottom: 16,
+              left: 16,
+              zIndex: 9999,
+              background: 'rgba(17,24,39,0.93)',
+              backdropFilter: 'blur(8px)',
+              borderRadius: 8,
+              padding: '12px 16px',
+              color: 'rgba(243,244,246,1)',
+              fontSize: 12,
+              width: 'min(520px, calc(100vw - 320px))',
+              maxHeight: 'calc(100dvh - 32px)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              pointerEvents: 'auto',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6, marginBottom: 8, flexShrink: 0 }}>
+              Voice Agent Context ({Math.round(currentInstructions.length / 1000)}k chars)
+            </div>
+            <pre
+              data-element="voice-context-text"
+              style={{
+                margin: 0,
+                padding: 8,
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: 6,
+                fontSize: 10,
+                lineHeight: 1.4,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                overflowY: 'auto',
+                flex: 1,
+                minHeight: 0,
+                color: 'rgba(209, 213, 219, 0.9)',
+                fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+              }}
+            >
+              {currentInstructions}
+            </pre>
+          </div>
+        )}
         {(() => {
           const fv = forcedHoverValue ?? hoveredValue
           if (fv === null || !primesEnabled || fv < 2) return null

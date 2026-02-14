@@ -369,6 +369,7 @@ export async function POST(request: Request) {
       scenario,
       childProfile: childProfile ?? null,
       ...(profileFailed && { profileFailed: true }),
+      instructions,
     })
   } catch (error) {
     console.error('[realtime/session] Error:', error)
