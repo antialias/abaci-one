@@ -412,12 +412,18 @@ export function StartPracticeModalProvider({
     [practiceApprovedGamesOverride]
   )
 
-  // Per-player enabled games: filter approved games by the player's allowlist
-  const gameBreakEnabledGames = savedPreferences?.gameBreakEnabledGames ?? []
+  // Per-player enabled games: filter approved games by the player's allowlist.
+  // When no explicit preference exists, fall back to all approved games.
+  const gameBreakEnabledGames = useMemo(
+    () => savedPreferences?.gameBreakEnabledGames ?? [],
+    [savedPreferences?.gameBreakEnabledGames]
+  )
+  const hasExplicitEnabledGames = savedPreferences?.gameBreakEnabledGames != null
   const playerEnabledGames = useMemo(() => {
+    if (!hasExplicitEnabledGames) return practiceApprovedGames
     if (gameBreakEnabledGames.length === 0) return []
     return practiceApprovedGames.filter((g) => gameBreakEnabledGames.includes(g.manifest.name))
-  }, [practiceApprovedGames, gameBreakEnabledGames])
+  }, [practiceApprovedGames, gameBreakEnabledGames, hasExplicitEnabledGames])
 
   const hasSingleGame = playerEnabledGames.length === 1
   const singleGame = hasSingleGame ? playerEnabledGames[0] : null
@@ -485,12 +491,12 @@ export function StartPracticeModalProvider({
     }
   }, [gameBreakSelectedGame, playerEnabledGames])
 
-  // If no games enabled, force game breaks off
+  // If no games enabled (and player has explicit game preferences), force game breaks off
   useEffect(() => {
-    if (playerEnabledGames.length === 0 && gameBreakEnabled) {
+    if (hasExplicitEnabledGames && playerEnabledGames.length === 0 && gameBreakEnabled) {
       setGameBreakEnabled(false)
     }
-  }, [playerEnabledGames.length, gameBreakEnabled])
+  }, [hasExplicitEnabledGames, playerEnabledGames.length, gameBreakEnabled])
 
   // Fire onSavePreferences callback whenever any persisted setting changes.
   // Use a ref for the callback so the effect only re-runs when settings change,
