@@ -15,8 +15,6 @@ interface Preset {
   id: string
   label: string
   description: string
-  /** When true, opens the StartPracticeModal instead of auto-starting */
-  useModal?: boolean
 }
 
 const PRESETS: Preset[] = [
@@ -24,7 +22,6 @@ const PRESETS: Preset[] = [
     id: 'game-break',
     label: 'Game Break Test',
     description: '2 parts (1 problem each) with auto-start matching game break between them',
-    useModal: true,
   },
   {
     id: 'minimal',
@@ -39,6 +36,7 @@ export default function DebugPracticePage() {
   const isDark = resolvedTheme === 'dark'
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [useModal, setUseModal] = useState(true)
 
   // State for modal flow: stores the debug player created by setupOnly API call
   const [debugPlayer, setDebugPlayer] = useState<{
@@ -62,7 +60,7 @@ export default function DebugPracticePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           preset: preset.id,
-          setupOnly: preset.useModal ?? false,
+          setupOnly: useModal,
         }),
       })
 
@@ -76,7 +74,6 @@ export default function DebugPracticePage() {
       if (data.setupOnly) {
         // Modal flow: store the player and let useSessionMode load
         setDebugPlayer({ id: data.playerId, name: data.playerName })
-        // Loading state will clear when session mode arrives and modal opens
       } else {
         // Direct flow: navigate to practice
         router.push(data.redirectUrl)
@@ -87,7 +84,6 @@ export default function DebugPracticePage() {
     }
   }
 
-  // Clear loading state once session mode is ready (modal is about to open)
   const showModal = !!debugPlayer && !!sessionModeData && !sessionModeLoading
 
   return (
@@ -135,6 +131,29 @@ export default function DebugPracticePage() {
             </p>
           </header>
 
+          {/* Show modal toggle */}
+          <label
+            data-element="use-modal-toggle"
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+              fontSize: '0.875rem',
+              color: isDark ? 'gray.300' : 'gray.600',
+              cursor: 'pointer',
+              userSelect: 'none',
+            })}
+          >
+            <input
+              type="checkbox"
+              checked={useModal}
+              onChange={(e) => setUseModal(e.target.checked)}
+              className={css({ cursor: 'pointer' })}
+            />
+            Show start practice modal
+          </label>
+
           {error && (
             <div
               data-element="error-banner"
@@ -156,7 +175,7 @@ export default function DebugPracticePage() {
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
             {PRESETS.map((preset) => {
               const isLoading =
-                loading === preset.id && !(preset.useModal && showModal)
+                loading === preset.id && !(useModal && showModal)
               return (
                 <button
                   key={preset.id}
