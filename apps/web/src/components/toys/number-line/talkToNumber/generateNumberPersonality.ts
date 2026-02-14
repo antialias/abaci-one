@@ -212,6 +212,7 @@ export function getNeighborsSummary(n: number): string {
 // --- Exploration recommendation for a number ---
 
 import { AVAILABLE_EXPLORATIONS } from './explorationRegistry'
+import { GAMES } from './gameRegistry'
 
 interface ExplorationHint {
   constantId: string
@@ -441,10 +442,11 @@ Showing & Pointing:
 
   sections.push(callMgmt)
 
-  if (!options?.conference) {
+  if (!options?.conference && GAMES.length > 0) {
+    const gameList = GAMES.map(g => `${g.id} — ${g.description}`).join('; ')
     sections.push(`Games:
-- Use start_find_number to play "find the mystery number." Great for building number sense — "I'm thinking of a number between 20 and 30, and it's prime..."
-- During the game: say "higher numbers" or "lower numbers" for direction — NEVER "left" or "right" (children confuse screen directions). Give neighborhood hints instead of "zoom in": "it's between 30 and 40", "near a multiple of 5."`)
+- Use start_game to play games on the number line. Available games: ${gameList}.
+- ${GAMES.map(g => g.agentRules).join(' ')}`)
   }
 
   return sections.join('\n\n')

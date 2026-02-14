@@ -4,6 +4,7 @@ import { generateNumberPersonality, generateConferencePrompt, getVoiceForNumber 
 import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
 import type { ChildProfile } from './childProfile'
 import { EXPLORATION_IDS, CONSTANT_IDS, EXPLORATION_DISPLAY } from './explorationRegistry'
+import { GAME_MAP } from './gameRegistry'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
 
@@ -80,10 +81,10 @@ interface UseRealtimeVoiceOptions {
   onLookAt?: (center: number, range: number) => void
   /** Called when the model wants to highlight numbers/range on the number line */
   onIndicate?: (numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => void
-  /** Called when the model starts a "find the number" game */
-  onStartFindNumber?: (target: number) => void
-  /** Called when the model stops the "find the number" game */
-  onStopFindNumber?: () => void
+  /** Called when the model starts a game via start_game tool */
+  onGameStart?: (gameId: string, params: Record<string, unknown>) => void
+  /** Called when the model ends the current game via end_game tool */
+  onGameEnd?: (gameId: string) => void
   /** Ref that reports whether an exploration animation is currently active.
    *  When true, the call timer pauses the countdown (won't expire mid-video). */
   isExplorationActiveRef?: React.RefObject<boolean>
@@ -142,10 +143,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onLookAtRef.current = options?.onLookAt
   const onIndicateRef = useRef(options?.onIndicate)
   onIndicateRef.current = options?.onIndicate
-  const onStartFindNumberRef = useRef(options?.onStartFindNumber)
-  onStartFindNumberRef.current = options?.onStartFindNumber
-  const onStopFindNumberRef = useRef(options?.onStopFindNumber)
-  onStopFindNumberRef.current = options?.onStopFindNumber
+  const onGameStartRef = useRef(options?.onGameStart)
+  onGameStartRef.current = options?.onGameStart
+  const onGameEndRef = useRef(options?.onGameEnd)
+  onGameEndRef.current = options?.onGameEnd
+  // Track the currently active game ID (null when no game is running)
+  const activeGameIdRef = useRef<string | null>(null)
   const onPlayerIdentifiedRef = useRef(options?.onPlayerIdentified)
   onPlayerIdentifiedRef.current = options?.onPlayerIdentified
   const availablePlayersRef = useRef<Array<{ id: string; name: string; emoji: string }>>([])
@@ -1406,47 +1409,80 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }
           }
 
-          // Handle model calling start_find_number tool
-          if (msg.name === 'start_find_number') {
+          // Handle model calling start_game tool — generic game dispatcher
+          if (msg.name === 'start_game') {
             try {
               const args = JSON.parse(msg.arguments || '{}')
-              const target = Number(args.target)
-              if (!isFinite(target)) throw new Error('invalid target')
+              const gameId = String(args.game_id)
+              const game = GAME_MAP.get(gameId)
+              if (!game) {
+                throw new Error(`Unknown game: ${gameId}. Valid games: ${[...GAME_MAP.keys()].join(', ')}`)
+              }
+              if (activeGameIdRef.current) {
+                dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: msg.call_id,
+                    output: JSON.stringify({ success: false, error: `A game is already active (${activeGameIdRef.current}). End it first with end_game.` }),
+                  },
+                }))
+                dc.send(JSON.stringify({ type: 'response.create' }))
+                return
+              }
+              // Validate & get agent message via game's onStart
+              const result = game.onStart?.(args) ?? { agentMessage: `${game.name} started!` }
+              activeGameIdRef.current = gameId
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({ success: true, message: `Find-the-number game started! Target: ${target}. The child CANNOT see the target — they only see "Find the mystery number!" Give them verbal clues about the number's neighborhood and properties. RULES: 1) Say "higher numbers" or "lower numbers" for direction — NEVER say "left" or "right" (children confuse screen directions). 2) Instead of saying "zoom in", hint at the number's precision — e.g. "it has a decimal" or "think about what's between 3 and 4." 3) Give neighborhood hints: "it's between 20 and 30", "near a multiple of 5", "close to a number you already know." You will receive proximity updates with the child's visible range and distance.` }),
+                  output: JSON.stringify({ success: true, message: result.agentMessage }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))
-              onStartFindNumberRef.current?.(target)
-            } catch {
+              onGameStartRef.current?.(gameId, args)
+            } catch (err) {
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({ success: false, error: 'Invalid target number' }),
+                  output: JSON.stringify({ success: false, error: err instanceof Error ? err.message : 'Invalid game parameters' }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))
             }
           }
 
-          // Handle model calling stop_find_number tool
-          if (msg.name === 'stop_find_number') {
+          // Handle model calling end_game tool — generic game end
+          if (msg.name === 'end_game') {
+            const gameId = activeGameIdRef.current
+            if (!gameId) {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: true, message: 'No game is currently active.' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              return
+            }
+            const game = GAME_MAP.get(gameId)
+            activeGameIdRef.current = null
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
                 type: 'function_call_output',
                 call_id: msg.call_id,
-                output: JSON.stringify({ success: true, message: 'Find-the-number game stopped.' }),
+                output: JSON.stringify({ success: true, message: `${game?.name ?? gameId} game ended.` }),
               },
             }))
             dc.send(JSON.stringify({ type: 'response.create' }))
-            onStopFindNumberRef.current?.()
+            onGameEndRef.current?.(gameId)
           }
         } catch {
           // Ignore parse errors

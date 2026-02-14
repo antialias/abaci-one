@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
+import { GAME_IDS, getGameToolDescription } from '@/components/toys/number-line/talkToNumber/gameRegistry'
 import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
 import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber/assembleChildProfile'
 
@@ -276,25 +277,37 @@ export async function POST(request: Request) {
           },
           {
             type: 'function',
-            name: 'start_find_number',
-            description:
-              'Start a "find the number" game on the number line. Set a target number and challenge the child to find where it lives. The target is HIDDEN from the child — they only see "Find the mystery number!" You will receive proximity updates with zone (far/warm/hot/found), visible range, and distance info. IMPORTANT HINTS: Always say "go toward higher/lower numbers" instead of "left/right" — children confuse screen directions. Instead of saying "zoom in", give useful clues about the number\'s neighborhood: "it\'s between 30 and 40", "think about multiples of 10", "it\'s close to a number you know". Great for teaching number sense!',
+            name: 'start_game',
+            description: getGameToolDescription(),
             parameters: {
               type: 'object',
               properties: {
+                game_id: {
+                  type: 'string',
+                  enum: GAME_IDS,
+                  description: 'Which game to start',
+                },
                 target: {
                   type: 'number',
-                  description: 'The target number to find. Can be integer (42), decimal (3.14), negative (-7), etc.',
+                  description: 'For find_number: the target number to find. Can be integer (42), decimal (3.14), negative (-7), etc.',
+                },
+                min: {
+                  type: 'number',
+                  description: 'For guess_my_number: lower bound of the range (default 1).',
+                },
+                max: {
+                  type: 'number',
+                  description: 'For guess_my_number: upper bound of the range (default 100).',
                 },
               },
-              required: ['target'],
+              required: ['game_id'],
             },
           },
           {
             type: 'function',
-            name: 'stop_find_number',
+            name: 'end_game',
             description:
-              'Stop the current "find the number" game and clear the target from the number line.',
+              'End the current game and return to open play.',
             parameters: { type: 'object', properties: {} },
           },
           {

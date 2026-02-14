@@ -304,8 +304,17 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => void>(() => {})
   const startFindNumberFnRef = useRef<(target: number) => void>(() => {})
   const stopFindNumberFnRef = useRef<() => void>(() => {})
-  const handleVoiceFindNumberStart = useCallback((target: number) => { startFindNumberFnRef.current(target) }, [])
-  const handleVoiceFindNumberStop = useCallback(() => { stopFindNumberFnRef.current() }, [])
+  const handleVoiceGameStart = useCallback((gameId: string, params: Record<string, unknown>) => {
+    if (gameId === 'find_number') {
+      const target = Number(params.target)
+      if (isFinite(target)) startFindNumberFnRef.current(target)
+    }
+  }, [])
+  const handleVoiceGameEnd = useCallback((gameId: string) => {
+    if (gameId === 'find_number') {
+      stopFindNumberFnRef.current()
+    }
+  }, [])
   const handleVoiceExploration = useCallback((constantId: string) => {
     exploreFnRef.current(constantId)
   }, [])
@@ -331,8 +340,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     onSeekExploration: handleVoiceSeek,
     onLookAt: handleVoiceLookAt,
     onIndicate: handleVoiceIndicate,
-    onStartFindNumber: handleVoiceFindNumberStart,
-    onStopFindNumber: handleVoiceFindNumberStop,
+    onGameStart: handleVoiceGameStart,
+    onGameEnd: handleVoiceGameEnd,
     isExplorationActiveRef,
     onPlayerIdentified,
   })
