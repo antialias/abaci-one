@@ -712,11 +712,27 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               },
             }))
             setState('ending')
-            hangUpTimerRef.current = setTimeout(() => {
-              hangUpTimerRef.current = null
-              cleanup()
-              setState('idle')
-            }, HANG_UP_DELAY_MS)
+            // Wait for the agent's audio to finish playing before tearing down.
+            // The tool call fires while speech is still buffered/streaming, so a
+            // fixed delay cuts the goodbye short. Instead, poll for silence and
+            // then hold for HANG_UP_DELAY_MS so the child sees "Goodbye!".
+            const MAX_WAIT_MS = 8000 // safety cap — don't wait forever
+            const waitStart = Date.now()
+            const waitForSilence = () => {
+              const elapsed = Date.now() - waitStart
+              if (agentAudioPlayingRef.current && elapsed < MAX_WAIT_MS) {
+                // Still speaking — check again soon
+                hangUpTimerRef.current = setTimeout(waitForSilence, 150)
+              } else {
+                // Silent (or timed out) — show "Goodbye!" then tear down
+                hangUpTimerRef.current = setTimeout(() => {
+                  hangUpTimerRef.current = null
+                  cleanup()
+                  setState('idle')
+                }, HANG_UP_DELAY_MS)
+              }
+            }
+            waitForSilence()
           }
 
           // Handle model calling transfer_call tool — hand off to another number
