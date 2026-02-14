@@ -49,7 +49,6 @@ export interface Player {
   emoji: string
   color: string
   createdAt: Date | number
-  age?: number | null
   isActive?: boolean
   isLocal?: boolean
 }

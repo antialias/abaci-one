@@ -19,7 +19,7 @@ import type { GameValidator } from './validation/types'
  * Lazy validator loaders - import validators only when needed
  */
 const validatorLoaders = {
-  matching: async () => (await import('@/arcade-games/matching')).matchingGameValidator,
+  matching: async () => (await import('@/arcade-games/matching/Validator')).matchingGameValidator,
   'memory-quiz': async () =>
     (await import('@/arcade-games/memory-quiz/Validator')).memoryQuizGameValidator,
   'complement-race': async () =>

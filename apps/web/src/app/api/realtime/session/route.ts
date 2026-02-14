@@ -11,8 +11,6 @@ import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeigh
 import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
 import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
-import { getViewerId } from '@/lib/viewer'
-import { getActivePlayers } from '@/lib/arcade/player-manager'
 
 export async function POST(request: Request) {
   try {
@@ -34,22 +32,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Look up the child's profile from the active player
-    let childProfile: ChildProfile | undefined
-    try {
-      const viewerId = await getViewerId()
-      const activePlayers = await getActivePlayers(viewerId)
-      // Use the first active player's profile (number line is single-player)
-      const player = activePlayers.length > 0 ? activePlayers[0] : null
-      if (player) {
-        childProfile = {
-          name: player.name,
-          age: player.age ?? undefined,
-        }
-      }
-    } catch {
-      // Viewer lookup can fail for unauthenticated users — not critical
-    }
+    // No child profile lookup — keeping arcade system separate from number line
+    const childProfile: ChildProfile | undefined = undefined
 
     // Validate recommended explorations (filter to known IDs)
     const recommendedExplorations: string[] | undefined = Array.isArray(rawRecommended)
@@ -69,6 +53,16 @@ export async function POST(request: Request) {
         AVAILABLE_EXPLORATIONS,
         recommendedExplorations?.length ? recommendedExplorations : undefined,
         childProfile,
+      )
+    }
+
+    // If scenario generation failed (API quota, etc.) and we're not reusing a prior one,
+    // bail early — otherwise the call connects but the number never speaks.
+    if (!scenario && !previousScenario) {
+      console.warn('[realtime/session] scenario generation returned null for number %d', number)
+      return NextResponse.json(
+        { error: 'Phone calls are taking a break right now. Try again later!', code: 'quota_exceeded' },
+        { status: 502 }
       )
     }
 
@@ -288,8 +282,30 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errText = await response.text()
       console.error('[realtime/session] OpenAI error:', response.status, errText)
+
+      // Parse the OpenAI error body to classify the failure
+      let code = 'unavailable'
+      let friendlyMessage = 'Phone calls are unavailable right now. Try again later!'
+      try {
+        const errBody = JSON.parse(errText)
+        const errType = errBody?.error?.type || errBody?.error?.code || ''
+        if (/insufficient_quota|quota_exceeded|billing/i.test(errType) || response.status === 429) {
+          code = 'quota_exceeded'
+          friendlyMessage = 'Phone calls are taking a break right now. Try again later!'
+        } else if (/rate_limit/i.test(errType)) {
+          code = 'rate_limited'
+          friendlyMessage = 'Too many calls right now. Try again in a moment!'
+        }
+      } catch {
+        // If we can't parse the error body, use defaults based on status
+        if (response.status === 429) {
+          code = 'quota_exceeded'
+          friendlyMessage = 'Phone calls are taking a break right now. Try again later!'
+        }
+      }
+
       return NextResponse.json(
-        { error: `OpenAI error: ${response.status}` },
+        { error: friendlyMessage, code },
         { status: 502 }
       )
     }

@@ -344,7 +344,7 @@ export function NumberLine() {
   const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
   const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
   const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => { indicateFnRef.current(numbers, range, durationSeconds) }, [])
-  const { state: voiceState, error: voiceError, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
+  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
     onPauseExploration: handleVoicePause,
@@ -2109,6 +2109,7 @@ export function NumberLine() {
             state={voiceState}
             timeRemaining={timeRemaining}
             error={voiceError}
+            errorCode={voiceErrorCode}
             transferTarget={transferTarget}
             conferenceNumbers={conferenceNumbers}
             currentSpeaker={currentSpeaker}

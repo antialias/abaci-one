@@ -9,6 +9,7 @@ interface PhoneCallOverlayProps {
   state: CallState
   timeRemaining: number | null
   error: string | null
+  errorCode: string | null
   transferTarget: number | null
   conferenceNumbers: number[]
   currentSpeaker: number | null
@@ -287,6 +288,7 @@ export function PhoneCallOverlay({
   state,
   timeRemaining,
   error,
+  errorCode,
   transferTarget,
   conferenceNumbers,
   currentSpeaker,
@@ -521,70 +523,75 @@ export function PhoneCallOverlay({
             </div>
           )}
 
-          {state === 'error' && (
-            <>
-              <div
-                data-element="error-title"
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  color: textColor,
-                  marginBottom: 8,
-                }}
-              >
-                Couldn&apos;t reach {formatNumber(number)}
-              </div>
-              <div
-                data-element="error-message"
-                style={{
-                  fontSize: 13,
-                  color: subtextColor,
-                  marginBottom: 16,
-                  lineHeight: 1.4,
-                }}
-              >
-                {error || 'Something went wrong'}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  data-action="retry-call"
-                  onClick={onRetry}
+          {state === 'error' && (() => {
+            const isRetryable = errorCode !== 'quota_exceeded'
+            return (
+              <>
+                <div
+                  data-element="error-title"
                   style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    minHeight: 44,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: '#fff',
-                    backgroundColor: accentColor,
-                    border: 'none',
-                    borderRadius: 22,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Try Again
-                </button>
-                <button
-                  data-action="dismiss-error"
-                  onClick={onDismiss}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    minHeight: 44,
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: 600,
                     color: textColor,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                    border: 'none',
-                    borderRadius: 22,
-                    cursor: 'pointer',
+                    marginBottom: 8,
                   }}
                 >
-                  Close
-                </button>
-              </div>
-            </>
-          )}
+                  Couldn&apos;t reach {formatNumber(number)}
+                </div>
+                <div
+                  data-element="error-message"
+                  style={{
+                    fontSize: 13,
+                    color: subtextColor,
+                    marginBottom: 16,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {error || 'Something went wrong'}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {isRetryable && (
+                    <button
+                      data-action="retry-call"
+                      onClick={onRetry}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        minHeight: 44,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: '#fff',
+                        backgroundColor: accentColor,
+                        border: 'none',
+                        borderRadius: 22,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Try Again
+                    </button>
+                  )}
+                  <button
+                    data-action="dismiss-error"
+                    onClick={onDismiss}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      minHeight: 44,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: textColor,
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                      border: 'none',
+                      borderRadius: 22,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )
+          })()}
         </div>
       )}
 

@@ -13,18 +13,15 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   const { getPlayer, updatePlayer, players } = useGameMode()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [localName, setLocalName] = useState('')
-  const [localAge, setLocalAge] = useState<string>('')
   const [isSaving, setIsSaving] = useState(false)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const ageDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const player = getPlayer(playerId)
 
-  // Initialize local name and age from player
+  // Initialize local name from player
   useEffect(() => {
     if (player) {
       setLocalName(player.name)
-      setLocalAge(player.age != null ? String(player.age) : '')
     }
   }, [player])
 
@@ -50,21 +47,6 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   const handleEmojiSelect = (emoji: string) => {
     updatePlayer(playerId, { emoji })
     setShowEmojiPicker(false)
-  }
-
-  const handleAgeChange = (value: string) => {
-    setLocalAge(value)
-
-    if (ageDebounceRef.current) {
-      clearTimeout(ageDebounceRef.current)
-    }
-
-    setIsSaving(true)
-    ageDebounceRef.current = setTimeout(() => {
-      const parsed = parseInt(value, 10)
-      updatePlayer(playerId, { age: value === '' ? null : (isNaN(parsed) ? null : parsed) })
-      setIsSaving(false)
-    }, 500)
   }
 
   const handleGenerateNewName = () => {
@@ -269,56 +251,6 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               →
             </div>
           </button>
-        </div>
-
-        {/* Age Input */}
-        <div style={{ marginBottom: '24px' }}>
-          <label
-            style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#374151',
-              marginBottom: '8px',
-            }}
-          >
-            Age
-          </label>
-          <input
-            type="number"
-            value={localAge}
-            onChange={(e) => handleAgeChange(e.target.value)}
-            placeholder="e.g. 7"
-            min={3}
-            max={18}
-            style={{
-              width: '80px',
-              padding: '12px 16px',
-              fontSize: '16px',
-              border: '2px solid #e5e7eb',
-              borderRadius: '12px',
-              outline: 'none',
-              transition: 'all 0.2s ease',
-              fontWeight: 500,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = gradientColor
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${gradientColor}20`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
-          <div
-            style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              marginTop: '6px',
-            }}
-          >
-            Helps the number line adapt conversations to your child
-          </div>
         </div>
 
         {/* Name Input */}

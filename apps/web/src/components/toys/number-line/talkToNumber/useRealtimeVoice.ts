@@ -96,6 +96,8 @@ interface DialOptions {
 interface UseRealtimeVoiceReturn {
   state: CallState
   error: string | null
+  /** Classifies the error for UI decisions (e.g. whether to show retry) */
+  errorCode: string | null
   dial: (number: number, options?: DialOptions) => void
   hangUp: () => void
   timeRemaining: number | null
@@ -135,6 +137,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const isExplorationActiveRef = options?.isExplorationActiveRef
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transferTarget, setTransferTarget] = useState<number | null>(null)
@@ -270,6 +273,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     cleanup()
     setState('idle')
     setError(null)
+    setErrorCode(null)
   }, [cleanup])
 
   const dial = useCallback(async (number: number, options?: DialOptions) => {
@@ -278,6 +282,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     if (cur !== 'idle' && cur !== 'error' && cur !== 'transferring') return
 
     setError(null)
+    setErrorCode(null)
     extensionUsedRef.current = false
     warningSentRef.current = false
     goodbyeRequestedRef.current = false
@@ -294,11 +299,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       })
       streamRef.current = stream
     } catch (err) {
+      const isDenied = err instanceof DOMException && err.name === 'NotAllowedError'
       setError(
-        err instanceof DOMException && err.name === 'NotAllowedError'
+        isDenied
           ? 'Microphone access denied. Please allow microphone access to talk to numbers!'
           : 'Could not access microphone.'
       )
+      setErrorCode(isDenied ? 'mic_denied' : 'mic_error')
       setState('error')
       return
     }
@@ -338,7 +345,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Server error' }))
-        throw new Error(data.error || `Server error: ${res.status}`)
+        const apiError = new Error(data.error || `Server error: ${res.status}`)
+        ;(apiError as Error & { code?: string }).code = data.code || undefined
+        throw apiError
       }
       const data = await res.json()
       clientSecret = data.clientSecret
@@ -352,6 +361,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     } catch (err) {
       cleanup()
       setError(err instanceof Error ? err.message : 'Failed to connect')
+      setErrorCode((err as Error & { code?: string }).code || 'session_error')
       setState('error')
       return
     }
@@ -529,6 +539,22 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           }
           if (msg.type === 'error') {
             console.error('[voice] server error:', JSON.stringify(msg.error))
+            const errCode = msg.error?.code || msg.error?.type || 'unknown'
+            const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
+            const isRateLimit = /rate_limit/i.test(errCode)
+            cleanup()
+            if (isQuota) {
+              setError('Phone calls are taking a break right now. Try again later!')
+              setErrorCode('quota_exceeded')
+            } else if (isRateLimit) {
+              setError(`${number} is busy right now. Try again in a moment!`)
+              setErrorCode('rate_limited')
+            } else {
+              setError(msg.error?.message || 'Something went wrong during the call.')
+              setErrorCode(errCode)
+            }
+            setState('error')
+            return
           }
 
           // Collect transcripts for evolve_story tool (both sides)
@@ -1200,6 +1226,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     } catch (err) {
       cleanup()
       setError(err instanceof Error ? err.message : 'Connection failed')
+      setErrorCode('connection_error')
       setState('error')
     }
   }, [cleanup, hangUp])
@@ -1288,6 +1315,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     if (state !== 'idle' && state !== 'error' && !pcRef.current) {
       setState('idle')
       setError(null)
+      setErrorCode(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // mount only
@@ -1299,5 +1327,5 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }
   }, [cleanup])
 
-  return { state, error, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage }
+  return { state, error, errorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage }
 }

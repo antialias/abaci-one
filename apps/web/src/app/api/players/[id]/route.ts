@@ -1,4 +1,4 @@
-import { and, eq, gt } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
@@ -21,29 +21,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Check if user has an active arcade session
-    // If so, prevent changing isActive status (players are locked during games)
-    if (body.isActive !== undefined) {
-      const activeSession = await db.query.arcadeSessions.findFirst({
-        where: and(
-          eq(schema.arcadeSessions.userId, viewerId),
-          eq(schema.arcadeSessions.isActive, true),
-          gt(schema.arcadeSessions.expiresAt, new Date()),
-        ),
-      })
-
-      if (activeSession) {
-        return NextResponse.json(
-          {
-            error: 'Cannot modify active players during an active game session',
-            activeGame: activeSession.currentGame,
-            gameUrl: activeSession.gameUrl,
-          },
-          { status: 403 }
-        )
-      }
-    }
-
     // Security: Only allow updating specific fields (excludes userId)
     // Update player (only if it belongs to this user)
     const [updatedPlayer] = await db
@@ -55,7 +32,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         ...(body.isArchived !== undefined && { isArchived: body.isArchived }),
         ...(body.notes !== undefined && { notes: body.notes }),
-        ...(body.age !== undefined && { age: body.age === null ? null : body.age }),
         // userId is explicitly NOT included - it comes from session
       })
       .where(and(eq(schema.players.id, params.id), eq(schema.players.userId, user.id)))

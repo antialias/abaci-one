@@ -29,8 +29,8 @@ describe('useUserPlayers hooks', () => {
     createdAt: new Date('2024-01-01'),
     helpSettings: null,
     notes: null,
-    familyCode: 'FAM-123456',
     age: null,
+    familyCode: 'FAM-123456',
   }
 
   const mockPlayerWithSkillData: StudentWithSkillData = {
@@ -72,8 +72,8 @@ describe('useUserPlayers hooks', () => {
       createdAt: new Date('2024-01-20'),
       helpSettings: null,
       notes: null,
-      familyCode: 'FAM-NEW123',
       age: null,
+      familyCode: 'FAM-NEW123',
     }
 
     describe('optimistic updates', () => {

@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { GameModeProvider, useGameMode } from '../GameModeContext'
 import type { GameModeProviderProps } from '../GameModeContext'
+import type { Player as DBPlayer } from '@/db/schema/players'
 
 // Mock dependencies
 vi.mock('@/utils/playerNames', () => ({
@@ -19,6 +20,22 @@ const mockCreatePlayer = vi.fn()
 const mockUpdatePlayerMutation = vi.fn()
 const mockDeletePlayer = vi.fn()
 const mockNotifyRoomOfPlayerUpdate = vi.fn()
+
+/** Build a minimal valid DBPlayer for tests */
+function makePlayer(overrides: Partial<DBPlayer> & { id: string; name: string; userId: string }): DBPlayer {
+  return {
+    emoji: '😀',
+    color: '#3b82f6',
+    createdAt: new Date(),
+    isActive: false,
+    helpSettings: null,
+    notes: null,
+    isArchived: false,
+    age: null,
+    familyCode: null,
+    ...overrides,
+  }
+}
 
 const defaultProps: Omit<GameModeProviderProps, 'children'> = {
   dbPlayers: [],
@@ -65,22 +82,7 @@ describe('GameModeContext', () => {
   it('provides game mode as single with one active player', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true })],
       }),
     })
     expect(result.current.gameMode).toBe('single')
@@ -91,34 +93,8 @@ describe('GameModeContext', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
         dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-          {
-            id: 'p2',
-            name: 'Bob',
-            emoji: '😎',
-            color: '#8b5cf6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
+          makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true }),
+          makePlayer({ id: 'p2', name: 'Bob', userId: 'u1', emoji: '😎', color: '#8b5cf6', isActive: true }),
         ],
       }),
     })
@@ -130,48 +106,9 @@ describe('GameModeContext', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
         dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-          {
-            id: 'p2',
-            name: 'Bob',
-            emoji: '😎',
-            color: '#8b5cf6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-          {
-            id: 'p3',
-            name: 'Charlie',
-            emoji: '🤠',
-            color: '#10b981',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
+          makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true }),
+          makePlayer({ id: 'p2', name: 'Bob', userId: 'u1', emoji: '😎', color: '#8b5cf6', isActive: true }),
+          makePlayer({ id: 'p3', name: 'Charlie', userId: 'u1', emoji: '🤠', color: '#10b981', isActive: true }),
         ],
       }),
     })
@@ -182,22 +119,7 @@ describe('GameModeContext', () => {
   it('converts dbPlayers to Map with isLocal flag', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true })],
       }),
     })
     const player = result.current.getPlayer('p1')
@@ -210,34 +132,8 @@ describe('GameModeContext', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
         dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-          {
-            id: 'p2',
-            name: 'Bob',
-            emoji: '😎',
-            color: '#8b5cf6',
-            createdAt: new Date(),
-            isActive: false,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
+          makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true }),
+          makePlayer({ id: 'p2', name: 'Bob', userId: 'u1', emoji: '😎', color: '#8b5cf6' }),
         ],
       }),
     })
@@ -249,34 +145,8 @@ describe('GameModeContext', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
         dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-          {
-            id: 'p2',
-            name: 'Bob',
-            emoji: '😎',
-            color: '#8b5cf6',
-            createdAt: new Date(),
-            isActive: false,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
+          makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true }),
+          makePlayer({ id: 'p2', name: 'Bob', userId: 'u1', emoji: '😎', color: '#8b5cf6' }),
         ],
       }),
     })
@@ -307,22 +177,7 @@ describe('GameModeContext', () => {
   it('updatePlayer calls updatePlayerMutation for local players', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true })],
       }),
     })
 
@@ -339,22 +194,7 @@ describe('GameModeContext', () => {
   it('removePlayer calls deletePlayer for local players', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true })],
       }),
     })
 
@@ -368,22 +208,7 @@ describe('GameModeContext', () => {
   it('setActive calls updatePlayerMutation for local players', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: false,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1' })],
       }),
     })
 
@@ -417,22 +242,7 @@ describe('GameModeContext', () => {
   it('does not create default players when dbPlayers exist', () => {
     renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true })],
       }),
     })
 
@@ -442,22 +252,7 @@ describe('GameModeContext', () => {
   it('merges room players from other members', () => {
     const { result } = renderHook(() => useGameMode(), {
       wrapper: createWrapper({
-        dbPlayers: [
-          {
-            id: 'p1',
-            name: 'Alice',
-            emoji: '😀',
-            color: '#3b82f6',
-            createdAt: new Date(),
-            isActive: true,
-            userId: 'u1',
-            helpSettings: null,
-            notes: null,
-            isArchived: false,
-            age: null,
-            familyCode: null,
-          },
-        ],
+        dbPlayers: [makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true })],
         roomData: {
           id: 'room-1',
           memberPlayers: {

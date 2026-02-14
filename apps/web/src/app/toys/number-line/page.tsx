@@ -2,7 +2,6 @@
 
 import { AppNavBar } from '@/components/AppNavBar'
 import { NumberLine } from '@/components/toys/number-line/NumberLine'
-import { PlayerPicker } from '@/components/toys/number-line/PlayerPicker'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export default function NumberLinePage() {
@@ -23,18 +22,15 @@ export default function NumberLinePage() {
     >
       <AppNavBar
         navSlot={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
-              }}
-            >
-              📏 Number Line
-            </span>
-            <PlayerPicker isDark={isDark} />
-          </div>
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: isDark ? 'rgba(209, 213, 219, 1)' : 'rgba(55, 65, 81, 1)',
+            }}
+          >
+            📏 Number Line
+          </span>
         }
       />
       <div style={{ flex: 1, minHeight: 0, paddingTop: 'var(--app-nav-height)' }}>
