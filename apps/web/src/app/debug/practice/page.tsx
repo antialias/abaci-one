@@ -131,29 +131,6 @@ export default function DebugPracticePage() {
             </p>
           </header>
 
-          {/* Show modal toggle */}
-          <label
-            data-element="use-modal-toggle"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '1rem',
-              fontSize: '0.875rem',
-              color: isDark ? 'gray.300' : 'gray.600',
-              cursor: 'pointer',
-              userSelect: 'none',
-            })}
-          >
-            <input
-              type="checkbox"
-              checked={useModal}
-              onChange={(e) => setUseModal(e.target.checked)}
-              className={css({ cursor: 'pointer' })}
-            />
-            Show start practice modal
-          </label>
-
           {error && (
             <div
               data-element="error-banner"
@@ -177,58 +154,95 @@ export default function DebugPracticePage() {
               const isLoading =
                 loading === preset.id && !(useModal && showModal)
               return (
-                <button
+                <div
                   key={preset.id}
-                  data-action={`preset-${preset.id}`}
-                  onClick={() => handlePreset(preset)}
-                  disabled={loading !== null}
                   className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    padding: '1rem 1.25rem',
                     backgroundColor: isDark ? 'gray.800' : 'white',
                     border: '1px solid',
                     borderColor: isDark ? 'gray.700' : 'gray.200',
                     borderRadius: '12px',
-                    textAlign: 'left',
-                    cursor: loading !== null ? 'wait' : 'pointer',
+                    overflow: 'hidden',
                     opacity: loading !== null && loading !== preset.id ? 0.5 : 1,
                     transition: 'all 0.2s',
-                    _hover: {
-                      backgroundColor: isDark ? 'gray.700' : 'gray.50',
-                    },
                   })}
                 >
-                  <div className={css({ flex: 1 })}>
-                    <div
-                      className={css({
-                        fontWeight: '600',
-                        color: isDark ? 'white' : 'gray.800',
-                        marginBottom: '4px',
-                      })}
-                    >
-                      {preset.label}
+                  <button
+                    data-action={`preset-${preset.id}`}
+                    onClick={() => handlePreset(preset)}
+                    disabled={loading !== null}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      width: '100%',
+                      padding: '1rem 1.25rem',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      textAlign: 'left',
+                      cursor: loading !== null ? 'wait' : 'pointer',
+                      transition: 'background-color 0.2s',
+                      _hover: {
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                      },
+                    })}
+                  >
+                    <div className={css({ flex: 1 })}>
+                      <div
+                        className={css({
+                          fontWeight: '600',
+                          color: isDark ? 'white' : 'gray.800',
+                          marginBottom: '4px',
+                        })}
+                      >
+                        {preset.label}
+                      </div>
+                      <div
+                        className={css({
+                          fontSize: '0.875rem',
+                          color: isDark ? 'gray.400' : 'gray.600',
+                        })}
+                      >
+                        {preset.description}
+                      </div>
                     </div>
-                    <div
-                      className={css({
-                        fontSize: '0.875rem',
-                        color: isDark ? 'gray.400' : 'gray.600',
-                      })}
-                    >
-                      {preset.description}
-                    </div>
-                  </div>
-                  {isLoading && (
-                    <Loader2
-                      size={20}
-                      className={css({
-                        animation: 'spin 1s linear infinite',
-                        color: isDark ? 'gray.400' : 'gray.500',
-                      })}
+                    {isLoading && (
+                      <Loader2
+                        size={20}
+                        className={css({
+                          animation: 'spin 1s linear infinite',
+                          color: isDark ? 'gray.400' : 'gray.500',
+                        })}
+                      />
+                    )}
+                  </button>
+                  <label
+                    data-element="use-modal-toggle"
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.375rem',
+                      padding: '0.5rem 1.25rem',
+                      borderTop: '1px solid',
+                      borderColor: isDark ? 'gray.700/50' : 'gray.100',
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.500' : 'gray.400',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      _hover: {
+                        color: isDark ? 'gray.300' : 'gray.600',
+                      },
+                    })}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={useModal}
+                      onChange={(e) => setUseModal(e.target.checked)}
+                      className={css({ cursor: 'pointer' })}
                     />
-                  )}
-                </button>
+                    Show start practice modal
+                  </label>
+                </div>
               )
             })}
           </div>
