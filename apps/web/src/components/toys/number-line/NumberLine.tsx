@@ -2766,7 +2766,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
               color: 'rgba(243,244,246,1)',
               fontSize: 12,
               width: 'min(520px, calc(100vw - 320px))',
-              maxHeight: 'calc(100dvh - 32px)',
+              maxHeight: 'calc(100dvh - var(--app-nav-height, 56px) - 48px)',
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
