@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import type { CurriculumPhase } from '@/lib/curriculum/definitions'
 import { StartPracticeModalProvider } from '../StartPracticeModalContext'
+import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 import {
   DurationSelector,
   PracticeModesSelector,
@@ -141,6 +142,7 @@ function createWrapper(overrides: Partial<WrapperProps> = {}) {
         studentName="Test Student"
         focusDescription="Test focus"
         sessionMode={overrides.sessionMode ?? defaultSessionMode}
+        savedPreferences={{ ...DEFAULT_SESSION_PREFERENCES, gameBreakEnabledGames: ['game1', 'game2'] }}
       >
         {children}
       </StartPracticeModalProvider>

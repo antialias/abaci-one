@@ -55,12 +55,13 @@ describe('PlayerSessionPreferencesConfig', () => {
       expect(config).toBeDefined()
     })
 
-    it('contains exactly the 10 expected keys', () => {
+    it('contains exactly the 11 expected keys', () => {
       const keys = Object.keys(DEFAULT_SESSION_PREFERENCES).sort()
       expect(keys).toEqual([
         'durationMinutes',
         'gameBreakDifficultyPreset',
         'gameBreakEnabled',
+        'gameBreakEnabledGames',
         'gameBreakMinutes',
         'gameBreakSelectedGame',
         'gameBreakSelectionMode',

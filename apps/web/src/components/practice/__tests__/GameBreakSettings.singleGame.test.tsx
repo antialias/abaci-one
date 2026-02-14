@@ -8,6 +8,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import type { CurriculumPhase } from '@/lib/curriculum/definitions'
 import { StartPracticeModalProvider } from '../StartPracticeModalContext'
+import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 import { GameBreakSettings } from '../start-practice-modal'
 
 // Mock ThemeContext
@@ -111,6 +112,7 @@ function createWrapper() {
         studentName="Test Student"
         focusDescription="Test focus"
         sessionMode={defaultSessionMode}
+        savedPreferences={{ ...DEFAULT_SESSION_PREFERENCES, gameBreakEnabledGames: ['matching'] }}
       >
         {children}
       </StartPracticeModalProvider>

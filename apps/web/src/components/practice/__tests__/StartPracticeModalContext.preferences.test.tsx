@@ -101,6 +101,7 @@ const customPreferences: PlayerSessionPreferencesConfig = {
   gameBreakSelectionMode: 'auto-start',
   gameBreakSelectedGame: 'game1',
   gameBreakDifficultyPreset: 'hard',
+  gameBreakEnabledGames: ['game1', 'game2'],
 }
 
 // ============================================================================
