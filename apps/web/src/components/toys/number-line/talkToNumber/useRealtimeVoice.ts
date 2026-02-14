@@ -87,10 +87,14 @@ interface UseRealtimeVoiceOptions {
   /** Ref that reports whether an exploration animation is currently active.
    *  When true, the call timer pauses the countdown (won't expire mid-video). */
   isExplorationActiveRef?: React.RefObject<boolean>
+  /** Called when the agent identifies the caller mid-call via identify_caller tool */
+  onPlayerIdentified?: (playerId: string) => void
 }
 
 interface DialOptions {
   recommendedExplorations?: string[]
+  playerId?: string
+  availablePlayers?: Array<{ id: string; name: string; emoji: string }>
 }
 
 interface UseRealtimeVoiceReturn {
@@ -99,6 +103,8 @@ interface UseRealtimeVoiceReturn {
   /** Classifies the error for UI decisions (e.g. whether to show retry) */
   errorCode: string | null
   dial: (number: number, options?: DialOptions) => void
+  /** True when a playerId was provided but profile assembly failed server-side */
+  profileFailed: boolean
   hangUp: () => void
   timeRemaining: number | null
   isSpeaking: boolean
@@ -113,6 +119,10 @@ interface UseRealtimeVoiceReturn {
   /** Send a system-level message to the voice agent (e.g. narration context).
    *  Set promptResponse=true to have the model speak after receiving it. */
   sendSystemMessage: (text: string, promptResponse?: boolean) => void
+  /** Control narration muting. When true, the agent's audio output is muted
+   *  (volume=0) so the user only hears the pre-recorded TTS narrator. Call with
+   *  false to unmute (e.g. when the exploration finishes). */
+  setNarrationPlaying: (playing: boolean) => void
 }
 
 export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtimeVoiceReturn {
@@ -134,6 +144,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onStartFindNumberRef.current = options?.onStartFindNumber
   const onStopFindNumberRef = useRef(options?.onStopFindNumber)
   onStopFindNumberRef.current = options?.onStopFindNumber
+  const onPlayerIdentifiedRef = useRef(options?.onPlayerIdentified)
+  onPlayerIdentifiedRef.current = options?.onPlayerIdentified
+  const availablePlayersRef = useRef<Array<{ id: string; name: string; emoji: string }>>([])
   const isExplorationActiveRef = options?.isExplorationActiveRef
   // Cooldown: don't auto-pause exploration within N ms of a resume to prevent
   // TTS narration echo (mic picks up speaker audio) from immediately re-pausing.
@@ -146,12 +159,33 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   // Updated by the requestAnimationFrame audio-level loop, read by the
   // pending exploration executor to wait for actual silence.
   const agentAudioPlayingRef = useRef(false)
+  // True while pre-recorded TTS narration is actively playing. When set, any
+  // server-initiated response is immediately cancelled (prevents the server's
+  // VAD from triggering agent speech when the mic picks up narrator audio).
+  const narrationPlayingRef = useRef(false)
+  // Timestamp of when the current response started generating — used to estimate
+  // how much audio the client has played for conversation.item.truncate.
+  const responseCreatedMsRef = useRef(0)
+
+  // Helper: co-sets narrationPlayingRef AND mutes/unmutes the agent's audio
+  // element. When narration is playing, the agent's voice is silenced at the
+  // output level so the user only hears the pre-recorded TTS narrator.
+  // The analyser (agentAudioPlayingRef) still sees the audio signal since it
+  // taps the MediaStream directly, not the audio element.
+  const setNarrationPlaying = useCallback((playing: boolean) => {
+    narrationPlayingRef.current = playing
+    if (audioElRef.current) {
+      audioElRef.current.volume = playing ? 0 : 1
+      console.log('[exploration] agent audio %s (narration %s)', playing ? 'muted' : 'unmuted', playing ? 'playing' : 'stopped')
+    }
+  }, [])
   const [state, setState] = useState<CallState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transferTarget, setTransferTarget] = useState<number | null>(null)
+  const [profileFailed, setProfileFailed] = useState(false)
   const [conferenceNumbers, setConferenceNumbers] = useState<number[]>([])
   const conferenceNumbersRef = useRef<number[]>([])
   const [currentSpeaker, setCurrentSpeaker] = useState<number | null>(null)
@@ -161,6 +195,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   // 2) acoustic silence→speaking transition, 3) fallback timeout (1s).
   const pendingSpeakerRef = useRef<number | null>(null)
   const pendingSpeakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Active playerId — preserved across transfers and retries
+  const activePlayerIdRef = useRef<string | undefined>(undefined)
 
   // Refs for cleanup
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -294,9 +330,16 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
     setError(null)
     setErrorCode(null)
+    setProfileFailed(false)
     extensionUsedRef.current = false
     warningSentRef.current = false
     goodbyeRequestedRef.current = false
+    // Persist playerId for transfers/retries
+    if (options?.playerId !== undefined) {
+      activePlayerIdRef.current = options.playerId
+    }
+    // Store available players for mid-call identification
+    availablePlayersRef.current = options?.availablePlayers ?? []
 
     // 1. Get microphone permission
     let stream: MediaStream
@@ -348,9 +391,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           number,
+          ...(activePlayerIdRef.current && { playerId: activePlayerIdRef.current }),
           ...(previousScenario && { previousScenario }),
           ...(options?.recommendedExplorations?.length && {
             recommendedExplorations: options.recommendedExplorations,
+          }),
+          ...(availablePlayersRef.current.length > 0 && {
+            availablePlayers: availablePlayersRef.current,
           }),
         }),
       })
@@ -366,6 +413,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       scenarioRef.current = data.scenario ?? null
       childProfileRef.current = data.childProfile ?? undefined
       calledNumberRef.current = number
+      if (data.profileFailed) {
+        setProfileFailed(true)
+      }
       if (data.scenario) {
         console.log('[voice] scenario for %d: %s', number, data.scenario.archetype)
       }
@@ -555,11 +605,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           }
           if (msg.type === 'error') {
             const errCode = msg.error?.code || msg.error?.type || 'unknown'
-            // response_cancel_not_active is harmless — we speculatively cancel
-            // in-progress responses during exploration transitions, and sometimes
-            // the response has already finished. Just log and continue.
-            if (errCode === 'response_cancel_not_active') {
-              console.log('[voice] response.cancel: no active response (harmless)')
+            // These errors are harmless during exploration transitions:
+            // - response_cancel_not_active: we speculatively cancel responses
+            // - conversation_already_has_active_response: auto-pause sends
+            //   response.create which may race with a VAD-triggered response
+            // - item_truncation_failed: truncate target already processed / doesn't exist
+            if (errCode === 'response_cancel_not_active' || errCode === 'conversation_already_has_active_response' || errCode === 'item_truncation_failed') {
+              console.log('[voice] %s (harmless, exploration transition)', errCode)
               return
             }
             console.error('[voice] server error:', JSON.stringify(msg.error))
@@ -582,55 +634,107 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // Log response lifecycle for exploration debugging
           if (msg.type === 'response.created' || msg.type === 'response.done') {
-            console.log('[exploration] %s — response_id: %s, pending: %s',
-              msg.type, msg.response?.id, pendingExplorationRef.current ? JSON.stringify(pendingExplorationRef.current) : 'none')
+            console.log('[exploration] %s — response_id: %s, pending: %s, narrationPlaying: %s',
+              msg.type, msg.response?.id,
+              pendingExplorationRef.current ? JSON.stringify(pendingExplorationRef.current) : 'none',
+              narrationPlayingRef.current)
+          }
+
+          // Track when current response started — used to estimate playback
+          // position for conversation.item.truncate (audio cutoff).
+          if (msg.type === 'response.created') {
+            responseCreatedMsRef.current = Date.now()
+          }
+
+          // Suppress agent speech during narration playback. The mic picks up
+          // the TTS narrator audio, server VAD interprets it as user speech, and
+          // auto-creates a response. Cancel it immediately.
+          // Also clear the flag if the exploration is no longer active (finished).
+          if (msg.type === 'response.created' && narrationPlayingRef.current) {
+            if (!isExplorationActiveRef?.current) {
+              // Exploration ended — allow the agent to speak (completion check-in)
+              console.log('[exploration] narration flag cleared — exploration no longer active')
+              setNarrationPlaying(false)
+            } else {
+              console.log('[exploration] cancelling response %s — narration is playing', msg.response?.id)
+              dc.send(JSON.stringify({ type: 'response.cancel' }))
+            }
           }
 
           // Execute deferred exploration actions once the agent finishes speaking.
           // Tool calls fire mid-response (audio still streaming), so we queue
-          // start/resume actions here. On response.done we wait for actual client-side
-          // audio silence (via the analyser node) before executing — response.done
-          // means the server finished generating, but buffered audio may still be
-          // playing through WebRTC.
+          // start/resume actions here and execute on response.done.
+          //
+          // start_exploration: wait for sustained silence so the intro plays out.
+          // resume_exploration: truncate buffered audio immediately via
+          //   conversation.item.truncate — this is the API's built-in mechanism
+          //   for interrupting the agent (same as a user interruption via VAD).
           if (msg.type === 'response.done') {
             const pending = pendingExplorationRef.current
             console.log('[exploration] response.done — pending:', pending ? JSON.stringify(pending) : 'none', 'response_id:', msg.response?.id)
             if (pending) {
               pendingExplorationRef.current = null
 
-              const executePending = () => {
-                if (pending.type === 'start') {
+              if (pending.type === 'start') {
+                // For start: wait for the agent's intro to finish playing
+                const executeStart = () => {
                   console.log('[exploration] executing deferred start_exploration:', pending.constantId)
                   onStartExplorationRef.current?.(pending.constantId)
-                } else if (pending.type === 'resume') {
-                  console.log('[exploration] executing deferred resume_exploration — narration starts NOW')
-                  lastResumeTimestampRef.current = Date.now()
-                  onResumeExplorationRef.current?.()
                 }
-              }
-
-              // If agent audio is still playing, poll until it stops
-              if (agentAudioPlayingRef.current) {
-                console.log('[exploration] agent audio still playing — waiting for silence')
+                const SUSTAINED_SILENCE_MS = 300
+                console.log('[exploration] waiting for %dms sustained silence before executing start', SUSTAINED_SILENCE_MS)
                 const startedWaiting = Date.now()
+                let silenceStartMs = agentAudioPlayingRef.current ? 0 : Date.now()
                 const waitForSilence = () => {
-                  // Safety timeout: don't wait more than 3s
                   if (Date.now() - startedWaiting > 3000) {
                     console.log('[exploration] silence wait timed out after 3s — executing anyway')
-                    executePending()
+                    executeStart()
                     return
                   }
                   if (agentAudioPlayingRef.current) {
+                    silenceStartMs = 0
                     requestAnimationFrame(waitForSilence)
                     return
                   }
-                  console.log('[exploration] agent audio stopped — executing after %dms', Date.now() - startedWaiting)
-                  executePending()
+                  if (silenceStartMs === 0) silenceStartMs = Date.now()
+                  if (Date.now() - silenceStartMs < SUSTAINED_SILENCE_MS) {
+                    requestAnimationFrame(waitForSilence)
+                    return
+                  }
+                  console.log('[exploration] sustained silence confirmed — executing start after %dms', Date.now() - startedWaiting)
+                  executeStart()
                 }
                 requestAnimationFrame(waitForSilence)
-              } else {
-                console.log('[exploration] agent audio already silent — executing immediately')
-                executePending()
+
+              } else if (pending.type === 'resume') {
+                // For resume: truncate buffered audio so the agent shuts up
+                // immediately, then start narration. conversation.item.truncate
+                // is the same mechanism the server uses when VAD detects user
+                // speech — it stops audio playback, trims the transcript, and
+                // updates the model's context. The call stays alive.
+                const audioItem = msg.response?.output?.find(
+                  (item: { type: string }) => item.type === 'message'
+                )
+                if (audioItem?.id) {
+                  // Estimate how much audio the client has already played:
+                  // elapsed time since response.created ≈ real-time playback.
+                  const audioEndMs = Math.max(0, Date.now() - responseCreatedMsRef.current)
+                  console.log('[exploration] truncating audio item %s at %dms — cutting off agent speech', audioItem.id, audioEndMs)
+                  dc.send(JSON.stringify({
+                    type: 'conversation.item.truncate',
+                    item_id: audioItem.id,
+                    content_index: 0,
+                    audio_end_ms: audioEndMs,
+                  }))
+                } else {
+                  console.log('[exploration] no audio item found in response to truncate')
+                }
+                // Execute immediately — truncation handles the audio cutoff.
+                // Mute the agent's audio output so the user only hears the TTS narrator.
+                console.log('[exploration] executing resume_exploration — narration starts NOW')
+                setNarrationPlaying(true)
+                lastResumeTimestampRef.current = Date.now()
+                onResumeExplorationRef.current?.()
               }
             }
           }
@@ -670,7 +774,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               // through the mic and get transcribed as "child speech", causing an
               // immediate re-pause. 3s is enough for echo to settle.
               if (isExplorationActiveRef?.current && Date.now() - lastResumeTimestampRef.current > 3000) {
+                console.log('[exploration] auto-pause: child spoke during narration')
+                setNarrationPlaying(false)  // unmute agent so it can answer
                 onPauseExplorationRef.current?.()
+                // The VAD-triggered response was likely cancelled (narration was
+                // playing). Send response.create so the agent can answer the kid.
+                dc.send(JSON.stringify({ type: 'response.create' }))
               }
             }
           }
@@ -775,7 +884,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               cleanup()
               setTransferTarget(null)
               // dial() will be called by the effect in NumberLine that watches transferTarget
-              // but we can also just call it directly here
+              // but we can also just call it directly here — playerId preserved via activePlayerIdRef
               dial(targetNumber)
             }, TRANSFER_DELAY_MS)
           }
@@ -996,6 +1105,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
           // Handle pause/resume/seek exploration tools
           if (msg.name === 'pause_exploration') {
+            setNarrationPlaying(false)
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
@@ -1009,6 +1119,11 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           }
 
           if (msg.name === 'resume_exploration') {
+            // Cut off the agent's current speech immediately — it tends to keep
+            // talking after calling resume (e.g. narrating what the child is about
+            // to see). Cancel first, then send the tool output.
+            dc.send(JSON.stringify({ type: 'response.cancel' }))
+
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
@@ -1017,10 +1132,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 output: JSON.stringify({ success: true, message: 'Exploration resumed. The narrator is speaking now — stay completely silent until the child speaks or the exploration ends.' }),
               },
             }))
-            // Defer narration start until agent finishes speaking (response.done).
-            // Do NOT send response.create — the narrator takes over and the agent
-            // stays silent until the child speaks or the exploration finishes.
-            console.log('[exploration] resume_exploration tool call — deferring until response.done')
+            // Defer narration start until buffered audio finishes playing.
+            // Do NOT send response.create — the narrator takes over.
+            console.log('[exploration] resume_exploration tool call — cancelling speech + deferring until response.done')
             pendingExplorationRef.current = { type: 'resume' }
           }
 
@@ -1154,6 +1268,99 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   dc.send(JSON.stringify({ type: 'response.create' }))
                 })
             }
+          }
+
+          // Handle model calling identify_caller tool — mid-call player identification
+          if (msg.name === 'identify_caller') {
+            let playerId: string
+            try {
+              const args = JSON.parse(msg.arguments || '{}')
+              playerId = args.player_id
+              if (typeof playerId !== 'string' || !playerId) throw new Error('invalid')
+            } catch {
+              dc.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: msg.call_id,
+                  output: JSON.stringify({ success: false, error: 'Invalid player_id' }),
+                },
+              }))
+              dc.send(JSON.stringify({ type: 'response.create' }))
+              return
+            }
+
+            // Update active player immediately
+            activePlayerIdRef.current = playerId
+
+            // Async fetch profile and inject mid-call
+            fetch('/api/realtime/profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerId }),
+            })
+              .then(res => res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`)))
+              .then(data => {
+                if (data.failed || !data.profile) {
+                  dc.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: msg.call_id,
+                      output: JSON.stringify({ success: true, message: "Couldn't load their profile, but that's okay — continue the conversation naturally." }),
+                    },
+                  }))
+                  dc.send(JSON.stringify({ type: 'response.create' }))
+                  return
+                }
+
+                const profile = data.profile as ChildProfile
+                childProfileRef.current = profile
+
+                // Build a summary for the tool output
+                const namePart = profile.name ? `This is ${profile.name}` : 'Identified the caller'
+                const agePart = profile.age != null ? `, age ${profile.age}` : ''
+                const focusPart = profile.currentFocus ? `. Currently learning: ${profile.currentFocus}` : ''
+
+                dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: msg.call_id,
+                    output: JSON.stringify({
+                      success: true,
+                      message: `${namePart}${agePart}${focusPart}. Their full profile has been loaded — personalize the conversation for them!`,
+                    }),
+                  },
+                }))
+
+                // Update session instructions with the profile
+                const conferenceNums = conferenceNumbersRef.current
+                const newInstructions = conferenceNums.length > 1
+                  ? generateConferencePrompt(conferenceNums, currentSpeakerRef.current ?? undefined, profile)
+                  : generateNumberPersonality(calledNumberRef.current, scenarioRef.current, profile)
+                dc.send(JSON.stringify({
+                  type: 'session.update',
+                  session: { instructions: newInstructions },
+                }))
+
+                dc.send(JSON.stringify({ type: 'response.create' }))
+
+                // Notify UI
+                onPlayerIdentifiedRef.current?.(playerId)
+              })
+              .catch(err => {
+                console.warn('[voice] identify_caller profile fetch failed', err)
+                dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: msg.call_id,
+                    output: JSON.stringify({ success: true, message: "Couldn't load their profile right now. Continue the conversation naturally." }),
+                  },
+                }))
+                dc.send(JSON.stringify({ type: 'response.create' }))
+              })
           }
 
           // Handle model calling indicate tool — highlight numbers/range on the number line
@@ -1469,5 +1676,5 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }
   }, [cleanup])
 
-  return { state, error, errorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage }
+  return { state, error, errorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed }
 }

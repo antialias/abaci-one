@@ -316,7 +316,17 @@ function selectPrimesForCall(n: number): InterestingPrime[] {
 
 // --- Child profile prompt section ---
 
-function buildChildSection(child?: ChildProfile): string {
+function buildChildSection(child?: ChildProfile, profileFailed?: boolean): string {
+  // Profile was requested but assembly failed — instruct the number to gather context naturally
+  if (profileFailed && !child) {
+    return `
+THE CHILD ON THE PHONE:
+- We tried to look up info about this child but couldn't. Start by asking their name and how old they are.
+- Ask what they've been learning — are they working on anything with an abacus? Do they play any math games?
+- Use their answers to calibrate the conversation. Don't make it feel like an interrogation — weave questions in naturally.
+`
+  }
+
   if (!child) return ''
 
   const parts: string[] = []
@@ -341,6 +351,52 @@ function buildChildSection(child?: ChildProfile): string {
     parts.push(`- You don't know their age yet. Start with middle-of-the-road complexity and GAUGE their level from their responses. If they seem confused, simplify. If they seem bored or answer easily, raise the challenge. Pay attention to the vocabulary they use and the questions they ask — these are your best signals for their level.`)
   }
 
+  // Practice / skill context
+  if (child.currentFocus) {
+    parts.push(`- They're currently learning: ${child.currentFocus}.`)
+  }
+
+  if (child.strengths && child.strengths.length > 0) {
+    const list = child.strengths.map(s => s.displayName).join(', ')
+    parts.push(`- They're strong at: ${list}. You can reference these confidently.`)
+  }
+
+  if (child.struggles && child.struggles.length > 0) {
+    const list = child.struggles.map(s => s.displayName).join(', ')
+    parts.push(`- They find these harder: ${list}. Be patient here. Don't quiz them — that's what practice is for.`)
+  }
+
+  if (child.totalSessions != null) {
+    if (child.totalSessions >= 20) {
+      parts.push(`- They're experienced — they've done ${child.totalSessions} practice sessions.`)
+    } else if (child.totalSessions >= 5) {
+      parts.push(`- They're getting into the groove — ${child.totalSessions} practice sessions so far.`)
+    } else if (child.totalSessions > 0) {
+      parts.push(`- They're still new to practicing — only ${child.totalSessions} sessions so far. Be encouraging.`)
+    }
+  }
+
+  if (child.lastPracticed) {
+    parts.push(`- They last practiced ${child.lastPracticed}.`)
+  }
+
+  // Game context
+  if (child.favoriteGame && child.gamesPlayed) {
+    parts.push(`- They love playing ${child.favoriteGame} — they've played ${child.gamesPlayed} games total!`)
+  }
+
+  if (child.totalWins && child.totalWins > 0) {
+    parts.push(`- They've won ${child.totalWins} games.`)
+  }
+
+  if (child.gameHighlights && child.gameHighlights.length > 0) {
+    const highlights = child.gameHighlights
+      .map(g => `${g.displayName} (${g.gamesPlayed} games, ${Math.round(g.highestAccuracy * 100)}% best accuracy)`)
+      .join(', ')
+    parts.push(`- Their games: ${highlights}.`)
+    parts.push(`- You can talk about games as a shared interest — "I heard you've been playing games! What's your favorite?"`)
+  }
+
   return '\n' + parts.join('\n') + '\n'
 }
 
@@ -353,7 +409,13 @@ function buildChildSection(child?: ChildProfile): string {
  * When a `scenario` is provided, the number's opening activity and context
  * are replaced with the dynamically-generated scenario, making each call unique.
  */
-export function generateNumberPersonality(n: number, scenario?: GeneratedScenario | null, childProfile?: ChildProfile): string {
+export function generateNumberPersonality(
+  n: number,
+  scenario?: GeneratedScenario | null,
+  childProfile?: ChildProfile,
+  profileFailed?: boolean,
+  availablePlayers?: Array<{ id: string; name: string; emoji: string }>,
+): string {
   const traits: string[] = []
   const abs = Math.abs(n)
   const isInt = Number.isInteger(n)
@@ -501,7 +563,25 @@ ${scenario.relevantExploration ? `EXPLORATION CONNECTION: The ${scenario.relevan
   }
 
   const explorationHint = getExplorationHint(n)
-  const childSection = buildChildSection(childProfile)
+  let childSection = buildChildSection(childProfile, profileFailed)
+
+  // When we don't know who's calling but we have a list of possible callers,
+  // prompt the agent to figure it out naturally
+  if (!childSection && !profileFailed && availablePlayers && availablePlayers.length > 0) {
+    const playerList = availablePlayers
+      .map(p => `  - ${p.emoji} ${p.name} (id: ${p.id})`)
+      .join('\n')
+    childSection = `
+WHO IS CALLING:
+You don't know who this child is yet. These are the kids who might call:
+${playerList}
+
+IMPORTANT: Early in the conversation (first 2-3 exchanges), casually ask who you're talking to.
+Keep it natural: "Hey! Who's this?" When they tell you their name, match it to the list above
+and call identify_caller with the matching player_id. If no match, just continue without it.
+`
+  }
+
   const primePicks = selectPrimesForCall(n)
 
   // Build the prime sharing section

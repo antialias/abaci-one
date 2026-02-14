@@ -56,6 +56,7 @@ import type { CallState } from './talkToNumber/useRealtimeVoice'
 import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCallOverlay'
 import { lerpViewport } from './viewportAnimation'
 import type { Viewport } from './viewportAnimation'
+import { useUserPlayers } from '@/hooks/useUserPlayers'
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
@@ -133,7 +134,13 @@ function formatApprox(n: number): string {
   return String(Math.round(n * 100) / 100)
 }
 
-export function NumberLine() {
+interface NumberLineProps {
+  playerId?: string
+  onPlayerIdentified?: (playerId: string) => void
+  onCallStateChange?: (state: CallState) => void
+}
+
+export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: NumberLineProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
   const rafRef = useRef<number>(0)
@@ -302,7 +309,16 @@ export function NumberLine() {
   const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
   const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
   const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => { indicateFnRef.current(numbers, range, durationSeconds) }, [])
-  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage } = useRealtimeVoice({
+  // Fetch players for mid-call identification
+  const { data: allPlayers } = useUserPlayers()
+  const availablePlayerSummaries = useMemo(() => {
+    if (!allPlayers) return []
+    return allPlayers
+      .filter(p => p.isActive && !p.isArchived)
+      .map(p => ({ id: p.id, name: p.name, emoji: p.emoji || '👤' }))
+  }, [allPlayers])
+
+  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
     onPauseExploration: handleVoicePause,
@@ -313,10 +329,15 @@ export function NumberLine() {
     onStartFindNumber: handleVoiceFindNumberStart,
     onStopFindNumber: handleVoiceFindNumberStop,
     isExplorationActiveRef,
+    onPlayerIdentified,
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
   const voiceStateRef = useRef<CallState>('idle')
   voiceStateRef.current = voiceState
+  // Notify parent of call state changes
+  useEffect(() => {
+    onCallStateChange?.(voiceState)
+  }, [voiceState, onCallStateChange])
   // Pending tour — queued during a call, launched after hangup
   const pendingTourRef = useRef<string | null>(null)
   const conferenceNumbersRef = useRef<number[]>([])
@@ -582,6 +603,10 @@ export function NumberLine() {
           // Notify when exploration completes
           if (ds.revealProgress >= 1 && voiceExplorationSegmentRef.current !== cfg.segments.length) {
             voiceExplorationSegmentRef.current = cfg.segments.length
+            // Clear narration mute BEFORE sending the completion message.
+            // Without this, the agent's response gets cancelled and the child
+            // has to speak first. Also unmutes the agent audio output.
+            setNarrationPlaying(false)
             const display = DEMO_DISPLAY[ds.constantId]
             const recs = EXPLORATION_RECOMMENDATIONS[ds.constantId] ?? []
             const recText = recs.length > 0
@@ -1300,8 +1325,8 @@ export function NumberLine() {
     const numberToCall = dist < 30 ? nearest : parseFloat(value.toPrecision(6))
     console.log('[NumberLine] calling setCallingNumber(%s) and dial(%s)', numberToCall, numberToCall)
     setCallingNumber(numberToCall)
-    dial(numberToCall, { recommendedExplorations: getVisibleRecommendations() })
-  }, [dial, callingNumber, getVisibleRecommendations])
+    dial(numberToCall, { recommendedExplorations: getVisibleRecommendations(), playerId, availablePlayers: !playerId ? availablePlayerSummaries : undefined })
+  }, [dial, callingNumber, getVisibleRecommendations, playerId, availablePlayerSummaries])
 
   // Touch/mouse/wheel handling
   const handleStateChange = useCallback(() => {
@@ -1549,8 +1574,8 @@ export function NumberLine() {
     setCallingNumber(n)
     setTappedConstantId(null)
     setTappedIntValue(null)
-    dial(n, { recommendedExplorations: getVisibleRecommendations() })
-  }, [dial, getVisibleRecommendations])
+    dial(n, { recommendedExplorations: getVisibleRecommendations(), playerId, availablePlayers: !playerId ? availablePlayerSummaries : undefined })
+  }, [dial, getVisibleRecommendations, playerId, availablePlayerSummaries])
 
   const handleExploreConstant = useCallback((explorationId: string) => {
     console.log('[NumberLine] handleExploreConstant — exploration:', explorationId)

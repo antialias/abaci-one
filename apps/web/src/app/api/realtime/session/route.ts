@@ -2,8 +2,8 @@
  * API route that creates an ephemeral session token for OpenAI Realtime API.
  *
  * POST /api/realtime/session
- * Body: { number: number }
- * Returns: { clientSecret: string, expiresAt: number, scenario: GeneratedScenario | null }
+ * Body: { number: number, playerId?: string }
+ * Returns: { clientSecret: string, expiresAt: number, scenario: GeneratedScenario | null, childProfile, profileFailed? }
  */
 
 import { NextResponse } from 'next/server'
@@ -11,11 +11,12 @@ import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeigh
 import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
 import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
+import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber/assembleChildProfile'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { number, recommendedExplorations: rawRecommended, previousScenario } = body
+    const { number, playerId, recommendedExplorations: rawRecommended, previousScenario, availablePlayers: rawAvailablePlayers } = body
 
     if (typeof number !== 'number' || !isFinite(number)) {
       return NextResponse.json(
@@ -32,8 +33,30 @@ export async function POST(request: Request) {
       )
     }
 
-    // No child profile lookup — keeping arcade system separate from number line
-    const childProfile: ChildProfile | undefined = undefined
+    // Assemble child profile from player data when a playerId is provided
+    let childProfile: ChildProfile | undefined = undefined
+    let profileFailed = false
+    if (typeof playerId === 'string' && playerId) {
+      const start = Date.now()
+      const result = await assembleChildProfile(playerId)
+      console.log('[realtime/session] profile assembly for %s took %dms', playerId, Date.now() - start)
+      if (result && 'failed' in result) {
+        profileFailed = true
+      } else {
+        childProfile = result
+      }
+    }
+
+    // Validate available players (for mid-call identification)
+    const validAvailablePlayers: Array<{ id: string; name: string; emoji: string }> = Array.isArray(rawAvailablePlayers)
+      ? rawAvailablePlayers.filter(
+          (p: unknown): p is { id: string; name: string; emoji: string } =>
+            typeof p === 'object' && p !== null &&
+            typeof (p as Record<string, unknown>).id === 'string' &&
+            typeof (p as Record<string, unknown>).name === 'string' &&
+            typeof (p as Record<string, unknown>).emoji === 'string'
+        )
+      : []
 
     // Validate recommended explorations (filter to known IDs)
     const recommendedExplorations: string[] | undefined = Array.isArray(rawRecommended)
@@ -66,7 +89,15 @@ export async function POST(request: Request) {
       )
     }
 
-    const instructions = generateNumberPersonality(number, scenario, childProfile)
+    const instructions = generateNumberPersonality(
+      number,
+      scenario,
+      childProfile,
+      profileFailed,
+      !childProfile && !profileFailed && validAvailablePlayers.length > 0
+        ? validAvailablePlayers
+        : undefined,
+    )
 
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
@@ -86,6 +117,26 @@ export async function POST(request: Request) {
           silence_duration_ms: 700,   // How long silence before turn ends (default 500)
         },
         tools: [
+          // Conditionally add identify_caller when no player pre-selected but players exist
+          ...(!childProfile && !profileFailed && validAvailablePlayers.length > 0
+            ? [{
+                type: 'function' as const,
+                name: 'identify_caller',
+                description:
+                  'Call this when you figure out which child is on the phone. Match their name to the available players list and pass the player_id. This loads their profile so you can personalize the conversation.',
+                parameters: {
+                  type: 'object' as const,
+                  properties: {
+                    player_id: {
+                      type: 'string' as const,
+                      enum: validAvailablePlayers.map(p => p.id),
+                      description: 'The ID of the matched player from the available players list',
+                    },
+                  },
+                  required: ['player_id'],
+                },
+              }]
+            : []),
           {
             type: 'function',
             name: 'request_more_time',
@@ -317,6 +368,7 @@ export async function POST(request: Request) {
       expiresAt: data.client_secret?.expires_at ?? Date.now() / 1000 + 60,
       scenario,
       childProfile: childProfile ?? null,
+      ...(profileFailed && { profileFailed: true }),
     })
   } catch (error) {
     console.error('[realtime/session] Error:', error)
