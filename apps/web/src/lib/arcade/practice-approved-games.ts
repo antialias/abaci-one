@@ -14,26 +14,10 @@
 
 import { getAvailableGames, getGame } from './game-registry'
 import type { GameDefinition } from './game-sdk/types'
+import { PRACTICE_APPROVED_GAMES } from './practice-approved-game-list'
+import type { PracticeApprovedGameName } from './practice-approved-game-list'
 
-/**
- * Whitelist of games approved for practice breaks.
- *
- * Games must ALSO have `practiceBreakReady: true` in their manifest to appear.
- *
- * NOT included (even if practiceBreakReady is set):
- * - rithmomachia: Complex strategy game, requires 2 players, long sessions
- * - know-your-world: Not soroban-related
- * - yjs-demo: Demo/testing only
- */
-export const PRACTICE_APPROVED_GAMES = [
-  'memory-quiz', // Quick memory rounds, soroban-focused
-  'complement-race', // Fast-paced complement practice
-  'card-sorting', // Single-player sorting challenge
-  'matching', // Can be played solo, pairs matching
-  'music-matching', // Sight-reading practice, solo-friendly
-] as const
-
-export type PracticeApprovedGameName = (typeof PRACTICE_APPROVED_GAMES)[number]
+export { PRACTICE_APPROVED_GAMES, type PracticeApprovedGameName }
 
 /**
  * Check if a game name is in the practice whitelist

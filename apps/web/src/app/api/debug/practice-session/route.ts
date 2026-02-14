@@ -14,7 +14,7 @@ import {
   startSessionPlan,
 } from '@/lib/curriculum'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
-import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-games'
+import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-game-list'
 import { getDbUserId } from '@/lib/viewer'
 
 /**
