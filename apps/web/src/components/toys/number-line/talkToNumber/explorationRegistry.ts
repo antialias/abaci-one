@@ -73,6 +73,11 @@ export const EXPLORATIONS: ExplorationEntry[] = [
     visualDesc: 'Shows a unit square on the number line with its diagonal. The diagonal length is √2. The view zooms into √2\'s position (~1.41421), revealing more decimal digits and showing it never terminates or repeats — it\'s irrational.',
   },
   {
+    id: 'sqrt3', type: 'constant', name: 'Root 3', symbol: '√3', value: Math.sqrt(3),
+    shortDesc: 'the height of a perfect triangle',
+    visualDesc: 'Shows an equilateral triangle (all sides equal) built on the number line with base from −1 to 1. The height drops from the apex, then a compass swing rotates it onto the number line, landing at √3. The triangle is split to show the Pythagorean proof: 1² + h² = 2², so h = √3. The view zooms into √3\'s position (~1.73205), revealing its never-ending decimal expansion.',
+  },
+  {
     id: 'ramanujan', type: 'constant', name: 'Ramanujan Summation', symbol: '−1⁄12', value: -1 / 12,
     shortDesc: 'the surprising −1/12',
     visualDesc: 'Shows the surprising Ramanujan summation: 1+2+3+4+... = −1/12. Partial sums grow on the number line (getting bigger and bigger), but the animation reveals how a special mathematical technique (analytic continuation) assigns the value −1/12 to the divergent series.',
@@ -137,8 +142,11 @@ export const EXPLORATION_RECOMMENDATIONS: Record<string, { id: string; reason: s
               { id: 'pi',    reason: 'the two most famous numbers in geometry' }],
   gamma:     [{ id: 'e',     reason: 'gamma is deeply connected to Euler\'s number e' },
               { id: 'ramanujan', reason: 'both are surprising results that feel impossible at first' }],
-  sqrt2:     [{ id: 'phi',   reason: 'both are irrational numbers discovered by the ancient Greeks' },
+  sqrt2:     [{ id: 'sqrt3', reason: '√3 is the height of a perfect triangle — another geometric irrational' },
+              { id: 'phi',   reason: 'both are irrational numbers discovered by the ancient Greeks' },
               { id: 'pi',    reason: 'another irrational number, but from circles instead of squares' }],
+  sqrt3:     [{ id: 'sqrt2', reason: '√2 is the diagonal of a square — another Pythagorean irrational' },
+              { id: 'phi',   reason: 'the golden ratio is another irrational from geometry' }],
   ramanujan: [{ id: 'gamma', reason: 'another constant that makes you go "wait, really?"' },
               { id: 'e',     reason: 'Euler\'s number — Ramanujan loved working with it' }],
   primes:    [{ id: 'phi',   reason: 'the golden ratio is another pattern hiding in numbers' },
@@ -155,6 +163,7 @@ export const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
   tau:       ['pi',    'e',        'gamma'],
   e:         ['gamma', 'pi',       'phi'],
   gamma:     ['e',     'ramanujan', 'sqrt2'],
-  sqrt2:     ['phi',   'gamma',    'tau'],
+  sqrt2:     ['sqrt3', 'phi',      'tau'],
+  sqrt3:     ['sqrt2', 'phi',      'gamma'],
   ramanujan: ['pi',    'e',        'sqrt2'],
 }

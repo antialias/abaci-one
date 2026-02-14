@@ -6,6 +6,7 @@ import { tauDemoViewport } from './tauDemo'
 import { eDemoViewport } from './eDemo'
 import { gammaDemoViewport } from './gammaDemo'
 import { sqrt2DemoViewport } from './sqrt2Demo'
+import { sqrt3DemoViewport } from './sqrt3Demo'
 import { ramanujanDemoViewport } from './ramanujanDemo'
 import {
   lerpViewport, snapViewport, computeViewportDeviation,
@@ -56,6 +57,7 @@ function getDemoViewport(
   if (constantId === 'e') return eDemoViewport(cssWidth, cssHeight)
   if (constantId === 'gamma') return gammaDemoViewport(cssWidth, cssHeight)
   if (constantId === 'sqrt2') return sqrt2DemoViewport(cssWidth, cssHeight)
+  if (constantId === 'sqrt3') return sqrt3DemoViewport(cssWidth, cssHeight)
   if (constantId === 'ramanujan') return ramanujanDemoViewport(cssWidth, cssHeight)
   return { center: 0, pixelsPerUnit: 100 }
 }
@@ -101,6 +103,24 @@ function getZoomKeyframes(
       { progress: 0.895, center: 1.414215,  pixelsPerUnit: ppuForRange(cssWidth, 1.41421, 1.41422) },
       { progress: 0.91,  center: 1.4142135, pixelsPerUnit: ppuForRange(cssWidth, 1.414213, 1.414214) },
       // Zoom back out for the reveal phase (√2 label, star, formula)
+      { progress: 0.935, ...base },
+    ]
+  }
+
+  if (constantId === 'sqrt3') {
+    const base = sqrt3DemoViewport(cssWidth, cssHeight)
+    return [
+      // Start at base viewport (matches the demo's initial fly-in target)
+      { progress: 0.80, ...base },
+      // Progressive zoom into √3 ≈ 1.7320508075688772...
+      { progress: 0.82,  center: 2,       pixelsPerUnit: ppuForRange(cssWidth, 1, 2) },
+      { progress: 0.835, center: 1.75,    pixelsPerUnit: ppuForRange(cssWidth, 1.7, 1.8) },
+      { progress: 0.85,  center: 1.735,   pixelsPerUnit: ppuForRange(cssWidth, 1.73, 1.74) },
+      { progress: 0.865, center: 1.7325,  pixelsPerUnit: ppuForRange(cssWidth, 1.732, 1.733) },
+      { progress: 0.88,  center: 1.73205, pixelsPerUnit: ppuForRange(cssWidth, 1.7320, 1.7321) },
+      { progress: 0.895, center: 1.732052, pixelsPerUnit: ppuForRange(cssWidth, 1.73205, 1.73206) },
+      { progress: 0.91,  center: 1.7320508, pixelsPerUnit: ppuForRange(cssWidth, 1.732050, 1.732051) },
+      // Zoom back out for the reveal phase (√3 label, star, formula)
       { progress: 0.935, ...base },
     ]
   }
