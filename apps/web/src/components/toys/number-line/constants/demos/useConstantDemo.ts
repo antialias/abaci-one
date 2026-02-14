@@ -39,8 +39,10 @@ const REVEAL_ANIM_MS = 15000
 /** How far the user can deviate before the demo fades out (fraction of viewport) */
 const DEVIATION_THRESHOLD = 0.4
 
+import { CONSTANT_IDS } from '../../talkToNumber/explorationRegistry'
+
 /** Constants that have demos available */
-export const DEMO_AVAILABLE = new Set(['phi', 'pi', 'tau', 'e', 'gamma', 'sqrt2', 'ramanujan'])
+const DEMO_AVAILABLE = CONSTANT_IDS
 
 /** Compute the target viewport for a given constant's demo. */
 function getDemoViewport(

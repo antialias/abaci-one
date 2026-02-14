@@ -17,7 +17,8 @@ import { MATH_CONSTANTS } from './constants/constantsData'
 import { computeAllConstantVisibilities } from './constants/computeConstantVisibility'
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
-import { useConstantDemo, DEMO_AVAILABLE } from './constants/demos/useConstantDemo'
+import { useConstantDemo } from './constants/demos/useConstantDemo'
+import { CONSTANT_IDS, EXPLORATION_DISPLAY, EXPLORATION_RECOMMENDATIONS, DEMO_RECOMMENDATIONS } from './talkToNumber/explorationRegistry'
 import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress, computeSweepTransform } from './constants/demos/goldenRatioDemo'
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
@@ -95,36 +96,8 @@ function updateDemoUrlParams(constantId: string | null, progress: number) {
   }
 }
 
-// ── "Explore next" recommendation graph ──────────────────────────────
-// Directed, strongly connected so every constant is reachable from any other.
-// Each entry maps constantId → [recommended ids] (2-3 per constant).
-const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
-  phi:       ['sqrt2', 'pi',       'e'],
-  pi:        ['tau',   'phi',      'ramanujan'],
-  tau:       ['pi',    'e',        'gamma'],
-  e:         ['gamma', 'pi',       'phi'],
-  gamma:     ['e',     'ramanujan', 'sqrt2'],
-  sqrt2:     ['phi',   'gamma',    'tau'],
-  ramanujan: ['pi',    'e',        'sqrt2'],
-}
-
-// Display metadata for recommendation cards
-const DEMO_DISPLAY: Record<string, { symbol: string; name: string; value: number; visualDesc?: string }> = {
-  phi:       { symbol: 'φ',    name: 'Golden Ratio',      value: 1.618033988749895,
-    visualDesc: 'A compass arm draws a Fibonacci golden-rectangle spiral on the number line. It spins 90-degree arcs, adding progressively larger colored squares that build outward. The rectangle\'s aspect ratio visibly converges toward phi (~1.618). It does NOT show phi growing larger — it shows the SHAPE settling into the golden ratio.' },
-  pi:        { symbol: 'π',    name: 'Pi',                value: Math.PI,
-    visualDesc: 'A circle rolls along the number line. The distance it travels in one full rotation marks out pi (~3.14159). Then the view zooms into pi\'s position on the number line, revealing more and more decimal digits as we zoom deeper.' },
-  tau:       { symbol: 'τ',    name: 'Tau',               value: 2 * Math.PI,
-    visualDesc: 'Similar to the pi demo but showing tau (2π ≈ 6.283). A full turn of a circle traces out tau on the number line. The view zooms into tau\'s position, revealing its decimal expansion.' },
-  e:         { symbol: 'e',    name: "Euler's Number",    value: Math.E,
-    visualDesc: 'Shows compound interest growth on the number line. Starts with simple doubling, then splits into more and more compounding intervals. The result converges toward e (~2.718). The view zooms into e\'s position to reveal its decimal digits.' },
-  gamma:     { symbol: 'γ',    name: 'Euler-Mascheroni',  value: 0.5772156649,
-    visualDesc: 'Shows the gap between the harmonic series (1 + 1/2 + 1/3 + ...) and the natural logarithm. Bars represent harmonic terms stacking up on the number line. The gap between the staircase and the smooth curve converges to gamma (~0.577).' },
-  sqrt2:     { symbol: '√2',   name: 'Root 2',            value: Math.SQRT2,
-    visualDesc: 'Shows a unit square on the number line with its diagonal. The diagonal length is √2. The view zooms into √2\'s position (~1.41421), revealing more decimal digits and showing it never terminates or repeats — it\'s irrational.' },
-  ramanujan: { symbol: '−1⁄12', name: 'Ramanujan',        value: -1 / 12,
-    visualDesc: 'Shows the surprising Ramanujan summation: 1+2+3+4+... = −1/12. Partial sums grow on the number line (getting bigger and bigger), but the animation reveals how a special mathematical technique (analytic continuation) assigns the value −1/12 to the divergent series.' },
-}
+// DEMO_DISPLAY alias — imported from registry as EXPLORATION_DISPLAY
+const DEMO_DISPLAY = EXPLORATION_DISPLAY
 
 // Narration configs for all constant demos (must be module-level for ref stability)
 const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
@@ -137,24 +110,7 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   ramanujan: { segments: RAMANUJAN_DEMO_SEGMENTS, tone: RAMANUJAN_DEMO_TONE },
 }
 
-/** After finishing an exploration, suggest one of these related constants. */
-const EXPLORATION_RECOMMENDATIONS: Record<string, { id: string; reason: string }[]> = {
-  pi:        [{ id: 'tau',   reason: 'tau is 2π — the "full turn" version of pi' },
-              { id: 'e',     reason: "Euler's number shows up in the famous equation e^(iπ)+1=0" },
-              { id: 'phi',   reason: 'phi is another famous irrational number from geometry' }],
-  tau:       [{ id: 'pi',    reason: 'pi is the more famous half of tau' },
-              { id: 'sqrt2', reason: 'another irrational number hiding in simple geometry' }],
-  e:         [{ id: 'pi',    reason: 'e and π are connected by the beautiful equation e^(iπ)+1=0' },
-              { id: 'gamma', reason: 'the Euler-Mascheroni constant is e\'s mysterious little sibling' }],
-  phi:       [{ id: 'sqrt2', reason: 'another irrational number you can find with just a square' },
-              { id: 'pi',    reason: 'the two most famous numbers in geometry' }],
-  gamma:     [{ id: 'e',     reason: 'gamma is deeply connected to Euler\'s number e' },
-              { id: 'ramanujan', reason: 'both are surprising results that feel impossible at first' }],
-  sqrt2:     [{ id: 'phi',   reason: 'both are irrational numbers discovered by the ancient Greeks' },
-              { id: 'pi',    reason: 'another irrational number, but from circles instead of squares' }],
-  ramanujan: [{ id: 'gamma', reason: 'another constant that makes you go "wait, really?"' },
-              { id: 'e',     reason: 'Euler\'s number — Ramanujan loved working with it' }],
-}
+// EXPLORATION_RECOMMENDATIONS imported from registry
 
 const INITIAL_STATE: NumberLineState = {
   center: 0,
@@ -306,6 +262,8 @@ export function NumberLine() {
   const [hoveredValue, setHoveredValue] = useState<number | null>(null)
   const hoveredValueRef = useRef<number | null>(null)
   hoveredValueRef.current = hoveredValue
+  // When true, the mouse is over the PrimeTooltip — don't clear hoveredValue
+  const tooltipHoveredRef = useRef(false)
   // Tapped non-prime integer (click to show factorization)
   const [tappedIntValue, setTappedIntValue] = useState<number | null>(null)
   // Last computed prime infos (for tooltip data lookup)
@@ -361,10 +319,6 @@ export function NumberLine() {
   voiceStateRef.current = voiceState
   const conferenceNumbersRef = useRef<number[]>([])
   conferenceNumbersRef.current = conferenceNumbers
-  const isSpeakingRef = useRef(false)
-  isSpeakingRef.current = isSpeaking
-  // Track when the voice agent last stopped speaking (for segment gate release)
-  const agentLastSpokeRef = useRef(0)
   // Debug: log overlay render condition changes
   useEffect(() => {
     const shouldShow = callingNumber !== null && voiceState !== 'idle'
@@ -383,28 +337,8 @@ export function NumberLine() {
       setCallingNumber(null)
     }
   }, [voiceState, callingNumber])
-  // Mute TTS narration audio during voice calls — the sequencer still runs
-  // (pacing the animation) but skips actual audio playback so the voice
-  // agent can narrate instead.
-  useEffect(() => {
-    const wasMuted = narration.mutedRef.current
-    narration.mutedRef.current = voiceState === 'active'
-    // If a call just connected and narration is already playing, stop the
-    // current TTS clip (sequencer will continue muted from next segment)
-    if (voiceState === 'active' && narration.isNarrating.current) {
-      audioManager.stop()
-    }
-    // Call ended while narration was playing muted — the sequencer is stuck
-    // because speakSegment returned early (muted) and ttsFinished is false.
-    // Resume TTS narration from the current position so audio plays again.
-    if (wasMuted && voiceState !== 'active') {
-      const ds = demoStateRef.current
-      if (ds.constantId && ds.phase !== 'idle' && ds.phase !== 'fading' && ds.revealProgress < 1) {
-        narration.stop()
-        narration.resume(ds.constantId)
-      }
-    }
-  }, [voiceState, narration, audioManager, demoStateRef])
+  // TTS narration plays during voice calls — the pre-recorded narrator handles
+  // content while the voice agent acts as a silent companion.
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -617,17 +551,14 @@ export function NumberLine() {
           const segIdx = narration.isNarrating.current
             ? narration.segmentIndexRef.current
             : -1
-          // Send cue when the sequencer advances to a new segment
+          // Send context-only cue when the sequencer advances to a new segment
+          // (the pre-recorded TTS narrator is speaking — agent should NOT talk over it)
           if (segIdx >= 0 && segIdx !== voiceExplorationSegmentRef.current) {
             voiceExplorationSegmentRef.current = segIdx
             const seg = cfg.segments[segIdx]
-            const isLast = segIdx === cfg.segments.length - 1
             sendSystemMessage(
-              seg.ttsText +
-              (conferenceNumbersRef.current.length > 1 && isLast
-                ? '\nEveryone say a quick reaction before wrapping up.'
-                : ''),
-              true
+              `[Narration playing — DO NOT speak this. The narrator is saying: "${seg.ttsText}"]`,
+              false  // don't prompt a response
             )
           }
           // Notify when exploration completes
@@ -642,26 +573,10 @@ export function NumberLine() {
                 }).join('; ')}. Don't list them all — just pick whichever feels most natural for the conversation and mention it casually.`
               : ''
             sendSystemMessage(
-              `[System: The ${display?.name ?? ds.constantId} exploration has finished! ` +
-              `Everyone can discuss now — narrator, share why you love this constant. ` +
-              `Others, ask questions or share what surprised you. ` +
-              `Ask the child what they thought.${recText}]`,
+              `[The ${display?.name ?? ds.constantId} exploration finished. Ask the child what they thought — ` +
+              `brief check-in, then move on.${recText}]`,
               true
             )
-          }
-
-          // Auto-release the TTS gate when the voice agent stops speaking.
-          // The muted sequencer holds at each segment boundary (ttsFinished=false)
-          // so the animation waits for the agent. Once the agent is silent for ~1s
-          // we advance to the next segment automatically.
-          if (narration.mutedRef.current && narration.isNarrating.current) {
-            const now = performance.now()
-            if (isSpeakingRef.current) {
-              agentLastSpokeRef.current = now
-            } else if (agentLastSpokeRef.current > 0 && now - agentLastSpokeRef.current > 1000) {
-              narration.releaseTtsGate()
-              agentLastSpokeRef.current = 0 // reset so we don't re-release next frame
-            }
           }
         }
       }
@@ -1233,14 +1148,14 @@ export function NumberLine() {
     if (tourStateRef.current.phase !== 'idle') return
 
     if (hoverScreenX < 0) {
-      if (hoveredValueRef.current !== null) {
+      if (hoveredValueRef.current !== null && !tooltipHoveredRef.current) {
         setHoveredValue(null)
         scheduleRedraw()
       }
       return
     }
     if (!primesEnabledRef.current) {
-      if (hoveredValueRef.current !== null) setHoveredValue(null)
+      if (hoveredValueRef.current !== null && !tooltipHoveredRef.current) setHoveredValue(null)
       return
     }
 
@@ -1280,8 +1195,8 @@ export function NumberLine() {
       }
     }
 
-    // No prime nearby
-    if (hoveredValueRef.current !== null) {
+    // No prime nearby — but keep tooltip alive if mouse is over it
+    if (hoveredValueRef.current !== null && !tooltipHoveredRef.current) {
       setHoveredValue(null)
       scheduleRedraw()
     }
@@ -1407,7 +1322,7 @@ export function NumberLine() {
         const params = new URLSearchParams(window.location.search)
         const demoId = params.get('demo')
         const progressStr = params.get('p')
-        if (demoId && DEMO_AVAILABLE.has(demoId)) {
+        if (demoId && CONSTANT_IDS.has(demoId)) {
           const progress = progressStr !== null ? parseFloat(progressStr) : 0
           if (!isNaN(progress)) {
             restoreDemo(demoId, progress)
@@ -1619,9 +1534,41 @@ export function NumberLine() {
     dial(n, { recommendedExplorations: getVisibleRecommendations() })
   }, [dial, getVisibleRecommendations])
 
-  const handleExploreConstant = useCallback((constantId: string) => {
-    console.log('[NumberLine] handleExploreConstant — calling audioManager.stop() then startDemo', constantId)
+  const handleExploreConstant = useCallback((explorationId: string) => {
+    console.log('[NumberLine] handleExploreConstant — exploration:', explorationId)
     audioManager.stop()
+
+    // Route tour explorations to the prime tour handler
+    if (!CONSTANT_IDS.has(explorationId)) {
+      cancelDemo() // mutual exclusion: cancel demo when starting tour
+      setTappedConstantId(null)
+      setTappedIntValue(null)
+      setHoveredValue(null)
+      tooltipHoveredRef.current = false
+      startTour()
+
+      // If on a voice call, send companion instructions for the tour
+      const onCall = voiceStateRef.current === 'active'
+      if (onCall) {
+        const display = DEMO_DISPLAY[explorationId]
+        if (display) {
+          const visualDesc = display.visualDesc
+            ? `\n\nWHAT THE ANIMATION SHOWS (for YOUR reference only — do NOT describe this to the child): ${display.visualDesc}`
+            : ''
+          sendSystemMessage(
+            `A guided tour of ${display.name} is starting.` +
+            `${visualDesc}\n\n` +
+            `Give the child a brief intro. Match the child's energy level. ` +
+            `Keep it to 1-2 sentences, then call resume_exploration.`,
+            true
+          )
+        }
+        voiceExplorationSegmentRef.current = -1
+      }
+      return
+    }
+
+    // Constant exploration path
     exitTour()
     narration.reset()
 
@@ -1629,66 +1576,37 @@ export function NumberLine() {
 
     if (onCall) {
       // Start paused at progress 0 — narrator introduces first, then calls resume
-      restoreDemo(constantId, 0)
-      narration.markTriggered(constantId) // suppress narration auto-start
+      restoreDemo(explorationId, 0)
+      narration.markTriggered(explorationId) // suppress narration auto-start
     } else {
-      startDemo(constantId)
+      startDemo(explorationId)
     }
 
-    // If on a voice call, send narration context and designate a narrator
+    // If on a voice call, send companion instructions for the exploration
     if (onCall) {
-      const cfg = NARRATION_CONFIGS[constantId]
-      const display = DEMO_DISPLAY[constantId]
+      const cfg = NARRATION_CONFIGS[explorationId]
+      const display = DEMO_DISPLAY[explorationId]
       if (cfg && display) {
-        // Pick the narrator: the number closest to the constant's value
-        const nums = conferenceNumbersRef.current
-        let narrator = nums[0] ?? callingNumber
-        if (nums.length > 1) {
-          let bestDist = Infinity
-          for (const n of nums) {
-            const d = Math.abs(n - display.value)
-            if (d < bestDist) { bestDist = d; narrator = n }
-          }
-        }
-        const others = nums.filter(n => n !== narrator)
-        const othersDesc = others.length > 0
-          ? `\n\nOTHER PARTICIPANTS (${others.join(', ')}): You are the audience. Make brief, in-character reactions between segments — ` +
-            `ask a quick question, or relate it to yourselves. Keep interjections to one short sentence. ` +
-            `Do NOT talk over the narrator mid-segment.`
-          : ''
-
         const visualDesc = display.visualDesc
           ? `\n\nWHAT THE ANIMATION SHOWS (for YOUR reference only — do NOT describe this to the child): ${display.visualDesc}`
           : ''
 
+        // Companion rules are in the start_exploration tool output (not here)
+        // so the model won't treat them as a "user message" to recite.
+        // This message provides constant-specific context only.
         sendSystemMessage(
-          `An animated exploration of ${display.symbol} (${display.name}) is ready to play. ` +
-          `The animation is PAUSED — it will not play until you call resume_exploration.` +
+          `An animated exploration of ${display.symbol} (${display.name}) is ready to play.` +
           `${visualDesc}\n\n` +
-          `${narrator} is the designated narrator. Give the child a brief, excited intro — why this constant is special to you personally. ` +
+          `Give the child a brief intro — why this constant is special to you personally. Match the child's energy level. ` +
           `Do NOT describe or preview what the animation will show. The visuals should be a surprise. ` +
           `Something like "Oh, I've been wanting to show you this!" or "This is one of my favorite things about living near ${display.symbol}." ` +
-          `Keep it to 1-2 sentences, then call resume_exploration when the moment feels right.\n\n` +
-          `NARRATION RULES:\n` +
-          `Once the animation is playing, you will receive messages containing narration text. ` +
-          `Speak that text out loud in your character's voice. You can add brief personal flair — ` +
-          `if the animation shows something connected to YOU (your number, your spot on the number line), ` +
-          `react to it! ("Hey, that's me!" or "Look, it's landing right in my neighborhood!") ` +
-          `But keep personal additions SHORT (a few words) and never lose the narration's thread. ` +
-          `Do NOT announce part numbers, segment labels, or transitions. ` +
-          `After speaking, go silent for a moment so the next part can arrive. ` +
-          `The animation advances automatically when you go quiet.\n\n` +
-          `Every few parts, pause the animation and check in with the child — ` +
-          `"What do you think happens next?", "Does that make sense?", "Any questions?" ` +
-          `If they ask something, answer it in character before resuming. ` +
-          `If they seem lost or disengaged, it's OK to wrap up early.` +
-          `${othersDesc}`,
-          true // prompt a response so the narrator introduces the constant
+          `Keep it to 1-2 sentences, then call resume_exploration.`,
+          true // prompt a response so the agent introduces the constant
         )
       }
       voiceExplorationSegmentRef.current = -1
     }
-  }, [audioManager, startDemo, restoreDemo, exitTour, narration, sendSystemMessage])
+  }, [audioManager, startDemo, restoreDemo, exitTour, startTour, cancelDemo, narration, sendSystemMessage])
   // Keep refs pointed at latest implementations for voice agent callbacks
   exploreFnRef.current = handleExploreConstant
   pauseFnRef.current = () => {
@@ -1697,7 +1615,6 @@ export function NumberLine() {
   resumeFnRef.current = () => {
     const ds = demoStateRef.current
     if (ds.constantId && ds.revealProgress < 1) {
-      agentLastSpokeRef.current = 0 // reset so silence detection doesn't fire from stale data
       narration.resume(ds.constantId)
     }
   }
@@ -1809,6 +1726,7 @@ export function NumberLine() {
     setTappedConstantId(null)
     setTappedIntValue(null)
     setHoveredValue(null)
+    tooltipHoveredRef.current = false
     startTour()
   }, [startTour, cancelDemo])
 
@@ -2063,33 +1981,7 @@ export function NumberLine() {
             overflow: 'hidden',
           }}
         />
-        {/* Prime Tour start button — shown when primes enabled and tour not active */}
-        {primesEnabled && tourStateRef.current.phase === 'idle' && !demoActive && (
-          <button
-            data-action="start-prime-tour"
-            onClick={handleStartTour}
-            style={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              minHeight: 44,
-              minWidth: 44,
-              padding: '10px 16px',
-              fontSize: 13,
-              fontWeight: 600,
-              color: resolvedTheme === 'dark' ? '#e9d5ff' : '#6d28d9',
-              backgroundColor: resolvedTheme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
-              border: `1px solid ${resolvedTheme === 'dark' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.25)'}`,
-              borderRadius: 10,
-              cursor: 'pointer',
-              backdropFilter: 'blur(4px)',
-              zIndex: 10,
-              pointerEvents: 'auto',
-            }}
-          >
-            Prime Tour
-          </button>
-        )}
+        {/* Prime Tour button removed — tour is now offered contextually via PrimeTooltip */}
         {tappedConstant && (
           <ConstantInfoCard
             constant={tappedConstant}
@@ -2574,6 +2466,7 @@ export function NumberLine() {
           const spf = tooltipValue >= 2 ? smallestPrimeFactor(tooltipValue) : 0
           const isPrime = tooltipValue >= 2 && spf === tooltipValue
           const ip = interestingPrimesRef.current.find(p => p.value === tooltipValue)
+          const tourAvailable = tourStateRef.current.phase === 'idle' && !demoActive
           return (
             <PrimeTooltip
               value={tooltipValue}
@@ -2588,6 +2481,9 @@ export function NumberLine() {
               containerWidth={cssWidthRef.current}
               isDark={resolvedTheme === 'dark'}
               landmarkNote={ip?.note}
+              onStartTour={tourAvailable ? handleStartTour : undefined}
+              onMouseEnter={() => { tooltipHoveredRef.current = true }}
+              onMouseLeave={() => { tooltipHoveredRef.current = false }}
             />
           )
         })()}

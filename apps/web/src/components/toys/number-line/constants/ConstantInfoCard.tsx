@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { MathConstant } from './constantsData'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
-import { DEMO_AVAILABLE } from './demos/useConstantDemo'
+import { EXPLORATION_IDS } from '../talkToNumber/explorationRegistry'
 
 interface ConstantInfoCardProps {
   constant: MathConstant
@@ -214,7 +214,7 @@ export function ConstantInfoCard({
       </div>
 
       {/* Explore button — only for constants with demos */}
-      {onExplore && DEMO_AVAILABLE.has(constant.id) && (
+      {onExplore && EXPLORATION_IDS.has(constant.id) && (
         <button
           data-action="explore-constant"
           onClick={() => {
