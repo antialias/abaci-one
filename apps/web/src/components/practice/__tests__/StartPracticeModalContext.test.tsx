@@ -9,6 +9,7 @@ import {
   PART_TYPES,
   PURPOSE_TYPES,
 } from '../StartPracticeModalContext'
+import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 
 // Mock hooks and dependencies
 vi.mock('next/navigation', () => ({
@@ -113,6 +114,7 @@ function createWrapper(overrides: Partial<WrapperProps> = {}) {
         focusDescription="Test focus"
         sessionMode={overrides.sessionMode ?? defaultSessionMode}
         secondsPerTerm={overrides.secondsPerTerm}
+        savedPreferences={{ ...DEFAULT_SESSION_PREFERENCES, gameBreakEnabledGames: ['game1', 'game2'] }}
       >
         {children}
       </StartPracticeModalProvider>
