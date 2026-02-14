@@ -19,6 +19,7 @@ import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
 import { CONSTANT_IDS, EXPLORATION_DISPLAY, EXPLORATION_RECOMMENDATIONS, DEMO_RECOMMENDATIONS } from './talkToNumber/explorationRegistry'
+import { GAME_MAP } from './talkToNumber/gameRegistry'
 import { renderGoldenRatioOverlay, NUM_LEVELS, setStepTimingDecay, getStepTimingDecay, arcCountAtProgress, convergenceGapAtProgress, computeSweepTransform } from './constants/demos/goldenRatioDemo'
 import { renderPiOverlay } from './constants/demos/piDemo'
 import { renderTauOverlay } from './constants/demos/tauDemo'
@@ -305,12 +306,14 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const startFindNumberFnRef = useRef<(target: number) => void>(() => {})
   const stopFindNumberFnRef = useRef<() => void>(() => {})
   const handleVoiceGameStart = useCallback((gameId: string, params: Record<string, unknown>) => {
+    setActiveGameId(gameId)
     if (gameId === 'find_number') {
       const target = Number(params.target)
       if (isFinite(target)) startFindNumberFnRef.current(target)
     }
   }, [])
   const handleVoiceGameEnd = useCallback((gameId: string) => {
+    setActiveGameId(null)
     if (gameId === 'find_number') {
       stopFindNumberFnRef.current()
     }
@@ -374,6 +377,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         console.log('[NumberLine] clearing callingNumber because voiceState transitioned', prev, '→ idle')
         setCallingNumber(null)
       }
+      // Clear any active game when the call ends
+      setActiveGameId(null)
       // Launch pending tour after hangup
       const tourId = pendingTourRef.current
       if (tourId) {
@@ -392,6 +397,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   }, [voiceState, callingNumber, cancelDemo, startTour])
   // TTS narration plays during voice calls — the pre-recorded narrator handles
   // content while the voice agent acts as a silent companion.
+
+  // --- Game session state (generic, across all games) ---
+  const [activeGameId, setActiveGameId] = useState<string | null>(null)
 
   // --- Find the Number game state ---
   const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
@@ -2053,6 +2061,42 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             onCallNumber={handleCallNumber}
           />
         )}
+        {activeGameId && voiceState === 'active' && (() => {
+          const game = GAME_MAP.get(activeGameId)
+          return (
+            <div
+              data-component="game-session-banner"
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 15,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 16px',
+                borderRadius: 20,
+                background: resolvedTheme === 'dark'
+                  ? 'rgba(99, 102, 241, 0.25)'
+                  : 'rgba(99, 102, 241, 0.15)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: `1px solid ${resolvedTheme === 'dark' ? 'rgba(129, 140, 248, 0.3)' : 'rgba(99, 102, 241, 0.25)'}`,
+                color: resolvedTheme === 'dark' ? '#c7d2fe' : '#4338ca',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ fontSize: '0.9rem' }}>{'🎮'}</span>
+              {game?.name ?? activeGameId}
+            </div>
+          )
+        })()}
         {callingNumber !== null && voiceState !== 'idle' && (
           <PhoneCallOverlay
             number={callingNumber}
