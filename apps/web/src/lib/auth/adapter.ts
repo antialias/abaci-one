@@ -12,11 +12,12 @@ import { db, schema } from '@/db'
  */
 export const abacisAdapter: Adapter = {
   async createUser(user) {
-    const guestId = `synthetic:${crypto.randomUUID()}`
+    const id = createId()
     const [created] = await db
       .insert(schema.users)
       .values({
-        guestId,
+        id,
+        guestId: id,
         email: user.email,
         name: user.name ?? null,
         image: user.image ?? null,
