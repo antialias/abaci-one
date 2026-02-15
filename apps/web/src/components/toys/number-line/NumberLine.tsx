@@ -784,7 +784,6 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       primeInfos, effectiveHovered, interestingPrimes, primePairArcs,
       highlightSet, highlightedArcSet, sieveTransforms, sieveUniformity,
       renderIndicator,
-      labelScaleRef.current, labelMinOpacityRef.current
     )
 
     // Render constant demo overlay (golden ratio, etc.)
