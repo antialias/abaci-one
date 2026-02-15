@@ -7,6 +7,7 @@ import { eDemoViewport } from './eDemo'
 import { gammaDemoViewport } from './gammaDemo'
 import { sqrt2DemoViewport } from './sqrt2Demo'
 import { sqrt3DemoViewport } from './sqrt3Demo'
+import { ln2DemoViewport } from './ln2Demo'
 import { ramanujanDemoViewport } from './ramanujanDemo'
 import {
   lerpViewport, snapViewport, computeViewportDeviation,
@@ -58,6 +59,7 @@ function getDemoViewport(
   if (constantId === 'gamma') return gammaDemoViewport(cssWidth, cssHeight)
   if (constantId === 'sqrt2') return sqrt2DemoViewport(cssWidth, cssHeight)
   if (constantId === 'sqrt3') return sqrt3DemoViewport(cssWidth, cssHeight)
+  if (constantId === 'ln2') return ln2DemoViewport(cssWidth, cssHeight)
   if (constantId === 'ramanujan') return ramanujanDemoViewport(cssWidth, cssHeight)
   return { center: 0, pixelsPerUnit: 100 }
 }
@@ -137,6 +139,26 @@ function getZoomKeyframes(
       { progress: 0.975, center: 3.14155,    pixelsPerUnit: ppuForRange(cssWidth, 3.1415, 3.1416) },
       { progress: 0.99,  center: 3.141595,   pixelsPerUnit: ppuForRange(cssWidth, 3.14159, 3.14160) },
       { progress: 1.0,   center: 3.1415925,  pixelsPerUnit: ppuForRange(cssWidth, 3.141592, 3.141593) },
+    ]
+  }
+
+  if (constantId === 'ln2') {
+    const base = ln2DemoViewport(cssWidth, cssHeight)
+    // Zoom in during seg 2 (more bounces) then HOLD for seg 3+4 so the
+    // spiraling convergence is apparent from the arcs shrinking, not the
+    // viewport. Zoom back out for the reveal labels.
+    return [
+      // Hold base viewport through seg 0 + seg 1 (place + first bounces)
+      { progress: 0.00, ...base },
+      { progress: 0.35, ...base },
+      // Seg 2: zoom in as bounces 5–12 get smaller
+      { progress: 0.45, center: 0.65, pixelsPerUnit: ppuForRange(cssWidth, 0.3, 1.0) },
+      { progress: 0.55, center: 0.69, pixelsPerUnit: ppuForRange(cssWidth, 0.45, 0.85) },
+      // Seg 3 + 4: hold steady — let the tiny arcs show convergence
+      { progress: 0.86, center: 0.69, pixelsPerUnit: ppuForRange(cssWidth, 0.45, 0.85) },
+      // Seg 5: zoom back out for reveal labels
+      { progress: 0.90, center: 0.55, pixelsPerUnit: ppuForRange(cssWidth, 0.15, 1.05) },
+      { progress: 1.00, center: 0.55, pixelsPerUnit: ppuForRange(cssWidth, 0.15, 1.05) },
     ]
   }
 

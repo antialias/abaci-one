@@ -27,6 +27,7 @@ import { renderEOverlay } from './constants/demos/eDemo'
 import { renderGammaOverlay } from './constants/demos/gammaDemo'
 import { renderSqrt2Overlay } from './constants/demos/sqrt2Demo'
 import { renderSqrt3Overlay } from './constants/demos/sqrt3Demo'
+import { renderLn2Overlay } from './constants/demos/ln2Demo'
 import { renderRamanujanOverlay } from './constants/demos/ramanujanDemo'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
@@ -38,6 +39,7 @@ import { PHI_DEMO_SEGMENTS, PHI_DEMO_TONE } from './constants/demos/phiDemoNarra
 import { GAMMA_DEMO_SEGMENTS, GAMMA_DEMO_TONE } from './constants/demos/gammaDemoNarration'
 import { SQRT2_DEMO_SEGMENTS, SQRT2_DEMO_TONE } from './constants/demos/sqrt2DemoNarration'
 import { SQRT3_DEMO_SEGMENTS, SQRT3_DEMO_TONE } from './constants/demos/sqrt3DemoNarration'
+import { LN2_DEMO_SEGMENTS, LN2_DEMO_TONE } from './constants/demos/ln2DemoNarration'
 import { RAMANUJAN_DEMO_SEGMENTS, RAMANUJAN_DEMO_TONE } from './constants/demos/ramanujanDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
@@ -113,6 +115,7 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   gamma: { segments: GAMMA_DEMO_SEGMENTS, tone: GAMMA_DEMO_TONE },
   sqrt2: { segments: SQRT2_DEMO_SEGMENTS, tone: SQRT2_DEMO_TONE },
   sqrt3: { segments: SQRT3_DEMO_SEGMENTS, tone: SQRT3_DEMO_TONE },
+  ln2: { segments: LN2_DEMO_SEGMENTS, tone: LN2_DEMO_TONE },
   ramanujan: { segments: RAMANUJAN_DEMO_SEGMENTS, tone: RAMANUJAN_DEMO_TONE },
 }
 
@@ -302,7 +305,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const resumeFnRef = useRef<() => void>(() => {})
   const seekFnRef = useRef<(segmentIndex: number) => void>(() => {})
   const lookAtFnRef = useRef<(center: number, range: number) => void>(() => {})
-  const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => void>(() => {})
+  const indicateFnRef = useRef<(numbers: number[], range?: { from: number; to: number }, durationSeconds?: number, persistent?: boolean) => void>(() => {})
   const startFindNumberFnRef = useRef<(target: number) => void>(() => {})
   const stopFindNumberFnRef = useRef<() => void>(() => {})
   // When true, indicate's auto-zoom is suppressed (game controls the viewport)
@@ -322,6 +325,16 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       lookAtFnRef.current(center, range)
       suppressIndicateZoomRef.current = true
     }
+    if (gameId === 'nim') {
+      const stones = typeof params.stones === 'number' && isFinite(params.stones as number) ? params.stones as number : 15
+      const center = (1 + stones) / 2
+      const range = stones * 1.15 // 15% margin
+      lookAtFnRef.current(center, range)
+      suppressIndicateZoomRef.current = true
+      // Boost label visibility — wide zoom makes individual numbers nearly invisible
+      labelScaleRef.current = 1.8
+      labelMinOpacityRef.current = 0.9
+    }
   }, [])
   const handleVoiceGameEnd = useCallback((gameId: string) => {
     setActiveGameId(null)
@@ -337,7 +350,11 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const handleVoiceResume = useCallback(() => { resumeFnRef.current() }, [])
   const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
   const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
-  const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => { indicateFnRef.current(numbers, range, durationSeconds) }, [])
+  const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }, durationSeconds?: number, persistent?: boolean) => { indicateFnRef.current(numbers, range, durationSeconds, persistent) }, [])
+  const handleVoiceSetLabelStyle = useCallback((scale: number, minOpacity: number) => {
+    labelScaleRef.current = scale
+    labelMinOpacityRef.current = minOpacity
+  }, [])
   // Fetch players for mid-call identification
   const { data: allPlayers } = useUserPlayers()
   const availablePlayerSummaries = useMemo(() => {
@@ -357,6 +374,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     onIndicate: handleVoiceIndicate,
     onGameStart: handleVoiceGameStart,
     onGameEnd: handleVoiceGameEnd,
+    onSetLabelStyle: handleVoiceSetLabelStyle,
     isExplorationActiveRef,
     onPlayerIdentified,
   })
@@ -392,6 +410,11 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       // Clear any active game when the call ends
       setActiveGameId(null)
       suppressIndicateZoomRef.current = false
+      // Reset label style overrides
+      labelScaleRef.current = 1
+      labelMinOpacityRef.current = 0
+      // Clear any lingering indicator
+      indicatorRef.current = null
       // Launch pending tour after hangup
       const tourId = pendingTourRef.current
       if (tourId) {
@@ -428,6 +451,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const renderTargetRef = useRef<RenderTarget | undefined>(undefined)
   // Indicator state: temporary highlights triggered by the voice agent's `indicate` tool
   const indicatorRef = useRef<{ numbers: number[]; range?: { from: number; to: number }; startMs: number; holdMs: number } | null>(null)
+  // Label style overrides: controlled by voice agent via set_number_line_style tool
+  const labelScaleRef = useRef(1)
+  const labelMinOpacityRef = useRef(0)
   // Track whether the current find-the-number game was started by the voice model
   // (to avoid sending redundant system messages back to the model, and to hide the target in the UI)
   const [gameStartedByModel, setGameStartedByModel] = useState(false)
@@ -757,7 +783,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       renderTarget, collisionFadeMapRef.current, renderConstants,
       primeInfos, effectiveHovered, interestingPrimes, primePairArcs,
       highlightSet, highlightedArcSet, sieveTransforms, sieveUniformity,
-      renderIndicator
+      renderIndicator,
+      labelScaleRef.current, labelMinOpacityRef.current
     )
 
     // Render constant demo overlay (golden ratio, etc.)
@@ -831,6 +858,12 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )
     }
+    if (ds.phase !== 'idle' && ds.constantId === 'ln2') {
+      renderLn2Overlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
     if (ds.phase !== 'idle' && ds.constantId === 'ramanujan') {
       renderRamanujanOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
@@ -897,12 +930,15 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     if (playPauseBtnRef.current) {
       playPauseBtnRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
       playPauseBtnRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
-      // Swap SVG path based on narrating state
+      // Swap SVG path based on narrating state / completion
       const svgPath = playPauseBtnRef.current.querySelector('path')
       if (svgPath) {
-        svgPath.setAttribute('d', narration.isNarrating.current
-          ? 'M6 4h4v16H6zm8 0h4v16h-4z'   // pause icon
-          : 'M8 5v14l11-7z'                 // play icon
+        const isFinished = ds.revealProgress >= 1 && !narration.isNarrating.current
+        svgPath.setAttribute('d', isFinished
+          ? 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' // replay icon
+          : narration.isNarrating.current
+            ? 'M6 4h4v16H6zm8 0h4v16h-4z'   // pause icon
+            : 'M8 5v14l11-7z'                 // play icon
         )
       }
     }
@@ -1559,8 +1595,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
 
   // Assign indicate implementation — replaces any active indicator and drives redraws.
   // Auto-zooms to ensure indicated content is visible with 10% margin on each side.
-  indicateFnRef.current = (numbers: number[], range?: { from: number; to: number }, durationSeconds?: number) => {
-    const holdMs = durationSeconds != null ? Math.max(1, Math.min(30, durationSeconds)) * 1000 : 4000
+  indicateFnRef.current = (numbers: number[], range?: { from: number; to: number }, durationSeconds?: number, persistent?: boolean) => {
+    const holdMs = persistent ? Infinity : durationSeconds != null ? Math.max(1, Math.min(30, durationSeconds)) * 1000 : 4000
 
     // Compute bounding extent of all indicated content
     const allValues = [...numbers]
@@ -1952,10 +1988,14 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     if (ds.phase === 'idle') return
     if (narration.isNarrating.current) {
       narration.stop()
+    } else if (ds.constantId && ds.revealProgress >= 1) {
+      // Replay from the beginning
+      narration.reset()
+      startDemo(ds.constantId)
     } else if (ds.constantId && ds.revealProgress < 1) {
       narration.resume(ds.constantId)
     }
-  }, [demoStateRef, narration])
+  }, [demoStateRef, narration, startDemo])
 
   const handleResumeFromUrl = useCallback(() => {
     setRestoredFromUrl(false)

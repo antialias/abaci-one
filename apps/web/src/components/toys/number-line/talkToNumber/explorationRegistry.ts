@@ -78,6 +78,11 @@ export const EXPLORATIONS: ExplorationEntry[] = [
     visualDesc: 'Shows an equilateral triangle (all sides equal) built on the number line with base from −1 to 1. The height drops from the apex, then a compass swing rotates it onto the number line, landing at √3. The triangle is split to show the Pythagorean proof: 1² + h² = 2², so h = √3. The view zooms into √3\'s position (~1.73205), revealing its never-ending decimal expansion.',
   },
   {
+    id: 'ln2', type: 'constant', name: 'Natural Log of 2', symbol: 'ln 2', value: Math.LN2,
+    shortDesc: 'the bouncing ball that finds its home',
+    visualDesc: 'Shows ln(2) as a bouncing ball on the number line using the alternating harmonic series: 1 − 1/2 + 1/3 − 1/4 + ... The ball bounces right (orange arcs above) and left (blue arcs below) with diminishing arcs. Each bounce is 1/n of the first bounce. The arcs shrink, creating a damped oscillation that settles at ln(2) ≈ 0.693.',
+  },
+  {
     id: 'ramanujan', type: 'constant', name: 'Ramanujan Summation', symbol: '−1⁄12', value: -1 / 12,
     shortDesc: 'the surprising −1/12',
     visualDesc: 'Shows the surprising Ramanujan summation: 1+2+3+4+... = −1/12. Partial sums grow on the number line (getting bigger and bigger), but the animation reveals how a special mathematical technique (analytic continuation) assigns the value −1/12 to the divergent series.',
@@ -147,6 +152,8 @@ export const EXPLORATION_RECOMMENDATIONS: Record<string, { id: string; reason: s
               { id: 'pi',    reason: 'another irrational number, but from circles instead of squares' }],
   sqrt3:     [{ id: 'sqrt2', reason: '√2 is the diagonal of a square — another Pythagorean irrational' },
               { id: 'phi',   reason: 'the golden ratio is another irrational from geometry' }],
+  ln2:       [{ id: 'e',     reason: 'e and ln(2) are deeply connected — ln is the "undo" of e' },
+              { id: 'gamma', reason: 'gamma also comes from the harmonic series' }],
   ramanujan: [{ id: 'gamma', reason: 'another constant that makes you go "wait, really?"' },
               { id: 'e',     reason: 'Euler\'s number — Ramanujan loved working with it' }],
   primes:    [{ id: 'phi',   reason: 'the golden ratio is another pattern hiding in numbers' },
@@ -165,5 +172,6 @@ export const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
   gamma:     ['e',     'ramanujan', 'sqrt2'],
   sqrt2:     ['sqrt3', 'phi',      'tau'],
   sqrt3:     ['sqrt2', 'phi',      'gamma'],
+  ln2:       ['e',     'gamma',    'sqrt2'],
   ramanujan: ['pi',    'e',        'sqrt2'],
 }
