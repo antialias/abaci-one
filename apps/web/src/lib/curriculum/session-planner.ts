@@ -14,7 +14,7 @@
  */
 
 import { createId } from '@paralleldrive/cuid2'
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import {
@@ -711,30 +711,59 @@ export async function getRecentSessionResults(
   playerId: string,
   sessionCount = 50
 ): Promise<ProblemResultWithContext[]> {
+  const map = await batchGetRecentSessionResults([playerId], sessionCount)
+  return map.get(playerId) ?? []
+}
+
+/**
+ * Batch-fetch recent problem results for multiple players in a single query.
+ *
+ * Returns a Map<playerId, ProblemResultWithContext[]> with results ordered
+ * by timestamp descending (most recent first).
+ *
+ * @param playerIds - The players to fetch results for
+ * @param sessionCountPerPlayer - Max sessions per player (default 50)
+ */
+export async function batchGetRecentSessionResults(
+  playerIds: string[],
+  sessionCountPerPlayer = 50
+): Promise<Map<string, ProblemResultWithContext[]>> {
+  const resultMap = new Map<string, ProblemResultWithContext[]>()
+  if (playerIds.length === 0) return resultMap
+
   // Include both 'completed' sessions and 'recency-refresh' sentinels
   // Recency-refresh sessions contain sentinel records that update lastPracticedAt
   // but are zero-weight for BKT mastery calculation
   const sessions = await db.query.sessionPlans.findMany({
     where: and(
-      eq(schema.sessionPlans.playerId, playerId),
+      inArray(schema.sessionPlans.playerId, playerIds),
       inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
     ),
-    orderBy: (plans, { desc }) => [desc(plans.completedAt)],
-    limit: sessionCount,
+    orderBy: [desc(schema.sessionPlans.completedAt)],
   })
 
-  // Flatten results with session context
-  const results: ProblemResultWithContext[] = []
+  // Cap sessions per player and flatten results with session context
+  const sessionCountByPlayer = new Map<string, number>()
 
   for (const session of sessions) {
     if (!session.completedAt) continue
+
+    const count = sessionCountByPlayer.get(session.playerId) ?? 0
+    if (count >= sessionCountPerPlayer) continue
+    sessionCountByPlayer.set(session.playerId, count + 1)
+
+    let list = resultMap.get(session.playerId)
+    if (!list) {
+      list = []
+      resultMap.set(session.playerId, list)
+    }
 
     for (const result of session.results) {
       // Find the part type for this result
       const part = session.parts.find((p) => p.partNumber === result.partNumber)
       const partType = part?.type ?? 'linear'
 
-      results.push({
+      list.push({
         ...result,
         sessionId: session.id,
         sessionCompletedAt: session.completedAt,
@@ -743,10 +772,12 @@ export async function getRecentSessionResults(
     }
   }
 
-  // Sort by timestamp descending (most recent first)
-  results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  // Sort each player's results by timestamp descending (most recent first)
+  for (const list of resultMap.values()) {
+    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }
 
-  return results
+  return resultMap
 }
 
 /**

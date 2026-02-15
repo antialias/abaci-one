@@ -426,18 +426,50 @@ export async function unenrollStudent(classroomId: string, playerId: string): Pr
  * Get all classrooms a player is enrolled in
  */
 export async function getEnrolledClassrooms(playerId: string): Promise<Classroom[]> {
+  const map = await batchGetEnrolledClassrooms([playerId])
+  return map.get(playerId) ?? []
+}
+
+/**
+ * Batch-fetch enrolled classrooms for multiple players in two queries.
+ *
+ * Returns a Map<playerId, Classroom[]>.
+ */
+export async function batchGetEnrolledClassrooms(
+  playerIds: string[]
+): Promise<Map<string, Classroom[]>> {
+  const result = new Map<string, Classroom[]>()
+  if (playerIds.length === 0) return result
+
+  // Single query: all enrollments for these players
   const enrollments = await db.query.classroomEnrollments.findMany({
-    where: eq(classroomEnrollments.playerId, playerId),
+    where: inArray(classroomEnrollments.playerId, playerIds),
   })
 
-  if (enrollments.length === 0) return []
+  if (enrollments.length === 0) return result
 
-  const classroomIds = enrollments.map((e) => e.classroomId)
+  // Collect unique classroom IDs
+  const classroomIds = [...new Set(enrollments.map((e) => e.classroomId))]
+
+  // Single query: all classrooms
   const classroomList = await db.query.classrooms.findMany({
-    where: (classrooms, { inArray }) => inArray(classrooms.id, classroomIds),
+    where: (c, { inArray: inArr }) => inArr(c.id, classroomIds),
   })
+  const classroomMap = new Map(classroomList.map((c) => [c.id, c]))
 
-  return classroomList
+  // Group by player
+  for (const enrollment of enrollments) {
+    const classroom = classroomMap.get(enrollment.classroomId)
+    if (!classroom) continue
+    let list = result.get(enrollment.playerId)
+    if (!list) {
+      list = []
+      result.set(enrollment.playerId, list)
+    }
+    list.push(classroom)
+  }
+
+  return result
 }
 
 /**

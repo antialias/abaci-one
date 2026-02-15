@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { Player } from '@/db/schema/players'
 import { api } from '@/lib/queryClient'
@@ -106,15 +107,42 @@ export function useUserPlayersSuspense() {
 /**
  * Hook: Fetch all players with skill data
  * Used by the practice page for grouping/filtering
+ *
+ * When data arrives with batch-fetched enrichment fields, seeds per-student
+ * React Query caches so downstream hooks (useEnrolledClassrooms, useStudentPresence)
+ * find cached data and skip individual HTTP requests.
  */
 export function usePlayersWithSkillData(options?: { initialData?: StudentWithSkillData[] }) {
-  return useQuery({
+  const queryClient = useQueryClient()
+
+  const query = useQuery({
     queryKey: playerKeys.listWithSkillData(),
     queryFn: fetchPlayersWithSkillData,
     initialData: options?.initialData,
     // Keep data fresh but don't refetch too aggressively
     staleTime: 30_000, // 30 seconds
   })
+
+  // Seed per-student caches synchronously during render.
+  // This MUST happen before child components (StudentActionMenu) mount and fire
+  // their useEnrolledClassrooms/useStudentPresence hooks. useEffect is too late.
+  const lastSeededDataRef = useRef<StudentWithSkillData[] | undefined>()
+  if (query.data && query.data !== lastSeededDataRef.current) {
+    lastSeededDataRef.current = query.data
+    for (const player of query.data) {
+      if (player.enrolledClassrooms !== undefined) {
+        queryClient.setQueryData(
+          playerKeys.enrolledClassrooms(player.id),
+          player.enrolledClassrooms
+        )
+      }
+      if (player.currentPresence !== undefined) {
+        queryClient.setQueryData(playerKeys.presence(player.id), player.currentPresence)
+      }
+    }
+  }
+
+  return query
 }
 
 /**
@@ -180,6 +208,9 @@ export function useCreatePlayer() {
           lastPracticedAt: null,
           skillCategory: null,
           intervention: null,
+          enrolledClassrooms: [],
+          currentPresence: null,
+          activeSession: null,
         }
         queryClient.setQueryData<StudentWithSkillData[]>(playerKeys.listWithSkillData(), [
           ...previousPlayersWithSkillData,

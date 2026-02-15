@@ -13,7 +13,7 @@
  * A student can only be present in one classroom at a time.
  */
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import {
   classroomEnrollments,
@@ -210,17 +210,47 @@ export interface PresenceWithPlayer extends ClassroomPresence {
  * Get a student's current presence (which classroom they're in)
  */
 export async function getStudentPresence(playerId: string): Promise<PresenceWithClassroom | null> {
-  const presence = await db.query.classroomPresence.findFirst({
-    where: eq(classroomPresence.playerId, playerId),
+  const map = await batchGetStudentPresence([playerId])
+  return map.get(playerId) ?? null
+}
+
+/**
+ * Batch-fetch presence for multiple players in two queries.
+ *
+ * Returns a Map<playerId, PresenceWithClassroom>.
+ * Players not present in any classroom are omitted from the map.
+ */
+export async function batchGetStudentPresence(
+  playerIds: string[]
+): Promise<Map<string, PresenceWithClassroom>> {
+  const result = new Map<string, PresenceWithClassroom>()
+  if (playerIds.length === 0) return result
+
+  // Single query: all presence records for these players
+  const presences = await db.query.classroomPresence.findMany({
+    where: inArray(classroomPresence.playerId, playerIds),
   })
 
-  if (!presence) return null
+  if (presences.length === 0) return result
 
-  const classroom = await db.query.classrooms.findFirst({
-    where: eq(classrooms.id, presence.classroomId),
+  // Collect unique classroom IDs
+  const classroomIds = [...new Set(presences.map((p) => p.classroomId))]
+
+  // Single query: all classrooms
+  const classroomList = await db.query.classrooms.findMany({
+    where: (c, { inArray: inArr }) => inArr(c.id, classroomIds),
   })
+  const classroomMap = new Map(classroomList.map((c) => [c.id, c]))
 
-  return { ...presence, classroom }
+  // Assemble results
+  for (const presence of presences) {
+    result.set(presence.playerId, {
+      ...presence,
+      classroom: classroomMap.get(presence.classroomId),
+    })
+  }
+
+  return result
 }
 
 /**

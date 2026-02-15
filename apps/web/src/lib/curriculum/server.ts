@@ -9,16 +9,19 @@
 
 import 'server-only'
 
-import { eq, inArray, or } from 'drizzle-orm'
+import { and, eq, inArray, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { parentChild } from '@/db/schema'
+import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
+import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
 import {
   computeIntervention,
   computeSkillCategory,
   type SkillDistribution,
+  type StudentActiveSessionInfo,
   type StudentWithSkillData,
 } from '@/utils/studentGrouping'
 import { computeBktFromHistory, getStalenessWarning } from './bkt'
@@ -28,7 +31,12 @@ import {
   getPlayerCurriculum,
   getRecentSessions,
 } from './progress-manager'
-import { getActiveSessionPlan, getRecentSessionResults } from './session-planner'
+import {
+  batchGetRecentSessionResults,
+  getActiveSessionPlan,
+  getRecentSessionResults,
+  type ProblemResultWithContext,
+} from './session-planner'
 
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -95,13 +103,15 @@ export async function getPlayersForViewer(): Promise<Player[]> {
 }
 
 /**
- * Compute skill distribution for a player from their problem history.
+ * Compute skill distribution for a player from pre-fetched problem history.
  * Uses BKT to determine mastery levels and staleness.
+ *
+ * Accepts pre-fetched ProblemResultWithContext[] to avoid per-player DB queries.
  */
-async function computePlayerSkillDistribution(
-  playerId: string,
-  practicingSkillIds: string[]
-): Promise<SkillDistribution> {
+function computePlayerSkillDistribution(
+  practicingSkillIds: string[],
+  problemHistory: ProblemResultWithContext[]
+): SkillDistribution {
   const distribution: SkillDistribution = {
     strong: 0,
     stale: 0,
@@ -113,16 +123,11 @@ async function computePlayerSkillDistribution(
 
   if (practicingSkillIds.length === 0) return distribution
 
-  // Fetch recent problem history (last 100 problems is enough for BKT)
-  const problemHistory = await getRecentSessionResults(playerId, 100)
-
   if (problemHistory.length === 0) {
-    // No history = all unassessed
     distribution.unassessed = practicingSkillIds.length
     return distribution
   }
 
-  // Compute BKT
   const now = new Date()
   const bktResult = computeBktFromHistory(problemHistory, {})
   const bktMap = new Map(bktResult.skills.map((s) => [s.skillId, s]))
@@ -138,7 +143,6 @@ async function computePlayerSkillDistribution(
     const classification = bkt.masteryClassification ?? 'developing'
 
     if (classification === 'strong') {
-      // Check staleness
       const lastPracticed = bkt.lastPracticedAt
       if (lastPracticed) {
         const daysSince = (now.getTime() - lastPracticed.getTime()) / (1000 * 60 * 60 * 24)
@@ -159,6 +163,52 @@ async function computePlayerSkillDistribution(
 }
 
 /**
+ * Batch-fetch active sessions for multiple players in a single query.
+ *
+ * Returns a Map<playerId, StudentActiveSessionInfo>.
+ * Players without active sessions are omitted from the map.
+ */
+async function batchGetActiveSessions(
+  playerIds: string[]
+): Promise<Map<string, StudentActiveSessionInfo>> {
+  const result = new Map<string, StudentActiveSessionInfo>()
+  if (playerIds.length === 0) return result
+
+  // Single query: active session plans for all players
+  const activePlans = await db
+    .select({
+      id: schema.sessionPlans.id,
+      playerId: schema.sessionPlans.playerId,
+      status: schema.sessionPlans.status,
+      parts: schema.sessionPlans.parts,
+      results: schema.sessionPlans.results,
+    })
+    .from(schema.sessionPlans)
+    .where(
+      and(
+        inArray(schema.sessionPlans.playerId, playerIds),
+        inArray(schema.sessionPlans.status, ['approved', 'in_progress'])
+      )
+    )
+
+  // Group by player (take most recent if multiple — though unlikely)
+  for (const plan of activePlans) {
+    if (result.has(plan.playerId)) continue // first one wins
+    const parts = (plan.parts as SessionPart[]) || []
+    const results = (plan.results as SlotResult[]) || []
+    const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
+    result.set(plan.playerId, {
+      sessionId: plan.id,
+      status: plan.status,
+      completedProblems: results.length,
+      totalProblems,
+    })
+  }
+
+  return result
+}
+
+/**
  * Get all players for the current viewer with enhanced skill data.
  *
  * Includes:
@@ -166,6 +216,9 @@ async function computePlayerSkillDistribution(
  * - lastPracticedAt: Most recent practice timestamp (max of all skill lastPracticedAt)
  * - skillCategory: Computed highest-level skill category
  * - intervention: Intervention data if student needs attention
+ * - enrolledClassrooms: Batch-fetched classroom enrollments
+ * - currentPresence: Batch-fetched presence info
+ * - activeSession: Batch-fetched active session info
  */
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
   const viewerId = await getViewerId()
@@ -200,12 +253,36 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     })
   }
 
-  // Fetch skill mastery for all players in parallel
-  const playersWithSkills = await Promise.all(
-    players.map(async (player) => {
-      const skills = await db.query.playerSkillMastery.findMany({
-        where: eq(schema.playerSkillMastery.playerId, player.id),
-      })
+  if (players.length === 0) return []
+
+  const playerIds = players.map((p) => p.id)
+
+  // Batch-fetch all enrichment data in parallel (single query each)
+  const [allSkillMastery, enrollmentMap, presenceMap, activeSessionMap, sessionResultsByPlayer] =
+    await Promise.all([
+      db.query.playerSkillMastery.findMany({
+        where: inArray(schema.playerSkillMastery.playerId, playerIds),
+      }),
+      batchGetEnrolledClassrooms(playerIds),
+      batchGetStudentPresence(playerIds),
+      batchGetActiveSessions(playerIds),
+      batchGetRecentSessionResults(playerIds, 100),
+    ])
+
+  // Group skill mastery by player
+  const skillsByPlayer = new Map<string, typeof allSkillMastery>()
+  for (const skill of allSkillMastery) {
+    let list = skillsByPlayer.get(skill.playerId)
+    if (!list) {
+      list = []
+      skillsByPlayer.set(skill.playerId, list)
+    }
+    list.push(skill)
+  }
+
+  // Build enriched players (all data is pre-fetched, no async work per player)
+  const playersWithSkills = players.map((player) => {
+      const skills = skillsByPlayer.get(player.id) ?? []
 
       // Get practicing skills and compute lastPracticedAt
       const practicingSkills: string[] = []
@@ -215,7 +292,6 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
         if (skill.isPracticing) {
           practicingSkills.push(skill.skillId)
         }
-        // Track the most recent practice date across all skills
         if (skill.lastPracticedAt) {
           if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
             lastPracticedAt = skill.lastPracticedAt
@@ -229,7 +305,7 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
       // Compute intervention data (only for non-archived students with skills)
       let intervention = null
       if (!player.isArchived && practicingSkills.length > 0) {
-        const distribution = await computePlayerSkillDistribution(player.id, practicingSkills)
+        const distribution = computePlayerSkillDistribution(practicingSkills, sessionResultsByPlayer.get(player.id) ?? [])
         const daysSinceLastPractice = lastPracticedAt
           ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
           : Infinity
@@ -241,15 +317,29 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
         )
       }
 
+      // Convert server presence to client-compatible shape
+      const serverPresence = presenceMap.get(player.id)
+      const currentPresence = serverPresence
+        ? {
+            playerId: serverPresence.playerId,
+            classroomId: serverPresence.classroomId,
+            enteredAt: serverPresence.enteredAt.toISOString(),
+            enteredBy: serverPresence.enteredBy,
+            classroom: serverPresence.classroom,
+          }
+        : null
+
       return {
         ...player,
         practicingSkills,
         lastPracticedAt,
         skillCategory,
         intervention,
+        enrolledClassrooms: enrollmentMap.get(player.id) ?? [],
+        currentPresence,
+        activeSession: activeSessionMap.get(player.id) ?? null,
       }
-    })
-  )
+  })
 
   return playersWithSkills
 }

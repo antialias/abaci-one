@@ -11,6 +11,7 @@ import {
   getSkillCategory,
   type SkillCategoryKey,
 } from '@/constants/skillCategories'
+import type { Classroom } from '@/db/schema/classrooms'
 import type { Player } from '@/db/schema/players'
 
 /**
@@ -61,6 +62,28 @@ export interface StudentIntervention {
 }
 
 /**
+ * Presence info shape matching the client-side PresenceInfo type.
+ * Defined here to avoid circular dependency with useClassroom.ts.
+ */
+export interface StudentPresenceInfo {
+  playerId: string
+  classroomId: string
+  enteredAt: string
+  enteredBy: string
+  classroom?: Classroom
+}
+
+/**
+ * Active session info shape matching the active-session API response.
+ */
+export interface StudentActiveSessionInfo {
+  sessionId: string
+  status: string
+  completedProblems: number
+  totalProblems: number
+}
+
+/**
  * Extended student type with skill data for grouping
  */
 export interface StudentWithSkillData extends Player {
@@ -72,6 +95,15 @@ export interface StudentWithSkillData extends Player {
   skillCategory: SkillCategoryKey | null
   /** Intervention data if student needs attention (null = no intervention needed) */
   intervention: StudentIntervention | null
+
+  // ---- Batch-fetched enrichment fields (may be undefined on cold cache) ----
+
+  /** Classrooms this student is enrolled in */
+  enrolledClassrooms?: Classroom[]
+  /** Current classroom presence */
+  currentPresence?: StudentPresenceInfo | null
+  /** Active session info */
+  activeSession?: StudentActiveSessionInfo | null
 }
 
 // ============================================================================

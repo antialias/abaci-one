@@ -12,7 +12,7 @@ import {
   type ActiveSessionInfo,
   type PresenceStudent,
 } from '@/hooks/useClassroom'
-import { useChildSessionsSocket } from '@/hooks/useChildSessionsSocket'
+import { useChildSessionsSocket, type ChildActiveSession } from '@/hooks/useChildSessionsSocket'
 import { usePlayersWithSkillData } from '@/hooks/useUserPlayers'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import type { UnifiedStudent, StudentRelationship, StudentActivity } from '@/types/student'
@@ -63,6 +63,26 @@ export function useUnifiedStudents(
   // Get child IDs for parent session subscription
   const childIds = useMemo(() => myChildren.map((c) => c.id), [myChildren])
 
+  // Build initial session data from batch-fetched enrichment fields
+  const initialChildSessions = useMemo(() => {
+    const hasEnrichment = myChildren.some((c) => c.activeSession !== undefined)
+    if (!hasEnrichment) return undefined
+
+    const map = new Map<string, ChildActiveSession>()
+    for (const child of myChildren) {
+      if (child.activeSession) {
+        map.set(child.id, {
+          planId: child.activeSession.sessionId,
+          status: child.activeSession.status,
+          completedSlots: child.activeSession.completedProblems,
+          totalSlots: child.activeSession.totalProblems,
+          startedAt: new Date().toISOString(),
+        })
+      }
+    }
+    return map
+  }, [myChildren])
+
   // Get enrolled students (teachers only)
   const { data: enrolledStudents = [], isLoading: isLoadingEnrolled } = useEnrolledStudents(
     classroom?.id
@@ -82,7 +102,8 @@ export function useUnifiedStudents(
   const hasChildren = childIds.length > 0
   const { sessionMap: childSessionMap, isLoading: isLoadingChildSessions } = useChildSessionsSocket(
     hasChildren ? userId : undefined,
-    hasChildren ? childIds : EMPTY_CHILD_IDS
+    hasChildren ? childIds : EMPTY_CHILD_IDS,
+    initialChildSessions
   )
 
   // Build lookup maps for efficient merging
@@ -131,8 +152,12 @@ export function useUnifiedStudents(
     for (const child of myChildren) {
       const relationship: StudentRelationship = {
         isMyChild: true,
-        isEnrolled: enrolledIds.has(child.id),
-        isPresent: presenceMap.has(child.id),
+        isEnrolled: child.enrolledClassrooms !== undefined
+          ? child.enrolledClassrooms.length > 0
+          : enrolledIds.has(child.id),
+        isPresent: child.currentPresence !== undefined
+          ? child.currentPresence !== null
+          : presenceMap.has(child.id),
         enrollmentStatus: null, // TODO: Add pending enrollment lookup
       }
 

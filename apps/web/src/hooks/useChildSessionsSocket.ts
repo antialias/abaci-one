@@ -26,18 +26,25 @@ export interface ChildActiveSession {
  * Hook: Subscribe to real-time session updates for children via WebSocket
  *
  * Instead of polling every 10 seconds, this hook:
- * 1. Fetches initial session state for all children
+ * 1. Fetches initial session state for all children (or uses pre-seeded data)
  * 2. Subscribes to real-time session-started/session-ended events
  * 3. Maintains a Map of playerId -> session info that updates instantly
  *
  * @param userId - The parent's user ID (for socket subscription)
  * @param childIds - Array of player IDs to subscribe to
+ * @param initialSessions - Optional pre-seeded session data (skips N per-child HTTP fetches)
  * @returns sessionMap (playerId -> session), isLoading, connected
  */
-export function useChildSessionsSocket(userId: string | undefined, childIds: string[]) {
+export function useChildSessionsSocket(
+  userId: string | undefined,
+  childIds: string[],
+  initialSessions?: Map<string, ChildActiveSession>
+) {
   // Session state maintained from socket events
-  const [sessions, setSessions] = useState<Map<string, ChildActiveSession>>(new Map())
-  const [isLoading, setIsLoading] = useState(true)
+  const [sessions, setSessions] = useState<Map<string, ChildActiveSession>>(
+    () => initialSessions ?? new Map()
+  )
+  const [isLoading, setIsLoading] = useState(!initialSessions)
   const [connected, setConnected] = useState(false)
 
   const socketRef = useRef<Socket | null>(null)
@@ -68,13 +75,18 @@ export function useChildSessionsSocket(userId: string | undefined, childIds: str
     }
   }, [])
 
-  // Fetch initial state for all children
+  // Fetch initial state for all children (skipped when initialSessions provided)
   useEffect(() => {
     if (childIds.length === 0) {
       setIsLoading(false)
       setSessions(new Map())
       return
     }
+
+    // Skip fetch when pre-seeded data was provided.
+    // Using initialSessions as a dep (stable ref from useMemo) instead of a mutable ref,
+    // which breaks under React Strict Mode's double-mount.
+    if (initialSessions) return
 
     let cancelled = false
 
@@ -102,7 +114,7 @@ export function useChildSessionsSocket(userId: string | undefined, childIds: str
     return () => {
       cancelled = true
     }
-  }, [childIds, fetchSession])
+  }, [childIds, fetchSession, initialSessions])
 
   // Setup socket connection and subscriptions
   useEffect(() => {
