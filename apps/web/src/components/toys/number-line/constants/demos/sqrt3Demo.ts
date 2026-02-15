@@ -7,16 +7,12 @@ import { numberToScreenX } from '../../numberLineTicks'
  * Visualises √3 ≈ 1.732 as the height of an equilateral triangle.
  *
  * An equilateral triangle with base from −1 to 1 (side length 2)
- * is constructed on the number line. The height — from apex (0, √3)
- * to the midpoint (0, 0) — is highlighted, then rotated down
- * (compass-arm style) to lie on the number line, landing at √3.
- *
- * The demo also shows WHY the height is this length: splitting the
- * triangle into two right triangles and applying the Pythagorean theorem:
- * 1² + h² = 2², so h² = 3 → h = √3.
- *
- * Finally we zoom in to show that √3's decimal expansion never
- * terminates, building intuition for irrational numbers.
+ * is constructed on the number line using compass-arc swings.
+ * The height — from apex (0, √3) to the midpoint (0, 0) — is
+ * highlighted, then rotated down (compass-arm style) to lie on the
+ * number line, landing at √3. The construction itself is the proof:
+ * equal compass arcs guarantee equal sides, and the height falls
+ * out naturally.
  */
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -47,27 +43,21 @@ function easeInOut(t: number): number {
 const PHASE = {
   // Seg 0: base — highlight segment from −1 to 1
   baseBegin: 0.00,
-  baseEnd: 0.10,
-  // Seg 1: build — equilateral triangle sides grow
-  buildBegin: 0.10,
-  buildEnd: 0.25,
+  baseEnd: 0.12,
+  // Seg 1: build — equilateral triangle sides swing up
+  buildBegin: 0.12,
+  buildEnd: 0.30,
   // Seg 2: height — dashed altitude drops from apex
-  heightBegin: 0.25,
-  heightEnd: 0.40,
+  heightBegin: 0.30,
+  heightEnd: 0.47,
   // Seg 3: rotate — compass swings height to number line
-  rotateBegin: 0.40,
-  rotateEnd: 0.55,
+  rotateBegin: 0.47,
+  rotateEnd: 0.65,
   // Seg 4: mystery — question mark at landing spot
-  mysteryBegin: 0.55,
-  mysteryEnd: 0.65,
-  // Seg 5: proof — split triangle, Pythagorean theorem
-  proofBegin: 0.65,
-  proofEnd: 0.80,
-  // Seg 6: zoom — irrationality zoom
-  zoomBegin: 0.80,
-  zoomEnd: 0.92,
-  // Seg 7: reveal — star, label, formula
-  revealBegin: 0.92,
+  mysteryBegin: 0.65,
+  mysteryEnd: 0.80,
+  // Seg 5: reveal — star, label
+  revealBegin: 0.80,
   revealEnd: 1.00,
 } as const
 
@@ -76,7 +66,6 @@ const PHASE = {
 function triCol(isDark: boolean) { return isDark ? '#60a5fa' : '#3b82f6' }         // blue (triangle)
 function heightCol(isDark: boolean) { return isDark ? '#fb923c' : '#ea580c' }      // orange (height)
 function heightColBright(isDark: boolean) { return isDark ? '#fdba74' : '#f97316' }
-function proofCol(isDark: boolean) { return isDark ? '#a78bfa' : '#7c3aed' }       // purple (proof)
 function resultCol(isDark: boolean) { return isDark ? '#34d399' : '#059669' }      // green (√3)
 function textCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }
 function subtextCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
@@ -136,7 +125,15 @@ function drawBase(
   }
 }
 
-/** Draw the equilateral triangle above the axis */
+/** Draw the equilateral triangle above the axis using compass-swing construction.
+ *
+ * Both sides swing up simultaneously — pivoting 2-unit copies of the base
+ * from each vertex toward the apex — making equal length and equal angles
+ * visually obvious.
+ *
+ * Progress 0–1: both arcs sweep together.
+ * Progress ≥ 1: light fill of the completed triangle; arc traces hidden.
+ */
 function drawTriangle(
   ctx: CanvasRenderingContext2D,
   toX: ToX,
@@ -154,6 +151,7 @@ function drawTriangle(
   const x1 = toX(1)
   const apexX = toX(0)
   const apexY = axisY - hPx(SQRT3, ppu)
+  const radius = hPx(2, ppu) // 2 units — same length as the base
 
   // Fill (only when sides complete)
   if (sideProgress >= 1) {
@@ -167,32 +165,65 @@ function drawTriangle(
     ctx.fill()
   }
 
-  // Draw sides growing up to the apex
-  ctx.strokeStyle = triCol(isDark)
-  ctx.lineWidth = 2.5
-  ctx.lineCap = 'round'
-  ctx.globalAlpha = alpha * 0.8
-
+  // Both sides share the same eased progress
   if (sideProgress > 0) {
-    // Left side: from (-1, 0) toward (0, √3)
-    const lp = Math.min(1, sideProgress * 2) // left side completes in first half
-    const lx = x0 + (apexX - x0) * lp
-    const ly = axisY + (apexY - axisY) * lp
+    const t = smoothstep(Math.min(1, sideProgress))
+
+    // ── Left swing: pivot at (-1, 0), arc from angle 0 → -π/3 (CCW) ──
+    // Canvas angles: 0 = right vertex, -π/3 = apex (60° above horizontal)
+    const leftAngle = -(Math.PI / 3) * t
+
+    // Dashed arc trace (only during construction)
+    if (sideProgress < 1 && t > 0.01) {
+      ctx.beginPath()
+      ctx.arc(x0, axisY, radius, 0, leftAngle, true)
+      ctx.strokeStyle = triCol(isDark)
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([4, 3])
+      ctx.globalAlpha = alpha * 0.35
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+
+    // Solid segment: pivot → current endpoint
+    const lEndX = x0 + radius * Math.cos(leftAngle)
+    const lEndY = axisY + radius * Math.sin(leftAngle)
     ctx.beginPath()
     ctx.moveTo(x0, axisY)
-    ctx.lineTo(lx, ly)
+    ctx.lineTo(lEndX, lEndY)
+    ctx.strokeStyle = triCol(isDark)
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.globalAlpha = alpha * 0.8
     ctx.stroke()
 
-    // Right side: from (1, 0) toward (0, √3) — starts at 0.5
-    if (sideProgress > 0.5) {
-      const rp = (sideProgress - 0.5) / 0.5
-      const rx = x1 + (apexX - x1) * rp
-      const ry = axisY + (apexY - axisY) * rp
+    // ── Right swing: pivot at (1, 0), arc from angle π → 4π/3 (CW) ──
+    // Canvas angles: π = left vertex, 4π/3 = apex (upper-left)
+    const rightAngle = Math.PI + (Math.PI / 3) * t
+
+    // Dashed arc trace (only during construction)
+    if (sideProgress < 1 && t > 0.01) {
       ctx.beginPath()
-      ctx.moveTo(x1, axisY)
-      ctx.lineTo(rx, ry)
+      ctx.arc(x1, axisY, radius, Math.PI, rightAngle)
+      ctx.strokeStyle = triCol(isDark)
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([4, 3])
+      ctx.globalAlpha = alpha * 0.35
       ctx.stroke()
+      ctx.setLineDash([])
     }
+
+    // Solid segment: pivot → current endpoint
+    const rEndX = x1 + radius * Math.cos(rightAngle)
+    const rEndY = axisY + radius * Math.sin(rightAngle)
+    ctx.beginPath()
+    ctx.moveTo(x1, axisY)
+    ctx.lineTo(rEndX, rEndY)
+    ctx.strokeStyle = triCol(isDark)
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.globalAlpha = alpha * 0.8
+    ctx.stroke()
   }
 }
 
@@ -308,50 +339,6 @@ function drawArc(
   ctx.setLineDash([])
 }
 
-/** Draw the right triangle for the Pythagorean proof */
-function drawRightTriangle(
-  ctx: CanvasRenderingContext2D,
-  toX: ToX,
-  axisY: number,
-  ppu: number,
-  isDark: boolean,
-  alpha: number,
-  fillAlpha = 0.15
-) {
-  if (alpha <= 0) return
-
-  // Right triangle: (0,0), (1,0), (0,√3)
-  const x0 = toX(0)
-  const x1 = toX(1)
-  const topY = axisY - hPx(SQRT3, ppu)
-
-  ctx.beginPath()
-  ctx.moveTo(x0, axisY)
-  ctx.lineTo(x1, axisY)
-  ctx.lineTo(x0, topY)
-  ctx.closePath()
-
-  ctx.fillStyle = proofCol(isDark)
-  ctx.globalAlpha = alpha * fillAlpha
-  ctx.fill()
-
-  ctx.strokeStyle = proofCol(isDark)
-  ctx.lineWidth = 2
-  ctx.globalAlpha = alpha * 0.7
-  ctx.stroke()
-
-  // Right angle mark at (0,0)
-  const markSize = Math.min(12, ppu * 0.08)
-  ctx.beginPath()
-  ctx.moveTo(x0 + markSize, axisY)
-  ctx.lineTo(x0 + markSize, axisY - markSize)
-  ctx.lineTo(x0, axisY - markSize)
-  ctx.strokeStyle = proofCol(isDark)
-  ctx.lineWidth = 1.5
-  ctx.globalAlpha = alpha * 0.6
-  ctx.stroke()
-}
-
 /** Draw a 5-pointed star */
 function drawStar(
   ctx: CanvasRenderingContext2D,
@@ -398,14 +385,9 @@ export function renderSqrt3Overlay(
   // ── Seg 0: Base — highlight segment from −1 to 1 ──
   if (revealProgress >= PHASE.baseBegin) {
     const baseP = easeInOut(mapRange(revealProgress, PHASE.baseBegin, PHASE.baseEnd - 0.02))
-    const baseFade = revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
-      ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
-      : revealProgress >= PHASE.revealBegin
-        ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
-        : 1
 
-    if (baseP > 0 && baseFade > 0) {
-      drawBase(ctx, toX, axisY, isDark, opacity * baseFade, baseP)
+    if (baseP > 0) {
+      drawBase(ctx, toX, axisY, isDark, opacity, baseP)
     }
 
     // "-1" and "1" labels
@@ -430,18 +412,13 @@ export function renderSqrt3Overlay(
     }
   }
 
-  // ── Seg 1: Build — equilateral triangle sides grow ──
+  // ── Seg 1: Build — equilateral triangle sides swing up ──
   const triVisible = revealProgress >= PHASE.buildBegin
   if (triVisible) {
     const sideP = easeInOut(mapRange(revealProgress, PHASE.buildBegin + 0.02, PHASE.buildEnd - 0.02))
-    const triFade = revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
-      ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
-      : revealProgress >= PHASE.revealBegin
-        ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
-        : 1
 
-    if (sideP > 0 && triFade > 0) {
-      drawTriangle(ctx, toX, axisY, ppu, isDark, opacity * triFade, sideP)
+    if (sideP > 0) {
+      drawTriangle(ctx, toX, axisY, ppu, isDark, opacity, sideP)
     }
 
     // "Perfect triangle!" label
@@ -466,16 +443,9 @@ export function renderSqrt3Overlay(
   if (heightVisible) {
     const heightP = easeInOut(mapRange(revealProgress, PHASE.heightBegin + 0.02, PHASE.heightEnd - 0.04))
 
-    // Height should fade during zoom, reappear during reveal
-    const heightFade = revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
-      ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
-      : revealProgress >= PHASE.revealBegin
-        ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
-        : 1
-
     // Before rotation, draw the vertical height
-    if (revealProgress < PHASE.rotateBegin && heightP > 0 && heightFade > 0) {
-      drawHeight(ctx, toX, axisY, ppu, isDark, opacity * heightFade, heightP)
+    if (revealProgress < PHASE.rotateBegin && heightP > 0) {
+      drawHeight(ctx, toX, axisY, ppu, isDark, opacity, heightP)
     }
 
     // "How tall?" label
@@ -501,25 +471,17 @@ export function renderSqrt3Overlay(
     const rotateP = easeInOut(mapRange(revealProgress, PHASE.rotateBegin + 0.02, PHASE.rotateEnd - 0.02))
     const angle = rotateP * (Math.PI / 2) // from 0 (vertical) to π/2 (horizontal)
 
-    const rotateFade = revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
-      ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
-      : revealProgress >= PHASE.revealBegin
-        ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
-        : 1
-
-    // Draw the arc during rotation
+    // Draw the arc during rotation and mystery
     if (revealProgress >= PHASE.rotateBegin && revealProgress < PHASE.mysteryEnd) {
-      drawArc(ctx, toX, axisY, ppu, isDark, opacity * rotateFade, rotateP)
+      drawArc(ctx, toX, axisY, ppu, isDark, opacity, rotateP)
     }
 
     // Draw the rotating height line
-    if (rotateFade > 0) {
-      drawRotatingHeight(ctx, toX, axisY, ppu, isDark, opacity * rotateFade, angle, rotateP >= 1)
-    }
+    drawRotatingHeight(ctx, toX, axisY, ppu, isDark, opacity, angle, rotateP >= 1)
   }
 
   // ── Seg 4: Mystery — question mark at landing spot ──
-  if (revealProgress >= PHASE.mysteryBegin && revealProgress < PHASE.proofBegin) {
+  if (revealProgress >= PHASE.mysteryBegin && revealProgress < PHASE.revealBegin) {
     const qP = smoothstep(mapRange(revealProgress, PHASE.mysteryBegin + 0.02, PHASE.mysteryBegin + 0.06))
     const qFade = 1 - smoothstep(mapRange(revealProgress, PHASE.mysteryEnd - 0.02, PHASE.mysteryEnd))
     const qAlpha = qP * qFade
@@ -547,122 +509,7 @@ export function renderSqrt3Overlay(
     }
   }
 
-  // ── Seg 5: Proof — split triangle, Pythagorean theorem ──
-  if (revealProgress >= PHASE.proofBegin && revealProgress < PHASE.zoomBegin) {
-    const proofP = mapRange(revealProgress, PHASE.proofBegin, PHASE.proofEnd)
-    const proofFade = 1 - smoothstep(mapRange(revealProgress, PHASE.proofEnd - 0.02, PHASE.proofEnd))
-
-    // Phase 1: Right triangle appears (0-0.35 of proof)
-    const triP = smoothstep(mapRange(proofP, 0, 0.35))
-    if (triP > 0) {
-      drawRightTriangle(ctx, toX, axisY, ppu, isDark, opacity * triP * proofFade)
-    }
-
-    // Phase 2: Labels appear on sides (0.25-0.55 of proof)
-    const labelP = smoothstep(mapRange(proofP, 0.25, 0.55))
-    if (labelP > 0) {
-      const fs = Math.max(11, Math.min(14, ppu * 0.12))
-      ctx.font = `bold ${fs}px system-ui, sans-serif`
-      ctx.globalAlpha = opacity * labelP * proofFade
-
-      // Bottom label: "1"
-      ctx.fillStyle = proofCol(isDark)
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.fillText('1', (toX(0) + toX(1)) / 2, axisY + 6)
-
-      // Hypotenuse label: "2"
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-      const hypMidX = (toX(0) + toX(1)) / 2 + 8
-      const hypMidY = (axisY + (axisY - hPx(SQRT3, ppu))) / 2
-      ctx.fillText('2', hypMidX, hypMidY)
-
-      // Height label: "?"
-      ctx.fillStyle = heightCol(isDark)
-      ctx.textAlign = 'right'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('?', toX(0) - 8, axisY - hPx(SQRT3 / 2, ppu))
-    }
-
-    // Phase 3: Equation appears (0.50-0.80 of proof)
-    const eqP = smoothstep(mapRange(proofP, 0.50, 0.80))
-    if (eqP > 0) {
-      const fs = Math.max(12, Math.min(16, ppu * 0.14))
-      ctx.font = `bold ${fs}px system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.globalAlpha = opacity * eqP * proofFade
-
-      const eqX = toX(0.5)
-      const eqY = axisY + hPx(0.4, ppu)
-
-      // "1² + ?² = 2²"
-      ctx.fillStyle = proofCol(isDark)
-      ctx.fillText('1² + ?² = 2²', eqX, eqY)
-    }
-
-    // Phase 4: Answer reveals (0.75-1.0 of proof)
-    const ansP = smoothstep(mapRange(proofP, 0.75, 1.0))
-    if (ansP > 0) {
-      const fs = Math.max(12, Math.min(16, ppu * 0.14))
-      ctx.font = `bold ${fs}px system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.globalAlpha = opacity * ansP * proofFade
-
-      const eqX = toX(0.5)
-      const eqY = axisY + hPx(0.4, ppu) + (Math.max(12, Math.min(16, ppu * 0.14)) + 8)
-
-      // "?² = 3  →  ? = √3"
-      ctx.fillStyle = resultCol(isDark)
-      ctx.fillText('?² = 3  →  ? = √3', eqX, eqY)
-
-      // Update the "?" label on the height to "√3"
-      ctx.fillStyle = resultCol(isDark)
-      ctx.textAlign = 'right'
-      ctx.textBaseline = 'middle'
-      ctx.globalAlpha = opacity * ansP * proofFade
-      ctx.fillText('√3', toX(0) - 8, axisY - hPx(SQRT3 / 2, ppu))
-    }
-  }
-
-  // ── Seg 6: Zoom — irrationality zoom on decimals ──
-  // The actual number-line viewport zoom is driven by useConstantDemo.
-  // Here we just overlay a floating decimal expansion at the top of the screen.
-  if (revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin) {
-    const zoomP = mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomEnd)
-    const fadeIn = smoothstep(Math.min(1, zoomP * 4))
-
-    // Decimal expansion typing out
-    const decimalStr = '1.7320508075\u2026'
-    const charsToShow = Math.min(
-      decimalStr.length,
-      Math.floor(1 + zoomP * (decimalStr.length - 1))
-    )
-    const displayText = '\u221A3 = ' + decimalStr.substring(0, charsToShow)
-
-    const fs = Math.max(16, Math.min(24, cssWidth * 0.03))
-    ctx.font = `bold ${fs}px system-ui, monospace`
-    ctx.fillStyle = resultCol(isDark)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    ctx.globalAlpha = opacity * fadeIn
-    ctx.fillText(displayText, cssWidth / 2, 20)
-
-    // Subtitle
-    if (zoomP > 0.7) {
-      const neverP = smoothstep(mapRange(zoomP, 0.7, 0.9))
-      const subFs = Math.max(11, Math.min(15, cssWidth * 0.02))
-      ctx.font = `italic ${subFs}px system-ui, sans-serif`
-      ctx.fillStyle = subtextCol(isDark)
-      ctx.textAlign = 'center'
-      ctx.globalAlpha = opacity * neverP * 0.8
-      ctx.fillText('The digits never stop!', cssWidth / 2, 20 + fs + 6)
-    }
-  }
-
-  // ── Seg 7: Reveal — star, label, formula ──
+  // ── Seg 5: Reveal — star, label ──
   if (revealProgress >= PHASE.revealBegin) {
     const revealP = smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealEnd))
 
@@ -712,18 +559,6 @@ export function renderSqrt3Overlay(
       ctx.textBaseline = 'top'
       ctx.globalAlpha = opacity * subP * 0.7
       ctx.fillText('The tallest triangle', sqrt3X, axisY + 26)
-    }
-
-    // Formula for curious kids
-    if (revealP > 0.85) {
-      const formulaP = smoothstep(mapRange(revealP, 0.85, 1.0))
-      const fs = Math.max(9, Math.min(11, ppu * 0.09))
-      ctx.font = `${fs}px system-ui, sans-serif`
-      ctx.fillStyle = subtextCol(isDark)
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'bottom'
-      ctx.globalAlpha = opacity * formulaP * 0.5
-      ctx.fillText('1² + (√3)² = 2²', sqrt3X, starY - starR - fs - 10)
     }
   }
 

@@ -6,14 +6,12 @@
  *
  * Progress ranges are derived from sqrt3Demo.ts's phase constants:
  *
- *   Seg 0  0.00–0.10  Base — highlight segment from −1 to 1
- *   Seg 1  0.10–0.25  Build — equilateral triangle grows
- *   Seg 2  0.25–0.40  Height — dashed altitude drops from apex
- *   Seg 3  0.40–0.55  Rotate — compass swings height to number line
- *   Seg 4  0.55–0.65  Mystery — question mark at landing spot
- *   Seg 5  0.65–0.80  Proof — split triangle, Pythagorean theorem
- *   Seg 6  0.80–0.92  Zoom — irrationality zoom on decimals
- *   Seg 7  0.92–1.00  Reveal — star, label, formula
+ *   Seg 0  0.00–0.12  Base — highlight segment from −1 to 1
+ *   Seg 1  0.12–0.30  Build — compass-swing equilateral triangle
+ *   Seg 2  0.30–0.47  Height — dashed altitude drops from apex
+ *   Seg 3  0.47–0.65  Rotate — compass swings height to number line
+ *   Seg 4  0.65–0.80  Mystery — question mark at landing spot
+ *   Seg 5  0.80–1.00  Reveal — star, label, celebration
  */
 
 import type { DemoNarrationSegment } from './useConstantDemoNarration'
@@ -33,7 +31,7 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       "Here's our base — a line from minus one to one. " +
       "That's two whole units long.",
     startProgress: 0.00,
-    endProgress: 0.10,
+    endProgress: 0.12,
     animationDurationMs: 4500,
     scrubberLabel: 'The base',
   },
@@ -41,10 +39,10 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Build ─────────────────────────────────────────────────────────
   {
     ttsText:
-      "Now let's make a PERFECT triangle — one where every side is the same! " +
-      'Watch the sides grow up... and meet at the very tip!',
-    startProgress: 0.10,
-    endProgress: 0.25,
+      "Now let's make a PERFECT triangle — one where every side is the SAME length as the base. " +
+      "Watch — we'll swing a copy up from each end, just like a compass!",
+    startProgress: 0.12,
+    endProgress: 0.30,
     animationDurationMs: 6500,
     scrubberLabel: 'Building triangle',
   },
@@ -55,8 +53,8 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Beautiful! But how TALL is our triangle? ' +
       "Let's drop a line straight down from the tip. " +
       "That's the height! I wonder how long it is...",
-    startProgress: 0.25,
-    endProgress: 0.40,
+    startProgress: 0.30,
+    endProgress: 0.47,
     animationDurationMs: 6000,
     scrubberLabel: 'The height',
   },
@@ -67,8 +65,8 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       "Let's measure it! " +
       "We'll swing the height down onto the number line, like using a compass. " +
       'Watch it rotate...',
-    startProgress: 0.40,
-    endProgress: 0.55,
+    startProgress: 0.47,
+    endProgress: 0.65,
     animationDurationMs: 6000,
     scrubberLabel: 'Measuring it',
   },
@@ -78,35 +76,10 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'It landed past one but before two. ' +
       'What IS this mystery number?',
-    startProgress: 0.55,
-    endProgress: 0.65,
-    animationDurationMs: 5000,
-    scrubberLabel: 'Mystery number',
-  },
-
-  // ── Proof ─────────────────────────────────────────────────────────
-  {
-    ttsText:
-      "Here's the trick! Cut the triangle in half. " +
-      'Now we have a right triangle — the bottom is one, the long side is two. ' +
-      'One squared plus the height squared equals two squared. ' +
-      'So the height squared is... three!',
     startProgress: 0.65,
     endProgress: 0.80,
-    animationDurationMs: 8000,
-    scrubberLabel: 'Pythagorean proof',
-  },
-
-  // ── Zoom ──────────────────────────────────────────────────────────
-  {
-    ttsText:
-      "If we zoom way in, it's one point seven three two. " +
-      "And the digits keep going forever and ever! " +
-      "It never stops and never repeats.",
-    startProgress: 0.80,
-    endProgress: 0.92,
-    animationDurationMs: 6000,
-    scrubberLabel: 'Digits go forever',
+    animationDurationMs: 5000,
+    scrubberLabel: 'Mystery number',
   },
 
   // ── Reveal ────────────────────────────────────────────────────────
@@ -115,7 +88,7 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'This is the square root of three! ' +
       "It's the height of every perfect triangle, " +
       'and it shows up in honeycombs, crystals, and nature everywhere!',
-    startProgress: 0.92,
+    startProgress: 0.80,
     endProgress: 1.00,
     animationDurationMs: 5500,
     scrubberLabel: 'Square root of three',
