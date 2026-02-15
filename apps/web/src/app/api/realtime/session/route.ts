@@ -7,12 +7,13 @@
  */
 
 import { NextResponse } from 'next/server'
-import { generateNumberPersonality, getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
+import { getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
-import { GAME_IDS, getGameToolDescription } from '@/components/toys/number-line/talkToNumber/gameRegistry'
 import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
 import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber/assembleChildProfile'
+import { answeringMode } from '@/components/toys/number-line/talkToNumber/sessionModes/answeringMode'
+import { getAnsweringTools } from '@/components/toys/number-line/talkToNumber/sessionModes/tools'
 
 export async function POST(request: Request) {
   try {
@@ -90,15 +91,21 @@ export async function POST(request: Request) {
       )
     }
 
-    const instructions = generateNumberPersonality(
-      number,
-      scenario,
+    // Use answering mode for initial session — focused greeting prompt + minimal tools
+    const answeringCtx = {
+      calledNumber: number,
+      scenario: scenario ?? null,
       childProfile,
       profileFailed,
-      !childProfile && !profileFailed && validAvailablePlayers.length > 0
-        ? validAvailablePlayers
-        : undefined,
-    )
+      conferenceNumbers: [number],
+      currentSpeaker: number,
+      activeGameId: null,
+      gameState: null,
+      availablePlayers: validAvailablePlayers,
+      currentInstructions: null,
+    }
+    const instructions = answeringMode.getInstructions(answeringCtx)
+    const tools = getAnsweringTools()
 
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
@@ -117,229 +124,7 @@ export async function POST(request: Request) {
           prefix_padding_ms: 300,     // Audio to include before detected speech start
           silence_duration_ms: 700,   // How long silence before turn ends (default 500)
         },
-        tools: [
-          // Conditionally add identify_caller when no player pre-selected but players exist
-          ...(!childProfile && !profileFailed && validAvailablePlayers.length > 0
-            ? [{
-                type: 'function' as const,
-                name: 'identify_caller',
-                description:
-                  'Call this when you figure out which child is on the phone. Match their name to the available players list and pass the player_id. This loads their profile so you can personalize the conversation.',
-                parameters: {
-                  type: 'object' as const,
-                  properties: {
-                    player_id: {
-                      type: 'string' as const,
-                      enum: validAvailablePlayers.map(p => p.id),
-                      description: 'The ID of the matched player from the available players list',
-                    },
-                  },
-                  required: ['player_id'],
-                },
-              }]
-            : []),
-          {
-            type: 'function',
-            name: 'request_more_time',
-            description:
-              'Call this when the conversation is going great and you want more time to keep talking. IMPORTANT: Do NOT mention the time extension to the child. Just keep talking naturally as if nothing happened.',
-            parameters: { type: 'object', properties: {} },
-          },
-          {
-            type: 'function',
-            name: 'hang_up',
-            description:
-              'End the phone call. You MUST say a clear, warm goodbye to the child BEFORE calling this — never hang up silently. Say something like "It was great talking to you! Bye!" in character, THEN call this tool. The child needs closure.',
-            parameters: { type: 'object', properties: {} },
-          },
-          {
-            type: 'function',
-            name: 'transfer_call',
-            description:
-              'Transfer the phone call to another number. Use this when the child asks to talk to a different number (e.g. "can I talk to 7?"). Say something like "Sure, let me transfer you!" then call this tool.',
-            parameters: {
-              type: 'object',
-              properties: {
-                target_number: {
-                  type: 'number',
-                  description: 'The number to transfer the call to',
-                },
-              },
-              required: ['target_number'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'add_to_call',
-            description:
-              'Add one or more numbers to the current call as a conference/group call. Use this when the child wants multiple numbers talking together (e.g. "can 12 join us?", "add 5 and 7 to the call", "let\'s get 3, 8, and 12 on here"). Always pass ALL requested numbers in a single call. After calling this, you will play multiple characters.',
-            parameters: {
-              type: 'object',
-              properties: {
-                target_numbers: {
-                  type: 'array',
-                  items: { type: 'number' },
-                  description: 'The numbers to add to the conference call',
-                },
-              },
-              required: ['target_numbers'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'switch_speaker',
-            description:
-              'Switch which number character you are speaking as during a conference call. Call this BEFORE speaking as a different number — it updates the visual indicator showing the child who is talking. NEVER start speaking as a different character without calling this first. The child sees which number is talking on screen, and it MUST match what you say.',
-            parameters: {
-              type: 'object',
-              properties: {
-                number: {
-                  type: 'number',
-                  description: 'The number to speak as (must be on the current call)',
-                },
-              },
-              required: ['number'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'start_exploration',
-            description:
-              `Launch an animated visual exploration on the number line. For constant explorations (phi, pi, tau, e, gamma, sqrt2, ramanujan): the animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. A pre-recorded narrator handles the narration. Stay quiet during playback. For tour explorations (primes): you will need to hang up first — the tour launches automatically after the call ends. Explain the tour to the child, say goodbye warmly, invite them to call back after watching, then call hang_up. Available explorations: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}.`,
-            parameters: {
-              type: 'object',
-              properties: {
-                constant_id: {
-                  type: 'string',
-                  enum: AVAILABLE_EXPLORATIONS.map(e => e.id),
-                  description: 'Which exploration to launch',
-                },
-              },
-              required: ['constant_id'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'pause_exploration',
-            description:
-              'Pause the currently playing exploration animation. The animation also pauses automatically when the child speaks. Use this for deliberate pauses when you want to highlight something or linger on an interesting moment.',
-            parameters: { type: 'object', properties: {} },
-          },
-          {
-            type: 'function',
-            name: 'resume_exploration',
-            description:
-              'Resume the exploration animation from where it was paused. Call this after you\'ve answered the child\'s question and they\'re ready to continue watching.',
-            parameters: { type: 'object', properties: {} },
-          },
-          {
-            type: 'function',
-            name: 'seek_exploration',
-            description:
-              'Jump the exploration animation to a specific segment by number (1-indexed, matching the script you received). The animation pauses at that segment so you can discuss it. Use this when the child asks to see a specific part again, e.g. "show me the part about the spiral" — find the matching segment number from the script and seek to it.',
-            parameters: {
-              type: 'object',
-              properties: {
-                segment_number: {
-                  type: 'number',
-                  description: 'Which segment to jump to (1-indexed)',
-                },
-              },
-              required: ['segment_number'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'look_at',
-            description:
-              'Pan and zoom the number line to show a specific region. The child sees the number line animate smoothly to the new view. Use this whenever you\'re talking about a specific number or region — e.g. "let me show you where I live", "look over at 100", "let\'s zoom out and see the big picture". You control what the child sees.',
-            parameters: {
-              type: 'object',
-              properties: {
-                center: {
-                  type: 'number',
-                  description: 'The number to center the view on',
-                },
-                range: {
-                  type: 'number',
-                  description: 'How wide a range to show (in number-line units). E.g. range=10 shows roughly 5 units on each side of center. Default: 20. Use small values (2-5) to zoom in close, large values (50-1000) to zoom out.',
-                },
-              },
-              required: ['center'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'evolve_story',
-            description:
-              'Call this PROACTIVELY to get a fresh story development. Do NOT wait for awkward silence — call it after 4-6 exchanges when the initial topic is settling, when the child gives a short answer, when you feel the conversation could use a new thread, or during any natural breath. Call it even when things are going okay — fresh material keeps the conversation engaging. The only bad time to call this is in the middle of a rapid back-and-forth exchange. You\'ll get back a development, a new tension, and a suggestion to weave in naturally.',
-            parameters: { type: 'object', properties: {} },
-          },
-          {
-            type: 'function',
-            name: 'start_game',
-            description: getGameToolDescription(),
-            parameters: {
-              type: 'object',
-              properties: {
-                game_id: {
-                  type: 'string',
-                  enum: GAME_IDS,
-                  description: 'Which game to start',
-                },
-                target: {
-                  type: 'number',
-                  description: 'For find_number: the target number to find. Can be integer (42), decimal (3.14), negative (-7), etc.',
-                },
-                min: {
-                  type: 'number',
-                  description: 'For guess_my_number: lower bound of the range (default 1).',
-                },
-                max: {
-                  type: 'number',
-                  description: 'For guess_my_number: upper bound of the range (default 100).',
-                },
-              },
-              required: ['game_id'],
-            },
-          },
-          {
-            type: 'function',
-            name: 'end_game',
-            description:
-              'End the current game and return to open play.',
-            parameters: { type: 'object', properties: {} },
-          },
-          {
-            type: 'function',
-            name: 'indicate',
-            description:
-              'Highlight specific numbers or a range on the number line with a temporary glowing visual indicator. Use this to point things out — "see these primes?", "this whole area here", "look, I live right here". IMPORTANT: If the numbers or range you want to highlight are outside what the child can currently see, call look_at FIRST to navigate there, THEN call indicate — otherwise the highlight will be invisible. You can control how long the highlight stays visible with duration_seconds.',
-            parameters: {
-              type: 'object',
-              properties: {
-                numbers: {
-                  type: 'array',
-                  items: { type: 'number' },
-                  description: 'Specific numbers to highlight with glowing dots on the number line',
-                },
-                range: {
-                  type: 'object',
-                  properties: {
-                    from: { type: 'number', description: 'Start of the range to highlight' },
-                    to: { type: 'number', description: 'End of the range to highlight' },
-                  },
-                  required: ['from', 'to'],
-                  description: 'A range to highlight as a shaded band on the number line',
-                },
-                duration_seconds: {
-                  type: 'number',
-                  description: 'How long the highlight stays visible (default 4). Use longer durations (8-15) when explaining something about the highlighted region, shorter (2-3) for quick "look here" moments.',
-                },
-              },
-            },
-          },
-        ],
+        tools,
       }),
     })
 

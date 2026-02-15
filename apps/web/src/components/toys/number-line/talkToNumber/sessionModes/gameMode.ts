@@ -1,0 +1,56 @@
+/**
+ * Game mode — a game is active on the number line.
+ *
+ * Games with sessionTools/sessionInstructions (e.g. Nim) get focused
+ * tools + instructions. Legacy games get a minimal prompt with agentRules
+ * and restricted tools.
+ */
+
+import type { AgentMode, RealtimeTool } from './types'
+import { GAME_MAP } from '../gameRegistry'
+import {
+  TOOL_INDICATE,
+  TOOL_LOOK_AT,
+  TOOL_END_GAME,
+  TOOL_HANG_UP,
+  TOOL_REQUEST_MORE_TIME,
+} from './tools'
+
+export const gameMode: AgentMode = {
+  id: 'game',
+
+  getInstructions: (ctx) => {
+    const game = ctx.activeGameId ? GAME_MAP.get(ctx.activeGameId) : null
+    if (!game) {
+      // Fallback — shouldn't happen, but be safe
+      const displayN = Number.isInteger(ctx.calledNumber)
+        ? ctx.calledNumber.toString()
+        : ctx.calledNumber.toPrecision(6)
+      return `You are the number ${displayN}, on a phone call with a child. A game was active but couldn't be found. Call end_game to return to conversation.`
+    }
+
+    // Session-mode game: use its dedicated instructions
+    if (game.sessionInstructions) {
+      return game.sessionInstructions
+    }
+
+    // Legacy game: abbreviated identity + game rules
+    const displayN = Number.isInteger(ctx.calledNumber)
+      ? ctx.calledNumber.toString()
+      : ctx.calledNumber.toPrecision(6)
+
+    return `You are the number ${displayN}, on a phone call with a child.\n\nACTIVE GAME: ${game.name}\n${game.agentRules}\n\nKeep responses short. Be encouraging.`
+  },
+
+  getTools: (ctx) => {
+    const game = ctx.activeGameId ? GAME_MAP.get(ctx.activeGameId) : null
+
+    // Session-mode game: use its dedicated tools + end_game + hang_up
+    if (game?.sessionTools) {
+      return [...(game.sessionTools as RealtimeTool[]), TOOL_END_GAME, TOOL_HANG_UP]
+    }
+
+    // Legacy game: restricted tool set
+    return [TOOL_INDICATE, TOOL_LOOK_AT, TOOL_END_GAME, TOOL_HANG_UP, TOOL_REQUEST_MORE_TIME]
+  },
+}

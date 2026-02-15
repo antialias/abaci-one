@@ -444,9 +444,13 @@ Showing & Pointing:
 
   if (!options?.conference && GAMES.length > 0) {
     const gameList = GAMES.map(g => `${g.id} — ${g.description}`).join('; ')
-    sections.push(`Games:
-- Use start_game to play games on the number line. Available games: ${gameList}.
-- ${GAMES.map(g => g.agentRules).join(' ')}`)
+    sections.push(`Games:\n- Use start_game to play games on the number line. Available games: ${gameList}.`)
+    // Only include agentRules for legacy games (games without sessionInstructions
+    // get their rules in the main prompt; session-mode games get focused prompts)
+    const legacyGames = GAMES.filter(g => !g.sessionInstructions)
+    if (legacyGames.length > 0) {
+      sections.push(legacyGames.map(g => g.agentRules).join(' '))
+    }
   }
 
   return sections.join('\n\n')
