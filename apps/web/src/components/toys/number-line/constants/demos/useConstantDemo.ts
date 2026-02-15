@@ -9,6 +9,7 @@ import { sqrt2DemoViewport } from './sqrt2Demo'
 import { sqrt3DemoViewport } from './sqrt3Demo'
 import { ln2DemoViewport } from './ln2Demo'
 import { ramanujanDemoViewport } from './ramanujanDemo'
+import { feigenbaumDemoViewport } from './feigenbaumDemo'
 import {
   lerpViewport, snapViewport, computeViewportDeviation,
   FADE_IN_MS, FADE_OUT_MS,
@@ -61,6 +62,7 @@ function getDemoViewport(
   if (constantId === 'sqrt3') return sqrt3DemoViewport(cssWidth, cssHeight)
   if (constantId === 'ln2') return ln2DemoViewport(cssWidth, cssHeight)
   if (constantId === 'ramanujan') return ramanujanDemoViewport(cssWidth, cssHeight)
+  if (constantId === 'feigenbaum') return feigenbaumDemoViewport(cssWidth, cssHeight)
   return { center: 0, pixelsPerUnit: 100 }
 }
 
@@ -159,6 +161,37 @@ function getZoomKeyframes(
       // Seg 5: zoom back out for reveal labels
       { progress: 0.90, center: 0.55, pixelsPerUnit: ppuForRange(cssWidth, 0.15, 1.05) },
       { progress: 1.00, center: 0.55, pixelsPerUnit: ppuForRange(cssWidth, 0.15, 1.05) },
+    ]
+  }
+
+  if (constantId === 'feigenbaum') {
+    const base = feigenbaumDemoViewport(cssWidth, cssHeight)
+    return [
+      // Seg 0–1: Focus on iteration track at r=2.8
+      { progress: 0.000, ...base },
+      // Seg 2: Sliding dial — shift center right
+      { progress: 0.140, center: 2.9, pixelsPerUnit: ppuForRange(cssWidth, 2.5, 3.3) },
+      // Seg 3: Approaching split point
+      { progress: 0.200, center: 3.1, pixelsPerUnit: ppuForRange(cssWidth, 2.7, 3.5) },
+      // Seg 3: First split at r=3.2
+      { progress: 0.300, center: 3.1, pixelsPerUnit: ppuForRange(cssWidth, 2.8, 3.5) },
+      // Seg 5: Moving to r=3.5
+      { progress: 0.370, center: 3.3, pixelsPerUnit: ppuForRange(cssWidth, 2.9, 3.7) },
+      // Seg 6: Cascade region
+      { progress: 0.450, center: 3.45, pixelsPerUnit: ppuForRange(cssWidth, 3.0, 3.6) },
+      // Seg 7: Zoom out for full diagram
+      { progress: 0.560, center: 3.1, pixelsPerUnit: ppuForRange(cssWidth, 2.4, 3.7) },
+      // Seg 7: Hold for diagram
+      { progress: 0.640, center: 3.1, pixelsPerUnit: ppuForRange(cssWidth, 2.4, 3.7) },
+      // Seg 8: Zoom in for gap bars
+      { progress: 0.700, center: 3.25, pixelsPerUnit: ppuForRange(cssWidth, 2.9, 3.6) },
+      // Seg 9: Pan right for ratios
+      { progress: 0.770, center: 4.0, pixelsPerUnit: ppuForRange(cssWidth, 3.0, 5.5) },
+      // Seg 10: Wide view for universality
+      { progress: 0.820, center: 4.0, pixelsPerUnit: ppuForRange(cssWidth, 2.5, 5.5) },
+      // Seg 11: Center on delta
+      { progress: 0.910, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
+      { progress: 1.000, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
     ]
   }
 

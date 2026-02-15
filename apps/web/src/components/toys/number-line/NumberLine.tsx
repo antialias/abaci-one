@@ -29,6 +29,7 @@ import { renderSqrt2Overlay } from './constants/demos/sqrt2Demo'
 import { renderSqrt3Overlay } from './constants/demos/sqrt3Demo'
 import { renderLn2Overlay } from './constants/demos/ln2Demo'
 import { renderRamanujanOverlay } from './constants/demos/ramanujanDemo'
+import { renderFeigenbaumOverlay } from './constants/demos/feigenbaumDemo'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
 import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
@@ -41,6 +42,7 @@ import { SQRT2_DEMO_SEGMENTS, SQRT2_DEMO_TONE } from './constants/demos/sqrt2Dem
 import { SQRT3_DEMO_SEGMENTS, SQRT3_DEMO_TONE } from './constants/demos/sqrt3DemoNarration'
 import { LN2_DEMO_SEGMENTS, LN2_DEMO_TONE } from './constants/demos/ln2DemoNarration'
 import { RAMANUJAN_DEMO_SEGMENTS, RAMANUJAN_DEMO_TONE } from './constants/demos/ramanujanDemoNarration'
+import { FEIGENBAUM_DEMO_SEGMENTS, FEIGENBAUM_DEMO_TONE } from './constants/demos/feigenbaumDemoNarration'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { usePhiCenteringMode } from './constants/demos/usePhiCenteringMode'
@@ -63,6 +65,9 @@ import { lerpViewport } from './viewportAnimation'
 import type { Viewport } from './viewportAnimation'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
+
+// Playback speed steps (YouTube-style)
+const SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const
 
 // Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
 // gives more precision to later (dramatic) levels on the right.
@@ -117,6 +122,7 @@ const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
   sqrt3: { segments: SQRT3_DEMO_SEGMENTS, tone: SQRT3_DEMO_TONE },
   ln2: { segments: LN2_DEMO_SEGMENTS, tone: LN2_DEMO_TONE },
   ramanujan: { segments: RAMANUJAN_DEMO_SEGMENTS, tone: RAMANUJAN_DEMO_TONE },
+  feigenbaum: { segments: FEIGENBAUM_DEMO_SEGMENTS, tone: FEIGENBAUM_DEMO_TONE },
 }
 
 // EXPLORATION_RECOMMENDATIONS imported from registry
@@ -364,7 +370,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       .map(p => ({ id: p.id, name: p.name, emoji: p.emoji || '👤' }))
   }, [allPlayers])
 
-  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions } = useRealtimeVoice({
+  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions, modeDebug } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
     onPauseExploration: handleVoicePause,
@@ -865,6 +871,12 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     }
     if (ds.phase !== 'idle' && ds.constantId === 'ramanujan') {
       renderRamanujanOverlay(
+        ctx, stateRef.current, cssWidth, cssHeight,
+        resolvedTheme === 'dark', ds.revealProgress, ds.opacity
+      )
+    }
+    if (ds.phase !== 'idle' && ds.constantId === 'feigenbaum') {
+      renderFeigenbaumOverlay(
         ctx, stateRef.current, cssWidth, cssHeight,
         resolvedTheme === 'dark', ds.revealProgress, ds.opacity
       )
@@ -1684,6 +1696,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     // Constant exploration path
     exitTour()
     narration.reset()
+    // Reset speed UI to match (narration.reset() resets the ref + audio rate)
+    setDisplaySpeed(1)
+    setShowSpeedBadge(false)
 
     const onCall = voiceStateRef.current === 'active'
     console.log('[exploration] handleExploreConstant — onCall:', onCall, 'explorationId:', explorationId)
@@ -1954,7 +1969,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       return
     }
 
-    narration.stop() // stop TTS narration when user scrubs via keyboard
+    const wasPlaying = narration.isNarrating.current
+    narration.stop()
     let progress = ds.revealProgress
     switch (e.key) {
       case 'ArrowRight':
@@ -1979,6 +1995,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         return
     }
     setRevealProgress(progress)
+    if (wasPlaying && ds.constantId && progress < 1) {
+      requestAnimationFrame(() => narration.resume(ds.constantId!))
+    }
   }, [demoStateRef, setRevealProgress, narration])
 
   const handlePlayPauseClick = useCallback(() => {
@@ -1990,11 +2009,100 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     } else if (ds.constantId && ds.revealProgress >= 1) {
       // Replay from the beginning
       narration.reset()
+      setDisplaySpeed(1)
+      setShowSpeedBadge(false)
       startDemo(ds.constantId)
     } else if (ds.constantId && ds.revealProgress < 1) {
       narration.resume(ds.constantId)
     }
   }, [demoStateRef, narration, startDemo])
+
+  // --- Keyboard shortcuts help overlay ---
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // --- Playback speed display (synced from narration ref) ---
+  const [displaySpeed, setDisplaySpeed] = useState(1)
+  const speedFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showSpeedBadge, setShowSpeedBadge] = useState(false)
+
+  // Global keyboard controls when a demo is active (YouTube-style)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Escape always closes the shortcuts overlay
+      if (e.key === 'Escape') {
+        setShowShortcuts(false)
+        return
+      }
+
+      const ds = demoStateRef.current
+      if (ds.phase === 'idle') return
+      // Don't hijack keys when an input/textarea/select is focused
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // ? toggles shortcuts overlay
+      if (e.key === '?') {
+        setShowShortcuts(prev => !prev)
+        return
+      }
+
+      // < / > adjust playback speed (animation + audio)
+      if (e.key === '<' || e.key === '>') {
+        e.preventDefault()
+        const current = narration.playbackSpeedRef.current
+        const idx = SPEED_STEPS.findIndex(s => s >= current)
+        const newIdx = e.key === '>'
+          ? Math.min(SPEED_STEPS.length - 1, (idx === -1 ? SPEED_STEPS.length - 1 : idx) + 1)
+          : Math.max(0, (idx === -1 ? 0 : idx) - 1)
+        const newSpeed = SPEED_STEPS[newIdx]
+        narration.playbackSpeedRef.current = newSpeed
+        // Sync audio playback rate (with pitch preservation)
+        audioManager.configure({ playbackRate: newSpeed })
+        setDisplaySpeed(newSpeed)
+        // Flash the speed badge
+        setShowSpeedBadge(true)
+        if (speedFadeTimerRef.current) clearTimeout(speedFadeTimerRef.current)
+        speedFadeTimerRef.current = setTimeout(() => setShowSpeedBadge(false), 1500)
+        return
+      }
+
+      // Close shortcuts overlay on any playback key
+      setShowShortcuts(false)
+
+      if (e.key === ' ') {
+        e.preventDefault()
+        handlePlayPauseClick()
+        return
+      }
+
+      let delta = 0
+      switch (e.key) {
+        case 'ArrowRight': delta = e.shiftKey ? 0.02 : 0.05; break
+        case 'ArrowLeft':  delta = e.shiftKey ? -0.02 : -0.05; break
+        case 'l': case 'L': delta = 0.10; break
+        case 'j': case 'J': delta = -0.10; break
+        case 'Home': delta = -Infinity; break
+        case 'End':  delta = Infinity; break
+        default: return
+      }
+
+      e.preventDefault()
+      const wasPlaying = narration.isNarrating.current
+      narration.stop()
+      const target = delta === -Infinity ? 0
+        : delta === Infinity ? 1
+        : Math.max(0, Math.min(1, ds.revealProgress + delta))
+      setRevealProgress(target)
+      // Resume narration from the new position if it was playing before the scrub
+      if (wasPlaying && ds.constantId && target < 1) {
+        // Let setRevealProgress commit before resuming so the sequencer
+        // picks up the correct progress value
+        requestAnimationFrame(() => narration.resume(ds.constantId!))
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [demoStateRef, handlePlayPauseClick, narration, setRevealProgress, audioManager])
 
   const handleResumeFromUrl = useCallback(() => {
     setRestoredFromUrl(false)
@@ -2962,6 +3070,106 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             </div>
           )
         })()}
+
+      {/* Playback speed badge — flashes on change */}
+      {showSpeedBadge && demoStateRef.current.phase !== 'idle' && (
+        <div
+          data-element="speed-badge"
+          style={{
+            position: 'absolute',
+            top: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 190,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            color: '#fff',
+            borderRadius: 8,
+            padding: '6px 16px',
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: 15,
+            fontWeight: 600,
+            pointerEvents: 'none',
+            transition: 'opacity 0.3s',
+          }}
+        >
+          {displaySpeed}x
+        </div>
+      )}
+
+      {/* Keyboard shortcuts overlay */}
+      {showShortcuts && demoStateRef.current.phase !== 'idle' && (() => {
+        const dark = resolvedTheme === 'dark'
+        return (
+          <div
+            data-element="keyboard-shortcuts-overlay"
+            onClick={() => setShowShortcuts(false)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 200,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <div
+              data-element="keyboard-shortcuts-card"
+              onClick={e => e.stopPropagation()}
+              style={{
+                backgroundColor: dark ? '#1e293b' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#1e293b',
+                borderRadius: 12,
+                padding: '20px 28px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                maxWidth: 360,
+                width: '90%',
+                fontFamily: 'system-ui, sans-serif',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>Keyboard Shortcuts</span>
+                <button
+                  data-action="close-shortcuts"
+                  onClick={() => setShowShortcuts(false)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: dark ? '#94a3b8' : '#64748b', fontSize: 20, lineHeight: 1, padding: '2px 6px',
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+              {([
+                ['Space', 'Play / pause'],
+                ['\u2190 / \u2192', 'Scrub \u00b15%'],
+                ['Shift + \u2190 / \u2192', 'Fine scrub \u00b12%'],
+                ['J / L', 'Scrub \u00b110%'],
+                ['< / >', 'Playback speed'],
+                ['Home / End', 'Jump to start / end'],
+                ['?', 'Toggle this help'],
+                ['Esc', 'Close'],
+              ] as const).map(([key, desc]) => (
+                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>
+                  <kbd style={{
+                    backgroundColor: dark ? '#334155' : '#f1f5f9',
+                    color: dark ? '#e2e8f0' : '#334155',
+                    borderRadius: 4,
+                    padding: '2px 8px',
+                    fontSize: 12,
+                    fontFamily: 'system-ui, sans-serif',
+                    fontWeight: 600,
+                    border: `1px solid ${dark ? '#475569' : '#cbd5e1'}`,
+                    whiteSpace: 'nowrap',
+                  }}>{key}</kbd>
+                  <span style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginLeft: 12 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
       </div>
     </div>
   )

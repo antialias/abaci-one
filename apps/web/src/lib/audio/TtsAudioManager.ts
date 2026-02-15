@@ -12,6 +12,8 @@ export interface TtsAudioManagerConfig {
   subtitleBottomOffset: number
   /** Anchor subtitles to top or bottom of viewport (default 'bottom'). */
   subtitleAnchor: SubtitleAnchor
+  /** Audio playback speed multiplier (default 1). Pitch is preserved. */
+  playbackRate: number
 }
 
 export interface ManagerSnapshot {
@@ -95,6 +97,7 @@ export class TtsAudioManager {
   private _isPlaying = false
   private _isEnabled = false
   private _volume = 0.8
+  private _playbackRate = 1
   private _subtitleDurationMultiplier = 1
   private _currentSubtitleDurationMs = 0
   private _subtitleBottomOffset = 64
@@ -182,6 +185,15 @@ export class TtsAudioManager {
     }
     if (config.subtitleAnchor !== undefined) {
       this._subtitleAnchor = config.subtitleAnchor
+      changed = true
+    }
+    if (config.playbackRate !== undefined) {
+      this._playbackRate = Math.max(0.25, Math.min(4, config.playbackRate))
+      // Apply to currently playing audio element immediately
+      if (this._currentAudio) {
+        this._currentAudio.playbackRate = this._playbackRate
+        this._currentAudio.preservesPitch = true
+      }
       changed = true
     }
 
@@ -437,6 +449,8 @@ export class TtsAudioManager {
       }
 
       audio.volume = this._volume
+      audio.playbackRate = this._playbackRate
+      audio.preservesPitch = true
       this._currentAudio = audio
 
       // Expose audio duration for adaptive animation timing
@@ -758,7 +772,7 @@ export class TtsAudioManager {
 
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.volume = this._volume
-      utterance.rate = 0.9
+      utterance.rate = 0.9 * this._playbackRate
       utterance.onend = () => {
         this._activeUtterances.delete(utterance)
         settle(true)

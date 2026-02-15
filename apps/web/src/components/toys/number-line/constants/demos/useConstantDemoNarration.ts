@@ -58,6 +58,9 @@ export function useConstantDemoNarration(
   // Shared narration sequencer (handles TTS + segment gating)
   const { start: seqStart, startFrom: seqStartFrom, tick: seqTick, stop: seqStop, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef } = useNarrationSequencer()
 
+  // Playback speed multiplier (1 = normal, 0.5 = half, 2 = double)
+  const playbackSpeedRef = useRef(1)
+
   // Narration state refs
   const isNarratingRef = useRef(false)
   const activeConstantRef = useRef<string | null>(null)
@@ -112,7 +115,7 @@ export function useConstantDemoNarration(
       if (!cfg) { stopNarration(); return }
 
       // Drive progress via the shared sequencer
-      const result = seqTick()
+      const result = seqTick(playbackSpeedRef.current)
       if (!result) {
         // Sequencer finished or inactive — hold at final progress
         setRevealProgress(1)
@@ -184,14 +187,12 @@ export function useConstantDemoNarration(
     const segIdx = findSegmentForProgress(config.segments, ds.revealProgress)
     if (segIdx < 0) return
 
-    // Compute how far through this segment the scrubbed position is,
-    // then convert to a time offset so animFrac starts mid-segment
+    // Compute how far through this segment the scrubbed position is
     const seg = config.segments[segIdx]
     const segSpan = seg.endProgress - seg.startProgress
     const frac = segSpan > 0
       ? Math.max(0, Math.min(1, (ds.revealProgress - seg.startProgress) / segSpan))
       : 0
-    const offsetMs = frac * seg.animationDurationMs
 
     if (isNarratingRef.current) stopNarration()
 
@@ -207,10 +208,13 @@ export function useConstantDemoNarration(
 
     // Queue a seek so the TTS clip starts mid-sentence to match the
     // scrubbed position. playMp3() will apply it when the audio loads.
-    audioManager.seekNextAudio(offsetMs)
+    const seekMs = frac * seg.animationDurationMs
+    audioManager.seekNextAudio(seekMs)
 
-    // Start the sequencer from the found segment with time offset
-    seqStartFrom(config.segments, config.tone, segIdx, offsetMs)
+    // Start the sequencer from the found segment with the initial fraction.
+    // The sequencer maps elapsed time from frac→1 so the animation picks
+    // up exactly where the user scrubbed, regardless of adaptive timing.
+    seqStartFrom(config.segments, config.tone, segIdx, frac)
 
     // Start RAF tick loop
     startTickLoop()
@@ -248,7 +252,10 @@ export function useConstantDemoNarration(
   const reset = useCallback(() => {
     stopNarration()
     triggeredForRef.current = null
-  }, [stopNarration])
+    // Reset playback speed to 1x so it doesn't carry over between demos
+    playbackSpeedRef.current = 1
+    audioManager.configure({ playbackRate: 1 })
+  }, [stopNarration, audioManager])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -260,10 +267,10 @@ export function useConstantDemoNarration(
           rafRef.current = 0
         }
         seqStop()
-        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET })
+        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET, playbackRate: 1 })
       }
     }
   }, [seqStop, audioManager])
 
-  return { startIfNeeded, stop: stopNarration, resume: resumeNarration, isNarrating: isNarratingRef, markTriggered, reset, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef }
+  return { startIfNeeded, stop: stopNarration, resume: resumeNarration, isNarrating: isNarratingRef, markTriggered, reset, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef, playbackSpeedRef }
 }

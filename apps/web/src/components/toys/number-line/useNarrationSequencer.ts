@@ -124,6 +124,12 @@ export function useNarrationSequencer() {
   // to prevent animFrac jumps when duration changes from null to real.
   const segAudioDurRef = useRef<number | null>(null)
 
+  // Initial fraction for mid-segment resume: when startFrom is called
+  // with a non-zero initialFrac, tick() maps elapsed time from
+  // initialFrac→1 instead of 0→1, so the animation picks up exactly
+  // where the user scrubbed regardless of adaptive timing.
+  const initialFracRef = useRef(0)
+
   /** Speak a segment's TTS text, flagging ttsFinished when done. */
   const speakSegment = useCallback(
     (seg: SequencerSegment, tone: string, segIdx?: number) => {
@@ -175,6 +181,7 @@ export function useNarrationSequencer() {
       ttsFinishedRef.current = false
       completedEffDurationsRef.current = []
       segAudioDurRef.current = null
+      initialFracRef.current = 0
       speakSegment(segments[0], tone, 0)
     },
     [speakSegment]
@@ -185,21 +192,23 @@ export function useNarrationSequencer() {
    * Pre-populates completedEffDurationsRef with designed durations for
    * skipped segments so virtualTimeMs stays consistent.
    *
-   * @param offsetMs  Pre-advance the segment timer by this many ms so
-   *                  that animFrac starts mid-segment rather than at 0.
-   *                  Used when resuming from a scrubbed position.
+   * @param initialFrac  Starting animation fraction (0–1) within the
+   *                     segment. tick() maps elapsed time from
+   *                     initialFrac→1 so progress resumes from the
+   *                     exact scrubbed position regardless of adaptive
+   *                     timing stretching the effective duration.
    */
   const startFrom = useCallback(
-    (segments: SequencerSegment[], tone: string, fromIndex: number, offsetMs = 0) => {
+    (segments: SequencerSegment[], tone: string, fromIndex: number, initialFrac = 0) => {
       if (segments.length === 0 || fromIndex >= segments.length) return
       activeRef.current = true
       segmentsRef.current = segments
       toneRef.current = tone
       segmentIndexRef.current = fromIndex
-      // Backdate the start time so segElapsed begins at offsetMs
-      segmentStartMsRef.current = performance.now() - offsetMs
+      segmentStartMsRef.current = performance.now()
       ttsFinishedRef.current = false
       segAudioDurRef.current = null
+      initialFracRef.current = initialFrac
       // Pre-fill completed durations for skipped segments using designed durations
       const effDurations: number[] = []
       for (let i = 0; i < fromIndex; i++) {
@@ -238,7 +247,7 @@ export function useNarrationSequencer() {
       }
 
       const now = performance.now()
-      const segElapsed =
+      const rawElapsed =
         (now - segmentStartMsRef.current) * speedMultiplier
 
       // Adaptive timing: latch audio duration once known, then use it for
@@ -250,7 +259,19 @@ export function useNarrationSequencer() {
       const audioDurationMs = segAudioDurRef.current
       const effectiveDuration = computeEffectiveDuration(seg, audioDurationMs)
 
-      const animFrac = Math.min(1, segElapsed / effectiveDuration)
+      // When resuming mid-segment (initialFrac > 0), only the remaining
+      // portion of the segment's effective duration is left to play.
+      // Map elapsed time into initialFrac→1 so the animation picks up
+      // exactly where the user scrubbed, regardless of adaptive stretching.
+      const startFrac = initialFracRef.current
+      const remainingDuration = effectiveDuration * (1 - startFrac)
+      const remainingFrac = remainingDuration > 0
+        ? Math.min(1, rawElapsed / remainingDuration)
+        : 1
+      const animFrac = startFrac + remainingFrac * (1 - startFrac)
+
+      // For advancement gating, use elapsed relative to remaining duration
+      const segElapsed = rawElapsed
 
       // Advance when TTS is done AND animation is done or within tolerance.
       // The tolerance eliminates silent gaps: if the narrator finishes and
@@ -258,7 +279,7 @@ export function useNarrationSequencer() {
       // immediately rather than waiting in silence.
       let allDone = false
       let advancedToNext = false
-      const advanceThreshold = Math.max(0, effectiveDuration - ADVANCE_TOLERANCE_MS)
+      const advanceThreshold = Math.max(0, remainingDuration - ADVANCE_TOLERANCE_MS)
       const shouldAdvance = ttsFinishedRef.current && segElapsed >= advanceThreshold
 
       if (shouldAdvance) {
@@ -274,6 +295,7 @@ export function useNarrationSequencer() {
           segmentStartMsRef.current = now
           ttsFinishedRef.current = false
           segAudioDurRef.current = null
+          initialFracRef.current = 0 // new segment starts from 0
           speakSegment(segments[nextIdx], toneRef.current, nextIdx)
           advancedToNext = true
         } else {
@@ -294,9 +316,12 @@ export function useNarrationSequencer() {
           (now - segmentStartMsRef.current) * speedMultiplier
         const currentAudioMs = audioManager.getCurrentAudioDurationMs()
         const currentEffective = computeEffectiveDuration(currentSeg, currentAudioMs)
-        virtualTimeMs += Math.min(
+        // Account for initial frac when computing virtual time
+        const currentStartFrac = initialFracRef.current
+        const currentRemaining = currentEffective * (1 - currentStartFrac)
+        virtualTimeMs += currentStartFrac * currentEffective + Math.min(
           currentElapsed,
-          currentEffective
+          currentRemaining
         )
       }
 
