@@ -104,42 +104,51 @@ export function clearRegistry(): void {
 
 // ============================================================================
 // Game Registrations
+//
+// Only practice-break-ready games are statically imported so the practice
+// page bundle stays small.  All other games are lazy-loaded via
+// ensureAllGamesRegistered().
 // ============================================================================
 
-import { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import { matchingGame } from '@/arcade-games/matching'
-import { complementRaceGame } from '@/arcade-games/complement-race/index'
-import { cardSortingGame } from '@/arcade-games/card-sorting'
-import { yjsDemoGame } from '@/arcade-games/yjs-demo'
-import { rithmomachiaGame } from '@/arcade-games/rithmomachia'
 import { musicMatchingGame } from '@/arcade-games/music-matching'
 
-registerGame(memoryQuizGame)
 registerGame(matchingGame)
-registerGame(complementRaceGame)
-registerGame(cardSortingGame)
-registerGame(yjsDemoGame)
-registerGame(rithmomachiaGame)
 registerGame(musicMatchingGame)
 
-// Heavy games that aren't practice-break-ready are lazy-loaded to avoid
-// pulling large dependencies (e.g. 1.2 MB @svg-maps/world) into every page.
-let _heavyGamesPromise: Promise<void> | null = null
+// All other games are loaded on demand — only pages that need the full
+// registry (arcade, home, games list) call ensureAllGamesRegistered().
+let _allGamesPromise: Promise<void> | null = null
 
 /**
- * Ensure all games (including heavy ones) are registered.
+ * Ensure all games (including heavy/non-practice ones) are registered.
  * Call this on pages that need the full game registry (e.g. arcade listing).
  * Safe to call multiple times — only loads once.
  */
 export function ensureAllGamesRegistered(): Promise<void> {
-  if (!_heavyGamesPromise) {
-    _heavyGamesPromise = import('@/arcade-games/know-your-world').then(
-      ({ knowYourWorldGame }) => {
-        if (!registry.has(knowYourWorldGame.manifest.name)) {
-          registerGame(knowYourWorldGame)
+  if (!_allGamesPromise) {
+    _allGamesPromise = Promise.all([
+      import('@/arcade-games/memory-quiz'),
+      import('@/arcade-games/complement-race/index'),
+      import('@/arcade-games/card-sorting'),
+      import('@/arcade-games/yjs-demo'),
+      import('@/arcade-games/rithmomachia'),
+      import('@/arcade-games/know-your-world'),
+    ]).then((modules) => {
+      const games: GameDefinition<any, any, any>[] = [
+        modules[0].memoryQuizGame,
+        modules[1].complementRaceGame,
+        modules[2].cardSortingGame,
+        modules[3].yjsDemoGame,
+        modules[4].rithmomachiaGame,
+        modules[5].knowYourWorldGame,
+      ]
+      for (const game of games) {
+        if (!registry.has(game.manifest.name)) {
+          registerGame(game)
         }
       }
-    )
+    })
   }
-  return _heavyGamesPromise
+  return _allGamesPromise
 }

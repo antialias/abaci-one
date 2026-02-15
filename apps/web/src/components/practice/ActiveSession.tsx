@@ -5,14 +5,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import {
-  getCurrentProblemInfo,
-  type ProblemSlot,
-  type SessionHealth,
-  type SessionPart,
-  type SessionPartType,
-  type SessionPlan,
-  type SlotResult,
+import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
+import type {
+  ProblemSlot,
+  SessionHealth,
+  SessionPart,
+  SessionPartType,
+  SessionPlan,
+  SlotResult,
 } from '@/db/schema/session-plans'
 
 import { css } from '../../../styled-system/css'

@@ -74,11 +74,6 @@ export {
 } from '@/lib/arcade/player-ownership.client'
 
 /**
- * Helper for loading and validating game manifests
- */
-export { loadManifest } from './load-manifest'
-
-/**
  * Game definition helper
  */
 export { defineGame } from './define-game'

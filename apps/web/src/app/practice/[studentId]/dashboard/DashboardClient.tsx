@@ -36,7 +36,11 @@ import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useMyClassroom, useEnrolledClassrooms } from '@/hooks/useClassroom'
 import { usePlayerPresenceSocket } from '@/hooks/usePlayerPresenceSocket'
-import { useDeferProgression, useSessionMode } from '@/hooks/useSessionMode'
+import {
+  useDeferProgression,
+  useSessionMode,
+  type SessionModeWithComfort,
+} from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
@@ -93,6 +97,8 @@ interface DashboardClientProps {
   initialTab?: TabId
   /** Database user ID for session observation authorization */
   userId: string
+  /** Server-computed session mode (avoids client-side waterfall) */
+  initialSessionMode?: SessionModeWithComfort
 }
 
 /** Processed skill with computed metrics (for Skills tab) */
@@ -2783,6 +2789,7 @@ export function DashboardClient({
   problemHistory,
   initialTab = 'overview',
   userId,
+  initialSessionMode,
 }: DashboardClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -2821,7 +2828,12 @@ export function DashboardClient({
   const setMasteredSkillsMutation = useSetMasteredSkills()
 
   // Session mode - single source of truth for session planning decisions
-  const { data: sessionModeData, isLoading: isLoadingSessionMode } = useSessionMode(studentId)
+  // Server pre-computes this to avoid a client-side waterfall
+  const { data: sessionModeData, isLoading: isLoadingSessionMode } = useSessionMode(
+    studentId,
+    true,
+    initialSessionMode
+  )
   const sessionMode = sessionModeData?.sessionMode
   const comfortLevel = sessionModeData?.comfortLevel
   const comfortByMode = sessionModeData?.comfortByMode

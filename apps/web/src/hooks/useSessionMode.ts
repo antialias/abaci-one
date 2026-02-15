@@ -54,15 +54,21 @@ async function fetchSessionMode(playerId: string): Promise<SessionModeWithComfor
  *
  * @param playerId - The player ID
  * @param enabled - Whether to enable the query (default: true)
+ * @param initialData - Server-computed data to use immediately (avoids client waterfall)
  * @returns Query result with session mode
  */
-export function useSessionMode(playerId: string, enabled = true) {
+export function useSessionMode(
+  playerId: string,
+  enabled = true,
+  initialData?: SessionModeWithComfort
+) {
   return useQuery({
     queryKey: sessionModeKeys.forPlayer(playerId),
     queryFn: () => fetchSessionMode(playerId),
     enabled: enabled && !!playerId,
     staleTime: 30_000, // 30 seconds - skill state doesn't change frequently
     refetchOnWindowFocus: false,
+    initialData,
   })
 }
 

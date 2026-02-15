@@ -26,7 +26,7 @@ import type {
   SessionRetryState,
   SlotResult,
 } from '@/db/schema/session-plans'
-import { getSlotRetryStatus } from '@/db/schema/session-plans'
+import { getSlotRetryStatus } from '@/db/schema/session-plan-helpers'
 
 /**
  * State for redoing a previously completed problem

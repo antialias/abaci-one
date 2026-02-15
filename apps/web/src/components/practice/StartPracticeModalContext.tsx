@@ -17,7 +17,7 @@ import type {
   GameBreakSelectionMode,
   PracticeBreakGameConfig,
 } from '@/db/schema/session-plans'
-import { DEFAULT_PLAN_CONFIG, DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plans'
+import { DEFAULT_PLAN_CONFIG, DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plan-helpers'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import type { PracticeBreakConfig } from '@/lib/arcade/manifest-schema'

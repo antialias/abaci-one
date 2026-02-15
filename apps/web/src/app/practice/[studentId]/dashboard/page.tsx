@@ -9,6 +9,8 @@ import {
   getRecentSessions,
   getRecentSessionResults,
 } from '@/lib/curriculum/server'
+import { getSessionMode } from '@/lib/curriculum/session-mode'
+import { getSessionModeComfortLevel } from '@/lib/curriculum/session-mode-comfort'
 import { getActiveSessionPlan } from '@/lib/curriculum/session-planner'
 import { getDbUserId, getViewerId } from '@/lib/viewer'
 import { DashboardClient } from './DashboardClient'
@@ -58,8 +60,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const viewerId = await getViewerId()
   const user = await getOrCreateUser(viewerId)
 
-  // Fetch player data in parallel
-  const [player, curriculum, skills, recentSessions, activeSession, problemHistory] =
+  // Fetch player data in parallel (includes session mode to avoid client-side waterfall)
+  const [player, curriculum, skills, recentSessions, activeSession, problemHistory, sessionMode] =
     await Promise.all([
       getPlayer(studentId),
       getPlayerCurriculum(studentId),
@@ -67,6 +69,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       getRecentSessions(studentId, 200),
       getActiveSessionPlan(studentId),
       getRecentSessionResults(studentId, 2000), // For Skills tab BKT analysis
+      getSessionMode(studentId),
     ])
 
   // 404 if player doesn't exist
@@ -85,6 +88,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   // isPracticing=true means the skill is enabled for practice, NOT that it's mastered
   const currentPracticingSkillIds = skills.filter((s) => s.isPracticing).map((s) => s.skillId)
 
+  // Compute comfort level (depends on sessionMode, so must be after Promise.all)
+  const comfortResult = await getSessionModeComfortLevel(studentId, sessionMode)
+
   return (
     <DashboardClient
       studentId={studentId}
@@ -97,6 +103,11 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       problemHistory={problemHistory}
       initialTab={tab as 'overview' | 'skills' | 'history' | 'settings' | undefined}
       userId={user.id}
+      initialSessionMode={{
+        sessionMode,
+        comfortLevel: comfortResult.overall,
+        comfortByMode: comfortResult.byMode,
+      }}
     />
   )
 }
