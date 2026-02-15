@@ -370,7 +370,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       .map(p => ({ id: p.id, name: p.name, emoji: p.emoji || '👤' }))
   }, [allPlayers])
 
-  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions, modeDebug } = useRealtimeVoice({
+  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
     onPauseExploration: handleVoicePause,
