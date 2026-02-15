@@ -40,7 +40,7 @@ jobs:
 
       - name: Lint (Biome)
         working-directory: apps/web
-        run: npx @biomejs/biome lint .
+        run: npx @biomejs/biome@2.3.15 lint .
 
       - name: Run tests with coverage
         run: pnpm --filter @soroban/web run test:coverage
