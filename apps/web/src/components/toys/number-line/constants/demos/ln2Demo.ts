@@ -27,7 +27,7 @@ interface Bounce {
   isRight: boolean   // odd terms go right, even go left
 }
 
-const MAX_BOUNCES = 40
+const MAX_BOUNCES = 200
 
 const BOUNCES: Bounce[] = (() => {
   const arr: Bounce[] = []
@@ -115,7 +115,10 @@ function computeBounceBounds(
 // spanning seg 3 + seg 4 (progress 0.55–0.86). One curve = no velocity
 // discontinuity at the narration boundary. Ratio 0.86 → last bounce is
 // ~50× faster than the first, closing the spiral smoothly.
-const ACCEL_BOUNDS = computeBounceBounds(PHASE.cascadeBegin, PHASE.convergeEnd, 28, 0.86)
+// 188 bounces (13–200). Ratio 0.94 → first ~40 individually visible,
+// then a rapid blur closes the spiral to sub-pixel. Error after 200
+// terms is ~1/(2·200) = 0.0025 units — invisible at any zoom.
+const ACCEL_BOUNDS = computeBounceBounds(PHASE.cascadeBegin, PHASE.convergeEnd, 188, 0.94)
 
 // ── Colors ───────────────────────────────────────────────────────────
 
@@ -518,7 +521,7 @@ export function renderLn2Overlay(
   // never pauses at the seg 3/4 boundary.
   if (revealProgress >= PHASE.cascadeBegin) {
     const startBounce = 12
-    const count = 28 // bounces 13–40
+    const count = 188 // bounces 13–200
     const totalDuration = PHASE.convergeEnd - PHASE.cascadeBegin
 
     for (let j = 0; j < count; j++) {
