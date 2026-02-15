@@ -37,9 +37,12 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
   // Lazy load game registry only when modal opens
   useEffect(() => {
     if (isOpen && availableGames.length === 0) {
-      import('@/lib/arcade/game-registry').then(({ getAvailableGames }) => {
-        setAvailableGames(getAvailableGames())
-      })
+      import('@/lib/arcade/game-registry').then(
+        async ({ getAvailableGames, ensureAllGamesRegistered }) => {
+          await ensureAllGamesRegistered()
+          setAvailableGames(getAvailableGames())
+        }
+      )
     }
   }, [isOpen, availableGames.length])
   const [gameName, setGameName] = useState<string>('__choose_later__') // Special value = user will choose later

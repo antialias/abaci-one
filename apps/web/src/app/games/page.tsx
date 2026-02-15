@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { GamePreview } from '@/components/GamePreview'
-import { getAvailableGames } from '@/lib/arcade/game-registry'
+import { useAvailableGames } from '@/hooks/useAllGames'
 import { css } from '../../../styled-system/css'
 import { useFullscreen } from '../../contexts/FullscreenContext'
 import { useGameMode } from '../../contexts/GameModeContext'
@@ -43,8 +43,8 @@ function GamesPageContent() {
     return map
   }, [playerStatsArray])
 
-  // Get available games
-  const availableGames = getAvailableGames()
+  // Get available games (including lazy-loaded ones)
+  const availableGames = useAvailableGames()
 
   // Check if user has any stats to show (check if ANY player has stats)
   const hasStats =

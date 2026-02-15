@@ -8,7 +8,8 @@ import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
-import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
+import { getGame, hasGame } from '@/lib/arcade/game-registry'
+import { useAllGames } from '@/hooks/useAllGames'
 
 /**
  * /arcade - Renders the game for the user's current room
@@ -32,6 +33,7 @@ export default function RoomPage() {
   const { mutate: setRoomGame } = useSetRoomGame()
   const { mutate: createRoom, isPending: isCreatingRoom } = useCreateRoom()
   const [permissionError, setPermissionError] = useState<string | null>(null)
+  const allGames = useAllGames()
 
   // Auto-create room when user has no room
   // This happens when:
@@ -306,7 +308,7 @@ export default function RoomPage() {
             })}
 
             {/* Registry games */}
-            {getAllGames().map((gameDef) => {
+            {allGames.map((gameDef) => {
               const isAvailable = gameDef.manifest.available
               const isDisabled = !isHost || !isAvailable
               return (

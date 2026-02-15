@@ -112,7 +112,6 @@ import { complementRaceGame } from '@/arcade-games/complement-race/index'
 import { cardSortingGame } from '@/arcade-games/card-sorting'
 import { yjsDemoGame } from '@/arcade-games/yjs-demo'
 import { rithmomachiaGame } from '@/arcade-games/rithmomachia'
-import { knowYourWorldGame } from '@/arcade-games/know-your-world'
 import { musicMatchingGame } from '@/arcade-games/music-matching'
 
 registerGame(memoryQuizGame)
@@ -121,5 +120,26 @@ registerGame(complementRaceGame)
 registerGame(cardSortingGame)
 registerGame(yjsDemoGame)
 registerGame(rithmomachiaGame)
-registerGame(knowYourWorldGame)
 registerGame(musicMatchingGame)
+
+// Heavy games that aren't practice-break-ready are lazy-loaded to avoid
+// pulling large dependencies (e.g. 1.2 MB @svg-maps/world) into every page.
+let _heavyGamesPromise: Promise<void> | null = null
+
+/**
+ * Ensure all games (including heavy ones) are registered.
+ * Call this on pages that need the full game registry (e.g. arcade listing).
+ * Safe to call multiple times — only loads once.
+ */
+export function ensureAllGamesRegistered(): Promise<void> {
+  if (!_heavyGamesPromise) {
+    _heavyGamesPromise = import('@/arcade-games/know-your-world').then(
+      ({ knowYourWorldGame }) => {
+        if (!registry.has(knowYourWorldGame.manifest.name)) {
+          registerGame(knowYourWorldGame)
+        }
+      }
+    )
+  }
+  return _heavyGamesPromise
+}

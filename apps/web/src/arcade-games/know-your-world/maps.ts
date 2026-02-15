@@ -70,21 +70,30 @@ async function ensureMapSourcesLoaded(): Promise<void> {
 }
 
 /**
- * In browser context, load maps immediately at module initialization
- * This allows synchronous access in client components
+ * Promise tracking the map loading process.
+ * Initialized lazily on first access (not at module load) so the 1.2 MB
+ * @svg-maps chunks are only fetched when the game is actually played.
  */
 let browserMapsLoadingPromise: Promise<void> | null = null
-if (typeof window !== 'undefined') {
-  // Browser: Start loading immediately and cache the promise
-  browserMapsLoadingPromise = (async () => {
-    await ensureMapSourcesLoaded()
-    // Populate the caches eagerly
-    await getWorldMapData()
-    await getUSAMapData()
-  })().catch((err) => {
-    console.error('[Maps] Failed to load map data in browser:', err)
-    throw err
-  })
+
+/**
+ * Start loading maps in the browser. Safe to call multiple times — only
+ * kicks off the fetch once. Returns the shared loading promise.
+ */
+function startLoadingMaps(): Promise<void> {
+  if (!browserMapsLoadingPromise) {
+    browserMapsLoadingPromise = (async () => {
+      await ensureMapSourcesLoaded()
+      // Populate the caches
+      await getWorldMapData()
+      await getUSAMapData()
+    })().catch((err) => {
+      console.error('[Maps] Failed to load map data in browser:', err)
+      browserMapsLoadingPromise = null // allow retry
+      throw err
+    })
+  }
+  return browserMapsLoadingPromise
 }
 
 /**
@@ -2154,9 +2163,9 @@ function getMapDataSync(mapId: 'world' | 'usa'): MapData {
   const cache = mapId === 'world' ? worldMapDataCache : usaMapDataCache
 
   if (!cache) {
-    // In browser, if maps are still loading, throw the promise to trigger Suspense
-    if (typeof window !== 'undefined' && browserMapsLoadingPromise) {
-      throw browserMapsLoadingPromise
+    // In browser, start loading (if not already) and throw the promise to trigger Suspense
+    if (typeof window !== 'undefined') {
+      throw startLoadingMaps()
     }
     throw new Error(
       `[Maps] ${mapId} map not yet loaded. Use await getMapData() or ensure maps are preloaded.`

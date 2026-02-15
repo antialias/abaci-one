@@ -4,7 +4,7 @@ import type React from 'react'
 import { useMemo } from 'react'
 import { css } from '../../styled-system/css'
 import { useGameMode } from '../contexts/GameModeContext'
-import { getAllGames } from '../lib/arcade/game-registry'
+import { useAllGames } from '../hooks/useAllGames'
 import { GameCard } from './GameCard'
 
 // Game configuration defining player limits
@@ -31,11 +31,12 @@ interface GameCardConfig {
 }
 
 /**
- * Get all games from both legacy config and new registry
+ * Transform game definitions into legacy GameCardConfig format
  */
-function getAllGameConfigs(): Array<{ gameType: string; config: GameCardConfig }> {
-  // Get games from registry and transform to legacy format
-  const registryGames = getAllGames().map((gameDef) => ({
+function toGameConfigs(
+  games: ReturnType<typeof useAllGames>
+): Array<{ gameType: string; config: GameCardConfig }> {
+  return games.map((gameDef) => ({
     gameType: gameDef.manifest.name,
     config: {
       name: gameDef.manifest.displayName,
@@ -53,8 +54,6 @@ function getAllGameConfigs(): Array<{ gameType: string; config: GameCardConfig }
       available: gameDef.manifest.available,
     },
   }))
-
-  return registryGames
 }
 
 interface GameSelectorProps {
@@ -71,9 +70,10 @@ export function GameSelector({
   className,
 }: GameSelectorProps) {
   const { activePlayerCount } = useGameMode()
+  const registryGames = useAllGames()
 
   // Memoize the combined games list
-  const allGames = useMemo(() => getAllGameConfigs(), [])
+  const allGames = useMemo(() => toGameConfigs(registryGames), [registryGames])
 
   return (
     <div

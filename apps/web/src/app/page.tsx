@@ -8,7 +8,7 @@ import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { useHomeHero } from '@/contexts/HomeHeroContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import { getTutorialForEditor, type Tutorial } from '@/utils/tutorialConverter'
-import { getAvailableGames } from '@/lib/arcade/game-registry'
+import { useAvailableGames } from '@/hooks/useAllGames'
 import { HomeBlogSection } from '@/components/HomeBlogSection'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
@@ -271,6 +271,7 @@ export default function HomePage() {
   const t = useTranslations('home')
   const messages = useMessages() as any
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(1) // Default to "Friends techniques"
+  const availableGames = useAvailableGames()
 
   // Defer tutorial processing to after hydration for better SSR performance
   const [fullTutorial, setFullTutorial] = useState<Tutorial | null>(null)
@@ -634,7 +635,7 @@ export default function HomePage() {
             </div>
 
             <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '5' })}>
-              {getAvailableGames().map((game) => {
+              {availableGames.map((game) => {
                 const playersText =
                   game.manifest.maxPlayers === 1
                     ? t('arcade.soloChallenge')
