@@ -4,6 +4,9 @@
   "private": true,
   "description": "Beautiful Soroban Flashcard Generator - Monorepo",
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ],
     "overrides": {
       "canvas": "npm:canvas-mock@0.0.0"
     }
