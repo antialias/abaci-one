@@ -14,7 +14,7 @@
  */
 
 import { createId } from '@paralleldrive/cuid2'
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import {
@@ -734,13 +734,33 @@ export async function batchGetRecentSessionResults(
   // Include both 'completed' sessions and 'recency-refresh' sentinels
   // Recency-refresh sessions contain sentinel records that update lastPracticedAt
   // but are zero-weight for BKT mastery calculation
-  const sessions = await db.query.sessionPlans.findMany({
-    where: and(
-      inArray(schema.sessionPlans.playerId, playerIds),
-      inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
-    ),
-    orderBy: [desc(schema.sessionPlans.completedAt)],
-  })
+  //
+  // Use .select() instead of .findMany() to skip the massive `parts` column
+  // (which contains full problem generation traces, 10-50KB per session).
+  // Instead, extract just the partNumber→type mapping via a SQLite JSON subquery.
+  const sessions = await db
+    .select({
+      id: schema.sessionPlans.id,
+      playerId: schema.sessionPlans.playerId,
+      completedAt: schema.sessionPlans.completedAt,
+      results: schema.sessionPlans.results,
+      // Extract lightweight [{n: partNumber, t: type}, ...] from parts JSON
+      // instead of fetching the entire parts column with all slots/problems
+      partTypeMap: sql<string>`(
+        SELECT json_group_array(json_object(
+          'n', json_extract(value, '$.partNumber'),
+          't', json_extract(value, '$.type')
+        )) FROM json_each(${schema.sessionPlans.parts})
+      )`,
+    })
+    .from(schema.sessionPlans)
+    .where(
+      and(
+        inArray(schema.sessionPlans.playerId, playerIds),
+        inArray(schema.sessionPlans.status, ['completed', 'recency-refresh'])
+      )
+    )
+    .orderBy(desc(schema.sessionPlans.completedAt))
 
   // Cap sessions per player and flatten results with session context
   const sessionCountByPlayer = new Map<string, number>()
@@ -758,10 +778,12 @@ export async function batchGetRecentSessionResults(
       resultMap.set(session.playerId, list)
     }
 
+    // Build partNumber→type lookup from the lightweight extraction
+    const partTypes = JSON.parse(session.partTypeMap || '[]') as Array<{ n: number; t: string }>
+    const typeByPartNumber = new Map(partTypes.map((p) => [p.n, p.t]))
+
     for (const result of session.results) {
-      // Find the part type for this result
-      const part = session.parts.find((p) => p.partNumber === result.partNumber)
-      const partType = part?.type ?? 'linear'
+      const partType = (typeByPartNumber.get(result.partNumber) ?? 'linear') as SessionPartType
 
       list.push({
         ...result,

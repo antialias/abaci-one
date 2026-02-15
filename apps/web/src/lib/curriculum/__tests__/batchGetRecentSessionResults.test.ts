@@ -345,6 +345,82 @@ describe('batchGetRecentSessionResults', () => {
     }
   })
 
+  it('resolves all three part types correctly in a single session', async () => {
+    const { playerId } = await createTestStudent(ephemeralDb.db, 'three-types')
+
+    const parts = [
+      makeSessionPart(1, 'abacus'),
+      makeSessionPart(2, 'visualization'),
+      makeSessionPart(3, 'linear'),
+    ]
+    const results = [
+      makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
+      makeSlotResult({ partNumber: 2, slotIndex: 0, timestamp: new Date('2025-01-01T10:02:00Z') }),
+      makeSlotResult({ partNumber: 3, slotIndex: 0, timestamp: new Date('2025-01-01T10:04:00Z') }),
+    ]
+
+    await insertSession(ephemeralDb.db, {
+      id: 'session-3types',
+      playerId,
+      parts,
+      results,
+      completedAt: new Date('2025-01-01T10:10:00Z'),
+    })
+
+    const resultMap = await batchGetRecentSessionResults([playerId])
+    const playerResults = resultMap.get(playerId)!
+    expect(playerResults).toHaveLength(3)
+
+    // Sorted by timestamp desc, so linear (10:04) > visualization (10:02) > abacus (10:00)
+    expect(playerResults[0].partType).toBe('linear')
+    expect(playerResults[1].partType).toBe('visualization')
+    expect(playerResults[2].partType).toBe('abacus')
+  })
+
+  it('assigns same partType to multiple results from the same part', async () => {
+    const { playerId } = await createTestStudent(ephemeralDb.db, 'same-part')
+
+    const parts = [makeSessionPart(1, 'abacus', 3)]
+    const results = [
+      makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
+      makeSlotResult({ partNumber: 1, slotIndex: 1, timestamp: new Date('2025-01-01T10:01:00Z') }),
+      makeSlotResult({ partNumber: 1, slotIndex: 2, timestamp: new Date('2025-01-01T10:02:00Z') }),
+    ]
+
+    await insertSession(ephemeralDb.db, {
+      id: 'session-same-part',
+      playerId,
+      parts,
+      results,
+      completedAt: new Date('2025-01-01T10:10:00Z'),
+    })
+
+    const resultMap = await batchGetRecentSessionResults([playerId])
+    const playerResults = resultMap.get(playerId)!
+    expect(playerResults).toHaveLength(3)
+    expect(playerResults.every((r) => r.partType === 'abacus')).toBe(true)
+  })
+
+  it('handles session with empty parts array', async () => {
+    const { playerId } = await createTestStudent(ephemeralDb.db, 'empty-parts')
+
+    await insertSession(ephemeralDb.db, {
+      id: 'session-empty-parts',
+      playerId,
+      parts: [],
+      results: [
+        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
+      ],
+      completedAt: new Date('2025-01-01T10:10:00Z'),
+    })
+
+    const resultMap = await batchGetRecentSessionResults([playerId])
+    const playerResults = resultMap.get(playerId)!
+    expect(playerResults).toHaveLength(1)
+    // No parts to match, should fall back to 'linear'
+    expect(playerResults[0].partType).toBe('linear')
+  })
+
   it('getRecentSessionResults delegates to batch and returns correct results', async () => {
     // Import the single-player wrapper to verify it delegates correctly
     const { getRecentSessionResults } = await import('../session-planner')
