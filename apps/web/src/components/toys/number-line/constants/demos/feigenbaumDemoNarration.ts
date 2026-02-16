@@ -4,20 +4,21 @@
  * Pure data file — no React. Each segment maps a revealProgress range
  * to a TTS utterance and a minimum animation duration.
  *
- * 12 segments matching feigenbaumDemo.ts phase constants:
+ * 13 segments matching feigenbaumDemo.ts phase constants:
  *
- *   Seg  0  0.000–0.060  Meet the dot
- *   Seg  1  0.060–0.140  The rule
- *   Seg  2  0.140–0.200  Turn up the dial
- *   Seg  3  0.200–0.300  First split!
- *   Seg  4  0.300–0.370  Why it splits
- *   Seg  5  0.370–0.450  Four!
- *   Seg  6  0.450–0.560  The cascade
- *   Seg  7  0.560–0.640  The full picture
- *   Seg  8  0.640–0.730  Measuring gaps
- *   Seg  9  0.730–0.820  The magic ratio
- *   Seg 10  0.820–0.910  It's always the same!
- *   Seg 11  0.910–1.000  Delta
+ *   Seg  0a   0.000–0.025  Dot splash (silent)
+ *   Seg  0b   0.025–0.060  Meet the dot
+ *   Seg  1    0.060–0.140  The rule
+ *   Seg  2    0.140–0.200  Turn up the dial
+ *   Seg  3    0.200–0.300  First split!
+ *   Seg  4    0.300–0.370  Why it splits
+ *   Seg  5    0.370–0.450  Four!
+ *   Seg  6    0.450–0.560  The cascade
+ *   Seg  7    0.560–0.640  The full picture
+ *   Seg  8    0.640–0.730  Measuring gaps
+ *   Seg  9    0.730–0.820  The magic ratio
+ *   Seg 10a   0.820–0.910  Zoom into the fractal
+ *   Seg 10b   0.910–1.000  Delta
  */
 
 import type { DemoNarrationSegment } from './useConstantDemoNarration'
@@ -29,13 +30,22 @@ export const FEIGENBAUM_DEMO_TONE =
   'not that you told them about it. Be genuinely astonished at the universality reveal.'
 
 export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
-  // ── Seg 0: Meet the dot ───────────────────────────────────────────
+  // ── Seg 0a: Dot splashes into existence (silent animation) ────────
+  {
+    ttsText: '',
+    startProgress: 0.000,
+    endProgress: 0.025,
+    animationDurationMs: 1500,
+    scrubberLabel: 'Meet the dot',
+  },
+
+  // ── Seg 0b: Narrator introduces the dot and its rule ────────────
   {
     ttsText:
-      "Look! Here's a little dot, sitting on a track from zero to one. " +
-      "It has a rule: look at where you are, and look at the space LEFT above you. " +
-      "Multiply those two together, then the dial stretches the answer. That's where you jump next!",
-    startProgress: 0.000,
+      "See that little dot? It lives on a track from zero at the bottom to one at the top. " +
+      "It has a simple rule: take your number, and take how far you still have to go to reach one. " +
+      "Multiply those together, then the dial stretches the answer. That's where you jump next!",
+    startProgress: 0.025,
     endProgress: 0.060,
     animationDurationMs: 5000,
     scrubberLabel: 'Meet the dot',
@@ -44,9 +54,10 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Seg 1: The rule ───────────────────────────────────────────────
   {
     ttsText:
-      "Watch the rule in action! The dot is low, so there's lots of space above — big jump! " +
-      "Now it's higher, less room — smaller jump. " +
-      "Each time it bounces, the jumps get tinier until... it settles! One cozy home.",
+      "Watch! The dot is near zero — it's got almost all the way to one still to go. " +
+      "Big number times big distance — big jump! " +
+      "Now it's closer to one — not as far to go — smaller jump. " +
+      "Each bounce gets tinier until... it settles! One cozy home.",
     startProgress: 0.060,
     endProgress: 0.140,
     animationDurationMs: 7000,
@@ -117,8 +128,9 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       "Now watch THIS. Let's try EVERY dial setting at once, sweeping from left to right. " +
-      "One home... then the road forks into two... four... and then — WHOA! " +
-      "It EXPLODES into wildness! See how it looks like a tree with branches splitting and splitting?",
+      "See the dot bouncing? At each spot on the dial it's hopping between its homes — " +
+      "one home... two homes... four... and then — WHOA! " +
+      "So many homes it looks like a tree with branches splitting and splitting!",
     startProgress: 0.560,
     endProgress: 0.640,
     animationDurationMs: 7000,
@@ -129,9 +141,10 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       "See the gap between the first split and the second? That big green space? " +
-      "And THIS much smaller blue gap between the second split and the third? " +
-      "Let's use the little blue gap like a ruler. Watch — slide it across the big green gap. " +
-      "One... two... three... four... and a little bit more! About four and a half blue gaps fit inside the green one!",
+      "And THIS much smaller blue gap between the second and the third? " +
+      "I wonder — how many little blue pieces fit inside the big green one? " +
+      "Let's find out! Slide it across... one... two... three... four... and a little bit left over! " +
+      "About four and a half! Remember that number!",
     startProgress: 0.640,
     endProgress: 0.730,
     animationDurationMs: 9000,
@@ -141,36 +154,38 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Seg 9: The magic ratio ───────────────────────────────────────
   {
     ttsText:
-      "Now the blue gap becomes the big one! And we use the tiny pink gap as our new ruler. " +
-      "Slide it across... one... two... three... four... and a little bit more! " +
-      "Wait — it's the same number of times! " +
-      "Four and a half each time! Every gap fits inside the one before it the SAME number of times!",
+      "Now let's zoom in! The blue gap is the big one this time. And see this teeny tiny pink gap? " +
+      "Same question — how many pink pieces fit inside the blue one? " +
+      "One... two... three... four... and a little bit left over! " +
+      "Wait — FOUR AND A HALF AGAIN?! It's the same! " +
+      "Every time we zoom in, the big piece always holds about four and a half of the little piece!",
     startProgress: 0.730,
     endProgress: 0.820,
     animationDurationMs: 10000,
     scrubberLabel: 'Same trick, smaller!',
   },
 
-  // ── Seg 10: It's always the same! ────────────────────────────────
+  // ── Seg 10a: Zoom into the fractal ──────────────────────────────
   {
     ttsText:
-      "But HERE'S the really wild part. Try a completely DIFFERENT rule — " +
-      "different numbers, different branches. Measure the gaps and divide? " +
-      "SAME NUMBER! Four point six six nine! " +
-      "It doesn't matter what rule you use. " +
-      "Whenever things split faster and faster, this number is ALWAYS there!",
+      "Now let's zoom in to where it gets REALLY wild. " +
+      "See how the splits are piling up closer and closer together? " +
+      "Four homes, eight, sixteen, thirty-two — " +
+      "each split happens FASTER than the one before, " +
+      "and they're all crammed into a tinier and tinier space. " +
+      "It's like a fractal — the same pattern, repeating forever, smaller and smaller!",
     startProgress: 0.820,
     endProgress: 0.910,
-    animationDurationMs: 9000,
-    scrubberLabel: 'Always the same!',
+    animationDurationMs: 10000,
+    scrubberLabel: 'Zoom in!',
   },
 
-  // ── Seg 11: Delta ────────────────────────────────────────────────
+  // ── Seg 10b: Delta ──────────────────────────────────────────────
   {
     ttsText:
-      "That number is called delta, the Feigenbaum constant. About four point six six nine. " +
-      "Whenever anything in nature starts splitting faster and faster — " +
-      "dripping faucets, heartbeats, lasers — " +
+      "That number — four point six six nine — is called delta, the Feigenbaum constant. " +
+      "Whenever ANYTHING in nature starts splitting faster and faster — " +
+      "dripping faucets, heartbeats, lasers, even electrical circuits — " +
       "delta is hiding inside, counting the rhythm of the chaos.",
     startProgress: 0.910,
     endProgress: 1.000,

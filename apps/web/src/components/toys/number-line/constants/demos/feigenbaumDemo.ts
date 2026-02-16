@@ -8,8 +8,8 @@ import { numberToScreenX } from '../../numberLineTicks'
  * The child earns the bifurcation diagram by understanding what each dot does,
  * then discovers the universal ratio through gap measurement.
  *
- * 12 animation segments build from a single settling dot → period doubling →
- * cascade → bifurcation diagram → gap bars → ratio → universality → delta.
+ * 14 narration segments build from a single settling dot → period doubling →
+ * cascade → bifurcation diagram → gap bars → ratio → universality (3 maps) → delta.
  */
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -39,28 +39,6 @@ const RATIOS = [
   { value: INTERVALS[1].width / INTERVALS[2].width, label: 'Δ₂/Δ₃' },
 ]
 
-// Sine map bifurcation points: x → r·sin(πx)
-// Precomputed constants for universality segment
-const SINE_BIFURCATION = {
-  points: [
-    { r: 0.7172, label: 's₁' },  // period 1→2
-    { r: 0.8333, label: 's₂' },  // period 2→4
-    { r: 0.8585, label: 's₃' },  // period 4→8
-    { r: 0.8639, label: 's₄' },  // period 8→16
-  ],
-  get intervals() {
-    const p = this.points
-    return [
-      p[1].r - p[0].r, // ≈ 0.1161
-      p[2].r - p[1].r, // ≈ 0.0252
-      p[3].r - p[2].r, // ≈ 0.0054
-    ]
-  },
-  get ratios() {
-    const i = this.intervals
-    return [i[0] / i[1], i[1] / i[2]] // ≈ 4.61, ≈ 4.67
-  },
-}
 
 // ── Precomputed iteration sequences ─────────────────────────────────
 
@@ -122,6 +100,38 @@ const BIFURCATION_DATA: BifurcationColumn[] = (() => {
   return data
 })()
 
+// High-resolution bifurcation data for the cascade region (r=3.44–3.58)
+// Used when zoomed into the right end where period-doubling piles up
+const BIFURCATION_DATA_HIRES: BifurcationColumn[] = (() => {
+  const data: BifurcationColumn[] = []
+  const rMin = 3.44
+  const rMax = 3.58
+  const step = 0.0003
+  const warmup = 800
+  const collect = 300
+  const precision = 0.0005
+
+  for (let r = rMin; r <= rMax; r += step) {
+    let x = 0.5
+    for (let i = 0; i < warmup; i++) {
+      x = r * x * (1 - x)
+    }
+    const seen = new Set<number>()
+    const attractors: number[] = []
+    for (let i = 0; i < collect; i++) {
+      x = r * x * (1 - x)
+      const rounded = Math.round(x / precision) * precision
+      if (!seen.has(rounded)) {
+        seen.add(rounded)
+        attractors.push(x)
+      }
+    }
+    attractors.sort((a, b) => a - b)
+    data.push({ r, attractors })
+  }
+  return data
+})()
+
 // ── Utilities ────────────────────────────────────────────────────────
 
 function mapRange(v: number, s: number, e: number): number {
@@ -143,8 +153,10 @@ function easeInOut(t: number): number {
 // ── Phase timing (12 segments) ──────────────────────────────────────
 
 const PHASE = {
-  // Seg 0: Meet the dot
-  meetBegin: 0.000, meetEnd: 0.060,
+  // Seg 0a: Dot splash (silent animation)
+  splashBegin: 0.000, splashEnd: 0.025,
+  // Seg 0b: Meet the dot (narration)
+  meetBegin: 0.025, meetEnd: 0.060,
   // Seg 1: The rule — iterate at r=2.8, dot settles
   ruleBegin: 0.060, ruleEnd: 0.140,
   // Seg 2: Turn up the dial — slide r rightward
@@ -163,9 +175,9 @@ const PHASE = {
   gapBegin: 0.640, gapEnd: 0.730,
   // Seg 9: The magic ratio — ratio computation, pan right
   ratioBegin: 0.730, ratioEnd: 0.820,
-  // Seg 10: It's always the same! — universality
-  univBegin: 0.820, univEnd: 0.910,
-  // Seg 11: Delta — star reveal
+  // Seg 10a: Zoom into cascade — fractal self-similarity
+  zoomBegin: 0.820, zoomEnd: 0.910,
+  // Seg 10b: Delta — star reveal
   revealBegin: 0.910, revealEnd: 1.000,
 } as const
 
@@ -180,7 +192,6 @@ function bracket2Col(_isDark: boolean) { return '#3b82f6' }
 function bracket3Col(_isDark: boolean) { return '#ec4899' }
 function goldCol(_isDark: boolean) { return '#eab308' }
 function subtextCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
-function tealCol(_isDark: boolean) { return '#2dd4bf' }
 
 function columnColor(r: number, isDark: boolean): string {
   if (r < 3.0) return stableCol(isDark)
@@ -444,7 +455,7 @@ function drawGapMeasureInSitu(
       if (displayCount < 2.5) return '1… 2…'
       if (displayCount < 3.5) return '1… 2… 3…'
       if (displayCount < 4.3) return '1… 2… 3… 4…'
-      if (p2 >= 0.85) return `about 4 and a half!`
+      if (p2 >= 0.85) return `≈ 4½!`
       return '1… 2… 3… 4… and a bit…'
     })()
 
@@ -488,7 +499,7 @@ function drawGapMeasureInSitu(
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     ctx.globalAlpha = alpha * fadeIn
-    ctx.fillText(`about 4 and a half!`, (d1Left + d1Right) / 2, bracketY + 4)
+    ctx.fillText('≈ 4½', (d1Left + d1Right) / 2, bracketY + 4)
   }
 }
 
@@ -496,13 +507,14 @@ function drawGapMeasureInSitu(
  * Draw gap tiling for Seg 9: "Same trick, smaller!"
  *
  * Same in-situ approach as seg 8 but one level deeper: we tile pink (Δ₃)
- * copies inside the blue (Δ₂) gap, right on the number line. Then show
- * both counts side by side so the child sees they're nearly the same.
+ * copies inside the blue (Δ₂) gap, right on the number line. Then brighten
+ * the seg 8 tiling so both are visible simultaneously — the child sees
+ * the SAME count of ~4½ copies in both tilings without needing numbers.
  *
- * Phase 1 (0.00–0.10): Zoom bracket highlights blue gap as the new container
+ * Phase 1 (0.00–0.10): Brackets highlight blue gap as the new container
  * Phase 2 (0.10–0.55): Pink ruler slides across blue gap, counting copies
- * Phase 3 (0.55–0.75): Both counts shown as big side-by-side labels
- * Phase 4 (0.75–1.00): "Almost the same!" emphasis
+ * Phase 3 (0.55–0.80): Both tilings brighten; matching "≈4½" labels pulse
+ * Phase 4 (0.80–1.00): "Same count every time!" emphasis
  */
 function drawGapRatioVisual(
   ctx: CanvasRenderingContext2D,
@@ -526,38 +538,50 @@ function drawGapRatioVisual(
   const d2ScreenWidth = d2Right - d2Left
   const d3ScreenWidth = toX(INTERVALS[2].to) - toX(INTERVALS[2].from)
 
-  // Keep Seg 8's finished tiling visible but faded as context
-  const refAlpha = alpha * 0.2
+  // Seg 8's tiling brightens from faded context to full in phase 3
+  const refBrighten = smoothstep(mapRange(progress, 0.55, 0.70))
+  const refAlpha = alpha * (0.2 + refBrighten * 0.6)
   {
     const ratio = RATIOS[0].value
     const stampY = axisY - 16
     const stampH = 8
-    // Green bracket (faded)
+    // Green bracket
     ctx.strokeStyle = colors[0]
-    ctx.lineWidth = 1.5
-    ctx.globalAlpha = refAlpha * 0.5
+    ctx.lineWidth = 1.5 + refBrighten * 1.5
+    ctx.globalAlpha = refAlpha * (0.5 + refBrighten * 0.4)
     ctx.beginPath()
     ctx.moveTo(d1Left, bracketY - 6)
     ctx.lineTo(d1Left, bracketY)
     ctx.lineTo(d1Right, bracketY)
     ctx.lineTo(d1Right, bracketY - 6)
     ctx.stroke()
-    // Faded stamps
+    // Stamps (blue copies inside green)
     for (let i = 0; i < Math.floor(ratio) && i < 5; i++) {
       const stampLeft = d1Left + i * d2ScreenWidth
       const w = Math.min(d2ScreenWidth, d1Right - stampLeft)
       if (w <= 0) continue
       ctx.fillStyle = colors[1]
-      ctx.globalAlpha = refAlpha * 0.3
+      ctx.globalAlpha = refAlpha * (0.3 + refBrighten * 0.2)
       ctx.fillRect(stampLeft, stampY, w, stampH)
+      // Show stamp numbers when brightened
+      if (refBrighten > 0.3 && w > 10) {
+        ctx.font = 'bold 9px system-ui, sans-serif'
+        ctx.fillStyle = isDark ? '#fff' : '#000'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = refAlpha * refBrighten * 0.8
+        ctx.fillText(`${i + 1}`, stampLeft + d2ScreenWidth / 2, stampY + stampH / 2)
+      }
     }
-    // Faded count label
-    ctx.font = 'bold 10px system-ui, sans-serif'
-    ctx.fillStyle = gold
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    ctx.globalAlpha = refAlpha * 0.7
-    ctx.fillText(`≈ ${ratio.toFixed(1)}×`, (d1Left + d1Right) / 2, bracketY + 4)
+    // Count label under green tiling — appears/brightens in phase 3
+    if (refBrighten > 0) {
+      ctx.font = 'bold 12px system-ui, sans-serif'
+      ctx.fillStyle = gold
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      ctx.globalAlpha = alpha * refBrighten * 0.9
+      ctx.fillText('≈ 4½', (d1Left + d1Right) / 2, bracketY + 4)
+    }
   }
 
   // ── Phase 1: Highlight blue gap as new container ──────────────
@@ -668,7 +692,7 @@ function drawGapRatioVisual(
       if (displayCount < 2.5) return '1… 2…'
       if (displayCount < 3.5) return '1… 2… 3…'
       if (displayCount < 4.3) return '1… 2… 3… 4…'
-      if (p2 >= 0.85) return 'about 4 and a half!'
+      if (p2 >= 0.85) return 'about 4½!'
       return '1… 2… 3… 4… and a bit…'
     })()
 
@@ -680,155 +704,108 @@ function drawGapRatioVisual(
     ctx.fillText(countText, (d2Left + d2Right) / 2, bracketY + 4)
   }
 
-  // ── Phase 3: Both counts side by side ─────────────────────────
-  const p3 = mapRange(progress, 0.55, 0.75)
+  // ── Phase 3: Both tilings visible, matching "≈4½" labels ─────
+  const p3 = mapRange(progress, 0.55, 0.80)
   if (p3 > 0) {
+    // Redraw completed pink stamps in blue gap (held from phase 2)
+    const ratio2 = RATIOS[1].value
+    const stampY = axisY - 16
+    const stampH = 8
+    for (let i = 0; i < Math.floor(ratio2) && i < 5; i++) {
+      const stampLeft = d2Left + i * d3ScreenWidth
+      const w = Math.min(d3ScreenWidth, d2Right - stampLeft)
+      if (w <= 0) continue
+      ctx.fillStyle = colors[2]
+      ctx.globalAlpha = alpha * 0.35
+      ctx.fillRect(stampLeft, stampY, w, stampH)
+      if (w > 6) {
+        ctx.font = 'bold 8px system-ui, sans-serif'
+        ctx.fillStyle = isDark ? '#fff' : '#000'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = alpha * 0.8
+        ctx.fillText(`${i + 1}`, stampLeft + d3ScreenWidth / 2, stampY + stampH / 2)
+      }
+    }
+
+    // "≈4½" under blue tiling (pink-in-blue count)
     const fadeIn = smoothstep(p3)
-    const midX = (d1Left + d2Right) / 2
-    const summaryY = axisY - 40
-
-    // First count in green
-    ctx.font = 'bold 15px system-ui, sans-serif'
-    ctx.fillStyle = colors[0]
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'middle'
-    ctx.globalAlpha = alpha * fadeIn * 0.9
-    ctx.fillText(`${RATIOS[0].value.toFixed(1)}×`, midX - 10, summaryY)
-
-    // "≈" symbol
-    ctx.font = 'bold 18px system-ui, sans-serif'
+    ctx.font = 'bold 12px system-ui, sans-serif'
     ctx.fillStyle = gold
     ctx.textAlign = 'center'
-    ctx.globalAlpha = alpha * fadeIn
-    ctx.fillText('≈', midX, summaryY)
-
-    // Second count in blue
-    ctx.font = 'bold 15px system-ui, sans-serif'
-    ctx.fillStyle = colors[1]
-    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
     ctx.globalAlpha = alpha * fadeIn * 0.9
-    ctx.fillText(`${RATIOS[1].value.toFixed(1)}×`, midX + 10, summaryY)
+    ctx.fillText('≈ 4½', (d2Left + d2Right) / 2, bracketY + 4)
+
+    // Connecting line between the two "≈4½" labels — visual echo
+    if (fadeIn > 0.3) {
+      const lineAlpha = smoothstep(mapRange(fadeIn, 0.3, 0.7))
+      const greenMidX = (d1Left + d1Right) / 2
+      const blueMidX = (d2Left + d2Right) / 2
+      const lineY = bracketY + 13
+      ctx.beginPath()
+      ctx.moveTo(greenMidX, lineY)
+      ctx.lineTo(blueMidX, lineY)
+      ctx.strokeStyle = gold
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([3, 3])
+      ctx.globalAlpha = alpha * lineAlpha * 0.5
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      // "same!" label on the connecting line
+      if (lineAlpha > 0.5) {
+        const sameAlpha = smoothstep(mapRange(lineAlpha, 0.5, 1.0))
+        ctx.font = 'bold 10px system-ui, sans-serif'
+        ctx.fillStyle = gold
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.globalAlpha = alpha * sameAlpha * 0.8
+        ctx.fillText('same!', (greenMidX + blueMidX) / 2, lineY + 2)
+      }
+    }
   }
 
-  // ── Phase 4: "Almost the same!" ───────────────────────────────
-  const p4 = mapRange(progress, 0.75, 1.0)
+  // ── Phase 4: "Same count every time!" emphasis ────────────────
+  const p4 = mapRange(progress, 0.80, 1.0)
   if (p4 > 0) {
     const fadeIn = smoothstep(p4)
-    const midX = (d1Left + d2Right) / 2
-    const summaryY = axisY - 40
 
-    // Redraw counts (held from phase 3)
-    ctx.font = 'bold 15px system-ui, sans-serif'
-    ctx.fillStyle = colors[0]
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'middle'
-    ctx.globalAlpha = alpha * 0.9
-    ctx.fillText(`${RATIOS[0].value.toFixed(1)}×`, midX - 10, summaryY)
-    ctx.font = 'bold 18px system-ui, sans-serif'
+    // Hold both completed tilings and labels (drawn above via refBrighten)
+
+    // Redraw completed pink stamps (held)
+    const ratio2 = RATIOS[1].value
+    const stampY = axisY - 16
+    const stampH = 8
+    for (let i = 0; i < Math.floor(ratio2) && i < 5; i++) {
+      const stampLeft = d2Left + i * d3ScreenWidth
+      const w = Math.min(d3ScreenWidth, d2Right - stampLeft)
+      if (w <= 0) continue
+      ctx.fillStyle = colors[2]
+      ctx.globalAlpha = alpha * 0.35
+      ctx.fillRect(stampLeft, stampY, w, stampH)
+    }
+
+    // Both "≈4½" labels held
+    ctx.font = 'bold 12px system-ui, sans-serif'
     ctx.fillStyle = gold
     ctx.textAlign = 'center'
-    ctx.globalAlpha = alpha
-    ctx.fillText('≈', midX, summaryY)
-    ctx.font = 'bold 15px system-ui, sans-serif'
-    ctx.fillStyle = colors[1]
-    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
     ctx.globalAlpha = alpha * 0.9
-    ctx.fillText(`${RATIOS[1].value.toFixed(1)}×`, midX + 10, summaryY)
+    ctx.fillText('≈ 4½', (d1Left + d1Right) / 2, bracketY + 4)
+    ctx.fillText('≈ 4½', (d2Left + d2Right) / 2, bracketY + 4)
 
-    // Emphasis text
+    // Emphasis text above the tilings
+    const emphY = axisY - 34
     ctx.font = 'bold 14px system-ui, sans-serif'
     ctx.fillStyle = gold
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.globalAlpha = alpha * fadeIn
-    ctx.fillText('Almost the same number!', midX, summaryY - 20)
+    ctx.fillText('Same count every time!', (d1Left + d2Right) / 2, emphY)
   }
 }
 
-/**
- * Draw universality hint: sine map split markers + ratio labels.
- */
-function drawUniversalityHint(
-  ctx: CanvasRenderingContext2D,
-  toX: ToX,
-  axisY: number,
-  verticalScale: number,
-  progress: number,
-  isDark: boolean,
-  alpha: number,
-) {
-  if (alpha <= 0) return
-
-  const teal = tealCol(isDark)
-  const gold = goldCol(isDark)
-
-  // Draw "Different rule!" label
-  const labelP = smoothstep(mapRange(progress, 0.0, 0.2))
-  if (labelP > 0) {
-    ctx.font = 'bold 13px system-ui, sans-serif'
-    ctx.fillStyle = teal
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'bottom'
-    ctx.globalAlpha = alpha * labelP
-    ctx.fillText('Sine map: x → r·sin(πx)', toX(3.25), axisY - verticalScale - 20)
-  }
-
-  // Draw split markers at sine bifurcation r-values (mapped onto same visual region)
-  // We remap sine r-values [0.7, 0.87] to screen region [2.8, 3.57] to show alongside
-  const remapR = (sineR: number) => 2.8 + (sineR - 0.7) * (3.57 - 2.8) / (0.87 - 0.7)
-
-  for (let i = 0; i < SINE_BIFURCATION.points.length; i++) {
-    const ptP = smoothstep(mapRange(progress, 0.1 + i * 0.1, 0.25 + i * 0.1))
-    if (ptP <= 0) continue
-
-    const rMapped = remapR(SINE_BIFURCATION.points[i].r)
-    const sx = toX(rMapped)
-
-    // Vertical split marker
-    ctx.beginPath()
-    ctx.moveTo(sx, axisY - verticalScale * 0.1)
-    ctx.lineTo(sx, axisY - verticalScale * 0.9)
-    ctx.strokeStyle = teal
-    ctx.lineWidth = 2
-    ctx.globalAlpha = alpha * ptP * 0.6
-    ctx.stroke()
-
-    // Diamond marker
-    const dy = axisY - verticalScale * 0.5
-    ctx.beginPath()
-    ctx.moveTo(sx, dy - 4)
-    ctx.lineTo(sx + 4, dy)
-    ctx.lineTo(sx, dy + 4)
-    ctx.lineTo(sx - 4, dy)
-    ctx.closePath()
-    ctx.fillStyle = teal
-    ctx.globalAlpha = alpha * ptP * 0.8
-    ctx.fill()
-  }
-
-  // Show sine map ratios converging to same number
-  const ratioP = smoothstep(mapRange(progress, 0.5, 0.8))
-  if (ratioP > 0) {
-    const sineRatios = SINE_BIFURCATION.ratios
-    const textX = toX(3.25)
-    ctx.font = 'bold 12px system-ui, sans-serif'
-    ctx.textAlign = 'center'
-
-    ctx.fillStyle = teal
-    ctx.textBaseline = 'top'
-    ctx.globalAlpha = alpha * ratioP * 0.9
-    ctx.fillText(`Ratios: ${sineRatios[0].toFixed(2)}, ${sineRatios[1].toFixed(2)}`, textX, axisY + 8)
-
-    // "Same number!" in gold
-    const sameP = smoothstep(mapRange(progress, 0.7, 1.0))
-    if (sameP > 0) {
-      ctx.font = 'bold 14px system-ui, sans-serif'
-      ctx.fillStyle = gold
-      ctx.globalAlpha = alpha * sameP
-      ctx.fillText(`→ Same! ≈ ${DELTA.toFixed(3)}`, textX, axisY + 26)
-    }
-  }
-}
 
 /** Draw attractor dots for a single r-value column. */
 function drawBifurcationColumn(
@@ -902,33 +879,62 @@ export function renderFeigenbaumOverlay(
 
   ctx.save()
 
-  // ── Seg 0: Meet the dot ──────────────────────────────────────────
-  // A dot fades in at r=2.8, starting position x=0.2
-  if (revealProgress >= PHASE.meetBegin && revealProgress < PHASE.ruleEnd) {
-    const meetP = smoothstep(mapRange(revealProgress, PHASE.meetBegin, PHASE.meetEnd))
+  // ── Seg 0a+0b: Dot splash + Meet the dot ─────────────────────────
+  // 0a (splashBegin–splashEnd): silent — dot splashes into existence
+  // 0b (meetBegin–meetEnd): narration — introduce the dot and its rule
+  if (revealProgress >= PHASE.splashBegin && revealProgress < PHASE.ruleEnd) {
     const dotX = toX(2.8)
     const dotY = axisY - 0.2 * verticalScale
+    const col = stableCol(isDark)
 
-    // Pulsing dot appears
-    const pulse = 1 + 0.15 * Math.sin(revealProgress * PI * 30)
-    ctx.beginPath()
-    ctx.arc(dotX, dotY, 6 * meetP * pulse, 0, PI * 2)
-    ctx.fillStyle = stableCol(isDark)
-    ctx.globalAlpha = opacity * meetP
-    ctx.fill()
+    // Splash phase: dot materialises with expanding rings
+    const splashP = smoothstep(mapRange(revealProgress, PHASE.splashBegin, PHASE.splashEnd))
 
-    // "r = 2.8" label below axis
-    if (meetP > 0.5) {
-      const labelP = smoothstep(mapRange(meetP, 0.5, 1))
+    // Expanding splash rings (fade out as they grow)
+    if (splashP > 0 && splashP < 1) {
+      const ringCount = 3
+      for (let i = 0; i < ringCount; i++) {
+        const ringDelay = i * 0.2
+        const ringP = smoothstep(mapRange(splashP, ringDelay, ringDelay + 0.6))
+        if (ringP <= 0) continue
+        const ringRadius = 6 + ringP * 30
+        const ringAlpha = opacity * (1 - ringP) * 0.5
+        ctx.beginPath()
+        ctx.arc(dotX, dotY, ringRadius, 0, PI * 2)
+        ctx.strokeStyle = col
+        ctx.lineWidth = 2.5 * (1 - ringP * 0.6)
+        ctx.globalAlpha = ringAlpha
+        ctx.stroke()
+      }
+    }
+
+    // The dot itself scales up during the splash, then stays at full size
+    const dotScale = smoothstep(mapRange(splashP, 0.2, 0.8))
+    const meetP = smoothstep(mapRange(revealProgress, PHASE.meetBegin, PHASE.meetEnd))
+
+    // Gentle pulse once dot is fully materialised (during narration segment)
+    const pulse = dotScale >= 1 ? 1 + 0.15 * Math.sin(revealProgress * PI * 30) : 1
+    const dotRadius = 6 * dotScale * pulse
+    if (dotRadius > 0) {
+      ctx.beginPath()
+      ctx.arc(dotX, dotY, dotRadius, 0, PI * 2)
+      ctx.fillStyle = col
+      ctx.globalAlpha = opacity * dotScale
+      ctx.fill()
+    }
+
+    // "r = 2.8" label below axis — appears during narration segment
+    if (meetP > 0.3) {
+      const labelP = smoothstep(mapRange(meetP, 0.3, 0.7))
       ctx.font = 'bold 12px system-ui, sans-serif'
-      ctx.fillStyle = stableCol(isDark)
+      ctx.fillStyle = col
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.globalAlpha = opacity * labelP * 0.8
       ctx.fillText('r = 2.8', dotX, axisY + 6)
     }
 
-    // The rule formula — visible from mid seg 0 through seg 1
+    // The rule formula — visible from mid seg 0b through seg 1
     if (meetP > 0.4) {
       const formulaP = smoothstep(mapRange(meetP, 0.4, 0.8))
       const formulaFade = 1 - smoothstep(mapRange(revealProgress, PHASE.ruleEnd - 0.02, PHASE.ruleEnd))
@@ -942,10 +948,10 @@ export function renderFeigenbaumOverlay(
       ctx.globalAlpha = formulaAlpha * 0.9
       ctx.fillText('The rule:', dotX + 20, axisY - verticalScale * 0.7 - 14)
 
-      // "next = dial × spot × room left" (kid-friendly version)
+      // "next = dial × you × distance to 1" (kid-friendly version)
       ctx.font = '11px system-ui, sans-serif'
       ctx.globalAlpha = formulaAlpha * 0.8
-      ctx.fillText('next = dial × spot × room left', dotX + 20, axisY - verticalScale * 0.7)
+      ctx.fillText('next = dial × you × distance to 1', dotX + 20, axisY - verticalScale * 0.7)
 
       // Actual formula underneath (smaller, for the curious)
       ctx.font = '10px system-ui, sans-serif'
@@ -984,7 +990,7 @@ export function renderFeigenbaumOverlay(
       const topY = axisY - verticalScale
       const trackX = toX(2.8)
 
-      // "spot" label — bracket from axis to dot
+      // "you" label — bracket from axis (0) to dot
       ctx.strokeStyle = stableCol(isDark)
       ctx.lineWidth = 1
       ctx.setLineDash([2, 2])
@@ -1000,9 +1006,9 @@ export function renderFeigenbaumOverlay(
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
       ctx.globalAlpha = annotAlpha * 0.7
-      ctx.fillText('spot', trackX + 15, (axisY + spotY) / 2)
+      ctx.fillText('you', trackX + 15, (axisY + spotY) / 2)
 
-      // "room left" label — bracket from dot to top
+      // "distance to 1" label — bracket from dot to top (1)
       ctx.strokeStyle = isDark ? '#86efac' : '#16a34a'
       ctx.lineWidth = 1
       ctx.setLineDash([2, 2])
@@ -1015,7 +1021,7 @@ export function renderFeigenbaumOverlay(
 
       ctx.fillStyle = isDark ? '#86efac' : '#16a34a'
       ctx.globalAlpha = annotAlpha * 0.7
-      ctx.fillText('room left', trackX + 15, (spotY + topY) / 2)
+      ctx.fillText('distance to 1', trackX + 15, (spotY + topY) / 2)
     }
   }
 
@@ -1300,18 +1306,23 @@ export function renderFeigenbaumOverlay(
   // branches, and chaos all emerge together.
   if (revealProgress >= PHASE.fullBegin) {
     const fullP = mapRange(revealProgress, PHASE.fullBegin, PHASE.fullEnd)
-    // Dim during later phases
+    // Dim during gap/ratio phases, brighten during Seg 10 zoom-in
     const dimFactor = (() => {
       if (revealProgress < PHASE.gapBegin) return 1.0
-      if (revealProgress < PHASE.univBegin) return 0.3
-      return 0.15
+      if (revealProgress < PHASE.zoomBegin) return 0.3
+      // During Seg 10: brighten back up as we zoom into the fractal
+      return 0.3 + 0.7 * smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.06))
     })()
 
     // Full sweep: r=2.5 → 3.58 across the entire segment
     const sweepR = 2.5 + smoothstep(mapRange(fullP, 0, 0.85)) * 1.08
 
+    // During Seg 10a, overlay hi-res data for the cascade region
+    const useHires = revealProgress >= PHASE.zoomBegin
+
     // Batch render for performance
     const groups: Map<string, BifurcationColumn[]> = new Map()
+    // Always render the base dataset
     for (const col of BIFURCATION_DATA) {
       if (col.r > sweepR) break
       if (col.r > 3.58) break
@@ -1324,6 +1335,21 @@ export function renderFeigenbaumOverlay(
         groups.set(color, group)
       }
       group.push(col)
+    }
+    // Overlay hi-res data during zoom
+    if (useHires) {
+      for (const col of BIFURCATION_DATA_HIRES) {
+        if (col.r > sweepR) break
+        const screenX = toX(col.r)
+        if (screenX < -20 || screenX > cssWidth + 20) continue
+        const color = columnColor(col.r, isDark)
+        let group = groups.get(color)
+        if (!group) {
+          group = []
+          groups.set(color, group)
+        }
+        group.push(col)
+      }
     }
 
     for (const [color, columns] of groups) {
@@ -1343,30 +1369,113 @@ export function renderFeigenbaumOverlay(
       }
       ctx.fill()
     }
+
+    // ── Overlay: bouncing dot at the sweep frontier ──────────────
+    // While the diagram is actively sweeping (seg 7), show a dot at the
+    // frontier r-value that jumps between its attractor homes. This
+    // connects the static dots in the diagram to the bouncing behavior
+    // the child has been watching in earlier segments.
+    if (fullP > 0 && fullP < 1 && dimFactor >= 1.0) {
+      // Find the bifurcation column closest to the sweep edge
+      const frontierCol = BIFURCATION_DATA.find(col => col.r >= sweepR - 0.01 && col.r <= sweepR)
+      if (frontierCol && frontierCol.attractors.length > 0) {
+        const attractors = frontierCol.attractors
+        const screenX = toX(frontierCol.r)
+        const nHomes = attractors.length
+
+        // Decelerate as number of homes increases: fewer cycles per unit
+        // of progress so the kid has time to watch the dot visit all homes.
+        // 1 home → 3 cycles/unit, 2 → 2, 4 → 1.2, 8+ → 0.6
+        const cycleSpeed = 3 / Math.sqrt(nHomes)
+        const cycleProgress = (fullP * cycleSpeed) % 1
+
+        // Walk through attractors in order so the bounce is sequential
+        const attractorIndex = Math.floor(cycleProgress * nHomes) % nHomes
+        const nextIndex = (attractorIndex + 1) % nHomes
+        const hopFrac = (cycleProgress * nHomes) % 1
+
+        const currY = axisY - attractors[attractorIndex] * verticalScale
+        const nextY = axisY - attractors[nextIndex] * verticalScale
+
+        // Arc-shaped hop: the dot lifts away from the track as it jumps,
+        // making each bounce much more visible.
+        const hopEased = easeInOut(hopFrac)
+        const baseY = currY + (nextY - currY) * hopEased
+        const hopHeight = Math.abs(nextY - currY) * 0.35 + 12
+        const arcLift = Math.sin(hopEased * PI) * hopHeight
+        const dotY = baseY - arcLift
+
+        const frontierColor = columnColor(frontierCol.r, isDark)
+
+        // Motion trail: fading echo behind the dot's arc path
+        const trailSteps = 4
+        for (let t = trailSteps; t >= 1; t--) {
+          const trailFrac = Math.max(0, hopFrac - t * 0.06)
+          const trailEased = easeInOut(trailFrac)
+          const trailBaseY = currY + (nextY - currY) * trailEased
+          const trailArc = Math.sin(trailEased * PI) * hopHeight
+          const trailY = trailBaseY - trailArc
+          ctx.beginPath()
+          ctx.arc(screenX, trailY, 4 - t * 0.5, 0, PI * 2)
+          ctx.fillStyle = frontierColor
+          ctx.globalAlpha = opacity * (0.15 - t * 0.03)
+          ctx.fill()
+        }
+
+        // Glow ring behind the dot
+        ctx.beginPath()
+        ctx.arc(screenX, dotY, 10, 0, PI * 2)
+        ctx.fillStyle = frontierColor
+        ctx.globalAlpha = opacity * 0.15
+        ctx.fill()
+
+        // Main dot (larger for visibility)
+        ctx.beginPath()
+        ctx.arc(screenX, dotY, 6, 0, PI * 2)
+        ctx.fillStyle = frontierColor
+        ctx.globalAlpha = opacity * 0.95
+        ctx.fill()
+
+        // White inner highlight
+        ctx.beginPath()
+        ctx.arc(screenX, dotY, 2.5, 0, PI * 2)
+        ctx.fillStyle = '#fff'
+        ctx.globalAlpha = opacity * 0.85
+        ctx.fill()
+
+        // Ghost rings at every attractor home — pulsing when the dot
+        // arrives so the kid sees "this is where the dot lands"
+        for (let i = 0; i < nHomes; i++) {
+          const homeY = axisY - attractors[i] * verticalScale
+          const isActive = i === attractorIndex && hopFrac < 0.15
+          const ringRadius = isActive ? 5.5 : 4
+          const ringAlpha = isActive ? 0.7 : 0.35
+          ctx.beginPath()
+          ctx.arc(screenX, homeY, ringRadius, 0, PI * 2)
+          ctx.strokeStyle = frontierColor
+          ctx.lineWidth = isActive ? 2 : 1.5
+          ctx.globalAlpha = opacity * ringAlpha
+          ctx.stroke()
+        }
+      }
+    }
   }
 
   // ── Seg 8: Measuring gaps — in-situ ruler tiling ───────────────
-  if (revealProgress >= PHASE.gapBegin && revealProgress < PHASE.univBegin) {
+  if (revealProgress >= PHASE.gapBegin && revealProgress < PHASE.zoomBegin) {
     const gapP = mapRange(revealProgress, PHASE.gapBegin, PHASE.gapEnd)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.ratioEnd - 0.02, PHASE.univBegin))
+    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.ratioEnd - 0.02, PHASE.zoomBegin))
     drawGapMeasureInSitu(ctx, toX, axisY, gapP, isDark, opacity * fadeOut)
   }
 
   // ── Seg 9: The magic ratio ─────────────────────────────────────
-  if (revealProgress >= PHASE.ratioBegin && revealProgress < PHASE.univBegin) {
+  if (revealProgress >= PHASE.ratioBegin && revealProgress < PHASE.zoomBegin) {
     const ratioP = mapRange(revealProgress, PHASE.ratioBegin, PHASE.ratioEnd)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.ratioEnd, PHASE.univBegin))
+    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.ratioEnd, PHASE.zoomBegin))
     drawGapRatioVisual(ctx, toX, axisY, ratioP, isDark, opacity * fadeOut)
   }
 
-  // ── Seg 10: Universality — sine map comparison ─────────────────
-  if (revealProgress >= PHASE.univBegin && revealProgress < PHASE.revealEnd) {
-    const univP = mapRange(revealProgress, PHASE.univBegin, PHASE.univEnd)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.univEnd, PHASE.revealBegin + 0.03))
-    drawUniversalityHint(ctx, toX, axisY, verticalScale, univP, isDark, opacity * fadeOut)
-  }
-
-  // ── Seg 11: Delta — star reveal ────────────────────────────────
+  // ── Seg 10b: Delta — star reveal ────────────────────────────────
   if (revealProgress >= PHASE.revealBegin) {
     const revealP = smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealEnd))
 
