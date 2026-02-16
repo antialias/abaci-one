@@ -11,7 +11,7 @@ import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { screenToWorld2D } from '../shared/coordinateConversions'
-import type { RulerState, VisualRulerState, EquationProbeState } from './ruler/types'
+import type { RulerState, VisualRulerState, EquationProbeState, SlopeGuideState } from './ruler/types'
 import { renderRuler, rulerToScreen } from './ruler/renderRuler'
 import { useRulerInteraction } from './ruler/useRulerInteraction'
 import { equationFromPoints } from './ruler/fractionMath'
@@ -66,6 +66,7 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
     solvedAtNearX: null,
     solvedAtNearY: null,
   })
+  const slopeGuideRef = useRef<SlopeGuideState | null>(null)
   const [hideCursor, setHideCursor] = useState(false)
   const equationLabelRef = useRef<HTMLDivElement | null>(null)
 
@@ -126,6 +127,7 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
     onRulerChange: handleRulerChange,
     onActiveHandleChange: handleActiveHandleChange,
     enabled: showRuler,
+    slopeGuideRef,
   })
 
   useCoordinatePlaneTouch({
@@ -341,6 +343,7 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
               isDark,
               activeHandle,
               equationProbeRef.current,
+              slopeGuideRef.current,
             )
           }
 
@@ -349,8 +352,7 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
           // ── Sync equation label DOM position with viewport ──
           const labelEl = equationLabelRef.current
           if (labelEl) {
-            const ruler = rulerRef.current
-            const labelInfo = rulerToScreen(ruler, stateRef.current, cssWidth, cssHeight)
+            const labelInfo = rulerToScreen(visualRulerRef.current, stateRef.current, cssWidth, cssHeight)
             if (labelInfo.length >= 1) {
               const t = equationProbeRef.current.t
               const posX = labelInfo.ax + (labelInfo.bx - labelInfo.ax) * t
@@ -532,19 +534,14 @@ function RulerEquationOverlay({
   pointerCapturedRef,
   requestDraw,
   isDark,
-  rulerVersion: _rulerVersion,
+  rulerVersion,
   onDragStateChange,
   equationLabelRef,
 }: RulerEquationOverlayProps) {
   const {
     sliderT,
     isDragging,
-    isSpringAnimating,
     handlePointerDown,
-    nearX,
-    nearY,
-    solvedAtNearX,
-    solvedAtNearY,
   } = useEquationSlider({
     rulerRef,
     stateRef,
@@ -552,6 +549,7 @@ function RulerEquationOverlay({
     probeRef,
     requestDraw,
     pointerCapturedRef,
+    rulerVersion,
   })
 
   // Notify parent about drag state for cursor hiding
@@ -592,12 +590,7 @@ function RulerEquationOverlay({
       angle={info.angle}
       isDark={isDark}
       isDragging={isDragging}
-      isSpringAnimating={isSpringAnimating}
       onIndicatorPointerDown={handlePointerDown}
-      nearX={nearX}
-      nearY={nearY}
-      solvedAtNearX={solvedAtNearX}
-      solvedAtNearY={solvedAtNearY}
     />
   )
 }

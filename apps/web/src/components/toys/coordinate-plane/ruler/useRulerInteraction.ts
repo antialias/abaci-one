@@ -1,8 +1,9 @@
 import { useEffect, useCallback } from 'react'
-import type { RulerState, RulerHitZone } from './types'
+import type { RulerState, RulerHitZone, SlopeGuideState } from './types'
 import type { CoordinatePlaneState } from '../types'
 import { worldToScreen2D, screenToWorld2D } from '../../shared/coordinateConversions'
 import { HANDLE_HIT_RADIUS, BODY_HALF_WIDTH } from './renderRuler'
+import { computeSlopeGuides } from './slopeGuides'
 
 interface UseRulerInteractionOptions {
   rulerRef: React.MutableRefObject<RulerState>
@@ -14,6 +15,8 @@ interface UseRulerInteractionOptions {
   onActiveHandleChange: (zone: 'handleA' | 'handleB' | 'body' | null) => void
   /** When false, ruler interaction is disabled (no hit testing or dragging) */
   enabled?: boolean
+  /** Ref to write slope guide state into during handle drags */
+  slopeGuideRef?: React.MutableRefObject<SlopeGuideState | null>
 }
 
 /** Distance from a point to the segment AB, clamped to segment */
@@ -79,6 +82,7 @@ export function useRulerInteraction({
   onRulerChange,
   onActiveHandleChange,
   enabled = true,
+  slopeGuideRef,
 }: UseRulerInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -138,6 +142,13 @@ export function useRulerInteraction({
         const snappedX = snapToInt(w.x)
         const snappedY = snapToInt(w.y)
 
+        // Slope guides: anchor is the *stationary* handle
+        const anchorX = dragZone === 'handleA' ? ruler.bx : ruler.ax
+        const anchorY = dragZone === 'handleA' ? ruler.by : ruler.ay
+        if (slopeGuideRef) {
+          slopeGuideRef.current = computeSlopeGuides(anchorX, anchorY, snappedX, snappedY)
+        }
+
         if (dragZone === 'handleA') {
           ruler.ax = snappedX
           ruler.ay = snappedY
@@ -165,6 +176,7 @@ export function useRulerInteraction({
       dragZone = 'miss'
       pointerCapturedRef.current = false
       onActiveHandleChange(null)
+      if (slopeGuideRef) slopeGuideRef.current = null
     }
 
     // ── Mouse handlers ─────────────────────────────────────────
@@ -255,5 +267,5 @@ export function useRulerInteraction({
       canvas.removeEventListener('touchend', onTouchEnd, { capture: true })
       canvas.removeEventListener('touchcancel', onTouchEnd, { capture: true })
     }
-  }, [canvasRef, rulerRef, stateRef, pointerCapturedRef, onRulerChange, onActiveHandleChange, getCanvasRect, enabled])
+  }, [canvasRef, rulerRef, stateRef, pointerCapturedRef, onRulerChange, onActiveHandleChange, getCanvasRect, enabled, slopeGuideRef])
 }

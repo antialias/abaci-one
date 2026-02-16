@@ -39,6 +39,27 @@ export interface VisualRulerState {
   by: number
 }
 
+/** A guide slope definition for visual feedback during handle drag */
+export interface GuideSlope {
+  num: number   // numerator (e.g. 1 for slope 1/2)
+  den: number   // denominator (e.g. 2 for slope 1/2); 0 for vertical
+  label: string // display: "1", "−2", "⅓", "∞"
+}
+
+/** A slope guide entry (all shown simultaneously during handle drag) */
+export interface ActiveSlopeGuide {
+  slope: GuideSlope
+}
+
+/** State of all visible slope guides during a handle drag */
+export interface SlopeGuideState {
+  anchorX: number  // stationary handle world coords
+  anchorY: number
+  handleX: number  // dragging handle world coords (snapped to grid)
+  handleY: number
+  guides: ActiveSlopeGuide[]
+}
+
 /** State of the equation label probe (dragged along ruler line) */
 export interface EquationProbeState {
   active: boolean
