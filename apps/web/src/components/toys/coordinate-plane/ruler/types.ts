@@ -60,6 +60,13 @@ export interface SlopeGuideState {
   guides: ActiveSlopeGuide[]
 }
 
+/** Standard-form coefficients: Ax + By = C (all integers, reduced, A > 0 or A=0 & B > 0) */
+export interface StandardFormCoeffs {
+  a: number
+  b: number
+  c: number
+}
+
 /** State of the equation label probe (dragged along ruler line) */
 export interface EquationProbeState {
   active: boolean

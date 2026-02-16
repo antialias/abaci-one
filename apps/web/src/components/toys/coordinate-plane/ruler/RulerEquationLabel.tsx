@@ -1,7 +1,9 @@
 'use client'
 
 import type { EquationForm, Fraction, MixedNumber } from './types'
-import { toMixedNumber, isInteger } from './fractionMath'
+import { toMixedNumber, isInteger, toStandardForm } from './fractionMath'
+
+export type EquationDisplayForm = 'slope-intercept' | 'standard'
 
 /**
  * Math font stack — same chain as MathDisplay.tsx
@@ -101,6 +103,8 @@ function SlopeTerm({ slope }: { slope: Fraction }) {
 
 interface RulerEquationLabelProps {
   equation: EquationForm
+  /** Which equation form to display (only affects 'general' equations) */
+  equationForm?: EquationDisplayForm
   /** Screen position (px) — driven by sliderT, not always midpoint */
   screenX: number
   screenY: number
@@ -117,6 +121,7 @@ interface RulerEquationLabelProps {
 
 export function RulerEquationLabel({
   equation,
+  equationForm = 'slope-intercept',
   screenX,
   screenY,
   angle,
@@ -176,7 +181,7 @@ export function RulerEquationLabel({
             color,
           }}
         >
-          <EquationMml equation={equation} />
+          <EquationMml equation={equation} equationForm={equationForm} />
         </math>
       </div>
     </div>
@@ -185,7 +190,7 @@ export function RulerEquationLabel({
 
 // ── Equation MathML ────────────────────────────────────────────────
 
-function EquationMml({ equation }: { equation: EquationForm }) {
+function EquationMml({ equation, equationForm }: { equation: EquationForm; equationForm: EquationDisplayForm }) {
   switch (equation.kind) {
     case 'point':
       return (
@@ -216,26 +221,79 @@ function EquationMml({ equation }: { equation: EquationForm }) {
         </mrow>
       )
 
-    case 'general': {
-      const { slope, intercept } = equation
-      const hasIntercept = intercept.num !== 0
-      const interceptNeg = intercept.num < 0
-
-      return (
-        <mrow>
-          <SlopeTerm slope={slope} />
-          {hasIntercept && (
-            <>
-              <mo>{interceptNeg ? '\u2212' : '+'}</mo>
-              <FractionMml
-                f={interceptNeg ? { num: -intercept.num, den: intercept.den } : intercept}
-              />
-            </>
-          )}
-          <mo>=</mo>
-          <mi>y</mi>
-        </mrow>
-      )
-    }
+    case 'general':
+      if (equationForm === 'standard') {
+        return <StandardFormMml slope={equation.slope} intercept={equation.intercept} />
+      }
+      return <SlopeInterceptMml slope={equation.slope} intercept={equation.intercept} />
   }
+}
+
+/** Render y = mx + b */
+function SlopeInterceptMml({ slope, intercept }: { slope: Fraction; intercept: Fraction }) {
+  const hasIntercept = intercept.num !== 0
+  const interceptNeg = intercept.num < 0
+
+  // Special case: slope is 0 → y = b
+  if (slope.num === 0) {
+    return (
+      <mrow>
+        <mi>y</mi>
+        <mo>=</mo>
+        <FractionMml f={intercept} />
+      </mrow>
+    )
+  }
+
+  return (
+    <mrow>
+      <mi>y</mi>
+      <mo>=</mo>
+      <SlopeTerm slope={slope} />
+      {hasIntercept && (
+        <>
+          <mo>{interceptNeg ? '\u2212' : '+'}</mo>
+          <FractionMml
+            f={interceptNeg ? { num: -intercept.num, den: intercept.den } : intercept}
+          />
+        </>
+      )}
+    </mrow>
+  )
+}
+
+/** Render an integer coefficient with its variable as a term in standard form */
+function StdTerm({ coeff, variable, isFirst }: { coeff: number; variable: string; isFirst: boolean }) {
+  if (coeff === 0) return null
+
+  const absCoeff = Math.abs(coeff)
+  const neg = coeff < 0
+
+  return (
+    <>
+      {isFirst ? (
+        // First term: show minus sign as unary, no plus
+        neg && <mo>&minus;</mo>
+      ) : (
+        // Subsequent terms: show + or −
+        <mo>{neg ? '\u2212' : '+'}</mo>
+      )}
+      {absCoeff !== 1 && <mn>{absCoeff}</mn>}
+      <mi>{variable}</mi>
+    </>
+  )
+}
+
+/** Render Ax + By = C */
+function StandardFormMml({ slope, intercept }: { slope: Fraction; intercept: Fraction }) {
+  const { a, b, c } = toStandardForm(slope, intercept)
+
+  return (
+    <mrow>
+      {a !== 0 && <StdTerm coeff={a} variable="x" isFirst />}
+      {b !== 0 && <StdTerm coeff={b} variable="y" isFirst={a === 0} />}
+      <mo>=</mo>
+      <mn>{c < 0 ? `\u2212${Math.abs(c)}` : `${c}`}</mn>
+    </mrow>
+  )
 }

@@ -10,6 +10,9 @@ import { decayingSin } from '../../shared/animationMath'
 /** How close (in world units) the probe must be to an integer grid line to snap */
 const GRID_SNAP_THRESHOLD = 0.15
 
+/** Movement threshold (px) to distinguish click from drag */
+const CLICK_THRESHOLD = 5
+
 interface UseEquationSliderOptions {
   rulerRef: React.MutableRefObject<RulerState>
   stateRef: React.MutableRefObject<CoordinatePlaneState>
@@ -19,6 +22,8 @@ interface UseEquationSliderOptions {
   pointerCapturedRef: React.MutableRefObject<boolean>
   /** Incremented when ruler position changes — triggers spring snap-back */
   rulerVersion: number
+  /** Called on click (pointer down + up with < 5px movement) */
+  onClickLabel?: () => void
 }
 
 interface UseEquationSliderResult {
@@ -41,6 +46,7 @@ export function useEquationSlider({
   requestDraw,
   pointerCapturedRef,
   rulerVersion,
+  onClickLabel,
 }: UseEquationSliderOptions): UseEquationSliderResult {
   const [sliderT, setSliderT] = useState(0.5)
   const [isDragging, setIsDragging] = useState(false)
@@ -58,6 +64,7 @@ export function useEquationSlider({
   const dragStartTRef = useRef(0.5)
   const rulerDirScreenRef = useRef({ x: 1, y: 0, lengthPx: 1 })
   const springRafRef = useRef(0)
+  const didMoveRef = useRef(false)
 
   const updateProbe = useCallback((t: number, solve = true): number => {
     const ruler = rulerRef.current
@@ -267,11 +274,23 @@ export function useEquationSlider({
 
     dragStartScreenRef.current = { x: e.clientX, y: e.clientY }
     dragStartTRef.current = sliderT
+    didMoveRef.current = false
 
     // Set up window-level listeners for move and up
     const onPointerMove = (ev: PointerEvent) => {
       const deltaScreenX = ev.clientX - dragStartScreenRef.current.x
       const deltaScreenY = ev.clientY - dragStartScreenRef.current.y
+
+      // Check if movement exceeds click threshold
+      if (!didMoveRef.current) {
+        const dist = Math.sqrt(deltaScreenX * deltaScreenX + deltaScreenY * deltaScreenY)
+        if (dist >= CLICK_THRESHOLD) {
+          didMoveRef.current = true
+        } else {
+          return // Don't start dragging until threshold exceeded
+        }
+      }
+
       const dir = rulerDirScreenRef.current
 
       // Project screen delta onto ruler direction
@@ -289,6 +308,12 @@ export function useEquationSlider({
       setIsDragging(false)
       pointerCapturedRef.current = false
 
+      // Click (no significant movement) → toggle equation form
+      if (!didMoveRef.current) {
+        onClickLabel?.()
+        return
+      }
+
       // If at a solve point, keep the probe active with indicators visible.
       // Otherwise just clear solve state but keep position.
       const probe = probeRef.current
@@ -299,7 +324,7 @@ export function useEquationSlider({
 
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
-  }, [canvasRef, rulerRef, stateRef, sliderT, pointerCapturedRef, updateProbe, clearProbe])
+  }, [canvasRef, rulerRef, stateRef, sliderT, pointerCapturedRef, updateProbe, clearProbe, onClickLabel])
 
   return {
     sliderT,

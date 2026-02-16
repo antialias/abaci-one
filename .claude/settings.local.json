@@ -953,7 +953,15 @@
       "Bash(while read:*)",
       "Bash(do echo \"$mod\")",
       "Bash(bc:*)",
-      "Bash(/tmp/measure-prompt.mjs:*)"
+      "Bash(/tmp/measure-prompt.mjs:*)",
+      "WebFetch(domain:www.perseus.tufts.edu)",
+      "WebFetch(domain:farside.ph.utexas.edu)",
+      "WebFetch(domain:mathcs.clarku.edu)",
+      "WebFetch(domain:www.c82.net)",
+      "WebFetch(domain:archive.org)",
+      "WebFetch(domain:www.wilbourhall.org)",
+      "WebFetch(domain:www.claymath.org)",
+      "WebFetch(domain:aleph0.clarku.edu)"
     ],
     "deny": [],
     "ask": []

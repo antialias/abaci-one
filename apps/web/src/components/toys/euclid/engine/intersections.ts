@@ -1,0 +1,149 @@
+import Flatten from '@flatten-js/core'
+import type {
+  ConstructionState,
+  ConstructionElement,
+  ConstructionCircle,
+  ConstructionSegment,
+  IntersectionCandidate,
+} from '../types'
+import { getPoint, getRadius, getAllCircles, getAllSegments } from './constructionState'
+
+const TOLERANCE = 0.001
+
+interface Vec2 {
+  x: number
+  y: number
+}
+
+// ── Primitive intersections ────────────────────────────────────────
+
+export function circleCircleIntersections(
+  c1x: number, c1y: number, c1r: number,
+  c2x: number, c2y: number, c2r: number,
+): Vec2[] {
+  const fc1 = new Flatten.Circle(new Flatten.Point(c1x, c1y), c1r)
+  const fc2 = new Flatten.Circle(new Flatten.Point(c2x, c2y), c2r)
+  const pts = fc1.intersect(fc2)
+  return pts.map((p: Flatten.Point) => ({ x: p.x, y: p.y }))
+}
+
+export function circleSegmentIntersections(
+  cx: number, cy: number, cr: number,
+  x1: number, y1: number, x2: number, y2: number,
+): Vec2[] {
+  const fc = new Flatten.Circle(new Flatten.Point(cx, cy), cr)
+  const fs = new Flatten.Segment(new Flatten.Point(x1, y1), new Flatten.Point(x2, y2))
+  const pts = fc.intersect(fs)
+  return pts.map((p: Flatten.Point) => ({ x: p.x, y: p.y }))
+}
+
+export function segmentSegmentIntersection(
+  a1x: number, a1y: number, a2x: number, a2y: number,
+  b1x: number, b1y: number, b2x: number, b2y: number,
+): Vec2[] {
+  const sa = new Flatten.Segment(new Flatten.Point(a1x, a1y), new Flatten.Point(a2x, a2y))
+  const sb = new Flatten.Segment(new Flatten.Point(b1x, b1y), new Flatten.Point(b2x, b2y))
+  const pts = sa.intersect(sb)
+  return pts.map((p: Flatten.Point) => ({ x: p.x, y: p.y }))
+}
+
+// ── High-level: find new intersections for a newly added element ───
+
+function isDuplicate(
+  candidate: Vec2,
+  existing: IntersectionCandidate[],
+  statePoints: Vec2[],
+): boolean {
+  for (const e of existing) {
+    if (Math.abs(candidate.x - e.x) < TOLERANCE && Math.abs(candidate.y - e.y) < TOLERANCE) {
+      return true
+    }
+  }
+  for (const p of statePoints) {
+    if (Math.abs(candidate.x - p.x) < TOLERANCE && Math.abs(candidate.y - p.y) < TOLERANCE) {
+      return true
+    }
+  }
+  return false
+}
+
+function getCircleData(state: ConstructionState, c: ConstructionCircle) {
+  const center = getPoint(state, c.centerId)
+  const r = getRadius(state, c.id)
+  return center && r > 0 ? { cx: center.x, cy: center.y, r } : null
+}
+
+function getSegmentData(state: ConstructionState, s: ConstructionSegment) {
+  const from = getPoint(state, s.fromId)
+  const to = getPoint(state, s.toId)
+  return from && to ? { x1: from.x, y1: from.y, x2: to.x, y2: to.y } : null
+}
+
+export function findNewIntersections(
+  state: ConstructionState,
+  newElement: ConstructionElement,
+  existingCandidates: IntersectionCandidate[],
+): IntersectionCandidate[] {
+  if (newElement.kind === 'point') return []
+
+  const statePoints = state.elements
+    .filter((e): e is { kind: 'point'; x: number; y: number } => e.kind === 'point')
+    .map(p => ({ x: p.x, y: p.y }))
+
+  const results: IntersectionCandidate[] = []
+
+  function addCandidates(pts: Vec2[], idA: string, idB: string) {
+    pts.forEach((pt, i) => {
+      if (!isDuplicate(pt, [...existingCandidates, ...results], statePoints)) {
+        results.push({ x: pt.x, y: pt.y, ofA: idA, ofB: idB, which: i })
+      }
+    })
+  }
+
+  if (newElement.kind === 'circle') {
+    const newData = getCircleData(state, newElement)
+    if (!newData) return []
+
+    // vs all existing circles
+    for (const c of getAllCircles(state)) {
+      if (c.id === newElement.id) continue
+      const d = getCircleData(state, c)
+      if (!d) continue
+      const pts = circleCircleIntersections(newData.cx, newData.cy, newData.r, d.cx, d.cy, d.r)
+      addCandidates(pts, newElement.id, c.id)
+    }
+
+    // vs all existing segments
+    for (const s of getAllSegments(state)) {
+      const d = getSegmentData(state, s)
+      if (!d) continue
+      const pts = circleSegmentIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
+      addCandidates(pts, newElement.id, s.id)
+    }
+  } else if (newElement.kind === 'segment') {
+    const newData = getSegmentData(state, newElement)
+    if (!newData) return []
+
+    // vs all existing circles
+    for (const c of getAllCircles(state)) {
+      const d = getCircleData(state, c)
+      if (!d) continue
+      const pts = circleSegmentIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
+      addCandidates(pts, newElement.id, c.id)
+    }
+
+    // vs all existing segments
+    for (const s of getAllSegments(state)) {
+      if (s.id === newElement.id) continue
+      const sd = getSegmentData(state, s)
+      if (!sd) continue
+      const pts = segmentSegmentIntersection(
+        newData.x1, newData.y1, newData.x2, newData.y2,
+        sd.x1, sd.y1, sd.x2, sd.y2,
+      )
+      addCandidates(pts, newElement.id, s.id)
+    }
+  }
+
+  return results
+}

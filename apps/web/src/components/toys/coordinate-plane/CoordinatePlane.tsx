@@ -10,14 +10,22 @@ import { ToyDebugPanel } from '../ToyDebugPanel'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import { screenToWorld2D } from '../shared/coordinateConversions'
+import { screenToWorld2D, worldToScreen2D } from '../shared/coordinateConversions'
 import type { RulerState, VisualRulerState, EquationProbeState, SlopeGuideState } from './ruler/types'
 import { renderRuler, rulerToScreen } from './ruler/renderRuler'
 import { useRulerInteraction } from './ruler/useRulerInteraction'
 import { equationFromPoints } from './ruler/fractionMath'
 import { RulerEquationLabel } from './ruler/RulerEquationLabel'
+import type { EquationDisplayForm } from './ruler/RulerEquationLabel'
 import { useEquationSlider } from './ruler/useEquationSlider'
-
+import { useChallenge } from './challenge/useChallenge'
+import type { ViewportAnimation } from './challenge/types'
+import { WordProblemCard } from './challenge/WordProblemCard'
+import { computeCardPlacement } from './challenge/quadrantPlacement'
+import { computeViewportTarget } from './challenge/viewportAnimation'
+import { renderChallengeAnnotations } from './challenge/renderChallengeAnnotations'
+import type { DifficultyLevel } from './wordProblems/types'
+import { smoothstep } from '../shared/tickMath'
 const SHORTCUTS: ShortcutEntry[] = [
   { key: 'Drag', description: 'Pan' },
   { key: 'Scroll / Pinch', description: 'Zoom (uniform)' },
@@ -27,14 +35,16 @@ const SHORTCUTS: ShortcutEntry[] = [
   { key: 'Drag handle', description: 'Move ruler endpoint (snaps to grid)' },
   { key: 'Drag ruler', description: 'Slide ruler (preserves slope)' },
   { key: 'R', description: 'Toggle ruler visibility' },
+  { key: 'P', description: 'New word problem' },
   { key: '?', description: 'Toggle this help' },
 ]
 
 interface CoordinatePlaneProps {
   overlays?: CoordinatePlaneOverlay[]
+  challenge?: { enabled: boolean; difficulty?: DifficultyLevel; onComplete?: (problem: import('./wordProblems/types').WordProblem, attempts: number) => void }
 }
 
-export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
+export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const stateRef = useRef<CoordinatePlaneState>({
@@ -45,6 +55,7 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
   const [zoomMode, setZoomMode] = useState<ZoomMode>('uniform')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showRuler, setShowRuler] = useState(true)
+  const [equationForm, setEquationForm] = useState<EquationDisplayForm>('slope-intercept')
 
   const xCollisionFadeMapRef = useRef<CollisionFadeMap>(new Map())
   const yCollisionFadeMapRef = useRef<CollisionFadeMap>(new Map())
@@ -70,6 +81,8 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
   const [hideCursor, setHideCursor] = useState(false)
   const equationLabelRef = useRef<HTMLDivElement | null>(null)
 
+
+
   // Zoom velocity state (smoothed for visual wash)
   const zoomVelocityRef = useRef(0)
   const zoomHueRef = useRef(0)
@@ -78,6 +91,9 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
   // Brief toast for zoom mode changes
   const [zoomToast, setZoomToast] = useState<string | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Challenge system
+  const viewportAnimRef = useRef<ViewportAnimation | null>(null)
 
   const rafRef = useRef<number>(0)
   const needsDrawRef = useRef(true)
@@ -114,6 +130,10 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
     requestDraw()
   }, [requestDraw])
 
+  const toggleEquationForm = useCallback(() => {
+    setEquationForm(f => f === 'slope-intercept' ? 'standard' : 'slope-intercept')
+  }, [])
+
   const handleActiveHandleChange = useCallback((zone: 'handleA' | 'handleB' | 'body' | null) => {
     setActiveHandle(zone)
     requestDraw()
@@ -137,6 +157,56 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
     pointerCapturedRef,
     onStateChange: requestDraw,
     onZoomVelocity: handleZoomVelocity,
+  })
+
+  // Challenge system
+  const challengeEnabled = challenge?.enabled ?? false
+
+  const handleChallengeSummon = useCallback((problem: import('./wordProblems/types').WordProblem) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    const cw = canvas.width / dpr
+    const ch = canvas.height / dpr
+    const target = computeViewportTarget(problem, cw, ch, stateRef.current)
+
+    // Switch to independent zoom so the different axis scales are preserved
+    // during subsequent user interactions (scroll, pinch)
+    zoomModeRef.current = 'independent'
+    setZoomMode('independent')
+
+    // Ensure ruler is visible (needed to solve the problem)
+    setShowRuler(true)
+
+    viewportAnimRef.current = {
+      active: true,
+      from: {
+        cx: stateRef.current.center.x,
+        cy: stateRef.current.center.y,
+        ppuX: stateRef.current.pixelsPerUnit.x,
+        ppuY: stateRef.current.pixelsPerUnit.y,
+      },
+      to: target,
+      startTime: performance.now(),
+      duration: 600,
+    }
+    needsDrawRef.current = true
+  }, [])
+
+  const {
+    challengeRef: challengeStateRef,
+    challengeVersion,
+    summonProblem,
+    dismissProblem,
+    phase: challengePhase,
+    problem: challengeProblem,
+  } = useChallenge({
+    rulerRef,
+    stateRef,
+    rulerVersion,
+    enabled: challengeEnabled,
+    onComplete: challenge?.onComplete,
+    onSummon: handleChallengeSummon,
   })
 
   // Toggle zoom mode
@@ -185,12 +255,17 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
           })
           requestDraw()
         }
+      } else if (e.key === 'p' || e.key === 'P') {
+        if (!e.metaKey && !e.ctrlKey) {
+          e.preventDefault()
+          summonProblem(challenge?.difficulty ?? 3)
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleZoomMode, requestDraw])
+  }, [toggleZoomMode, requestDraw, summonProblem, challenge?.difficulty])
 
   // Forward wheel events from DOM overlays (e.g. equation card) to canvas for zoom
   useEffect(() => {
@@ -303,6 +378,75 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
         needsDrawRef.current = true
       }
 
+      // ── Viewport animation (challenge auto-pan/zoom) ──
+      const viewAnim = viewportAnimRef.current
+      if (viewAnim?.active) {
+        const elapsed = now - viewAnim.startTime
+        const t = smoothstep(Math.min(1, elapsed / viewAnim.duration))
+        stateRef.current.center.x = viewAnim.from.cx + (viewAnim.to.cx - viewAnim.from.cx) * t
+        stateRef.current.center.y = viewAnim.from.cy + (viewAnim.to.cy - viewAnim.from.cy) * t
+        // Interpolate PPU in log-space for perceptually smooth zoom
+        stateRef.current.pixelsPerUnit.x = Math.exp(
+          Math.log(viewAnim.from.ppuX) + (Math.log(viewAnim.to.ppuX) - Math.log(viewAnim.from.ppuX)) * t
+        )
+        stateRef.current.pixelsPerUnit.y = Math.exp(
+          Math.log(viewAnim.from.ppuY) + (Math.log(viewAnim.to.ppuY) - Math.log(viewAnim.from.ppuY)) * t
+        )
+        needsDrawRef.current = true
+        if (t >= 1) {
+          viewAnim.active = false
+
+          // ── Reposition off-screen ruler handles now that the viewport has settled ──
+          if (canvas && showRuler) {
+            const dpr = window.devicePixelRatio || 1
+            const cw = canvas.width / dpr
+            const ch = canvas.height / dpr
+            const margin = 50
+            const { center, pixelsPerUnit: ppu } = stateRef.current
+            const r = rulerRef.current
+
+            const isOnScreen = (wx: number, wy: number) => {
+              const s = worldToScreen2D(wx, wy, center.x, center.y, ppu.x, ppu.y, cw, ch)
+              return s.x >= margin && s.x <= cw - margin && s.y >= margin && s.y <= ch - margin
+            }
+
+            const aOk = isOnScreen(r.ax, r.ay)
+            const bOk = isOnScreen(r.bx, r.by)
+
+            if (!aOk || !bOk) {
+              const cx = Math.round(center.x)
+              const cy = Math.round(center.y)
+
+              // Avoid placing on the challenge answer point
+              const ans = challengeStateRef.current.problem?.answer
+              const isAnswer = (x: number, y: number) =>
+                ans != null && x === ans.x && y === ans.y
+
+              // Search outward from center for a visible, non-answer integer point
+              const findVisible = (avoidX: number, avoidY: number) => {
+                for (let radius = 0; radius <= 5; radius++) {
+                  for (let dx = -radius; dx <= radius; dx++) {
+                    for (let dy = -radius; dy <= radius; dy++) {
+                      if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue
+                      const px = cx + dx, py = cy + dy
+                      if (px === avoidX && py === avoidY) continue
+                      if (isAnswer(px, py)) continue
+                      if (isOnScreen(px, py)) return { x: px, y: py }
+                    }
+                  }
+                }
+                return { x: cx, y: cy }
+              }
+
+              let { ax, ay, bx, by } = r
+              if (!aOk) { const p = findVisible(bx, by); ax = p.x; ay = p.y }
+              if (!bOk) { const p = findVisible(ax, ay); bx = p.x; by = p.y }
+              rulerRef.current = { ax, ay, bx, by }
+            }
+          }
+        }
+      }
+
       if (canvas && needsDrawRef.current) {
         needsDrawRef.current = false
 
@@ -344,6 +488,20 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
               activeHandle,
               equationProbeRef.current,
               slopeGuideRef.current,
+            )
+          }
+
+          // Render challenge annotations (constraint line, reveal markers)
+          const challengeState = challengeStateRef.current
+          if (challengeState.problem && challengeState.phase !== 'idle') {
+            renderChallengeAnnotations(
+              ctx,
+              challengeState,
+              challengeState.problem,
+              stateRef.current,
+              cssWidth,
+              cssHeight,
+              isDark,
             )
           }
 
@@ -395,7 +553,7 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
       running = false
       cancelAnimationFrame(rafRef.current)
     }
-  }, [isDark, overlays, activeHandle, showRuler])
+  }, [isDark, overlays, activeHandle, showRuler, challengeVersion])
 
   return (
     <div
@@ -433,8 +591,31 @@ export function CoordinatePlane({ overlays }: CoordinatePlaneProps) {
           rulerVersion={rulerVersion}
           onDragStateChange={setHideCursor}
           equationLabelRef={equationLabelRef}
+          equationForm={equationForm}
+          onClickLabel={toggleEquationForm}
         />
       )}
+
+      {/* Word problem challenge card */}
+      {challengeProblem && challengePhase !== 'idle' && (
+        <WordProblemCard
+          problem={challengeProblem}
+          phase={challengePhase}
+          placement={computeCardPlacement(
+            challengeProblem.answer.x,
+            challengeProblem.answer.y,
+            stateRef.current,
+            canvasRef.current ? canvasRef.current.width / (window.devicePixelRatio || 1) : 800,
+            canvasRef.current ? canvasRef.current.height / (window.devicePixelRatio || 1) : 600,
+          )}
+          revealStep={challengeStateRef.current.revealStep}
+          isDark={isDark}
+          onNewProblem={() => summonProblem(challenge?.difficulty ?? 3)}
+          onDismiss={dismissProblem}
+        />
+      )}
+
+      {/* Challenge annotations are now rendered directly on canvas via renderChallengeAnnotations */}
 
       {/* Subtle "?" hint in corner */}
       <div
@@ -524,6 +705,10 @@ interface RulerEquationOverlayProps {
   onDragStateChange: (dragging: boolean) => void
   /** Ref to the label's outer DOM element for RAF position sync */
   equationLabelRef: React.RefObject<HTMLDivElement | null>
+  /** Which equation form to display */
+  equationForm: EquationDisplayForm
+  /** Called when user clicks the label (no drag) */
+  onClickLabel?: () => void
 }
 
 function RulerEquationOverlay({
@@ -537,6 +722,8 @@ function RulerEquationOverlay({
   rulerVersion,
   onDragStateChange,
   equationLabelRef,
+  equationForm,
+  onClickLabel,
 }: RulerEquationOverlayProps) {
   const {
     sliderT,
@@ -550,6 +737,7 @@ function RulerEquationOverlay({
     requestDraw,
     pointerCapturedRef,
     rulerVersion,
+    onClickLabel,
   })
 
   // Notify parent about drag state for cursor hiding
@@ -585,6 +773,7 @@ function RulerEquationOverlay({
     <RulerEquationLabel
       containerRef={equationLabelRef}
       equation={equation}
+      equationForm={equationForm}
       screenX={canvasOffsetLeft + posX}
       screenY={canvasOffsetTop + posY}
       angle={info.angle}
@@ -594,3 +783,4 @@ function RulerEquationOverlay({
     />
   )
 }
+

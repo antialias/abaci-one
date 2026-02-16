@@ -1,0 +1,116 @@
+// ── Byrne-inspired palette ─────────────────────────────────────────
+export const BYRNE = {
+  given: '#1A1A2E',
+  red: '#E15759',
+  blue: '#4E79A7',
+  yellow: '#F0C75E',
+} as const
+
+/** Cycle through Byrne accent colors for new constructions */
+export const BYRNE_CYCLE = [BYRNE.red, BYRNE.blue, BYRNE.yellow] as const
+
+// ── Viewport ───────────────────────────────────────────────────────
+
+export interface EuclidViewportState {
+  center: { x: number; y: number }
+  /** Uniform zoom — same scale on both axes */
+  pixelsPerUnit: number
+}
+
+// ── Geometric elements ─────────────────────────────────────────────
+
+export type ElementOrigin = 'given' | 'compass' | 'straightedge' | 'intersection'
+
+export interface ConstructionPoint {
+  kind: 'point'
+  id: string
+  x: number
+  y: number
+  label: string
+  color: string
+  origin: ElementOrigin
+}
+
+export interface ConstructionCircle {
+  kind: 'circle'
+  id: string
+  centerId: string
+  radiusPointId: string
+  color: string
+  origin: 'compass'
+}
+
+export interface ConstructionSegment {
+  kind: 'segment'
+  id: string
+  fromId: string
+  toId: string
+  color: string
+  origin: 'straightedge' | 'given'
+}
+
+export type ConstructionElement = ConstructionPoint | ConstructionCircle | ConstructionSegment
+
+// ── Construction state ─────────────────────────────────────────────
+
+export interface ConstructionState {
+  elements: ConstructionElement[]
+  nextLabelIndex: number
+  nextColorIndex: number
+}
+
+// ── Intersection candidates ────────────────────────────────────────
+
+export interface IntersectionCandidate {
+  x: number
+  y: number
+  /** First element involved */
+  ofA: string
+  /** Second element involved */
+  ofB: string
+  /** Distinguisher when two elements have multiple intersections */
+  which: number
+}
+
+// ── Tool state machines ────────────────────────────────────────────
+
+export type CompassPhase =
+  | { tag: 'idle' }
+  | { tag: 'center-set'; centerId: string }
+  | { tag: 'radius-set'; centerId: string; radiusPointId: string; radius: number }
+  | {
+      tag: 'sweeping'
+      centerId: string
+      radiusPointId: string
+      radius: number
+      startAngle: number
+      prevAngle: number
+      cumulativeSweep: number
+    }
+
+export type StraightedgePhase =
+  | { tag: 'idle' }
+  | { tag: 'from-set'; fromId: string }
+
+export type ActiveTool = 'compass' | 'straightedge'
+
+// ── Proposition stepper ────────────────────────────────────────────
+
+export type ExpectedAction =
+  | { type: 'compass'; centerId: string; radiusPointId: string }
+  | { type: 'intersection'; ofA: string; ofB: string }
+  | { type: 'straightedge'; fromId: string; toId: string }
+
+export interface PropositionStep {
+  instruction: string
+  expected: ExpectedAction
+  /** Element IDs to highlight as hints */
+  highlightIds: string[]
+}
+
+export interface PropositionDef {
+  id: number
+  title: string
+  givenElements: ConstructionElement[]
+  steps: PropositionStep[]
+}

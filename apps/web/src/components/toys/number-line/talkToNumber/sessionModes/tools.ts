@@ -242,7 +242,7 @@ export function makeIdentifyCallerTool(
     type: 'function',
     name: 'identify_caller',
     description:
-      'Call this when you figure out which child is on the phone. Match their name to the available players list and pass the player_id. This loads their profile so you can personalize the conversation.',
+      'Call this when you figure out which child is on the phone, or when a different child takes over the phone. Match their name to the available players list and pass the player_id. This loads their profile so you can personalize the conversation. You can call this again if a sibling or friend takes over mid-call.',
     parameters: {
       type: 'object',
       properties: {
@@ -308,7 +308,7 @@ export function getAnsweringTools(): RealtimeTool[] {
 
 export function getFamiliarizingTools(ctx: ModeContext): RealtimeTool[] {
   const tools: RealtimeTool[] = [TOOL_LOOK_AT, TOOL_INDICATE, TOOL_HANG_UP]
-  if (!ctx.childProfile && !ctx.profileFailed && ctx.availablePlayers.length > 0) {
+  if (ctx.availablePlayers.length > 0) {
     tools.unshift(makeIdentifyCallerTool(ctx.availablePlayers))
   }
   return tools
@@ -317,8 +317,8 @@ export function getFamiliarizingTools(ctx: ModeContext): RealtimeTool[] {
 export function getDefaultTools(ctx: ModeContext): RealtimeTool[] {
   const tools: RealtimeTool[] = []
 
-  // Conditionally add identify_caller if profile not yet loaded
-  if (!ctx.childProfile && !ctx.profileFailed && ctx.availablePlayers.length > 0) {
+  // Always include identify_caller when players are available (allows mid-call switching)
+  if (ctx.availablePlayers.length > 0) {
     tools.push(makeIdentifyCallerTool(ctx.availablePlayers))
   }
 

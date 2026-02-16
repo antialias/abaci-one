@@ -1,4 +1,4 @@
-import type { Fraction, MixedNumber, EquationForm } from './types'
+import type { Fraction, MixedNumber, EquationForm, StandardFormCoeffs } from './types'
 
 // ── GCD / reduce ──────────────────────────────────────────────────
 
@@ -62,6 +62,42 @@ export function solveForX(slope: Fraction, intercept: Fraction, y: number): Frac
   const num = (y * intercept.den - intercept.num) * slope.den
   const den = intercept.den * slope.num
   return fraction(num, den)
+}
+
+// ── Standard form conversion ──────────────────────────────────────
+
+/**
+ * Convert slope-intercept form y = (sn/sd)x + (in_/id) to standard form Ax + By = C.
+ *
+ * Multiply through by sd * id:
+ *   sd * id * y = sn * id * x + in_ * sd
+ * Rearrange:
+ *   sn*id * x − sd*id * y = −in_*sd
+ *
+ * Reduce by GCD, normalize so A > 0 (or A=0, B > 0).
+ */
+export function toStandardForm(slope: Fraction, intercept: Fraction): StandardFormCoeffs {
+  let a = slope.num * intercept.den
+  let b = -(slope.den * intercept.den)
+  let c = -(intercept.num * slope.den)
+
+  // Reduce by GCD of all three
+  const g = gcd(gcd(Math.abs(a), Math.abs(b)), Math.abs(c))
+  if (g > 0) {
+    a /= g
+    b /= g
+    c /= g
+  }
+
+  // Normalize: A > 0, or A=0 & B > 0
+  if (a < 0 || (a === 0 && b < 0)) {
+    a = -a
+    b = -b
+    c = -c
+  }
+
+  // Avoid -0
+  return { a: a || 0, b: b || 0, c: c || 0 }
 }
 
 // ── Equation from two points ───────────────────────────────────────
