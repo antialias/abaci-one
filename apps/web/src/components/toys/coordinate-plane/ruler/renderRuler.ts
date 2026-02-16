@@ -155,10 +155,10 @@ export function renderRuler(
   const ebx = bx + dirX * RULER_OVERSHOOT
   const eby = by + dirY * RULER_OVERSHOOT
 
-  // Body fill
+  // Body fill — matches the laser amber
   const bodyColor = isDark
-    ? 'rgba(49, 46, 75, 0.55)' // dark indigo glass
-    : 'rgba(241, 245, 249, 0.6)' // frosted white
+    ? 'rgba(251, 191, 36, 0.45)' // amber laser fill
+    : 'rgba(217, 119, 6, 0.40)'
 
   ctx.beginPath()
   ctx.moveTo(eax + perpX * BODY_HALF_WIDTH, eay + perpY * BODY_HALF_WIDTH)
@@ -169,10 +169,10 @@ export function renderRuler(
   ctx.fillStyle = bodyColor
   ctx.fill()
 
-  // Edge lines
+  // Edge lines — amber tinted to match body
   const edgeColor = isDark
-    ? 'rgba(129, 140, 248, 0.35)'
-    : 'rgba(100, 116, 139, 0.3)'
+    ? 'rgba(251, 191, 36, 0.6)'
+    : 'rgba(217, 119, 6, 0.5)'
   ctx.strokeStyle = edgeColor
   ctx.lineWidth = 0.5
 
