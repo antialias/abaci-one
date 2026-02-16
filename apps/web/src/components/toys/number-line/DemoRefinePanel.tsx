@@ -828,8 +828,36 @@ export function DemoRefinePanel({
               flexShrink: 0,
             }}
           >
+            {/* "New session" row — only when there are continuable entries */}
+            {history.some(e => e.sessionId) && (
+              <div
+                data-element="refine-history-new-session"
+                onClick={() => setContinueTarget(null)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 14px',
+                  cursor: 'pointer',
+                  borderLeft: !continueTarget ? `3px solid ${accentColor}` : '3px solid transparent',
+                  backgroundColor: !continueTarget
+                    ? (isDark ? 'rgba(168, 85, 247, 0.06)' : 'rgba(168, 85, 247, 0.04)')
+                    : undefined,
+                }}
+              >
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: !continueTarget ? 600 : 400,
+                  color: !continueTarget ? accentColor : mutedColor,
+                }}>
+                  + New session
+                </span>
+              </div>
+            )}
             {history.map((entry, i) => {
               const isExpanded = expandedHistoryIdx === i
+              const isSelected = !!entry.sessionId && continueTarget === entry.sessionId
+              const isContinuable = !!entry.sessionId
               const statusColor = entry.success === true ? '#4ade80'
                 : entry.success === false ? '#f87171'
                 : '#fbbf24'
@@ -840,17 +868,24 @@ export function DemoRefinePanel({
                 <div key={i}>
                   <div
                     data-element="refine-history-entry"
-                    onClick={() => setExpandedHistoryIdx(isExpanded ? null : i)}
+                    onClick={() => {
+                      if (isContinuable) {
+                        setContinueTarget(isSelected ? null : entry.sessionId)
+                      }
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
                       padding: '6px 14px',
-                      cursor: 'pointer',
+                      cursor: isContinuable ? 'pointer' : 'default',
+                      borderLeft: isSelected ? `3px solid ${accentColor}` : '3px solid transparent',
                       borderBottom: isExpanded ? 'none' : undefined,
-                      backgroundColor: isExpanded
-                        ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')
-                        : undefined,
+                      backgroundColor: isSelected
+                        ? (isDark ? 'rgba(168, 85, 247, 0.06)' : 'rgba(168, 85, 247, 0.04)')
+                        : isExpanded
+                          ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')
+                          : undefined,
                     }}
                   >
                     <span style={{
@@ -871,14 +906,29 @@ export function DemoRefinePanel({
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
-                      color: textColor,
+                      color: isSelected ? textColor : textColor,
                     }}>
                       {entry.prompt}
                     </span>
                     <span style={{ fontSize: 10, color: mutedColor, flexShrink: 0 }}>
                       {entry.toolCount > 0 && `${entry.toolCount} tools \u00b7 `}{formatAge(entry.timestamp)}
                     </span>
-                    <span style={{ fontSize: 10, color: mutedColor, flexShrink: 0, transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                    <span
+                      data-action="refine-history-expand"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpandedHistoryIdx(isExpanded ? null : i)
+                      }}
+                      style={{
+                        fontSize: 10,
+                        color: mutedColor,
+                        flexShrink: 0,
+                        transform: isExpanded ? 'rotate(90deg)' : 'none',
+                        transition: 'transform 0.15s',
+                        padding: '2px 4px',
+                        cursor: 'pointer',
+                      }}
+                    >
                       &#x25B6;
                     </span>
                   </div>
@@ -888,6 +938,7 @@ export function DemoRefinePanel({
                       style={{
                         padding: '4px 14px 8px 14px',
                         fontSize: 11,
+                        borderLeft: isSelected ? `3px solid ${accentColor}` : '3px solid transparent',
                         backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                       }}
                     >
@@ -900,47 +951,24 @@ export function DemoRefinePanel({
                         </div>
                       )}
                       {entry.sessionId && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <code
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigator.clipboard.writeText(`claude --resume ${entry.sessionId}`)
-                            }}
-                            style={{
-                              fontSize: 10,
-                              padding: '1px 6px',
-                              borderRadius: 3,
-                              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
-                              cursor: 'pointer',
-                              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-                              display: 'inline-block',
-                            }}
-                            title="Click to copy"
-                          >
-                            claude --resume {entry.sessionId}
-                          </code>
-                          <button
-                            data-action="refine-continue-from"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setContinueTarget(entry.sessionId)
-                              setExpandedHistoryIdx(null)
-                            }}
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 600,
-                              padding: '2px 8px',
-                              borderRadius: 4,
-                              border: `1px solid ${accentColor}66`,
-                              background: 'none',
-                              color: accentColor,
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            Continue from here
-                          </button>
-                        </div>
+                        <code
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigator.clipboard.writeText(`claude --resume ${entry.sessionId}`)
+                          }}
+                          style={{
+                            fontSize: 10,
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
+                            cursor: 'pointer',
+                            fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+                            display: 'inline-block',
+                          }}
+                          title="Click to copy"
+                        >
+                          claude --resume {entry.sessionId}
+                        </code>
                       )}
                     </div>
                   )}
@@ -989,43 +1017,6 @@ export function DemoRefinePanel({
                 {error}
               </div>
             )}
-            {/* Session continuation selector */}
-            {history.some(e => e.sessionId) && (() => {
-              const sessionsWithId = history
-                .map((e, i) => ({ ...e, idx: i }))
-                .filter(e => e.sessionId)
-              return (
-                <div
-                  data-element="refine-session-selector"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}
-                >
-                  <span style={{ color: mutedColor, flexShrink: 0 }}>Session:</span>
-                  <select
-                    data-action="refine-session-select"
-                    value={continueTarget ?? ''}
-                    onChange={e => setContinueTarget(e.target.value || null)}
-                    style={{
-                      flex: 1,
-                      fontSize: 11,
-                      padding: '3px 6px',
-                      borderRadius: 4,
-                      border: `1px solid ${border}`,
-                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
-                      color: textColor,
-                      cursor: 'pointer',
-                      outline: 'none',
-                    }}
-                  >
-                    <option value="">New session</option>
-                    {sessionsWithId.map(e => (
-                      <option key={e.sessionId} value={e.sessionId!}>
-                        {e.prompt.length > 50 ? e.prompt.slice(0, 50) + '...' : e.prompt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )
-            })()}
             <textarea
               ref={textareaRef}
               data-element="refine-prompt"
