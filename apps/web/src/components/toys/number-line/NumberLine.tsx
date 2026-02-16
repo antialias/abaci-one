@@ -269,6 +269,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   })
   const [refineRange, setRefineRange] = useState<{ start: number; end: number } | null>(null)
   const refineStartRef = useRef<number | null>(null)
+  const refineTrackRef = useRef<HTMLDivElement>(null)
   const [refineTaskActive, setRefineTaskActive] = useState(() => {
     try { return sessionStorage.getItem('refine-active-task') !== null } catch { return false }
   })
@@ -1917,17 +1918,6 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     e.preventDefault()
     e.stopPropagation()
 
-    // In refine mode + Shift held: drag selects a range
-    // Without Shift: normal scrubbing so you can review the demo
-    if (refineMode && e.shiftKey) {
-      if (refineTaskActive) return
-      const progress = scrubberProgressFromPointer(e.clientX, true)
-      refineStartRef.current = progress
-      setRefineRange({ start: progress, end: progress })
-      scrubberTrackRef.current?.setPointerCapture(e.pointerId)
-      return
-    }
-
     setRestoredFromUrl(false)
     narration.stop() // stop TTS narration when user scrubs
     isDraggingScrubberRef.current = true
@@ -1944,21 +1934,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         : 'rgba(168, 85, 247, 0.6)'
       scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
     }
-  }, [scrubberProgressFromPointer, setRevealProgress, narration, refineMode, refineTaskActive])
+  }, [scrubberProgressFromPointer, setRevealProgress, narration])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
-    // In refine mode with Shift, update range end (but not while task is running)
-    if (refineStartRef.current !== null && !refineTaskActive) {
-      e.preventDefault()
-      const progress = scrubberProgressFromPointer(e.clientX, true)
-      const start = refineStartRef.current
-      setRefineRange({
-        start: Math.min(start, progress),
-        end: Math.max(start, progress),
-      })
-      return
-    }
-
     if (isDraggingScrubberRef.current) {
       e.preventDefault()
       const progress = scrubberProgressFromPointer(e.clientX, true)
@@ -1967,20 +1945,13 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       // Track hover position for segment label display
       scrubberHoverProgressRef.current = scrubberProgressFromPointer(e.clientX)
     }
-  }, [scrubberProgressFromPointer, setRevealProgress, refineMode, refineTaskActive])
+  }, [scrubberProgressFromPointer, setRevealProgress])
 
   const handleScrubberPointerLeave = useCallback(() => {
     scrubberHoverProgressRef.current = null
   }, [])
 
   const handleScrubberPointerUp = useCallback((e: React.PointerEvent) => {
-    // Finalize refine range selection
-    if (refineStartRef.current !== null) {
-      refineStartRef.current = null
-      scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
-      return
-    }
-
     if (!isDraggingScrubberRef.current) return
     isDraggingScrubberRef.current = false
     scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
@@ -1994,7 +1965,44 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     if (ds.constantId && ds.revealProgress < 1) {
       narration.resume(ds.constantId)
     }
-  }, [demoStateRef, narration, refineMode])
+  }, [demoStateRef, narration])
+
+  // --- Refine range track handlers (separate track above scrubber) ---
+  const refineProgressFromPointer = useCallback((clientX: number) => {
+    // Use scrubberTrackRef for coordinate math so both tracks share the same scale
+    const track = scrubberTrackRef.current
+    if (!track) return 0
+    const rect = track.getBoundingClientRect()
+    const linearPos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const progress = scrubberToProgress(linearPos)
+    return snapToSegmentBoundary(progress, clientX)
+  }, [snapToSegmentBoundary])
+
+  const handleRefineTrackPointerDown = useCallback((e: React.PointerEvent) => {
+    if (refineTaskActive) return
+    e.preventDefault()
+    e.stopPropagation()
+    const progress = refineProgressFromPointer(e.clientX)
+    refineStartRef.current = progress
+    setRefineRange({ start: progress, end: progress })
+    refineTrackRef.current?.setPointerCapture(e.pointerId)
+  }, [refineProgressFromPointer, refineTaskActive])
+
+  const handleRefineTrackPointerMove = useCallback((e: React.PointerEvent) => {
+    if (refineStartRef.current === null || refineTaskActive) return
+    e.preventDefault()
+    const progress = refineProgressFromPointer(e.clientX)
+    const start = refineStartRef.current
+    setRefineRange({
+      start: Math.min(start, progress),
+      end: Math.max(start, progress),
+    })
+  }, [refineProgressFromPointer, refineTaskActive])
+
+  const handleRefineTrackPointerUp = useCallback((e: React.PointerEvent) => {
+    refineStartRef.current = null
+    refineTrackRef.current?.releasePointerCapture(e.pointerId)
+  }, [])
 
   const handleScrubberKeyDown = useCallback((e: React.KeyboardEvent) => {
     const ds = demoStateRef.current
@@ -2659,6 +2667,86 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
               letterSpacing: '0.02em',
             }}
           />
+          {/* Refine range selection track — separate from scrubber, same scale */}
+          {refineMode && (
+            <div
+              ref={refineTrackRef}
+              data-element="demo-refine-track"
+              onPointerDown={handleRefineTrackPointerDown}
+              onPointerMove={handleRefineTrackPointerMove}
+              onPointerUp={handleRefineTrackPointerUp}
+              onPointerCancel={handleRefineTrackPointerUp}
+              style={{
+                position: 'absolute',
+                bottom: `calc(max(16px, env(safe-area-inset-bottom, 0px)) + 48px + 4px)`,
+                left: 68,
+                right: 80,
+                height: 24,
+                display: 'flex',
+                alignItems: 'center',
+                cursor: refineTaskActive ? 'default' : 'crosshair',
+                touchAction: 'none',
+                zIndex: 1,
+              }}
+            >
+              {/* Track background */}
+              <div
+                data-element="demo-refine-track-bg"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: resolvedTheme === 'dark'
+                    ? 'rgba(96, 165, 250, 0.15)'
+                    : 'rgba(96, 165, 250, 0.12)',
+                  border: `1px solid ${resolvedTheme === 'dark'
+                    ? 'rgba(96, 165, 250, 0.25)'
+                    : 'rgba(96, 165, 250, 0.2)'}`,
+                  boxSizing: 'border-box',
+                }}
+              />
+              {/* Selected range highlight */}
+              {refineRange && refineRange.end > refineRange.start && (
+                <div
+                  data-element="demo-refine-range"
+                  style={{
+                    position: 'absolute',
+                    left: `${progressToScrubber(refineRange.start) * 100}%`,
+                    width: `${(progressToScrubber(refineRange.end) - progressToScrubber(refineRange.start)) * 100}%`,
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(96, 165, 250, 0.6)',
+                    border: '1px solid rgba(96, 165, 250, 0.9)',
+                    boxSizing: 'border-box',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+              {/* Label */}
+              <div
+                style={{
+                  position: 'absolute',
+                  right: -75,
+                  width: 70,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  color: 'rgba(96, 165, 250, 0.8)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  textAlign: 'right',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              >
+                {refineRange && refineRange.end > refineRange.start
+                  ? `${Math.round(refineRange.start * 100)}–${Math.round(refineRange.end * 100)}%`
+                  : 'drag range'}
+              </div>
+            </div>
+          )}
           <div
             ref={scrubberTrackRef}
             data-element="demo-scrubber"
@@ -2708,23 +2796,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
                 backgroundColor: scrubberTrackColor,
               }}
             />
-            {/* Refine range highlight overlay */}
-            {refineMode && refineRange && refineRange.end > refineRange.start && (
-              <div
-                data-element="demo-scrubber-refine-range"
-                style={{
-                  position: 'absolute',
-                  left: `${progressToScrubber(refineRange.start) * 100}%`,
-                  width: `${(progressToScrubber(refineRange.end) - progressToScrubber(refineRange.start)) * 100}%`,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: 'rgba(96, 165, 250, 0.5)',
-                  border: '1px solid rgba(96, 165, 250, 0.8)',
-                  boxSizing: 'border-box',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
+            {/* (refine range moved to separate track above) */}
             {/* Segment boundary tick marks */}
             <div
               ref={segmentTicksRef}
@@ -3387,7 +3459,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             userSelect: 'none',
           }}
         >
-          Refine Mode — Shift+drag to select range
+          Refine Mode
         </div>
       )}
 
