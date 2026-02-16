@@ -187,8 +187,12 @@ function getZoomKeyframes(
       { progress: 0.700, center: 3.25, pixelsPerUnit: ppuForRange(cssWidth, 2.9, 3.6) },
       // Seg 9: Hold on gaps region for tiling visual
       { progress: 0.820, center: 3.25, pixelsPerUnit: ppuForRange(cssWidth, 2.9, 3.6) },
-      // Seg 11: Center on delta
-      { progress: 0.910, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
+      // Seg 10a: Zoom into the right end of the fractal — cascade region
+      { progress: 0.850, center: 3.55, pixelsPerUnit: ppuForRange(cssWidth, 3.44, 3.58) },
+      // Seg 10a: Hold zoom — let the fractal detail sink in
+      { progress: 0.905, center: 3.55, pixelsPerUnit: ppuForRange(cssWidth, 3.44, 3.58) },
+      // Seg 10b: Pan right to delta
+      { progress: 0.940, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
       { progress: 1.000, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
     ]
   }
