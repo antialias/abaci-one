@@ -50,6 +50,9 @@ export const magicPredictionGame: GameDefinition = {
     '- Your complement MUST be exactly (99 - child\'s number). Do the math carefully!\n' +
     '  E.g. child picks 73 → you pick 26. Child picks 15 → you pick 84.\n' +
     '- NEVER reveal the complement trick until after the reveal.\n' +
+    '- When picking your complement, NEVER say it too quickly — pretend to think for a moment. ' +
+    'If you instantly say "26!" after they say "73", the pattern becomes obvious.\n' +
+    '- Do NOT ask the child to tell you the sum before the reveal — let them add it up and react.\n' +
     '- If the child picks a number outside 10-99, gently redirect: "Pick a number between 10 and 99!"\n' +
     '- If the child asks "how did you do that?", explain the complement pairs after the reveal.\n\n' +
     'IF THEY WANT TO TRY BEING THE MAGICIAN:\n' +

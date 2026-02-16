@@ -34,21 +34,26 @@ export const missingDigitGame: GameDefinition = {
     '- The missing digit = 9 - (sum_of_remaining_digits % 9). If that gives 0, the digit is 9.\n' +
     '- Example: remaining digits sum to 23. 23 % 9 = 5. Missing digit = 9 - 5 = 4.\n' +
     '- Example: remaining digits sum to 27. 27 % 9 = 0. Missing digit = 9.\n\n' +
+    '⚠️ CRITICAL — PRESERVING THE MAGIC:\n' +
+    '- NEVER ask the child what their starting number is, what their scrambled number is, or what their subtraction result is.\n' +
+    '- The only time you ask the child to share numbers is step 5: reading the remaining digits AFTER crossing one out. That\'s the one piece of info you need.\n' +
+    '- Everything else stays secret. That\'s what makes it feel like mind-reading.\n' +
+    '- If the child volunteers numbers, that\'s fine — but never prompt them to share.\n\n' +
     'SETUP:\n' +
     '- "I can read your mind using math. Want to see?"\n' +
     '- "Grab a piece of paper and a pencil — you\'ll need them!"\n\n' +
     'STEPS (guide the child through these one at a time):\n\n' +
     '1. "Write down any number — the bigger the better! At least 4 digits. ' +
-    'Could be your phone number, a random number, your birthday as digits, anything."\n' +
-    '   Let them tell you the number (you don\'t need it for the trick, but it\'s fun to see).\n\n' +
-    '2. "Now scramble those digits — rearrange them in any order you want to make a DIFFERENT number. Write that down too."\n' +
-    '   They should have two numbers with the same digits in different order.\n\n' +
-    '3. "Subtract the smaller number from the bigger one. Take your time!"\n' +
+    'Could be your phone number, a random number, your birthday as digits, anything. Keep it secret!"\n' +
+    '   Do NOT ask them to tell you the number. You don\'t need it.\n\n' +
+    '2. "Now scramble those digits — rearrange them in any order you want to make a DIFFERENT number. Write that down too."\n\n' +
+    '3. "Subtract the smaller number from the bigger one. Take your time — tell me when you\'re done!"\n' +
     '   Be patient — this might take a minute. Offer to help if they struggle.\n' +
     '   If they get 0, they used the same arrangement — ask them to scramble differently.\n\n' +
     '4. "Look at your answer. Cross out any ONE digit — but not a zero. Circle it or hide it."\n' +
     '   Emphasize: any digit EXCEPT zero.\n\n' +
-    '5. "Now read me the remaining digits, in any order you want."\n\n' +
+    '5. "Now read me the remaining digits, in any order you want."\n' +
+    '   THIS is the only step where you need the child to share numbers.\n\n' +
     '6. As they read each digit, add them up in your head.\n' +
     '   Compute: missing = 9 - (sum % 9). If that gives 0, the answer is 9.\n\n' +
     'THE REVEAL:\n' +
@@ -61,8 +66,8 @@ export const missingDigitGame: GameDefinition = {
     '- Challenge them: "Try an even BIGGER number this time!"\n\n' +
     'BONUS — SHOW THE DIGIT COLLAPSE:\n' +
     '- After the reveal, offer: "Want to see something cool about your answer?"\n' +
-    '- Take their subtraction result and add up all the digits.\n' +
-    '- If that\'s more than one digit, add those digits.\n' +
+    '- Ask them to tell you the full subtraction result (it\'s OK to ask NOW, after the reveal).\n' +
+    '- Add up all the digits. If that\'s more than one digit, add those digits.\n' +
     '- Keep going until you reach a single digit — it\'s always 9!\n' +
     '- Show each step on the number line: look_at + indicate for each intermediate number.\n' +
     '- "Every number made this way eventually collapses to 9. That\'s the secret!"\n\n' +

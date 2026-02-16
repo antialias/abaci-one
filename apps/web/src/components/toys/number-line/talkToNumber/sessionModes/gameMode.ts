@@ -31,6 +31,17 @@ export const gameMode: AgentMode = {
 
     // Session-mode game: use its dedicated instructions
     if (game.sessionInstructions) {
+      // For trick games, prepend a universal anti-spoiler rule
+      if (game.category === 'trick') {
+        return (
+          '🎩 UNIVERSAL TRICK RULE: The magic depends on secrecy. ' +
+          'NEVER ask "what did you get?", "what\'s your answer?", or "what number did you write down?" ' +
+          'unless the game instructions specifically say to. ' +
+          'Ask "are you ready?" or "tell me when you\'re done" to pace steps. ' +
+          'The child keeps their work secret — that\'s what makes the reveal magical.\n\n' +
+          game.sessionInstructions
+        )
+      }
       return game.sessionInstructions
     }
 

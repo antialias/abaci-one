@@ -48,7 +48,7 @@ export const kaprekarGame: GameDefinition = {
     'PACING:\n' +
     '- Count the steps: "Step 1... Step 2..." to build anticipation.\n' +
     '- After 2-3 steps, tease: "I wonder what number it\'s heading toward..."\n' +
-    '- Let the child guess what might happen.\n' +
+    '- Let the child guess what might happen — but do NOT reveal the target (6174) until it appears.\n' +
     '- If they want to help with the math, let them!\n\n' +
     'AFTER REACHING 6174:\n' +
     '- Celebrate! "It ALWAYS reaches 6174!"\n' +

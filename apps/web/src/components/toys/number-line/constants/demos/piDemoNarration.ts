@@ -61,10 +61,10 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     scrubberLabel: 'Draw the circle',
   },
   {
-    // Seg 3: Treads appear
+    // Seg 3: Treads appear — transition naturally from circle to wheel
     ttsText:
-      'And look — little bumps! ' +
-      'Now it has tire treads, just like a real wheel. Ready to roll!',
+      'Now let\'s make it a real wheel! ' +
+      'See those little bumps? Those are the tire treads — now it can grip the ground.',
     startProgress: 0.255,
     endProgress: 0.30,
     animationDurationMs: 3000,
