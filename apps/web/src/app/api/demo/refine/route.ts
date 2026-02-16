@@ -24,6 +24,7 @@ interface RefineRequest {
   prompt: string
   selectedSegments: SelectedSegment[]
   screenshotBase64?: string
+  continueSessionId?: string
 }
 
 /** Map constantId to display info for the system prompt */
@@ -44,6 +45,18 @@ const CONSTANT_DISPLAY: Record<string, { name: string; symbol: string }> = {
 function demoFilePrefix(constantId: string): string {
   if (constantId === 'phi') return 'goldenRatio'
   return constantId
+}
+
+function buildContinuationPrompt(prompt: string, screenshotPath?: string): string {
+  if (!screenshotPath) return prompt
+  return `${prompt}
+
+## Annotated Screenshot
+The user captured a new screenshot with bright magenta (#ff00ff) annotations highlighting areas of interest.
+FIRST read the screenshot to see what the user is referring to:
+  ${screenshotPath}
+
+Interpret the magenta annotations as "look here" / "this area" markers in the context of the user's request.`
 }
 
 function buildSystemPrompt(req: RefineRequest, screenshotPath?: string): string {
@@ -132,7 +145,11 @@ export async function POST(request: Request) {
     await writeFile(screenshotPath, buf)
   }
 
-  const systemPrompt = buildSystemPrompt(body, screenshotPath)
+  const isContinuation = !!body.continueSessionId
+
+  const claudePrompt = isContinuation
+    ? buildContinuationPrompt(prompt, screenshotPath)
+    : buildSystemPrompt(body, screenshotPath) + '\n\n' + prompt
 
   const taskId = await createTask<RefineRequest, { sessionId?: string }, DemoRefineEvent>(
     'demo-refine',
@@ -141,10 +158,11 @@ export async function POST(request: Request) {
       const child = spawn(
         'claude',
         [
-          '-p', systemPrompt + '\n\n' + prompt,
+          '-p', claudePrompt,
           '--output-format', 'stream-json',
           '--verbose',
           '--allowedTools', 'Read,Write,Edit,Glob,Grep,Bash',
+          ...(isContinuation ? ['--resume', body.continueSessionId!] : []),
         ],
         {
           cwd: process.cwd(),

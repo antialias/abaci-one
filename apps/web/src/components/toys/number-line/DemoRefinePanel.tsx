@@ -91,6 +91,7 @@ export function DemoRefinePanel({
     } catch { return [] }
   })
   const [expandedHistoryIdx, setExpandedHistoryIdx] = useState<number | null>(null)
+  const [continueTarget, setContinueTarget] = useState<string | null>(null)
   const outputEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -143,6 +144,13 @@ export function DemoRefinePanel({
   useEffect(() => {
     try { sessionStorage.setItem(historyStorageKey, JSON.stringify(history)) } catch {}
   }, [history, historyStorageKey])
+
+  // Auto-select most recent session for continuation
+  useEffect(() => {
+    if (state !== 'idle') return
+    const mostRecent = [...history].reverse().find(e => e.sessionId)
+    setContinueTarget(mostRecent?.sessionId ?? null)
+  }, [history, state])
 
   // ---- Active task persistence (survives HMR) ----
   useEffect(() => {
@@ -288,9 +296,37 @@ export function DemoRefinePanel({
       eventHandlerRef.current(evt)
     })
 
+    // Handle task:state — server sends current state on subscribe.
+    // If the task already finished (e.g. during HMR), transition out of running.
+    socket.on('task:state', (taskState: { id: string; status: string; error?: string | null; output?: { sessionId?: string } | null }) => {
+      if (taskState.id !== taskId) return
+      if (taskState.status === 'completed') {
+        const sid = taskState.output?.sessionId ?? null
+        pendingResultRef.current = { sessionId: sid, success: true }
+        if (sid) setSessionId(sid)
+        setSuccess(true)
+        setOutput(prev => [...prev, { type: 'result', content: 'Completed successfully' }])
+        setState('done')
+        finalizeHistory(true, sid, null)
+        onTaskEnd?.()
+      } else if (taskState.status === 'failed') {
+        const errMsg = taskState.error ?? 'Task failed'
+        setError(errMsg)
+        setState('done')
+        finalizeHistory(false, null, errMsg)
+        onTaskEnd?.()
+      } else if (taskState.status === 'cancelled') {
+        setError('Task cancelled')
+        setState('done')
+        finalizeHistory(null, null, 'Cancelled')
+        onTaskEnd?.()
+      }
+    })
+
     return () => {
       socket.disconnect()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isRunning])
 
   // --- Drag-to-move (header) ---
@@ -377,6 +413,7 @@ export function DemoRefinePanel({
     setError(null)
     setScreenshotDataUrl(null)
     setAnnotating(false)
+    setContinueTarget(null)
     toolCountRef.current = 0
     pendingResultRef.current = { sessionId: null, success: null }
     setState('idle')
@@ -400,14 +437,6 @@ export function DemoRefinePanel({
     isDrawingRef.current = true
     const rect = canvas.getBoundingClientRect()
     lastPointRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.beginPath()
-      ctx.strokeStyle = '#ff00ff'
-      ctx.lineWidth = 3
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-    }
   }, [])
 
   const handleAnnotationPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -445,6 +474,8 @@ export function DemoRefinePanel({
   }, [])
 
   // Composite screenshot + annotations into final data URL
+  // Annotation canvas is at CSS display size; screenshot is at full resolution.
+  // We composite at screenshot resolution, scaling annotation marks up to match.
   const handleAnnotationDone = useCallback(() => {
     if (!screenshotDataUrl) return
     const img = new Image()
@@ -454,10 +485,11 @@ export function DemoRefinePanel({
       composite.height = img.height
       const ctx = composite.getContext('2d')
       if (!ctx) return
+      // Draw full-res screenshot
       ctx.drawImage(img, 0, 0)
-      // Draw annotation layer on top
+      // Scale annotation layer from CSS size to screenshot size
       const annCanvas = annotationCanvasRef.current
-      if (annCanvas) {
+      if (annCanvas && annCanvas.width > 0 && annCanvas.height > 0) {
         ctx.drawImage(annCanvas, 0, 0, img.width, img.height)
       }
       setScreenshotDataUrl(composite.toDataURL('image/png'))
@@ -500,6 +532,7 @@ export function DemoRefinePanel({
           ...(screenshotDataUrl ? {
             screenshotBase64: screenshotDataUrl.replace(/^data:image\/png;base64,/, ''),
           } : {}),
+          ...(continueTarget ? { continueSessionId: continueTarget } : {}),
         }),
       })
 
@@ -521,7 +554,7 @@ export function DemoRefinePanel({
       finalizeHistory(false, null, errMsg)
       setState('idle')
     }
-  }, [prompt, constantId, startProgress, endProgress, segments, onTaskStart, pushOptimisticEntry, finalizeHistory, screenshotDataUrl])
+  }, [prompt, constantId, startProgress, endProgress, segments, onTaskStart, pushOptimisticEntry, finalizeHistory, screenshotDataUrl, continueTarget])
 
   const handleCancel = useCallback(() => {
     if (taskId && state === 'running') {
@@ -699,13 +732,13 @@ export function DemoRefinePanel({
                 objectFit: 'contain',
                 pointerEvents: 'none',
               }}
-              onLoad={(e) => {
-                // Size annotation canvas to match the displayed image
-                const img = e.currentTarget
+              onLoad={() => {
+                // Size annotation canvas to match its CSS display size (1:1 with pointer coords)
                 const canvas = annotationCanvasRef.current
                 if (canvas) {
-                  canvas.width = img.naturalWidth
-                  canvas.height = img.naturalHeight
+                  const rect = canvas.getBoundingClientRect()
+                  canvas.width = rect.width
+                  canvas.height = rect.height
                 }
               }}
             />
@@ -867,24 +900,47 @@ export function DemoRefinePanel({
                         </div>
                       )}
                       {entry.sessionId && (
-                        <code
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigator.clipboard.writeText(`claude --resume ${entry.sessionId}`)
-                          }}
-                          style={{
-                            fontSize: 10,
-                            padding: '1px 6px',
-                            borderRadius: 3,
-                            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
-                            cursor: 'pointer',
-                            fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-                            display: 'inline-block',
-                          }}
-                          title="Click to copy"
-                        >
-                          claude --resume {entry.sessionId}
-                        </code>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <code
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigator.clipboard.writeText(`claude --resume ${entry.sessionId}`)
+                            }}
+                            style={{
+                              fontSize: 10,
+                              padding: '1px 6px',
+                              borderRadius: 3,
+                              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
+                              cursor: 'pointer',
+                              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+                              display: 'inline-block',
+                            }}
+                            title="Click to copy"
+                          >
+                            claude --resume {entry.sessionId}
+                          </code>
+                          <button
+                            data-action="refine-continue-from"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setContinueTarget(entry.sessionId)
+                              setExpandedHistoryIdx(null)
+                            }}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              border: `1px solid ${accentColor}66`,
+                              background: 'none',
+                              color: accentColor,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Continue from here
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -933,14 +989,53 @@ export function DemoRefinePanel({
                 {error}
               </div>
             )}
+            {/* Session continuation selector */}
+            {history.some(e => e.sessionId) && (() => {
+              const sessionsWithId = history
+                .map((e, i) => ({ ...e, idx: i }))
+                .filter(e => e.sessionId)
+              return (
+                <div
+                  data-element="refine-session-selector"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}
+                >
+                  <span style={{ color: mutedColor, flexShrink: 0 }}>Session:</span>
+                  <select
+                    data-action="refine-session-select"
+                    value={continueTarget ?? ''}
+                    onChange={e => setContinueTarget(e.target.value || null)}
+                    style={{
+                      flex: 1,
+                      fontSize: 11,
+                      padding: '3px 6px',
+                      borderRadius: 4,
+                      border: `1px solid ${border}`,
+                      backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
+                      color: textColor,
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="">New session</option>
+                    {sessionsWithId.map(e => (
+                      <option key={e.sessionId} value={e.sessionId!}>
+                        {e.prompt.length > 50 ? e.prompt.slice(0, 50) + '...' : e.prompt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )
+            })()}
             <textarea
               ref={textareaRef}
               data-element="refine-prompt"
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
-              placeholder={history.length > 0
-                ? 'Describe the next refinement...'
-                : "Describe the refinement... e.g., 'Make the narration more exciting during the spiral reveal'"}
+              placeholder={continueTarget
+                ? 'Follow-up on the previous refinement...'
+                : history.length > 0
+                  ? 'Describe the next refinement...'
+                  : "Describe the refinement... e.g., 'Make the narration more exciting during the spiral reveal'"}
               onKeyDown={e => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
@@ -1049,7 +1144,7 @@ export function DemoRefinePanel({
                   cursor: prompt.trim() ? 'pointer' : 'default',
                 }}
               >
-                Submit (Cmd+Enter)
+                {continueTarget ? 'Continue' : 'Submit'} (Cmd+Enter)
               </button>
             </div>
           </div>
