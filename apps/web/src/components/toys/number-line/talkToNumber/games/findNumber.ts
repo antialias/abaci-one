@@ -10,6 +10,7 @@ import type { GameDefinition, GameStartResult } from '../gameRegistry'
 
 export const findNumberGame: GameDefinition = {
   id: 'find_number',
+  category: 'guessing',
   name: 'Find the Number',
   description:
     'Challenge the child to find a mystery number on the number line. ' +

@@ -5,9 +5,25 @@ import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
 import type { ChildProfile } from './childProfile'
 import { EXPLORATION_IDS, CONSTANT_IDS, EXPLORATION_DISPLAY } from './explorationRegistry'
 import { GAME_MAP } from './gameRegistry'
-import { resolveMode, type ModeId, type ModeContext } from './sessionModes'
+import { resolveMode, type ModeId, type ModeContext, type SessionActivity } from './sessionModes'
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
+
+/** A single mode transition recorded for debug overlay. */
+export interface ModeTransition {
+  from: ModeId | 'idle'
+  to: ModeId
+  action: string
+  timestamp: number
+  tools: string[]
+}
+
+/** Debug info exposed to the UI for the voice state machine overlay. */
+export interface ModeDebugInfo {
+  current: ModeId
+  previous: ModeId | null
+  transitions: ModeTransition[]
+}
 
 /** A record of a completed call, preserved across calls within a session. */
 interface CallRecord {
@@ -129,6 +145,8 @@ interface UseRealtimeVoiceReturn {
   setNarrationPlaying: (playing: boolean) => void
   /** The current system instructions sent to the voice agent (for debug panel) */
   currentInstructions: string | null
+  /** Debug info for the voice state machine overlay */
+  modeDebug: ModeDebugInfo
 }
 
 export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtimeVoiceReturn {
@@ -155,6 +173,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   // Track the currently active game ID and state (null when no game is running)
   const activeGameIdRef = useRef<string | null>(null)
   const gameStateRef = useRef<unknown>(null)
+  // Session activity — persists across calls (NOT cleared by cleanup)
+  const sessionActivityRef = useRef<SessionActivity>({ gamesPlayed: [], explorationsLaunched: [] })
   const onPlayerIdentifiedRef = useRef(options?.onPlayerIdentified)
   onPlayerIdentifiedRef.current = options?.onPlayerIdentified
   const availablePlayersRef = useRef<Array<{ id: string; name: string; emoji: string }>>([])
@@ -216,6 +236,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const currentInstructionsRef = useRef<string | null>(null)
   const familiarizingResponseCountRef = useRef(0)
   const profileFailedRef = useRef(false)
+
+  // Debug overlay state for mode transitions
+  const [modeDebug, setModeDebug] = useState<ModeDebugInfo>({
+    current: 'answering',
+    previous: null,
+    transitions: [],
+  })
 
   // Refs for cleanup
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -324,6 +351,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     familiarizingResponseCountRef.current = 0
     profileFailedRef.current = false
     currentInstructionsRef.current = null
+    setModeDebug({ current: 'answering', previous: null, transitions: [] })
   }, [])
 
   /** Queue a speaker switch — committed on audio onset, transcript delta, or 1s timeout. */
@@ -360,32 +388,48 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     gameState: gameStateRef.current,
     availablePlayers: availablePlayersRef.current,
     currentInstructions: currentInstructionsRef.current,
+    sessionActivity: sessionActivityRef.current,
   }), [])
 
   /** Send a session.update with instructions AND tools for a mode, tracked for debug. */
-  const updateSession = useCallback((dc: RTCDataChannel, modeId?: ModeId) => {
-    const targetMode = modeId ?? activeModeRef.current
+  const updateSession = useCallback((dc: RTCDataChannel, modeId?: ModeId, action?: string) => {
+    const from = activeModeRef.current
+    const targetMode = modeId ?? from
     const ctx = buildModeContext()
     const { instructions, tools } = resolveMode(targetMode, ctx)
+    const toolNames = tools.map(t => t.name)
+    console.log('[mode] updateSession → %s (from %s), action: %s, tools: [%s]',
+      targetMode, from, action ?? 'refresh', toolNames.join(', '))
     dc.send(JSON.stringify({ type: 'session.update', session: { instructions, tools } }))
     setCurrentInstructions(instructions)
     currentInstructionsRef.current = instructions
     if (modeId) activeModeRef.current = modeId
+    setModeDebug(prev => ({
+      current: targetMode,
+      previous: previousModeRef.current,
+      transitions: [...prev.transitions.slice(-19), {
+        from, to: targetMode, action: action ?? 'refresh',
+        timestamp: Date.now(), tools: toolNames,
+      }],
+    }))
   }, [buildModeContext])
 
   /** Push a new mode onto the stack (saves previous for exitMode). */
-  const enterMode = useCallback((dc: RTCDataChannel, newMode: ModeId, savePrevious = true) => {
+  const enterMode = useCallback((dc: RTCDataChannel, newMode: ModeId, savePrevious = true, action?: string) => {
+    console.log('[mode] enterMode: %s → %s (savePrevious=%s, previous=%s)',
+      activeModeRef.current, newMode, savePrevious, previousModeRef.current)
     if (savePrevious && activeModeRef.current !== newMode) {
       previousModeRef.current = activeModeRef.current
     }
-    updateSession(dc, newMode)
+    updateSession(dc, newMode, action)
   }, [updateSession])
 
   /** Pop back to the previous mode (or default if none saved). */
-  const exitMode = useCallback((dc: RTCDataChannel) => {
+  const exitMode = useCallback((dc: RTCDataChannel, action?: string) => {
     const prev = previousModeRef.current ?? 'default'
+    console.log('[mode] exitMode: %s → %s', activeModeRef.current, prev)
     previousModeRef.current = null
-    updateSession(dc, prev)
+    updateSession(dc, prev, action ?? `exit → ${prev}`)
   }, [updateSession])
 
   const dial = useCallback(async (number: number, options?: DialOptions) => {
@@ -733,7 +777,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               setNarrationPlaying(false)
               // Exit exploration mode back to previous mode
               if (activeModeRef.current === 'exploration') {
-                exitMode(dc)
+                exitMode(dc, 'exploration ended')
               }
             } else {
               console.log('[exploration] cancelling response %s — narration is playing', msg.response?.id)
@@ -823,15 +867,15 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             if (modeBeforeTransition === 'answering') {
               if (childProfileRef.current) {
                 // Profile pre-loaded — skip familiarizing, go straight to default
-                enterMode(dc, 'default', false)
+                enterMode(dc, 'default', false, 'response.done → default (profile loaded)')
               } else {
-                enterMode(dc, 'familiarizing', false)
+                enterMode(dc, 'familiarizing', false, 'response.done → familiarizing')
               }
             } else if (modeBeforeTransition === 'familiarizing') {
               familiarizingResponseCountRef.current++
               if (familiarizingResponseCountRef.current >= 4) {
                 // Auto-transition: agent gave up on identification or it wasn't needed
-                enterMode(dc, 'default', false)
+                enterMode(dc, 'default', false, 'auto: familiarizing timeout')
               }
             }
           }
@@ -894,6 +938,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           // Checked FIRST so game tools don't fall through to built-in handlers.
           if (activeGameIdRef.current) {
             const game = GAME_MAP.get(activeGameIdRef.current)
+            console.log('[mode] tool call %s — activeGame: %s, hasOnToolCall: %s, matchesSessionTool: %s',
+              msg.name, activeGameIdRef.current, !!game?.onToolCall,
+              game?.sessionTools?.some(t => t.name === msg.name) ?? false)
             if (game?.onToolCall && game.sessionTools?.some(t => t.name === msg.name)) {
               try {
                 const args = JSON.parse(msg.arguments || '{}')
@@ -1087,7 +1134,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             // so the model differentiates characters through speech patterns only.
             setPendingSpeaker(newNumbers[0])
             currentSpeakerRef.current = newNumbers[0]
-            enterMode(dc, 'conference')
+            enterMode(dc, 'conference', true, 'add_to_call')
 
             // Prompt the model to greet as all new participants, using switch_speaker for each
             const existingNumbers = conferenceNumbersRef.current.filter(n => !newNumbers.includes(n))
@@ -1151,7 +1198,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             currentSpeakerRef.current = targetNumber  // Update ref for instructions (visual follows via pendingSpeaker)
             console.log('[conference] switch_speaker: %d → %d (pending audio onset)', prevSpeaker, targetNumber)
 
-            updateSession(dc)
+            updateSession(dc, undefined, 'switch_speaker')
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
@@ -1222,7 +1269,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               },
             }))
             // Enter exploration mode — restricted tools + focused instructions
-            enterMode(dc, 'exploration')
+            sessionActivityRef.current.explorationsLaunched.push(constantId)
+            enterMode(dc, 'exploration', true, 'start_exploration')
             // Defer until agent finishes speaking (response.done) — the tool call
             // event fires while audio is still streaming, and we can't send
             // response.create until the current response completes.
@@ -1463,9 +1511,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
                 // Update session with the profile — transition to default if still familiarizing
                 if (activeModeRef.current === 'familiarizing') {
-                  enterMode(dc, 'default', false)
+                  enterMode(dc, 'default', false, 'identify_caller')
                 } else {
-                  updateSession(dc) // Refresh current mode with new profile
+                  updateSession(dc, undefined, 'identify_caller (refresh)') // Refresh current mode with new profile
                 }
 
                 dc.send(JSON.stringify({ type: 'response.create' }))
@@ -1551,6 +1599,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
               const result = game.onStart?.(args) ?? { agentMessage: `${game.name} started!` }
               activeGameIdRef.current = gameId
               gameStateRef.current = result.state ?? null
+              sessionActivityRef.current.gamesPlayed.push(gameId)
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
@@ -1559,7 +1608,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                   output: JSON.stringify({ success: true, message: result.agentMessage }),
                 },
               }))
-              enterMode(dc, 'game')  // Switch to game mode with focused instructions + tools
+              enterMode(dc, 'game', true, `start_game(${gameId})`)  // Switch to game mode with focused instructions + tools
               dc.send(JSON.stringify({ type: 'response.create' }))
               onGameStartRef.current?.(gameId, args)
               // Auto-indicate initial game state (e.g. Nim shows all stones)
@@ -1605,7 +1654,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
                 output: JSON.stringify({ success: true, message: `${game?.name ?? gameId} game ended.` }),
               },
             }))
-            exitMode(dc)  // Restore previous mode (default or conference)
+            exitMode(dc, 'end_game')  // Restore previous mode (default or conference)
             dc.send(JSON.stringify({ type: 'response.create' }))
             onGameEndRef.current?.(gameId)
           }
@@ -1736,7 +1785,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
             if (dcRef.current?.readyState === 'open') {
               // Enter hanging_up mode — focused goodbye instructions + only hang_up tool
-              enterMode(dcRef.current, 'hanging_up', false)
+              enterMode(dcRef.current, 'hanging_up', false, 'timer_expired')
               dcRef.current.send(JSON.stringify({ type: 'response.create' }))
             }
 
@@ -1812,10 +1861,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       currentSpeakerRef.current = soloNumber
       setCurrentSpeaker(soloNumber)
 
-      enterMode(dc, 'default', false)
+      enterMode(dc, 'default', false, 'removeFromCall → solo')
     } else {
       // Update conference prompt for remaining numbers
-      updateSession(dc)
+      updateSession(dc, undefined, 'removeFromCall → conference')
     }
 
     // Notify the model that someone left
@@ -1852,5 +1901,5 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     }
   }, [cleanup])
 
-  return { state, error, errorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions }
+  return { state, error, errorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions, modeDebug }
 }

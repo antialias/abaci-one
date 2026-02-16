@@ -11,6 +11,7 @@ import type { GameDefinition, GameStartResult } from '../gameRegistry'
 
 export const myGame: GameDefinition = {
   id: 'my_game',
+  category: 'strategy',  // 'trick' | 'strategy' | 'guessing'
   name: 'My Game',
   description: 'One-line description for the agent tool picker.',
 
@@ -86,6 +87,7 @@ const handleVoiceGameEnd = useCallback((gameId: string) => {
 | Field | Required | Purpose |
 |-------|----------|---------|
 | `id` | yes | Unique string used in `start_game` tool calls |
+| `category` | yes | `'trick'`, `'strategy'`, or `'guessing'` — groups games in the agent prompt |
 | `name` | yes | Human-readable name (shown in agent messages) |
 | `description` | yes | One-liner for the `start_game` tool description |
 | `agentRules` | yes | Rules injected into agent prompt during gameplay |

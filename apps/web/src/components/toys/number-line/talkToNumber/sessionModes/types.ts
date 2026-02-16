@@ -31,6 +31,14 @@ export interface RealtimeTool {
   }
 }
 
+/** Tracks what the child has done this session (across all calls). */
+export interface SessionActivity {
+  /** Game IDs played this session (may include duplicates). */
+  gamesPlayed: string[]
+  /** Exploration IDs launched this session. */
+  explorationsLaunched: string[]
+}
+
 /** Context available to every mode for building instructions and tools. */
 export interface ModeContext {
   calledNumber: number
@@ -43,6 +51,7 @@ export interface ModeContext {
   gameState: unknown
   availablePlayers: Array<{ id: string; name: string; emoji: string }>
   currentInstructions: string | null
+  sessionActivity: SessionActivity
 }
 
 /** A session mode definition — controls instructions + tools for a phase of the call. */

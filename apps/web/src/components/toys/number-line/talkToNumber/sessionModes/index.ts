@@ -5,7 +5,7 @@
  * and tools for a given mode + context, ready to send via session.update.
  */
 
-export type { ModeId, ModeContext, RealtimeTool, AgentMode } from './types'
+export type { ModeId, ModeContext, RealtimeTool, AgentMode, SessionActivity } from './types'
 
 import type { ModeId, ModeContext, AgentMode, RealtimeTool } from './types'
 import { answeringMode } from './answeringMode'

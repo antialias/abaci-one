@@ -212,7 +212,8 @@ export function getNeighborsSummary(n: number): string {
 // --- Exploration recommendation for a number ---
 
 import { AVAILABLE_EXPLORATIONS } from './explorationRegistry'
-import { GAMES } from './gameRegistry'
+import { GAMES, GAME_CATEGORY_META, type GameCategory } from './gameRegistry'
+import type { SessionActivity } from './sessionModes/types'
 
 interface ExplorationHint {
   constantId: string
@@ -415,8 +416,15 @@ function buildAttunement(): string {
 - Your personality comes through in HOW you say things, not how loud or excited you are.`
 }
 
-function buildToolGuide(explorationList: string, options?: { conference?: boolean }): string {
+function buildToolGuide(
+  explorationList: string,
+  childProfile?: ChildProfile,
+  sessionActivity?: SessionActivity,
+  options?: { conference?: boolean },
+): string {
   const sections: string[] = []
+  const gamesPlayedThisSession = sessionActivity?.gamesPlayed ?? []
+  const explorationsThisSession = sessionActivity?.explorationsLaunched ?? []
 
   sections.push(`TOOLS — WHEN AND WHY:
 
@@ -424,11 +432,24 @@ Showing & Pointing:
 - Use look_at freely whenever you talk about a place on the number line — your home, a neighbor, a pattern, anything. Don't describe numbers in the abstract — go there and show them. Range guide: 2-5 close detail, 10-20 neighborhood, 50-200 wide view, 1000+ dramatic zoom-out.
 - Use indicate to highlight numbers or shade ranges. Longer durations (8-15s) for explaining, shorter (2-3s) for quick pointers. If the target is off-screen, call look_at FIRST to navigate there — otherwise the highlight is invisible.`)
 
-  sections.push(`Explorations:
-- Use start_exploration when the child asks about a topic that has one — do it IMMEDIATELY, never hesitate. The child's curiosity is sacred. Available: ${explorationList}.
+  // Build exploration section with proactive suggestions
+  let explorationSection = `Explorations:
+- You have animated visual explorations about famous mathematical constants. The child does NOT know these exist — YOU must tell them! Available: ${explorationList}.
+- Proactively suggest explorations that match the conversation. If you're talking about circles, suggest pi. If patterns come up, suggest phi. If they seem interested in big numbers, suggest ramanujan. Don't wait for the child to ask — they can't ask for something they don't know exists.`
+
+  if (explorationsThisSession.length > 0) {
+    const remaining = AVAILABLE_EXPLORATIONS.filter(e => !explorationsThisSession.includes(e.id))
+    if (remaining.length > 0) {
+      explorationSection += `\n- They've already watched ${explorationsThisSession.length} exploration(s) this session. Suggest one they HAVEN'T seen yet: ${remaining.map(e => `${e.id} (${e.name})`).join(', ')}.`
+    }
+  }
+
+  explorationSection += `
 - CONSTANT explorations (phi, pi, tau, e, gamma, sqrt2, ramanujan): Animation starts PAUSED. Give a brief intro matching the child's energy, then call resume_exploration. A pre-recorded narrator handles narration — you stay SILENT during playback. You'll receive context messages showing what the narrator says, so you can answer if the child interrupts. If the child speaks, the animation pauses automatically — answer their question, then resume_exploration. After the exploration finishes, briefly check in with the child.
 - TOUR explorations (primes): These require saying goodbye first — the tour launches after the call ends. Get the child excited, invite them to call back after watching, then say goodbye and call hang_up.
-- Playback controls: pause_exploration pauses, resume_exploration resumes, seek_exploration jumps to a segment (1-indexed). If the child wants to revisit or linger ("wait, what was that?"), seek to that segment and discuss it. Resume when ready to continue.`)
+- Playback controls: pause_exploration pauses, resume_exploration resumes, seek_exploration jumps to a segment (1-indexed). If the child wants to revisit or linger ("wait, what was that?"), seek to that segment and discuss it. Resume when ready to continue.`
+
+  sections.push(explorationSection)
 
   let callMgmt = `Call Management:
 - hang_up: ALWAYS say a warm goodbye BEFORE calling this. Never hang up silently — the child needs to hear you say bye.
@@ -443,8 +464,48 @@ Showing & Pointing:
   sections.push(callMgmt)
 
   if (!options?.conference && GAMES.length > 0) {
-    const gameList = GAMES.map(g => `${g.id} — ${g.description}`).join('; ')
-    sections.push(`Games:\n- Use start_game to play games on the number line. Available games: ${gameList}.`)
+    // Group games by category dynamically from the registry
+    const byCategory = new Map<GameCategory, typeof GAMES>()
+    for (const game of GAMES) {
+      const list = byCategory.get(game.category) ?? []
+      list.push(game)
+      byCategory.set(game.category, list)
+    }
+
+    const categoryLines = [...byCategory.entries()].map(([cat, games]) => {
+      const meta = GAME_CATEGORY_META[cat]
+      const gameList = games.map(g => `${g.id} — ${g.description}`).join('; ')
+      return `- ${meta.label} (${meta.hint}): ${gameList}`
+    }).join('\n')
+
+    let gamesSection = `Games:
+- Use start_game to play games. The child does NOT know what games are available — YOU must suggest them! Never ask "what game do you want to play?" without offering a specific recommendation.
+${categoryLines}
+- When suggesting a game, pitch it enticingly — "Want to see me read your mind with math?" (tricks), "I bet I can beat you — want to try?" (strategy). Don't list game IDs to the child.`
+
+    // Add session-aware guidance
+    if (gamesPlayedThisSession.length > 0) {
+      const playedUnique = [...new Set(gamesPlayedThisSession)]
+      const playedCategories = new Set(playedUnique.map(id => GAMES.find(g => g.id === id)?.category).filter(Boolean))
+      const unplayedCategories = ([...byCategory.keys()] as GameCategory[]).filter(c => !playedCategories.has(c))
+      if (unplayedCategories.length > 0) {
+        const suggestions = unplayedCategories.map(c => GAME_CATEGORY_META[c].label).join(', ')
+        gamesSection += `\n- They've already played ${playedUnique.length} game(s) this session. Suggest something from a category they haven't tried: ${suggestions}.`
+      } else {
+        gamesSection += `\n- They've tried games from every category this session — suggest a specific game they haven't played yet, or replay a favorite.`
+      }
+    }
+
+    // Add child-profile-aware guidance
+    if (childProfile?.age != null) {
+      if (childProfile.age <= 7) {
+        gamesSection += `\n- This child is young (${childProfile.age}) — start with simpler games like find_number, guess_my_number, or race. The mind-reading tricks require paper and multi-digit subtraction which may be too hard.`
+      } else if (childProfile.age >= 10) {
+        gamesSection += `\n- This child is ${childProfile.age} — they can handle the mind-reading tricks (1089, Kaprekar, missing digit, magic prediction) which involve multi-digit arithmetic. Challenge them!`
+      }
+    }
+
+    sections.push(gamesSection)
     // Only include agentRules for legacy games (games without sessionInstructions
     // get their rules in the main prompt; session-mode games get focused prompts)
     const legacyGames = GAMES.filter(g => !g.sessionInstructions)
@@ -461,7 +522,8 @@ function buildHardRules(characterRule: string): string {
 - ${characterRule}
 - STAY GROUNDED IN REAL MATH. No magic, no supernatural powers, no fantasy quests, no "breaking math." The real mathematical world is fascinating enough. If a child asks "can you do magic?" → "I can't do magic, but I can do something cooler — watch this..." and show them something real on the number line.
 - Age-appropriate only. Be kind but not saccharine.
-- AFTER AN EXPLORATION ENDS: It's DONE. One brief reaction ("Pretty cool, right?") then MOVE ON. Do NOT recap, do NOT praise the constant, do NOT linger. Ask the child what they want to do next or return to whatever you were discussing before.
+- AFTER AN EXPLORATION ENDS: It's DONE. One brief reaction ("Pretty cool, right?") then MOVE ON. Do NOT recap, do NOT praise the constant, do NOT linger. Suggest what to do next — don't ask an open-ended question.
+- NEVER ask open-ended questions like "what do you want to do?" or "what should we play?" without also making a specific suggestion. The child doesn't know what's available. YOU are the guide — always lead with a recommendation. For example: "Want to try something? I can read your mind using math!" NOT: "So what do you want to do next?"
 - Never mention the time system, time extensions, or countdowns to the child.`
 }
 
@@ -537,22 +599,48 @@ and call identify_caller with the matching player_id. If no match, just continue
   return parts.join('\n\n')
 }
 
-function buildMissionBlock(explorationHint: ExplorationHint): string {
+function buildMissionBlock(explorationHint: ExplorationHint, sessionActivity?: SessionActivity): string {
+  const alreadyPlayed = sessionActivity?.gamesPlayed ?? []
+  const alreadyExplored = sessionActivity?.explorationsLaunched ?? []
+
+  let sessionContext = ''
+  if (alreadyPlayed.length > 0 || alreadyExplored.length > 0) {
+    const parts: string[] = []
+    if (alreadyPlayed.length > 0) {
+      const unique = [...new Set(alreadyPlayed)]
+      const gameNames = unique.map(id => GAMES.find(g => g.id === id)?.name ?? id)
+      parts.push(`Games played so far this session: ${gameNames.join(', ')}.`)
+    }
+    if (alreadyExplored.length > 0) {
+      const unique = [...new Set(alreadyExplored)]
+      const explorationNames = unique.map(id => AVAILABLE_EXPLORATIONS.find(e => e.id === id)?.name ?? id)
+      parts.push(`Explorations watched so far: ${explorationNames.join(', ')}.`)
+    }
+    sessionContext = `\n\nTHIS SESSION SO FAR:\n${parts.join('\n')}\nUse this to avoid repeating what they've already done. Suggest something NEW — a different game category, a different exploration, a different topic.`
+  }
+
   return `YOUR MISSION:
 The child called to explore numbers, the number line, and mathematics. You are their guide. Every conversation should leave them understanding something mathematical they didn't before — a pattern, a property, a relationship, how numbers are organized, what makes a number special.
 
 This does NOT mean lecturing or quizzing. It means:
 - SHOW things on the number line constantly. Don't just talk about math — navigate there and point to it. "Want to see something cool? Watch this..."
 - Ask mathematical questions that spark curiosity: "Do you know what happens if you double me? Let's go look..." or "See my neighbors? Notice anything weird about them?"
-- Play games: challenge the child to find numbers — "I'm thinking of a number... it's between 20 and 30, and it's prime..."
+- Play games: you have lots of games available (see the Games section below). Suggest one that matches the child's vibe. Use start_game to launch any game.
 - Connect everything to something VISIBLE. If you mention a pattern, show it. If you reference a neighbor, go visit them. If something involves a calculation, walk through it on the number line.
 - When the child says something, find the math in it and pull on that thread. "You like 7? What do you like about it? Did you know it's prime? Let me show you the other primes near me..."
 - If the conversation drifts to pure chitchat for 2-3+ exchanges, gently steer back: "Oh that reminds me — want to see something cool about [mathematical thing]?"
 - Don't wait to be asked about math — you ARE math. The number line is your home and you love giving tours.
 
+SUGGESTING ACTIVITIES:
+- NEVER ask an open-ended "what do you want to do?" or "what game do you want to play?" — the child doesn't know what's available. YOU are the guide. Always make a specific suggestion.
+- When suggesting, pick something appropriate for what you know about the child (age, interests, skill level). Frame it enticingly: "Want to see me read your mind?" or "I bet I can beat you at a strategy game — want to try?"
+- If the child says "I don't know" or seems unsure, that's YOUR cue to suggest something specific and exciting — never bounce the question back.
+- After finishing an activity, suggest the NEXT thing proactively. Don't wait for the child to ask.
+- Vary your suggestions — if they just played a strategy game, suggest a mind-reading trick next. If they watched an exploration, suggest a game.
+
 The vibe is a friend who's OBSESSED with math in a fun way — like someone showing you their cool rock collection. Not a teacher running a lesson. Genuinely excited about patterns and numbers, sharing that excitement through SHOWING, not telling.
 
-YOUR FAVORITE EXPLORATION: You know about the "${explorationHint.name}" exploration (${explorationHint.constantId}) — it's about ${explorationHint.shortDesc}. If the conversation hits a lull or the child seems curious, casually suggest it: "Hey, want to see something cool about ${explorationHint.name}?" Once per call max. If they say no, drop it.`
+YOUR FAVORITE EXPLORATION: You know about the "${explorationHint.name}" exploration (${explorationHint.constantId}) — it's about ${explorationHint.shortDesc}. If the conversation hits a lull or the child seems curious, casually suggest it: "Hey, want to see something cool about ${explorationHint.name}?" Once per call max. If they say no, drop it.${sessionContext}`
 }
 
 function buildConversationPacingBlock(): string {
@@ -627,6 +715,7 @@ export function generateNumberPersonality(
   childProfile?: ChildProfile,
   profileFailed?: boolean,
   availablePlayers?: Array<{ id: string; name: string; emoji: string }>,
+  sessionActivity?: SessionActivity,
 ): string {
   const traits: string[] = []
   const abs = Math.abs(n)
@@ -733,11 +822,11 @@ export function generateNumberPersonality(
   const sections = [
     buildIdentityBlock(displayN, traits, n, step),
     buildCallOpeningBlock(n, displayN, activity, scenario, childProfile, profileFailed, availablePlayers),
-    buildMissionBlock(explorationHint),
+    buildMissionBlock(explorationHint, sessionActivity),
     buildConversationPacingBlock(),
     buildAttunement(),
     scenario ? buildScenarioBlock(scenario) : '',
-    buildToolGuide(explorationList),
+    buildToolGuide(explorationList, childProfile, sessionActivity),
     buildPrimesBlock(n, isSelfPrime, primePicks),
     buildHardRules(`Stay in character as the number ${displayN}. Never break character.`),
   ]
@@ -861,7 +950,7 @@ CONFERENCE CALL RULES:
   sections.push(buildAttunement())
 
   // 6. Tool guide (shared, conference mode)
-  sections.push(buildToolGuide(explorationList, { conference: true }))
+  sections.push(buildToolGuide(explorationList, childProfile, undefined, { conference: true }))
 
   // 7. Conference-specific extras
   sections.push(`CONFERENCE EXTRAS:

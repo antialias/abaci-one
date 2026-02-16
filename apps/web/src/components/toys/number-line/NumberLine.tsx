@@ -10,7 +10,6 @@ import { useNumberLineTouch } from './useNumberLineTouch'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 import { computeProximity } from './findTheNumber/computeProximity'
 import type { ProximityZone, ProximityResult } from './findTheNumber/computeProximity'
-import { FindTheNumberBar } from './findTheNumber/FindTheNumberBar'
 import type { FindTheNumberGameState } from './findTheNumber/FindTheNumberBar'
 import { useFindTheNumberAudio } from './findTheNumber/useFindTheNumberAudio'
 import { MATH_CONSTANTS } from './constants/constantsData'
@@ -65,6 +64,7 @@ import { lerpViewport } from './viewportAnimation'
 import type { Viewport } from './viewportAnimation'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
+import { DemoRefinePanel } from './DemoRefinePanel'
 
 // Playback speed steps (YouTube-style)
 const SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const
@@ -262,6 +262,12 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const isDraggingScrubberRef = useRef(false)
   const scrubberHoverProgressRef = useRef<number | null>(null)
 
+  // --- Demo Refine mode state (dev-only, visual debug gated) ---
+  const [refineMode, setRefineMode] = useState(false)
+  const [refineRange, setRefineRange] = useState<{ start: number; end: number } | null>(null)
+  const refineStartRef = useRef<number | null>(null)
+  const [refineTaskActive, setRefineTaskActive] = useState(false)
+
   // --- Prime Tour state ---
   // Uses the same drawFnRef/demoRedraw pattern as useConstantDemo
   const {
@@ -370,7 +376,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       .map(p => ({ id: p.id, name: p.name, emoji: p.emoji || '👤' }))
   }, [allPlayers])
 
-  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions } = useRealtimeVoice({
+  const { state: voiceState, error: voiceError, errorCode: voiceErrorCode, dial, hangUp, timeRemaining, isSpeaking, transferTarget, conferenceNumbers, currentSpeaker, removeFromCall, sendSystemMessage, setNarrationPlaying, profileFailed, currentInstructions, modeDebug } = useRealtimeVoice({
     onTransfer: handleVoiceTransfer,
     onStartExploration: handleVoiceExploration,
     onPauseExploration: handleVoicePause,
@@ -1905,6 +1911,18 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const handleScrubberPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
+
+    // In refine mode, drag selects a range instead of scrubbing
+    // But don't touch the range while a refine task is running
+    if (refineMode) {
+      if (refineTaskActive) return
+      const progress = scrubberProgressFromPointer(e.clientX, true)
+      refineStartRef.current = progress
+      setRefineRange({ start: progress, end: progress })
+      scrubberTrackRef.current?.setPointerCapture(e.pointerId)
+      return
+    }
+
     setRestoredFromUrl(false)
     narration.stop() // stop TTS narration when user scrubs
     isDraggingScrubberRef.current = true
@@ -1921,9 +1939,21 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         : 'rgba(168, 85, 247, 0.6)'
       scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
     }
-  }, [scrubberProgressFromPointer, setRevealProgress, narration])
+  }, [scrubberProgressFromPointer, setRevealProgress, narration, refineMode, refineTaskActive])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
+    // In refine mode, update range end (but not while task is running)
+    if (refineMode && refineStartRef.current !== null && !refineTaskActive) {
+      e.preventDefault()
+      const progress = scrubberProgressFromPointer(e.clientX, true)
+      const start = refineStartRef.current
+      setRefineRange({
+        start: Math.min(start, progress),
+        end: Math.max(start, progress),
+      })
+      return
+    }
+
     if (isDraggingScrubberRef.current) {
       e.preventDefault()
       const progress = scrubberProgressFromPointer(e.clientX, true)
@@ -1932,13 +1962,20 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       // Track hover position for segment label display
       scrubberHoverProgressRef.current = scrubberProgressFromPointer(e.clientX)
     }
-  }, [scrubberProgressFromPointer, setRevealProgress])
+  }, [scrubberProgressFromPointer, setRevealProgress, refineMode, refineTaskActive])
 
   const handleScrubberPointerLeave = useCallback(() => {
     scrubberHoverProgressRef.current = null
   }, [])
 
   const handleScrubberPointerUp = useCallback((e: React.PointerEvent) => {
+    // In refine mode, finalize range
+    if (refineMode) {
+      refineStartRef.current = null
+      scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
+      return
+    }
+
     if (!isDraggingScrubberRef.current) return
     isDraggingScrubberRef.current = false
     scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
@@ -1952,7 +1989,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     if (ds.constantId && ds.revealProgress < 1) {
       narration.resume(ds.constantId)
     }
-  }, [demoStateRef, narration])
+  }, [demoStateRef, narration, refineMode])
 
   const handleScrubberKeyDown = useCallback((e: React.KeyboardEvent) => {
     const ds = demoStateRef.current
@@ -2028,8 +2065,14 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   // Global keyboard controls when a demo is active (YouTube-style)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Escape always closes the shortcuts overlay
+      // Escape: close shortcuts, or exit refine mode
       if (e.key === 'Escape') {
+        if (refineMode) {
+          setRefineMode(false)
+          setRefineRange(null)
+          refineStartRef.current = null
+          return
+        }
         setShowShortcuts(false)
         return
       }
@@ -2039,6 +2082,23 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       // Don't hijack keys when an input/textarea/select is focused
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // 'r' toggles refine mode (dev-only, visual debug gated)
+      if ((e.key === 'r' || e.key === 'R') && isVisualDebugEnabled) {
+        setRefineMode(prev => {
+          if (!prev) {
+            // Entering refine mode: pause narration
+            narration.stop()
+            return true
+          } else {
+            // Exiting: clear range
+            setRefineRange(null)
+            refineStartRef.current = null
+            return false
+          }
+        })
+        return
+      }
 
       // ? toggles shortcuts overlay
       if (e.key === '?') {
@@ -2102,7 +2162,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [demoStateRef, handlePlayPauseClick, narration, setRevealProgress, audioManager])
+  }, [demoStateRef, handlePlayPauseClick, narration, setRevealProgress, audioManager, refineMode, isVisualDebugEnabled])
 
   const handleResumeFromUrl = useCallback(() => {
     setRestoredFromUrl(false)
@@ -2165,15 +2225,22 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     ? (resolvedTheme === 'dark' ? '#2dd4bf' : '#0d9488')
     : (resolvedTheme === 'dark' ? '#fbbf24' : '#a855f7')
 
+  // Compute segments overlapping the refine range
+  const refineSelectedSegments = useMemo(() => {
+    if (!refineMode || !refineRange || refineRange.end <= refineRange.start) return []
+    const cid = demoStateRef.current.constantId
+    if (!cid) return []
+    const cfg = NARRATION_CONFIGS[cid]
+    if (!cfg) return []
+    return cfg.segments
+      .map((seg, i) => ({ ...seg, index: i }))
+      .filter(seg => seg.startProgress < refineRange.end && seg.endProgress > refineRange.start)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refineMode, refineRange])
+
   return (
     <div ref={wrapperRef} data-component="number-line-wrapper" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
-      <FindTheNumberBar
-        onStart={handleGameStart}
-        onGiveUp={handleGameGiveUp}
-        gameState={gameState}
-        isDark={resolvedTheme === 'dark'}
-        hideTarget={gameStartedByModel}
-      />
+      {/* FindTheNumberBar hidden — the voice agent starts find_number via start_game tool */}
       <div data-element="canvas-wrapper" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <canvas
           ref={canvasRef}
@@ -2632,6 +2699,23 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
                 backgroundColor: scrubberTrackColor,
               }}
             />
+            {/* Refine range highlight overlay */}
+            {refineMode && refineRange && refineRange.end > refineRange.start && (
+              <div
+                data-element="demo-scrubber-refine-range"
+                style={{
+                  position: 'absolute',
+                  left: `${progressToScrubber(refineRange.start) * 100}%`,
+                  width: `${(progressToScrubber(refineRange.end) - progressToScrubber(refineRange.start)) * 100}%`,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(96, 165, 250, 0.5)',
+                  border: '1px solid rgba(96, 165, 250, 0.8)',
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
             {/* Segment boundary tick marks */}
             <div
               ref={segmentTicksRef}
@@ -2782,7 +2866,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             onClose={exitTour}
           />
         )}
-        <ToyDebugPanel title="Number Line">
+        {!refineMode && <ToyDebugPanel title="Number Line">
           <DebugSlider label="Anchor max" value={anchorMax} min={1} max={20} step={1} onChange={setAnchorMax} />
           <DebugSlider label="Medium max" value={mediumMax} min={5} max={50} step={1} onChange={setMediumMax} />
           <label data-element="constants-toggle" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
@@ -2976,14 +3060,111 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
               formatValue={v => `${v}x`}
             />
           </div>
-        </ToyDebugPanel>
-        {isVisualDebugEnabled && currentInstructions && (
+        </ToyDebugPanel>}
+        {!refineMode && isVisualDebugEnabled && voiceState !== 'idle' && modeDebug && (
+          <div
+            data-component="voice-mode-debug"
+            style={{
+              position: 'fixed',
+              top: 'calc(var(--app-nav-height, 56px) + 16px)',
+              left: 16,
+              zIndex: 9999,
+              background: 'rgba(17,24,39,0.93)',
+              backdropFilter: 'blur(8px)',
+              borderRadius: 8,
+              padding: '12px 16px',
+              color: 'rgba(243,244,246,1)',
+              fontSize: 12,
+              width: 280,
+              maxHeight: 'calc(100dvh - var(--app-nav-height, 56px) - 48px)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              pointerEvents: 'auto',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6, marginBottom: 8, flexShrink: 0 }}>
+              Voice State Machine
+            </div>
+
+            {/* Current state — prominent pill */}
+            <div data-element="current-mode" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{
+                display: 'inline-block',
+                padding: '2px 10px',
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: 13,
+                color: '#fff',
+                background: ({
+                  answering: '#3b82f6',
+                  familiarizing: '#8b5cf6',
+                  default: '#22c55e',
+                  conference: '#06b6d4',
+                  exploration: '#f59e0b',
+                  game: '#ef4444',
+                  hanging_up: '#6b7280',
+                } as Record<string, string>)[modeDebug.current] ?? '#6b7280',
+              }}>
+                {modeDebug.current}
+              </span>
+              {modeDebug.previous && (
+                <span style={{ opacity: 0.5, fontSize: 11 }}>
+                  {'<-'} {modeDebug.previous}
+                </span>
+              )}
+            </div>
+
+            {/* Active game ID */}
+            {activeGameId && (
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>
+                Game: {activeGameId}
+              </div>
+            )}
+
+            {/* Transition log — scrollable, newest on top */}
+            <div
+              data-element="transition-log"
+              style={{
+                overflowY: 'auto',
+                flex: 1,
+                minHeight: 0,
+                maxHeight: 200,
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                paddingTop: 6,
+                marginTop: 2,
+              }}
+            >
+              {[...modeDebug.transitions].reverse().map((t, i) => {
+                const age = Date.now() - t.timestamp
+                const ageStr = age < 60_000
+                  ? `${Math.round(age / 1000)}s`
+                  : `${Math.round(age / 60_000)}m`
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 6, fontSize: 10, lineHeight: '18px', opacity: i === 0 ? 1 : 0.6 }}>
+                    <span style={{ color: '#9ca3af', minWidth: 24, textAlign: 'right', flexShrink: 0 }}>{ageStr}</span>
+                    <span style={{ flexShrink: 0 }}>{t.from} {'>'} {t.to}</span>
+                    <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.action}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Active tools list */}
+            {modeDebug.transitions.length > 0 && (
+              <div data-element="active-tools" style={{ fontSize: 10, color: '#6b7280', marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6, wordBreak: 'break-word' }}>
+                Tools: {modeDebug.transitions[modeDebug.transitions.length - 1].tools.join(', ')}
+              </div>
+            )}
+          </div>
+        )}
+        {!refineMode && isVisualDebugEnabled && currentInstructions && (
           <div
             data-component="voice-context-debug"
             style={{
               position: 'fixed',
               bottom: 16,
-              left: 16,
+              right: 16,
               zIndex: 9999,
               background: 'rgba(17,24,39,0.93)',
               backdropFilter: 'blur(8px)',
@@ -3148,6 +3329,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
                 ['J / L', 'Scrub \u00b110%'],
                 ['< / >', 'Playback speed'],
                 ['Home / End', 'Jump to start / end'],
+                ...(isVisualDebugEnabled ? [['R', 'Refine mode'] as const] : []),
                 ['?', 'Toggle this help'],
                 ['Esc', 'Close'],
               ] as const).map(([key, desc]) => (
@@ -3170,6 +3352,56 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
           </div>
         )
       })()}
+
+      {/* REFINE MODE badge */}
+      {refineMode && demoActive && (
+        <div
+          data-element="refine-mode-badge"
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 190,
+            padding: '4px 14px',
+            borderRadius: 6,
+            backgroundColor: 'rgba(96, 165, 250, 0.2)',
+            border: '1px solid rgba(96, 165, 250, 0.5)',
+            color: resolvedTheme === 'dark' ? '#93c5fd' : '#2563eb',
+            fontSize: 11,
+            fontWeight: 700,
+            fontFamily: 'system-ui, sans-serif',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          Refine Mode
+        </div>
+      )}
+
+      {/* Demo Refine Panel */}
+      {refineMode && demoStateRef.current.constantId && (refineTaskActive || (refineRange && refineRange.end > refineRange.start)) && (
+        <DemoRefinePanel
+          constantId={demoStateRef.current.constantId}
+          startProgress={refineRange?.start ?? 0}
+          endProgress={refineRange?.end ?? 1}
+          segments={refineSelectedSegments}
+          isDark={resolvedTheme === 'dark'}
+          onClose={() => {
+            setRefineMode(false)
+            setRefineRange(null)
+            refineStartRef.current = null
+            setRefineTaskActive(false)
+          }}
+          onComplete={() => {
+            window.location.reload()
+          }}
+          onTaskStart={() => setRefineTaskActive(true)}
+          onTaskEnd={() => setRefineTaskActive(false)}
+        />
+      )}
       </div>
     </div>
   )

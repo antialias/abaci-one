@@ -264,7 +264,7 @@ export function makeStartGameTool(): RealtimeTool {
         },
         target: {
           type: 'number',
-          description: 'For find_number: the target number to find. Can be integer (42), decimal (3.14), negative (-7), etc.',
+          description: 'For find_number: the target number to find. For race: the target to reach (default 21).',
         },
         min: {
           type: 'number',
@@ -276,11 +276,15 @@ export function makeStartGameTool(): RealtimeTool {
         },
         stones: {
           type: 'number',
-          description: 'For nim: total number of stones (default 15). Must be a positive integer.',
+          description: 'For nim/poison: total number of stones (default 15). Must be a positive integer.',
         },
         max_take: {
           type: 'number',
-          description: 'For nim: maximum stones a player can take per turn (default 3). Must be a positive integer.',
+          description: 'For nim/poison: maximum stones a player can take per turn (default 3). Must be a positive integer.',
+        },
+        max_add: {
+          type: 'number',
+          description: 'For race: maximum a player can add per turn (default 3). Must be a positive integer.',
         },
       },
       required: ['game_id'],

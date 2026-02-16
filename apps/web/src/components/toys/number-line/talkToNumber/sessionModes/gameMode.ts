@@ -45,9 +45,11 @@ export const gameMode: AgentMode = {
   getTools: (ctx) => {
     const game = ctx.activeGameId ? GAME_MAP.get(ctx.activeGameId) : null
 
-    // Session-mode game: use its dedicated tools + end_game + hang_up
+    // Session-mode game: use its dedicated tools + shared tools.
+    // look_at and indicate are NOT in sessionTools (so the game's onToolCall
+    // won't intercept them) — they fall through to the built-in handlers.
     if (game?.sessionTools) {
-      return [...(game.sessionTools as RealtimeTool[]), TOOL_END_GAME, TOOL_HANG_UP]
+      return [...(game.sessionTools as RealtimeTool[]), TOOL_LOOK_AT, TOOL_INDICATE, TOOL_END_GAME, TOOL_HANG_UP]
     }
 
     // Legacy game: restricted tool set

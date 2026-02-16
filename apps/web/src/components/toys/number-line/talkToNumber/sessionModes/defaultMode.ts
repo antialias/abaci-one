@@ -21,6 +21,7 @@ export const defaultMode: AgentMode = {
       !ctx.childProfile && !ctx.profileFailed && ctx.availablePlayers.length > 0
         ? ctx.availablePlayers
         : undefined,
+      ctx.sessionActivity,
     ),
 
   getTools: getDefaultTools,

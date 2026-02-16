@@ -4,7 +4,7 @@
  * A single pool of N stones (positions 1–N on the number line).
  * Players take turns removing 1 to max_take stones. Whoever takes
  * the last stone wins. The remaining stones are shown as persistent
- * indicators on the number line, updated automatically via game_action.
+ * indicators on the number line, updated automatically via remove_stones.
  */
 
 import type { GameDefinition, GameStartResult, GameActionResult, GameToolCallResult } from '../gameRegistry'
@@ -19,6 +19,7 @@ interface NimState {
 
 export const nimGame: GameDefinition = {
   id: 'nim',
+  category: 'strategy',
   name: 'Nim',
   description:
     'Classic Nim — take turns removing 1–3 stones from a single pool. ' +
@@ -31,7 +32,7 @@ export const nimGame: GameDefinition = {
     'On each turn, the player removes 1 to max_take stones from the pool. ' +
     'Stones are always removed from the top (highest remaining numbers). ' +
     '3) WINNING: Whoever takes the LAST stone WINS. ' +
-    '4) MOVES: After EVERY move (yours or the child\'s), call game_action with remove: <number of stones taken>. ' +
+    '4) MOVES: After EVERY move (yours or the child\'s), call remove_stones with count: <number of stones taken>. ' +
     'This automatically updates the visual display. Do NOT call indicate manually during this game. ' +
     'Do NOT call look_at during this game (viewport is locked). ' +
     '5) COMMUNICATION: Tell the child how many stones remain after every move. ' +
@@ -83,7 +84,9 @@ export const nimGame: GameDefinition = {
     '- Stones are always removed from the top (highest remaining numbers).\n' +
     '- Whoever takes the LAST stone WINS.\n\n' +
     'MOVES:\n' +
-    '- After EVERY move (yours or the child\'s), call remove_stones with count: <number>.\n' +
+    '- YOUR TURN: First ANNOUNCE your move out loud ("I\'ll take 2 stones"), then call remove_stones.\n' +
+    '  The child needs to hear what you\'re doing BEFORE the display changes.\n' +
+    '- CHILD\'S TURN: After the child says how many they want, call remove_stones immediately.\n' +
     '- This automatically updates the visual display. Do NOT call indicate or look_at.\n' +
     '- Tell the child how many stones remain after every move.\n\n' +
     'STRATEGY:\n' +
@@ -95,12 +98,14 @@ export const nimGame: GameDefinition = {
     '- If invalid, gently explain and let them try again.\n\n' +
     'ENDGAME:\n' +
     '- When all stones are gone, the player who took the last stone wins.\n' +
+    '- If it\'s the child\'s turn and only 1 stone remains, they win automatically — congratulate them and call remove_stones(1) then end_game. Do NOT make them say "I take 1 stone".\n' +
     '- Call end_game when the game is over.\n' +
     '- After the game, explain the strategy at an age-appropriate level.\n\n' +
     'STYLE:\n' +
-    '- Keep responses short. Be conversational and encouraging.\n' +
-    '- "There are 9 stones left — your turn! How many do you want to take?"\n' +
-    '- Celebrate good moves. Be a gracious winner or loser.',
+    '- Keep responses SHORT — one or two sentences max after each move.\n' +
+    '- After calling remove_stones, just say how many are left and pass the turn. Do NOT ramble.\n' +
+    '- "9 stones left — your turn! How many do you want to take?"\n' +
+    '- Celebrate good moves briefly. Be a gracious winner or loser.',
 
   onToolCall(rawState: unknown, toolName: string, args: Record<string, unknown>): GameToolCallResult {
     if (toolName !== 'remove_stones') {
@@ -141,7 +146,7 @@ export const nimGame: GameDefinition = {
         `Nim game started! ${stones} stones (positions 1–${stones}), take 1–${maxTake} per turn. ` +
         `The number line is showing all ${stones} stones. ` +
         `Introduce the game: there are ${stones} stones, you take turns removing 1 to ${maxTake}, whoever takes the last stone wins. ` +
-        `After each move, call game_action with remove: <number>. The display updates automatically. ` +
+        `After each move, call remove_stones with count: <number>. The display updates automatically. ` +
         `The child goes first. ` +
         `Strategy hint: ${losing ? `child has the advantage (${stones} is a multiple of ${maxTake + 1}) — play carefully` : `you have a winning strategy — leave multiples of ${maxTake + 1}`}.`,
       state,

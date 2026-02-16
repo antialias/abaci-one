@@ -15,6 +15,7 @@ const DEFAULT_MAX = 100
 
 export const guessMyNumberGame: GameDefinition = {
   id: 'guess_my_number',
+  category: 'guessing',
   name: 'Guess My Number',
   description:
     'The child thinks of a number and you narrow it down with ' +

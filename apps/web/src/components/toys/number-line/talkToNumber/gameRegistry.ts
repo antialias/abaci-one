@@ -38,6 +38,16 @@ export interface GameToolCallResult {
   indicate?: { numbers: number[]; persistent?: boolean }
 }
 
+/** Category used to group games in the agent's prompt. */
+export type GameCategory = 'trick' | 'strategy' | 'guessing'
+
+/** Human-readable label + suggestion hint for each category. */
+export const GAME_CATEGORY_META: Record<GameCategory, { label: string; hint: string }> = {
+  trick: { label: 'MIND-READING TRICKS', hint: 'great when the child seems curious or wants to see something magical' },
+  strategy: { label: 'STRATEGY GAMES', hint: 'great when the child is competitive or wants a challenge' },
+  guessing: { label: 'GUESSING GAMES', hint: 'good warm-ups or quick games' },
+}
+
 export interface GameDefinition {
   /** Unique identifier used in start_game tool calls. */
   id: string
@@ -45,6 +55,8 @@ export interface GameDefinition {
   name: string
   /** Short description shown in the start_game tool description. */
   description: string
+  /** Category for grouping in agent prompt. */
+  category: GameCategory
 
   // ── Voice layer ──
   /** Rules injected into instructions when the game starts. */
@@ -75,11 +87,23 @@ export interface GameDefinition {
 import { findNumberGame } from './games/findNumber'
 import { guessMyNumberGame } from './games/guessMyNumber'
 import { nimGame } from './games/nim'
+import { raceGame } from './games/race'
+import { poisonGame } from './games/poison'
+import { trick1089Game } from './games/trick1089'
+import { kaprekarGame } from './games/kaprekar'
+import { magicPredictionGame } from './games/magicPrediction'
+import { missingDigitGame } from './games/missingDigit'
 
 export const GAMES: GameDefinition[] = [
   findNumberGame,
   guessMyNumberGame,
   nimGame,
+  raceGame,
+  poisonGame,
+  trick1089Game,
+  kaprekarGame,
+  magicPredictionGame,
+  missingDigitGame,
 ]
 
 // ── Derived helpers ──────────────────────────────────────────────────
