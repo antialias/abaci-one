@@ -94,6 +94,8 @@ interface UseRealtimeVoiceOptions {
   onResumeExploration?: () => void
   /** Called when the model seeks to a specific segment (0-indexed) */
   onSeekExploration?: (segmentIndex: number) => void
+  /** Called when the model ends the exploration early via end_exploration tool */
+  onEndExploration?: () => void
   /** Called when the model wants to pan/zoom the number line */
   onLookAt?: (center: number, range: number) => void
   /** Called when the model wants to highlight numbers/range on the number line */
@@ -160,6 +162,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onResumeExplorationRef.current = options?.onResumeExploration
   const onSeekExplorationRef = useRef(options?.onSeekExploration)
   onSeekExplorationRef.current = options?.onSeekExploration
+  const onEndExplorationRef = useRef(options?.onEndExploration)
+  onEndExplorationRef.current = options?.onEndExploration
   const onLookAtRef = useRef(options?.onLookAt)
   onLookAtRef.current = options?.onLookAt
   const onIndicateRef = useRef(options?.onIndicate)
@@ -258,6 +262,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const warningSentRef = useRef(false)
   const windingDownRequestedRef = useRef(false)
   const goodbyeRequestedRef = useRef(false)
+  const childHasSpokenRef = useRef(false)
   const hangUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stateRef = useRef<CallState>('idle')
 
@@ -347,6 +352,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     transcriptsRef.current = []
     windingDownRequestedRef.current = false
     goodbyeRequestedRef.current = false
+    childHasSpokenRef.current = false
     setCurrentInstructions(null)
     activeModeRef.current = 'answering'
     previousModeRef.current = null
@@ -451,6 +457,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     warningSentRef.current = false
     windingDownRequestedRef.current = false
     goodbyeRequestedRef.current = false
+    childHasSpokenRef.current = false
     // Persist playerId for transfers/retries
     if (options?.playerId !== undefined) {
       activePlayerIdRef.current = options.playerId
@@ -868,7 +875,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
             // ── Mode transitions on response.done ──
             const modeBeforeTransition = activeModeRef.current
-            if (modeBeforeTransition === 'answering') {
+            if (modeBeforeTransition === 'answering' && childHasSpokenRef.current) {
+              // Only transition after the child has spoken — the agent's initial
+              // greeting response.done should NOT trigger a mode switch, which
+              // would send a session.update that cuts off the greeting.
               if (childProfileRef.current) {
                 // Profile pre-loaded — skip familiarizing, go straight to default
                 enterMode(dc, 'default', false, 'response.done → default (profile loaded)')
@@ -909,6 +919,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           }
           if (msg.type === 'conversation.item.input_audio_transcription.completed') {
             if (msg.transcript) {
+              childHasSpokenRef.current = true
               const buf = transcriptsRef.current
               buf.push({ role: 'child', text: msg.transcript })
               if (buf.length > 12) buf.shift()
@@ -1352,6 +1363,27 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             }
           }
 
+          // Handle model calling end_exploration tool — stop exploration and return to conversation
+          if (msg.name === 'end_exploration') {
+            setNarrationPlaying(false)
+            onEndExplorationRef.current?.()
+
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: msg.call_id,
+                output: JSON.stringify({ success: true, message: 'Exploration stopped. You\'re back in conversation mode — full tools available.' }),
+              },
+            }))
+
+            // Exit exploration mode back to previous mode (default, etc.)
+            if (activeModeRef.current === 'exploration') {
+              exitMode(dc, 'end_exploration')
+            }
+            dc.send(JSON.stringify({ type: 'response.create' }))
+          }
+
           // Handle model calling look_at tool — pan/zoom the number line
           if (msg.name === 'look_at') {
             try {
@@ -1755,11 +1787,25 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       // Start countdown timer
       timerRef.current = setInterval(() => {
-        // Freeze the countdown while an exploration is playing — push deadline
-        // forward so the call doesn't expire mid-video.
-        if (isExplorationActiveRef?.current) {
+        // Freeze the countdown while an exploration is actively playing (not
+        // paused, not finished) — push deadline forward so the call doesn't
+        // expire mid-video. Paused explorations don't freeze the timer.
+        if (isExplorationActiveRef?.current && narrationPlayingRef.current) {
           deadlineRef.current = Math.max(deadlineRef.current, Date.now() + WARNING_BEFORE_END_MS + 5000)
           warningSentRef.current = false
+        }
+
+        // Auto-extend when a game is actively being played — don't let the
+        // call expire mid-game. Uses the same extension budget as manual
+        // request_more_time so the call can't run indefinitely.
+        if (activeGameIdRef.current && !extensionUsedRef.current) {
+          const gameRemaining = deadlineRef.current - Date.now()
+          if (gameRemaining < WARNING_BEFORE_END_MS) {
+            extensionUsedRef.current = true
+            deadlineRef.current += EXTENSION_MS
+            warningSentRef.current = false
+            console.log('[timer] auto-extended %dms — game "%s" is active', EXTENSION_MS, activeGameIdRef.current)
+          }
         }
 
         const remaining = Math.max(0, deadlineRef.current - Date.now())

@@ -370,6 +370,10 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const handleVoicePause = useCallback(() => { pauseFnRef.current() }, [])
   const handleVoiceResume = useCallback(() => { resumeFnRef.current() }, [])
   const handleVoiceSeek = useCallback((segIdx: number) => { seekFnRef.current(segIdx) }, [])
+  const handleVoiceEndExploration = useCallback(() => {
+    cancelDemo()
+    narration.stop()
+  }, [cancelDemo, narration])
   const handleVoiceLookAt = useCallback((center: number, range: number) => { lookAtFnRef.current(center, range) }, [])
   const handleVoiceIndicate = useCallback((numbers: number[], range?: { from: number; to: number }, durationSeconds?: number, persistent?: boolean) => { indicateFnRef.current(numbers, range, durationSeconds, persistent) }, [])
   const handleVoiceSetLabelStyle = useCallback((scale: number, minOpacity: number) => {
@@ -391,6 +395,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     onPauseExploration: handleVoicePause,
     onResumeExploration: handleVoiceResume,
     onSeekExploration: handleVoiceSeek,
+    onEndExploration: handleVoiceEndExploration,
     onLookAt: handleVoiceLookAt,
     onIndicate: handleVoiceIndicate,
     onGameStart: handleVoiceGameStart,

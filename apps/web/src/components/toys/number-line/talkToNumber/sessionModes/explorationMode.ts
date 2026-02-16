@@ -25,6 +25,7 @@ export const explorationMode: AgentMode = {
       `- Use seek_exploration to jump to a specific segment if the child asks to revisit something.`,
       `- When the exploration finishes, give one brief reaction, then move on.`,
       `- Do NOT narrate, announce segments, or repeat what the narrator says.`,
+      `- If the child wants to stop watching, call end_exploration to return to conversation.`,
       `- If the child seems disengaged, ask if they want to keep watching, see something else, or do something different.`,
     ].join('\n')
   },

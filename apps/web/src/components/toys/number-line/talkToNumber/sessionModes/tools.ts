@@ -210,6 +210,14 @@ export const TOOL_SET_NUMBER_LINE_STYLE: RealtimeTool = {
   },
 }
 
+export const TOOL_END_EXPLORATION: RealtimeTool = {
+  type: 'function',
+  name: 'end_exploration',
+  description:
+    'Stop the current exploration and return to conversation. Use this when the child wants to stop watching and do something else — play a game, talk, etc.',
+  parameters: { type: 'object', properties: {} },
+}
+
 export const TOOL_END_GAME: RealtimeTool = {
   type: 'function',
   name: 'end_game',
@@ -350,6 +358,7 @@ export function getExplorationTools(): RealtimeTool[] {
     TOOL_PAUSE_EXPLORATION,
     TOOL_RESUME_EXPLORATION,
     TOOL_SEEK_EXPLORATION,
+    TOOL_END_EXPLORATION,
     TOOL_HANG_UP,
   ]
 }
