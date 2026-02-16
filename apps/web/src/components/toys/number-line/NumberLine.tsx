@@ -1917,9 +1917,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     e.preventDefault()
     e.stopPropagation()
 
-    // In refine mode, drag selects a range instead of scrubbing
-    // But don't touch the range while a refine task is running
-    if (refineMode) {
+    // In refine mode + Shift held: drag selects a range
+    // Without Shift: normal scrubbing so you can review the demo
+    if (refineMode && e.shiftKey) {
       if (refineTaskActive) return
       const progress = scrubberProgressFromPointer(e.clientX, true)
       refineStartRef.current = progress
@@ -1947,8 +1947,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   }, [scrubberProgressFromPointer, setRevealProgress, narration, refineMode, refineTaskActive])
 
   const handleScrubberPointerMove = useCallback((e: React.PointerEvent) => {
-    // In refine mode, update range end (but not while task is running)
-    if (refineMode && refineStartRef.current !== null && !refineTaskActive) {
+    // In refine mode with Shift, update range end (but not while task is running)
+    if (refineStartRef.current !== null && !refineTaskActive) {
       e.preventDefault()
       const progress = scrubberProgressFromPointer(e.clientX, true)
       const start = refineStartRef.current
@@ -1974,8 +1974,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   }, [])
 
   const handleScrubberPointerUp = useCallback((e: React.PointerEvent) => {
-    // In refine mode, finalize range
-    if (refineMode) {
+    // Finalize refine range selection
+    if (refineStartRef.current !== null) {
       refineStartRef.current = null
       scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
       return
@@ -3112,6 +3112,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
                   conference: '#06b6d4',
                   exploration: '#f59e0b',
                   game: '#ef4444',
+                  winding_down: '#f97316',
                   hanging_up: '#6b7280',
                 } as Record<string, string>)[modeDebug.current] ?? '#6b7280',
               }}>
@@ -3386,7 +3387,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             userSelect: 'none',
           }}
         >
-          Refine Mode
+          Refine Mode — Shift+drag to select range
         </div>
       )}
 
