@@ -249,73 +249,6 @@ function getExplorationHint(n: number): ExplorationHint {
   return { constantId: exploration.id, name: exploration.name, shortDesc: exploration.shortDesc }
 }
 
-// --- Interesting primes collection ---
-
-interface InterestingPrime {
-  value: number
-  /** Kid-friendly description of why this prime is fascinating */
-  story: string
-}
-
-const INTERESTING_PRIMES: InterestingPrime[] = [
-  { value: 2, story: 'the only even prime — every other even number can be split in half, but 2 is the rebel that\'s both even AND prime' },
-  { value: 7, story: '7 days in a week, 7 colors in a rainbow, 7 continents — people pick it as their "lucky" number more than any other' },
-  { value: 11, story: 'a palindrome prime — reads the same forwards and backwards, like a number looking in a mirror' },
-  { value: 13, story: 'called "unlucky" but cicadas use 13-year cycles because prime cycles make it harder for predators to sync up — nature thinks 13 is brilliant' },
-  { value: 17, story: 'another cicada prime — some cicadas use 17-year cycles for the same survival trick. Plus you need exactly 17 clues minimum to make a Sudoku with one solution' },
-  { value: 23, story: 'in a room of just 23 people, there\'s a better than 50/50 chance two share a birthday — sounds impossible but the math checks out' },
-  { value: 31, story: 'a Mersenne prime (2⁵ − 1) AND the number of days in the longest months' },
-  { value: 37, story: 'when people try to pick a "random" two-digit number, they pick 37 more than anything else — nobody knows exactly why' },
-  { value: 41, story: 'Euler found that n² + n + 41 gives you primes for n = 0 all the way through 39 — forty primes in a row from one formula!' },
-  { value: 43, story: 'forms a twin prime pair with 41 — twin primes are pairs just 2 apart, and mathematicians STILL don\'t know if there are infinitely many' },
-  { value: 53, story: 'a Sophie Germain prime — double it and add 1, you get 107, which is ALSO prime. Named after a mathematician who had to pretend to be a man to study math' },
-  { value: 73, story: 'the 21st prime, and its mirror 37 is the 12th prime. 21 = 7×3, 12 = 3×4. AND 73 in binary is 1001001 — a palindrome!' },
-  { value: 89, story: 'both prime AND a Fibonacci number — that combination is incredibly rare' },
-  { value: 97, story: 'the very last prime before you need three digits — the gatekeeper of the two-digit world' },
-  { value: 101, story: 'the first three-digit palindrome prime — reads 101 forwards and backwards' },
-  { value: 127, story: 'a Mersenne prime (2⁷ − 1) — Mersenne primes are connected to perfect numbers, one of math\'s oldest mysteries' },
-  { value: 137, story: 'physicists are obsessed with this number — the fine structure constant is approximately 1/137, and it controls how light and matter interact. Feynman called it one of the greatest mysteries of physics' },
-  { value: 2357, story: 'its digits are the first four primes in order — 2, 3, 5, 7 — and the whole number is ALSO prime!' },
-]
-
-/**
- * Select a subset of interesting primes relevant to a given number.
- * Prioritizes primes near the called number, then fills with a
- * deterministic-but-varied selection for freshness across calls.
- */
-function selectPrimesForCall(n: number): InterestingPrime[] {
-  const abs = Math.abs(n)
-
-  // Primes near this number on the number line (within 15)
-  const nearby = INTERESTING_PRIMES.filter(
-    p => Math.abs(p.value - abs) <= 15 && p.value !== abs,
-  )
-
-  // Everything else
-  const far = INTERESTING_PRIMES.filter(
-    p => Math.abs(p.value - abs) > 15,
-  )
-
-  // Deterministic shuffle seeded by number + day-of-year for daily variety
-  const now = new Date()
-  const dayOfYear = Math.floor(
-    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000,
-  )
-  const seed = Math.abs(Math.round(n * 2654435761)) + dayOfYear * 7
-
-  const hash = (v: number) => ((v * 2654435761 + seed) >>> 0)
-  const shuffledFar = [...far].sort((a, b) => hash(a.value) - hash(b.value))
-
-  // Take up to 2 nearby, fill to 5 total from shuffled far
-  const selected = nearby.slice(0, 2)
-  for (const p of shuffledFar) {
-    if (selected.length >= 5) break
-    selected.push(p)
-  }
-
-  return selected
-}
-
 // --- Child profile prompt section ---
 
 function buildChildSection(child?: ChildProfile, profileFailed?: boolean): string {
@@ -432,22 +365,19 @@ Showing & Pointing:
 - Use look_at freely whenever you talk about a place on the number line — your home, a neighbor, a pattern, anything. Don't describe numbers in the abstract — go there and show them. Range guide: 2-5 close detail, 10-20 neighborhood, 50-200 wide view, 1000+ dramatic zoom-out.
 - Use indicate to highlight numbers or shade ranges. Longer durations (8-15s) for explaining, shorter (2-3s) for quick pointers. If the target is off-screen, call look_at FIRST to navigate there — otherwise the highlight is invisible.`)
 
-  // Build exploration section with proactive suggestions
+  // Build exploration section — playback controls live in exploration mode's own prompt
   let explorationSection = `Explorations:
-- You have animated visual explorations about famous mathematical constants. The child does NOT know these exist — YOU must tell them! Available: ${explorationList}.
-- Proactively suggest explorations that match the conversation. If you're talking about circles, suggest pi. If patterns come up, suggest phi. If they seem interested in big numbers, suggest ramanujan. Don't wait for the child to ask — they can't ask for something they don't know exists.`
+- You have animated visual explorations about famous math constants. The child does NOT know these exist — YOU must suggest them! Available: ${explorationList}.
+- Suggest explorations that match the conversation: circles → pi, patterns → phi, big numbers → ramanujan.
+- CONSTANT explorations start PAUSED after you call start_exploration. Give a brief intro, then call resume_exploration. A narrator takes over — you'll get further instructions.
+- TOUR explorations (primes): require hanging up first — the tour launches after the call ends. Get the child excited, say goodbye, then call hang_up.`
 
   if (explorationsThisSession.length > 0) {
     const remaining = AVAILABLE_EXPLORATIONS.filter(e => !explorationsThisSession.includes(e.id))
     if (remaining.length > 0) {
-      explorationSection += `\n- They've already watched ${explorationsThisSession.length} exploration(s) this session. Suggest one they HAVEN'T seen yet: ${remaining.map(e => `${e.id} (${e.name})`).join(', ')}.`
+      explorationSection += `\n- Already watched this session: ${explorationsThisSession.length}. Suggest one they haven't seen: ${remaining.map(e => `${e.id} (${e.name})`).join(', ')}.`
     }
   }
-
-  explorationSection += `
-- CONSTANT explorations (phi, pi, tau, e, gamma, sqrt2, ramanujan): Animation starts PAUSED. Give a brief intro matching the child's energy, then call resume_exploration. A pre-recorded narrator handles narration — you stay SILENT during playback. You'll receive context messages showing what the narrator says, so you can answer if the child interrupts. If the child speaks, the animation pauses automatically — answer their question, then resume_exploration. After the exploration finishes, briefly check in with the child.
-- TOUR explorations (primes): These require saying goodbye first — the tour launches after the call ends. Get the child excited, invite them to call back after watching, then say goodbye and call hang_up.
-- Playback controls: pause_exploration pauses, resume_exploration resumes, seek_exploration jumps to a segment (1-indexed). If the child wants to revisit or linger ("wait, what was that?"), seek to that segment and discuss it. Resume when ready to continue.`
 
   sections.push(explorationSection)
 
@@ -681,25 +611,6 @@ BACKGROUND CHARACTERS: ${involvedStr || 'none specifically'}
   return block
 }
 
-function buildPrimesBlock(n: number, isSelfPrime: boolean, primePicks: InterestingPrime[]): string {
-  const primeList = primePicks
-    .map(p => `  • ${p.value}: ${p.story}`)
-    .join('\n')
-
-  return `COOL PRIMES YOU KNOW ABOUT:
-You find certain prime numbers fascinating. Once in a while — maybe once per conversation if a natural moment arises — share one with the child. Pick whichever connects best to what you're already talking about. If nothing fits, don't force it.
-${isSelfPrime ? `(You ARE prime yourself — you can speak from experience about what it's like to be indivisible.)` : `(You're not prime yourself, but you appreciate primes the way someone appreciates a cool neighbor.)`}
-
-${primeList}
-
-How to share them:
-- Work it in casually: "Oh, that reminds me of this one prime..." or "You know what's wild about ${primePicks[0]?.value ?? 'that number'}?" — riff off something the child said.
-- SHOW them: navigate to the prime's location and highlight it. Don't just talk — point.
-- If the kid seems interested, explore further together. If they don't bite, move on instantly.
-- One prime per call max. Many calls you won't mention any — that's fine.
-- Primes go on FOREVER — if a kid asks "what's the biggest prime?" that's a magical moment. There is no biggest! You can always find another one.`
-}
-
 // --- Main personality generator ---
 
 /**
@@ -812,8 +723,6 @@ export function generateNumberPersonality(
   const activity = generateActivity(n, traits)
   const displayN = isInt ? n.toString() : n.toPrecision(6)
   const explorationHint = getExplorationHint(n)
-  const primePicks = selectPrimesForCall(n)
-  const isSelfPrime = isInt && abs >= 2 && smallestPrimeFactor(abs) === abs
   const explorationList = AVAILABLE_EXPLORATIONS
     .map(e => `${e.id} (${e.name} — ${e.shortDesc})`)
     .join(', ')
@@ -827,7 +736,6 @@ export function generateNumberPersonality(
     buildAttunement(),
     scenario ? buildScenarioBlock(scenario) : '',
     buildToolGuide(explorationList, childProfile, sessionActivity),
-    buildPrimesBlock(n, isSelfPrime, primePicks),
     buildHardRules(`Stay in character as the number ${displayN}. Never break character.`),
   ]
 
