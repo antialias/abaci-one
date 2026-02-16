@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { spawn } from 'child_process'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { writeFile, unlink } from 'fs/promises'
 import { createTask } from '@/lib/task-manager'
 import type { DemoRefineEvent } from '@/lib/tasks/events'
 
@@ -20,6 +23,7 @@ interface RefineRequest {
   endProgress: number
   prompt: string
   selectedSegments: SelectedSegment[]
+  screenshotBase64?: string
 }
 
 /** Map constantId to display info for the system prompt */
@@ -42,7 +46,7 @@ function demoFilePrefix(constantId: string): string {
   return constantId
 }
 
-function buildSystemPrompt(req: RefineRequest): string {
+function buildSystemPrompt(req: RefineRequest, screenshotPath?: string): string {
   const display = CONSTANT_DISPLAY[req.constantId] ?? { name: req.constantId, symbol: req.constantId }
   const prefix = demoFilePrefix(req.constantId)
   const demosDir = 'apps/web/src/components/toys/number-line/constants/demos'
@@ -86,7 +90,15 @@ ${req.prompt}
 6. ttsText should be for a smart 5-year-old: clear, vivid, wonder-filled
 7. Run: cd apps/web && npx tsc --noEmit
 8. Do NOT change exported function signatures
-9. Do NOT modify useConstantDemoNarration.ts or useConstantDemo.ts`
+9. Do NOT modify useConstantDemoNarration.ts or useConstantDemo.ts${screenshotPath ? `
+
+## Annotated Screenshot
+The user captured a screenshot of the current animation frame and drew bright magenta (#ff00ff) annotations on it.
+The magenta marks are NOT part of the animation — they are the user's hand-drawn indicators highlighting areas of interest.
+FIRST read the screenshot to see what the user is referring to:
+  ${screenshotPath}
+
+Interpret the magenta annotations as "look here" / "this area" markers in the context of the user's request.` : ''}`
 }
 
 export async function POST(request: Request) {
@@ -112,7 +124,15 @@ export async function POST(request: Request) {
     )
   }
 
-  const systemPrompt = buildSystemPrompt(body)
+  // Save annotated screenshot to temp file if provided
+  let screenshotPath: string | undefined
+  if (body.screenshotBase64) {
+    const buf = Buffer.from(body.screenshotBase64, 'base64')
+    screenshotPath = join(tmpdir(), `demo-refine-screenshot-${Date.now()}.png`)
+    await writeFile(screenshotPath, buf)
+  }
+
+  const systemPrompt = buildSystemPrompt(body, screenshotPath)
 
   const taskId = await createTask<RefineRequest, { sessionId?: string }, DemoRefineEvent>(
     'demo-refine',
@@ -209,40 +229,45 @@ export async function POST(request: Request) {
         }
       }, 1000)
 
-      await new Promise<void>((resolve, reject) => {
-        child.on('close', (code) => {
-          clearInterval(checkCancellation)
-          // Process any remaining buffer
-          if (lastLineBuffer.trim()) {
-            try {
-              const msg = JSON.parse(lastLineBuffer)
-              if (msg.session_id && !sessionId) sessionId = msg.session_id
-              if (msg.type === 'result') {
-                sessionId = msg.session_id ?? sessionId
-              }
-            } catch { /* ignore */ }
-          }
+      try {
+        await new Promise<void>((resolve, reject) => {
+          child.on('close', (code) => {
+            clearInterval(checkCancellation)
+            // Process any remaining buffer
+            if (lastLineBuffer.trim()) {
+              try {
+                const msg = JSON.parse(lastLineBuffer)
+                if (msg.session_id && !sessionId) sessionId = msg.session_id
+                if (msg.type === 'result') {
+                  sessionId = msg.session_id ?? sessionId
+                }
+              } catch { /* ignore */ }
+            }
 
-          if (handle.isCancelled()) {
-            resolve()
-            return
-          }
+            if (handle.isCancelled()) {
+              resolve()
+              return
+            }
 
-          if (code === 0) {
-            handle.complete({ sessionId })
-            resolve()
-          } else {
-            handle.fail(`Claude exited with code ${code}`)
-            reject(new Error(`Claude exited with code ${code}`))
-          }
+            if (code === 0) {
+              handle.complete({ sessionId })
+              resolve()
+            } else {
+              handle.fail(`Claude exited with code ${code}`)
+              reject(new Error(`Claude exited with code ${code}`))
+            }
+          })
+
+          child.on('error', (err) => {
+            clearInterval(checkCancellation)
+            handle.fail(`Failed to spawn claude: ${err.message}`)
+            reject(err)
+          })
         })
-
-        child.on('error', (err) => {
-          clearInterval(checkCancellation)
-          handle.fail(`Failed to spawn claude: ${err.message}`)
-          reject(err)
-        })
-      })
+      } finally {
+        // Clean up temp screenshot file
+        if (screenshotPath) unlink(screenshotPath).catch(() => {})
+      }
     }
   )
 

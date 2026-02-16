@@ -159,7 +159,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
   const rafRef = useRef<number>(0)
   const { resolvedTheme } = useTheme()
-  const { isVisualDebugEnabled } = useVisualDebugSafe()
+  const { isVisualDebugEnabled, isDevelopment } = useVisualDebugSafe()
   const audioManager = useAudioManagerInstance()
   const phiExploreRef = usePhiExploreImage(resolvedTheme)
   const centering = usePhiCenteringMode(resolvedTheme)
@@ -262,15 +262,18 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const isDraggingScrubberRef = useRef(false)
   const scrubberHoverProgressRef = useRef<number | null>(null)
 
-  // --- Demo Refine mode state (dev-only, visual debug gated) ---
-  // Initialize from sessionStorage so an active task survives HMR
+  // --- Demo Refine mode state (dev-only) ---
+  // Initialize from sessionStorage so an active task survives HMR (dev only)
+  const isDev = process.env.NODE_ENV === 'development'
   const [refineMode, setRefineMode] = useState(() => {
+    if (!isDev) return false
     try { return sessionStorage.getItem('refine-active-task') !== null } catch { return false }
   })
   const [refineRange, setRefineRange] = useState<{ start: number; end: number } | null>(null)
   const refineStartRef = useRef<number | null>(null)
   const refineTrackRef = useRef<HTMLDivElement>(null)
   const [refineTaskActive, setRefineTaskActive] = useState(() => {
+    if (!isDev) return false
     try { return sessionStorage.getItem('refine-active-task') !== null } catch { return false }
   })
 
@@ -1437,6 +1440,22 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     scheduleRedraw()
   }, [markUserInteraction, scheduleRedraw])
 
+  // Capture current canvas at CSS resolution (1x, not DPR-scaled) for screenshot annotation
+  const captureScreenshot = useCallback((): string | null => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const cssW = cssWidthRef.current
+    const cssH = cssHeightRef.current
+    if (!cssW || !cssH) return null
+    const offscreen = document.createElement('canvas')
+    offscreen.width = cssW
+    offscreen.height = cssH
+    const ctx = offscreen.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(canvas, 0, 0, cssW, cssH)
+    return offscreen.toDataURL('image/png')
+  }, [])
+
   useNumberLineTouch({
     stateRef,
     canvasRef,
@@ -2098,9 +2117,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
-      // 'r' toggles refine mode (dev-only, visual debug gated)
+      // 'r' toggles refine mode (dev-only: requires NODE_ENV=development + visual debug)
       // Don't toggle off while a task is running
-      if ((e.key === 'r' || e.key === 'R') && isVisualDebugEnabled) {
+      if ((e.key === 'r' || e.key === 'R') && isDevelopment && isVisualDebugEnabled) {
         if (refineTaskActive) return
         setRefineMode(prev => {
           if (!prev) {
@@ -2179,7 +2198,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [demoStateRef, handlePlayPauseClick, narration, setRevealProgress, audioManager, refineMode, isVisualDebugEnabled])
+  }, [demoStateRef, handlePlayPauseClick, narration, setRevealProgress, audioManager, refineMode, isVisualDebugEnabled, isDevelopment])
 
   const handleResumeFromUrl = useCallback(() => {
     setRestoredFromUrl(false)
@@ -3435,8 +3454,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         )
       })()}
 
-      {/* REFINE MODE badge */}
-      {refineMode && demoActive && (
+      {/* REFINE MODE badge (dev-only) */}
+      {isDev && refineMode && demoActive && (
         <div
           data-element="refine-mode-badge"
           style={{
@@ -3463,14 +3482,15 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
         </div>
       )}
 
-      {/* Demo Refine Panel */}
-      {refineMode && demoStateRef.current.constantId && (refineTaskActive || (refineRange && refineRange.end > refineRange.start)) && (
+      {/* Demo Refine Panel (dev-only — never renders in production) */}
+      {isDev && refineMode && demoStateRef.current.constantId && (refineTaskActive || (refineRange && refineRange.end > refineRange.start)) && (
         <DemoRefinePanel
           constantId={demoStateRef.current.constantId}
           startProgress={refineRange?.start ?? 0}
           endProgress={refineRange?.end ?? 1}
           segments={refineSelectedSegments}
           isDark={resolvedTheme === 'dark'}
+          onCaptureScreenshot={captureScreenshot}
           onClose={() => {
             setRefineMode(false)
             setRefineRange(null)

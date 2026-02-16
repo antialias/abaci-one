@@ -22,6 +22,7 @@ interface DemoRefinePanelProps {
   onComplete: () => void
   onTaskStart?: () => void
   onTaskEnd?: () => void
+  onCaptureScreenshot?: () => string | null
 }
 
 type PanelState = 'idle' | 'running' | 'done'
@@ -66,6 +67,7 @@ export function DemoRefinePanel({
   onComplete,
   onTaskStart,
   onTaskEnd,
+  onCaptureScreenshot,
 }: DemoRefinePanelProps) {
   // ---- Restore from sessionStorage on mount (survives HMR) ----
   const resumedTask = useRef(getActiveTask())
@@ -98,6 +100,13 @@ export function DemoRefinePanel({
   const pendingResultRef = useRef<{ sessionId: string | null; success: boolean | null }>({
     sessionId: null, success: null,
   })
+
+  // Screenshot annotation state
+  const [screenshotDataUrl, setScreenshotDataUrl] = useState<string | null>(null)
+  const [annotating, setAnnotating] = useState(false)
+  const annotationCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const isDrawingRef = useRef(false)
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null)
 
   // Position & size state (initialized to bottom-right)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
@@ -366,9 +375,100 @@ export function DemoRefinePanel({
     setSuccess(null)
     setTaskId(null) // Triggers socket cleanup via effect
     setError(null)
+    setScreenshotDataUrl(null)
+    setAnnotating(false)
     toolCountRef.current = 0
     pendingResultRef.current = { sessionId: null, success: null }
     setState('idle')
+  }, [])
+
+  // --- Screenshot capture ---
+  const handleCaptureFrame = useCallback(() => {
+    if (!onCaptureScreenshot) return
+    const dataUrl = onCaptureScreenshot()
+    if (dataUrl) {
+      setScreenshotDataUrl(dataUrl)
+      setAnnotating(true)
+    }
+  }, [onCaptureScreenshot])
+
+  // --- Annotation drawing handlers ---
+  const handleAnnotationPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = annotationCanvasRef.current
+    if (!canvas) return
+    canvas.setPointerCapture(e.pointerId)
+    isDrawingRef.current = true
+    const rect = canvas.getBoundingClientRect()
+    lastPointRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.beginPath()
+      ctx.strokeStyle = '#ff00ff'
+      ctx.lineWidth = 3
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+    }
+  }, [])
+
+  const handleAnnotationPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return
+    const canvas = annotationCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const last = lastPointRef.current
+    if (last) {
+      ctx.beginPath()
+      ctx.strokeStyle = '#ff00ff'
+      ctx.lineWidth = 3
+      ctx.lineCap = 'round'
+      ctx.moveTo(last.x, last.y)
+      ctx.lineTo(x, y)
+      ctx.stroke()
+    }
+    lastPointRef.current = { x, y }
+  }, [])
+
+  const handleAnnotationPointerUp = useCallback(() => {
+    isDrawingRef.current = false
+    lastPointRef.current = null
+  }, [])
+
+  const handleAnnotationClear = useCallback(() => {
+    const canvas = annotationCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+  }, [])
+
+  // Composite screenshot + annotations into final data URL
+  const handleAnnotationDone = useCallback(() => {
+    if (!screenshotDataUrl) return
+    const img = new Image()
+    img.onload = () => {
+      const composite = document.createElement('canvas')
+      composite.width = img.width
+      composite.height = img.height
+      const ctx = composite.getContext('2d')
+      if (!ctx) return
+      ctx.drawImage(img, 0, 0)
+      // Draw annotation layer on top
+      const annCanvas = annotationCanvasRef.current
+      if (annCanvas) {
+        ctx.drawImage(annCanvas, 0, 0, img.width, img.height)
+      }
+      setScreenshotDataUrl(composite.toDataURL('image/png'))
+      setAnnotating(false)
+    }
+    img.src = screenshotDataUrl
+  }, [screenshotDataUrl])
+
+  const handleAnnotationCancel = useCallback(() => {
+    setScreenshotDataUrl(null)
+    setAnnotating(false)
   }, [])
 
   // ---- handleSubmit: POST only, socket is managed by useEffect ----
@@ -397,6 +497,9 @@ export function DemoRefinePanel({
           endProgress,
           prompt: prompt.trim(),
           selectedSegments: segments,
+          ...(screenshotDataUrl ? {
+            screenshotBase64: screenshotDataUrl.replace(/^data:image\/png;base64,/, ''),
+          } : {}),
         }),
       })
 
@@ -418,7 +521,7 @@ export function DemoRefinePanel({
       finalizeHistory(false, null, errMsg)
       setState('idle')
     }
-  }, [prompt, constantId, startProgress, endProgress, segments, onTaskStart, pushOptimisticEntry, finalizeHistory])
+  }, [prompt, constantId, startProgress, endProgress, segments, onTaskStart, pushOptimisticEntry, finalizeHistory, screenshotDataUrl])
 
   const handleCancel = useCallback(() => {
     if (taskId && state === 'running') {
@@ -563,6 +666,120 @@ export function DemoRefinePanel({
           &times;
         </button>
       </div>
+
+      {/* Annotation overlay */}
+      {annotating && screenshotDataUrl && (
+        <div
+          data-element="refine-annotation-overlay"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(248, 250, 252, 0.95)',
+            borderRadius: 12,
+          }}
+        >
+          <div style={{ padding: '8px 14px', fontSize: 11, color: mutedColor, flexShrink: 0 }}>
+            Draw magenta marks on areas of interest. Click Done when finished.
+          </div>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', margin: '0 14px' }}>
+            {/* Screenshot as background */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={screenshotDataUrl}
+              alt="Captured frame"
+              data-element="refine-annotation-bg"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                pointerEvents: 'none',
+              }}
+              onLoad={(e) => {
+                // Size annotation canvas to match the displayed image
+                const img = e.currentTarget
+                const canvas = annotationCanvasRef.current
+                if (canvas) {
+                  canvas.width = img.naturalWidth
+                  canvas.height = img.naturalHeight
+                }
+              }}
+            />
+            {/* Transparent annotation canvas on top */}
+            <canvas
+              ref={annotationCanvasRef}
+              data-element="refine-annotation-canvas"
+              onPointerDown={handleAnnotationPointerDown}
+              onPointerMove={handleAnnotationPointerMove}
+              onPointerUp={handleAnnotationPointerUp}
+              onPointerCancel={handleAnnotationPointerUp}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                cursor: 'crosshair',
+                touchAction: 'none',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '10px 14px', flexShrink: 0 }}>
+            <button
+              data-action="refine-annotation-cancel"
+              onClick={handleAnnotationCancel}
+              style={{
+                padding: '5px 14px',
+                fontSize: 11,
+                fontWeight: 500,
+                background: 'none',
+                border: `1px solid ${border}`,
+                borderRadius: 6,
+                color: mutedColor,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              data-action="refine-annotation-clear"
+              onClick={handleAnnotationClear}
+              style={{
+                padding: '5px 14px',
+                fontSize: 11,
+                fontWeight: 500,
+                background: 'none',
+                border: `1px solid ${border}`,
+                borderRadius: 6,
+                color: textColor,
+                cursor: 'pointer',
+              }}
+            >
+              Clear
+            </button>
+            <button
+              data-action="refine-annotation-done"
+              onClick={handleAnnotationDone}
+              style={{
+                padding: '5px 14px',
+                fontSize: 11,
+                fontWeight: 600,
+                background: '#ff00ff',
+                border: 'none',
+                borderRadius: 6,
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content area */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -746,7 +963,61 @@ export function DemoRefinePanel({
                 boxSizing: 'border-box',
               }}
             />
+            {/* Screenshot thumbnail preview */}
+            {screenshotDataUrl && !annotating && (
+              <div
+                data-element="refine-screenshot-thumbnail"
+                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={screenshotDataUrl}
+                  alt="Annotated screenshot"
+                  style={{
+                    height: 48,
+                    borderRadius: 4,
+                    border: `1px solid ${border}`,
+                    objectFit: 'contain',
+                  }}
+                />
+                <span style={{ fontSize: 10, color: mutedColor, flex: 1 }}>Screenshot attached</span>
+                <button
+                  data-action="refine-screenshot-remove"
+                  onClick={() => setScreenshotDataUrl(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: mutedColor,
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    padding: '2px 6px',
+                  }}
+                  title="Remove screenshot"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              {onCaptureScreenshot && !screenshotDataUrl && (
+                <button
+                  data-action="refine-capture"
+                  onClick={handleCaptureFrame}
+                  style={{
+                    padding: '6px 16px',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    background: 'none',
+                    border: `1px solid #ff00ff44`,
+                    borderRadius: 6,
+                    color: '#ff00ff',
+                    cursor: 'pointer',
+                    marginRight: 'auto',
+                  }}
+                >
+                  Capture Frame
+                </button>
+              )}
               <button
                 data-action="refine-cancel"
                 onClick={onClose}
