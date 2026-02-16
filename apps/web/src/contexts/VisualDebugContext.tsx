@@ -63,6 +63,19 @@ export function VisualDebugProvider({ children }: { children: ReactNode }) {
     setIsEnabled((prev) => !prev)
   }, [])
 
+  // Global keyboard shortcut: Ctrl+Shift+D toggles visual debug
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        setIsEnabled((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   // Debug is allowed in development OR if production debug is unlocked
   const isDebugAllowed = isDevelopment || productionDebugAllowed
 
