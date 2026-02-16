@@ -104,8 +104,39 @@ Once verification passes:
    gh issue comment <NUMBER> --body "Fix PR opened: <PR-URL>. @antialias please review."
    ```
 
+## Step 5: Long-term fix issue (if applicable)
+
+After opening the short-term fix PR, check the issue's **Long-term Fix** section. If the long-term fix is different from the immediate fix:
+
+1. Create a separate GitHub issue describing the long-term/structural fix:
+   ```bash
+   gh issue create \
+     --title "fix: <description of structural improvement>" \
+     --label bug \
+     --body "$(cat <<'LT_EOF'
+   ## Context
+
+   This was identified by fixbot while fixing #<fixbot-issue-number>.
+
+   ## Problem
+
+   <describe the class of failure that keeps recurring>
+
+   ## Proposed Long-term Fix
+
+   <the structural change from the Long-term Fix section>
+   LT_EOF
+   )"
+   ```
+
+2. Do NOT label this issue `fixbot` — it is for human/local-agent implementation.
+3. Reference it in a comment on the fixbot issue.
+
+If the Long-term Fix section says "Same as immediate fix", skip this step.
+
 ## Important rules
 
+- **NEVER commit or push directly to main.** The claude-code-action creates a `fixbot/` branch for you — always work on that branch and create a PR. If `git branch --show-current` returns `main`, STOP and report an error on the issue.
 - **Minimal changes only.** Fix the reported issue and nothing else.
 - **Never auto-merge.** Always create a PR for human review.
 - **Always verify before opening a PR.** A PR that doesn't pass verification is worse than no PR.

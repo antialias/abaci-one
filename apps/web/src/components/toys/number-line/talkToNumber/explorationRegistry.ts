@@ -88,6 +88,11 @@ export const EXPLORATIONS: ExplorationEntry[] = [
     visualDesc: 'Shows the surprising Ramanujan summation: 1+2+3+4+... = −1/12. Partial sums grow on the number line (getting bigger and bigger), but the animation reveals how a special mathematical technique (analytic continuation) assigns the value −1/12 to the divergent series.',
   },
   {
+    id: 'feigenbaum', type: 'constant', name: 'Feigenbaum Constant', symbol: '\u03b4', value: 4.66920160910299,
+    shortDesc: 'period doubling and the road to chaos',
+    visualDesc: 'Shows the logistic map bifurcation diagram on the number line. As the control parameter increases, a single stable path splits into 2, then 4, then 8 branches — faster and faster. Colored brackets measure the shrinking gaps between splits. Their ratios converge to the Feigenbaum constant \u03b4 \u2248 4.669.',
+  },
+  {
     id: 'primes', type: 'tour', name: 'Prime Numbers', stopCount: 9,
     shortDesc: 'skip counting and the sieve of Eratosthenes',
     visualDesc: 'A guided tour of prime numbers on the number line. Walks through the Sieve of Eratosthenes — crossing out multiples of 2, 3, 5, and 7 step by step to reveal the primes that remain. Highlights twin primes, prime gaps, and surprising patterns in prime distribution.',
@@ -156,6 +161,8 @@ export const EXPLORATION_RECOMMENDATIONS: Record<string, { id: string; reason: s
               { id: 'gamma', reason: 'gamma also comes from the harmonic series' }],
   ramanujan: [{ id: 'gamma', reason: 'another constant that makes you go "wait, really?"' },
               { id: 'e',     reason: 'Euler\'s number — Ramanujan loved working with it' }],
+  feigenbaum: [{ id: 'gamma', reason: 'gamma also emerges from a surprising limit process' },
+              { id: 'ramanujan', reason: 'both constants hide inside processes that seem to blow up' }],
   primes:    [{ id: 'phi',   reason: 'the golden ratio is another pattern hiding in numbers' },
               { id: 'ramanujan', reason: 'Ramanujan discovered incredible formulas involving primes' }],
 }
@@ -174,4 +181,5 @@ export const DEMO_RECOMMENDATIONS: Record<string, string[]> = {
   sqrt3:     ['sqrt2', 'phi',      'gamma'],
   ln2:       ['e',     'gamma',    'sqrt2'],
   ramanujan: ['pi',    'e',        'sqrt2'],
+  feigenbaum: ['gamma', 'ramanujan', 'e'],
 }

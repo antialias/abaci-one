@@ -30,6 +30,12 @@ Use this exact format when creating issues. Replace all `<placeholders>` with ac
 
 <specific, actionable instructions for the fix agent — e.g., "Add `import { useState } from 'react'` to line 1 of `apps/web/src/components/Foo.tsx`">
 
+## Long-term Fix
+
+<What systemic change would prevent this CLASS of failure from recurring?
+Examples: add a test, add a type constraint, refactor an interface, add a pre-commit check.
+If the immediate fix IS the long-term fix, say "Same as immediate fix.">
+
 ## Verification Command
 
 ```bash

@@ -263,10 +263,15 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
   const scrubberHoverProgressRef = useRef<number | null>(null)
 
   // --- Demo Refine mode state (dev-only, visual debug gated) ---
-  const [refineMode, setRefineMode] = useState(false)
+  // Initialize from sessionStorage so an active task survives HMR
+  const [refineMode, setRefineMode] = useState(() => {
+    try { return sessionStorage.getItem('refine-active-task') !== null } catch { return false }
+  })
   const [refineRange, setRefineRange] = useState<{ start: number; end: number } | null>(null)
   const refineStartRef = useRef<number | null>(null)
-  const [refineTaskActive, setRefineTaskActive] = useState(false)
+  const [refineTaskActive, setRefineTaskActive] = useState(() => {
+    try { return sessionStorage.getItem('refine-active-task') !== null } catch { return false }
+  })
 
   // --- Prime Tour state ---
   // Uses the same drawFnRef/demoRedraw pattern as useConstantDemo
@@ -2068,6 +2073,8 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       // Escape: close shortcuts, or exit refine mode
       if (e.key === 'Escape') {
         if (refineMode) {
+          // Don't exit refine mode while a task is running — the panel handles its own cancel
+          if (refineTaskActive) return
           setRefineMode(false)
           setRefineRange(null)
           refineStartRef.current = null
@@ -2084,7 +2091,9 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
 
       // 'r' toggles refine mode (dev-only, visual debug gated)
+      // Don't toggle off while a task is running
       if ((e.key === 'r' || e.key === 'R') && isVisualDebugEnabled) {
+        if (refineTaskActive) return
         setRefineMode(prev => {
           if (!prev) {
             // Entering refine mode: pause narration
@@ -3394,6 +3403,7 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
             setRefineRange(null)
             refineStartRef.current = null
             setRefineTaskActive(false)
+            try { sessionStorage.removeItem('refine-active-task') } catch {}
           }}
           onComplete={() => {
             window.location.reload()

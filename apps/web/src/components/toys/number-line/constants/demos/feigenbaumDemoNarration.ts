@@ -104,9 +104,9 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Seg 6: The cascade ───────────────────────────────────────────
   {
     ttsText:
-      "And it doesn't stop! Four becomes EIGHT! Then SIXTEEN! " +
-      "The splits come faster and FASTER! " +
-      "Look how close together the split points are getting!",
+      "And it doesn't stop! Crank the dial a TINY bit more and four becomes EIGHT! " +
+      "See those dots bouncing between eight different spots? " +
+      "A teeny bit more — SIXTEEN! The splits come faster and FASTER, closer and CLOSER together!",
     startProgress: 0.450,
     endProgress: 0.560,
     animationDurationMs: 7000,
@@ -116,9 +116,9 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Seg 7: The full picture ──────────────────────────────────────
   {
     ttsText:
-      "Now let's see the whole picture at once. At every spot on the dial, the dot tries to settle. " +
-      "One home... two homes... four... and then — total wildness! " +
-      "But look at the branches. There's a pattern in the splitting!",
+      "Now watch THIS. Let's try EVERY dial setting at once, sweeping from left to right. " +
+      "One home... then the road forks into two... four... and then — WHOA! " +
+      "It EXPLODES into wildness! See how it looks like a tree with branches splitting and splitting?",
     startProgress: 0.560,
     endProgress: 0.640,
     animationDurationMs: 7000,
@@ -128,26 +128,27 @@ export const FEIGENBAUM_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Seg 8: Measuring gaps ────────────────────────────────────────
   {
     ttsText:
-      "Let's measure the gaps between the splits. " +
-      "The first gap is THIS wide. The second? MUCH smaller! " +
-      "The third? Tiny! Each gap shrinks — but by exactly how much?",
+      "See the gap between the first split and the second? That big green space? " +
+      "And THIS much smaller blue gap between the second split and the third? " +
+      "Let's use the little blue gap like a ruler. Watch — slide it across the big green gap. " +
+      "One... two... three... four... and a little bit more! About four and a half blue gaps fit inside the green one!",
     startProgress: 0.640,
     endProgress: 0.730,
-    animationDurationMs: 7000,
+    animationDurationMs: 9000,
     scrubberLabel: 'Measuring gaps',
   },
 
   // ── Seg 9: The magic ratio ───────────────────────────────────────
   {
     ttsText:
-      "Divide the first gap by the second — about four point seven five. " +
-      "The second by the third — four point six six. " +
-      "Almost the SAME! The more splits we measure, the closer we get to one special number: " +
-      "four point six six nine!",
+      "Now the blue gap becomes the big one! And we use the tiny pink gap as our new ruler. " +
+      "Slide it across... one... two... three... four... and a little bit more! " +
+      "Wait — it's the same number of times! " +
+      "Four and a half each time! Every gap fits inside the one before it the SAME number of times!",
     startProgress: 0.730,
     endProgress: 0.820,
-    animationDurationMs: 8000,
-    scrubberLabel: 'The magic ratio',
+    animationDurationMs: 10000,
+    scrubberLabel: 'Same trick, smaller!',
   },
 
   // ── Seg 10: It's always the same! ────────────────────────────────

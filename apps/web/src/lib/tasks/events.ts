@@ -405,6 +405,17 @@ export type PhiExploreGenerateEvent =
 export type DemoTaskEvent = { type: 'log'; step: number; timestamp: string }
 
 // ============================================================================
+// Demo Refine task events (Claude Code in-browser refinement)
+// ============================================================================
+
+export type DemoRefineEvent =
+  | { type: 'session_id'; sessionId: string }
+  | { type: 'claude_output'; text: string }
+  | { type: 'tool_use'; tool: string; file?: string }
+  | { type: 'claude_result'; sessionId: string; success: boolean }
+  | { type: 'stderr'; text: string }
+
+// ============================================================================
 // Event type map — maps task type string to its domain event union
 // ============================================================================
 
@@ -421,6 +432,7 @@ export interface TaskEventMap {
   'image-generate': ImageGenerateEvent
   'phi-explore-generate': PhiExploreGenerateEvent
   demo: DemoTaskEvent
+  'demo-refine': DemoRefineEvent
 }
 
 /**

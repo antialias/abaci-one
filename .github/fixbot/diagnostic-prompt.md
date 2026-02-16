@@ -102,5 +102,6 @@ Then check the retry count. Count the number of "RETRY UPDATE" comments on the i
 - Be concise. The issue body should be diagnostic, not verbose.
 - Always quote exact error messages from the logs.
 - The "Immediate Fix" section should be specific enough that another agent can implement it without re-reading the logs.
+- **Always fill in the "Long-term Fix" section.** Think about what structural change would prevent this *class* of failure from recurring — not just patch this specific symptom. Examples: add a test that catches this, add a type constraint, refactor a fragile interface, add a pre-commit check. If the immediate fix IS the long-term fix, write "Same as immediate fix."
 - Never create duplicate issues. Always check existing issues first.
 - If you cannot determine the failure cause from the logs, classify as `infrastructure-error` and note that the logs were insufficient.

@@ -80,6 +80,10 @@ const ITER_R28 = computeIteration(2.8, 0.2, 20)
 const ITER_R32 = computeIteration(3.2, 0.2, 30)
 // At r=3.5: period-4 oscillation
 const ITER_R35 = computeIteration(3.5, 0.2, 40)
+// At r=3.54: period-8 oscillation (cascade)
+const ITER_R354 = computeIteration(3.54, 0.2, 60)
+// At r=3.564: period-16 oscillation (cascade)
+const ITER_R3564 = computeIteration(3.564, 0.2, 80)
 
 // ── Precomputed bifurcation diagram ─────────────────────────────────
 
@@ -295,10 +299,19 @@ function drawIterationTrack(
 }
 
 /**
- * Draw proportional gap bars below the axis.
- * Green bar for Δ₁ (tallest), blue for Δ₂, pink for Δ₃ (tiny).
+ * Draw gap brackets and in-situ tiling for Seg 8: "Measuring gaps."
+ *
+ * Instead of abstract bars, we highlight each gap directly on the number line
+ * with coloured brackets, then physically slide a "measuring stick" copy of
+ * the small gap across the big gap, counting copies as we go. The child sees
+ * the small piece marching across the big piece right where the gaps live.
+ *
+ * Phase 1 (0.00–0.30): Brackets fade in over Δ₁ (green) and Δ₂ (blue)
+ * Phase 2 (0.30–0.90): A glowing blue "ruler" slides across the green gap,
+ *                       leaving numbered stamps. Count reaches ~4.7.
+ * Phase 3 (0.90–1.00): Count label settles; teaser "But how much exactly?"
  */
-function drawGapBars(
+function drawGapMeasureInSitu(
   ctx: CanvasRenderingContext2D,
   toX: ToX,
   axisY: number,
@@ -309,41 +322,191 @@ function drawGapBars(
   if (alpha <= 0) return
 
   const colors = [bracket1Col(isDark), bracket2Col(isDark), bracket3Col(isDark)]
-  const barBaseY = axisY + 20
-  const maxBarHeight = 80
-  // Normalize to first interval width
-  const maxWidth = INTERVALS[0].width
+  const bracketY = axisY + 14
 
-  for (let i = 0; i < INTERVALS.length; i++) {
-    const fadeIn = smoothstep(mapRange(progress, i * 0.25, i * 0.25 + 0.2))
-    if (fadeIn <= 0) continue
+  // Screen positions for Δ₁ (the big gap)
+  const d1Left = toX(INTERVALS[0].from)
+  const d1Right = toX(INTERVALS[0].to)
 
-    const interval = INTERVALS[i]
-    const barHeight = maxBarHeight * (interval.width / maxWidth)
-    const barX = toX(interval.from)
-    const barW = toX(interval.to) - barX
+  // Screen positions for Δ₂ (the small gap)
+  const d2Left = toX(INTERVALS[1].from)
+  const d2Right = toX(INTERVALS[1].to)
+  const d2ScreenWidth = d2Right - d2Left
 
-    // Draw bar
-    ctx.fillStyle = colors[i]
-    ctx.globalAlpha = alpha * fadeIn * 0.6
-    ctx.fillRect(barX, barBaseY, barW, barHeight * fadeIn)
+  // ── Phase 1: Brackets appear over the actual gaps ─────────────
+  const p1 = smoothstep(mapRange(progress, 0.0, 0.30))
+  if (p1 > 0) {
+    // Green bracket under Δ₁
+    ctx.strokeStyle = colors[0]
+    ctx.lineWidth = 2.5
+    ctx.globalAlpha = alpha * p1 * 0.8
+    ctx.beginPath()
+    ctx.moveTo(d1Left, bracketY - 6)
+    ctx.lineTo(d1Left, bracketY)
+    ctx.lineTo(d1Right, bracketY)
+    ctx.lineTo(d1Right, bracketY - 6)
+    ctx.stroke()
 
-    // Draw label
-    ctx.font = 'bold 11px system-ui, sans-serif'
-    ctx.fillStyle = colors[i]
+    // Shaded fill over green gap region
+    ctx.fillStyle = colors[0]
+    ctx.globalAlpha = alpha * p1 * 0.1
+    ctx.fillRect(d1Left, axisY - 20, d1Right - d1Left, 20 + bracketY - axisY)
+
+    // Blue bracket under Δ₂ (slightly delayed)
+    const p1b = smoothstep(mapRange(progress, 0.10, 0.28))
+    if (p1b > 0) {
+      ctx.strokeStyle = colors[1]
+      ctx.lineWidth = 2.5
+      ctx.globalAlpha = alpha * p1b * 0.8
+      ctx.beginPath()
+      ctx.moveTo(d2Left, bracketY - 6)
+      ctx.lineTo(d2Left, bracketY)
+      ctx.lineTo(d2Right, bracketY)
+      ctx.lineTo(d2Right, bracketY - 6)
+      ctx.stroke()
+
+      // Shaded fill over blue gap region
+      ctx.fillStyle = colors[1]
+      ctx.globalAlpha = alpha * p1b * 0.1
+      ctx.fillRect(d2Left, axisY - 20, d2Right - d2Left, 20 + bracketY - axisY)
+    }
+  }
+
+  // ── Phase 2: Slide the blue ruler across the green gap ────────
+  const p2 = mapRange(progress, 0.30, 0.90)
+  if (p2 > 0) {
+    const ratio = RATIOS[0].value // ≈ 4.75
+    // Animate from 0 copies to full ratio
+    const count = easeInOut(Math.min(1, p2)) * ratio
+    const fullCopies = Math.floor(count)
+    const partialFrac = count - fullCopies
+
+    // Draw the stamps (completed copies) inside the green gap
+    const stampY = axisY - 16
+    const stampH = 8
+    for (let i = 0; i <= fullCopies && i < 5; i++) {
+      const stampLeft = d1Left + i * d2ScreenWidth
+      const stampRight = i < fullCopies
+        ? stampLeft + d2ScreenWidth
+        : stampLeft + d2ScreenWidth * partialFrac
+      if (stampRight <= d1Left) continue
+      const clippedRight = Math.min(stampRight, d1Right)
+      const w = clippedRight - stampLeft
+      if (w <= 0) continue
+
+      ctx.fillStyle = colors[1]
+      ctx.globalAlpha = alpha * (i < fullCopies ? 0.35 : 0.2)
+      ctx.fillRect(stampLeft, stampY, w, stampH)
+
+      // Number label inside each completed stamp
+      if (i < fullCopies && w > 10) {
+        ctx.font = 'bold 9px system-ui, sans-serif'
+        ctx.fillStyle = isDark ? '#fff' : '#000'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = alpha * 0.8
+        ctx.fillText(`${i + 1}`, stampLeft + d2ScreenWidth / 2, stampY + stampH / 2)
+      }
+
+      // Divider tick between copies
+      if (i > 0) {
+        ctx.strokeStyle = colors[1]
+        ctx.lineWidth = 1.5
+        ctx.globalAlpha = alpha * 0.6
+        ctx.beginPath()
+        ctx.moveTo(stampLeft, stampY - 2)
+        ctx.lineTo(stampLeft, stampY + stampH + 2)
+        ctx.stroke()
+      }
+    }
+
+    // Sliding ruler highlight — the leading edge of the current copy
+    if (fullCopies < 5) {
+      const rulerLeft = d1Left + fullCopies * d2ScreenWidth
+      const rulerRight = Math.min(rulerLeft + d2ScreenWidth * partialFrac, d1Right)
+      const rw = rulerRight - rulerLeft
+      if (rw > 0) {
+        // Glowing edge
+        ctx.fillStyle = colors[1]
+        ctx.globalAlpha = alpha * 0.5
+        ctx.fillRect(rulerLeft, stampY - 2, rw, stampH + 4)
+        ctx.strokeStyle = colors[1]
+        ctx.lineWidth = 2
+        ctx.globalAlpha = alpha * 0.8
+        ctx.strokeRect(rulerLeft, stampY - 2, rw, stampH + 4)
+      }
+    }
+
+    // Running count label below the bracket
+    const displayCount = Math.min(count, ratio)
+    const countText = (() => {
+      if (displayCount < 1.5) return '1…'
+      if (displayCount < 2.5) return '1… 2…'
+      if (displayCount < 3.5) return '1… 2… 3…'
+      if (displayCount < 4.3) return '1… 2… 3… 4…'
+      if (p2 >= 0.85) return `about 4 and a half!`
+      return '1… 2… 3… 4… and a bit…'
+    })()
+
+    ctx.font = 'bold 12px system-ui, sans-serif'
+    ctx.fillStyle = goldCol(isDark)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    ctx.globalAlpha = alpha * fadeIn * 0.9
-    ctx.fillText(interval.label, barX + barW / 2, barBaseY + barHeight * fadeIn + 4)
+    ctx.globalAlpha = alpha * smoothstep(mapRange(p2, 0.08, 0.25))
+    ctx.fillText(countText, (d1Left + d1Right) / 2, bracketY + 4)
+  }
+
+  // ── Phase 3: Settled count ────────────────────────────────────
+  const p3 = mapRange(progress, 0.90, 1.0)
+  if (p3 > 0) {
+    const fadeIn = smoothstep(p3)
+
+    // Redraw final stamps (all copies complete)
+    const ratio = RATIOS[0].value
+    const stampY = axisY - 16
+    const stampH = 8
+    for (let i = 0; i < Math.floor(ratio) && i < 5; i++) {
+      const stampLeft = d1Left + i * d2ScreenWidth
+      const w = Math.min(d2ScreenWidth, d1Right - stampLeft)
+      if (w <= 0) continue
+      ctx.fillStyle = colors[1]
+      ctx.globalAlpha = alpha * 0.35
+      ctx.fillRect(stampLeft, stampY, w, stampH)
+      if (w > 10) {
+        ctx.font = 'bold 9px system-ui, sans-serif'
+        ctx.fillStyle = isDark ? '#fff' : '#000'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = alpha * 0.8
+        ctx.fillText(`${i + 1}`, stampLeft + d2ScreenWidth / 2, stampY + stampH / 2)
+      }
+    }
+
+    // Final count below bracket
+    ctx.font = 'bold 13px system-ui, sans-serif'
+    ctx.fillStyle = goldCol(isDark)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.globalAlpha = alpha * fadeIn
+    ctx.fillText(`about 4 and a half!`, (d1Left + d1Right) / 2, bracketY + 4)
   }
 }
 
 /**
- * Draw ratio comparison: side-by-side bars with labels showing the ratio values.
+ * Draw gap tiling for Seg 9: "Same trick, smaller!"
+ *
+ * Same in-situ approach as seg 8 but one level deeper: we tile pink (Δ₃)
+ * copies inside the blue (Δ₂) gap, right on the number line. Then show
+ * both counts side by side so the child sees they're nearly the same.
+ *
+ * Phase 1 (0.00–0.10): Zoom bracket highlights blue gap as the new container
+ * Phase 2 (0.10–0.55): Pink ruler slides across blue gap, counting copies
+ * Phase 3 (0.55–0.75): Both counts shown as big side-by-side labels
+ * Phase 4 (0.75–1.00): "Almost the same!" emphasis
  */
-function drawRatioComparison(
+function drawGapRatioVisual(
   ctx: CanvasRenderingContext2D,
-  cssWidth: number,
+  toX: ToX,
   axisY: number,
   progress: number,
   isDark: boolean,
@@ -352,40 +515,233 @@ function drawRatioComparison(
   if (alpha <= 0) return
 
   const gold = goldCol(isDark)
-  const centerX = cssWidth / 2
-  const baseY = axisY - 60
+  const colors = [bracket1Col(isDark), bracket2Col(isDark), bracket3Col(isDark)]
+  const bracketY = axisY + 14
 
-  // First ratio: Δ₁/Δ₂
-  const r1p = smoothstep(mapRange(progress, 0.0, 0.4))
-  if (r1p > 0) {
+  // Screen positions
+  const d1Left = toX(INTERVALS[0].from)
+  const d1Right = toX(INTERVALS[0].to)
+  const d2Left = toX(INTERVALS[1].from)
+  const d2Right = toX(INTERVALS[1].to)
+  const d2ScreenWidth = d2Right - d2Left
+  const d3ScreenWidth = toX(INTERVALS[2].to) - toX(INTERVALS[2].from)
+
+  // Keep Seg 8's finished tiling visible but faded as context
+  const refAlpha = alpha * 0.2
+  {
+    const ratio = RATIOS[0].value
+    const stampY = axisY - 16
+    const stampH = 8
+    // Green bracket (faded)
+    ctx.strokeStyle = colors[0]
+    ctx.lineWidth = 1.5
+    ctx.globalAlpha = refAlpha * 0.5
+    ctx.beginPath()
+    ctx.moveTo(d1Left, bracketY - 6)
+    ctx.lineTo(d1Left, bracketY)
+    ctx.lineTo(d1Right, bracketY)
+    ctx.lineTo(d1Right, bracketY - 6)
+    ctx.stroke()
+    // Faded stamps
+    for (let i = 0; i < Math.floor(ratio) && i < 5; i++) {
+      const stampLeft = d1Left + i * d2ScreenWidth
+      const w = Math.min(d2ScreenWidth, d1Right - stampLeft)
+      if (w <= 0) continue
+      ctx.fillStyle = colors[1]
+      ctx.globalAlpha = refAlpha * 0.3
+      ctx.fillRect(stampLeft, stampY, w, stampH)
+    }
+    // Faded count label
+    ctx.font = 'bold 10px system-ui, sans-serif'
+    ctx.fillStyle = gold
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.globalAlpha = refAlpha * 0.7
+    ctx.fillText(`≈ ${ratio.toFixed(1)}×`, (d1Left + d1Right) / 2, bracketY + 4)
+  }
+
+  // ── Phase 1: Highlight blue gap as new container ──────────────
+  const p1 = smoothstep(mapRange(progress, 0.0, 0.10))
+  if (p1 > 0) {
+    // Bold blue bracket
+    ctx.strokeStyle = colors[1]
+    ctx.lineWidth = 3
+    ctx.globalAlpha = alpha * p1 * 0.9
+    ctx.beginPath()
+    ctx.moveTo(d2Left, bracketY - 6)
+    ctx.lineTo(d2Left, bracketY)
+    ctx.lineTo(d2Right, bracketY)
+    ctx.lineTo(d2Right, bracketY - 6)
+    ctx.stroke()
+
+    // Shaded fill
+    ctx.fillStyle = colors[1]
+    ctx.globalAlpha = alpha * p1 * 0.1
+    ctx.fillRect(d2Left, axisY - 20, d2Right - d2Left, 20 + bracketY - axisY)
+
+    // Pink bracket over Δ₃ (the new ruler)
+    const d3Left = toX(INTERVALS[2].from)
+    const d3Right = toX(INTERVALS[2].to)
+    const p1b = smoothstep(mapRange(progress, 0.04, 0.10))
+    if (p1b > 0) {
+      ctx.strokeStyle = colors[2]
+      ctx.lineWidth = 2.5
+      ctx.globalAlpha = alpha * p1b * 0.8
+      ctx.beginPath()
+      ctx.moveTo(d3Left, bracketY - 6)
+      ctx.lineTo(d3Left, bracketY)
+      ctx.lineTo(d3Right, bracketY)
+      ctx.lineTo(d3Right, bracketY - 6)
+      ctx.stroke()
+
+      ctx.fillStyle = colors[2]
+      ctx.globalAlpha = alpha * p1b * 0.1
+      ctx.fillRect(d3Left, axisY - 20, d3Right - d3Left, 20 + bracketY - axisY)
+    }
+  }
+
+  // ── Phase 2: Slide pink ruler across blue gap ─────────────────
+  const p2 = mapRange(progress, 0.10, 0.55)
+  if (p2 > 0) {
+    const ratio2 = RATIOS[1].value // ≈ 4.67
+    const count = easeInOut(Math.min(1, p2)) * ratio2
+    const fullCopies = Math.floor(count)
+    const partialFrac = count - fullCopies
+
+    // Stamps inside blue gap
+    const stampY = axisY - 16
+    const stampH = 8
+    for (let i = 0; i <= fullCopies && i < 5; i++) {
+      const stampLeft = d2Left + i * d3ScreenWidth
+      const stampRight = i < fullCopies
+        ? stampLeft + d3ScreenWidth
+        : stampLeft + d3ScreenWidth * partialFrac
+      if (stampRight <= d2Left) continue
+      const clippedRight = Math.min(stampRight, d2Right)
+      const w = clippedRight - stampLeft
+      if (w <= 0) continue
+
+      ctx.fillStyle = colors[2]
+      ctx.globalAlpha = alpha * (i < fullCopies ? 0.35 : 0.2)
+      ctx.fillRect(stampLeft, stampY, w, stampH)
+
+      if (i < fullCopies && w > 6) {
+        ctx.font = 'bold 8px system-ui, sans-serif'
+        ctx.fillStyle = isDark ? '#fff' : '#000'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = alpha * 0.8
+        ctx.fillText(`${i + 1}`, stampLeft + d3ScreenWidth / 2, stampY + stampH / 2)
+      }
+
+      if (i > 0) {
+        ctx.strokeStyle = colors[2]
+        ctx.lineWidth = 1.5
+        ctx.globalAlpha = alpha * 0.6
+        ctx.beginPath()
+        ctx.moveTo(stampLeft, stampY - 2)
+        ctx.lineTo(stampLeft, stampY + stampH + 2)
+        ctx.stroke()
+      }
+    }
+
+    // Sliding ruler highlight
+    if (fullCopies < 5) {
+      const rulerLeft = d2Left + fullCopies * d3ScreenWidth
+      const rulerRight = Math.min(rulerLeft + d3ScreenWidth * partialFrac, d2Right)
+      const rw = rulerRight - rulerLeft
+      if (rw > 0) {
+        ctx.fillStyle = colors[2]
+        ctx.globalAlpha = alpha * 0.5
+        ctx.fillRect(rulerLeft, stampY - 2, rw, stampH + 4)
+        ctx.strokeStyle = colors[2]
+        ctx.lineWidth = 2
+        ctx.globalAlpha = alpha * 0.8
+        ctx.strokeRect(rulerLeft, stampY - 2, rw, stampH + 4)
+      }
+    }
+
+    // Running count
+    const displayCount = Math.min(count, ratio2)
+    const countText = (() => {
+      if (displayCount < 1.5) return '1…'
+      if (displayCount < 2.5) return '1… 2…'
+      if (displayCount < 3.5) return '1… 2… 3…'
+      if (displayCount < 4.3) return '1… 2… 3… 4…'
+      if (p2 >= 0.85) return 'about 4 and a half!'
+      return '1… 2… 3… 4… and a bit…'
+    })()
+
+    ctx.font = 'bold 12px system-ui, sans-serif'
+    ctx.fillStyle = gold
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    ctx.globalAlpha = alpha * smoothstep(mapRange(p2, 0.08, 0.25))
+    ctx.fillText(countText, (d2Left + d2Right) / 2, bracketY + 4)
+  }
+
+  // ── Phase 3: Both counts side by side ─────────────────────────
+  const p3 = mapRange(progress, 0.55, 0.75)
+  if (p3 > 0) {
+    const fadeIn = smoothstep(p3)
+    const midX = (d1Left + d2Right) / 2
+    const summaryY = axisY - 40
+
+    // First count in green
+    ctx.font = 'bold 15px system-ui, sans-serif'
+    ctx.fillStyle = colors[0]
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+    ctx.globalAlpha = alpha * fadeIn * 0.9
+    ctx.fillText(`${RATIOS[0].value.toFixed(1)}×`, midX - 10, summaryY)
+
+    // "≈" symbol
+    ctx.font = 'bold 18px system-ui, sans-serif'
+    ctx.fillStyle = gold
+    ctx.textAlign = 'center'
+    ctx.globalAlpha = alpha * fadeIn
+    ctx.fillText('≈', midX, summaryY)
+
+    // Second count in blue
+    ctx.font = 'bold 15px system-ui, sans-serif'
+    ctx.fillStyle = colors[1]
+    ctx.textAlign = 'left'
+    ctx.globalAlpha = alpha * fadeIn * 0.9
+    ctx.fillText(`${RATIOS[1].value.toFixed(1)}×`, midX + 10, summaryY)
+  }
+
+  // ── Phase 4: "Almost the same!" ───────────────────────────────
+  const p4 = mapRange(progress, 0.75, 1.0)
+  if (p4 > 0) {
+    const fadeIn = smoothstep(p4)
+    const midX = (d1Left + d2Right) / 2
+    const summaryY = axisY - 40
+
+    // Redraw counts (held from phase 3)
+    ctx.font = 'bold 15px system-ui, sans-serif'
+    ctx.fillStyle = colors[0]
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+    ctx.globalAlpha = alpha * 0.9
+    ctx.fillText(`${RATIOS[0].value.toFixed(1)}×`, midX - 10, summaryY)
+    ctx.font = 'bold 18px system-ui, sans-serif'
+    ctx.fillStyle = gold
+    ctx.textAlign = 'center'
+    ctx.globalAlpha = alpha
+    ctx.fillText('≈', midX, summaryY)
+    ctx.font = 'bold 15px system-ui, sans-serif'
+    ctx.fillStyle = colors[1]
+    ctx.textAlign = 'left'
+    ctx.globalAlpha = alpha * 0.9
+    ctx.fillText(`${RATIOS[1].value.toFixed(1)}×`, midX + 10, summaryY)
+
+    // Emphasis text
     ctx.font = 'bold 14px system-ui, sans-serif'
     ctx.fillStyle = gold
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.globalAlpha = alpha * r1p
-    ctx.fillText(`${RATIOS[0].label} ≈ ${RATIOS[0].value.toFixed(2)}`, centerX, baseY)
-  }
-
-  // Second ratio: Δ₂/Δ₃
-  const r2p = smoothstep(mapRange(progress, 0.3, 0.7))
-  if (r2p > 0) {
-    ctx.font = 'bold 14px system-ui, sans-serif'
-    ctx.fillStyle = gold
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.globalAlpha = alpha * r2p
-    ctx.fillText(`${RATIOS[1].label} ≈ ${RATIOS[1].value.toFixed(2)}`, centerX, baseY + 24)
-  }
-
-  // Arrow converging to delta
-  const convP = smoothstep(mapRange(progress, 0.6, 1.0))
-  if (convP > 0) {
-    ctx.font = 'bold 16px system-ui, sans-serif'
-    ctx.fillStyle = gold
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.globalAlpha = alpha * convP
-    ctx.fillText(`→ ${DELTA.toFixed(3)}…`, centerX, baseY + 52)
+    ctx.globalAlpha = alpha * fadeIn
+    ctx.fillText('Almost the same number!', midX, summaryY - 20)
   }
 }
 
@@ -523,65 +879,7 @@ function drawStar(
   ctx.fill()
 }
 
-/** Gold dots at ratio values converging toward delta on the number line. */
-function drawConvergingDots(
-  ctx: CanvasRenderingContext2D,
-  toX: ToX,
-  axisY: number,
-  progress: number,
-  isDark: boolean,
-  alpha: number,
-) {
-  if (alpha <= 0) return
 
-  const gold = goldCol(isDark)
-  const dotRadius = 5
-  const values = [
-    { val: RATIOS[0].value, label: `≈${RATIOS[0].value.toFixed(2)}` },
-    { val: RATIOS[1].value, label: `≈${RATIOS[1].value.toFixed(2)}` },
-    { val: DELTA, label: 'δ' },
-  ]
-
-  for (let i = 0; i < values.length; i++) {
-    const dotProgress = smoothstep(mapRange(progress, i * 0.25, i * 0.25 + 0.35))
-    if (dotProgress <= 0) continue
-
-    const v = values[i]
-    const x = toX(v.val)
-    const y = axisY
-
-    ctx.beginPath()
-    ctx.arc(x, y, dotRadius * dotProgress, 0, PI * 2)
-    ctx.fillStyle = gold
-    ctx.globalAlpha = alpha * dotProgress
-    ctx.fill()
-
-    const labelY = axisY - 15 - i * 18
-    const fs = i === 2 ? 16 : 12
-    ctx.font = `bold ${fs}px system-ui, sans-serif`
-    ctx.fillStyle = gold
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'bottom'
-    ctx.globalAlpha = alpha * dotProgress * 0.9
-    ctx.fillText(v.label, x, labelY)
-  }
-
-  // Connecting line hint
-  if (progress > 0.5) {
-    const lineAlpha = smoothstep(mapRange(progress, 0.5, 0.8))
-    const x1 = toX(RATIOS[0].value)
-    const x2 = toX(DELTA)
-    ctx.beginPath()
-    ctx.moveTo(x1, axisY + 8)
-    ctx.lineTo(x2, axisY + 8)
-    ctx.strokeStyle = gold
-    ctx.lineWidth = 1.5
-    ctx.setLineDash([3, 3])
-    ctx.globalAlpha = alpha * lineAlpha * 0.4
-    ctx.stroke()
-    ctx.setLineDash([])
-  }
-}
 
 // ── Main render ──────────────────────────────────────────────────────
 
@@ -898,46 +1196,110 @@ export function renderFeigenbaumOverlay(
     }
   }
 
-  // ── Seg 6: The cascade — rapid sweep of bifurcation points ─────
-  if (revealProgress >= PHASE.cascadeBegin && revealProgress < PHASE.fullEnd) {
+  // ── Seg 6: The cascade — show iteration dots at 8→16 ───────────
+  // Instead of drawing the bifurcation diagram (which steals seg 7's reveal),
+  // we show bouncing dots at r=3.54 (period-8) and r=3.564 (period-16)
+  // so the child sees the cascade through individual dots, not the diagram.
+  if (revealProgress >= PHASE.cascadeBegin && revealProgress < PHASE.fullBegin) {
     const cascP = mapRange(revealProgress, PHASE.cascadeBegin, PHASE.cascadeEnd)
-    // Sweep through bifurcation data progressively
-    const sweepR = 3.0 + cascP * 0.58 // 3.0 → 3.58
+    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.fullBegin))
 
-    // Draw columns up to sweep point
-    for (const col of BIFURCATION_DATA) {
-      if (col.r < 3.0) continue
-      if (col.r > sweepR) break
-      const screenX = toX(col.r)
-      if (screenX < -20 || screenX > cssWidth + 20) continue
+    // Phase 1 (0–0.45): period-8 at r=3.54
+    const p8P = mapRange(cascP, 0, 0.45)
+    if (p8P > 0 && p8P <= 1) {
+      const totalBounces = ITER_R354.length - 1
+      const bounceFloat = Math.min(1, p8P) * totalBounces
+      const bounceIndex = Math.min(Math.floor(bounceFloat), totalBounces)
+      const bounceFrac = bounceFloat - Math.floor(bounceFloat)
+      const p8Fade = 1 - smoothstep(mapRange(cascP, 0.4, 0.5))
 
-      const color = columnColor(col.r, isDark)
-      const colAlpha = opacity * 0.6 * smoothstep(mapRange(sweepR - col.r, 0, 0.05))
-      drawBifurcationColumn(
-        ctx, col.r, col.attractors, toX, axisY,
-        verticalScale, color, colAlpha, dotRadius,
+      drawIterationTrack(
+        ctx, toX, axisY, 3.54, ITER_R354,
+        bounceIndex, bounceFrac, verticalScale,
+        chaoticCol(isDark), chaoticCol(isDark),
+        opacity * fadeOut * p8Fade,
       )
+
+      // "r = 3.54" label
+      const labelP = smoothstep(mapRange(p8P, 0, 0.1))
+      ctx.font = 'bold 12px system-ui, sans-serif'
+      ctx.fillStyle = chaoticCol(isDark)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      ctx.globalAlpha = opacity * labelP * fadeOut * p8Fade * 0.8
+      ctx.fillText('r = 3.54', toX(3.54), axisY + 6)
+
+      // "EIGHT!" callout
+      if (p8P > 0.5) {
+        const calloutP = smoothstep(mapRange(p8P, 0.5, 0.8))
+        ctx.font = 'bold 13px system-ui, sans-serif'
+        ctx.fillStyle = chaoticCol(isDark)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.globalAlpha = opacity * calloutP * fadeOut * p8Fade * 0.9
+        ctx.fillText('Eight homes!', toX(3.54), axisY - verticalScale - 8)
+      }
     }
 
-    // Split point pulse markers
+    // Phase 2 (0.45–0.9): period-16 at r=3.564
+    const p16P = mapRange(cascP, 0.45, 0.9)
+    if (p16P > 0 && p16P <= 1) {
+      const totalBounces = ITER_R3564.length - 1
+      const bounceFloat = Math.min(1, p16P) * totalBounces
+      const bounceIndex = Math.min(Math.floor(bounceFloat), totalBounces)
+      const bounceFrac = bounceFloat - Math.floor(bounceFloat)
+
+      drawIterationTrack(
+        ctx, toX, axisY, 3.564, ITER_R3564,
+        bounceIndex, bounceFrac, verticalScale,
+        chaoticCol(isDark), chaoticCol(isDark),
+        opacity * fadeOut,
+      )
+
+      // "r = 3.564" label
+      const labelP = smoothstep(mapRange(p16P, 0, 0.1))
+      ctx.font = 'bold 12px system-ui, sans-serif'
+      ctx.fillStyle = chaoticCol(isDark)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      ctx.globalAlpha = opacity * labelP * fadeOut * 0.8
+      ctx.fillText('r = 3.564', toX(3.564), axisY + 6)
+
+      // "SIXTEEN!" callout
+      if (p16P > 0.5) {
+        const calloutP = smoothstep(mapRange(p16P, 0.5, 0.8))
+        ctx.font = 'bold 13px system-ui, sans-serif'
+        ctx.fillStyle = chaoticCol(isDark)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.globalAlpha = opacity * calloutP * fadeOut * 0.9
+        ctx.fillText('Sixteen homes!', toX(3.564), axisY - verticalScale - 8)
+      }
+    }
+
+    // Split-point pulse markers — appear as each r is crossed
     for (let i = 1; i < BIFURCATION_POINTS.length && i < 4; i++) {
       const bp = BIFURCATION_POINTS[i]
-      if (bp.r > sweepR) break
-      const pulseP = smoothstep(mapRange(sweepR - bp.r, 0, 0.03))
+      const markerAppear = i === 1 ? 0 : i === 2 ? 0.45 : 0.85
+      const markerP = smoothstep(mapRange(cascP, markerAppear, markerAppear + 0.1))
+      if (markerP <= 0) continue
       const px = toX(bp.r)
 
       ctx.beginPath()
       ctx.arc(px, axisY, 4 + 2 * Math.sin(revealProgress * PI * 10), 0, PI * 2)
       ctx.fillStyle = chaoticCol(isDark)
-      ctx.globalAlpha = opacity * pulseP * 0.5
+      ctx.globalAlpha = opacity * markerP * fadeOut * 0.5
       ctx.fill()
     }
   }
 
-  // ── Seg 7: The full picture — bifurcation diagram sweeps in ────
+  // ── Seg 7: The full picture — entire bifurcation diagram sweeps in ─
+  // The cascade (seg 6) only showed individual iteration dots — the full
+  // diagram has NOT been drawn yet. Now we sweep the ENTIRE tree from
+  // r=2.5 → 3.58 in one dramatic left-to-right reveal: trunk, fork,
+  // branches, and chaos all emerge together.
   if (revealProgress >= PHASE.fullBegin) {
     const fullP = mapRange(revealProgress, PHASE.fullBegin, PHASE.fullEnd)
-    const sweepR = 2.5 + smoothstep(fullP) * 1.08 // 2.5 → 3.58
     // Dim during later phases
     const dimFactor = (() => {
       if (revealProgress < PHASE.gapBegin) return 1.0
@@ -945,10 +1307,14 @@ export function renderFeigenbaumOverlay(
       return 0.15
     })()
 
+    // Full sweep: r=2.5 → 3.58 across the entire segment
+    const sweepR = 2.5 + smoothstep(mapRange(fullP, 0, 0.85)) * 1.08
+
     // Batch render for performance
     const groups: Map<string, BifurcationColumn[]> = new Map()
     for (const col of BIFURCATION_DATA) {
       if (col.r > sweepR) break
+      if (col.r > 3.58) break
       const screenX = toX(col.r)
       if (screenX < -20 || screenX > cssWidth + 20) continue
       const color = columnColor(col.r, isDark)
@@ -966,6 +1332,9 @@ export function renderFeigenbaumOverlay(
       ctx.beginPath()
       for (const col of columns) {
         const screenX = toX(col.r)
+        // Fade in columns near the sweep edge for a softer appearance
+        const edgeFade = smoothstep(mapRange(sweepR - col.r, 0, 0.04))
+        if (edgeFade < 0.01) continue
         for (const a of col.attractors) {
           const screenY = axisY - a * verticalScale
           ctx.moveTo(screenX + dotRadius, screenY)
@@ -976,24 +1345,18 @@ export function renderFeigenbaumOverlay(
     }
   }
 
-  // ── Seg 8: Measuring gaps — proportional bars ──────────────────
+  // ── Seg 8: Measuring gaps — in-situ ruler tiling ───────────────
   if (revealProgress >= PHASE.gapBegin && revealProgress < PHASE.univBegin) {
     const gapP = mapRange(revealProgress, PHASE.gapBegin, PHASE.gapEnd)
     const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.ratioEnd - 0.02, PHASE.univBegin))
-    drawGapBars(ctx, toX, axisY, gapP, isDark, opacity * fadeOut)
+    drawGapMeasureInSitu(ctx, toX, axisY, gapP, isDark, opacity * fadeOut)
   }
 
   // ── Seg 9: The magic ratio ─────────────────────────────────────
   if (revealProgress >= PHASE.ratioBegin && revealProgress < PHASE.univBegin) {
     const ratioP = mapRange(revealProgress, PHASE.ratioBegin, PHASE.ratioEnd)
     const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.ratioEnd, PHASE.univBegin))
-    drawRatioComparison(ctx, cssWidth, axisY, ratioP, isDark, opacity * fadeOut)
-
-    // Converging dots on the number line
-    const dotsP = mapRange(ratioP, 0.3, 1.0)
-    if (dotsP > 0) {
-      drawConvergingDots(ctx, toX, axisY, dotsP, isDark, opacity * fadeOut)
-    }
+    drawGapRatioVisual(ctx, toX, axisY, ratioP, isDark, opacity * fadeOut)
   }
 
   // ── Seg 10: Universality — sine map comparison ─────────────────

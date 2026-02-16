@@ -124,6 +124,7 @@ kubectl get applications -n argocd
 | TTS audio system | `.claude/reference/tts-audio-system.md` |
 | Voice session modes | `.claude/reference/session-modes.md` |
 | Number line guided experiences | `.claude/reference/number-line-guided-experiences.md` |
+| Fixbot system | `.claude/FIXBOT.md` |
 
 ---
 

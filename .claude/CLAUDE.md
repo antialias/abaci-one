@@ -43,3 +43,12 @@ kubectl logs -n abaci -l app=abaci-app --tail=100
   - `abaci-app-headless` - for StatefulSet DNS
   - `abaci-app-primary` - routes to primary instance
 - **Redis**: Session/cache store
+
+## Fixbot (Automated CI Fix System)
+
+Fixbot automatically detects CI failures on main, diagnoses them, and opens fix PRs.
+
+- **Issues** are prefixed `[fixbot]` and labeled `fixbot`
+- **PRs** are on `fixbot/` branches
+- **Implementation** lives in `.github/fixbot/` (workflows + prompts)
+- **Full reference**: See `.claude/FIXBOT.md` for how to interact with fixbot, the "ensure main is on prod" procedure, and what NOT to do

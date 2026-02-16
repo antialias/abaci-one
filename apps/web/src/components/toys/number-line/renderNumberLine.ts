@@ -132,6 +132,10 @@ export function renderNumberLine(
   /** 0-1 blend toward uniform tick sizes during sieve (smooth ramp-in) */
   sieveUniformity = 0,
   indicator?: RenderIndicator,
+  /** Multiplier for all label font sizes (0.5–3, default 1) */
+  labelScale = 1,
+  /** Minimum opacity floor for all labels (0–1, default 0) */
+  labelMinOpacity = 0,
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -479,9 +483,10 @@ export function renderNumberLine(
     // Skip fully hidden labels
     if (collisionOpacity <= 0.01) continue
 
-    const labelAlpha = getTickAlpha(tick.prominence)
+    const labelAlpha = Math.max(getTickAlpha(tick.prominence), labelMinOpacity)
+    const scaledFontSize = fontSize * labelScale
 
-    ctx.font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    ctx.font = `${fontWeight} ${scaledFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
     ctx.globalAlpha = tick.opacity * collisionOpacity * (sxf?.opacity ?? 1)
 
     const labelPrimeInfo = primeInfos?.get(tick.value)

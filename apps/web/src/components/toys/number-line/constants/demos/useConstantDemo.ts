@@ -185,10 +185,8 @@ function getZoomKeyframes(
       { progress: 0.640, center: 3.1, pixelsPerUnit: ppuForRange(cssWidth, 2.4, 3.7) },
       // Seg 8: Zoom in for gap bars
       { progress: 0.700, center: 3.25, pixelsPerUnit: ppuForRange(cssWidth, 2.9, 3.6) },
-      // Seg 9: Pan right for ratios
-      { progress: 0.770, center: 4.0, pixelsPerUnit: ppuForRange(cssWidth, 3.0, 5.5) },
-      // Seg 10: Wide view for universality
-      { progress: 0.820, center: 4.0, pixelsPerUnit: ppuForRange(cssWidth, 2.5, 5.5) },
+      // Seg 9: Hold on gaps region for tiling visual
+      { progress: 0.820, center: 3.25, pixelsPerUnit: ppuForRange(cssWidth, 2.9, 3.6) },
       // Seg 11: Center on delta
       { progress: 0.910, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
       { progress: 1.000, center: 4.669, pixelsPerUnit: ppuForRange(cssWidth, 4.0, 5.3) },
