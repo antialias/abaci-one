@@ -2,6 +2,7 @@ import type { NumberLineState } from '../types'
 import { numberToScreenX } from '../numberLineTicks'
 import { primeColorRgba } from './primeColors'
 import { smallestPrimeFactor } from './sieve'
+import { decayingSin } from '../../shared/animationMath'
 
 // --- Sieve phase timing ---
 
@@ -60,10 +61,6 @@ function easeInQuad(t: number): number {
 
 function easeOutQuint(t: number): number {
   return 1 - (1 - t) ** 5
-}
-
-function decayingSin(t: number, freq: number, decay: number): number {
-  return Math.sin(t * freq * Math.PI * 2) * Math.exp(-t * decay)
 }
 
 /** Per-factor sweep easing: slow start → fast finish */

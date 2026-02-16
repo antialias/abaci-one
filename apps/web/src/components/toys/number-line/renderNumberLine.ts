@@ -1,5 +1,6 @@
-import type { NumberLineState, TickThresholds, CollisionFadeMap, RenderConstant, PrimeTickInfo } from './types'
+import type { NumberLineState, TickThresholds, RenderConstant, PrimeTickInfo } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
+import type { CollisionFadeMap } from '../shared/collisionDetection'
 import { computeTickMarks, numberToScreenX } from './numberLineTicks'
 import { renderConstantDropLines } from './constants/renderConstants'
 import { primeColorRgba } from './primes/primeColors'
@@ -7,6 +8,18 @@ import type { PrimePairArc } from './primes/specialPrimes'
 import { MERSENNE_PRIMES, ARC_COLORS } from './primes/specialPrimes'
 import type { InterestingPrime } from './primes/interestingness'
 import type { SieveTickTransform } from './primes/renderSieveOverlay'
+import {
+  getTickHeight,
+  getTickLineWidth,
+  getTickAlpha,
+  getTickFontSize,
+  getTickFontWeight,
+  formatTickLabel,
+  LIGHT_COLORS,
+  DARK_COLORS,
+  COLLISION_FADE_MS,
+  SYSTEM_FONT,
+} from '../shared/tickMath'
 
 export interface RenderTarget {
   value: number
@@ -20,89 +33,6 @@ export interface RenderIndicator {
   range?: { from: number; to: number }
   /** Pre-computed overall alpha (0-1) handling fade-in/hold/fade-out lifecycle */
   alpha: number
-}
-
-/** Base RGB components for dynamic alpha composition */
-interface RenderColors {
-  axisLine: string
-  /** RGB for tick marks — alpha computed from prominence */
-  tickRgb: string
-  /** RGB for labels — alpha computed from prominence */
-  labelRgb: string
-}
-
-const LIGHT_COLORS: RenderColors = {
-  axisLine: 'rgba(55, 65, 81, 0.8)',
-  tickRgb: '55, 65, 81',
-  labelRgb: '17, 24, 39',
-}
-
-const DARK_COLORS: RenderColors = {
-  axisLine: 'rgba(209, 213, 219, 0.8)',
-  tickRgb: '209, 213, 219',
-  labelRgb: '243, 244, 246',
-}
-
-// Visual landmarks for prominence-based interpolation
-// p=1.0 (anchor), p=0.5 (medium), p=0.0 (fine)
-const HEIGHTS = { anchor: 40, medium: 24, fine: 12 } as const
-const LINE_WIDTHS = { anchor: 2, medium: 1.5, fine: 1 } as const
-const FONT_SIZES = { anchor: 13, medium: 11, fine: 11 } as const
-const FONT_WEIGHTS = { anchor: 600, medium: 400, fine: 400 } as const
-const TICK_ALPHAS = { anchor: 1.0, medium: 0.5, fine: 0.15 } as const
-const COLLISION_FADE_MS = 500
-
-/** Piecewise linear interpolation between three landmarks at p=1, p=0.5, p=0 */
-function lerpLandmarks(prominence: number, anchor: number, medium: number, fine: number): number {
-  if (prominence >= 0.5) {
-    // Interpolate between anchor (p=1) and medium (p=0.5)
-    const t = (prominence - 0.5) / 0.5
-    return medium + t * (anchor - medium)
-  } else {
-    // Interpolate between medium (p=0.5) and fine (p=0)
-    const t = prominence / 0.5
-    return fine + t * (medium - fine)
-  }
-}
-
-function getTickHeight(prominence: number, canvasHeight: number): number {
-  const maxHeight = canvasHeight / 2
-  const raw = lerpLandmarks(prominence, HEIGHTS.anchor, HEIGHTS.medium, HEIGHTS.fine)
-  const maxForLevel = lerpLandmarks(prominence, maxHeight * 0.6, maxHeight * 0.4, maxHeight * 0.2)
-  return Math.min(raw, maxForLevel)
-}
-
-function getTickLineWidth(prominence: number): number {
-  return lerpLandmarks(prominence, LINE_WIDTHS.anchor, LINE_WIDTHS.medium, LINE_WIDTHS.fine)
-}
-
-function getTickAlpha(prominence: number): number {
-  return lerpLandmarks(prominence, TICK_ALPHAS.anchor, TICK_ALPHAS.medium, TICK_ALPHAS.fine)
-}
-
-function getTickFontSize(prominence: number): number {
-  return lerpLandmarks(prominence, FONT_SIZES.anchor, FONT_SIZES.medium, FONT_SIZES.fine)
-}
-
-function getTickFontWeight(prominence: number): number {
-  return Math.round(
-    lerpLandmarks(prominence, FONT_WEIGHTS.anchor, FONT_WEIGHTS.medium, FONT_WEIGHTS.fine)
-  )
-}
-
-/** Format a number for display as a tick label, using the tick's power for precision */
-function formatTickLabel(value: number, power: number): string {
-  // Normalize -0 to 0
-  if (value === 0) value = 0
-  // Use scientific notation for very large or very small numbers
-  if (value !== 0 && (Math.abs(value) >= 1e7 || Math.abs(value) < 1e-4)) {
-    // Show enough significant digits based on power
-    const sigFigs = Math.max(1, Math.min(15, -power + 1))
-    return value.toExponential(Math.min(sigFigs, 6))
-  }
-  // For normal numbers, show enough fraction digits for the tick's power
-  const fractionDigits = Math.max(0, -power)
-  return value.toLocaleString(undefined, { maximumFractionDigits: Math.min(fractionDigits, 20) })
 }
 
 /**

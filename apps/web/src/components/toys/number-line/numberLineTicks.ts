@@ -1,48 +1,7 @@
 import type { NumberLineState, TickMark, TickThresholds } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
-
-/** Hermite smoothstep: 3t² - 2t³, clamped to [0,1] */
-function smoothstep(t: number): number {
-  const c = Math.max(0, Math.min(1, t))
-  return c * c * (3 - 2 * c)
-}
-
-/**
- * Compute continuous prominence (0-1) for a tick power based on how many
- * ticks of that spacing fit on screen.
- *
- * Piecewise Hermite smoothstep across three segments:
- *   [0, anchorMax]          → prominence [1.0, 0.5]   (anchor → medium)
- *   [anchorMax, mediumMax]  → prominence [0.5, 0.15]  (medium → fine)
- *   [mediumMax, fadeEnd]    → prominence [0.15, 0.0]  (fine → invisible)
- *
- * Each segment uses smoothstep(t) = 3t² - 2t³ which has zero derivative
- * at both endpoints → C1 continuous at all joints.
- */
-function computeProminence(
-  numTicks: number,
-  anchorMax: number,
-  mediumMax: number
-): number {
-  const fadeEnd = mediumMax * 1.5
-
-  if (numTicks <= 0) return 1.0
-  if (numTicks >= fadeEnd) return 0.0
-
-  if (numTicks <= anchorMax) {
-    // Anchor → medium: prominence 1.0 → 0.5
-    const t = smoothstep(numTicks / anchorMax)
-    return 1.0 - t * 0.5
-  } else if (numTicks <= mediumMax) {
-    // Medium → fine: prominence 0.5 → 0.15
-    const t = smoothstep((numTicks - anchorMax) / (mediumMax - anchorMax))
-    return 0.5 - t * 0.35
-  } else {
-    // Fine → invisible: prominence 0.15 → 0.0
-    const t = smoothstep((numTicks - mediumMax) / (fadeEnd - mediumMax))
-    return 0.15 - t * 0.15
-  }
-}
+import { computeProminence } from '../shared/tickMath'
+import { worldToScreen, screenToWorld } from '../shared/coordinateConversions'
 
 /**
  * Compute all visible tick marks for the current viewport.
@@ -148,7 +107,7 @@ export function numberToScreenX(
   pixelsPerUnit: number,
   canvasWidth: number
 ): number {
-  return (value - center) * pixelsPerUnit + canvasWidth / 2
+  return worldToScreen(value, center, pixelsPerUnit, canvasWidth)
 }
 
 /** Convert a screen X coordinate to a number-line value */
@@ -158,5 +117,5 @@ export function screenXToNumber(
   pixelsPerUnit: number,
   canvasWidth: number
 ): number {
-  return (screenX - canvasWidth / 2) / pixelsPerUnit + center
+  return screenToWorld(screenX, center, pixelsPerUnit, canvasWidth)
 }

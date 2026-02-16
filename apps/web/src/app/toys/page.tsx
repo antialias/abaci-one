@@ -13,6 +13,12 @@ const toys = [
     description: 'Explore numbers with pinch-to-zoom and drag. See tick marks at every power of 10.',
   },
   {
+    href: '/toys/coordinate-plane',
+    icon: '📐',
+    name: 'Coordinate Plane',
+    description: 'Explore the 2D plane with pan and zoom. Magnitude-aware grid with smooth prominence scaling.',
+  },
+  {
     href: '/toys/dice',
     icon: '🎲',
     name: 'Dice Tray',

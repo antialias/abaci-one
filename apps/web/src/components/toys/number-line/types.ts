@@ -28,18 +28,8 @@ export const DEFAULT_TICK_THRESHOLDS: TickThresholds = {
   mediumMax: 23,
 }
 
-/** Per-label fade state for smooth collision show/hide transitions */
-export interface CollisionFadeEntry {
-  /** Whether the label is currently visible (not collision-hidden) */
-  visible: boolean
-  /** performance.now() when visibility last changed */
-  startTime: number
-  /** Opacity at the moment visibility changed (to animate from) */
-  startOpacity: number
-}
-
-/** Map from tick value → fade state, persisted across frames */
-export type CollisionFadeMap = Map<number, CollisionFadeEntry>
+// Re-export collision types from shared module for backward compatibility
+export type { CollisionFadeEntry, CollisionFadeMap } from '../shared/collisionDetection'
 
 /** Prime classification info for a tick value */
 export interface PrimeTickInfo {
