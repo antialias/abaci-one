@@ -17,6 +17,8 @@ interface UseEquationSliderOptions {
   probeRef: React.MutableRefObject<EquationProbeState>
   requestDraw: () => void
   pointerCapturedRef: React.MutableRefObject<boolean>
+  /** Incremented when ruler position changes — triggers spring snap-back */
+  rulerVersion: number
 }
 
 interface UseEquationSliderResult {
@@ -38,6 +40,7 @@ export function useEquationSlider({
   probeRef,
   requestDraw,
   pointerCapturedRef,
+  rulerVersion,
 }: UseEquationSliderOptions): UseEquationSliderResult {
   const [sliderT, setSliderT] = useState(0.5)
   const [isDragging, setIsDragging] = useState(false)
@@ -56,49 +59,71 @@ export function useEquationSlider({
   const rulerDirScreenRef = useRef({ x: 1, y: 0, lengthPx: 1 })
   const springRafRef = useRef(0)
 
-  const updateProbe = useCallback((t: number) => {
+  const updateProbe = useCallback((t: number, solve = true): number => {
     const ruler = rulerRef.current
-    // World position at t along the ruler line (unclamped — extends into laser)
-    const wx = ruler.ax + (ruler.bx - ruler.ax) * t
-    const wy = ruler.ay + (ruler.by - ruler.ay) * t
+    const dxRuler = ruler.bx - ruler.ax
+    const dyRuler = ruler.by - ruler.ay
 
-    // Grid proximity detection
-    const equation = equationFromPoints(ruler.ax, ruler.ay, ruler.bx, ruler.by)
+    // World position at t along the ruler line (unclamped — extends into laser)
+    let wx = ruler.ax + dxRuler * t
+    let wy = ruler.ay + dyRuler * t
+    let effectiveT = t
 
     let nX: number | null = null
     let nY: number | null = null
     let solvX: { x: number; yFrac: Fraction } | null = null
     let solvY: { y: number; xFrac: Fraction } | null = null
 
-    const roundedX = Math.round(wx)
-    const roundedY = Math.round(wy)
-    const distX = Math.abs(wx - roundedX)
-    const distY = Math.abs(wy - roundedY)
+    // Grid proximity detection + snap — only during manual drag, not spring
+    if (solve) {
+      const equation = equationFromPoints(ruler.ax, ruler.ay, ruler.bx, ruler.by)
 
-    if (equation.kind === 'general') {
-      if (distX < GRID_SNAP_THRESHOLD) {
-        nX = roundedX
-        solvX = { x: roundedX, yFrac: solveForY(equation.slope, equation.intercept, roundedX) }
+      const roundedX = Math.round(wx)
+      const roundedY = Math.round(wy)
+      const distX = Math.abs(wx - roundedX)
+      const distY = Math.abs(wy - roundedY)
+
+      if (equation.kind === 'general') {
+        if (distX < GRID_SNAP_THRESHOLD) {
+          nX = roundedX
+          solvX = { x: roundedX, yFrac: solveForY(equation.slope, equation.intercept, roundedX) }
+        }
+        if (distY < GRID_SNAP_THRESHOLD) {
+          nY = roundedY
+          solvY = { y: roundedY, xFrac: solveForX(equation.slope, equation.intercept, roundedY) }
+        }
+      } else if (equation.kind === 'horizontal') {
+        if (distX < GRID_SNAP_THRESHOLD) {
+          nX = roundedX
+          solvX = { x: roundedX, yFrac: { num: equation.y, den: 1 } }
+        }
+      } else if (equation.kind === 'vertical') {
+        if (distY < GRID_SNAP_THRESHOLD) {
+          nY = roundedY
+          solvY = { y: roundedY, xFrac: { num: equation.x, den: 1 } }
+        }
       }
-      if (distY < GRID_SNAP_THRESHOLD) {
-        nY = roundedY
-        solvY = { y: roundedY, xFrac: solveForX(equation.slope, equation.intercept, roundedY) }
-      }
-    } else if (equation.kind === 'horizontal') {
-      // y is always the constant — solve for x at integer x
-      if (distX < GRID_SNAP_THRESHOLD) {
-        nX = roundedX
-        // y is always equation.y (integer)
-        solvX = { x: roundedX, yFrac: { num: equation.y, den: 1 } }
-      }
-    } else if (equation.kind === 'vertical') {
-      // x is always the constant — solve for y at integer y
-      if (distY < GRID_SNAP_THRESHOLD) {
-        nY = roundedY
-        solvY = { y: roundedY, xFrac: { num: equation.x, den: 1 } }
+
+      // Snap t to the nearest detected grid line
+      if (nX !== null || nY !== null) {
+        if (nX !== null && nY !== null) {
+          // Both in range — snap to whichever is closer
+          if (distX <= distY && Math.abs(dxRuler) > 0.001) {
+            effectiveT = (roundedX - ruler.ax) / dxRuler
+          } else if (Math.abs(dyRuler) > 0.001) {
+            effectiveT = (roundedY - ruler.ay) / dyRuler
+          }
+        } else if (nX !== null && Math.abs(dxRuler) > 0.001) {
+          effectiveT = (roundedX - ruler.ax) / dxRuler
+        } else if (nY !== null && Math.abs(dyRuler) > 0.001) {
+          effectiveT = (roundedY - ruler.ay) / dyRuler
+        }
+
+        // Recompute world position from snapped t
+        wx = ruler.ax + dxRuler * effectiveT
+        wy = ruler.ay + dyRuler * effectiveT
       }
     }
-    // 'point' kind: no solving needed
 
     setNearX(nX)
     setNearY(nY)
@@ -109,7 +134,7 @@ export function useEquationSlider({
     // Update ref for canvas to read
     probeRef.current = {
       active: true,
-      t,
+      t: effectiveT,
       worldX: wx,
       worldY: wy,
       nearX: nX,
@@ -119,6 +144,7 @@ export function useEquationSlider({
     }
 
     requestDraw()
+    return effectiveT
   }, [rulerRef, probeRef, requestDraw])
 
   const clearProbe = useCallback(() => {
@@ -129,7 +155,7 @@ export function useEquationSlider({
     probeRef.current = {
       ...probeRef.current,
       active: false,
-      t: 0.5,
+      // Don't touch t — preserve label position; callers reset t explicitly
       nearX: null,
       nearY: null,
       solvedAtNearX: null,
@@ -138,11 +164,19 @@ export function useEquationSlider({
     requestDraw()
   }, [probeRef, requestDraw])
 
+  // Track whether a spring-back has already been triggered for the current displacement.
+  // Prevents re-triggering on every rulerVersion tick during a continuous ruler drag.
+  const springTriggeredRef = useRef(false)
+
   // Spring snap-back animation
   const startSpring = useCallback((fromT: number) => {
+    // Cancel any existing spring before starting a new one
+    cancelAnimationFrame(springRafRef.current)
+
     const amplitude = fromT - 0.5
     if (Math.abs(amplitude) < 0.001) {
       setSliderT(0.5)
+      probeRef.current.t = 0.5
       clearProbe()
       return
     }
@@ -157,6 +191,7 @@ export function useEquationSlider({
       if (Math.abs(offset) < 0.001 || elapsed > 1) {
         // Settled
         setSliderT(0.5)
+        probeRef.current.t = 0.5
         setIsSpringAnimating(false)
         clearProbe()
         cancelAnimationFrame(springRafRef.current)
@@ -165,17 +200,37 @@ export function useEquationSlider({
 
       const t = 0.5 + offset
       setSliderT(t)
-      updateProbe(t)
+      updateProbe(t, false)
       springRafRef.current = requestAnimationFrame(animate)
     }
 
     springRafRef.current = requestAnimationFrame(animate)
-  }, [clearProbe, updateProbe])
+  }, [clearProbe, updateProbe, probeRef])
 
   // Cleanup spring RAF on unmount
   useEffect(() => {
     return () => cancelAnimationFrame(springRafRef.current)
   }, [])
+
+  // Spring back to midpoint when ruler position changes (skip initial mount).
+  // Only triggers once per displacement — springTriggeredRef prevents re-firing
+  // on every rulerVersion tick during a continuous ruler drag.
+  const prevRulerVersionRef = useRef(rulerVersion)
+  useEffect(() => {
+    if (prevRulerVersionRef.current === rulerVersion) return
+    prevRulerVersionRef.current = rulerVersion
+
+    if (springTriggeredRef.current) return // already springing back
+
+    // Read current t via state updater to avoid stale closure
+    setSliderT(currentT => {
+      if (Math.abs(currentT - 0.5) > 0.001) {
+        springTriggeredRef.current = true
+        startSpring(currentT)
+      }
+      return currentT
+    })
+  }, [rulerVersion, startSpring])
 
   // Pointer event handlers
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -185,6 +240,7 @@ export function useEquationSlider({
     // Cancel any running spring
     cancelAnimationFrame(springRafRef.current)
     setIsSpringAnimating(false)
+    springTriggeredRef.current = false
 
     setIsDragging(true)
     pointerCapturedRef.current = true
@@ -223,8 +279,8 @@ export function useEquationSlider({
       const deltaT = dir.lengthPx > 0 ? projectedPx / dir.lengthPx : 0
 
       const newT = dragStartTRef.current + deltaT
-      setSliderT(newT)
-      updateProbe(newT)
+      const effectiveT = updateProbe(newT)
+      setSliderT(effectiveT)
     }
 
     const onPointerUp = () => {
@@ -233,17 +289,17 @@ export function useEquationSlider({
       setIsDragging(false)
       pointerCapturedRef.current = false
 
-      // Get current sliderT from the ref-based approach
-      // We need to read the latest value — use a trick: read from the state updater
-      setSliderT(currentT => {
-        startSpring(currentT)
-        return currentT
-      })
+      // If at a solve point, keep the probe active with indicators visible.
+      // Otherwise just clear solve state but keep position.
+      const probe = probeRef.current
+      if (probe.nearX == null && probe.nearY == null) {
+        clearProbe()
+      }
     }
 
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
-  }, [canvasRef, rulerRef, stateRef, sliderT, pointerCapturedRef, updateProbe, startSpring])
+  }, [canvasRef, rulerRef, stateRef, sliderT, pointerCapturedRef, updateProbe, clearProbe])
 
   return {
     sliderT,

@@ -109,18 +109,8 @@ interface RulerEquationLabelProps {
   isDark: boolean
   /** Whether the equation probe is currently being dragged */
   isDragging?: boolean
-  /** Whether the spring snap-back animation is running */
-  isSpringAnimating?: boolean
-  /** Pointer-down handler for the indicator dot */
+  /** Pointer-down handler for the card */
   onIndicatorPointerDown?: (e: React.PointerEvent) => void
-  /** Nearby integer x grid line (from probe solving) */
-  nearX?: number | null
-  /** Nearby integer y grid line (from probe solving) */
-  nearY?: number | null
-  /** Solved y at nearby x grid line */
-  solvedAtNearX?: { x: number; yFrac: Fraction } | null
-  /** Solved x at nearby y grid line */
-  solvedAtNearY?: { y: number; xFrac: Fraction } | null
   /** Ref to the outer positioned container — used by RAF loop for position sync */
   containerRef?: React.MutableRefObject<HTMLDivElement | null>
 }
@@ -132,12 +122,7 @@ export function RulerEquationLabel({
   angle,
   isDark,
   isDragging = false,
-  isSpringAnimating = false,
   onIndicatorPointerDown,
-  nearX,
-  nearY,
-  solvedAtNearX,
-  solvedAtNearY,
   containerRef,
 }: RulerEquationLabelProps) {
   // Normalize angle to keep text readable (within ±90°)
@@ -145,9 +130,14 @@ export function RulerEquationLabel({
   while (displayAngle > Math.PI / 2) displayAngle -= Math.PI
   while (displayAngle < -Math.PI / 2) displayAngle += Math.PI
 
+  // Offset the card above the ruler line so the canvas probe dot is visible.
+  // Card height is constant (no dynamic content), so -50% centering is stable.
+  const offsetPx = 18
+  const perpX = -Math.sin(displayAngle) * offsetPx
+  const perpY = Math.cos(displayAngle) * offsetPx
+
   const color = isDark ? 'rgba(226, 232, 240, 0.95)' : 'rgba(30, 41, 59, 0.95)'
   const bgColor = isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.75)'
-  const showSolved = (isDragging || isSpringAnimating) && (nearX != null || nearY != null)
 
   return (
     <div
@@ -155,18 +145,14 @@ export function RulerEquationLabel({
       data-element="ruler-equation-label"
       style={{
         position: 'absolute',
-        // Positioned at the ruler line; top edge pinned there, card grows downward.
-        // Rotate around top-center so height changes never shift the top edge.
-        left: screenX,
-        top: screenY,
-        transform: `translate(-50%, 0) rotate(${displayAngle}rad)`,
-        transformOrigin: '50% 0',
+        left: screenX + perpX,
+        top: screenY + perpY,
+        transform: `translate(-50%, -50%) rotate(${displayAngle}rad)`,
         pointerEvents: 'none',
         userSelect: 'none',
         whiteSpace: 'nowrap',
       }}
     >
-      {/* Card — entire area is the grab target; cursor: grab provides affordance */}
       <div
         data-element="equation-probe-card"
         onPointerDown={onIndicatorPointerDown}
@@ -192,80 +178,9 @@ export function RulerEquationLabel({
         >
           <EquationMml equation={equation} />
         </math>
-
-        {/* Solved coordinates row */}
-        {showSolved && (
-          <div
-            data-element="equation-solved-coords"
-            style={{ marginTop: 2 }}
-          >
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <math
-              {...{ xmlns: 'http://www.w3.org/1998/Math/MathML' } as any}
-              style={{
-                fontFamily: mathFontFamily,
-                fontSize: 13,
-                color: isDark ? 'rgba(165, 180, 252, 0.95)' : 'rgba(79, 70, 229, 0.95)',
-              }}
-            >
-              <SolvedCoordsMml
-                nearX={nearX ?? null}
-                nearY={nearY ?? null}
-                solvedAtNearX={solvedAtNearX ?? null}
-                solvedAtNearY={solvedAtNearY ?? null}
-              />
-            </math>
-          </div>
-        )}
       </div>
     </div>
   )
-}
-
-// ── Solved coordinates MathML ─────────────────────────────────────
-
-function SolvedCoordsMml({
-  nearX,
-  nearY,
-  solvedAtNearX,
-  solvedAtNearY,
-}: {
-  nearX: number | null
-  nearY: number | null
-  solvedAtNearX: { x: number; yFrac: Fraction } | null
-  solvedAtNearY: { y: number; xFrac: Fraction } | null
-}) {
-  // Show x = N, y = fraction when near an x grid line
-  if (nearX != null && solvedAtNearX) {
-    return (
-      <mrow>
-        <mo>(</mo>
-        <mn>{solvedAtNearX.x}</mn>
-        <mo>,</mo>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <mspace {...{ width: '0.2em' } as any} />
-        <FractionMml f={solvedAtNearX.yFrac} />
-        <mo>)</mo>
-      </mrow>
-    )
-  }
-
-  // Show y = N, x = fraction when near a y grid line
-  if (nearY != null && solvedAtNearY) {
-    return (
-      <mrow>
-        <mo>(</mo>
-        <FractionMml f={solvedAtNearY.xFrac} />
-        <mo>,</mo>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <mspace {...{ width: '0.2em' } as any} />
-        <mn>{solvedAtNearY.y}</mn>
-        <mo>)</mo>
-      </mrow>
-    )
-  }
-
-  return null
 }
 
 // ── Equation MathML ────────────────────────────────────────────────
