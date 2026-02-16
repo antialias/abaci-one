@@ -1428,11 +1428,19 @@ export function NumberLine({ playerId, onPlayerIdentified, onCallStateChange }: 
     const cssWidth = cssWidthRef.current
     const state = stateRef.current
     const value = screenXToNumber(screenX, state.center, state.pixelsPerUnit, cssWidth)
-    // Snap to nearest integer if close enough
-    const nearest = Math.round(value)
-    const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
-    const dist = Math.abs(screenX - nearestScreenX)
-    const numberToCall = dist < 30 ? nearest : parseFloat(value.toPrecision(6))
+    // Snap to the nearest visible tick mark — that's the number the user sees
+    const ticks = computeTickMarks(state, cssWidth, thresholdsRef.current)
+    let numberToCall = value
+    let bestDist = Infinity
+    for (const tick of ticks) {
+      const d = Math.abs(value - tick.value)
+      if (d < bestDist) {
+        bestDist = d
+        numberToCall = tick.value
+      }
+    }
+    // Clean floating point noise (e.g. 399 * 0.01 = 3.9900000000000002 → 3.99)
+    numberToCall = parseFloat(numberToCall.toPrecision(12))
     console.log('[NumberLine] calling setCallingNumber(%s) and dial(%s)', numberToCall, numberToCall)
     setCallingNumber(numberToCall)
     dial(numberToCall, { recommendedExplorations: getVisibleRecommendations(), playerId, availablePlayers: !playerId ? availablePlayerSummaries : undefined })

@@ -33,7 +33,7 @@ function formatTime(seconds: number): string {
 
 function formatNumber(n: number): string {
   if (Number.isInteger(n)) return n.toString()
-  return n.toPrecision(6)
+  return parseFloat(n.toPrecision(6)).toString()
 }
 
 /** Compact waveform bars for call box speaking indicator */
