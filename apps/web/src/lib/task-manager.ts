@@ -78,6 +78,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   'phi-explore-generate': 30 * 60 * 1000, // 30 minutes (up to 27 images in pipeline mode)
   demo: 2 * 60 * 1000, // 2 minutes
   'demo-refine': 10 * 60 * 1000, // 10 minutes (Claude Code can be slow)
+  'session-plan': 2 * 60 * 1000, // 2 minutes
 }
 
 const DEFAULT_TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes

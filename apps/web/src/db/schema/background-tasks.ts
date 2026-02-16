@@ -130,6 +130,7 @@ export type TaskType =
   | 'phi-explore-generate'
   | 'demo'
   | 'demo-refine'
+  | 'session-plan'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**
  * Event types are defined per task type in `src/lib/tasks/events.ts`.

@@ -1,11 +1,13 @@
 'use client'
 
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { SessionPlan, SlotResult, GameBreakSettings } from '@/db/schema/session-plans'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { api } from '@/lib/queryClient'
 import { sessionPlanKeys } from '@/lib/queryKeys'
+import { useBackgroundTask } from './useBackgroundTask'
 
 // Re-export query keys for consumers
 export { sessionPlanKeys } from '@/lib/queryKeys'
@@ -51,20 +53,8 @@ interface EnabledParts {
   linear: boolean
 }
 
-async function generateSessionPlan({
-  playerId,
-  durationMinutes,
-  abacusTermCount,
-  enabledParts,
-  partTimeWeights,
-  purposeTimeWeights,
-  shufflePurposes,
-  problemGenerationMode,
-  confidenceThreshold,
-  sessionMode,
-  gameBreakSettings,
-  comfortAdjustment,
-}: {
+/** Parameters for generating a session plan */
+interface GenerateSessionPlanParams {
   playerId: string
   durationMinutes: number
   abacusTermCount?: { min: number; max: number }
@@ -77,22 +67,28 @@ async function generateSessionPlan({
   sessionMode?: SessionMode
   gameBreakSettings?: GameBreakSettings
   comfortAdjustment?: number
-}): Promise<SessionPlan> {
-  const res = await api(`curriculum/${playerId}/sessions/plans`, {
+}
+
+/**
+ * Create a background task for session plan generation.
+ * Returns the task ID — subscribe via useBackgroundTask for progress.
+ */
+async function createSessionPlanTask(params: GenerateSessionPlanParams): Promise<string> {
+  const res = await api(`curriculum/${params.playerId}/sessions/plans`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      durationMinutes,
-      abacusTermCount,
-      enabledParts,
-      partTimeWeights,
-      purposeTimeWeights,
-      shufflePurposes,
-      problemGenerationMode,
-      confidenceThreshold,
-      sessionMode,
-      gameBreakSettings,
-      comfortAdjustment,
+      durationMinutes: params.durationMinutes,
+      abacusTermCount: params.abacusTermCount,
+      enabledParts: params.enabledParts,
+      partTimeWeights: params.partTimeWeights,
+      purposeTimeWeights: params.purposeTimeWeights,
+      shufflePurposes: params.shufflePurposes,
+      problemGenerationMode: params.problemGenerationMode,
+      confidenceThreshold: params.confidenceThreshold,
+      sessionMode: params.sessionMode,
+      gameBreakSettings: params.gameBreakSettings,
+      comfortAdjustment: params.comfortAdjustment,
     }),
   })
   if (!res.ok) {
@@ -115,7 +111,7 @@ async function generateSessionPlan({
     throw new Error(errorData.error || 'Failed to generate session plan')
   }
   const data = await res.json()
-  return data.plan
+  return data.taskId
 }
 
 async function updateSessionPlan({
@@ -214,24 +210,80 @@ export function useActiveSessionPlanSuspense(playerId: string) {
   })
 }
 
+/** Output from the session-plan background task */
+interface SessionPlanTaskOutput {
+  plan: SessionPlan
+}
+
 /**
- * Hook: Generate a new session plan
+ * Hook: Generate a new session plan via background task
+ *
+ * Returns a mutation to start generation plus real-time progress tracking.
+ * The mutation resolves with the task ID; the plan is delivered via Socket.IO.
  */
 export function useGenerateSessionPlan() {
   const queryClient = useQueryClient()
+  const [taskId, setTaskId] = useState<string | null>(null)
+  const task = useBackgroundTask<SessionPlanTaskOutput>(taskId)
 
-  return useMutation({
-    mutationFn: generateSessionPlan,
-    onSuccess: (plan, { playerId }) => {
-      // Update the active plan cache
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      // Also cache by plan ID
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+  // Track the playerId for cache updates when task completes
+  const playerIdRef = useRef<string | null>(null)
+  // Track whether we've already processed this task completion
+  const processedTaskIdRef = useRef<string | null>(null)
+
+  // When task completes, extract plan and update React Query cache
+  useEffect(() => {
+    if (
+      task.state?.status === 'completed' &&
+      task.state.output?.plan &&
+      taskId &&
+      processedTaskIdRef.current !== taskId
+    ) {
+      processedTaskIdRef.current = taskId
+      const plan = task.state.output.plan
+      const playerId = playerIdRef.current
+      if (playerId) {
+        queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+        queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+      }
+    }
+  }, [task.state?.status, task.state?.output, taskId, queryClient])
+
+  const mutation = useMutation({
+    mutationFn: async (params: GenerateSessionPlanParams) => {
+      playerIdRef.current = params.playerId
+      processedTaskIdRef.current = null
+      const id = await createSessionPlanTask(params)
+      setTaskId(id)
+      return id
     },
     onError: (err) => {
       console.error('Failed to generate session plan:', err.message)
     },
   })
+
+  const reset = useCallback(() => {
+    mutation.reset()
+    setTaskId(null)
+    processedTaskIdRef.current = null
+  }, [mutation])
+
+  return {
+    ...mutation,
+    reset,
+    taskId,
+    taskState: task.state,
+    progress: task.state?.progress ?? 0,
+    progressMessage: task.state?.progressMessage ?? null,
+    /** The generated plan, available when task completes */
+    plan: task.state?.status === 'completed' ? task.state.output?.plan ?? null : null,
+    /** Whether the background task is actively running */
+    isGenerating: mutation.isPending || (!!taskId && task.state?.status === 'running'),
+    /** Whether the plan generation is complete */
+    isComplete: task.state?.status === 'completed',
+    /** Error from the background task (if it failed) */
+    taskError: task.state?.status === 'failed' ? task.state.error : null,
+  }
 }
 
 /**

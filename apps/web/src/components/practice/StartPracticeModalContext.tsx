@@ -202,6 +202,10 @@ interface StartPracticeModalContextValue {
   isStarting: boolean
   displayError: Error | null
   isNoSkillsError: boolean
+  /** Progress percentage (0-100) during plan generation */
+  generationProgress: number
+  /** Human-readable progress message during plan generation */
+  generationProgressMessage: string | null
 
   // Skill selector (for "no skills" error remediation)
   showSkillSelector: boolean
@@ -633,81 +637,144 @@ export function StartPracticeModalProvider({
   const approvePlan = useApproveSessionPlan()
   const startPlan = useStartSessionPlan()
 
-  const isStarting = generatePlan.isPending || approvePlan.isPending || startPlan.isPending
+  // Track whether we're in the start flow (waiting for generation → approve → start)
+  const [isStartFlow, setIsStartFlow] = useState(false)
+
+  const isStarting =
+    isStartFlow || generatePlan.isPending || generatePlan.isGenerating || approvePlan.isPending || startPlan.isPending
 
   const displayError = useMemo(() => {
     if (generatePlan.error && !(generatePlan.error instanceof ActiveSessionExistsClientError)) {
       return generatePlan.error
     }
+    // Show task-level errors (e.g., NoSkillsEnabled thrown inside the task)
+    if (generatePlan.taskError) {
+      return new Error(generatePlan.taskError)
+    }
     if (approvePlan.error) return approvePlan.error
     if (startPlan.error) return startPlan.error
     return null
-  }, [generatePlan.error, approvePlan.error, startPlan.error])
+  }, [generatePlan.error, generatePlan.taskError, approvePlan.error, startPlan.error])
 
-  const isNoSkillsError = displayError instanceof NoSkillsEnabledClientError
+  const isNoSkillsError = displayError instanceof NoSkillsEnabledClientError ||
+    (displayError?.message?.includes('no skills are enabled') ?? false)
+
+  // Refs to stable mutation functions (avoids re-triggering effects)
+  const onStartedRef = useRef(onStarted)
+  onStartedRef.current = onStarted
+  const approvePlanRef = useRef(approvePlan)
+  approvePlanRef.current = approvePlan
+  const startPlanRef = useRef(startPlan)
+  startPlanRef.current = startPlan
+  // Guard against re-entry (effect dependencies like plan object identity can re-trigger)
+  const isCompletingFlowRef = useRef(false)
 
   const resetMutations = useCallback(() => {
     generatePlan.reset()
     approvePlan.reset()
     startPlan.reset()
+    setIsStartFlow(false)
+    isCompletingFlowRef.current = false
   }, [generatePlan, approvePlan, startPlan])
+
+  // When the background task completes with a plan, continue the start flow
+  // (approve → start → navigate)
+  useEffect(() => {
+    if (!isStartFlow) return
+    if (!generatePlan.plan) return
+    if (isCompletingFlowRef.current) return
+    isCompletingFlowRef.current = true
+
+    // Plan is ready — continue with approve and start
+    const plan = generatePlan.plan
+    ;(async () => {
+      try {
+        await approvePlanRef.current.mutateAsync({ playerId: studentId, planId: plan.id })
+        await startPlanRef.current.mutateAsync({ playerId: studentId, planId: plan.id })
+        onStartedRef.current?.()
+        router.push(`/practice/${studentId}`, { scroll: false })
+      } catch {
+        // Error will show in UI
+      } finally {
+        setIsStartFlow(false)
+        isCompletingFlowRef.current = false
+      }
+    })()
+  }, [isStartFlow, generatePlan.plan, studentId, router])
+
+  // If the task fails, stop the start flow
+  useEffect(() => {
+    if (isStartFlow && generatePlan.taskError) {
+      setIsStartFlow(false)
+    }
+  }, [isStartFlow, generatePlan.taskError])
 
   const handleStart = useCallback(async () => {
     resetMutations()
 
     try {
-      let plan: SessionPlan
-
       if (existingPlan && existingPlan.targetDurationMinutes === durationMinutes) {
-        plan = existingPlan
-      } else {
-        try {
-          const comfortAdj = COMFORT_ADJUSTMENTS[problemLengthPreference]
-          plan = await generatePlan.mutateAsync({
-            playerId: studentId,
-            durationMinutes,
-            comfortAdjustment: comfortAdj !== 0 ? comfortAdj : undefined,
-            enabledParts,
-            partTimeWeights,
-            purposeTimeWeights,
-            shufflePurposes,
-            problemGenerationMode: 'adaptive-bkt',
-            sessionMode,
-            gameBreakSettings: {
-              enabled: gameBreakEnabled,
-              maxDurationMinutes: gameBreakMinutes,
-              selectionMode: gameBreakSelectionMode,
-              selectedGame: gameBreakEnabled ? gameBreakSelectedGame : null,
-              // Include per-game config when a specific game is selected
-              gameConfig:
-                gameBreakEnabled &&
-                gameBreakSelectedGame &&
-                gameBreakSelectedGame !== 'random' &&
-                Object.keys(resolvedGameConfig).length > 0
-                  ? ({
-                      [gameBreakSelectedGame]: resolvedGameConfig,
-                    } as PracticeBreakGameConfig)
-                  : undefined,
-              enabledGames: playerEnabledGames.map((g) => g.manifest.name),
-              skipSetupPhase: true,
-            },
-          })
-        } catch (err) {
-          if (err instanceof ActiveSessionExistsClientError) {
-            plan = err.existingPlan
-            queryClient.setQueryData(sessionPlanKeys.active(studentId), plan)
-          } else {
-            throw err
-          }
-        }
+        // Reuse existing plan — go straight to approve → start
+        setIsStartFlow(true)
+        await approvePlan.mutateAsync({ playerId: studentId, planId: existingPlan.id })
+        await startPlan.mutateAsync({ playerId: studentId, planId: existingPlan.id })
+        onStarted?.()
+        router.push(`/practice/${studentId}`, { scroll: false })
+        setIsStartFlow(false)
+        return
       }
 
-      await approvePlan.mutateAsync({ playerId: studentId, planId: plan.id })
-      await startPlan.mutateAsync({ playerId: studentId, planId: plan.id })
-      onStarted?.()
-      router.push(`/practice/${studentId}`, { scroll: false })
+      try {
+        const comfortAdj = COMFORT_ADJUSTMENTS[problemLengthPreference]
+        setIsStartFlow(true)
+        // This starts the background task and returns immediately with a taskId.
+        // The effect above will continue with approve → start when the plan arrives.
+        await generatePlan.mutateAsync({
+          playerId: studentId,
+          durationMinutes,
+          comfortAdjustment: comfortAdj !== 0 ? comfortAdj : undefined,
+          enabledParts,
+          partTimeWeights,
+          purposeTimeWeights,
+          shufflePurposes,
+          problemGenerationMode: 'adaptive-bkt',
+          sessionMode,
+          gameBreakSettings: {
+            enabled: gameBreakEnabled,
+            maxDurationMinutes: gameBreakMinutes,
+            selectionMode: gameBreakSelectionMode,
+            selectedGame: gameBreakEnabled ? gameBreakSelectedGame : null,
+            gameConfig:
+              gameBreakEnabled &&
+              gameBreakSelectedGame &&
+              gameBreakSelectedGame !== 'random' &&
+              Object.keys(resolvedGameConfig).length > 0
+                ? ({
+                    [gameBreakSelectedGame]: resolvedGameConfig,
+                  } as PracticeBreakGameConfig)
+                : undefined,
+            enabledGames: playerEnabledGames.map((g) => g.manifest.name),
+            skipSetupPhase: true,
+          },
+        })
+        // Don't set isStartFlow to false — the effect will handle the rest
+      } catch (err) {
+        if (err instanceof ActiveSessionExistsClientError) {
+          const plan = err.existingPlan
+          queryClient.setQueryData(sessionPlanKeys.active(studentId), plan)
+          await approvePlan.mutateAsync({ playerId: studentId, planId: plan.id })
+          await startPlan.mutateAsync({ playerId: studentId, planId: plan.id })
+          onStarted?.()
+          router.push(`/practice/${studentId}`, { scroll: false })
+          setIsStartFlow(false)
+        } else {
+          setIsStartFlow(false)
+          throw err
+        }
+      }
     } catch {
       // Error will show in UI
+      setIsStartFlow(false)
     }
   }, [
     studentId,
@@ -811,6 +878,8 @@ export function StartPracticeModalProvider({
     isStarting,
     displayError,
     isNoSkillsError,
+    generationProgress: generatePlan.progress,
+    generationProgressMessage: generatePlan.progressMessage,
 
     // Skill selector
     showSkillSelector,

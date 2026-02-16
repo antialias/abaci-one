@@ -104,7 +104,44 @@ export interface GenerateSessionPlanOptions {
   shufflePurposes?: boolean
   /** Comfort level adjustment from problem length preference (shorter=-0.3, recommended=0, longer=+0.2) */
   comfortAdjustment?: number
+  /** Optional progress callback for background task integration */
+  onProgress?: (event: SessionPlanProgressEvent) => void
 }
+
+/** Progress events emitted during session plan generation */
+export type SessionPlanProgressEvent =
+  | { type: 'plan_loading_data'; message: string }
+  | { type: 'plan_analyzing_skills'; message: string; skillCount: number }
+  | {
+      type: 'plan_structure_ready'
+      message: string
+      parts: Array<{ type: string; problemCount: number }>
+    }
+  | {
+      type: 'plan_generating_problem'
+      partType: string
+      partLabel: string
+      current: number
+      total: number
+    }
+  | { type: 'plan_part_complete'; partType: string; problemCount: number; durationMs: number }
+  | { type: 'plan_saving'; message: string }
+  | {
+      type: 'plan_complete'
+      planId: string
+      timing: {
+        totalMs: number
+        loadDataMs: number
+        bktMs: number
+        parts: Array<{
+          type: string
+          totalMs: number
+          problemCount: number
+          avgProblemMs: number
+        }>
+        saveMs: number
+      }
+    }
 
 /**
  * Error thrown when a player already has an active session
@@ -155,8 +192,10 @@ export async function generateSessionPlan(
     overrideProblemsPerPart,
     shufflePurposes = true,
     comfortAdjustment = 0,
+    onProgress,
   } = options
 
+  const totalStartTime = performance.now()
   const config = { ...DEFAULT_PLAN_CONFIG, ...configOverrides }
 
   // Default: all parts enabled
@@ -181,7 +220,10 @@ export async function generateSessionPlan(
     }
   }
 
+  onProgress?.({ type: 'plan_loading_data', message: 'Loading student data...' })
+
   // 1. Load student state and app config (in parallel for performance)
+  const loadDataStart = performance.now()
   const [curriculum, skillMastery, recentSessions, problemHistory, dbSettings] = await Promise.all([
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
@@ -194,10 +236,13 @@ export async function generateSessionPlan(
     db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1),
   ])
 
+  const loadDataMs = performance.now() - loadDataStart
+
   // Parse DB term count scaling config (falls back to defaults if null/invalid)
   const termCountScalingConfig = parseTermCountScaling(dbSettings[0]?.termCountScaling ?? null)
 
   // Compute BKT if in adaptive modes and we have problem history
+  const bktStart = performance.now()
   let bktResults: Map<string, SkillBktResult> | undefined
   let byModeBkt: ReturnType<typeof computeBktFromHistory>['byMode']
   const usesBktTargeting =
@@ -224,6 +269,15 @@ export async function generateSessionPlan(
       `[SessionPlanner] Mode: ${problemGenerationMode}, no BKT (usesBktTargeting=${usesBktTargeting}, history=${problemHistory.length})`
     )
   }
+
+  const bktMs = performance.now() - bktStart
+
+  const practicingCount = skillMastery.filter((s) => s.isPracticing).length
+  onProgress?.({
+    type: 'plan_analyzing_skills',
+    message: `Analyzing ${practicingCount} skill${practicingCount !== 1 ? 's' : ''}...`,
+    skillCount: practicingCount,
+  })
 
   // Build student-aware cost calculator for complexity budgeting
   const studentHistory = buildStudentSkillHistoryFromRecords(skillMastery)
@@ -348,47 +402,126 @@ export async function generateSessionPlan(
     0
   )
 
-  // Build only enabled parts with normalized time weights
-  const parts: SessionPart[] = []
-  let partNumber = 1 as 1 | 2 | 3
+  // Build slot structures (without problems) first to report structure
+  const partSlotStructures: Array<{
+    partType: SessionPartType
+    normalizedWeight: number
+    adjustedModeComfortLevel: number
+    modeComfortFactors: TermCountExplanation['factors']
+    rawModeComfortLevel: number
+  }> = []
 
   for (const partType of enabledPartTypes) {
     const normalizedWeight = config.partTimeWeights[partType] / totalEnabledWeight
-
-    // Use mode-specific comfort if available, otherwise fall back to overall
     const modeComfort = comfortByMode?.[partType] ?? rawComfortResult
     const rawModeComfortLevel = modeComfort.comfortLevel
     const adjustedModeComfortLevel = Math.max(0, Math.min(1, rawModeComfortLevel + comfortAdjustment))
 
-    parts.push(
-      buildSessionPart(
-        partNumber,
-        partType,
-        durationMinutes,
-        avgTimeSeconds,
-        {
-          ...config,
-          partTimeWeights: {
-            ...config.partTimeWeights,
-            [partType]: normalizedWeight,
-          },
+    partSlotStructures.push({
+      partType,
+      normalizedWeight,
+      adjustedModeComfortLevel,
+      modeComfortFactors: modeComfort.factors,
+      rawModeComfortLevel,
+    })
+  }
+
+  // Build only enabled parts with normalized time weights
+  const parts: SessionPart[] = []
+  let partNumber = 1 as 1 | 2 | 3
+  const partTimings: Array<{
+    type: string
+    totalMs: number
+    problemCount: number
+    avgProblemMs: number
+  }> = []
+
+  // Build slot structures first (fast) to get problem counts for progress reporting
+  const previewParts: Array<{ type: string; problemCount: number }> = []
+  for (const { partType, normalizedWeight } of partSlotStructures) {
+    const partDurationMinutes = durationMinutes * normalizedWeight
+    const partProblemCount =
+      overrideProblemsPerPart ?? Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
+    previewParts.push({ type: partType, problemCount: partProblemCount })
+  }
+
+  onProgress?.({
+    type: 'plan_structure_ready',
+    message: `Generating ${previewParts.reduce((s, p) => s + p.problemCount, 0)} problems...`,
+    parts: previewParts,
+  })
+
+  const PART_TYPE_LABELS: Record<string, string> = {
+    abacus: 'Abacus',
+    visualization: 'Visualization',
+    linear: 'Linear',
+  }
+
+  for (const {
+    partType,
+    normalizedWeight,
+    adjustedModeComfortLevel,
+    modeComfortFactors,
+    rawModeComfortLevel,
+  } of partSlotStructures) {
+    const partStartTime = performance.now()
+
+    const part = await buildSessionPartAsync(
+      partNumber,
+      partType,
+      durationMinutes,
+      avgTimeSeconds,
+      {
+        ...config,
+        partTimeWeights: {
+          ...config.partTimeWeights,
+          [partType]: normalizedWeight,
         },
-        practicingSkillConstraints,
-        needsReview,
-        currentPhase,
-        normalizedWeight,
-        costCalculator,
-        studentMaxSkillCost,
-        weakSkills,
-        overrideProblemsPerPart,
-        shufflePurposes,
-        adjustedModeComfortLevel,
-        modeComfort.factors,
-        comfortAdjustment,
-        rawModeComfortLevel,
-        termCountScalingConfig
-      )
+      },
+      practicingSkillConstraints,
+      needsReview,
+      currentPhase,
+      normalizedWeight,
+      costCalculator,
+      studentMaxSkillCost,
+      weakSkills,
+      overrideProblemsPerPart,
+      shufflePurposes,
+      adjustedModeComfortLevel,
+      modeComfortFactors,
+      comfortAdjustment,
+      rawModeComfortLevel,
+      termCountScalingConfig,
+      onProgress
+        ? (current, total) => {
+            onProgress({
+              type: 'plan_generating_problem',
+              partType,
+              partLabel: PART_TYPE_LABELS[partType] ?? partType,
+              current,
+              total,
+            })
+          }
+        : undefined
     )
+
+    parts.push(part)
+
+    const partMs = performance.now() - partStartTime
+    partTimings.push({
+      type: partType,
+      totalMs: partMs,
+      problemCount: part.slots.length,
+      avgProblemMs: part.slots.length > 0 ? partMs / part.slots.length : 0,
+    })
+
+    onProgress?.({
+      type: 'plan_part_complete',
+      partType,
+      problemCount: part.slots.length,
+      durationMs: partMs,
+    })
+
     partNumber = (partNumber + 1) as 1 | 2 | 3
   }
 
@@ -397,6 +530,9 @@ export async function generateSessionPlan(
 
   // 6. Calculate total problems
   const totalProblemCount = parts.reduce((sum, part) => sum + part.slots.length, 0)
+
+  onProgress?.({ type: 'plan_saving', message: 'Saving session plan...' })
+  const saveStart = performance.now()
 
   const plan: NewSessionPlan = {
     id: createId(),
@@ -418,6 +554,38 @@ export async function generateSessionPlan(
   }
 
   const [savedPlan] = await db.insert(schema.sessionPlans).values(plan).returning()
+
+  const saveMs = performance.now() - saveStart
+  const totalMs = performance.now() - totalStartTime
+
+  const timing = {
+    totalMs,
+    loadDataMs,
+    bktMs,
+    parts: partTimings,
+    saveMs,
+  }
+
+  if (process.env.DEBUG_SESSION_PLANNER === 'true') {
+    console.log(
+      `[SessionPlanner] Timing: total=${totalMs.toFixed(0)}ms, ` +
+        `loadData=${loadDataMs.toFixed(0)}ms, bkt=${bktMs.toFixed(0)}ms, ` +
+        `save=${saveMs.toFixed(0)}ms`
+    )
+    for (const pt of partTimings) {
+      console.log(
+        `  ${pt.type}: ${pt.totalMs.toFixed(0)}ms (${pt.problemCount} problems, ` +
+          `avg ${pt.avgProblemMs.toFixed(1)}ms/problem)`
+      )
+    }
+  }
+
+  onProgress?.({
+    type: 'plan_complete',
+    planId: savedPlan.id,
+    timing,
+  })
+
   return savedPlan
 }
 
@@ -594,6 +762,116 @@ function buildSessionPart(
     ...slot,
     problem: generateProblemFromConstraints(slot.constraints, costCalculator),
   }))
+
+  return {
+    partNumber,
+    type,
+    format: type === 'linear' ? 'linear' : 'vertical',
+    useAbacus: type === 'abacus',
+    slots: slotsWithProblems,
+    estimatedMinutes: Math.round(partDurationMinutes),
+  }
+}
+
+/**
+ * Async version of buildSessionPart that yields the event loop periodically
+ * to allow Socket.IO broadcasts to flush during problem generation.
+ */
+async function buildSessionPartAsync(
+  partNumber: 1 | 2 | 3,
+  type: SessionPartType,
+  totalDurationMinutes: number,
+  avgTimeSeconds: number,
+  config: PlanGenerationConfig,
+  phaseConstraints: ReturnType<typeof getPhaseSkillConstraints>,
+  needsReview: PlayerSkillMastery[],
+  currentPhase: CurriculumPhase | undefined,
+  normalizedWeight?: number,
+  costCalculator?: SkillCostCalculator,
+  studentMaxSkillCost?: number,
+  weakSkills?: string[],
+  overrideProblemsPerPart?: number,
+  shufflePurposes = true,
+  comfortLevel = 0.3,
+  comfortFactors?: TermCountExplanation['factors'],
+  comfortAdjustment?: number,
+  rawComfortLevel?: number,
+  termCountScalingConfig?: TermCountScalingConfig,
+  onProblemGenerated?: (current: number, total: number) => void
+): Promise<SessionPart> {
+  // Get time allocation for this part (use normalized weight if provided)
+  const partWeight = normalizedWeight ?? config.partTimeWeights[type]
+  const partDurationMinutes = totalDurationMinutes * partWeight
+  const partProblemCount =
+    overrideProblemsPerPart ?? Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
+
+  const challengeMinBudget = config.purposeComplexityBounds.challenge[type].min ?? 0
+  const canDoChallenge =
+    studentMaxSkillCost !== undefined && studentMaxSkillCost >= challengeMinBudget
+
+  const weights = {
+    focus: config.focusWeight,
+    reinforce: config.reinforceWeight,
+    review: config.reviewWeight,
+    challenge: canDoChallenge ? (config.challengeWeight ?? 0.2) : 0,
+  }
+  const totalWeight = weights.focus + weights.reinforce + weights.review + weights.challenge
+
+  const focusCount = Math.round((partProblemCount * weights.focus) / totalWeight)
+  const reinforceCount = Math.round((partProblemCount * weights.reinforce) / totalWeight)
+  const reviewCount = Math.round((partProblemCount * weights.review) / totalWeight)
+  const challengeCount = canDoChallenge
+    ? Math.max(0, partProblemCount - focusCount - reinforceCount - reviewCount)
+    : 0
+  const adjustedFocusCount =
+    focusCount + (canDoChallenge ? 0 : partProblemCount - focusCount - reinforceCount - reviewCount)
+
+  const slots: ProblemSlot[] = []
+
+  const focusConstraints =
+    weakSkills && weakSkills.length > 0
+      ? addWeakSkillsToTargets(phaseConstraints, weakSkills)
+      : phaseConstraints
+
+  for (let i = 0; i < adjustedFocusCount; i++) {
+    slots.push(
+      createSlot(slots.length, 'focus', focusConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+    )
+  }
+  for (let i = 0; i < reinforceCount; i++) {
+    slots.push(
+      createSlot(slots.length, 'reinforce', focusConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+    )
+  }
+  for (let i = 0; i < reviewCount; i++) {
+    const skill = needsReview[i % Math.max(1, needsReview.length)]
+    slots.push(
+      createSlot(slots.length, 'review', skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+    )
+  }
+  for (let i = 0; i < challengeCount; i++) {
+    slots.push(
+      createSlot(slots.length, 'challenge', phaseConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+    )
+  }
+
+  const shuffledSlots = shufflePurposes ? intelligentShuffle(slots) : slots
+
+  // Generate problems with async yielding for Socket.IO broadcast flushing
+  const slotsWithProblems: ProblemSlot[] = []
+  for (let i = 0; i < shuffledSlots.length; i++) {
+    const slot = shuffledSlots[i]
+    slotsWithProblems.push({
+      ...slot,
+      problem: generateProblemFromConstraints(slot.constraints, costCalculator),
+    })
+    onProblemGenerated?.(i + 1, shuffledSlots.length)
+
+    // Yield event loop every 3 problems to allow Socket.IO broadcasts to flush
+    if (onProblemGenerated && (i + 1) % 3 === 0 && i < shuffledSlots.length - 1) {
+      await new Promise<void>((r) => setTimeout(r, 0))
+    }
+  }
 
   return {
     partNumber,
@@ -1503,15 +1781,12 @@ function createSlot(
     }),
   }
 
-  // Pre-generate the problem so it's persisted with the plan
-  // This ensures page reloads show the same problem
-  const problem = generateProblemFromConstraints(constraints, costCalculator)
-
+  // Problem is generated later in buildSessionPart after shuffling
   return {
     index,
     purpose,
     constraints,
-    problem,
+    problem: undefined,
     complexityBounds,
     termCountExplanation,
   }

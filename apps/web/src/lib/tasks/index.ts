@@ -41,3 +41,10 @@ export {
   type WorksheetReparseInput,
   type WorksheetReparseOutput,
 } from './worksheet-reparse'
+
+// Session Plan Generation
+export {
+  startSessionPlanGeneration,
+  type SessionPlanInput,
+  type SessionPlanOutput,
+} from './session-plan'

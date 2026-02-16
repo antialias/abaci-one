@@ -4,13 +4,12 @@ import { canPerformAction } from '@/lib/classroom'
 import {
   ActiveSessionExistsError,
   type EnabledParts,
-  type GenerateSessionPlanOptions,
-  generateSessionPlan,
   getActiveSessionPlan,
   NoSkillsEnabledError,
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { startSessionPlanGeneration } from '@/lib/tasks/session-plan'
 import { getDbUserId } from '@/lib/viewer'
 
 interface RouteParams {
@@ -115,6 +114,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Pre-check for active session before creating the task
+    // This gives immediate feedback rather than waiting for the task to fail
+    const existingActive = await getActiveSessionPlan(playerId)
+    if (existingActive) {
+      // Check if session has timed out (same logic as generateSessionPlan)
+      const sessionAgeMs = Date.now() - new Date(existingActive.createdAt).getTime()
+      const timeoutMs = 24 * 60 * 60 * 1000 // 24 hours default
+      if (sessionAgeMs <= timeoutMs) {
+        return NextResponse.json(
+          {
+            error: 'Active session exists',
+            code: 'ACTIVE_SESSION_EXISTS',
+            existingPlan: serializePlan(existingActive),
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     const configOverrides: Record<string, unknown> = {}
     if (abacusTermCount) configOverrides.abacusTermCount = abacusTermCount
     if (partTimeWeights) configOverrides.partTimeWeights = partTimeWeights
@@ -125,26 +143,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       configOverrides.challengeWeight = purposeTimeWeights.challenge
     }
 
-    const options: GenerateSessionPlanOptions = {
-      playerId,
-      durationMinutes,
-      enabledParts: enabledParts as EnabledParts | undefined,
-      problemGenerationMode: problemGenerationMode as ProblemGenerationMode | undefined,
-      confidenceThreshold:
-        typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
-      sessionMode: sessionMode as SessionMode | undefined,
-      gameBreakSettings: gameBreakSettings as GameBreakSettings | undefined,
-      comfortAdjustment: typeof comfortAdjustment === 'number' ? comfortAdjustment : undefined,
-      ...(Object.keys(configOverrides).length > 0 && {
-        config: configOverrides,
-      }),
-      ...(shufflePurposes !== undefined && { shufflePurposes }),
-    }
+    // Create background task for session plan generation
+    const taskId = await startSessionPlanGeneration(
+      {
+        playerId,
+        durationMinutes,
+        enabledParts: enabledParts as EnabledParts | undefined,
+        problemGenerationMode: problemGenerationMode as ProblemGenerationMode | undefined,
+        confidenceThreshold:
+          typeof confidenceThreshold === 'number' ? confidenceThreshold : undefined,
+        sessionMode: sessionMode as SessionMode | undefined,
+        gameBreakSettings: gameBreakSettings as GameBreakSettings | undefined,
+        comfortAdjustment: typeof comfortAdjustment === 'number' ? comfortAdjustment : undefined,
+        ...(Object.keys(configOverrides).length > 0 && {
+          config: configOverrides,
+        }),
+        ...(shufflePurposes !== undefined && { shufflePurposes }),
+      },
+      userId
+    )
 
-    const plan = await generateSessionPlan(options)
-    return NextResponse.json({ plan: serializePlan(plan) }, { status: 201 })
+    return NextResponse.json({ taskId }, { status: 202 })
   } catch (error) {
-    // Handle active session conflict
+    // Handle active session conflict (from pre-check)
     if (error instanceof ActiveSessionExistsError) {
       return NextResponse.json(
         {
@@ -156,7 +177,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Handle no skills enabled
+    // Handle no skills enabled (from early validation)
     if (error instanceof NoSkillsEnabledError) {
       return NextResponse.json(
         {
@@ -167,7 +188,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    console.error('Error generating session plan:', error)
-    return NextResponse.json({ error: 'Failed to generate session plan' }, { status: 500 })
+    console.error('Error creating session plan task:', error)
+    return NextResponse.json({ error: 'Failed to create session plan task' }, { status: 500 })
   }
 }

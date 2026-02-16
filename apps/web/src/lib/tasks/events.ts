@@ -416,6 +416,37 @@ export type DemoRefineEvent =
   | { type: 'stderr'; text: string }
 
 // ============================================================================
+// Session Plan domain events
+// ============================================================================
+
+export interface PlanTimingBreakdown {
+  totalMs: number
+  loadDataMs: number
+  bktMs: number
+  parts: Array<{ type: string; totalMs: number; problemCount: number; avgProblemMs: number }>
+  saveMs: number
+}
+
+export type SessionPlanEvent =
+  | { type: 'plan_loading_data'; message: string }
+  | { type: 'plan_analyzing_skills'; message: string; skillCount: number }
+  | {
+      type: 'plan_structure_ready'
+      message: string
+      parts: Array<{ type: string; problemCount: number }>
+    }
+  | {
+      type: 'plan_generating_problem'
+      partType: string
+      partLabel: string
+      current: number
+      total: number
+    }
+  | { type: 'plan_part_complete'; partType: string; problemCount: number; durationMs: number }
+  | { type: 'plan_saving'; message: string }
+  | { type: 'plan_complete'; planId: string; timing: PlanTimingBreakdown }
+
+// ============================================================================
 // Event type map — maps task type string to its domain event union
 // ============================================================================
 
@@ -433,6 +464,7 @@ export interface TaskEventMap {
   'phi-explore-generate': PhiExploreGenerateEvent
   demo: DemoTaskEvent
   'demo-refine': DemoRefineEvent
+  'session-plan': SessionPlanEvent
 }
 
 /**
