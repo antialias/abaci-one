@@ -256,6 +256,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const deadlineRef = useRef<number>(0)
   const extensionUsedRef = useRef(false)
   const warningSentRef = useRef(false)
+  const windingDownRequestedRef = useRef(false)
   const goodbyeRequestedRef = useRef(false)
   const hangUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stateRef = useRef<CallState>('idle')
@@ -344,6 +345,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
     scenarioRef.current = null
     transcriptsRef.current = []
+    windingDownRequestedRef.current = false
     goodbyeRequestedRef.current = false
     setCurrentInstructions(null)
     activeModeRef.current = 'answering'
@@ -389,6 +391,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     availablePlayers: availablePlayersRef.current,
     currentInstructions: currentInstructionsRef.current,
     sessionActivity: sessionActivityRef.current,
+    extensionAvailable: !extensionUsedRef.current,
   }), [])
 
   /** Send a session.update with instructions AND tools for a mode, tracked for debug. */
@@ -446,6 +449,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     familiarizingResponseCountRef.current = 0
     extensionUsedRef.current = false
     warningSentRef.current = false
+    windingDownRequestedRef.current = false
     goodbyeRequestedRef.current = false
     // Persist playerId for transfers/retries
     if (options?.playerId !== undefined) {
@@ -978,6 +982,12 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             extensionUsedRef.current = true
             deadlineRef.current += EXTENSION_MS
             warningSentRef.current = false
+
+            // If called from winding_down, exit back to previous mode
+            if (activeModeRef.current === 'winding_down') {
+              windingDownRequestedRef.current = false
+              exitMode(dc, 'request_more_time (winding_down → previous)')
+            }
 
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
@@ -1777,22 +1787,32 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           dcRef.current.send(JSON.stringify({ type: 'response.create' }))
         }
 
-        // Time's up — request a graceful goodbye instead of cutting the line
+        // Time's up — three-phase wind-down instead of cutting the line
         if (remaining <= 0) {
-          if (!goodbyeRequestedRef.current) {
-            // First expiry: ask the model to say goodbye
+          if (!windingDownRequestedRef.current) {
+            // Phase 1: enter winding_down — agent decides whether to extend or wrap up
+            windingDownRequestedRef.current = true
+
+            if (dcRef.current?.readyState === 'open') {
+              enterMode(dcRef.current, 'winding_down', true, 'timer_expired')
+              dcRef.current.send(JSON.stringify({ type: 'response.create' }))
+            }
+
+            // Give the agent 30s to decide
+            deadlineRef.current = Date.now() + 30_000
+          } else if (!goodbyeRequestedRef.current) {
+            // Phase 2: winding_down expired — force into hanging_up
             goodbyeRequestedRef.current = true
 
             if (dcRef.current?.readyState === 'open') {
-              // Enter hanging_up mode — focused goodbye instructions + only hang_up tool
-              enterMode(dcRef.current, 'hanging_up', false, 'timer_expired')
+              enterMode(dcRef.current, 'hanging_up', false, 'winding_down_expired')
               dcRef.current.send(JSON.stringify({ type: 'response.create' }))
             }
 
             // Give the model a 10s grace period to say goodbye
             deadlineRef.current = Date.now() + 10_000
           } else {
-            // Grace period exhausted — force hangup
+            // Phase 3: grace period exhausted — force hangup
             hangUp()
           }
         }

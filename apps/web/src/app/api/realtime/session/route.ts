@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       availablePlayers: validAvailablePlayers,
       currentInstructions: null,
       sessionActivity: { gamesPlayed: [], explorationsLaunched: [] },
+      extensionAvailable: true,
     }
     const instructions = answeringMode.getInstructions(answeringCtx)
     const tools = getAnsweringTools()

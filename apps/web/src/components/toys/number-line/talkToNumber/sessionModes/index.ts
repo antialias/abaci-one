@@ -14,6 +14,7 @@ import { defaultMode } from './defaultMode'
 import { conferenceMode } from './conferenceMode'
 import { explorationMode } from './explorationMode'
 import { gameMode } from './gameMode'
+import { windingDownMode } from './windingDownMode'
 import { hangingUpMode } from './hangingUpMode'
 
 export const MODE_MAP: Record<ModeId, AgentMode> = {
@@ -23,6 +24,7 @@ export const MODE_MAP: Record<ModeId, AgentMode> = {
   conference: conferenceMode,
   exploration: explorationMode,
   game: gameMode,
+  winding_down: windingDownMode,
   hanging_up: hangingUpMode,
 }
 
@@ -45,4 +47,5 @@ export { defaultMode } from './defaultMode'
 export { conferenceMode } from './conferenceMode'
 export { explorationMode } from './explorationMode'
 export { gameMode } from './gameMode'
+export { windingDownMode } from './windingDownMode'
 export { hangingUpMode } from './hangingUpMode'

@@ -17,6 +17,7 @@ export type ModeId =
   | 'conference'
   | 'exploration'
   | 'game'
+  | 'winding_down'
   | 'hanging_up'
 
 /** Tool definition for the OpenAI Realtime API (JSON Schema format). */
@@ -52,6 +53,8 @@ export interface ModeContext {
   availablePlayers: Array<{ id: string; name: string; emoji: string }>
   currentInstructions: string | null
   sessionActivity: SessionActivity
+  /** Whether the agent can request more time (false after first extension). */
+  extensionAvailable: boolean
 }
 
 /** A session mode definition — controls instructions + tools for a phase of the call. */
