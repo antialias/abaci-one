@@ -4,9 +4,7 @@ import type {
   EuclidViewportState,
   CompassPhase,
   StraightedgePhase,
-  RulerPhase,
   MacroPhase,
-  Measurement,
   ActiveTool,
   IntersectionCandidate,
   ConstructionElement,
@@ -37,8 +35,6 @@ interface UseToolInteractionOptions {
   /** In guided mode, the current step's expected action. Used to constrain
    *  which points the compass/straightedge snaps to during drag. */
   expectedActionRef: React.MutableRefObject<ExpectedAction | null>
-  rulerPhaseRef: React.MutableRefObject<RulerPhase>
-  measurementsRef: React.MutableRefObject<Measurement[]>
   macroPhaseRef: React.MutableRefObject<MacroPhase>
   onCommitMacro: (propId: number, inputPointIds: string[]) => void
 }
@@ -69,8 +65,6 @@ export function useToolInteraction({
   onCommitSegment,
   onMarkIntersection,
   expectedActionRef,
-  rulerPhaseRef,
-  measurementsRef,
   macroPhaseRef,
   onCommitMacro,
 }: UseToolInteractionOptions) {
@@ -171,17 +165,6 @@ export function useToolInteraction({
           e.stopPropagation()
           pointerCapturedRef.current = true
           straightedgePhaseRef.current = { tag: 'from-set', fromId: hitPt.id }
-          requestDraw()
-          return
-        }
-      }
-
-      if (tool === 'ruler') {
-        const ruler = rulerPhaseRef.current
-        if (ruler.tag === 'idle') {
-          e.stopPropagation()
-          pointerCapturedRef.current = true
-          rulerPhaseRef.current = { tag: 'from-set', fromId: hitPt.id }
           requestDraw()
           return
         }
@@ -407,28 +390,6 @@ export function useToolInteraction({
         return
       }
 
-      // ── Ruler: commit measurement if pointer up near another point ──
-      const ruler = rulerPhaseRef.current
-      if (ruler.tag === 'from-set') {
-        const hitPt = hitTestPoints(sx, sy, state, viewport, w, h, isTouch)
-        if (hitPt && hitPt.id !== ruler.fromId) {
-          const fromPt = getPoint(state, ruler.fromId)
-          if (fromPt) {
-            const dx = hitPt.x - fromPt.x
-            const dy = hitPt.y - fromPt.y
-            const distance = Math.sqrt(dx * dx + dy * dy)
-            measurementsRef.current = [
-              ...measurementsRef.current,
-              { fromId: ruler.fromId, toId: hitPt.id, distance },
-            ]
-          }
-        }
-        rulerPhaseRef.current = { tag: 'idle' }
-        pointerCapturedRef.current = false
-        requestDraw()
-        return
-      }
-
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
@@ -438,7 +399,6 @@ export function useToolInteraction({
     function handlePointerCancel() {
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
-      rulerPhaseRef.current = { tag: 'idle' }
       macroPhaseRef.current = { tag: 'idle' }
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
@@ -474,8 +434,6 @@ export function useToolInteraction({
     onCommitSegment,
     onMarkIntersection,
     expectedActionRef,
-    rulerPhaseRef,
-    measurementsRef,
     macroPhaseRef,
     onCommitMacro,
     getCanvasRect,

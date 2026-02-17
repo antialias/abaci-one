@@ -964,7 +964,10 @@
       "WebFetch(domain:aleph0.clarku.edu)",
       "Skill(add-tts)",
       "Skill(ensure-prod)",
-      "WebFetch(domain:www.thecorestandards.org)"
+      "WebFetch(domain:www.thecorestandards.org)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards add apps/web/src/components/toys/euclid/EuclidCanvas.tsx apps/web/src/components/toys/euclid/__tests__/macroOutputLabels.test.ts apps/web/src/components/toys/euclid/__tests__/prop2Integration.test.ts apps/web/src/components/toys/euclid/__tests__/tutorials.test.ts apps/web/src/components/toys/euclid/__tests__/validatePropositionDef.test.ts apps/web/src/components/toys/euclid/engine/macros.ts apps/web/src/components/toys/euclid/engine/validatePropositionDef.ts apps/web/src/components/toys/euclid/propositions/prop1Tutorial.ts apps/web/src/components/toys/euclid/propositions/prop2.ts apps/web/src/components/toys/euclid/propositions/prop2Tutorial.ts apps/web/src/components/toys/euclid/types.ts)",
+      "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff --cached --stat)",
+      "Bash(git -C:*)"
     ],
     "deny": [],
     "ask": []

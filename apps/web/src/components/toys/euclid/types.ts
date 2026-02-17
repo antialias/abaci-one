@@ -92,17 +92,7 @@ export type StraightedgePhase =
   | { tag: 'idle' }
   | { tag: 'from-set'; fromId: string }
 
-export type RulerPhase =
-  | { tag: 'idle' }
-  | { tag: 'from-set'; fromId: string }
-
-export interface Measurement {
-  fromId: string
-  toId: string
-  distance: number  // world-coordinate Euclidean distance
-}
-
-export type ActiveTool = 'compass' | 'straightedge' | 'ruler' | 'macro'
+export type ActiveTool = 'compass' | 'straightedge' | 'macro'
 
 export type MacroPhase =
   | { tag: 'idle' }
