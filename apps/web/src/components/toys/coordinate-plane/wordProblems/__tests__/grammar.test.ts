@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import { expandGrammar } from '../grammar'
 import { FRAMES } from '../frames'
+import { CHARACTERS, resolveCharacter } from '../characters'
 import { SeededRandom } from '../../../../../lib/SeededRandom'
 import type { DifficultyLevel, AnnotatedSpan } from '../types'
 
+/** Resolve a frame with the first character (Sonia) for test consistency */
+function resolve(frameId: string) {
+  const frame = FRAMES.find(f => f.id === frameId)!
+  return resolveCharacter(frame, CHARACTERS[0])
+}
+
 describe('grammar', () => {
-  const pizzaShop = FRAMES.find(f => f.id === 'pizza-shop')!
+  const pizzaShop = resolve('slices-dollars-cost:pizza-shop')
 
   it('produces non-empty spans', () => {
     const rng = new SeededRandom(42)
@@ -74,7 +81,7 @@ describe('grammar', () => {
   })
 
   it('handles level 4 (two points)', () => {
-    const plantGrowth = FRAMES.find(f => f.id === 'plant-growth')!
+    const plantGrowth = resolve('weeks-inches-grow:plant-growth')
     const rng = new SeededRandom(42)
     const nums = { m: 2, b: 3, xAnswer: 4, yTarget: 11, point1: { x: 1, y: 5 }, point2: { x: 3, y: 9 } }
     const spans = expandGrammar(plantGrowth, nums, 4, rng)
@@ -85,7 +92,9 @@ describe('grammar', () => {
   })
 
   it('works for all frames at their supported levels', () => {
+    const char = CHARACTERS[0]
     for (const frame of FRAMES) {
+      const resolved = resolveCharacter(frame, char)
       for (const level of frame.supportedLevels) {
         const rng = new SeededRandom(42)
         const nums = {
@@ -95,7 +104,7 @@ describe('grammar', () => {
           yTarget: level === 1 ? 3 : level === 2 ? 4 : 7,
           ...(level === 4 ? { point1: { x: 1, y: 5 }, point2: { x: 2, y: 7 } } : {}),
         }
-        const spans = expandGrammar(frame, nums, level as DifficultyLevel, rng)
+        const spans = expandGrammar(resolved, nums, level as DifficultyLevel, rng)
         expect(spans.length).toBeGreaterThan(0)
         const text = spans.map(s => s.text).join('')
         expect(text.length).toBeGreaterThan(10)
@@ -106,18 +115,18 @@ describe('grammar', () => {
   // ── Regression tests for elapsed (time-based) frames ──────────
 
   describe('elapsed frame grammar', () => {
-    const roadTrip = FRAMES.find(f => f.id === 'road-trip')!
-    const plantGrowth = FRAMES.find(f => f.id === 'plant-growth')!
-    const savings = FRAMES.find(f => f.id === 'savings')!
+    const roadTrip = resolve('hours-miles-travel:road-trip')
+    const plantGrowth = resolve('weeks-inches-grow:plant-growth')
+    const savings = resolve('weeks-dollars-save:savings')
 
     it('rate sentence does not use x-unit as subject', () => {
-      // Across many seeds, no road-trip rate sentence should say "Each hour travels"
+      // Across many seeds, no road-trip rate sentence should say "Each hour travels" or "Hours travel"
       for (let seed = 0; seed < 50; seed++) {
         const rng = new SeededRandom(seed)
         const spans = expandGrammar(roadTrip, { m: 42, b: 38, xAnswer: 3, yTarget: 164 }, 3, rng)
         const text = spans.map(s => s.text).join('')
-        expect(text).not.toMatch(/Each hour/i)
-        expect(text).not.toMatch(/Hours travel/i)
+        expect(text).not.toMatch(/Each hour travels/i)
+        expect(text).not.toMatch(/Hours travel /i)
       }
     })
 
@@ -181,7 +190,7 @@ describe('grammar', () => {
 
   describe('level 4 duplicate unit fix', () => {
     it('does not duplicate yUnit in level 4 sentences', () => {
-      const plantGrowth = FRAMES.find(f => f.id === 'plant-growth')!
+      const plantGrowth = resolve('weeks-inches-grow:plant-growth')
       for (let seed = 0; seed < 20; seed++) {
         const rng = new SeededRandom(seed)
         const nums = { m: 2, b: 3, xAnswer: 4, yTarget: 11, point1: { x: 1, y: 5 }, point2: { x: 3, y: 9 } }

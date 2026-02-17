@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { pluralize, conjugate3p, conjugateBase, formatWithUnit, capitalize } from '../inflect'
-import type { NounEntry, VerbEntry } from '../types'
+import { pluralize, conjugate3p, conjugateBase, conjugateFor, formatWithUnit, capitalize, midSentence } from '../inflect'
+import type { NounEntry, VerbEntry, SubjectEntry } from '../types'
 
 describe('inflect', () => {
   const slice: NounEntry = { singular: 'slice', plural: 'slices' }
@@ -30,6 +30,20 @@ describe('inflect', () => {
     })
   })
 
+  describe('conjugateFor', () => {
+    const travel: VerbEntry = { base: 'travel', thirdPerson: 'travels', pastTense: 'traveled', gerund: 'traveling' }
+
+    it('returns thirdPerson for thirdPerson subjects', () => {
+      const subject: SubjectEntry = { phrase: 'The car', conjugation: 'thirdPerson' }
+      expect(conjugateFor(travel, subject)).toBe('travels')
+    })
+
+    it('returns base for base subjects', () => {
+      const subject: SubjectEntry = { phrase: 'They', conjugation: 'base' }
+      expect(conjugateFor(travel, subject)).toBe('travel')
+    })
+  })
+
   describe('formatWithUnit', () => {
     it('formats prefix units (e.g. $)', () => {
       expect(formatWithUnit(3, '$', 'prefix')).toBe('$3')
@@ -54,6 +68,24 @@ describe('inflect', () => {
 
     it('handles already capitalized', () => {
       expect(capitalize('Hello')).toBe('Hello')
+    })
+  })
+
+  describe('midSentence', () => {
+    it('lowercases articles mid-sentence', () => {
+      expect(midSentence('The car')).toBe('the car')
+      expect(midSentence('A customer')).toBe('a customer')
+      expect(midSentence('Each batch')).toBe('each batch')
+    })
+
+    it('lowercases pronouns mid-sentence', () => {
+      expect(midSentence('She')).toBe('she')
+      expect(midSentence('They')).toBe('they')
+      expect(midSentence('It')).toBe('it')
+    })
+
+    it('preserves proper nouns', () => {
+      expect(midSentence('Sonia')).toBe('Sonia')
     })
   })
 })

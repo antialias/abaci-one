@@ -42,10 +42,58 @@ export interface SubjectEntry {
   conjugation: 'thirdPerson' | 'base'
 }
 
+/** All frame categories */
+export type FrameCategory = 'money' | 'distance' | 'growth' | 'cooking' | 'crafts' | 'sports' | 'science'
+
+/**
+ * A rate pair defines the math/linguistic skeleton of a word problem:
+ * the two quantities, their units, and how they relate.
+ */
+export interface RatePair {
+  id: string
+  category: FrameCategory
+  xNoun: NounEntry
+  yNoun: NounEntry
+  rateVerb: VerbEntry
+  xUnit: string
+  yUnit: string
+  xUnitPosition: 'prefix' | 'suffix'
+  yUnitPosition: 'prefix' | 'suffix'
+  xRole: 'acquired' | 'elapsed'
+}
+
+/**
+ * A scenario wraps a rate pair with story context — setup phrases,
+ * characters, emoji, number ranges, and supported difficulty levels.
+ */
+export interface Scenario {
+  id: string
+  ratePairId: string
+  setupPhrases: string[]
+  subjects: SubjectEntry[]
+  emoji: string
+  solveForXQuestions?: string[]
+  supportedLevels: DifficultyLevel[]
+  slopeRange: { min: number; max: number }
+  interceptRange: { min: number; max: number }
+  xRange: { min: number; max: number }
+  yRange: { min: number; max: number }
+  /** Override the rate pair's xNoun for this scenario */
+  xNoun?: NounEntry
+  /** Override the rate pair's yNoun for this scenario */
+  yNoun?: NounEntry
+  /** Override the rate pair's xUnit for this scenario */
+  xUnit?: string
+  /** Override the rate pair's yUnit for this scenario */
+  yUnit?: string
+  /** Override the rate pair's rateVerb for this scenario */
+  rateVerb?: VerbEntry
+}
+
 /** A semantic frame defines a real-world context for a linear equation problem */
 export interface SemanticFrame {
   id: string
-  category: 'money' | 'distance' | 'growth' | 'cooking' | 'crafts'
+  category: FrameCategory
   xNoun: NounEntry
   yNoun: NounEntry
   rateVerb: VerbEntry
@@ -66,6 +114,8 @@ export interface SemanticFrame {
   setupPhrases: string[]
   /** Subject phrases with conjugation metadata: "Sonia" (3rd person), "They" (base) */
   subjects: SubjectEntry[]
+  /** Contextual solve-for-x questions for elapsed frames (e.g. "How many weeks until she has enough?") */
+  solveForXQuestions?: string[]
   /** Emoji representing one unit of x (shown in slope staircase) */
   emoji: string
   /** Which difficulty levels this frame supports */

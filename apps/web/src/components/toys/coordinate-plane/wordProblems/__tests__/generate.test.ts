@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateWordProblem, generateRandomProblem } from '../generate'
+import { CHARACTERS } from '../characters'
 import type { DifficultyLevel } from '../types'
 
 describe('generateWordProblem', () => {
@@ -71,6 +72,29 @@ describe('generateWordProblem', () => {
       const p = generateWordProblem(42, level)
       expect(p.text.length).toBeGreaterThan(10)
       expect(p.difficulty).toBe(level)
+    }
+  })
+
+  it('uses multiple different character names across seeds', () => {
+    const names = new Set<string>()
+    for (let seed = 0; seed < 100; seed++) {
+      const p = generateWordProblem(seed, 3)
+      for (const char of CHARACTERS) {
+        if (p.text.includes(char.name)) {
+          names.add(char.name)
+        }
+      }
+    }
+    // Should use at least 5 different characters across 100 seeds
+    expect(names.size).toBeGreaterThanOrEqual(5)
+  })
+
+  it('no unresolved placeholders leak into generated text', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      for (const level of [1, 2, 3] as DifficultyLevel[]) {
+        const p = generateWordProblem(seed, level)
+        expect(p.text).not.toMatch(/\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/)
+      }
     }
   })
 })

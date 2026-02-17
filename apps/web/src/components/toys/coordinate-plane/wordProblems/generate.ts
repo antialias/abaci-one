@@ -2,6 +2,7 @@ import type { WordProblem, DifficultyLevel } from './types'
 import { framesForLevel } from './frames'
 import { generateNumbers } from './numberGen'
 import { expandGrammar } from './grammar'
+import { CHARACTERS, resolveCharacter } from './characters'
 import { fraction } from '../ruler/fractionMath'
 import { SeededRandom } from '../../../../lib/SeededRandom'
 
@@ -10,7 +11,7 @@ import { SeededRandom } from '../../../../lib/SeededRandom'
  *
  * The seed completely determines the output — same seed + difficulty = same problem.
  *
- * Pipeline: frame selection → number generation → grammar expansion → WordProblem assembly
+ * Pipeline: frame selection → character resolution → number generation → grammar expansion → WordProblem assembly
  */
 export function generateWordProblem(
   seed: number,
@@ -22,24 +23,29 @@ export function generateWordProblem(
   const frames = framesForLevel(difficulty)
   const frame = rng.pick(frames)
 
-  // 2. Generate numbers
-  const nums = generateNumbers(frame, difficulty, rng.derive('nums'))
+  // 2. Pick a random character and resolve placeholders in the frame
+  const charRng = rng.derive('character')
+  const character = charRng.pick(CHARACTERS)
+  const resolvedFrame = resolveCharacter(frame, character)
 
-  // 3. Expand grammar into annotated spans
-  const spans = expandGrammar(frame, nums, difficulty, rng.derive('grammar'))
+  // 3. Generate numbers
+  const nums = generateNumbers(resolvedFrame, difficulty, rng.derive('nums'))
 
-  // 4. Compute equation as reduced fractions
+  // 4. Expand grammar into annotated spans
+  const spans = expandGrammar(resolvedFrame, nums, difficulty, rng.derive('grammar'))
+
+  // 5. Compute equation as reduced fractions
   const slope = fraction(nums.m, 1)
   const intercept = fraction(nums.b, 1)
 
-  // 5. Determine what the student needs to solve for
+  // 6. Determine what the student needs to solve for
   const solveFor: 'x' | 'y' | 'equation' =
     difficulty === 1 ? 'y' :
     difficulty === 2 ? 'y' :
     difficulty === 4 ? 'equation' :
     'x'
 
-  // 6. Assemble the WordProblem
+  // 7. Assemble the WordProblem
   const text = spans.map(s => s.text).join('')
 
   return {
@@ -51,12 +57,12 @@ export function generateWordProblem(
     difficulty,
     frameId: frame.id,
     seed,
-    axisLabels: { x: frame.xNoun.plural, y: frame.yNoun.plural },
+    axisLabels: { x: resolvedFrame.xNoun.plural, y: resolvedFrame.yNoun.plural },
     unitFormat: {
-      x: { unit: frame.xUnit, position: frame.xUnitPosition, singular: frame.xNoun.singular },
-      y: { unit: frame.yUnit, position: frame.yUnitPosition },
+      x: { unit: resolvedFrame.xUnit, position: resolvedFrame.xUnitPosition, singular: resolvedFrame.xNoun.singular },
+      y: { unit: resolvedFrame.yUnit, position: resolvedFrame.yUnitPosition },
     },
-    emoji: frame.emoji,
+    emoji: resolvedFrame.emoji,
   }
 }
 

@@ -1,5 +1,5 @@
 import type { SemanticFrame, SubjectEntry, GeneratedNumbers, DifficultyLevel, AnnotatedSpan } from './types'
-import { formatWithUnit, pluralize, conjugate3p, conjugateBase, conjugateFor, capitalize } from './inflect'
+import { formatWithUnit, pluralize, conjugate3p, conjugateBase, conjugateFor, capitalize, midSentence } from './inflect'
 import { SeededRandom } from '../../../../lib/SeededRandom'
 
 /** A production is a function that returns an array of annotated spans */
@@ -45,7 +45,7 @@ function rateSentence(ctx: GrammarContext): AnnotatedSpan[] {
     } else if (variant === 1) {
       // "Every week, the plant grows 3 inches."
       return [
-        { text: `Every ${frame.xNoun.singular}, ${subject.phrase.toLowerCase()} ` },
+        { text: `Every ${frame.xNoun.singular}, ${midSentence(subject.phrase)} ` },
         { text: `${conjugateFor(frame.rateVerb, subject)} ` },
         { text: mFormatted, tag: 'slope', value: nums.m },
         { text: '.' },
@@ -118,7 +118,7 @@ function baseSentence(ctx: GrammarContext): AnnotatedSpan[] {
     } else {
       // "At the start, they had 38 miles."
       return [
-        { text: `At the start, ${subject.phrase.toLowerCase()} had ` },
+        { text: `At the start, ${midSentence(subject.phrase)} had ` },
         { text: bFormatted, tag: 'intercept', value: nums.b },
         { text: '.' },
       ]
@@ -211,19 +211,15 @@ function questionSentence(ctx: GrammarContext): AnnotatedSpan[] {
   const { frame, rng } = ctx
 
   if (frame.xRole === 'elapsed') {
-    const variant = rng.nextInt(0, 1)
-
-    if (variant === 0) {
-      // "How many hours will it take?"
+    if (frame.solveForXQuestions && frame.solveForXQuestions.length > 0) {
       return [
-        { text: `How many ${frame.xNoun.plural} will it take?`, tag: 'question' },
-      ]
-    } else {
-      // "After how many weeks?"
-      return [
-        { text: `After how many ${frame.xNoun.plural}?`, tag: 'question' },
+        { text: rng.pick(frame.solveForXQuestions), tag: 'question' },
       ]
     }
+    // Generic fallback
+    return [
+      { text: `How many ${frame.xNoun.plural} will it take?`, tag: 'question' },
+    ]
   }
 
   // Acquired
@@ -232,7 +228,7 @@ function questionSentence(ctx: GrammarContext): AnnotatedSpan[] {
 
   if (variant === 0) {
     return [
-      { text: `How many ${frame.xNoun.plural} can ${subject.phrase.toLowerCase()} get?`, tag: 'question' },
+      { text: `How many ${frame.xNoun.plural} can ${midSentence(subject.phrase)} get?`, tag: 'question' },
     ]
   } else {
     return [
@@ -298,7 +294,7 @@ function questionForSolveY(ctx: GrammarContext): AnnotatedSpan[] {
 
   if (variant === 0) {
     return [
-      { text: `If ${subject.phrase.toLowerCase()} gets ` },
+      { text: `If ${midSentence(subject.phrase)} gets ` },
       { text: xFormatted, tag: 'answer', value: nums.xAnswer },
       { text: `, what is the total?`, tag: 'question' },
     ]

@@ -5,7 +5,7 @@ import { SeededRandom } from '../../../../../lib/SeededRandom'
 import type { DifficultyLevel } from '../types'
 
 describe('numberGen', () => {
-  const pizzaShop = FRAMES.find(f => f.id === 'pizza-shop')!
+  const pizzaShop = FRAMES.find(f => f.id === 'slices-dollars-cost:pizza-shop')!
 
   it('generates integer solutions', () => {
     const rng = new SeededRandom(42)
@@ -63,7 +63,7 @@ describe('numberGen', () => {
   })
 
   it('generates two distinct points for level 4', () => {
-    const plantGrowth = FRAMES.find(f => f.id === 'plant-growth')!
+    const plantGrowth = FRAMES.find(f => f.id === 'weeks-inches-grow:plant-growth')!
     const rng = new SeededRandom(42)
     const nums = generateNumbers(plantGrowth, 4, rng)
     expect(nums.point1).toBeDefined()

@@ -1,187 +1,41 @@
-import type { SemanticFrame } from './types'
+import type { SemanticFrame, RatePair, Scenario } from './types'
+import { RATE_PAIR_REGISTRY } from './ratePairs'
+import { SCENARIOS } from './scenarios'
 
-const pizzaShop: SemanticFrame = {
-  id: 'pizza-shop',
-  category: 'money',
-  xNoun: { singular: 'slice', plural: 'slices' },
-  yNoun: { singular: 'dollar', plural: 'dollars' },
-  rateVerb: { base: 'cost', thirdPerson: 'costs', pastTense: 'cost', gerund: 'costing' },
-  yUnit: '$',
-  xUnit: 'slices',
-  yUnitPosition: 'prefix',
-  xUnitPosition: 'suffix',
-  xRole: 'acquired',
-  slopeRange: { min: 1, max: 5 },
-  interceptRange: { min: 0, max: 10 },
-  xRange: { min: 1, max: 10 },
-  yRange: { min: 0, max: 60 },
-  setupPhrases: [
-    'At the pizza shop,',
-    'Sonia is ordering pizza.',
-    'At lunch,',
-  ],
-  subjects: [
-    { phrase: 'Sonia', conjugation: 'thirdPerson' },
-    { phrase: 'She', conjugation: 'thirdPerson' },
-    { phrase: 'A customer', conjugation: 'thirdPerson' },
-  ],
-  emoji: '🍕',
-  supportedLevels: [1, 2, 3],
+/**
+ * Compose a RatePair and Scenario into a SemanticFrame.
+ * The frame ID is `${pair.id}:${scenario.id}`.
+ */
+export function buildFrame(pair: RatePair, scenario: Scenario): SemanticFrame {
+  return {
+    id: `${pair.id}:${scenario.id}`,
+    category: pair.category,
+    xNoun: scenario.xNoun ?? pair.xNoun,
+    yNoun: scenario.yNoun ?? pair.yNoun,
+    rateVerb: scenario.rateVerb ?? pair.rateVerb,
+    xUnit: scenario.xUnit ?? pair.xUnit,
+    yUnit: scenario.yUnit ?? pair.yUnit,
+    xUnitPosition: pair.xUnitPosition,
+    yUnitPosition: pair.yUnitPosition,
+    xRole: pair.xRole,
+    setupPhrases: scenario.setupPhrases,
+    subjects: scenario.subjects,
+    solveForXQuestions: scenario.solveForXQuestions,
+    emoji: scenario.emoji,
+    supportedLevels: scenario.supportedLevels,
+    slopeRange: scenario.slopeRange,
+    interceptRange: scenario.interceptRange,
+    xRange: scenario.xRange,
+    yRange: scenario.yRange,
+  }
 }
 
-const plantGrowth: SemanticFrame = {
-  id: 'plant-growth',
-  category: 'growth',
-  xNoun: { singular: 'week', plural: 'weeks' },
-  yNoun: { singular: 'inch', plural: 'inches' },
-  rateVerb: { base: 'grow', thirdPerson: 'grows', pastTense: 'grew', gerund: 'growing' },
-  yUnit: 'inches',
-  xUnit: 'weeks',
-  yUnitPosition: 'suffix',
-  xUnitPosition: 'suffix',
-  xRole: 'elapsed',
-  slopeRange: { min: 1, max: 5 },
-  interceptRange: { min: 1, max: 10 },
-  xRange: { min: 1, max: 8 },
-  yRange: { min: 0, max: 50 },
-  setupPhrases: [
-    'Sonia planted a sunflower.',
-    'In science class, Sonia is tracking a plant.',
-    'Sonia is growing a bean plant.',
-  ],
-  subjects: [
-    { phrase: 'The plant', conjugation: 'thirdPerson' },
-    { phrase: 'It', conjugation: 'thirdPerson' },
-    { phrase: 'The sunflower', conjugation: 'thirdPerson' },
-  ],
-  emoji: '🌱',
-  supportedLevels: [1, 2, 3, 4],
-}
-
-const roadTrip: SemanticFrame = {
-  id: 'road-trip',
-  category: 'distance',
-  xNoun: { singular: 'hour', plural: 'hours' },
-  yNoun: { singular: 'mile', plural: 'miles' },
-  rateVerb: { base: 'travel', thirdPerson: 'travels', pastTense: 'traveled', gerund: 'traveling' },
-  yUnit: 'miles',
-  xUnit: 'hours',
-  yUnitPosition: 'suffix',
-  xUnitPosition: 'suffix',
-  xRole: 'elapsed',
-  slopeRange: { min: 20, max: 65 },
-  interceptRange: { min: 0, max: 50 },
-  xRange: { min: 1, max: 6 },
-  yRange: { min: 0, max: 400 },
-  setupPhrases: [
-    'Sonia\'s family is on a road trip.',
-    'The family is driving to visit grandma.',
-    'Sonia is tracking the car\'s progress.',
-  ],
-  subjects: [
-    { phrase: 'The car', conjugation: 'thirdPerson' },
-    { phrase: 'They', conjugation: 'base' },
-    { phrase: 'The family', conjugation: 'thirdPerson' },
-  ],
-  emoji: '🚗',
-  supportedLevels: [2, 3, 4],
-}
-
-const savings: SemanticFrame = {
-  id: 'savings',
-  category: 'money',
-  xNoun: { singular: 'week', plural: 'weeks' },
-  yNoun: { singular: 'dollar', plural: 'dollars' },
-  rateVerb: { base: 'save', thirdPerson: 'saves', pastTense: 'saved', gerund: 'saving' },
-  yUnit: '$',
-  xUnit: 'weeks',
-  yUnitPosition: 'prefix',
-  xUnitPosition: 'suffix',
-  xRole: 'elapsed',
-  slopeRange: { min: 5, max: 25 },
-  interceptRange: { min: 0, max: 100 },
-  xRange: { min: 1, max: 10 },
-  yRange: { min: 0, max: 350 },
-  setupPhrases: [
-    'Sonia is saving up for a new bike.',
-    'Sonia wants to buy a skateboard.',
-    'Sonia is saving her allowance.',
-  ],
-  subjects: [
-    { phrase: 'Sonia', conjugation: 'thirdPerson' },
-    { phrase: 'She', conjugation: 'thirdPerson' },
-  ],
-  emoji: '💰',
-  supportedLevels: [1, 2, 3],
-}
-
-const baking: SemanticFrame = {
-  id: 'baking',
-  category: 'cooking',
-  xNoun: { singular: 'batch', plural: 'batches' },
-  yNoun: { singular: 'cup', plural: 'cups' },
-  rateVerb: { base: 'need', thirdPerson: 'needs', pastTense: 'needed', gerund: 'needing' },
-  yUnit: 'cups',
-  xUnit: 'batches',
-  yUnitPosition: 'suffix',
-  xUnitPosition: 'suffix',
-  xRole: 'acquired',
-  slopeRange: { min: 2, max: 4 },
-  interceptRange: { min: 0, max: 3 },
-  xRange: { min: 1, max: 8 },
-  yRange: { min: 0, max: 35 },
-  setupPhrases: [
-    'Sonia is baking cookies for the school sale.',
-    'It\'s time to bake cupcakes!',
-    'Sonia is making brownies for her class.',
-  ],
-  subjects: [
-    { phrase: 'Each batch', conjugation: 'thirdPerson' },
-    { phrase: 'The recipe', conjugation: 'thirdPerson' },
-    { phrase: 'She', conjugation: 'thirdPerson' },
-  ],
-  emoji: '🧁',
-  supportedLevels: [1, 2, 3],
-}
-
-const braceletMaking: SemanticFrame = {
-  id: 'bracelet-making',
-  category: 'crafts',
-  xNoun: { singular: 'bracelet', plural: 'bracelets' },
-  yNoun: { singular: 'bead', plural: 'beads' },
-  rateVerb: { base: 'use', thirdPerson: 'uses', pastTense: 'used', gerund: 'using' },
-  yUnit: 'beads',
-  xUnit: 'bracelets',
-  yUnitPosition: 'suffix',
-  xUnitPosition: 'suffix',
-  xRole: 'acquired',
-  slopeRange: { min: 5, max: 12 },
-  interceptRange: { min: 0, max: 10 },
-  xRange: { min: 1, max: 8 },
-  yRange: { min: 0, max: 100 },
-  setupPhrases: [
-    'Sonia is making friendship bracelets.',
-    'At craft time, Sonia is stringing beads.',
-    'Sonia is making bracelets for her friends.',
-  ],
-  subjects: [
-    { phrase: 'Each bracelet', conjugation: 'thirdPerson' },
-    { phrase: 'She', conjugation: 'thirdPerson' },
-    { phrase: 'A bracelet', conjugation: 'thirdPerson' },
-  ],
-  emoji: '📿',
-  supportedLevels: [1, 2, 3, 4],
-}
-
-/** All available semantic frames */
-export const FRAMES: SemanticFrame[] = [
-  pizzaShop,
-  plantGrowth,
-  roadTrip,
-  savings,
-  baking,
-  braceletMaking,
-]
+/** All available semantic frames (composed from rate pairs × scenarios) */
+export const FRAMES: SemanticFrame[] = SCENARIOS.map(scenario => {
+  const pair = RATE_PAIR_REGISTRY.get(scenario.ratePairId)
+  if (!pair) throw new Error(`Unknown ratePairId "${scenario.ratePairId}"`)
+  return buildFrame(pair, scenario)
+})
 
 /** Registry: look up a frame by id */
 export const FRAME_REGISTRY = new Map<string, SemanticFrame>(

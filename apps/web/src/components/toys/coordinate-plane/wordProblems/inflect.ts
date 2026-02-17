@@ -43,3 +43,22 @@ export function capitalize(s: string): string {
   if (s.length === 0) return s
   return s[0].toUpperCase() + s.slice(1)
 }
+
+/** Words that should be lowercased when a subject appears mid-sentence */
+const MID_SENTENCE_LOWERCASE = new Set([
+  'the', 'a', 'an', 'each', 'every', 'some', 'this', 'that',
+  'she', 'he', 'it', 'they', 'we',
+])
+
+/**
+ * Lowercase a subject phrase for mid-sentence use.
+ * Lowercases the first letter only if it's an article/pronoun/determiner.
+ * Preserves proper nouns like "Sonia".
+ */
+export function midSentence(phrase: string): string {
+  const firstWord = phrase.split(' ')[0]
+  if (MID_SENTENCE_LOWERCASE.has(firstWord.toLowerCase())) {
+    return phrase[0].toLowerCase() + phrase.slice(1)
+  }
+  return phrase
+}
