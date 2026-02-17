@@ -49,6 +49,11 @@ export const CITATIONS: Record<string, CitationDef> = {
     label: 'Proposition I.1',
     text: 'An equilateral triangle can be constructed on any line segment.',
   },
+  'I.2': {
+    key: 'I.2',
+    label: 'Proposition I.2',
+    text: 'A line equal to a given line can be placed at any given point.',
+  },
 }
 
 /** Get the citation def for a structured Citation from the fact engine. */

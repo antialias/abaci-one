@@ -149,6 +149,102 @@ const MACRO_PROP_1: MacroDef = {
   },
 }
 
+/**
+ * Macro for Proposition I.2: Place at a given point a line equal to a given line.
+ *
+ * Inputs: [targetPointId, segFromId, segToId]
+ *   - targetPointId: where to place the equal segment
+ *   - segFromId, segToId: endpoints of the segment to copy
+ *
+ * Output: 1 point + 1 segment + 1 fact
+ *   - Point at distance |segFrom-segTo| from target, in direction target→segFrom
+ *   - Segment from target to output point
+ *   - Fact: dist(target, output) = dist(segFrom, segTo) with citation { type: 'prop', propId: 2 }
+ */
+const MACRO_PROP_2: MacroDef = {
+  propId: 2,
+  label: 'Transfer distance (I.2)',
+  inputCount: 3,
+  inputLabels: ['Target point', 'Segment start', 'Segment end'],
+  execute(
+    state: ConstructionState,
+    inputPointIds: string[],
+    candidates: IntersectionCandidate[],
+    factStore: FactStore,
+    atStep: number,
+    extendSegments: boolean = false,
+    outputLabels?: Record<string, string>,
+  ): MacroResult {
+    const [targetId, segFromId, segToId] = inputPointIds
+    const addedElements: ConstructionElement[] = []
+    let currentState = state
+    let currentCandidates = [...candidates]
+    const allNewFacts: EqualityFact[] = []
+
+    const target = getPoint(currentState, targetId)
+    const segFrom = getPoint(currentState, segFromId)
+    const segTo = getPoint(currentState, segToId)
+    if (!target || !segFrom || !segTo) {
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
+    }
+
+    // 1. Compute distance to copy
+    const dist = Math.sqrt((segFrom.x - segTo.x) ** 2 + (segFrom.y - segTo.y) ** 2)
+
+    // 2. Compute direction: target → segFrom (fallback to (0, 1) if coincident)
+    let dx = segFrom.x - target.x
+    let dy = segFrom.y - target.y
+    const len = Math.sqrt(dx * dx + dy * dy)
+    if (len < 1e-9) {
+      dx = 0
+      dy = 1
+    } else {
+      dx /= len
+      dy /= len
+    }
+
+    // 3. Place output point at target + dist * direction
+    const outX = target.x + dist * dx
+    const outY = target.y + dist * dy
+
+    const ptResult = addPoint(currentState, outX, outY, 'intersection', outputLabels?.result)
+    currentState = ptResult.state
+    addedElements.push(ptResult.point)
+
+    // 4. Add segment from target to output + find intersections
+    const seg = addSegment(currentState, targetId, ptResult.point.id)
+    currentState = seg.state
+    addedElements.push(seg.segment)
+    const newCands = findNewIntersections(currentState, seg.segment, currentCandidates, extendSegments)
+    currentCandidates = [...currentCandidates, ...newCands]
+
+    // 5. Add fact: dist(target, output) = dist(segFrom, segTo)
+    const outputId = ptResult.point.id
+    const outputLabel = ptResult.point.label
+    const targetLabel = target.label
+    const segFromLabel = segFrom.label
+    const segToLabel = segTo.label
+
+    const left = distancePair(targetId, outputId)
+    const right = distancePair(segFromId, segToId)
+    allNewFacts.push(...addFact(
+      factStore, left, right,
+      { type: 'prop', propId: 2 },
+      `${targetLabel}${outputLabel} = ${segFromLabel}${segToLabel}`,
+      `I.2: placed at ${targetLabel} a line equal to ${segFromLabel}${segToLabel}`,
+      atStep,
+    ))
+
+    return {
+      state: currentState,
+      candidates: currentCandidates,
+      addedElements,
+      newFacts: allNewFacts,
+    }
+  },
+}
+
 export const MACRO_REGISTRY: Record<number, MacroDef> = {
   1: MACRO_PROP_1,
+  2: MACRO_PROP_2,
 }

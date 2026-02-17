@@ -7,6 +7,7 @@ import { EuclidCanvas } from '@/components/toys/euclid/EuclidCanvas'
 const PROP_TITLES: Record<number, string> = {
   1: 'Euclid I.1',
   2: 'Euclid I.2',
+  3: 'Euclid I.3',
 }
 
 export default function EuclidPropPage() {

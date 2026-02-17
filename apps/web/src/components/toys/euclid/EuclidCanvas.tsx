@@ -26,8 +26,10 @@ import { useToolInteraction } from './interaction/useToolInteraction'
 import { validateStep } from './propositions/validation'
 import { PROP_1 } from './propositions/prop1'
 import { PROP_2 } from './propositions/prop2'
+import { PROP_3 } from './propositions/prop3'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
+import { getProp3Tutorial } from './propositions/prop3Tutorial'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
 import { createFactStore, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
@@ -174,11 +176,13 @@ function deriveCompletionResult(
 const PROPOSITIONS: Record<number, PropositionDef> = {
   1: PROP_1,
   2: PROP_2,
+  3: PROP_3,
 }
 
 const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[][]> = {
   1: getProp1Tutorial,
   2: getProp2Tutorial,
+  3: getProp3Tutorial,
 }
 
 interface EuclidCanvasProps {
@@ -317,22 +321,23 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     expectedActionRef.current = stepDef.expected
 
     if (stepDef.tool === null) return
+
+    // Initialize macro phase when entering a macro step (regardless of tool change)
+    if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
+      const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
+      if (macroDef) {
+        macroPhaseRef.current = {
+          tag: 'selecting',
+          propId: stepDef.expected.propId,
+          inputLabels: macroDef.inputLabels,
+          selectedPointIds: [],
+        }
+      }
+    }
+
     if (stepDef.tool !== activeTool) {
       setActiveTool(stepDef.tool)
       activeToolRef.current = stepDef.tool
-
-      // Initialize macro phase when entering a macro step
-      if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
-        const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
-        if (macroDef) {
-          macroPhaseRef.current = {
-            tag: 'selecting',
-            propId: stepDef.expected.propId,
-            inputLabels: macroDef.inputLabels,
-            selectedPointIds: [],
-          }
-        }
-      }
 
       const toolLabels: Record<string, string> = {
         compass: 'Compass',

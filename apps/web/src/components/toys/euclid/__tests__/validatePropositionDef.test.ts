@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { validatePropositionDef } from '../engine/validatePropositionDef'
 import { PROP_1 } from '../propositions/prop1'
 import { PROP_2 } from '../propositions/prop2'
+import { PROP_3 } from '../propositions/prop3'
 import type { PropositionDef, ConstructionElement } from '../types'
 import { BYRNE } from '../types'
 
@@ -26,6 +27,11 @@ describe('validatePropositionDef', () => {
 
     it('Prop I.2 has no validation errors', () => {
       const errors = validatePropositionDef(PROP_2)
+      expect(errors).toEqual([])
+    })
+
+    it('Prop I.3 has no validation errors', () => {
+      const errors = validatePropositionDef(PROP_3)
       expect(errors).toEqual([])
     })
   })
