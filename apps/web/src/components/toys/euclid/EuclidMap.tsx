@@ -6,14 +6,13 @@ import {
   getNodeStatus,
   getVisibleNodes,
   computeLayout,
-  getEdges,
   getProposition,
   getPrerequisites,
 } from './data/propositionGraph'
-import type { NodeStatus } from './data/propositionGraph'
+import type { NodeStatus, LayoutEdge } from './data/propositionGraph'
 
 // ---------------------------------------------------------------------------
-// Colors and sizing — these match the layout constants in propositionGraph.ts
+// Colors and sizing
 // ---------------------------------------------------------------------------
 
 const NODE_W = 130
@@ -55,6 +54,39 @@ const STATUS_STYLES: Record<NodeStatus, {
 }
 
 // ---------------------------------------------------------------------------
+// Edge path helper — convert dagre routing points to SVG path
+// ---------------------------------------------------------------------------
+
+function edgeToPath(edge: LayoutEdge): string {
+  const pts = edge.points
+  if (pts.length === 0) return ''
+  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`
+  if (pts.length === 2) {
+    return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`
+  }
+  // Use a smooth cubic bezier through the routing points
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 1; i < pts.length - 1; i++) {
+    const prev = pts[i - 1]
+    const curr = pts[i]
+    const next = pts[i + 1]
+    const cpx1 = (prev.x + curr.x) / 2
+    const cpy1 = curr.y
+    const cpx2 = (curr.x + next.x) / 2
+    const cpy2 = curr.y
+    d += ` C ${cpx1} ${cpy1}, ${cpx2} ${cpy2}, ${next.x} ${next.y}`
+  }
+  // If only 3 points, the loop above handles it. For 2+ intermediate points,
+  // we get a smooth path. For exactly 2 points already handled above.
+  if (pts.length === 3) {
+    // Override with a simple cubic bezier
+    const [p0, p1, p2] = pts
+    d = `M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`
+  }
+  return d
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -70,16 +102,18 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
   const completedCount = completed.size
   const totalImplemented = IMPLEMENTED_PROPS.size
 
-  // Compute visible nodes + layout
+  // Compute visible nodes + layout (dagre-powered)
   const visibleIds = useMemo(
     () => getVisibleNodes(completed, showAll),
     [completed, showAll],
   )
 
-  const layout = useMemo(() => computeLayout(visibleIds), [visibleIds])
-  const edges = useMemo(() => getEdges(visibleIds), [visibleIds])
+  const { nodes: layout, edges } = useMemo(
+    () => computeLayout(visibleIds),
+    [visibleIds],
+  )
 
-  // Compute SVG viewBox — enforce a minimum width so nodes never get too small
+  // Compute SVG viewBox
   const viewBox = useMemo(() => {
     if (layout.size === 0) return '0 0 400 300'
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -89,23 +123,29 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
       minY = Math.min(minY, pos.y - NODE_H / 2)
       maxY = Math.max(maxY, pos.y + NODE_H / 2)
     }
-    const padX = 30
-    const padY = 30
+    // Also account for edge routing points
+    for (const edge of edges) {
+      for (const pt of edge.points) {
+        minX = Math.min(minX, pt.x - 5)
+        maxX = Math.max(maxX, pt.x + 5)
+        minY = Math.min(minY, pt.y - 5)
+        maxY = Math.max(maxY, pt.y + 5)
+      }
+    }
+    const padX = 20
+    const padY = 20
     const contentW = maxX - minX + padX * 2
     const contentH = maxY - minY + padY * 2
-    // Enforce a minimum viewBox width so a single-column tree doesn't make nodes tiny
     const w = Math.max(contentW, 400)
-    // Center content horizontally if we widened
     const offsetX = minX - padX - (w - contentW) / 2
     return `${offsetX} ${minY - padY} ${w} ${contentH}`
-  }, [layout])
+  }, [layout, edges])
 
   // Tooltip info for hovered locked node
   const hoveredInfo = useMemo(() => {
     if (hoveredNode === null) return null
     const status = getNodeStatus(hoveredNode, completed)
-    if (status !== 'locked' && status !== 'coming-soon') return null
-    if (status === 'coming-soon') return null
+    if (status !== 'locked') return null
     const deps = getPrerequisites(hoveredNode)
     const missing = deps.filter(d => !completed.has(d))
     return { propId: hoveredNode, missing }
@@ -193,22 +233,17 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
           style={{
             display: 'block',
             width: '100%',
-            maxWidth: 800,
+            maxWidth: 900,
             margin: '0 auto',
           }}
         >
-          {/* Edges — cubic bezier curves for cleaner routing */}
-          {edges.map(({ from, to }) => {
-            const fromPos = layout.get(from)
-            const toPos = layout.get(to)
-            if (!fromPos || !toPos) return null
-            const y1 = fromPos.y + NODE_H / 2 + 2
-            const y2 = toPos.y - NODE_H / 2 - 2
-            const midY = (y1 + y2) / 2
-            const d = `M ${fromPos.x} ${y1} C ${fromPos.x} ${midY}, ${toPos.x} ${midY}, ${toPos.x} ${y2}`
+          {/* Edges — dagre-routed paths */}
+          {edges.map((edge) => {
+            const d = edgeToPath(edge)
+            if (!d) return null
             return (
               <path
-                key={`${from}-${to}`}
+                key={`${edge.from}-${edge.to}`}
                 data-element="map-edge"
                 d={d}
                 fill="none"

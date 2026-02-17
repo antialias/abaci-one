@@ -2,9 +2,12 @@
  * Proposition dependency graph — DAG computation + layout for the tech tree.
  *
  * Built on top of book1.ts (single source of truth for all 48 propositions).
+ * Uses dagre for proper Sugiyama-style layered layout and transitive
+ * reduction to remove redundant edges.
  */
 
-import { propositions, getPrerequisites, getDependents, getProposition } from './book1'
+import dagre from '@dagrejs/dagre'
+import { propositions, getPrerequisites, getDependents, getProposition, getAllPrerequisites } from './book1'
 
 // ---------------------------------------------------------------------------
 // Which propositions are playable (have interactive implementations)
@@ -101,8 +104,82 @@ export function getNextProp(completed: Set<number>): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// Topological level layout
+// Transitive reduction
 // ---------------------------------------------------------------------------
+
+/**
+ * Compute the transitive reduction of the DAG for a set of visible nodes.
+ *
+ * Removes edge (u→v) if there is another path from u to v of length ≥ 2.
+ * This eliminates the long-range "skip" edges that create visual clutter.
+ *
+ * For each node v with parents P:
+ *   Edge (u→v) is redundant if u is a transitive ancestor of any other
+ *   parent w ∈ P (meaning u→...→w→v already exists).
+ */
+function transitiveReduction(
+  visibleIds: number[],
+): Array<{ from: number; to: number }> {
+  const visibleSet = new Set(visibleIds)
+  const edges: Array<{ from: number; to: number }> = []
+
+  for (const v of visibleIds) {
+    const directParents = getPrerequisites(v).filter(d => visibleSet.has(d))
+    if (directParents.length <= 1) {
+      // 0 or 1 parents → no redundancy possible
+      for (const u of directParents) {
+        edges.push({ from: u, to: v })
+      }
+      continue
+    }
+
+    // For each parent u, check if it's a transitive ancestor of any OTHER parent
+    const ancestorSets = new Map<number, Set<number>>()
+    for (const u of directParents) {
+      // getAllPrerequisites returns the full ancestor set (transitive) in topo order
+      ancestorSets.set(u, new Set(getAllPrerequisites(u)))
+    }
+
+    for (const u of directParents) {
+      let isRedundant = false
+      for (const w of directParents) {
+        if (w === u) continue
+        // If w's ancestors include u, then u→...→w→v already exists
+        if (ancestorSets.get(w)!.has(u)) {
+          isRedundant = true
+          break
+        }
+      }
+      if (!isRedundant) {
+        edges.push({ from: u, to: v })
+      }
+    }
+  }
+
+  return edges
+}
+
+// ---------------------------------------------------------------------------
+// Layout via dagre
+// ---------------------------------------------------------------------------
+
+export interface NodeLayout {
+  x: number
+  y: number
+  level: number
+}
+
+/**
+ * Edge with optional routing points from dagre.
+ */
+export interface LayoutEdge {
+  from: number
+  to: number
+  points: Array<{ x: number; y: number }>
+}
+
+const NODE_W = 130
+const NODE_H = 48
 
 /**
  * Compute the topological level of every proposition.
@@ -129,206 +206,85 @@ function computeLevels(): Map<number, number> {
 
 const PROP_LEVELS = computeLevels()
 
-export interface NodeLayout {
-  x: number
-  y: number
-  level: number
-}
-
-// ---------------------------------------------------------------------------
-// Sugiyama-style layered DAG layout
-//
-// Phase 1: Layer assignment (topological levels — already computed above)
-// Phase 2: Crossing reduction via barycenter heuristic
-// Phase 3: Coordinate assignment with parent-aligned positioning
-// ---------------------------------------------------------------------------
-
-const NODE_WIDTH = 130
-const ROW_HEIGHT = 80
-const NODE_GAP = 24
-
 /**
- * Barycenter crossing-reduction: reorder nodes within each layer so that
- * edges to adjacent layers cross as little as possible.
+ * Compute layout using dagre (proper Sugiyama algorithm) with transitive
+ * reduction to minimize edge clutter.
  *
- * The barycenter of a node = average position of its connected nodes in the
- * adjacent layer. Sorting by barycenter minimizes crossings.
- * We alternate downward and upward sweeps for several iterations.
+ * Returns both node positions and routed edge paths.
  */
-function reduceCrossings(
-  layers: number[][],
-  visibleSet: Set<number>,
-): void {
-  // Build position-in-layer lookup
-  const posOf = new Map<number, number>()
-  function rebuildPositions() {
-    posOf.clear()
-    for (const layer of layers) {
-      for (let i = 0; i < layer.length; i++) {
-        posOf.set(layer[i], i)
-      }
-    }
+export function computeLayout(visibleIds: number[]): {
+  nodes: Map<number, NodeLayout>
+  edges: LayoutEdge[]
+} {
+  const nodes = new Map<number, NodeLayout>()
+  if (visibleIds.length === 0) return { nodes, edges: [] }
+
+  // Compute transitive reduction edges
+  const reducedEdges = transitiveReduction(visibleIds)
+
+  // Build dagre graph
+  const g = new dagre.graphlib.Graph()
+  g.setGraph({
+    rankdir: 'TB',
+    nodesep: 24,
+    ranksep: 60,
+    edgesep: 12,
+    marginx: 20,
+    marginy: 20,
+  })
+  g.setDefaultEdgeLabel(() => ({}))
+
+  for (const id of visibleIds) {
+    g.setNode(String(id), { width: NODE_W, height: NODE_H })
   }
 
-  rebuildPositions()
-
-  const SWEEPS = 8
-
-  for (let sweep = 0; sweep < SWEEPS; sweep++) {
-    // Downward sweep: use parents (layer above) to sort
-    for (let li = 1; li < layers.length; li++) {
-      const layer = layers[li]
-      const barycenters = new Map<number, number>()
-      for (const id of layer) {
-        const parents = getPrerequisites(id).filter(d => visibleSet.has(d))
-        if (parents.length > 0) {
-          const avg = parents.reduce((sum, p) => sum + (posOf.get(p) ?? 0), 0) / parents.length
-          barycenters.set(id, avg)
-        } else {
-          barycenters.set(id, posOf.get(id) ?? 0)
-        }
-      }
-      layer.sort((a, b) => (barycenters.get(a) ?? 0) - (barycenters.get(b) ?? 0))
-      // Update positions after sorting this layer
-      for (let i = 0; i < layer.length; i++) {
-        posOf.set(layer[i], i)
-      }
-    }
-
-    // Upward sweep: use children (layer below) to sort
-    for (let li = layers.length - 2; li >= 0; li--) {
-      const layer = layers[li]
-      const barycenters = new Map<number, number>()
-      for (const id of layer) {
-        const children = getDependents(id).filter(d => visibleSet.has(d))
-        if (children.length > 0) {
-          const avg = children.reduce((sum, c) => sum + (posOf.get(c) ?? 0), 0) / children.length
-          barycenters.set(id, avg)
-        } else {
-          barycenters.set(id, posOf.get(id) ?? 0)
-        }
-      }
-      layer.sort((a, b) => (barycenters.get(a) ?? 0) - (barycenters.get(b) ?? 0))
-      for (let i = 0; i < layer.length; i++) {
-        posOf.set(layer[i], i)
-      }
-    }
+  for (const { from, to } of reducedEdges) {
+    g.setEdge(String(from), String(to))
   }
-}
 
-/**
- * Coordinate assignment: position nodes horizontally so that each node is
- * close to the average x of its parents (priority placement), falling back
- * to evenly-spaced within the layer.
- */
-function assignCoordinates(
-  layers: number[][],
-  visibleSet: Set<number>,
-): Map<number, { x: number; row: number }> {
-  const coords = new Map<number, { x: number; row: number }>()
+  // Run dagre layout
+  dagre.layout(g)
 
-  // First pass: assign based on order index within each layer
-  // This gives us an initial placement based on the crossing-reduced order.
-  for (let row = 0; row < layers.length; row++) {
-    const layer = layers[row]
-    const totalWidth = layer.length * NODE_WIDTH + (layer.length - 1) * NODE_GAP
-    const startX = -totalWidth / 2
-    for (let i = 0; i < layer.length; i++) {
-      coords.set(layer[i], {
-        x: startX + i * (NODE_WIDTH + NODE_GAP) + NODE_WIDTH / 2,
-        row,
+  // Extract node positions
+  for (const id of visibleIds) {
+    const node = g.node(String(id))
+    if (node) {
+      nodes.set(id, {
+        x: node.x,
+        y: node.y,
+        level: PROP_LEVELS.get(id) ?? 0,
       })
     }
   }
 
-  // Second pass (top-down): shift nodes toward the average x of their parents
-  // while respecting minimum spacing. This straightens edges.
-  for (let row = 1; row < layers.length; row++) {
-    const layer = layers[row]
-
-    // Compute ideal x for each node (avg of parents' x)
-    const idealX = new Map<number, number>()
-    for (const id of layer) {
-      const parents = getPrerequisites(id).filter(d => visibleSet.has(d))
-      if (parents.length > 0) {
-        const avgX = parents.reduce((sum, p) => sum + (coords.get(p)?.x ?? 0), 0) / parents.length
-        idealX.set(id, avgX)
+  // Extract edge routing points
+  const layoutEdges: LayoutEdge[] = []
+  for (const { from, to } of reducedEdges) {
+    const edge = g.edge(String(from), String(to))
+    if (edge && edge.points) {
+      layoutEdges.push({
+        from,
+        to,
+        points: edge.points,
+      })
+    } else {
+      // Fallback: straight line
+      const fromNode = nodes.get(from)
+      const toNode = nodes.get(to)
+      if (fromNode && toNode) {
+        layoutEdges.push({
+          from,
+          to,
+          points: [
+            { x: fromNode.x, y: fromNode.y + NODE_H / 2 },
+            { x: toNode.x, y: toNode.y - NODE_H / 2 },
+          ],
+        })
       }
     }
-
-    // Greedily shift nodes toward their ideal x left-to-right
-    const minSpacing = NODE_WIDTH + NODE_GAP
-    let prevRight = -Infinity
-
-    for (let i = 0; i < layer.length; i++) {
-      const id = layer[i]
-      const current = coords.get(id)!
-      const ideal = idealX.get(id)
-      const minX = prevRight + minSpacing
-      const targetX = ideal !== undefined ? Math.max(ideal, minX) : Math.max(current.x, minX)
-      coords.set(id, { x: targetX, row })
-      prevRight = targetX
-    }
-
-    // Center the layer around x=0
-    const xs = layer.map(id => coords.get(id)!.x)
-    const centerOffset = (xs[0] + xs[xs.length - 1]) / 2
-    for (const id of layer) {
-      const c = coords.get(id)!
-      coords.set(id, { x: c.x - centerOffset, row: c.row })
-    }
   }
 
-  return coords
-}
-
-/**
- * Compute a Sugiyama-style layout for the given visible nodes.
- *
- * 1. Layer assignment (topological levels, compacted)
- * 2. Crossing reduction (barycenter heuristic, 8 sweeps)
- * 3. Coordinate assignment (parent-aligned + minimum spacing)
- */
-export function computeLayout(visibleIds: number[]): Map<number, NodeLayout> {
-  const layout = new Map<number, NodeLayout>()
-  if (visibleIds.length === 0) return layout
-
-  const visibleSet = new Set(visibleIds)
-
-  // Phase 1: group by topological level, compact into sequential rows
-  const byLevel = new Map<number, number[]>()
-  for (const id of visibleIds) {
-    const level = PROP_LEVELS.get(id) ?? 0
-    if (!byLevel.has(level)) byLevel.set(level, [])
-    byLevel.get(level)!.push(id)
-  }
-
-  const sortedLevels = [...byLevel.keys()].sort((a, b) => a - b)
-  const layers: number[][] = sortedLevels.map(level => {
-    const nodes = byLevel.get(level)!
-    // Initial ordering by prop ID (will be improved by crossing reduction)
-    nodes.sort((a, b) => a - b)
-    return nodes
-  })
-
-  // Phase 2: crossing reduction
-  reduceCrossings(layers, visibleSet)
-
-  // Phase 3: coordinate assignment
-  const coords = assignCoordinates(layers, visibleSet)
-
-  // Build final layout
-  for (const id of visibleIds) {
-    const c = coords.get(id)
-    if (!c) continue
-    layout.set(id, {
-      x: c.x,
-      y: c.row * ROW_HEIGHT,
-      level: PROP_LEVELS.get(id) ?? 0,
-    })
-  }
-
-  return layout
+  return { nodes, edges: layoutEdges }
 }
 
 /**
@@ -340,20 +296,10 @@ export function getMaxLevel(): number {
 
 /**
  * Get all edges (prerequisite → dependent) for the visible nodes.
+ * Uses transitive reduction to eliminate redundant cross-level edges.
  */
 export function getEdges(visibleIds: number[]): Array<{ from: number; to: number }> {
-  const visibleSet = new Set(visibleIds)
-  const edges: Array<{ from: number; to: number }> = []
-
-  for (const id of visibleIds) {
-    for (const dep of getPrerequisites(id)) {
-      if (visibleSet.has(dep)) {
-        edges.push({ from: dep, to: id })
-      }
-    }
-  }
-
-  return edges
+  return transitiveReduction(visibleIds)
 }
 
 // Re-export helpers consumers need

@@ -298,6 +298,107 @@ describe('factStore', () => {
       expect(queryEquality(original, dpAB, dpEF)).toBe(true)
       expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
     })
+
+    it('preserves fact atStep values', () => {
+      const original = createFactStore()
+      addFact(original, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 3)
+
+      const rebuilt = rebuildFactStore(original.facts)
+      expect(rebuilt.facts[0].atStep).toBe(0)
+      expect(rebuilt.facts[1].atStep).toBe(3)
+    })
+
+    it('preserves fact ordering', () => {
+      const original = createFactStore()
+      addFact(original, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'j1', 0)
+      addFact(original, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'j2', 1)
+      addFact(original, distancePair('pt-C', 'pt-D'), distancePair('pt-E', 'pt-F'),
+        { type: 'def15', circleId: 'cir-3' }, 'CD = EF', 'j3', 2)
+
+      const rebuilt = rebuildFactStore(original.facts)
+      expect(rebuilt.facts.map(f => f.statement)).toEqual([
+        'AB = CD', 'EF = GH', 'CD = EF',
+      ])
+    })
+
+    it('handles different citation types', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+      const dpEF = distancePair('pt-E', 'pt-F')
+
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpCD, dpEF,
+        { type: 'prop', propId: 1 }, 'CD = EF', 'test', 1)
+
+      const rebuilt = rebuildFactStore(original.facts)
+      expect(rebuilt.facts[0].citation).toEqual({ type: 'def15', circleId: 'cir-1' })
+      expect(rebuilt.facts[1].citation).toEqual({ type: 'prop', propId: 1 })
+      expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(true)
+    })
+
+    it('rebuilds long transitive chains (A=B=C=D=E)', () => {
+      const original = createFactStore()
+      const dps = ['A', 'B', 'C', 'D', 'E'].map((l, i) =>
+        distancePair(`pt-${l}1`, `pt-${l}2`),
+      )
+      for (let i = 0; i < dps.length - 1; i++) {
+        addFact(original, dps[i], dps[i + 1],
+          { type: 'def15', circleId: `cir-${i}` }, `s${i}`, `j${i}`, i)
+      }
+
+      const rebuilt = rebuildFactStore(original.facts)
+
+      // First and last should be transitively equal
+      expect(queryEquality(rebuilt, dps[0], dps[4])).toBe(true)
+      // Non-adjacent pairs should also be equal
+      expect(queryEquality(rebuilt, dps[1], dps[3])).toBe(true)
+    })
+
+    it('keeps separate equivalence classes separate after rebuild', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+      const dpEF = distancePair('pt-E', 'pt-F')
+      const dpGH = distancePair('pt-G', 'pt-H')
+
+      // Class 1: AB = CD
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      // Class 2: EF = GH (separate)
+      addFact(original, dpEF, dpGH,
+        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 1)
+
+      const rebuilt = rebuildFactStore(original.facts)
+      expect(queryEquality(rebuilt, dpAB, dpCD)).toBe(true)
+      expect(queryEquality(rebuilt, dpEF, dpGH)).toBe(true)
+      expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
+      expect(queryEquality(rebuilt, dpCD, dpGH)).toBe(false)
+    })
+
+    it('rebuilds from a subset of facts (simulating rewind)', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+      const dpEF = distancePair('pt-E', 'pt-F')
+
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpCD, dpEF,
+        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+
+      // Rebuild from only the first fact (simulating rewind to step 1)
+      const rebuilt = rebuildFactStore(original.facts.slice(0, 1))
+      expect(queryEquality(rebuilt, dpAB, dpCD)).toBe(true)
+      expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
+      expect(rebuilt.facts).toHaveLength(1)
+    })
   })
 
   describe('WeakMap encapsulation', () => {

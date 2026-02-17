@@ -967,7 +967,17 @@
       "WebFetch(domain:www.thecorestandards.org)",
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards add apps/web/src/components/toys/euclid/EuclidCanvas.tsx apps/web/src/components/toys/euclid/__tests__/macroOutputLabels.test.ts apps/web/src/components/toys/euclid/__tests__/prop2Integration.test.ts apps/web/src/components/toys/euclid/__tests__/tutorials.test.ts apps/web/src/components/toys/euclid/__tests__/validatePropositionDef.test.ts apps/web/src/components/toys/euclid/engine/macros.ts apps/web/src/components/toys/euclid/engine/validatePropositionDef.ts apps/web/src/components/toys/euclid/propositions/prop1Tutorial.ts apps/web/src/components/toys/euclid/propositions/prop2.ts apps/web/src/components/toys/euclid/propositions/prop2Tutorial.ts apps/web/src/components/toys/euclid/types.ts)",
       "Bash(git -C /Users/antialias/projects/soroban-abacus-flashcards diff --cached --stat)",
-      "Bash(git -C:*)"
+      "Bash(git -C:*)",
+      "WebFetch(domain:www.maths.tcd.ie)",
+      "WebFetch(domain:www.themathpage.com)",
+      "WebFetch(domain:www.rhswearengin.com)",
+      "WebFetch(domain:web.calstatela.edu)",
+      "WebFetch(domain:www.geogebra.org)",
+      "WebFetch(domain:gogeometry.com)",
+      "WebFetch(domain:webspace.ship.edu)",
+      "WebFetch(domain:www.math.uga.edu)",
+      "WebFetch(domain:www.cs.umb.edu)",
+      "WebFetch(domain:erikbrinkman.github.io)"
     ],
     "deny": [],
     "ask": []
