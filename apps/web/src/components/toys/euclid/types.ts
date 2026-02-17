@@ -100,7 +100,7 @@ export type TutorialHint =
   | { type: 'point'; pointId: string }
   | { type: 'arrow'; fromId: string; toId: string }
   | { type: 'sweep'; centerId: string; radiusPointId: string }
-  | { type: 'candidates' }
+  | { type: 'candidates'; ofA?: string; ofB?: string }
   | { type: 'none' }
 
 export interface TutorialSubStep {
@@ -138,4 +138,8 @@ export interface PropositionDef {
   title: string
   givenElements: ConstructionElement[]
   steps: PropositionStep[]
+  /** When true, circle-segment intersections use the infinite line through the segment.
+   *  Needed for propositions that "produce" (extend) lines, like I.2. */
+  extendSegments?: boolean
+  completionMessage?: string
 }

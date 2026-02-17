@@ -38,6 +38,17 @@ export function circleSegmentIntersections(
   return pts.map((p: Flatten.Point) => ({ x: p.x, y: p.y }))
 }
 
+/** Circle ∩ infinite line through two points (for "produced" segments — Post.2) */
+export function circleLineIntersections(
+  cx: number, cy: number, cr: number,
+  x1: number, y1: number, x2: number, y2: number,
+): Vec2[] {
+  const fc = new Flatten.Circle(new Flatten.Point(cx, cy), cr)
+  const fl = new Flatten.Line(new Flatten.Point(x1, y1), new Flatten.Point(x2, y2))
+  const pts = fc.intersect(fl)
+  return pts.map((p: Flatten.Point) => ({ x: p.x, y: p.y }))
+}
+
 export function segmentSegmentIntersection(
   a1x: number, a1y: number, a2x: number, a2y: number,
   b1x: number, b1y: number, b2x: number, b2y: number,
@@ -84,6 +95,7 @@ export function findNewIntersections(
   state: ConstructionState,
   newElement: ConstructionElement,
   existingCandidates: IntersectionCandidate[],
+  extendSegments: boolean = false,
 ): IntersectionCandidate[] {
   if (newElement.kind === 'point') return []
 
@@ -118,7 +130,8 @@ export function findNewIntersections(
     for (const s of getAllSegments(state)) {
       const d = getSegmentData(state, s)
       if (!d) continue
-      const pts = circleSegmentIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
+      const intersectFn = extendSegments ? circleLineIntersections : circleSegmentIntersections
+      const pts = intersectFn(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
       addCandidates(pts, newElement.id, s.id)
     }
   } else if (newElement.kind === 'segment') {
@@ -129,7 +142,8 @@ export function findNewIntersections(
     for (const c of getAllCircles(state)) {
       const d = getCircleData(state, c)
       if (!d) continue
-      const pts = circleSegmentIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
+      const intersectFn = extendSegments ? circleLineIntersections : circleSegmentIntersections
+      const pts = intersectFn(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
       addCandidates(pts, newElement.id, c.id)
     }
 

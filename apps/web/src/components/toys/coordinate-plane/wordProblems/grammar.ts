@@ -1,5 +1,5 @@
-import type { SemanticFrame, GeneratedNumbers, DifficultyLevel, AnnotatedSpan } from './types'
-import { formatWithUnit, pluralize, conjugate3p, conjugateBase, capitalize } from './inflect'
+import type { SemanticFrame, SubjectEntry, GeneratedNumbers, DifficultyLevel, AnnotatedSpan } from './types'
+import { formatWithUnit, pluralize, conjugate3p, conjugateBase, conjugateFor, capitalize } from './inflect'
 import { SeededRandom } from '../../../../lib/SeededRandom'
 
 /** A production is a function that returns an array of annotated spans */
@@ -12,6 +12,12 @@ interface GrammarContext {
   rng: SeededRandom
 }
 
+// ── Helpers ──────────────────────────────────────────────────────
+
+function pickSubject(ctx: GrammarContext): SubjectEntry {
+  return ctx.rng.pick(ctx.frame.subjects)
+}
+
 // ── Individual productions ────────────────────────────────────────
 
 function setupBlock(ctx: GrammarContext): AnnotatedSpan[] {
@@ -22,6 +28,40 @@ function setupBlock(ctx: GrammarContext): AnnotatedSpan[] {
 function rateSentence(ctx: GrammarContext): AnnotatedSpan[] {
   const { frame, nums, rng } = ctx
   const mFormatted = formatWithUnit(nums.m, frame.yUnit, frame.yUnitPosition)
+
+  if (frame.xRole === 'elapsed') {
+    // Time-based: subject is the actor, not the x-unit
+    const subject = pickSubject(ctx)
+    const variant = rng.nextInt(0, 2)
+
+    if (variant === 0) {
+      // "The car travels 42 miles each hour."
+      return [
+        { text: `${subject.phrase} ` },
+        { text: `${conjugateFor(frame.rateVerb, subject)} ` },
+        { text: mFormatted, tag: 'slope', value: nums.m },
+        { text: ` each ${frame.xNoun.singular}.` },
+      ]
+    } else if (variant === 1) {
+      // "Every week, the plant grows 3 inches."
+      return [
+        { text: `Every ${frame.xNoun.singular}, ${subject.phrase.toLowerCase()} ` },
+        { text: `${conjugateFor(frame.rateVerb, subject)} ` },
+        { text: mFormatted, tag: 'slope', value: nums.m },
+        { text: '.' },
+      ]
+    } else {
+      // "The rate is 42 miles per hour."
+      const rateLabel = frame.category === 'money' ? 'The rate is' : 'The rate is'
+      return [
+        { text: `${rateLabel} ` },
+        { text: mFormatted, tag: 'slope', value: nums.m },
+        { text: ` per ${frame.xNoun.singular}.` },
+      ]
+    }
+  }
+
+  // Acquired: x-unit is the subject
   const variant = rng.nextInt(0, 2)
 
   if (variant === 0) {
@@ -54,17 +94,56 @@ function rateSentence(ctx: GrammarContext): AnnotatedSpan[] {
 function baseSentence(ctx: GrammarContext): AnnotatedSpan[] {
   const { frame, nums, rng } = ctx
   const bFormatted = formatWithUnit(nums.b, frame.yUnit, frame.yUnitPosition)
-  const subject = rng.pick(ctx.frame.subjectPhrases)
+  const subject = pickSubject(ctx)
+
+  if (frame.xRole === 'elapsed') {
+    const variant = rng.nextInt(0, 2)
+
+    if (variant === 0) {
+      // "The car started at 38 miles." / "She started with $50."
+      const prep = frame.yUnitPosition === 'prefix' ? 'with' : 'at'
+      return [
+        { text: `${subject.phrase} started ${prep} ` },
+        { text: bFormatted, tag: 'intercept', value: nums.b },
+        { text: '.' },
+      ]
+    } else if (variant === 1) {
+      // "The starting total is $50." / "The starting distance is 38 miles."
+      const noun = frame.category === 'money' ? 'total' : frame.yNoun.singular + ' count'
+      return [
+        { text: `The starting ${noun} is ` },
+        { text: bFormatted, tag: 'intercept', value: nums.b },
+        { text: '.' },
+      ]
+    } else {
+      // "At the start, they had 38 miles."
+      return [
+        { text: `At the start, ${subject.phrase.toLowerCase()} had ` },
+        { text: bFormatted, tag: 'intercept', value: nums.b },
+        { text: '.' },
+      ]
+    }
+  }
+
+  // Acquired
   const variant = rng.nextInt(0, 2)
 
   if (variant === 0) {
-    // "There is a $5 base fee." / "There is a 3 inches starting amount."
-    const feeWord = frame.category === 'money' ? 'base fee' : 'starting amount'
-    return [
-      { text: `There is a ` },
-      { text: bFormatted, tag: 'intercept', value: nums.b },
-      { text: ` ${feeWord}.` },
-    ]
+    // "There is a $5 base fee." / "There is a starting amount of 3 cups."
+    if (frame.yUnitPosition === 'prefix') {
+      const feeWord = frame.category === 'money' ? 'base fee' : 'starting amount'
+      return [
+        { text: `There is a ` },
+        { text: bFormatted, tag: 'intercept', value: nums.b },
+        { text: ` ${feeWord}.` },
+      ]
+    } else {
+      return [
+        { text: `There is a starting amount of ` },
+        { text: bFormatted, tag: 'intercept', value: nums.b },
+        { text: '.' },
+      ]
+    }
   } else if (variant === 1) {
     // "The starting total is $5."
     const noun = frame.category === 'money' ? 'total' : frame.yNoun.singular + ' count'
@@ -76,7 +155,7 @@ function baseSentence(ctx: GrammarContext): AnnotatedSpan[] {
   } else {
     // "Sonia already has $5."
     return [
-      { text: `${subject} already has ` },
+      { text: `${subject.phrase} already has ` },
       { text: bFormatted, tag: 'intercept', value: nums.b },
       { text: '.' },
     ]
@@ -86,13 +165,36 @@ function baseSentence(ctx: GrammarContext): AnnotatedSpan[] {
 function goalSentence(ctx: GrammarContext): AnnotatedSpan[] {
   const { frame, nums, rng } = ctx
   const tFormatted = formatWithUnit(nums.yTarget, frame.yUnit, frame.yUnitPosition)
-  const subject = rng.pick(ctx.frame.subjectPhrases)
+  const subject = pickSubject(ctx)
+
+  if (frame.xRole === 'elapsed') {
+    const variant = rng.nextInt(0, 1)
+
+    if (variant === 0) {
+      // "The car needs to reach 290 miles."
+      const verb = conjugateFor({ base: 'need', thirdPerson: 'needs', pastTense: 'needed', gerund: 'needing' }, subject)
+      return [
+        { text: `${subject.phrase} ${verb} to reach ` },
+        { text: tFormatted, tag: 'target', value: nums.yTarget },
+        { text: '.' },
+      ]
+    } else {
+      // "The goal is 290 miles."
+      return [
+        { text: 'The goal is ' },
+        { text: tFormatted, tag: 'target', value: nums.yTarget },
+        { text: '.' },
+      ]
+    }
+  }
+
+  // Acquired
   const variant = rng.nextInt(0, 1)
 
   if (variant === 0) {
     const budgetWord = frame.category === 'money' ? 'a budget of' : 'a goal of'
     return [
-      { text: `${subject} has ${budgetWord} ` },
+      { text: `${subject.phrase} has ${budgetWord} ` },
       { text: tFormatted, tag: 'target', value: nums.yTarget },
       { text: '.' },
     ]
@@ -107,12 +209,30 @@ function goalSentence(ctx: GrammarContext): AnnotatedSpan[] {
 
 function questionSentence(ctx: GrammarContext): AnnotatedSpan[] {
   const { frame, rng } = ctx
-  const subject = rng.pick(ctx.frame.subjectPhrases).toLowerCase()
+
+  if (frame.xRole === 'elapsed') {
+    const variant = rng.nextInt(0, 1)
+
+    if (variant === 0) {
+      // "How many hours will it take?"
+      return [
+        { text: `How many ${frame.xNoun.plural} will it take?`, tag: 'question' },
+      ]
+    } else {
+      // "After how many weeks?"
+      return [
+        { text: `After how many ${frame.xNoun.plural}?`, tag: 'question' },
+      ]
+    }
+  }
+
+  // Acquired
+  const subject = pickSubject(ctx)
   const variant = rng.nextInt(0, 1)
 
   if (variant === 0) {
     return [
-      { text: `How many ${frame.xNoun.plural} can ${subject} get?`, tag: 'question' },
+      { text: `How many ${frame.xNoun.plural} can ${subject.phrase.toLowerCase()} get?`, tag: 'question' },
     ]
   } else {
     return [
@@ -151,12 +271,34 @@ function level2Sentence(ctx: GrammarContext): AnnotatedSpan[] {
 function questionForSolveY(ctx: GrammarContext): AnnotatedSpan[] {
   const { frame, nums, rng } = ctx
   const xFormatted = `${nums.xAnswer} ${pluralize(frame.xNoun, nums.xAnswer)}`
-  const subject = rng.pick(frame.subjectPhrases)
 
+  if (frame.xRole === 'elapsed') {
+    const variant = rng.nextInt(0, 1)
+
+    if (variant === 0) {
+      // "After 3 hours, what is the total?"
+      return [
+        { text: `After ` },
+        { text: xFormatted, tag: 'answer', value: nums.xAnswer },
+        { text: `, what is the total?`, tag: 'question' },
+      ]
+    } else {
+      // "What is the total after 3 hours?"
+      return [
+        { text: `What is the total after ` },
+        { text: xFormatted, tag: 'answer', value: nums.xAnswer },
+        { text: `?`, tag: 'question' },
+      ]
+    }
+  }
+
+  // Acquired
+  const subject = pickSubject(ctx)
   const variant = rng.nextInt(0, 1)
+
   if (variant === 0) {
     return [
-      { text: `If ${subject.toLowerCase()} gets ` },
+      { text: `If ${subject.phrase.toLowerCase()} gets ` },
       { text: xFormatted, tag: 'answer', value: nums.xAnswer },
       { text: `, what is the total?`, tag: 'question' },
     ]
@@ -202,14 +344,13 @@ function level4Sentence(ctx: GrammarContext): AnnotatedSpan[] {
   const p1 = nums.point1!
   const p2 = nums.point2!
   const xUnit = frame.xNoun.plural
-  const yUnit = frame.yNoun.plural
 
   return [
     { text: setup, tag: 'context' },
     { text: ' ' },
-    { text: `After ${p1.x} ${xUnit}, there were ${formatWithUnit(p1.y, frame.yUnit, frame.yUnitPosition)} ${yUnit}`, tag: 'point1' },
+    { text: `After ${p1.x} ${xUnit}, there were ${formatWithUnit(p1.y, frame.yUnit, frame.yUnitPosition)}`, tag: 'point1' },
     { text: '. ' },
-    { text: `After ${p2.x} ${xUnit}, there were ${formatWithUnit(p2.y, frame.yUnit, frame.yUnitPosition)} ${yUnit}`, tag: 'point2' },
+    { text: `After ${p2.x} ${xUnit}, there were ${formatWithUnit(p2.y, frame.yUnit, frame.yUnitPosition)}`, tag: 'point2' },
     { text: '. ' },
     { text: 'What equation describes this pattern?', tag: 'question' },
   ]

@@ -1,9 +1,4 @@
-import type {
-  PropositionDef,
-  ConstructionElement,
-  ConstructionState,
-  ExpectedAction,
-} from '../types'
+import type { PropositionDef } from '../types'
 import { BYRNE } from '../types'
 
 /**
@@ -73,36 +68,5 @@ export const PROP_1: PropositionDef = {
       tool: 'straightedge',
     },
   ],
-}
-
-/**
- * Validate whether the last committed element matches the expected action for a step.
- * Returns true if the step is satisfied.
- */
-export function validateStep(
-  expected: ExpectedAction,
-  state: ConstructionState,
-  lastElement: ConstructionElement,
-): boolean {
-  if (expected.type === 'compass' && lastElement.kind === 'circle') {
-    return (
-      lastElement.centerId === expected.centerId &&
-      lastElement.radiusPointId === expected.radiusPointId
-    )
-  }
-
-  if (expected.type === 'intersection' && lastElement.kind === 'point' && lastElement.origin === 'intersection') {
-    // Accept any intersection point for this step
-    return true
-  }
-
-  if (expected.type === 'straightedge' && lastElement.kind === 'segment') {
-    // Flexible on order: (from, to) or (to, from)
-    return (
-      (lastElement.fromId === expected.fromId && lastElement.toId === expected.toId) ||
-      (lastElement.fromId === expected.toId && lastElement.toId === expected.fromId)
-    )
-  }
-
-  return false
+  completionMessage: 'Equilateral triangle constructed!',
 }

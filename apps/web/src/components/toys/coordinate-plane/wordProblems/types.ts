@@ -36,6 +36,12 @@ export interface VerbEntry {
   gerund: string
 }
 
+/** A subject phrase with conjugation metadata for subject-verb agreement */
+export interface SubjectEntry {
+  phrase: string
+  conjugation: 'thirdPerson' | 'base'
+}
+
 /** A semantic frame defines a real-world context for a linear equation problem */
 export interface SemanticFrame {
   id: string
@@ -48,6 +54,8 @@ export interface SemanticFrame {
   /** "$3" (prefix) vs "3 inches" (suffix) */
   yUnitPosition: 'prefix' | 'suffix'
   xUnitPosition: 'prefix' | 'suffix'
+  /** Whether x is something you acquire (slices, bracelets) or time that elapses (hours, weeks) */
+  xRole: 'acquired' | 'elapsed'
   /** Contextually plausible slope range */
   slopeRange: { min: number; max: number }
   /** Contextually plausible intercept range */
@@ -56,8 +64,8 @@ export interface SemanticFrame {
   yRange: { min: number; max: number }
   /** Setup phrases: "At the pizza shop, ..." */
   setupPhrases: string[]
-  /** Subject phrases: "Sonia", "She", "A customer" */
-  subjectPhrases: string[]
+  /** Subject phrases with conjugation metadata: "Sonia" (3rd person), "They" (base) */
+  subjects: SubjectEntry[]
   /** Emoji representing one unit of x (shown in slope staircase) */
   emoji: string
   /** Which difficulty levels this frame supports */

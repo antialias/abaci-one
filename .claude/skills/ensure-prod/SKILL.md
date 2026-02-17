@@ -1,23 +1,31 @@
 ---
 name: ensure-prod
 description: Verifies that the latest main commit is deployed to production. Checks CI pipeline, fixbot activity, and k8s pod status. Use when you want to confirm a deploy completed or troubleshoot why prod is behind.
-allowed-tools: Bash, Read, Grep, Glob, mcp__kubernetes__kubectl_get, mcp__kubernetes__kubectl_describe, mcp__kubernetes__kubectl_logs, ToolSearch
+allowed-tools: Bash, Read, Grep, Glob, WebFetch, mcp__kubernetes__kubectl_get, mcp__kubernetes__kubectl_describe, mcp__kubernetes__kubectl_logs, ToolSearch
 ---
 
 # Ensure Main is on Prod
 
 Verify that the current HEAD of main is deployed to the production k8s cluster. If it's not, diagnose why and take corrective action.
 
-## Step 1: Compare git HEAD with prod
+## Step 1: Compare git HEAD with what's actually running on prod
 
 ```bash
 # Get current HEAD
 git rev-parse HEAD
 ```
 
-Then check what's running on prod via the Kubernetes MCP. Use `kubectl_get` to inspect the abaci-app StatefulSet in the `abaci` namespace — look for the image tag or revision label (`org.opencontainers.image.revision`).
+**IMPORTANT:** You must verify against the **actual running pods**, not just Argo CD's sync status. Argo CD's `REVISION` field reflects the git manifest revision, NOT the container image — a "Synced" app can still be running old pods if the image build hasn't finished or the rollout hasn't completed.
 
-If HEAD matches prod, report success and stop.
+Check what's actually running using **both** of these methods (run in parallel):
+
+1. **Public build-info endpoint** (most reliable — shows exactly what the running pod reports):
+   Use WebFetch on `https://abaci.one/api/build-info` and extract `git.commit` and `git.commitShort`. This also shows `environment`, `git.isDirty`, and build timestamp.
+
+2. **Pod image inspection** via Kubernetes MCP:
+   Use `kubectl_describe` on one of the abaci-app pods in the `abaci` namespace. Look at the `Image` field — the tag or digest tells you which build is running. Cross-reference with the image updater annotations if needed.
+
+**Match criteria:** HEAD matches prod when the build-info endpoint's `git.commit` equals `git rev-parse HEAD`. If they don't match, proceed to Step 2.
 
 ## Step 2: Check CI pipeline
 
@@ -67,10 +75,12 @@ Once pods are rolling, monitor via the Kubernetes MCP:
 
 Provide a clear summary:
 - Current HEAD SHA (short)
-- Prod SHA (short)
+- Prod SHA (from build-info endpoint, short)
+- Argo CD revision (short) — note if this differs from what pods are actually running
 - CI status (passed/failed/in-progress)
 - Fixbot status (if relevant)
 - Pod status
+- Any build metadata issues (e.g. environment showing "development" instead of "production", dirty flag set incorrectly)
 
 ## Edge case: fixbot committed directly to main
 

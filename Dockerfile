@@ -58,7 +58,9 @@ RUN cd apps/web && npx @pandacss/dev
 
 # Build using turbo for apps/web and its dependencies
 # Increase Node.js heap size to avoid OOM during Next.js build
+# NODE_ENV=production so generate-build-info.js reports correct environment
 ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_ENV=production
 RUN turbo build --filter=@soroban/web
 
 # Production dependencies stage - install only runtime dependencies

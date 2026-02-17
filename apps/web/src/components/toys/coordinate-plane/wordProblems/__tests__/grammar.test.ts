@@ -102,4 +102,95 @@ describe('grammar', () => {
       }
     }
   })
+
+  // ── Regression tests for elapsed (time-based) frames ──────────
+
+  describe('elapsed frame grammar', () => {
+    const roadTrip = FRAMES.find(f => f.id === 'road-trip')!
+    const plantGrowth = FRAMES.find(f => f.id === 'plant-growth')!
+    const savings = FRAMES.find(f => f.id === 'savings')!
+
+    it('rate sentence does not use x-unit as subject', () => {
+      // Across many seeds, no road-trip rate sentence should say "Each hour travels"
+      for (let seed = 0; seed < 50; seed++) {
+        const rng = new SeededRandom(seed)
+        const spans = expandGrammar(roadTrip, { m: 42, b: 38, xAnswer: 3, yTarget: 164 }, 3, rng)
+        const text = spans.map(s => s.text).join('')
+        expect(text).not.toMatch(/Each hour/i)
+        expect(text).not.toMatch(/Hours travel/i)
+      }
+    })
+
+    it('question sentence does not say "get hours"', () => {
+      for (let seed = 0; seed < 50; seed++) {
+        const rng = new SeededRandom(seed)
+        const spans = expandGrammar(roadTrip, { m: 42, b: 38, xAnswer: 3, yTarget: 164 }, 3, rng)
+        const text = spans.map(s => s.text).join('')
+        expect(text).not.toContain('get hours')
+        expect(text).not.toContain('get weeks')
+      }
+    })
+
+    it('base sentence does not say "already has miles"', () => {
+      for (let seed = 0; seed < 50; seed++) {
+        const rng = new SeededRandom(seed)
+        const spans = expandGrammar(roadTrip, { m: 42, b: 38, xAnswer: 3, yTarget: 164 }, 3, rng)
+        const text = spans.map(s => s.text).join('')
+        expect(text).not.toContain('already has')
+      }
+    })
+
+    it('uses natural phrasing for plant-growth rate', () => {
+      for (let seed = 0; seed < 50; seed++) {
+        const rng = new SeededRandom(seed)
+        const spans = expandGrammar(plantGrowth, { m: 3, b: 2, xAnswer: 4, yTarget: 14 }, 3, rng)
+        const text = spans.map(s => s.text).join('')
+        expect(text).not.toMatch(/Each week grows/i)
+        expect(text).not.toMatch(/Weeks grow/i)
+      }
+    })
+
+    it('savings level 2 question uses "after" phrasing', () => {
+      for (let seed = 0; seed < 50; seed++) {
+        const rng = new SeededRandom(seed)
+        const spans = expandGrammar(savings, { m: 10, b: 0, xAnswer: 5, yTarget: 50 }, 2, rng)
+        const text = spans.map(s => s.text).join('')
+        // Should not say "gets 5 weeks"
+        expect(text).not.toContain('gets 5 weeks')
+        expect(text).not.toContain('gets 5 week')
+      }
+    })
+
+    it('road-trip subject-verb agreement with "They"', () => {
+      // "They" should get base form ("travel" not "travels")
+      let sawThey = false
+      for (let seed = 0; seed < 200; seed++) {
+        const rng = new SeededRandom(seed)
+        const spans = expandGrammar(roadTrip, { m: 42, b: 38, xAnswer: 3, yTarget: 164 }, 3, rng)
+        const text = spans.map(s => s.text).join('')
+        if (text.includes('They ') || text.includes('they ')) {
+          sawThey = true
+          // "They" should never pair with "travels" or "needs"
+          expect(text).not.toMatch(/[Tt]hey travels/i)
+          expect(text).not.toMatch(/[Tt]hey needs/i)
+        }
+      }
+      expect(sawThey).toBe(true)
+    })
+  })
+
+  describe('level 4 duplicate unit fix', () => {
+    it('does not duplicate yUnit in level 4 sentences', () => {
+      const plantGrowth = FRAMES.find(f => f.id === 'plant-growth')!
+      for (let seed = 0; seed < 20; seed++) {
+        const rng = new SeededRandom(seed)
+        const nums = { m: 2, b: 3, xAnswer: 4, yTarget: 11, point1: { x: 1, y: 5 }, point2: { x: 3, y: 9 } }
+        const spans = expandGrammar(plantGrowth, nums, 4, rng)
+        const text = spans.map(s => s.text).join('')
+        // "5 inches inches" should never appear
+        expect(text).not.toMatch(/inches\s+inches/i)
+        expect(text).not.toMatch(/miles\s+miles/i)
+      }
+    })
+  })
 })

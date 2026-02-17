@@ -962,7 +962,9 @@
       "WebFetch(domain:www.wilbourhall.org)",
       "WebFetch(domain:www.claymath.org)",
       "WebFetch(domain:aleph0.clarku.edu)",
-      "Skill(add-tts)"
+      "Skill(add-tts)",
+      "Skill(ensure-prod)",
+      "WebFetch(domain:www.thecorestandards.org)"
     ],
     "deny": [],
     "ask": []

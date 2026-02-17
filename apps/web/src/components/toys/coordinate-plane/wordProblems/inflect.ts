@@ -1,4 +1,4 @@
-import type { NounEntry, VerbEntry } from './types'
+import type { NounEntry, VerbEntry, SubjectEntry } from './types'
 
 /** Pick singular or plural based on count */
 export function pluralize(noun: NounEntry, count: number): string {
@@ -13,6 +13,11 @@ export function conjugate3p(verb: VerbEntry): string {
 /** Get base/infinitive form */
 export function conjugateBase(verb: VerbEntry): string {
   return verb.base
+}
+
+/** Conjugate a verb to agree with a subject entry */
+export function conjugateFor(verb: VerbEntry, subject: SubjectEntry): string {
+  return subject.conjugation === 'thirdPerson' ? verb.thirdPerson : verb.base
 }
 
 /**
