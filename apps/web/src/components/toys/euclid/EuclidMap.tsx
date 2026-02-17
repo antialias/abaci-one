@@ -54,34 +54,111 @@ const STATUS_STYLES: Record<NodeStatus, {
 }
 
 // ---------------------------------------------------------------------------
-// Edge path helper — convert dagre routing points to SVG path
+// Edge helpers — simplify, trim to node borders, smooth Catmull-Rom spline
 // ---------------------------------------------------------------------------
 
-function edgeToPath(edge: LayoutEdge): string {
-  const pts = edge.points
+type Pt = { x: number; y: number }
+
+/**
+ * Remove near-collinear intermediate points (perpendicular distance < epsilon).
+ * Keeps first and last points unconditionally.
+ */
+function simplifyPoints(pts: Pt[], epsilon: number): Pt[] {
+  if (pts.length <= 2) return pts
+  const result = [pts[0]]
+  for (let i = 1; i < pts.length - 1; i++) {
+    const prev = result[result.length - 1]
+    const curr = pts[i]
+    const next = pts[i + 1]
+    const dx = next.x - prev.x
+    const dy = next.y - prev.y
+    const len = Math.sqrt(dx * dx + dy * dy)
+    if (len === 0) continue
+    const dist = Math.abs((curr.x - prev.x) * dy - (curr.y - prev.y) * dx) / len
+    if (dist > epsilon) {
+      result.push(curr)
+    }
+  }
+  result.push(pts[pts.length - 1])
+  return result
+}
+
+/**
+ * Find where a ray from a rect's center toward an external point
+ * intersects the rect border. Handles all 4 sides.
+ */
+function rectBorderPoint(
+  cx: number, cy: number,
+  w: number, h: number,
+  px: number, py: number,
+): Pt {
+  const dx = px - cx
+  const dy = py - cy
+  if (dx === 0 && dy === 0) return { x: cx, y: cy + h / 2 }
+
+  const halfW = w / 2
+  const halfH = h / 2
+  let t = Infinity
+
+  // Side intersections (left/right)
+  if (dx !== 0) {
+    const tSide = (dx > 0 ? halfW : -halfW) / dx
+    if (tSide > 0 && Math.abs(dy * tSide) <= halfH) t = Math.min(t, tSide)
+  }
+  // Top/bottom intersections
+  if (dy !== 0) {
+    const tVert = (dy > 0 ? halfH : -halfH) / dy
+    if (tVert > 0 && Math.abs(dx * tVert) <= halfW) t = Math.min(t, tVert)
+  }
+
+  return { x: cx + dx * t, y: cy + dy * t }
+}
+
+/**
+ * Trim edge endpoints to node borders using ray-rect intersection.
+ * Handles edges exiting/entering from any side of the node.
+ */
+function trimToBorders(
+  pts: Pt[],
+  srcX: number, srcY: number,
+  tgtX: number, tgtY: number,
+): Pt[] {
+  if (pts.length < 2) return pts
+  const result = pts.map(p => ({ ...p }))
+
+  // Trim start → source border (ray from center toward next point)
+  result[0] = rectBorderPoint(srcX, srcY, NODE_W, NODE_H, result[1].x, result[1].y)
+
+  // Trim end → target border (ray from center toward prev point)
+  const last = result.length - 1
+  result[last] = rectBorderPoint(tgtX, tgtY, NODE_W, NODE_H, result[last - 1].x, result[last - 1].y)
+
+  return result
+}
+
+/**
+ * Convert points to SVG path using Catmull-Rom → cubic bezier.
+ */
+function pointsToPath(pts: Pt[]): string {
   if (pts.length === 0) return ''
   if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`
   if (pts.length === 2) {
     return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`
   }
-  // Use a smooth cubic bezier through the routing points
+
   let d = `M ${pts[0].x} ${pts[0].y}`
-  for (let i = 1; i < pts.length - 1; i++) {
-    const prev = pts[i - 1]
-    const curr = pts[i]
-    const next = pts[i + 1]
-    const cpx1 = (prev.x + curr.x) / 2
-    const cpy1 = curr.y
-    const cpx2 = (curr.x + next.x) / 2
-    const cpy2 = curr.y
-    d += ` C ${cpx1} ${cpy1}, ${cpx2} ${cpy2}, ${next.x} ${next.y}`
-  }
-  // If only 3 points, the loop above handles it. For 2+ intermediate points,
-  // we get a smooth path. For exactly 2 points already handled above.
-  if (pts.length === 3) {
-    // Override with a simple cubic bezier
-    const [p0, p1, p2] = pts
-    d = `M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[0]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? pts[pts.length - 1]
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
   }
   return d
 }
@@ -237,10 +314,31 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
             margin: '0 auto',
           }}
         >
-          {/* Edges — dagre-routed paths */}
+          {/* Arrowhead marker */}
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="4"
+              markerHeight="3"
+              refX="3.5"
+              refY="1.5"
+              orient="auto"
+            >
+              <polygon points="0 0, 4 1.5, 0 3" fill="#cbd5e1" fillOpacity={0.6} />
+            </marker>
+          </defs>
+
+          {/* Edges — simplified, trimmed, with arrowheads */}
           {edges.map((edge) => {
-            const d = edgeToPath(edge)
+            const srcPos = layout.get(edge.from)
+            const tgtPos = layout.get(edge.to)
+            if (!srcPos || !tgtPos) return null
+
+            const trimmed = trimToBorders(edge.points, srcPos.x, srcPos.y, tgtPos.x, tgtPos.y)
+            const simplified = simplifyPoints(trimmed, 4)
+            const d = pointsToPath(simplified)
             if (!d) return null
+
             return (
               <path
                 key={`${edge.from}-${edge.to}`}
@@ -248,8 +346,9 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                 d={d}
                 fill="none"
                 stroke="#cbd5e1"
-                strokeWidth={1.5}
+                strokeWidth={3}
                 strokeOpacity={0.4}
+                markerEnd="url(#arrowhead)"
               />
             )
           })}
@@ -277,6 +376,15 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                 onMouseEnter={() => setHoveredNode(id)}
                 onMouseLeave={() => setHoveredNode(null)}
               >
+                {/* Opaque background so edges are occluded behind node */}
+                <rect
+                  x={pos.x - NODE_W / 2}
+                  y={pos.y - NODE_H / 2}
+                  width={NODE_W}
+                  height={NODE_H}
+                  rx={NODE_RX}
+                  fill="#FAFAF0"
+                />
                 <rect
                   x={pos.x - NODE_W / 2}
                   y={pos.y - NODE_H / 2}
