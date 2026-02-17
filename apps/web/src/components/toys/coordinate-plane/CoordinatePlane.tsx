@@ -198,6 +198,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
     challengeVersion,
     summonProblem,
     dismissProblem,
+    handleAnswerCorrect,
     phase: challengePhase,
     problem: challengeProblem,
   } = useChallenge({
@@ -612,6 +613,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
           isDark={isDark}
           onNewProblem={() => summonProblem(challenge?.difficulty ?? 3)}
           onDismiss={dismissProblem}
+          onAnswerCorrect={() => handleAnswerCorrect(challenge?.difficulty ?? 3)}
         />
       )}
 

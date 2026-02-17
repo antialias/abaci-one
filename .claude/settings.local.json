@@ -961,7 +961,8 @@
       "WebFetch(domain:archive.org)",
       "WebFetch(domain:www.wilbourhall.org)",
       "WebFetch(domain:www.claymath.org)",
-      "WebFetch(domain:aleph0.clarku.edu)"
+      "WebFetch(domain:aleph0.clarku.edu)",
+      "Skill(add-tts)"
     ],
     "deny": [],
     "ask": []

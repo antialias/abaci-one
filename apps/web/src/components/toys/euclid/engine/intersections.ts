@@ -2,6 +2,7 @@ import Flatten from '@flatten-js/core'
 import type {
   ConstructionState,
   ConstructionElement,
+  ConstructionPoint,
   ConstructionCircle,
   ConstructionSegment,
   IntersectionCandidate,
@@ -87,7 +88,7 @@ export function findNewIntersections(
   if (newElement.kind === 'point') return []
 
   const statePoints = state.elements
-    .filter((e): e is { kind: 'point'; x: number; y: number } => e.kind === 'point')
+    .filter((e): e is ConstructionPoint => e.kind === 'point')
     .map(p => ({ x: p.x, y: p.y }))
 
   const results: IntersectionCandidate[] = []

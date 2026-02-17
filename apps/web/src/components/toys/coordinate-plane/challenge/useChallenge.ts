@@ -86,15 +86,7 @@ export function useChallenge({
 
     if (correct) {
       challengeRef.current.attempts += 1
-      updatePhase('celebrating')
-
-      // After celebration, start reveal
-      setTimeout(() => {
-        if (challengeRef.current.phase === 'celebrating') {
-          updatePhase('revealing')
-          startRevealSequence()
-        }
-      }, CELEBRATE_DURATION_MS)
+      updatePhase('answering')
     }
   }, [rulerVersion, updatePhase]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -122,11 +114,28 @@ export function useChallenge({
     return () => clearInterval(interval)
   }, [updatePhase, onComplete])
 
+  /** Called when the kid enters the correct x answer — fires onComplete and summons next problem */
+  const handleAnswerCorrect = useCallback((difficulty: DifficultyLevel = 3) => {
+    const problem = challengeRef.current.problem
+    if (!problem) return
+
+    onComplete?.(problem, challengeRef.current.attempts)
+
+    // Brief celebration, then summon next problem
+    updatePhase('celebrating')
+    setTimeout(() => {
+      if (challengeRef.current.phase === 'celebrating') {
+        summonProblem(difficulty)
+      }
+    }, CELEBRATE_DURATION_MS)
+  }, [updatePhase, onComplete, summonProblem])
+
   return {
     challengeRef,
     challengeVersion,
     summonProblem,
     dismissProblem,
+    handleAnswerCorrect,
     phase: challengeRef.current.phase,
     problem: challengeRef.current.problem,
   }

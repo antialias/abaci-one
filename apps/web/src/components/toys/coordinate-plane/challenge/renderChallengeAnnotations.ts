@@ -55,7 +55,7 @@ export function renderChallengeAnnotations(
 
   // ── Constraint line: dashed horizontal at y = target ──
   const showConstraint = phase === 'solving' || phase === 'checking'
-    || phase === 'celebrating' || phase === 'revealing' || phase === 'revealed'
+    || phase === 'answering' || phase === 'celebrating' || phase === 'revealing' || phase === 'revealed'
 
   if (showConstraint && problem.answer.solveFor !== 'equation') {
     const yTarget = problem.answer.y
@@ -101,6 +101,12 @@ export function renderChallengeAnnotations(
       ctx.fillText(labelText, labelX, labelY)
       ctx.restore()
     }
+  }
+
+  // ── During answering phase, show only the slope staircase (so kid can count emojis) ──
+  if (phase === 'answering') {
+    renderSlopeStaircase(ctx, m, b, problem, toScreen, isDark)
+    return
   }
 
   // ── Annotation markers during reveal ──

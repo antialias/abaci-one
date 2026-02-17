@@ -238,21 +238,24 @@ export const TOOL_REQUEST_MORE_TIME: RealtimeTool = {
 export function makeIdentifyCallerTool(
   players: Array<{ id: string; name: string; emoji: string }>,
 ): RealtimeTool {
+  const nameList = players.map(p => p.name).join(', ')
   return {
     type: 'function',
     name: 'identify_caller',
     description:
-      'Call this when you figure out which child is on the phone, or when a different child takes over the phone. Match their name to the available players list and pass the player_id. This loads their profile so you can personalize the conversation. You can call this again if a sibling or friend takes over mid-call.',
+      `Call this when you learn a child's name, or when a different child takes over the phone. ` +
+      `Pass your best guess of the name — it will be fuzzy-matched. Don't hesitate to call this even if you're not 100% sure of the spelling. ` +
+      `Known names: ${nameList}. ` +
+      `You can call this again anytime a different kid takes over.`,
     parameters: {
       type: 'object',
       properties: {
-        player_id: {
+        name: {
           type: 'string',
-          enum: players.map(p => p.id),
-          description: 'The ID of the matched player from the available players list',
+          description: 'The name the child said (your best guess — fuzzy matching will handle misspellings)',
         },
       },
-      required: ['player_id'],
+      required: ['name'],
     },
   }
 }

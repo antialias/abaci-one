@@ -6,6 +6,7 @@ export type ChallengePhase =
   | 'presenting'
   | 'solving'
   | 'checking'
+  | 'answering'
   | 'celebrating'
   | 'revealing'
   | 'revealed'

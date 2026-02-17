@@ -24,6 +24,12 @@ const toys = [
     name: 'Dice Tray',
     description: 'Throw colorful 3D dice with physics. Add multiple dice, roll them all, and see the sum.',
   },
+  {
+    href: '/toys/euclid',
+    icon: '📐',
+    name: 'Euclid',
+    description: 'Compass and straightedge. Construct geometry from first principles.',
+  },
 ]
 
 export default function ToysPage() {

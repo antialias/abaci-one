@@ -9,6 +9,66 @@ import { resolveMode, type ModeId, type ModeContext, type SessionActivity } from
 
 export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'transferring' | 'error'
 
+// ── Levenshtein fuzzy matching for identify_caller ──────────────────────────
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length
+  const n = b.length
+  const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i)
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0]
+    dp[0] = i
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j]
+      dp[j] = a[i - 1] === b[j - 1]
+        ? prev
+        : 1 + Math.min(prev, dp[j], dp[j - 1])
+      prev = temp
+    }
+  }
+  return dp[n]
+}
+
+/**
+ * Fuzzy-match an input name against available players.
+ * Returns the best match if the distance is reasonable, or null.
+ */
+function fuzzyMatchPlayer(
+  input: string,
+  players: Array<{ id: string; name: string; emoji: string }>,
+): { id: string; name: string } | null {
+  if (players.length === 0) return null
+  const norm = input.toLowerCase().trim()
+  if (!norm) return null
+
+  // Exact match first (case-insensitive)
+  const exact = players.find(p => p.name.toLowerCase() === norm)
+  if (exact) return exact
+
+  // Prefix match (typing "son" matches "Sonia")
+  const prefixMatches = players.filter(p => p.name.toLowerCase().startsWith(norm))
+  if (prefixMatches.length === 1) return prefixMatches[0]
+
+  // Levenshtein distance — pick the closest
+  let bestDist = Infinity
+  let bestPlayer: { id: string; name: string } | null = null
+  for (const p of players) {
+    const dist = levenshtein(norm, p.name.toLowerCase())
+    if (dist < bestDist) {
+      bestDist = dist
+      bestPlayer = p
+    }
+  }
+
+  // Accept if distance is at most ~40% of the longer string's length
+  if (bestPlayer) {
+    const maxLen = Math.max(norm.length, bestPlayer.name.length)
+    if (bestDist <= Math.ceil(maxLen * 0.4)) return bestPlayer
+  }
+
+  return null
+}
+
 /** A single mode transition recorded for debug overlay. */
 export interface ModeTransition {
   from: ModeId | 'idle'
@@ -1492,15 +1552,41 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             let playerId: string
             try {
               const args = JSON.parse(msg.arguments || '{}')
-              playerId = args.player_id
-              if (typeof playerId !== 'string' || !playerId) throw new Error('invalid')
+              // Support both new name-based and legacy player_id-based calls
+              const inputName = args.name as string | undefined
+              const inputId = args.player_id as string | undefined
+
+              if (inputName && typeof inputName === 'string') {
+                // Fuzzy match against available players using Levenshtein distance
+                const match = fuzzyMatchPlayer(inputName, availablePlayersRef.current)
+                if (!match) {
+                  dc.send(JSON.stringify({
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: msg.call_id,
+                      output: JSON.stringify({
+                        success: false,
+                        error: `No matching player found for "${inputName}". Known names: ${availablePlayersRef.current.map(p => p.name).join(', ')}. Ask the child to repeat their name.`,
+                      }),
+                    },
+                  }))
+                  dc.send(JSON.stringify({ type: 'response.create' }))
+                  return
+                }
+                playerId = match.id
+              } else if (inputId && typeof inputId === 'string') {
+                playerId = inputId
+              } else {
+                throw new Error('invalid')
+              }
             } catch {
               dc.send(JSON.stringify({
                 type: 'conversation.item.create',
                 item: {
                   type: 'function_call_output',
                   call_id: msg.call_id,
-                  output: JSON.stringify({ success: false, error: 'Invalid player_id' }),
+                  output: JSON.stringify({ success: false, error: 'Pass the name you heard from the child.' }),
                 },
               }))
               dc.send(JSON.stringify({ type: 'response.create' }))

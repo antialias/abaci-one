@@ -513,17 +513,25 @@ function buildCallOpeningBlock(
   const childSection = buildChildSection(childProfile, profileFailed)
   if (childSection) {
     parts.push(childSection.trim())
-  } else if (!profileFailed && availablePlayers && availablePlayers.length > 0) {
-    const playerList = availablePlayers
-      .map(p => `  - ${p.emoji} ${p.name} (id: ${p.id})`)
-      .join('\n')
-    parts.push(`WHO IS CALLING:
-You don't know who this child is yet. These are the kids who might call:
-${playerList}
+  }
 
-IMPORTANT: Early in the conversation (first 2-3 exchanges), casually ask who you're talking to.
-Keep it natural: "Hey! Who's this?" When they tell you their name, match it to the list above
-and call identify_caller with the matching player_id. If no match, just continue without it.`)
+  // Always show available players for identification/switching
+  if (availablePlayers && availablePlayers.length > 0) {
+    const nameList = availablePlayers.map(p => p.name).join(', ')
+    if (!childSection) {
+      parts.push(
+        `WHO IS CALLING:\n` +
+        `You don't know who this child is yet. Known kids: ${nameList}.\n\n` +
+        `Early in the conversation, casually ask who you're talking to. ` +
+        `When they tell you their name, call identify_caller with the name they said. ` +
+        `Don't worry about exact spelling — just pass your best guess.`,
+      )
+    } else {
+      parts.push(
+        `PLAYER SWITCHING: If a different child takes over the phone, call identify_caller with their name. ` +
+        `Known kids: ${nameList}.`,
+      )
+    }
   }
 
   return parts.join('\n\n')

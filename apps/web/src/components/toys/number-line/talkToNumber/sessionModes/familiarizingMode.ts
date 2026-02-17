@@ -23,16 +23,13 @@ export const familiarizingMode: AgentMode = {
 
     // Child identification / gathering instructions
     if (!ctx.childProfile && !ctx.profileFailed && ctx.availablePlayers.length > 0) {
-      const playerList = ctx.availablePlayers
-        .map(p => `  - ${p.emoji} ${p.name} (id: ${p.id})`)
-        .join('\n')
+      const nameList = ctx.availablePlayers.map(p => p.name).join(', ')
       parts.push(
         `WHO IS CALLING:\n` +
-        `You don't know who this child is yet. These are the kids who might call:\n` +
-        `${playerList}\n\n` +
+        `You don't know who this child is yet. Known kids: ${nameList}.\n\n` +
         `IMPORTANT: Early in the conversation (first 2-3 exchanges), casually ask who you're talking to.\n` +
-        `Keep it natural: "Hey! Who's this?" When they tell you their name, match it to the list above\n` +
-        `and call identify_caller with the matching player_id. If no match, just continue without it.`,
+        `Keep it natural: "Hey! Who's this?" When they tell you their name, call identify_caller with the name they said.\n` +
+        `Don't worry about exact spelling — just pass your best guess. If the name doesn't match anyone, just continue without it.`,
       )
     } else if (ctx.profileFailed) {
       parts.push(
@@ -62,7 +59,7 @@ export const familiarizingMode: AgentMode = {
 
   getTools: (ctx) => {
     const tools = [TOOL_LOOK_AT, TOOL_INDICATE, TOOL_HANG_UP]
-    if (!ctx.childProfile && !ctx.profileFailed && ctx.availablePlayers.length > 0) {
+    if (ctx.availablePlayers.length > 0) {
       tools.unshift(makeIdentifyCallerTool(ctx.availablePlayers))
     }
     return tools

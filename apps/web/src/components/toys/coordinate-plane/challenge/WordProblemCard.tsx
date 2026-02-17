@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import type { WordProblem, AnnotatedSpan, AnnotationTag } from '../wordProblems/types'
 import type { ChallengePhase, CardPlacement } from './types'
+import { KidNumberInput, useKidNumberInput, type FeedbackState } from '../../../ui/KidNumberInput'
+import { useIsTouchDevice, useHasPhysicalKeyboard } from '../../../../hooks/useDeviceCapabilities'
 
 /** Colors for annotation underlines, keyed by tag */
 const TAG_COLORS: Partial<Record<AnnotationTag, string>> = {
@@ -45,6 +48,7 @@ interface WordProblemCardProps {
   isDark: boolean
   onNewProblem: () => void
   onDismiss: () => void
+  onAnswerCorrect?: () => void
 }
 
 export function WordProblemCard({
@@ -55,8 +59,8 @@ export function WordProblemCard({
   isDark,
   onNewProblem,
   onDismiss,
+  onAnswerCorrect,
 }: WordProblemCardProps) {
-
   const isRevealing = phase === 'revealing' || phase === 'revealed'
   const isCelebrating = phase === 'celebrating'
 
@@ -187,6 +191,68 @@ export function WordProblemCard({
           Position the ruler to match this equation
         </div>
       )}
+
+      {/* Answering phase: ask for x count using KidNumberInput */}
+      {phase === 'answering' && (
+        <AnswerInput
+          problem={problem}
+          onCorrect={onAnswerCorrect}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Sub-component for the answering phase — uses KidNumberInput with auto-validation */
+function AnswerInput({
+  problem,
+  onCorrect,
+}: {
+  problem: WordProblem
+  onCorrect?: () => void
+}) {
+  const [feedback, setFeedback] = useState<FeedbackState>('none')
+  const isTouchDevice = useIsTouchDevice()
+  const hasPhysicalKeyboard = useHasPhysicalKeyboard()
+  const showKeypad = isTouchDevice && hasPhysicalKeyboard !== true
+
+  const { state, actions } = useKidNumberInput({
+    correctAnswer: problem.answer.x,
+    onCorrect: () => {
+      setFeedback('correct')
+      setTimeout(() => onCorrect?.(), 600)
+    },
+    onIncorrect: () => {
+      setFeedback('incorrect')
+      setTimeout(() => setFeedback('none'), 400)
+    },
+  })
+
+  return (
+    <div
+      data-element="answer-input-section"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        alignItems: 'center',
+      }}
+    >
+      <div
+        data-element="answer-prompt"
+        style={{ fontSize: 13, fontWeight: 500, textAlign: 'center' }}
+      >
+        {problem.emoji} How many {problem.axisLabels.x}?
+      </div>
+      <KidNumberInput
+        value={state.value}
+        onDigit={actions.addDigit}
+        onBackspace={actions.backspace}
+        feedback={feedback}
+        showKeypad={showKeypad}
+        keypadMode="inline"
+        displaySize="sm"
+      />
     </div>
   )
 }

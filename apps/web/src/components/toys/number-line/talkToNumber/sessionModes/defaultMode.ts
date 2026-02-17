@@ -18,9 +18,7 @@ export const defaultMode: AgentMode = {
       ctx.scenario,
       ctx.childProfile,
       ctx.profileFailed,
-      !ctx.childProfile && !ctx.profileFailed && ctx.availablePlayers.length > 0
-        ? ctx.availablePlayers
-        : undefined,
+      ctx.availablePlayers.length > 0 ? ctx.availablePlayers : undefined,
       ctx.sessionActivity,
     ),
 

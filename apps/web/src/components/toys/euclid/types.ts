@@ -94,6 +94,29 @@ export type StraightedgePhase =
 
 export type ActiveTool = 'compass' | 'straightedge'
 
+// ── Tutorial hints ─────────────────────────────────────────────────
+
+export type TutorialHint =
+  | { type: 'point'; pointId: string }
+  | { type: 'arrow'; fromId: string; toId: string }
+  | { type: 'sweep'; centerId: string; radiusPointId: string }
+  | { type: 'candidates' }
+  | { type: 'none' }
+
+export interface TutorialSubStep {
+  /** Short display text */
+  instruction: string
+  /** Longer conversational text for TTS */
+  speech: string
+  /** Visual hint rendered on canvas */
+  hint: TutorialHint
+  /**
+   * Compass/straightedge phase tag that triggers advancement to next sub-step.
+   * null = terminal sub-step (advanced when the proposition step completes).
+   */
+  advanceOn: string | null
+}
+
 // ── Proposition stepper ────────────────────────────────────────────
 
 export type ExpectedAction =
@@ -106,6 +129,8 @@ export interface PropositionStep {
   expected: ExpectedAction
   /** Element IDs to highlight as hints */
   highlightIds: string[]
+  /** Tool to auto-select for this step (null = no tool needed, e.g. tap intersection) */
+  tool: ActiveTool | null
 }
 
 export interface PropositionDef {
