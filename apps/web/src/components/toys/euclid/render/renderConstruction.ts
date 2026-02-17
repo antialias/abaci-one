@@ -52,12 +52,17 @@ export function renderConstruction(
   isComplete?: boolean,
   resultSegments?: Array<{ fromId: string; toId: string }>,
   hiddenElementIds?: Set<string>,
+  transparentBg?: boolean,
 ) {
   const ppu = viewport.pixelsPerUnit
 
   // 1. Background
-  ctx.fillStyle = BG_COLOR
-  ctx.fillRect(0, 0, w, h)
+  if (transparentBg) {
+    ctx.clearRect(0, 0, w, h)
+  } else {
+    ctx.fillStyle = BG_COLOR
+    ctx.fillRect(0, 0, w, h)
+  }
 
   // 2. Completed circles
   for (const circle of getAllCircles(state)) {

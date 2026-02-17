@@ -977,7 +977,8 @@
       "WebFetch(domain:webspace.ship.edu)",
       "WebFetch(domain:www.math.uga.edu)",
       "WebFetch(domain:www.cs.umb.edu)",
-      "WebFetch(domain:erikbrinkman.github.io)"
+      "WebFetch(domain:erikbrinkman.github.io)",
+      "WebFetch(domain:snyk.io)"
     ],
     "deny": [],
     "ask": []

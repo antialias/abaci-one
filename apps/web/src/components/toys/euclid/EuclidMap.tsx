@@ -17,10 +17,12 @@ import type { NodeStatus, LayoutEdge } from './data/propositionGraph'
 
 const NODE_W = 130
 const NODE_H = 48   // layout computation height (matches pre-computed layout)
-const RENDER_H = 108 // rendered height (room for diagram + text)
+const RENDER_H = 120 // rendered height (room for diagram + text)
 const Y_SCALE = 1.5  // stretch Y to add vertical breathing room between taller nodes
 const NODE_RX = 8
 const ICON_SIZE = 44 // geometric thumbnail area
+const PREVIEW_THUMB_W = 100 // real construction preview width (wider to match canvas aspect ratio)
+const PREVIEW_THUMB_H = 56  // real construction preview height
 
 const STATUS_STYLES: Record<NodeStatus, {
   fill: string
@@ -60,6 +62,7 @@ const STATUS_STYLES: Record<NodeStatus, {
 // Geometric thumbnails per proposition / thematic block
 // ---------------------------------------------------------------------------
 
+import { usePropPreviews } from './render/usePropPreviews'
 import type { ThematicBlock } from './data/book1'
 
 /** Subtle accent colors per thematic block — muted but distinctive. */
@@ -393,6 +396,7 @@ interface EuclidMapProps {
 export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
   const [showAll, setShowAll] = useState(false)
   const [hoveredNode, setHoveredNode] = useState<number | null>(null)
+  const previews = usePropPreviews()
 
   const completedCount = completed.size
   const totalImplemented = IMPLEMENTED_PROPS.size
@@ -593,7 +597,8 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
             // Vertical layout: thumbnail | number | title lines
             const topY = pos.y - RENDER_H / 2
             const thumbCenterY = topY + 5 // top of thumbnail area
-            const numberY = topY + ICON_SIZE + 12
+            const thumbH = previews.has(id) ? PREVIEW_THUMB_H : ICON_SIZE
+            const numberY = topY + thumbH + 12
             const titleStartY = numberY + 13
 
             return (
@@ -631,12 +636,21 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                   strokeDasharray={style.strokeDash}
                 />
 
-                {/* Geometric thumbnail */}
-                {prop && (
+                {/* Geometric thumbnail — real construction preview or generic icon */}
+                {prop && (previews.get(id) ? (
+                  <image
+                    href={previews.get(id)}
+                    x={pos.x - PREVIEW_THUMB_W / 2}
+                    y={thumbCenterY}
+                    width={PREVIEW_THUMB_W}
+                    height={PREVIEW_THUMB_H}
+                    preserveAspectRatio="xMidYMid meet"
+                  />
+                ) : (
                   <g transform={`translate(${pos.x - ICON_SIZE / 2}, ${thumbCenterY})`}>
                     <PropThumbnail propId={id} block={prop.block} color={style.textColor} />
                   </g>
-                )}
+                ))}
 
                 {/* Checkmark for completed */}
                 {status === 'completed' && (
