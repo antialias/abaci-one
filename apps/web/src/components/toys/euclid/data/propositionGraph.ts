@@ -2,12 +2,13 @@
  * Proposition dependency graph — DAG computation + layout for the tech tree.
  *
  * Built on top of book1.ts (single source of truth for all 48 propositions).
- * Uses dagre for proper Sugiyama-style layered layout and transitive
+ * Uses d3-dag with optimal crossing minimization (ILP-based) and transitive
  * reduction to remove redundant edges.
  */
 
-import dagre from '@dagrejs/dagre'
+import { graphStratify, sugiyama, decrossOpt, coordSimplex, layeringSimplex } from 'd3-dag'
 import { propositions, getPrerequisites, getDependents, getProposition, getAllPrerequisites } from './book1'
+import { PRECOMPUTED_NODES, PRECOMPUTED_EDGES } from './book1Layout'
 
 // ---------------------------------------------------------------------------
 // Which propositions are playable (have interactive implementations)
@@ -160,7 +161,7 @@ function transitiveReduction(
 }
 
 // ---------------------------------------------------------------------------
-// Layout via dagre
+// Layout via d3-dag (optimal crossing minimization)
 // ---------------------------------------------------------------------------
 
 export interface NodeLayout {
@@ -170,7 +171,7 @@ export interface NodeLayout {
 }
 
 /**
- * Edge with optional routing points from dagre.
+ * Edge with routing points for SVG rendering.
  */
 export interface LayoutEdge {
   from: number
@@ -207,8 +208,8 @@ function computeLevels(): Map<number, number> {
 const PROP_LEVELS = computeLevels()
 
 /**
- * Compute layout using dagre (proper Sugiyama algorithm) with transitive
- * reduction to minimize edge clutter.
+ * Compute layout using d3-dag Sugiyama algorithm with ILP-based optimal
+ * crossing minimization and transitive reduction.
  *
  * Returns both node positions and routed edge paths.
  */
@@ -219,69 +220,69 @@ export function computeLayout(visibleIds: number[]): {
   const nodes = new Map<number, NodeLayout>()
   if (visibleIds.length === 0) return { nodes, edges: [] }
 
-  // Compute transitive reduction edges
+  // For the full 48-node view, use pre-computed optimal layout
+  // (decrossOpt ILP takes ~4 min — too slow for runtime)
+  const allIds = propositions.map(p => p.id)
+  if (visibleIds.length === allIds.length &&
+      visibleIds.every((id, i) => id === allIds[i])) {
+    for (const id of visibleIds) {
+      const pos = PRECOMPUTED_NODES[id]
+      if (pos) nodes.set(id, pos)
+    }
+    return { nodes, edges: PRECOMPUTED_EDGES }
+  }
+
+  // For smaller subsets, compute layout dynamically with decrossOpt
   const reducedEdges = transitiveReduction(visibleIds)
 
-  // Build dagre graph
-  const g = new dagre.graphlib.Graph()
-  g.setGraph({
-    rankdir: 'TB',
-    nodesep: 24,
-    ranksep: 60,
-    edgesep: 12,
-    marginx: 20,
-    marginy: 20,
-  })
-  g.setDefaultEdgeLabel(() => ({}))
-
+  // Build parent map for graphStratify
+  const visibleSet = new Set(visibleIds)
+  const parentMap = new Map<string, string[]>()
   for (const id of visibleIds) {
-    g.setNode(String(id), { width: NODE_W, height: NODE_H })
+    parentMap.set(String(id), [])
   }
-
   for (const { from, to } of reducedEdges) {
-    g.setEdge(String(from), String(to))
+    if (visibleSet.has(from) && visibleSet.has(to)) {
+      parentMap.get(String(to))!.push(String(from))
+    }
   }
 
-  // Run dagre layout
-  dagre.layout(g)
+  const stratData = visibleIds.map(id => ({
+    id: String(id),
+    parentIds: parentMap.get(String(id))!,
+  }))
+
+  const dag = graphStratify()(stratData)
+
+  const layout = sugiyama()
+    .layering(layeringSimplex())
+    .decross(decrossOpt())
+    .coord(coordSimplex())
+    .nodeSize([NODE_W + 24, NODE_H + 60])
+    .gap([24, 12])
+
+  layout(dag)
 
   // Extract node positions
-  for (const id of visibleIds) {
-    const node = g.node(String(id))
-    if (node) {
-      nodes.set(id, {
-        x: node.x,
-        y: node.y,
-        level: PROP_LEVELS.get(id) ?? 0,
-      })
-    }
+  for (const node of dag.nodes()) {
+    const id = Number(node.data.id)
+    nodes.set(id, {
+      x: node.x,
+      y: node.y,
+      level: PROP_LEVELS.get(id) ?? 0,
+    })
   }
 
-  // Extract edge routing points
+  // Extract edge routing points (d3-dag uses [x, y] tuples)
   const layoutEdges: LayoutEdge[] = []
-  for (const { from, to } of reducedEdges) {
-    const edge = g.edge(String(from), String(to))
-    if (edge && edge.points) {
-      layoutEdges.push({
-        from,
-        to,
-        points: edge.points,
-      })
-    } else {
-      // Fallback: straight line
-      const fromNode = nodes.get(from)
-      const toNode = nodes.get(to)
-      if (fromNode && toNode) {
-        layoutEdges.push({
-          from,
-          to,
-          points: [
-            { x: fromNode.x, y: fromNode.y + NODE_H / 2 },
-            { x: toNode.x, y: toNode.y - NODE_H / 2 },
-          ],
-        })
-      }
-    }
+  for (const link of dag.links()) {
+    const from = Number(link.source.data.id)
+    const to = Number(link.target.data.id)
+    layoutEdges.push({
+      from,
+      to,
+      points: link.points.map(([x, y]: [number, number]) => ({ x, y })),
+    })
   }
 
   return { nodes, edges: layoutEdges }
