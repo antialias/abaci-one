@@ -39,14 +39,9 @@ export default function EuclidPropPage() {
   const [showOverlay, setShowOverlay] = useState(false)
 
   // Stable callback — uses refs to avoid depending on mutation object
-  const selectedPlayerIdRef = useRef(selectedPlayerId)
-  selectedPlayerIdRef.current = selectedPlayerId
-
   const handleComplete = useCallback(
     (completedPropId: number) => {
-      if (selectedPlayerIdRef.current) {
-        markCompleteRef.current.mutate(completedPropId)
-      }
+      markCompleteRef.current.mutate(completedPropId)
       setTimeout(() => setShowOverlay(true), 1500)
     },
     [], // stable — reads current values from refs
@@ -68,8 +63,8 @@ export default function EuclidPropPage() {
   )
 
   const nextPropId = useMemo(
-    () => getNextProp(afterCompletion),
-    [afterCompletion],
+    () => unlocked[0] ?? getNextProp(afterCompletion),
+    [unlocked, afterCompletion],
   )
 
   const navigateWithPlayer = useCallback(

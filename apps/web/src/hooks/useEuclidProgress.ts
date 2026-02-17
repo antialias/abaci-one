@@ -10,6 +10,9 @@ const EMPTY_COMPLETED: number[] = []
 /**
  * Fetch completed proposition IDs for a player.
  * Returns an empty array when playerId is null (anonymous mode).
+ * In anonymous mode the query is disabled but placeholderData ensures
+ * `data` is always `[]` (not `undefined`). Completions written to the
+ * cache by useMarkEuclidComplete are returned on subsequent reads.
  */
 export function useEuclidProgress(playerId: string | null) {
   return useQuery({
@@ -22,12 +25,15 @@ export function useEuclidProgress(playerId: string | null) {
       return data.completed as number[]
     },
     enabled: !!playerId,
+    placeholderData: playerId ? undefined : EMPTY_COMPLETED,
   })
 }
 
 /**
- * Mark a proposition as completed for a player.
- * Returns the full updated list of completed proposition IDs.
+ * Mark a proposition as completed.
+ * With a player: persists to the server and updates the cache.
+ * Anonymous (no player): updates only the React Query cache so
+ * completions survive client-side navigation within the session.
  */
 export function useMarkEuclidComplete(playerId: string | null) {
   const queryClient = useQueryClient()
@@ -36,7 +42,11 @@ export function useMarkEuclidComplete(playerId: string | null) {
 
   const mutationFn = useCallback(async (propositionId: number) => {
     const pid = playerIdRef.current
-    if (!pid) throw new Error('No player selected')
+    if (!pid) {
+      // Anonymous mode: accumulate in the query cache (no server call)
+      const current = queryClient.getQueryData<number[]>(euclidKeys.all) ?? []
+      return current.includes(propositionId) ? current : [...current, propositionId]
+    }
     const res = await api(`euclid/progress/${pid}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,15 +55,14 @@ export function useMarkEuclidComplete(playerId: string | null) {
     if (!res.ok) throw new Error('Failed to mark proposition complete')
     const data = await res.json()
     return data.completed as number[]
-  }, [])
+  }, [queryClient])
 
   return useMutation({
     mutationFn,
     onSuccess: (completed) => {
       const pid = playerIdRef.current
-      if (pid) {
-        queryClient.setQueryData(euclidKeys.progress(pid), completed)
-      }
+      const key = pid ? euclidKeys.progress(pid) : euclidKeys.all
+      queryClient.setQueryData(key, completed)
     },
   })
 }

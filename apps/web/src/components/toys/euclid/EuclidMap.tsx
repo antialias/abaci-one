@@ -54,7 +54,7 @@ const STATUS_STYLES: Record<NodeStatus, {
     stroke: '#d1d5db',
     textColor: '#9ca3af',
     strokeDash: '4 3',
-    opacity: 0.5,
+    opacity: 1,
   },
 }
 
@@ -63,6 +63,7 @@ const STATUS_STYLES: Record<NodeStatus, {
 // ---------------------------------------------------------------------------
 
 import { usePropPreviews } from './render/usePropPreviews'
+import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 import type { ThematicBlock } from './data/book1'
 
 /** Subtle accent colors per thematic block — muted but distinctive. */
@@ -396,6 +397,7 @@ interface EuclidMapProps {
 export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
   const [showAll, setShowAll] = useState(false)
   const [hoveredNode, setHoveredNode] = useState<number | null>(null)
+  const [comingSoonOpacity, setComingSoonOpacity] = useState(1)
   const previews = usePropPreviews()
 
   const completedCount = completed.size
@@ -609,7 +611,7 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                 data-status={status}
                 style={{
                   cursor: isClickable ? 'pointer' : 'default',
-                  opacity: style.opacity,
+                  opacity: status === 'coming-soon' ? comingSoonOpacity : style.opacity,
                 }}
                 onClick={() => isClickable && onSelectProp(id)}
                 onMouseEnter={() => setHoveredNode(id)}
@@ -726,6 +728,18 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
           Requires: {hoveredInfo.missing.map(d => `I.${d}`).join(', ')}
         </div>
       )}
+
+      <ToyDebugPanel title="Euclid Map">
+        <DebugSlider
+          label="Coming-soon opacity"
+          value={comingSoonOpacity}
+          min={0}
+          max={1}
+          step={0.05}
+          onChange={setComingSoonOpacity}
+          formatValue={v => v.toFixed(2)}
+        />
+      </ToyDebugPanel>
     </div>
   )
 }
