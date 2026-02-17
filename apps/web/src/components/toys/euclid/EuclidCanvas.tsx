@@ -6,26 +6,50 @@ import type {
   ConstructionState,
   CompassPhase,
   StraightedgePhase,
+  RulerPhase,
+  Measurement,
   ActiveTool,
   IntersectionCandidate,
   ConstructionElement,
   TutorialHint,
+  PropositionDef,
+  TutorialSubStep,
+  ExpectedAction,
 } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, removeLastElement } from './engine/constructionState'
-import { findNewIntersections } from './engine/intersections'
+import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
 import { renderTutorialHint } from './render/renderTutorialHint'
+import { renderMeasurements } from './render/renderMeasurements'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
 import { useToolInteraction } from './interaction/useToolInteraction'
-import { PROP_1, validateStep } from './propositions/prop1'
+import { validateStep } from './propositions/validation'
+import { PROP_1 } from './propositions/prop1'
+import { PROP_2 } from './propositions/prop2'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
+import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
+
+// ── Proposition registry ──
+
+const PROPOSITIONS: Record<number, PropositionDef> = {
+  1: PROP_1,
+  2: PROP_2,
+}
+
+const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[][]> = {
+  1: getProp1Tutorial,
+  2: getProp2Tutorial,
+}
 
 interface EuclidCanvasProps {
   propositionId?: number
 }
 
 export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
+  const proposition = PROPOSITIONS[propositionId] ?? PROP_1
+  const getTutorial = TUTORIAL_GENERATORS[propositionId] ?? getProp1Tutorial
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
@@ -34,23 +58,27 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     center: { x: 0, y: 0 },
     pixelsPerUnit: 60,
   })
-  const constructionRef = useRef<ConstructionState>(initializeGiven(PROP_1.givenElements))
+  const constructionRef = useRef<ConstructionState>(initializeGiven(proposition.givenElements))
   const compassPhaseRef = useRef<CompassPhase>({ tag: 'idle' })
   const straightedgePhaseRef = useRef<StraightedgePhase>({ tag: 'idle' })
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null)
   const snappedPointIdRef = useRef<string | null>(null)
   const candidatesRef = useRef<IntersectionCandidate[]>([])
   const pointerCapturedRef = useRef(false)
-  const activeToolRef = useRef<ActiveTool>('compass')
+  const activeToolRef = useRef<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
+  const rulerPhaseRef = useRef<RulerPhase>({ tag: 'idle' })
+  const measurementsRef = useRef<Measurement[]>([])
+  const preRulerToolRef = useRef<'compass' | 'straightedge'>(proposition.steps[0]?.tool === 'straightedge' ? 'straightedge' : 'compass')
+  const expectedActionRef = useRef<ExpectedAction | null>(proposition.steps[0]?.expected ?? null)
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
 
   // React state for UI
-  const [activeTool, setActiveTool] = useState<ActiveTool>('compass')
+  const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
   const [currentStep, setCurrentStep] = useState(0)
   const currentStepRef = useRef(0)
   const [completedSteps, setCompletedSteps] = useState<boolean[]>(
-    PROP_1.steps.map(() => false),
+    proposition.steps.map(() => false),
   )
   const [isComplete, setIsComplete] = useState(false)
   const [toolToast, setToolToast] = useState<string | null>(null)
@@ -72,11 +100,9 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const prevCompassTagRef = useRef('idle')
   const prevStraightedgeTagRef = useRef('idle')
 
-  const tutorialSubSteps = useMemo(() => getProp1Tutorial(isTouch), [isTouch])
+  const tutorialSubSteps = useMemo(() => getTutorial(isTouch), [isTouch, getTutorial])
   const tutorialSubStepsRef = useRef(tutorialSubSteps)
   tutorialSubStepsRef.current = tutorialSubSteps
-
-  const proposition = PROP_1
 
   // Derived: current sub-step definition
   const currentSubStepDef = tutorialSubSteps[currentStep]?.[tutorialSubStep]
@@ -90,6 +116,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
+    celebrationText: proposition.completionMessage,
   })
 
   const requestDraw = useCallback(() => {
@@ -101,16 +128,21 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     activeToolRef.current = activeTool
   }, [activeTool])
 
-  // ── Auto-select tool based on current step ──
+  // ── Auto-select tool and sync expected action based on current step ──
   useEffect(() => {
-    if (currentStep >= proposition.steps.length) return
+    if (currentStep >= proposition.steps.length) {
+      expectedActionRef.current = null
+      return
+    }
     const stepDef = proposition.steps[currentStep]
+    expectedActionRef.current = stepDef.expected
+
     if (stepDef.tool === null) return
     if (stepDef.tool !== activeTool) {
       setActiveTool(stepDef.tool)
       activeToolRef.current = stepDef.tool
 
-      const label = stepDef.tool === 'compass' ? 'Compass' : 'Straightedge'
+      const label = stepDef.tool === 'compass' ? 'Compass' : stepDef.tool === 'straightedge' ? 'Straightedge' : 'Ruler'
       setToolToast(label)
       if (toolToastTimerRef.current) clearTimeout(toolToastTimerRef.current)
       toolToastTimerRef.current = setTimeout(() => setToolToast(null), 1800)
@@ -127,12 +159,13 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   // ── Step validation (uses ref to avoid stale closures) ──
 
   const checkStep = useCallback(
-    (element: ConstructionElement) => {
+    (element: ConstructionElement, candidate?: IntersectionCandidate) => {
       const step = currentStepRef.current
       if (step >= proposition.steps.length) return
 
       const stepDef = proposition.steps[step]
-      if (validateStep(stepDef.expected, constructionRef.current, element)) {
+      const valid = validateStep(stepDef.expected, constructionRef.current, element, candidate)
+      if (valid) {
         setCompletedSteps(prev => {
           const next = [...prev]
           next[step] = true
@@ -160,13 +193,14 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         result.state,
         result.circle,
         candidatesRef.current,
+        proposition.extendSegments,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
       checkStep(result.circle)
       requestDraw()
     },
-    [checkStep, requestDraw],
+    [checkStep, requestDraw, proposition.extendSegments],
   )
 
   const handleCommitSegment = useCallback(
@@ -178,17 +212,39 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         result.state,
         result.segment,
         candidatesRef.current,
+        proposition.extendSegments,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
       checkStep(result.segment)
       requestDraw()
     },
-    [checkStep, requestDraw],
+    [checkStep, requestDraw, proposition.extendSegments],
   )
 
   const handleMarkIntersection = useCallback(
     (candidate: IntersectionCandidate) => {
+      // In guided mode, reject candidates that don't match the current step's expected ofA/ofB.
+      // This prevents wrong taps from creating points that derail subsequent steps.
+      const step = currentStepRef.current
+      if (step < proposition.steps.length) {
+        const expected = proposition.steps[step].expected
+        if (expected.type === 'intersection' && expected.ofA && expected.ofB) {
+          const matches =
+            (candidate.ofA === expected.ofA && candidate.ofB === expected.ofB) ||
+            (candidate.ofA === expected.ofB && candidate.ofB === expected.ofA)
+          if (!matches) {
+            return
+          }
+          // If beyondId is specified, reject candidates on the wrong side
+          if (expected.beyondId) {
+            if (!isCandidateBeyondPoint(candidate, expected.beyondId, candidate.ofA, candidate.ofB, constructionRef.current)) {
+              return
+            }
+          }
+        }
+      }
+
       const result = addPoint(
         constructionRef.current,
         candidate.x,
@@ -201,15 +257,20 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         c => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001),
       )
 
-      checkStep(result.point)
+      checkStep(result.point, candidate)
       requestDraw()
     },
-    [checkStep, requestDraw],
+    [checkStep, requestDraw, proposition.steps],
   )
 
   const handleUndo = useCallback(() => {
-    constructionRef.current = removeLastElement(constructionRef.current)
-    candidatesRef.current = []
+    // Context-sensitive: ruler active → pop last measurement; otherwise → undo construction
+    if (activeToolRef.current === 'ruler' && measurementsRef.current.length > 0) {
+      measurementsRef.current = measurementsRef.current.slice(0, -1)
+    } else {
+      constructionRef.current = removeLastElement(constructionRef.current)
+      candidatesRef.current = []
+    }
     requestDraw()
   }, [requestDraw])
 
@@ -237,6 +298,9 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     onCommitCircle: handleCommitCircle,
     onCommitSegment: handleCommitSegment,
     onMarkIntersection: handleMarkIntersection,
+    expectedActionRef,
+    rulerPhaseRef,
+    measurementsRef,
   })
 
   // ── Canvas resize observer ──
@@ -319,6 +383,16 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
           ctx.save()
           ctx.scale(dpr, dpr)
 
+          // Derive candidate filter from current step's expected intersection
+          const curStep = currentStepRef.current
+          const curExpected = curStep < proposition.steps.length
+            ? proposition.steps[curStep].expected
+            : null
+          const candFilter = (curExpected?.type === 'intersection' && curExpected.ofA && curExpected.ofB)
+            ? { ofA: curExpected.ofA, ofB: curExpected.ofB, beyondId: curExpected.beyondId }
+            : null
+          const complete = curStep >= proposition.steps.length
+
           renderConstruction(
             ctx,
             constructionRef.current,
@@ -331,6 +405,22 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             snappedPointIdRef.current,
             candidatesRef.current,
             constructionRef.current.nextColorIndex,
+            candFilter,
+            complete,
+            complete ? proposition.resultSegments : undefined,
+          )
+
+          // Render measurements overlay
+          renderMeasurements(
+            ctx,
+            constructionRef.current,
+            viewportRef.current,
+            cssWidth,
+            cssHeight,
+            measurementsRef.current,
+            rulerPhaseRef.current,
+            snappedPointIdRef.current,
+            pointerWorldRef.current,
           )
 
           // Render tutorial hint on top
@@ -435,7 +525,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             boxShadow: '0 2px 12px rgba(16, 185, 129, 0.3)',
           }}
         >
-          Equilateral triangle constructed!
+          {proposition.completionMessage ?? 'Construction complete!'}
         </div>
       )}
 
@@ -531,6 +621,30 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
           }
           active={activeTool === 'straightedge'}
           onClick={() => setActiveTool('straightedge')}
+        />
+        <ToolButton
+          label="Ruler"
+          icon={
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="8" x2="4" y2="16" />
+              <line x1="20" y1="8" x2="20" y2="16" />
+            </svg>
+          }
+          active={activeTool === 'ruler'}
+          onClick={() => {
+            if (activeTool === 'ruler') {
+              // Toggle off: clear measurements, restore prior tool
+              measurementsRef.current = []
+              rulerPhaseRef.current = { tag: 'idle' }
+              setActiveTool(preRulerToolRef.current)
+              needsDrawRef.current = true
+            } else {
+              // Toggle on: remember current tool, switch to ruler
+              preRulerToolRef.current = activeTool as 'compass' | 'straightedge'
+              setActiveTool('ruler')
+            }
+          }}
         />
         <ToolButton
           label="Undo"

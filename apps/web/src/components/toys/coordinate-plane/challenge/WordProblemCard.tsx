@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { WordProblem, AnnotatedSpan, AnnotationTag } from '../wordProblems/types'
 import type { ChallengePhase, CardPlacement } from './types'
 import { KidNumberInput, useKidNumberInput, type FeedbackState } from '../../../ui/KidNumberInput'
@@ -145,6 +145,7 @@ export function WordProblemCard({
             span={span}
             isRevealed={span.tag ? revealedTags.has(span.tag) : false}
             isRevealing={isRevealing}
+            phase={phase}
           />
         ))}
       </div>
@@ -262,25 +263,43 @@ function AnswerInput({
   )
 }
 
+const HOVER_PHASES = new Set<ChallengePhase>(['presenting', 'solving', 'answering'])
+
 function AnnotatedTextSpan({
   span,
   isRevealed,
   isRevealing,
+  phase,
 }: {
   span: AnnotatedSpan
   isRevealed: boolean
   isRevealing: boolean
+  phase: ChallengePhase
 }) {
+  const [isHovered, setIsHovered] = useState(false)
   const color = span.tag ? TAG_COLORS[span.tag] : undefined
   const showUnderline = isRevealing && isRevealed && color
+  const canHover = color && HOVER_PHASES.has(phase)
+  const showHover = canHover && isHovered
+
+  const style: CSSProperties = {
+    borderBottom: showUnderline ? `2px solid ${color}` : showHover ? `2px solid ${color}` : undefined,
+    paddingBottom: showUnderline || showHover ? 1 : undefined,
+    transition: isHovered
+      ? 'all 150ms ease-out'
+      : 'all 400ms ease',
+    ...(showHover && {
+      backgroundColor: `${color}26`,
+      borderRadius: 3,
+      cursor: 'help',
+    }),
+  }
 
   return (
     <span
-      style={{
-        borderBottom: showUnderline ? `2px solid ${color}` : undefined,
-        paddingBottom: showUnderline ? 1 : undefined,
-        transition: 'border-color 400ms ease, padding-bottom 400ms ease',
-      }}
+      style={style}
+      onPointerEnter={canHover ? () => setIsHovered(true) : undefined}
+      onPointerLeave={canHover ? () => setIsHovered(false) : undefined}
     >
       {span.text}
     </span>

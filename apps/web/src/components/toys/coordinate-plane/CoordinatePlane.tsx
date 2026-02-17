@@ -522,8 +522,11 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
               while (displayAngle < -Math.PI / 2) displayAngle += Math.PI
 
               const offsetPx = 18
-              const perpX = -Math.sin(displayAngle) * offsetPx
-              const perpY = Math.cos(displayAngle) * offsetPx
+              // Flip label to opposite side of ruler when challenge staircase is visible
+              const flipLabel = challengeState.problem && challengeState.phase !== 'idle'
+              const sign = flipLabel ? 1 : -1
+              const perpX = sign * Math.sin(displayAngle) * offsetPx
+              const perpY = -sign * Math.cos(displayAngle) * offsetPx
 
               const canvasOffsetLeft = canvas.offsetLeft || 0
               const canvasOffsetTop = canvas.offsetTop || 0

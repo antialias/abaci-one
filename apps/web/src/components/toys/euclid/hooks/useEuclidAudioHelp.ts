@@ -15,17 +15,20 @@ interface UseEuclidAudioHelpOptions {
   instruction: string
   /** Whether the entire construction is complete */
   isComplete: boolean
+  /** Custom celebration message (defaults to generic) */
+  celebrationText?: string
 }
 
 export function useEuclidAudioHelp({
   instruction,
   isComplete,
+  celebrationText = 'Construction complete! Well done!',
 }: UseEuclidAudioHelpOptions) {
   const { isEnabled, stop } = useAudioManager()
 
   const sayInstruction = useTTS(instruction, { tone: INSTRUCTION_TONE })
   const sayCelebration = useTTS(
-    isComplete ? 'Equilateral triangle constructed! Well done!' : '',
+    isComplete ? celebrationText : '',
     { tone: CELEBRATION_TONE },
   )
 

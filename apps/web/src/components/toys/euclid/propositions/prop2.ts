@@ -35,6 +35,9 @@ export const PROP_2: PropositionDef = {
   title: 'Place a line equal to a given line at a given point',
   extendSegments: true,
   completionMessage: 'Line segment placed! AF = BC',
+  resultSegments: [
+    { fromId: 'pt-A', toId: 'pt-F' },
+  ],
   givenElements: [
     {
       kind: 'point',
@@ -97,7 +100,7 @@ export const PROP_2: PropositionDef = {
     // 4. Mark intersection D (I.1 step 3)
     {
       instruction: 'Mark the point where the circles meet',
-      expected: { type: 'intersection', ofA: '', ofB: '' },
+      expected: { type: 'intersection', ofA: 'cir-1', ofB: 'cir-2' },
       highlightIds: [],
       tool: null,
     },
@@ -124,8 +127,8 @@ export const PROP_2: PropositionDef = {
     },
     // 8. Mark intersection E (Euclid's G — on extension of DB beyond B)
     {
-      instruction: 'Mark where the circle crosses line DB',
-      expected: { type: 'intersection', ofA: 'cir-3', ofB: 'seg-4' },
+      instruction: 'Mark where the circle crosses line DB, past B',
+      expected: { type: 'intersection', ofA: 'cir-3', ofB: 'seg-4', beyondId: 'pt-B' },
       highlightIds: [],
       tool: null,
     },
@@ -138,8 +141,8 @@ export const PROP_2: PropositionDef = {
     },
     // 10. Mark intersection F (Euclid's L — on extension of DA beyond A)
     {
-      instruction: 'Mark where the circle crosses line DA',
-      expected: { type: 'intersection', ofA: 'cir-4', ofB: 'seg-3' },
+      instruction: 'Mark where the circle crosses line DA, past A',
+      expected: { type: 'intersection', ofA: 'cir-4', ofB: 'seg-3', beyondId: 'pt-A' },
       highlightIds: [],
       tool: null,
     },

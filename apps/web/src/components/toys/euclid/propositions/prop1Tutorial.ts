@@ -18,8 +18,8 @@ export function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point A`,
         speech: isTouch
-          ? "Let's draw a circle! Place your finger on point A and hold it there. That's where your compass goes."
-          : "Let's draw a circle! Click on point A and hold the mouse button. That's where your compass goes.",
+          ? "Let's draw a circle! Press and hold on point A. That's where your compass goes."
+          : "Let's draw a circle! Click and hold on point A. That's where your compass goes.",
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: 'center-set',
       },
@@ -46,8 +46,8 @@ export function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point B`,
         speech: isTouch
-          ? "Great! Now let's make another circle. This time, put your finger on point B."
-          : "Great! Now let's make another circle. This time, click on point B.",
+          ? "Great! Now let's make another circle. This time, press and hold on point B."
+          : "Great! Now let's make another circle. This time, click and hold on point B.",
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: 'center-set',
       },

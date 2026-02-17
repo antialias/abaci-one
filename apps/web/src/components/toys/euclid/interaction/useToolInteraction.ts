@@ -4,9 +4,12 @@ import type {
   EuclidViewportState,
   CompassPhase,
   StraightedgePhase,
+  RulerPhase,
+  Measurement,
   ActiveTool,
   IntersectionCandidate,
   ConstructionElement,
+  ExpectedAction,
 } from '../types'
 import { getPoint } from '../engine/constructionState'
 import { screenToWorld2D } from '../../shared/coordinateConversions'
@@ -30,6 +33,11 @@ interface UseToolInteractionOptions {
   onCommitCircle: (centerId: string, radiusPointId: string) => void
   onCommitSegment: (fromId: string, toId: string) => void
   onMarkIntersection: (candidate: IntersectionCandidate) => void
+  /** In guided mode, the current step's expected action. Used to constrain
+   *  which points the compass/straightedge snaps to during drag. */
+  expectedActionRef: React.MutableRefObject<ExpectedAction | null>
+  rulerPhaseRef: React.MutableRefObject<RulerPhase>
+  measurementsRef: React.MutableRefObject<Measurement[]>
 }
 
 function normalizeAngle(angle: number): number {
@@ -57,6 +65,9 @@ export function useToolInteraction({
   onCommitCircle,
   onCommitSegment,
   onMarkIntersection,
+  expectedActionRef,
+  rulerPhaseRef,
+  measurementsRef,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -154,6 +165,17 @@ export function useToolInteraction({
           return
         }
       }
+
+      if (tool === 'ruler') {
+        const ruler = rulerPhaseRef.current
+        if (ruler.tag === 'idle') {
+          e.stopPropagation()
+          pointerCapturedRef.current = true
+          rulerPhaseRef.current = { tag: 'from-set', fromId: hitPt.id }
+          requestDraw()
+          return
+        }
+      }
     }
 
     function handlePointerMove(e: PointerEvent) {
@@ -178,6 +200,18 @@ export function useToolInteraction({
       // ── Compass: center-set → check if we've reached another point (snap to radius) ──
       if (compass.tag === 'center-set') {
         if (hitPt && hitPt.id !== compass.centerId) {
+          // In guided mode, only snap to the expected radius point
+          const expected = expectedActionRef.current
+          if (
+            expected?.type === 'compass' &&
+            expected.centerId === compass.centerId &&
+            hitPt.id !== expected.radiusPointId
+          ) {
+            // Skip — not the expected radius point, user is dragging through
+            requestDraw()
+            return
+          }
+
           // Snap to this point as radius point
           const center = getPoint(state, compass.centerId)
           if (center) {
@@ -189,6 +223,7 @@ export function useToolInteraction({
               centerId: compass.centerId,
               radiusPointId: hitPt.id,
               radius,
+              enterTime: performance.now(),
             }
           }
         }
@@ -196,8 +231,51 @@ export function useToolInteraction({
         return
       }
 
-      // ── Compass: radius-set → transition to sweeping on next move ──
+      // ── Compass: radius-set → re-snap or transition to sweeping ──
       if (compass.tag === 'radius-set') {
+        // If near a different point (not center), re-snap to it
+        if (hitPt && hitPt.id !== compass.centerId) {
+          if (hitPt.id !== compass.radiusPointId) {
+            // In guided mode, only re-snap to the expected radius point
+            const expected = expectedActionRef.current
+            if (
+              expected?.type === 'compass' &&
+              expected.centerId === compass.centerId &&
+              hitPt.id !== expected.radiusPointId
+            ) {
+              // Skip — not the expected radius point
+              requestDraw()
+              return
+            }
+
+            const center = getPoint(state, compass.centerId)
+            if (center) {
+              const dx = hitPt.x - center.x
+              const dy = hitPt.y - center.y
+              compassPhaseRef.current = {
+                tag: 'radius-set',
+                centerId: compass.centerId,
+                radiusPointId: hitPt.id,
+                radius: Math.sqrt(dx * dx + dy * dy),
+                enterTime: performance.now(),
+              }
+            }
+          }
+          // Still on a point — don't start sweeping yet
+          requestDraw()
+          return
+        }
+
+        // Pointer left all points. If the user was just passing through
+        // (< 150ms dwell), go back to center-set so they can keep dragging.
+        const dwellTime = performance.now() - compass.enterTime
+        if (dwellTime < 150) {
+          compassPhaseRef.current = { tag: 'center-set', centerId: compass.centerId }
+          requestDraw()
+          return
+        }
+
+        // Dwelled long enough — the user settled on this point. Start sweeping.
         const center = getPoint(state, compass.centerId)
         const radiusPt = getPoint(state, compass.radiusPointId)
         if (center && radiusPt) {
@@ -284,6 +362,28 @@ export function useToolInteraction({
         return
       }
 
+      // ── Ruler: commit measurement if pointer up near another point ──
+      const ruler = rulerPhaseRef.current
+      if (ruler.tag === 'from-set') {
+        const hitPt = hitTestPoints(sx, sy, state, viewport, w, h, isTouch)
+        if (hitPt && hitPt.id !== ruler.fromId) {
+          const fromPt = getPoint(state, ruler.fromId)
+          if (fromPt) {
+            const dx = hitPt.x - fromPt.x
+            const dy = hitPt.y - fromPt.y
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            measurementsRef.current = [
+              ...measurementsRef.current,
+              { fromId: ruler.fromId, toId: hitPt.id, distance },
+            ]
+          }
+        }
+        rulerPhaseRef.current = { tag: 'idle' }
+        pointerCapturedRef.current = false
+        requestDraw()
+        return
+      }
+
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
@@ -293,6 +393,7 @@ export function useToolInteraction({
     function handlePointerCancel() {
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
+      rulerPhaseRef.current = { tag: 'idle' }
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
@@ -326,6 +427,9 @@ export function useToolInteraction({
     onCommitCircle,
     onCommitSegment,
     onMarkIntersection,
+    expectedActionRef,
+    rulerPhaseRef,
+    measurementsRef,
     getCanvasRect,
   ])
 }

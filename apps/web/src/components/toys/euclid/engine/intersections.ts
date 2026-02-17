@@ -7,7 +7,7 @@ import type {
   ConstructionSegment,
   IntersectionCandidate,
 } from '../types'
-import { getPoint, getRadius, getAllCircles, getAllSegments } from './constructionState'
+import { getPoint, getSegment, getRadius, getAllCircles, getAllSegments } from './constructionState'
 
 const TOLERANCE = 0.001
 
@@ -91,6 +91,64 @@ function getSegmentData(state: ConstructionState, s: ConstructionSegment) {
   return from && to ? { x1: from.x, y1: from.y, x2: to.x, y2: to.y } : null
 }
 
+/** Is (cx, cy) at one of the segment's endpoints? */
+function isEndpoint(cx: number, cy: number, seg: { x1: number; y1: number; x2: number; y2: number }): boolean {
+  return (
+    (Math.abs(cx - seg.x1) < TOLERANCE && Math.abs(cy - seg.y1) < TOLERANCE) ||
+    (Math.abs(cx - seg.x2) < TOLERANCE && Math.abs(cy - seg.y2) < TOLERANCE)
+  )
+}
+
+/** Return points from `linePts` that aren't already in `segPts`. */
+function removeAlreadyFound(linePts: Vec2[], segPts: Vec2[]): Vec2[] {
+  return linePts.filter(lp =>
+    !segPts.some(sp => Math.abs(lp.x - sp.x) < TOLERANCE && Math.abs(lp.y - sp.y) < TOLERANCE),
+  )
+}
+
+/**
+ * Check if a candidate intersection point is "beyond" a specified point
+ * on a segment — i.e. on the extension past that endpoint.
+ *
+ * Uses dot product: candidate is "beyond" P (away from Q) when
+ * dot(candidate − P, P − Q) > 0.
+ */
+export function isCandidateBeyondPoint(
+  candidate: { x: number; y: number },
+  beyondId: string,
+  ofA: string,
+  ofB: string,
+  state: ConstructionState,
+): boolean {
+  // Find which of ofA/ofB is the segment
+  const segId = [ofA, ofB].find(id => id.startsWith('seg-'))
+  if (!segId) return true // no segment involved, can't check
+
+  const seg = getSegment(state, segId)
+  if (!seg) return true
+
+  const beyondPt = getPoint(state, beyondId)
+  if (!beyondPt) return true
+
+  const fromPt = getPoint(state, seg.fromId)
+  const toPt = getPoint(state, seg.toId)
+  if (!fromPt || !toPt) return true
+
+  // Determine which endpoint is the "beyond" point and which is the "other"
+  const isBeyondFrom =
+    Math.abs(beyondPt.x - fromPt.x) < TOLERANCE &&
+    Math.abs(beyondPt.y - fromPt.y) < TOLERANCE
+  const otherPt = isBeyondFrom ? toPt : fromPt
+
+  // dot(candidate − beyondPt, beyondPt − otherPt) > 0
+  const dx = beyondPt.x - otherPt.x
+  const dy = beyondPt.y - otherPt.y
+  const cx = candidate.x - beyondPt.x
+  const cy = candidate.y - beyondPt.y
+
+  return dx * cx + dy * cy > 0
+}
+
 export function findNewIntersections(
   state: ConstructionState,
   newElement: ConstructionElement,
@@ -130,9 +188,16 @@ export function findNewIntersections(
     for (const s of getAllSegments(state)) {
       const d = getSegmentData(state, s)
       if (!d) continue
-      const intersectFn = extendSegments ? circleLineIntersections : circleSegmentIntersections
-      const pts = intersectFn(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
-      addCandidates(pts, newElement.id, s.id)
+      // Always compute finite segment intersections
+      const segPts = circleSegmentIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
+      addCandidates(segPts, newElement.id, s.id)
+      // Additionally check line extension if the circle's center is at a segment endpoint
+      // (Euclid's Post.2: "produce" a constructed segment beyond its endpoint)
+      if (extendSegments && s.origin === 'straightedge' && isEndpoint(newData.cx, newData.cy, d)) {
+        const linePts = circleLineIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
+        const extensionPts = removeAlreadyFound(linePts, segPts)
+        addCandidates(extensionPts, newElement.id, s.id)
+      }
     }
   } else if (newElement.kind === 'segment') {
     const newData = getSegmentData(state, newElement)
@@ -142,9 +207,15 @@ export function findNewIntersections(
     for (const c of getAllCircles(state)) {
       const d = getCircleData(state, c)
       if (!d) continue
-      const intersectFn = extendSegments ? circleLineIntersections : circleSegmentIntersections
-      const pts = intersectFn(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
-      addCandidates(pts, newElement.id, c.id)
+      // Always compute finite segment intersections
+      const segPts = circleSegmentIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
+      addCandidates(segPts, newElement.id, c.id)
+      // Additionally check line extension if the circle's center is at a segment endpoint
+      if (extendSegments && newElement.origin === 'straightedge' && isEndpoint(d.cx, d.cy, newData)) {
+        const linePts = circleLineIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
+        const extensionPts = removeAlreadyFound(linePts, segPts)
+        addCandidates(extensionPts, newElement.id, c.id)
+      }
     }
 
     // vs all existing segments

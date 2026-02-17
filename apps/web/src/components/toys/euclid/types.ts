@@ -77,7 +77,7 @@ export interface IntersectionCandidate {
 export type CompassPhase =
   | { tag: 'idle' }
   | { tag: 'center-set'; centerId: string }
-  | { tag: 'radius-set'; centerId: string; radiusPointId: string; radius: number }
+  | { tag: 'radius-set'; centerId: string; radiusPointId: string; radius: number; enterTime: number }
   | {
       tag: 'sweeping'
       centerId: string
@@ -92,7 +92,17 @@ export type StraightedgePhase =
   | { tag: 'idle' }
   | { tag: 'from-set'; fromId: string }
 
-export type ActiveTool = 'compass' | 'straightedge'
+export type RulerPhase =
+  | { tag: 'idle' }
+  | { tag: 'from-set'; fromId: string }
+
+export interface Measurement {
+  fromId: string
+  toId: string
+  distance: number  // world-coordinate Euclidean distance
+}
+
+export type ActiveTool = 'compass' | 'straightedge' | 'ruler'
 
 // ── Tutorial hints ─────────────────────────────────────────────────
 
@@ -100,7 +110,7 @@ export type TutorialHint =
   | { type: 'point'; pointId: string }
   | { type: 'arrow'; fromId: string; toId: string }
   | { type: 'sweep'; centerId: string; radiusPointId: string }
-  | { type: 'candidates'; ofA?: string; ofB?: string }
+  | { type: 'candidates'; ofA?: string; ofB?: string; beyondId?: string }
   | { type: 'none' }
 
 export interface TutorialSubStep {
@@ -121,7 +131,7 @@ export interface TutorialSubStep {
 
 export type ExpectedAction =
   | { type: 'compass'; centerId: string; radiusPointId: string }
-  | { type: 'intersection'; ofA: string; ofB: string }
+  | { type: 'intersection'; ofA: string; ofB: string; beyondId?: string }
   | { type: 'straightedge'; fromId: string; toId: string }
 
 export interface PropositionStep {
@@ -142,4 +152,6 @@ export interface PropositionDef {
    *  Needed for propositions that "produce" (extend) lines, like I.2. */
   extendSegments?: boolean
   completionMessage?: string
+  /** Segments to highlight as the construction result on completion */
+  resultSegments?: Array<{ fromId: string; toId: string }>
 }

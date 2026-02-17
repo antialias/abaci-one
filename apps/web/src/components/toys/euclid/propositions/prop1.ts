@@ -1,4 +1,4 @@
-import type { PropositionDef } from '../types'
+import type { PropositionDef, ConstructionElement } from '../types'
 import { BYRNE } from '../types'
 
 /**
@@ -69,4 +69,9 @@ export const PROP_1: PropositionDef = {
     },
   ],
   completionMessage: 'Equilateral triangle constructed!',
+  resultSegments: [
+    { fromId: 'pt-A', toId: 'pt-C' },
+    { fromId: 'pt-C', toId: 'pt-B' },
+    { fromId: 'pt-A', toId: 'pt-B' },
+  ],
 }

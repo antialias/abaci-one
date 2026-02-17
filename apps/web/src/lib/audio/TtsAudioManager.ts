@@ -412,7 +412,7 @@ export class TtsAudioManager {
       if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
         const clipIds = this._pregenClipIds.get(source.name)
         if (clipIds?.has(resolved.clipId)) {
-          const url = `/api/audio/clips/${source.name}/${resolved.clipId}`
+          const url = `/api/audio/clips/${encodeURIComponent(source.name)}/${encodeURIComponent(resolved.clipId)}`
           if (this._preloadedAudio?.url === url) return // already preloading
           if (this._preloadedAudio) this._preloadedAudio.audio.src = ''
           const audio = new Audio(url)
@@ -585,7 +585,7 @@ export class TtsAudioManager {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false
           if (hasClip) {
-            const url = `/api/audio/clips/${source.name}/${resolved.clipId}`
+            const url = `/api/audio/clips/${encodeURIComponent(source.name)}/${encodeURIComponent(resolved.clipId)}`
             const ok = await this.playMp3(url)
             if (this._isStale(speakId)) return false
             if (ok) return true

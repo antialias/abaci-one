@@ -4,6 +4,7 @@ import type {
   ExpectedAction,
   IntersectionCandidate,
 } from '../types'
+import { isCandidateBeyondPoint } from '../engine/intersections'
 
 /**
  * Validate whether the last committed element matches the expected action for a step.
@@ -29,10 +30,15 @@ export function validateStep(
     // If ofA/ofB are specified, check that the candidate matches
     if (expected.ofA && expected.ofB) {
       if (!candidate) return false
-      return (
+      const matchesElements =
         (candidate.ofA === expected.ofA && candidate.ofB === expected.ofB) ||
         (candidate.ofA === expected.ofB && candidate.ofB === expected.ofA)
-      )
+      if (!matchesElements) return false
+      // If beyondId is specified, candidate must be on the extension past that point
+      if (expected.beyondId) {
+        return isCandidateBeyondPoint(candidate, expected.beyondId, candidate.ofA, candidate.ofB, state)
+      }
+      return true
     }
     // Accept any intersection point when ofA/ofB are empty
     return true

@@ -5,6 +5,7 @@ import type {
   IntersectionCandidate,
 } from '../types'
 import { getPoint } from '../engine/constructionState'
+import { isCandidateBeyondPoint } from '../engine/intersections'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 
 const HINT_COLOR = 'rgba(78, 121, 167,'
@@ -231,7 +232,26 @@ export function renderTutorialHint(
   }
 
   if (hint.type === 'candidates') {
-    renderCandidatesHint(ctx, candidates, viewport, w, h, time)
+    // Filter candidates by ofA/ofB when specified
+    let filtered = (hint.ofA && hint.ofB)
+      ? candidates.filter(c =>
+          (c.ofA === hint.ofA && c.ofB === hint.ofB) ||
+          (c.ofA === hint.ofB && c.ofB === hint.ofA),
+        )
+      : candidates
+    // Further filter by beyondId when specified (e.g. "beyond B on segment DB")
+    if (hint.beyondId) {
+      filtered = filtered.filter(c =>
+        isCandidateBeyondPoint(c, hint.beyondId!, c.ofA, c.ofB, state),
+      )
+    }
+    // In guided mode, only show one candidate to avoid confusing the student.
+    // Pick the one with the highest Y (convention matching the arrow target).
+    if (filtered.length > 1) {
+      const preferred = filtered.reduce((a, b) => (a.y > b.y ? a : b))
+      filtered = [preferred]
+    }
+    renderCandidatesHint(ctx, filtered, viewport, w, h, time)
     return
   }
 }
