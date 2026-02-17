@@ -34,7 +34,7 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? "Now we'll build an equilateral triangle on line AB — just like Proposition One! Tap point A first."
           : "Now we'll build an equilateral triangle on line AB — just like Proposition One! Click point A first.",
         hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: 'macro-select-0',
+        advanceOn: { kind: 'macro-select', index: 0 },
       },
       {
         instruction: `${tap} point B`,
@@ -54,7 +54,7 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? "Here's the clever part. We need to copy the length of line BC. Press and hold on B."
           : "Here's the clever part. We need to copy the length of line BC. Click and hold on B.",
         hint: { type: 'point', pointId: 'pt-B' },
-        advanceOn: 'center-set',
+        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point C`,
@@ -62,7 +62,7 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? 'Drag to C — this makes the circle the same size as the given line.'
           : 'Drag to C — this makes the circle match the given line.',
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-C' },
-        advanceOn: 'radius-set',
+        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around`,
@@ -98,7 +98,7 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? "Almost there! Now we use point D as a compass center. Press and hold on D."
           : "Almost there! Now we use point D as a compass center. Click and hold on D.",
         hint: { type: 'point', pointId: 'pt-D' },
-        advanceOn: 'center-set',
+        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point E`,
@@ -106,7 +106,7 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? 'Drag to the point E we just marked.'
           : 'Drag to point E.',
         hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-E' },
-        advanceOn: 'radius-set',
+        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around`,

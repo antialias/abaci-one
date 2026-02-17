@@ -32,7 +32,7 @@ describe('MACRO_PROP_1 with outputLabels', () => {
     const factStore = createFactStore()
 
     const result = macro.execute(
-      state, ['pt-A', 'pt-B'], [], factStore, false,
+      state, ['pt-A', 'pt-B'], [], factStore, 0, false,
       { apex: 'C' },
     )
 
@@ -47,7 +47,7 @@ describe('MACRO_PROP_1 with outputLabels', () => {
     const factStore = createFactStore()
 
     const result = macro.execute(
-      state, ['pt-A', 'pt-B'], [], factStore, false,
+      state, ['pt-A', 'pt-B'], [], factStore, 0, false,
     )
 
     const apex = result.addedElements.find(e => e.kind === 'point')
@@ -66,7 +66,7 @@ describe('MACRO_PROP_1 with outputLabels', () => {
     const factStore = createFactStore()
 
     const result = macro.execute(
-      state, ['pt-A', 'pt-B'], [], factStore, true,
+      state, ['pt-A', 'pt-B'], [], factStore, 0, true,
       { apex: 'D' },
     )
 
@@ -91,7 +91,7 @@ describe('MACRO_PROP_1 with outputLabels', () => {
     const factStore = createFactStore()
 
     const result = macro.execute(
-      state, ['pt-A', 'pt-B'], [], factStore, false,
+      state, ['pt-A', 'pt-B'], [], factStore, 0, false,
       { apex: 'X' },
     )
 
@@ -107,12 +107,59 @@ describe('MACRO_PROP_1 with outputLabels', () => {
     const factStore = createFactStore()
 
     const result = macro.execute(
-      state, ['pt-A', 'pt-B'], [], factStore, false,
+      state, ['pt-A', 'pt-B'], [], factStore, 0, false,
     )
 
     // Macro creates: 1 point + 2 segments = 3 elements
     expect(result.addedElements).toHaveLength(3)
     expect(result.addedElements.filter(e => e.kind === 'point')).toHaveLength(1)
     expect(result.addedElements.filter(e => e.kind === 'segment')).toHaveLength(2)
+  })
+
+  it('stamps facts with the provided atStep value', () => {
+    const state = givenAB()
+    const factStore = createFactStore()
+
+    const result = macro.execute(
+      state, ['pt-A', 'pt-B'], [], factStore, 5, false,
+    )
+
+    // Both returned facts and store facts should have atStep = 5
+    expect(result.newFacts.length).toBeGreaterThanOrEqual(2)
+    for (const fact of result.newFacts) {
+      expect(fact.atStep).toBe(5)
+    }
+    for (const fact of factStore.facts) {
+      expect(fact.atStep).toBe(5)
+    }
+  })
+
+  it('facts in store match facts in result (no divergence)', () => {
+    const state = givenAB()
+    const factStore = createFactStore()
+
+    const result = macro.execute(
+      state, ['pt-A', 'pt-B'], [], factStore, 3, false,
+    )
+
+    // The returned newFacts should be the same objects as in factStore.facts
+    expect(factStore.facts).toHaveLength(result.newFacts.length)
+    for (let i = 0; i < result.newFacts.length; i++) {
+      expect(factStore.facts[i]).toBe(result.newFacts[i])
+    }
+  })
+
+  it('returns no facts and no elements when input points are missing', () => {
+    const state = givenAB()
+    const factStore = createFactStore()
+
+    // pt-Z does not exist
+    const result = macro.execute(
+      state, ['pt-A', 'pt-Z'], [], factStore, 0, false,
+    )
+
+    expect(result.newFacts).toHaveLength(0)
+    expect(result.addedElements).toHaveLength(0)
+    expect(factStore.facts).toHaveLength(0)
   })
 })

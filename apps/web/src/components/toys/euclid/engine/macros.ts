@@ -20,6 +20,7 @@ export interface MacroDef {
     inputPointIds: string[],
     candidates: IntersectionCandidate[],
     factStore: FactStore,
+    atStep: number,
     extendSegments?: boolean,
     outputLabels?: Record<string, string>,
   ) => MacroResult
@@ -56,6 +57,7 @@ const MACRO_PROP_1: MacroDef = {
     inputPointIds: string[],
     candidates: IntersectionCandidate[],
     factStore: FactStore,
+    atStep: number,
     extendSegments: boolean = false,
     outputLabels?: Record<string, string>,
   ): MacroResult {
@@ -96,7 +98,6 @@ const MACRO_PROP_1: MacroDef = {
     // 3. Derive Def.15 facts directly — no circles needed in state.
     //    DA = AB (D on circle centered at A through B)
     //    DB = BA (D on circle centered at B through A)
-    //    atStep = -1 as placeholder; caller adjusts step numbering.
     const apexId = ptResult.point.id
     const apexLabel = ptResult.point.label
     const aLabel = pA.label
@@ -110,7 +111,7 @@ const MACRO_PROP_1: MacroDef = {
         { type: 'def15', circleId: `internal-cir-${ptA}` },
         `${aLabel}${apexLabel} = ${aLabel}${bLabel}`,
         `Def.15: ${apexLabel} lies on circle centered at ${aLabel} through ${bLabel}`,
-        -1,
+        atStep,
       ))
     }
     {
@@ -121,7 +122,7 @@ const MACRO_PROP_1: MacroDef = {
         { type: 'def15', circleId: `internal-cir-${ptB}` },
         `${bLabel}${apexLabel} = ${bLabel}${aLabel}`,
         `Def.15: ${apexLabel} lies on circle centered at ${bLabel} through ${aLabel}`,
-        -1,
+        atStep,
       ))
     }
 

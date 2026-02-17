@@ -21,7 +21,7 @@ export function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? "Let's draw a circle! Press and hold on point A. That's where your compass goes."
           : "Let's draw a circle! Click and hold on point A. That's where your compass goes.",
         hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: 'center-set',
+        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point B`,
@@ -29,7 +29,7 @@ export function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? 'Now drag your finger over to point B. This sets how big the circle will be.'
           : 'Now drag over to point B while holding the button. This sets the circle size.',
         hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
-        advanceOn: 'radius-set',
+        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} all the way around`,
@@ -49,7 +49,7 @@ export function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? "Great! Now let's make another circle. This time, press and hold on point B."
           : "Great! Now let's make another circle. This time, click and hold on point B.",
         hint: { type: 'point', pointId: 'pt-B' },
-        advanceOn: 'center-set',
+        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point A`,
@@ -57,7 +57,7 @@ export function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
           ? 'Drag over to point A.'
           : 'Drag over to point A.',
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-A' },
-        advanceOn: 'radius-set',
+        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around again`,

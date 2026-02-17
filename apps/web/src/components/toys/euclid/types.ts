@@ -126,6 +126,11 @@ export type TutorialHint =
   | { type: 'candidates'; ofA?: ElementSelector; ofB?: ElementSelector; beyondId?: string }
   | { type: 'none' }
 
+/** Trigger that advances the tutorial to the next sub-step. */
+export type AdvanceOn =
+  | { kind: 'compass-phase'; phase: 'center-set' | 'radius-set' }
+  | { kind: 'macro-select'; index: number }
+
 export interface TutorialSubStep {
   /** Short display text */
   instruction: string
@@ -134,10 +139,10 @@ export interface TutorialSubStep {
   /** Visual hint rendered on canvas */
   hint: TutorialHint
   /**
-   * Compass/straightedge phase tag that triggers advancement to next sub-step.
+   * Tool phase event that triggers advancement to next sub-step.
    * null = terminal sub-step (advanced when the proposition step completes).
    */
-  advanceOn: string | null
+  advanceOn: AdvanceOn | null
 }
 
 // ── Proposition stepper ────────────────────────────────────────────
@@ -164,10 +169,18 @@ export interface PropositionDef {
   title: string
   givenElements: ConstructionElement[]
   steps: PropositionStep[]
-  /** When true, circle-segment intersections use the infinite line through the segment.
-   *  Needed for propositions that "produce" (extend) lines, like I.2. */
-  extendSegments?: boolean
   completionMessage?: string
   /** Segments to highlight as the construction result on completion */
   resultSegments?: Array<{ fromId: string; toId: string }>
+}
+
+/**
+ * Whether a proposition needs Post.2 segment extension for intersection computation.
+ * Derived from step definitions: any step with `beyondId` implies the construction
+ * "produces" (extends) a finite line, requiring circle-line intersection on the extension.
+ */
+export function needsExtendedSegments(prop: PropositionDef): boolean {
+  return prop.steps.some(
+    s => s.expected.type === 'intersection' && s.expected.beyondId != null,
+  )
 }

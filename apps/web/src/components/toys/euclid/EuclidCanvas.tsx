@@ -17,6 +17,7 @@ import type {
   TutorialSubStep,
   ExpectedAction,
 } from './types'
+import { needsExtendedSegments } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, removeLastElement, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
@@ -172,6 +173,7 @@ interface EuclidCanvasProps {
 
 export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const proposition = PROPOSITIONS[propositionId] ?? PROP_1
+  const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = TUTORIAL_GENERATORS[propositionId] ?? getProp1Tutorial
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -410,14 +412,14 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         result.state,
         result.circle,
         candidatesRef.current,
-        proposition.extendSegments,
+        extendSegments,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
       checkStep(result.circle)
       requestDraw()
     },
-    [checkStep, requestDraw, proposition.extendSegments],
+    [checkStep, requestDraw, extendSegments],
   )
 
   const handleCommitSegment = useCallback(
@@ -429,14 +431,14 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         result.state,
         result.segment,
         candidatesRef.current,
-        proposition.extendSegments,
+        extendSegments,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
       checkStep(result.segment)
       requestDraw()
     },
-    [checkStep, requestDraw, proposition.extendSegments],
+    [checkStep, requestDraw, extendSegments],
   )
 
   const handleMarkIntersection = useCallback(
@@ -517,18 +519,16 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         inputPointIds,
         candidatesRef.current,
         factStoreRef.current,
-        proposition.extendSegments,
+        step,
+        extendSegments,
         outputLabels,
       )
-
-      // Update atStep on macro's facts
-      const factsWithStep = result.newFacts.map(f => ({ ...f, atStep: step }))
 
       constructionRef.current = result.state
       candidatesRef.current = result.candidates
       // factStore is mutated in place by the macro — no reassignment needed
-      if (factsWithStep.length > 0) {
-        setProofFacts(prev => [...prev, ...factsWithStep])
+      if (result.newFacts.length > 0) {
+        setProofFacts(prev => [...prev, ...result.newFacts])
       }
 
       // Start animation
@@ -549,7 +549,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
 
       requestDraw()
     },
-    [proposition.steps, proposition.extendSegments, requestDraw],
+    [proposition.steps, extendSegments, requestDraw],
   )
 
   const handleUndo = useCallback(() => {
@@ -637,7 +637,8 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
           setTutorialSubStep(0)
         } else {
           const subStepDef = subSteps[step]?.[subStep]
-          if (subStepDef?.advanceOn === compassTag) {
+          const adv = subStepDef?.advanceOn
+          if (adv?.kind === 'compass-phase' && adv.phase === compassTag) {
             const next = subStep + 1
             tutorialSubStepRef.current = next
             setTutorialSubStep(next)
@@ -673,8 +674,8 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       const macroPhase = macroPhaseRef.current
       if (macroPhase.tag === 'selecting' && macroPhase.selectedPointIds.length > 0) {
         const subStepDef = subSteps[step]?.[subStep]
-        const advanceTag = `macro-select-${macroPhase.selectedPointIds.length - 1}`
-        if (subStepDef?.advanceOn === advanceTag) {
+        const adv = subStepDef?.advanceOn
+        if (adv?.kind === 'macro-select' && adv.index === macroPhase.selectedPointIds.length - 1) {
           const next = subStep + 1
           tutorialSubStepRef.current = next
           setTutorialSubStep(next)

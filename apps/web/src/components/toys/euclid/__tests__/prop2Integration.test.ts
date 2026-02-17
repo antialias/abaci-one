@@ -38,7 +38,7 @@ describe('Proposition I.2 full construction with selectors', () => {
     // ── Step 1: Construct equilateral triangle (macro I.1) ──
     const macro = MACRO_REGISTRY[1]
     const outputLabels = steps[1].expected.type === 'macro' ? steps[1].expected.outputLabels : undefined
-    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, true, outputLabels)
+    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, 1, true, outputLabels)
     state = macroResult.state
     candidates = macroResult.candidates
     // factStore is mutated in place by the macro
@@ -160,7 +160,7 @@ describe('Proposition I.2 full construction with selectors', () => {
     candidates = [...candidates, ...findNewIntersections(state, segAB.segment, candidates, true)]
 
     const macro = MACRO_REGISTRY[1]
-    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, true, { apex: 'D' })
+    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, 1, true, { apex: 'D' })
     state = macroResult.state
     candidates = macroResult.candidates
 
