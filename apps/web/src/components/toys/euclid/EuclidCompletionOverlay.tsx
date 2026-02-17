@@ -12,8 +12,8 @@ interface EuclidCompletionOverlayProps {
 }
 
 /**
- * Post-completion overlay shown after Q.E.F. in EuclidCanvas.
- * Displays what was completed, what was unlocked, and navigation options.
+ * Non-blocking completion banner — slides in at the bottom-left of the canvas
+ * after Q.E.F., showing unlocks and navigation without covering anything.
  */
 export function EuclidCompletionOverlay({
   propositionId,
@@ -23,185 +23,131 @@ export function EuclidCompletionOverlay({
   onNavigateMap,
 }: EuclidCompletionOverlayProps) {
   const [visible, setVisible] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    // Fade in after a short delay to let Q.E.F. settle
     const timer = setTimeout(() => setVisible(true), 800)
     return () => clearTimeout(timer)
   }, [])
 
+  if (dismissed) return null
+
   const prop = getProposition(propositionId)
-  const propTitle = prop ? `I.${propositionId}` : `I.${propositionId}`
 
   return (
     <div
-      data-component="euclid-completion-overlay"
+      data-component="euclid-completion-banner"
       style={{
         position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(250, 250, 240, 0.85)',
-        backdropFilter: 'blur(4px)',
+        bottom: 16,
+        left: 16,
+        maxWidth: 320,
+        background: '#fff',
+        borderRadius: 12,
+        padding: '14px 18px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(16, 185, 129, 0.2)',
         opacity: visible ? 1 : 0,
-        transition: 'opacity 0.5s ease',
-        zIndex: 20,
+        transform: visible ? 'translateY(0)' : 'translateY(8px)',
+        transition: 'opacity 0.4s ease, transform 0.4s ease',
+        zIndex: 10,
         pointerEvents: visible ? 'auto' : 'none',
       }}
     >
-      <div
-        data-element="completion-card"
+      {/* Dismiss button */}
+      <button
+        type="button"
+        data-action="dismiss-banner"
+        onClick={() => setDismissed(true)}
         style={{
-          background: '#fff',
-          borderRadius: 16,
-          padding: '32px 40px',
-          maxWidth: 400,
-          width: '90%',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(16, 185, 129, 0.2)',
-          transform: visible ? 'translateY(0)' : 'translateY(12px)',
-          transition: 'transform 0.5s ease',
-          textAlign: 'center',
+          position: 'absolute',
+          top: 6,
+          right: 8,
+          background: 'none',
+          border: 'none',
+          fontSize: 14,
+          color: '#9ca3af',
+          cursor: 'pointer',
+          padding: '2px 4px',
+          lineHeight: 1,
         }}
       >
-        {/* Green banner */}
-        <div
-          data-element="completion-banner"
-          style={{
-            color: '#10b981',
-            fontSize: 22,
-            fontWeight: 700,
-            fontFamily: 'Georgia, serif',
-            marginBottom: 8,
-          }}
-        >
-          Proposition {propTitle} Complete
-        </div>
+        ×
+      </button>
 
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+        <span style={{ color: '#10b981', fontSize: 13, fontWeight: 700, fontFamily: 'Georgia, serif' }}>
+          ✓ I.{propositionId}
+        </span>
         {prop && (
-          <div
-            style={{
-              color: '#6b7280',
-              fontSize: 13,
-              fontFamily: 'Georgia, serif',
-              fontStyle: 'italic',
-              marginBottom: 20,
-            }}
-          >
+          <span style={{ color: '#6b7280', fontSize: 11, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
             {prop.title}
-          </div>
+          </span>
         )}
+      </div>
 
-        {/* Unlocked section */}
-        {unlocked.length > 0 && (
-          <div
-            data-element="unlocked-section"
-            style={{
-              marginBottom: 24,
-              padding: '12px 16px',
-              background: 'rgba(16, 185, 129, 0.06)',
-              borderRadius: 10,
-              border: '1px solid rgba(16, 185, 129, 0.15)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#10b981',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: 8,
-              }}
-            >
-              Unlocked
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {unlocked.map(id => {
-                const p = getProposition(id)
-                return (
-                  <div
-                    key={id}
-                    style={{
-                      fontSize: 14,
-                      color: '#374151',
-                      fontFamily: 'Georgia, serif',
-                    }}
-                  >
-                    <strong>I.{id}</strong>
-                    {p && <span style={{ color: '#6b7280' }}> — {p.title}</span>}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+      {/* Unlocked */}
+      {unlocked.length > 0 && (
+        <div style={{ fontSize: 12, color: '#374151', fontFamily: 'Georgia, serif', marginBottom: 8 }}>
+          <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
+          {unlocked.map((id, i) => {
+            const p = getProposition(id)
+            return (
+              <span key={id}>
+                {i > 0 && ', '}
+                <strong>I.{id}</strong>
+                {p && <span style={{ color: '#6b7280' }}> ({truncate(p.title, 20)})</span>}
+              </span>
+            )
+          })}
+        </div>
+      )}
 
-        {/* Navigation buttons */}
-        <div
-          data-element="completion-nav"
-          style={{
-            display: 'flex',
-            gap: 12,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
-          {nextPropId && (
-            <button
-              type="button"
-              data-action="navigate-next"
-              onClick={() => onNavigateNext(nextPropId)}
-              style={{
-                padding: '10px 24px',
-                fontSize: 15,
-                fontWeight: 600,
-                fontFamily: 'Georgia, serif',
-                background: '#10b981',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 10,
-                cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = '#059669' }}
-              onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = '#10b981' }}
-            >
-              Next: I.{nextPropId} →
-            </button>
-          )}
-
+      {/* Navigation */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {nextPropId && (
           <button
             type="button"
-            data-action="navigate-map"
-            onClick={onNavigateMap}
+            data-action="navigate-next"
+            onClick={() => onNavigateNext(nextPropId)}
             style={{
-              padding: '10px 24px',
-              fontSize: 15,
+              padding: '5px 14px',
+              fontSize: 12,
               fontWeight: 600,
               fontFamily: 'Georgia, serif',
-              background: 'transparent',
-              color: '#6b7280',
-              border: '1px solid #d1d5db',
-              borderRadius: 10,
+              background: '#10b981',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
               cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => {
-              const btn = e.target as HTMLButtonElement
-              btn.style.borderColor = '#9ca3af'
-              btn.style.color = '#374151'
-            }}
-            onMouseLeave={e => {
-              const btn = e.target as HTMLButtonElement
-              btn.style.borderColor = '#d1d5db'
-              btn.style.color = '#6b7280'
             }}
           >
-            Back to Map
+            Next: I.{nextPropId} →
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          data-action="navigate-map"
+          onClick={onNavigateMap}
+          style={{
+            padding: '5px 14px',
+            fontSize: 12,
+            fontWeight: 600,
+            fontFamily: 'Georgia, serif',
+            background: 'transparent',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          Map
+        </button>
       </div>
     </div>
   )
+}
+
+function truncate(s: string, max: number): string {
+  return s.length <= max ? s : s.slice(0, max - 1) + '…'
 }
