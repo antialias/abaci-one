@@ -6,6 +6,7 @@ import type {
 } from '../types'
 import { getPoint } from '../engine/constructionState'
 import { isCandidateBeyondPoint } from '../engine/intersections'
+import { resolveSelector } from '../engine/selectors'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 
 const HINT_COLOR = 'rgba(78, 121, 167,'
@@ -232,13 +233,19 @@ export function renderTutorialHint(
   }
 
   if (hint.type === 'candidates') {
-    // Filter candidates by ofA/ofB when specified
-    let filtered = (hint.ofA && hint.ofB)
-      ? candidates.filter(c =>
-          (c.ofA === hint.ofA && c.ofB === hint.ofB) ||
-          (c.ofA === hint.ofB && c.ofB === hint.ofA),
-        )
-      : candidates
+    // Filter candidates by ofA/ofB when specified (resolve selectors to element IDs)
+    let filtered: IntersectionCandidate[]
+    if (hint.ofA != null && hint.ofB != null) {
+      const resolvedA = resolveSelector(hint.ofA, state)
+      const resolvedB = resolveSelector(hint.ofB, state)
+      if (!resolvedA || !resolvedB) return
+      filtered = candidates.filter(c =>
+        (c.ofA === resolvedA && c.ofB === resolvedB) ||
+        (c.ofA === resolvedB && c.ofB === resolvedA),
+      )
+    } else {
+      filtered = candidates
+    }
     // Further filter by beyondId when specified (e.g. "beyond B on segment DB")
     if (hint.beyondId) {
       filtered = filtered.filter(c =>

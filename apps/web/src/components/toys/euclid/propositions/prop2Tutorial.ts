@@ -80,7 +80,12 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
         instruction: `${tap} where the circle crosses line DB, past B`,
         speech:
           "See where the new circle crosses the line from D through B? Tap the point on the far side of B — past B, away from D. That intersection captures the length we want to transfer.",
-        hint: { type: 'candidates', ofA: 'cir-1', ofB: 'seg-4', beyondId: 'pt-B' },
+        hint: {
+          type: 'candidates',
+          ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
+          ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-B' },
+          beyondId: 'pt-B',
+        },
         advanceOn: null,
       },
     ],
@@ -119,7 +124,12 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
         instruction: `${tap} where the big circle crosses line DA, past A`,
         speech:
           "See where the big circle crosses the line from D through A? Tap the point past A — on the far side from D. The line from A to that new point is exactly the same length as BC!",
-        hint: { type: 'candidates', ofA: 'cir-2', ofB: 'seg-3', beyondId: 'pt-A' },
+        hint: {
+          type: 'candidates',
+          ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
+          ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-A' },
+          beyondId: 'pt-A',
+        },
         advanceOn: null,
       },
     ],

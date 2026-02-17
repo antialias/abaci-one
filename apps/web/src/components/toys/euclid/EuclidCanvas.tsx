@@ -38,6 +38,7 @@ import { distancePair, distancePairKey } from './engine/facts'
 import type { DistancePair } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
+import { resolveSelector } from './engine/selectors'
 import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
 import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
@@ -444,19 +445,26 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       // In guided mode, reject candidates that don't match the current step's expected ofA/ofB.
       // This prevents wrong taps from creating points that derail subsequent steps.
       const step = currentStepRef.current
+      let explicitLabel: string | undefined
       if (step < proposition.steps.length) {
         const expected = proposition.steps[step].expected
-        if (expected.type === 'intersection' && expected.ofA && expected.ofB) {
-          const matches =
-            (candidate.ofA === expected.ofA && candidate.ofB === expected.ofB) ||
-            (candidate.ofA === expected.ofB && candidate.ofB === expected.ofA)
-          if (!matches) {
-            return
-          }
-          // If beyondId is specified, reject candidates on the wrong side
-          if (expected.beyondId) {
-            if (!isCandidateBeyondPoint(candidate, expected.beyondId, candidate.ofA, candidate.ofB, constructionRef.current)) {
+        if (expected.type === 'intersection') {
+          explicitLabel = expected.label
+          if (expected.ofA != null && expected.ofB != null) {
+            const resolvedA = resolveSelector(expected.ofA, constructionRef.current)
+            const resolvedB = resolveSelector(expected.ofB, constructionRef.current)
+            if (!resolvedA || !resolvedB) return
+            const matches =
+              (candidate.ofA === resolvedA && candidate.ofB === resolvedB) ||
+              (candidate.ofA === resolvedB && candidate.ofB === resolvedA)
+            if (!matches) {
               return
+            }
+            // If beyondId is specified, reject candidates on the wrong side
+            if (expected.beyondId) {
+              if (!isCandidateBeyondPoint(candidate, expected.beyondId, candidate.ofA, candidate.ofB, constructionRef.current)) {
+                return
+              }
             }
           }
         }
@@ -467,6 +475,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         candidate.x,
         candidate.y,
         'intersection',
+        explicitLabel,
       )
       constructionRef.current = result.state
 
@@ -500,6 +509,10 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
 
       const step = currentStepRef.current
 
+      // Get outputLabels from the current step's expected action
+      const expected = step < proposition.steps.length ? proposition.steps[step].expected : null
+      const outputLabels = expected?.type === 'macro' ? expected.outputLabels : undefined
+
       // Execute the macro — state is computed all at once
       const result = macroDef.execute(
         constructionRef.current,
@@ -507,6 +520,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         candidatesRef.current,
         factStoreRef.current,
         proposition.extendSegments,
+        outputLabels,
       )
 
       // Update atStep on macro's facts
@@ -689,13 +703,19 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
           ctx.scale(dpr, dpr)
 
           // Derive candidate filter from current step's expected intersection
+          // Resolve ElementSelectors to runtime IDs for filtering
           const curStep = currentStepRef.current
           const curExpected = curStep < proposition.steps.length
             ? proposition.steps[curStep].expected
             : null
-          const candFilter = (curExpected?.type === 'intersection' && curExpected.ofA && curExpected.ofB)
-            ? { ofA: curExpected.ofA, ofB: curExpected.ofB, beyondId: curExpected.beyondId }
-            : null
+          let candFilter: { ofA: string; ofB: string; beyondId?: string } | null = null
+          if (curExpected?.type === 'intersection' && curExpected.ofA != null && curExpected.ofB != null) {
+            const resolvedA = resolveSelector(curExpected.ofA, constructionRef.current)
+            const resolvedB = resolveSelector(curExpected.ofB, constructionRef.current)
+            if (resolvedA && resolvedB) {
+              candFilter = { ofA: resolvedA, ofB: resolvedB, beyondId: curExpected.beyondId }
+            }
+          }
           const complete = curStep >= proposition.steps.length
 
           // Compute hidden elements during macro animation

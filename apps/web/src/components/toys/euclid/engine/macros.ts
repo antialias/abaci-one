@@ -21,6 +21,7 @@ export interface MacroDef {
     candidates: IntersectionCandidate[],
     factStore: FactStore,
     extendSegments?: boolean,
+    outputLabels?: Record<string, string>,
   ) => MacroResult
 }
 
@@ -57,6 +58,7 @@ const MACRO_PROP_1: MacroDef = {
     candidates: IntersectionCandidate[],
     factStore: FactStore,
     extendSegments: boolean = false,
+    outputLabels?: Record<string, string>,
   ): MacroResult {
     const [ptA, ptB] = inputPointIds
     const addedElements: ConstructionElement[] = []
@@ -87,8 +89,8 @@ const MACRO_PROP_1: MacroDef = {
       return { state: currentState, candidates: currentCandidates, addedElements, factStore: currentFactStore, newFacts: allNewFacts }
     }
 
-    // 2. Add the apex point
-    const ptResult = addPoint(currentState, apex.x, apex.y, 'intersection')
+    // 2. Add the apex point (use explicit label if provided)
+    const ptResult = addPoint(currentState, apex.x, apex.y, 'intersection', outputLabels?.apex)
     currentState = ptResult.state
     addedElements.push(ptResult.point)
 

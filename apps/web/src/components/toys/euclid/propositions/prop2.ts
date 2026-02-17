@@ -85,7 +85,7 @@ export const PROP_2: PropositionDef = {
     // 2. Construct equilateral triangle on AB (I.1 macro)
     {
       instruction: 'Construct equilateral triangle on AB (I.1)',
-      expected: { type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-B'] },
+      expected: { type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-B'], outputLabels: { apex: 'D' } },
       highlightIds: ['pt-A', 'pt-B'],
       tool: 'macro',
       citation: 'I.1',
@@ -99,9 +99,16 @@ export const PROP_2: PropositionDef = {
       citation: 'Post.3',
     },
     // 4. Mark intersection E (Euclid's G — on extension of DB beyond B)
+    // Uses ElementSelectors: circle(B,C) and segment(D,B) instead of creation-order IDs
     {
       instruction: 'Mark where the circle crosses line DB, past B',
-      expected: { type: 'intersection', ofA: 'cir-1', ofB: 'seg-4', beyondId: 'pt-B' },
+      expected: {
+        type: 'intersection',
+        ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
+        ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-B' },
+        beyondId: 'pt-B',
+        label: 'E',
+      },
       highlightIds: [],
       tool: null,
       citation: 'Def.15',
@@ -117,7 +124,13 @@ export const PROP_2: PropositionDef = {
     // 6. Mark intersection F (Euclid's L — on extension of DA beyond A)
     {
       instruction: 'Mark where the circle crosses line DA, past A',
-      expected: { type: 'intersection', ofA: 'cir-2', ofB: 'seg-3', beyondId: 'pt-A' },
+      expected: {
+        type: 'intersection',
+        ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
+        ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-A' },
+        beyondId: 'pt-A',
+        label: 'F',
+      },
       highlightIds: [],
       tool: null,
       citation: 'Def.15',

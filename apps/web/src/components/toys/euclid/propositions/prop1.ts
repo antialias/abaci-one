@@ -53,7 +53,7 @@ export const PROP_1: PropositionDef = {
     },
     {
       instruction: 'Mark the point where the circles meet',
-      expected: { type: 'intersection', ofA: '', ofB: '' }, // accepts any intersection
+      expected: { type: 'intersection', label: 'C' }, // accepts any intersection
       highlightIds: [],
       tool: null, // tap — no tool needed
       citation: 'Def.15',

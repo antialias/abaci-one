@@ -108,13 +108,22 @@ export type MacroPhase =
   | { tag: 'idle' }
   | { tag: 'selecting'; propId: number; inputLabels: string[]; selectedPointIds: string[] }
 
+// ── Element selectors ─────────────────────────────────────────────
+// Reference circles/segments by their defining points, not creation-order IDs.
+// Point IDs (e.g. "pt-A") pass through as plain strings.
+
+export type ElementSelector =
+  | string
+  | { kind: 'circle'; centerId: string; radiusPointId: string }
+  | { kind: 'segment'; fromId: string; toId: string }
+
 // ── Tutorial hints ─────────────────────────────────────────────────
 
 export type TutorialHint =
   | { type: 'point'; pointId: string }
   | { type: 'arrow'; fromId: string; toId: string }
   | { type: 'sweep'; centerId: string; radiusPointId: string }
-  | { type: 'candidates'; ofA?: string; ofB?: string; beyondId?: string }
+  | { type: 'candidates'; ofA?: ElementSelector; ofB?: ElementSelector; beyondId?: string }
   | { type: 'none' }
 
 export interface TutorialSubStep {
@@ -135,9 +144,9 @@ export interface TutorialSubStep {
 
 export type ExpectedAction =
   | { type: 'compass'; centerId: string; radiusPointId: string }
-  | { type: 'intersection'; ofA: string; ofB: string; beyondId?: string }
+  | { type: 'intersection'; ofA?: ElementSelector; ofB?: ElementSelector; beyondId?: string; label?: string }
   | { type: 'straightedge'; fromId: string; toId: string }
-  | { type: 'macro'; propId: number; inputPointIds: string[] }
+  | { type: 'macro'; propId: number; inputPointIds: string[]; outputLabels?: Record<string, string> }
 
 export interface PropositionStep {
   instruction: string

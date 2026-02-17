@@ -43,8 +43,9 @@ export function addPoint(
   x: number,
   y: number,
   origin: ElementOrigin,
+  explicitLabel?: string,
 ): { state: ConstructionState; point: ConstructionPoint } {
-  const label = labelAt(state.nextLabelIndex)
+  const label = explicitLabel ?? labelAt(state.nextLabelIndex)
   const color = origin === 'given' ? BYRNE.given : BYRNE_CYCLE[state.nextColorIndex % BYRNE_CYCLE.length]
   const point: ConstructionPoint = {
     kind: 'point',
@@ -55,11 +56,16 @@ export function addPoint(
     color,
     origin,
   }
+  // When an explicit label is used, ensure nextLabelIndex advances past it
+  const labelIndex = explicitLabel ? LABELS.indexOf(explicitLabel) : -1
+  const nextLabelIndex = explicitLabel
+    ? Math.max(state.nextLabelIndex, labelIndex + 1)
+    : state.nextLabelIndex + 1
   return {
     state: {
       ...state,
       elements: [...state.elements, point],
-      nextLabelIndex: state.nextLabelIndex + 1,
+      nextLabelIndex,
       nextColorIndex: origin === 'given' ? state.nextColorIndex : state.nextColorIndex + 1,
     },
     point,
