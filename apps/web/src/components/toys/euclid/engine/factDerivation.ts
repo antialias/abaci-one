@@ -19,9 +19,8 @@ export function deriveDef15Facts(
   state: ConstructionState,
   store: FactStore,
   atStep: number,
-): { store: FactStore; newFacts: EqualityFact[] } {
+): EqualityFact[] {
   const allNewFacts: EqualityFact[] = []
-  let currentStore = store
 
   for (const elementId of [candidate.ofA, candidate.ofB]) {
     if (!elementId.startsWith('cir-')) continue
@@ -44,8 +43,8 @@ export function deriveDef15Facts(
     const statement = `${centerLabel}${newLabel} = ${centerLabel}${radiusLabel}`
     const justification = `Def.15: ${newLabel} lies on circle centered at ${centerLabel} through ${radiusLabel}`
 
-    const result = addFact(
-      currentStore,
+    const newFacts = addFact(
+      store,
       left,
       right,
       { type: 'def15', circleId: elementId },
@@ -53,9 +52,8 @@ export function deriveDef15Facts(
       justification,
       atStep,
     )
-    currentStore = result.store
-    allNewFacts.push(...result.newFacts)
+    allNewFacts.push(...newFacts)
   }
 
-  return { store: currentStore, newFacts: allNewFacts }
+  return allNewFacts
 }

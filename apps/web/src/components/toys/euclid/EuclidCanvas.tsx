@@ -341,14 +341,13 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     if (!isComplete) return
     const conclusionFn = PROP_CONCLUSIONS[proposition.id]
     if (!conclusionFn) return
-    const result = conclusionFn(
+    const newFacts = conclusionFn(
       factStoreRef.current,
       constructionRef.current,
       proposition.steps.length,
     )
-    factStoreRef.current = result.store
-    if (result.newFacts.length > 0) {
-      setProofFacts(prev => [...prev, ...result.newFacts])
+    if (newFacts.length > 0) {
+      setProofFacts(prev => [...prev, ...newFacts])
     }
   }, [isComplete, proposition.id, proposition.steps.length])
 
@@ -484,16 +483,15 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       )
 
       // Derive Def.15 facts for intersection points on circles
-      const def15Result = deriveDef15Facts(
+      const newFacts = deriveDef15Facts(
         candidate,
         result.point.id,
         constructionRef.current,
         factStoreRef.current,
         step,
       )
-      factStoreRef.current = def15Result.store
-      if (def15Result.newFacts.length > 0) {
-        setProofFacts(prev => [...prev, ...def15Result.newFacts])
+      if (newFacts.length > 0) {
+        setProofFacts(prev => [...prev, ...newFacts])
       }
 
       checkStep(result.point, candidate)
@@ -528,7 +526,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
 
       constructionRef.current = result.state
       candidatesRef.current = result.candidates
-      factStoreRef.current = result.factStore
+      // factStore is mutated in place by the macro — no reassignment needed
       if (factsWithStep.length > 0) {
         setProofFacts(prev => [...prev, ...factsWithStep])
       }

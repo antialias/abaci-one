@@ -2,6 +2,8 @@ import type { DistancePair, EqualityFact, Citation } from './facts'
 import { distancePairKey, distancePairsEqual } from './facts'
 
 // ── Union-Find internals ──
+// The UF is a derived cache over a store's facts. It's encapsulated here
+// via a WeakMap — callers never see or interact with it directly.
 
 interface UFNode {
   parent: string
@@ -12,6 +14,15 @@ interface UFNode {
 
 interface UnionFind {
   nodes: Map<string, UFNode>
+}
+
+/** Module-private: each FactStore has an associated UF, invisible to callers. */
+const ufMap = new WeakMap<FactStore, UnionFind>()
+
+function getUf(store: FactStore): UnionFind {
+  const uf = ufMap.get(store)
+  if (!uf) throw new Error('FactStore has no associated union-find — was it created via createFactStore()?')
+  return uf
 }
 
 function ufEnsure(uf: UnionFind, key: string) {
@@ -79,19 +90,18 @@ function ufGetSet(uf: UnionFind, key: string): string[] {
 export interface FactStore {
   facts: EqualityFact[]
   nextId: number
-  /** @internal */
-  _uf: UnionFind
 }
 
 export function createFactStore(): FactStore {
-  return {
-    facts: [],
-    nextId: 1,
-    _uf: { nodes: new Map() },
-  }
+  const store: FactStore = { facts: [], nextId: 1 }
+  ufMap.set(store, { nodes: new Map() })
+  return store
 }
 
-/** Add an equality fact and run incremental C.N.1 transitivity via union-find merge */
+/**
+ * Add an equality fact and run incremental C.N.1 transitivity via union-find merge.
+ * Mutates the store in place and returns the newly created facts.
+ */
 export function addFact(
   store: FactStore,
   left: DistancePair,
@@ -100,13 +110,14 @@ export function addFact(
   statement: string,
   justification: string,
   atStep: number,
-): { store: FactStore; newFacts: EqualityFact[] } {
+): EqualityFact[] {
+  const uf = getUf(store)
   const keyL = distancePairKey(left)
   const keyR = distancePairKey(right)
 
   // Don't add duplicate facts
-  if (ufConnected(store._uf, keyL, keyR)) {
-    return { store, newFacts: [] }
+  if (ufConnected(uf, keyL, keyR)) {
+    return []
   }
 
   const fact: EqualityFact = {
@@ -119,17 +130,11 @@ export function addFact(
     atStep,
   }
 
-  const newFacts: EqualityFact[] = [fact]
-  const newStore: FactStore = {
-    ...store,
-    facts: [...store.facts, fact],
-    nextId: store.nextId + 1,
-    _uf: store._uf, // shared mutable — fine for our use case
-  }
+  store.facts.push(fact)
+  store.nextId++
+  ufUnion(uf, keyL, keyR, fact.id)
 
-  ufUnion(newStore._uf, keyL, keyR, fact.id)
-
-  return { store: newStore, newFacts }
+  return [fact]
 }
 
 /** Are these two distances known-equal? */
@@ -139,19 +144,21 @@ export function queryEquality(
   b: DistancePair,
 ): boolean {
   if (distancePairsEqual(a, b)) return true
+  const uf = getUf(store)
   const keyA = distancePairKey(a)
   const keyB = distancePairKey(b)
   // If either key hasn't been registered, they can't be equal
-  if (!store._uf.nodes.has(keyA) || !store._uf.nodes.has(keyB)) return false
-  return ufConnected(store._uf, keyA, keyB)
+  if (!uf.nodes.has(keyA) || !uf.nodes.has(keyB)) return false
+  return ufConnected(uf, keyA, keyB)
 }
 
 /** All distances known-equal to this one */
 export function getEqualDistances(store: FactStore, dp: DistancePair): DistancePair[] {
+  const uf = getUf(store)
   const key = distancePairKey(dp)
-  if (!store._uf.nodes.has(key)) return [dp]
+  if (!uf.nodes.has(key)) return [dp]
 
-  const setKeys = ufGetSet(store._uf, key)
+  const setKeys = ufGetSet(uf, key)
   return setKeys.map(k => {
     const [a, b] = k.split('|')
     return { a, b }

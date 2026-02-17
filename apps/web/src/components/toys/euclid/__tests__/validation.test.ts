@@ -137,6 +137,121 @@ describe('validateStep with ElementSelectors', () => {
     })
   })
 
+  describe('intersection edge cases', () => {
+    it('rejects when no candidate is provided but selectors are specified', () => {
+      let state = givenABC()
+      const cir = addCircle(state, 'pt-A', 'pt-B')
+      state = cir.state
+      const seg = addSegment(state, 'pt-A', 'pt-C')
+      state = seg.state
+      const pt = addPoint(state, 1, 1, 'intersection')
+      state = pt.state
+
+      const expected: ExpectedAction = {
+        type: 'intersection',
+        ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-B' },
+        ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-C' },
+      }
+
+      // No candidate provided — should reject
+      expect(validateStep(expected, state, pt.point)).toBe(false)
+    })
+
+    it('rejects non-intersection point for intersection expected', () => {
+      let state = givenABC()
+      // A point with origin 'given', not 'intersection'
+      const given = state.elements.find(e => e.kind === 'point' && e.id === 'pt-A')!
+
+      const expected: ExpectedAction = { type: 'intersection' }
+      expect(validateStep(expected, state, given)).toBe(false)
+    })
+
+    it('rejects a circle element for intersection expected', () => {
+      let state = givenABC()
+      const cir = addCircle(state, 'pt-A', 'pt-B')
+      state = cir.state
+
+      const expected: ExpectedAction = { type: 'intersection' }
+      expect(validateStep(expected, state, cir.circle)).toBe(false)
+    })
+
+    it('accepts intersection with string selectors (legacy format)', () => {
+      let state = givenABC()
+      const cir = addCircle(state, 'pt-A', 'pt-B')
+      state = cir.state
+      const seg = addSegment(state, 'pt-A', 'pt-C')
+      state = seg.state
+      const pt = addPoint(state, 1, 1, 'intersection')
+      state = pt.state
+
+      // String selectors resolve as-is
+      const expected: ExpectedAction = {
+        type: 'intersection',
+        ofA: cir.circle.id,
+        ofB: seg.segment.id,
+      }
+
+      const candidate: IntersectionCandidate = {
+        x: 1, y: 1,
+        ofA: cir.circle.id,
+        ofB: seg.segment.id,
+        which: 0,
+      }
+
+      expect(validateStep(expected, state, pt.point, candidate)).toBe(true)
+    })
+  })
+
+  describe('type mismatches', () => {
+    it('rejects compass element for straightedge expected', () => {
+      let state = givenABC()
+      const cir = addCircle(state, 'pt-A', 'pt-B')
+      state = cir.state
+
+      const expected: ExpectedAction = {
+        type: 'straightedge', fromId: 'pt-A', toId: 'pt-B',
+      }
+
+      expect(validateStep(expected, state, cir.circle)).toBe(false)
+    })
+
+    it('rejects segment element for compass expected', () => {
+      let state = givenABC()
+      const seg = addSegment(state, 'pt-A', 'pt-B')
+      state = seg.state
+
+      const expected: ExpectedAction = {
+        type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B',
+      }
+
+      expect(validateStep(expected, state, seg.segment)).toBe(false)
+    })
+
+    it('returns false for macro expected (validated externally)', () => {
+      let state = givenABC()
+      const seg = addSegment(state, 'pt-A', 'pt-B')
+      state = seg.state
+
+      const expected: ExpectedAction = {
+        type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-B'],
+      }
+
+      expect(validateStep(expected, state, seg.segment)).toBe(false)
+    })
+
+    it('rejects compass with wrong center', () => {
+      let state = givenABC()
+      const cir = addCircle(state, 'pt-A', 'pt-B')
+      state = cir.state
+
+      const expected: ExpectedAction = {
+        type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-A',
+      }
+
+      expect(validateStep(expected, state, cir.circle)).toBe(false)
+    })
+  })
+
   describe('compass and straightedge (unchanged behavior)', () => {
     it('validates compass step', () => {
       let state = givenABC()

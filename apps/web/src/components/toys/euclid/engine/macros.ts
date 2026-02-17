@@ -29,7 +29,6 @@ export interface MacroResult {
   state: ConstructionState
   candidates: IntersectionCandidate[]
   addedElements: ConstructionElement[]
-  factStore: FactStore
   newFacts: EqualityFact[]
 }
 
@@ -64,7 +63,7 @@ const MACRO_PROP_1: MacroDef = {
     const addedElements: ConstructionElement[] = []
     let currentState = state
     let currentCandidates = [...candidates]
-    let currentFactStore = factStore
+    // factStore is mutated in place by addFact
     const allNewFacts: EqualityFact[] = []
 
     // 1. Compute apex as intersection of two circles:
@@ -73,7 +72,7 @@ const MACRO_PROP_1: MacroDef = {
     const pA = getPoint(currentState, ptA)
     const pB = getPoint(currentState, ptB)
     if (!pA || !pB) {
-      return { state: currentState, candidates: currentCandidates, addedElements, factStore: currentFactStore, newFacts: allNewFacts }
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
     }
     const radius = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2)
     const intersections = circleCircleIntersections(
@@ -86,7 +85,7 @@ const MACRO_PROP_1: MacroDef = {
       intersections[0],
     )
     if (!apex) {
-      return { state: currentState, candidates: currentCandidates, addedElements, factStore: currentFactStore, newFacts: allNewFacts }
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
     }
 
     // 2. Add the apex point (use explicit label if provided)
@@ -106,28 +105,24 @@ const MACRO_PROP_1: MacroDef = {
     {
       const left = distancePair(ptA, apexId)
       const right = distancePair(ptA, ptB)
-      const result = addFact(
-        currentFactStore, left, right,
+      allNewFacts.push(...addFact(
+        factStore, left, right,
         { type: 'def15', circleId: `internal-cir-${ptA}` },
         `${aLabel}${apexLabel} = ${aLabel}${bLabel}`,
         `Def.15: ${apexLabel} lies on circle centered at ${aLabel} through ${bLabel}`,
         -1,
-      )
-      currentFactStore = result.store
-      allNewFacts.push(...result.newFacts)
+      ))
     }
     {
       const left = distancePair(ptB, apexId)
       const right = distancePair(ptB, ptA)
-      const result = addFact(
-        currentFactStore, left, right,
+      allNewFacts.push(...addFact(
+        factStore, left, right,
         { type: 'def15', circleId: `internal-cir-${ptB}` },
         `${bLabel}${apexLabel} = ${bLabel}${aLabel}`,
         `Def.15: ${apexLabel} lies on circle centered at ${bLabel} through ${aLabel}`,
         -1,
-      )
-      currentFactStore = result.store
-      allNewFacts.push(...result.newFacts)
+      ))
     }
 
     // 4. Segment apex → A
@@ -148,7 +143,6 @@ const MACRO_PROP_1: MacroDef = {
       state: currentState,
       candidates: currentCandidates,
       addedElements,
-      factStore: currentFactStore,
       newFacts: allNewFacts,
     }
   },
