@@ -216,11 +216,15 @@ function AnswerInput({
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
   const showKeypad = isTouchDevice && hasPhysicalKeyboard !== true
 
+  const [answered, setAnswered] = useState(false)
+
   const { state, actions } = useKidNumberInput({
     correctAnswer: problem.answer.x,
+    clearOnCorrect: false,
     onCorrect: () => {
       setFeedback('correct')
-      setTimeout(() => onCorrect?.(), 600)
+      setAnswered(true)
+      setTimeout(() => onCorrect?.(), 1200)
     },
     onIncorrect: () => {
       setFeedback('incorrect')
@@ -249,7 +253,8 @@ function AnswerInput({
         onDigit={actions.addDigit}
         onBackspace={actions.backspace}
         feedback={feedback}
-        showKeypad={showKeypad}
+        disabled={answered}
+        showKeypad={showKeypad && !answered}
         keypadMode="inline"
         displaySize="sm"
       />
