@@ -73,7 +73,7 @@ export const PROP_1: PropositionDef = {
       citation: 'Post.1',
     },
   ],
-  completionMessage: 'Equilateral triangle constructed!',
+  // completionMessage derived from proof engine at runtime
   resultSegments: [
     { fromId: 'pt-A', toId: 'pt-C' },
     { fromId: 'pt-C', toId: 'pt-B' },

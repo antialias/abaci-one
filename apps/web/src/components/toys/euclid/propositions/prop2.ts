@@ -32,7 +32,7 @@ export const PROP_2: PropositionDef = {
   id: 2,
   title: 'Place a line equal to a given line at a given point',
   extendSegments: true,
-  completionMessage: 'Line segment placed! AF = BC',
+  // completionMessage derived from proof engine at runtime
   resultSegments: [
     { fromId: 'pt-A', toId: 'pt-F' },
   ],

@@ -17,7 +17,7 @@ import type {
   TutorialSubStep,
   ExpectedAction,
 } from './types'
-import { initializeGiven, addPoint, addCircle, addSegment, removeLastElement } from './engine/constructionState'
+import { initializeGiven, addPoint, addCircle, addSegment, removeLastElement, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
 import { renderTutorialHint } from './render/renderTutorialHint'
@@ -31,14 +31,17 @@ import { PROP_2 } from './propositions/prop2'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
-import { createFactStore } from './engine/factStore'
+import { createFactStore, queryEquality, getEqualDistances } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { EqualityFact } from './engine/facts'
+import { distancePair, distancePairKey } from './engine/facts'
+import type { DistancePair } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
 import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
 import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
+import { CITATIONS, citationDefFromFact } from './engine/citations'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 
@@ -66,6 +69,88 @@ function computeInitialViewport(givenElements: readonly { kind: string; x?: numb
   const cy = (minY + maxY) / 2 + 1.5
 
   return { center: { x: cx, y: cy }, pixelsPerUnit: 50 }
+}
+
+interface CompletionSegment {
+  label: string
+  dp: DistancePair
+}
+
+interface CompletionResult {
+  /** 'proven' when the fact store confirms the result, 'unproven' if it doesn't */
+  status: 'proven' | 'unproven'
+  /** The equality statement, e.g. "AF = BC" */
+  statement: string | null
+  /** Individual segments in the equality chain, for hover provenance */
+  segments: CompletionSegment[]
+}
+
+/**
+ * Derive the completion result from the fact store's proven equalities
+ * on the proposition's result segments. Returns the proven equality
+ * (e.g. "AF = BC") or flags it as unproven if the engine couldn't establish it.
+ */
+function deriveCompletionResult(
+  factStore: FactStore,
+  resultSegments: Array<{ fromId: string; toId: string }> | undefined,
+  state: ConstructionState,
+): CompletionResult {
+  if (!resultSegments || resultSegments.length === 0) {
+    return { status: 'proven', statement: null, segments: [] }
+  }
+
+  const label = (id: string) => getPoint(state, id)?.label ?? id
+  const segLabel = (fromId: string, toId: string) => `${label(fromId)}${label(toId)}`
+
+  // Collect all result segment distance pairs
+  const resultDps = resultSegments.map(rs => distancePair(rs.fromId, rs.toId))
+
+  // Build an ordered list of equal segments, starting with result segments
+  // then adding any construction segment that's in the same equality class
+  const equalSegs: CompletionSegment[] = []
+  const seen = new Set<string>()
+
+  for (const rs of resultSegments) {
+    const lbl = segLabel(rs.fromId, rs.toId)
+    if (!seen.has(lbl)) {
+      seen.add(lbl)
+      equalSegs.push({ label: lbl, dp: distancePair(rs.fromId, rs.toId) })
+    }
+  }
+
+  // Check all construction segments for matches
+  for (const seg of getAllSegments(state)) {
+    const segDp = distancePair(seg.fromId, seg.toId)
+    const lbl = segLabel(seg.fromId, seg.toId)
+    if (seen.has(lbl)) continue
+
+    for (const rDp of resultDps) {
+      if (queryEquality(factStore, rDp, segDp)) {
+        seen.add(lbl)
+        equalSegs.push({ label: lbl, dp: segDp })
+        break
+      }
+    }
+  }
+
+  if (equalSegs.length >= 2) {
+    return {
+      status: 'proven',
+      statement: equalSegs.map(s => s.label).join(' = '),
+      segments: equalSegs,
+    }
+  }
+
+  // If we have result segments but couldn't find proven equalities,
+  // the proof chain is incomplete
+  return {
+    status: 'unproven',
+    statement: resultSegments.map(rs => segLabel(rs.fromId, rs.toId)).join(', '),
+    segments: resultSegments.map(rs => ({
+      label: segLabel(rs.fromId, rs.toId),
+      dp: distancePair(rs.fromId, rs.toId),
+    })),
+  }
 }
 
 // ── Proposition registry ──
@@ -125,6 +210,26 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const [proofFacts, setProofFacts] = useState<EqualityFact[]>([])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
+  const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
+
+  // Full equivalence class for the hovered dp — follow transitive chain
+  const hoveredDpKeys = useMemo(() => {
+    if (!hoveredProofDp) return null
+    const eqDps = getEqualDistances(factStoreRef.current, hoveredProofDp)
+    return new Set(eqDps.map(distancePairKey))
+  }, [hoveredProofDp])
+
+  // ── Completion result derived from proof ──
+  const completionResult = useMemo(() => {
+    if (!isComplete) return null
+    return deriveCompletionResult(
+      factStoreRef.current,
+      proposition.resultSegments,
+      constructionRef.current,
+    )
+    // proofFacts in deps so we re-derive after conclusion facts are added
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComplete, proofFacts, proposition.resultSegments])
 
   // ── Input mode detection ──
   const [isTouch, setIsTouch] = useState(true) // mobile-first default
@@ -154,11 +259,24 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const currentHintRef = useRef<TutorialHint>(currentHint)
   currentHintRef.current = currentHint
 
+  // ── Group proof facts by step ──
+  const factsByStep = useMemo(() => {
+    const map = new Map<number, EqualityFact[]>()
+    for (const fact of proofFacts) {
+      const existing = map.get(fact.atStep) ?? []
+      existing.push(fact)
+      map.set(fact.atStep, existing)
+    }
+    return map
+  }, [proofFacts])
+
   // ── TTS integration ──
   useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
-    celebrationText: proposition.completionMessage,
+    celebrationText: completionResult?.status === 'proven' && completionResult.statement
+      ? completionResult.statement
+      : 'Construction complete!',
   })
 
   const requestDraw = useCallback(() => {
@@ -655,297 +773,595 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     }
   }, [])
 
+  // ── Citation ordinals: track how many times each citation has appeared ──
+  // 1st: full label + axiom text. 2nd: full label only. 3rd+: abbreviation.
+  const citationOrdinals = useMemo(() => {
+    const counts = new Map<string, number>()
+    const ordinals = new Map<string, number>()
+
+    for (let i = 0; i < proposition.steps.length; i++) {
+      const step = proposition.steps[i]
+      if (step.citation) {
+        const n = (counts.get(step.citation) ?? 0) + 1
+        counts.set(step.citation, n)
+        ordinals.set(`step-${i}`, n)
+      }
+      for (const fact of (factsByStep.get(i) ?? [])) {
+        const cd = citationDefFromFact(fact.citation)
+        if (cd) {
+          const n = (counts.get(cd.key) ?? 0) + 1
+          counts.set(cd.key, n)
+          ordinals.set(`fact-${fact.id}`, n)
+        }
+      }
+    }
+    for (const fact of (factsByStep.get(proposition.steps.length) ?? [])) {
+      const cd = citationDefFromFact(fact.citation)
+      if (cd) {
+        const n = (counts.get(cd.key) ?? 0) + 1
+        counts.set(cd.key, n)
+        ordinals.set(`fact-${fact.id}`, n)
+      }
+    }
+    return ordinals
+  }, [proposition.steps, factsByStep])
+
+  // Scroll the proof panel to keep current step visible
+  const proofScrollRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const container = proofScrollRef.current
+    if (!container) return
+    const active = container.querySelector('[data-step-current="true"]') as HTMLElement | null
+    if (active) {
+      active.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [currentStep])
+
   return (
     <div
-      ref={containerRef}
       data-component="euclid-canvas"
       style={{
         width: '100%',
         height: '100%',
-        position: 'relative',
-        touchAction: 'none',
+        display: 'flex',
         overflow: 'hidden',
       }}
     >
-      <canvas
-        ref={canvasRef}
-        data-element="euclid-canvas"
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-        }}
-      />
-
-      {/* Step instruction (tutorial sub-step text) */}
-      {!isComplete && currentStep < proposition.steps.length && currentInstruction && (
-        <div
-          data-element="step-instruction"
-          style={{
-            position: 'absolute',
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '8px 20px',
-            borderRadius: 12,
-            background: 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(203, 213, 225, 0.8)',
-            color: '#334155',
-            fontSize: 14,
-            fontWeight: 500,
-            fontFamily: 'system-ui, sans-serif',
-            pointerEvents: 'none',
-            zIndex: 10,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            maxWidth: '90%',
-            textAlign: 'center',
-          }}
-        >
-          <span style={{ color: '#94a3b8', marginRight: 8 }}>
-            {currentStep + 1}/{proposition.steps.length}
-          </span>
-          {currentInstruction}
-          {proposition.steps[currentStep]?.citation && (
-            <span
-              data-element="citation-badge"
-              style={{
-                marginLeft: 8,
-                padding: '1px 6px',
-                borderRadius: 4,
-                background: 'rgba(78, 121, 167, 0.12)',
-                color: '#4E79A7',
-                fontSize: 11,
-                fontWeight: 600,
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-              }}
-            >
-              {proposition.steps[currentStep].citation}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Completion banner */}
-      {isComplete && (
-        <div
-          data-element="completion-banner"
-          style={{
-            position: 'absolute',
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '10px 24px',
-            borderRadius: 12,
-            background: 'rgba(16, 185, 129, 0.9)',
-            backdropFilter: 'blur(8px)',
-            color: '#fff',
-            fontSize: 15,
-            fontWeight: 600,
-            fontFamily: 'system-ui, sans-serif',
-            pointerEvents: 'none',
-            zIndex: 10,
-            boxShadow: '0 2px 12px rgba(16, 185, 129, 0.3)',
-          }}
-        >
-          {proposition.completionMessage ?? 'Construction complete!'}
-        </div>
-      )}
-
-      {/* Step indicators */}
+      {/* ── Left pane: Canvas ── */}
       <div
-        data-element="step-indicators"
+        ref={containerRef}
+        data-element="canvas-pane"
         style={{
-          position: 'absolute',
-          top: 56,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: 6,
-          pointerEvents: 'none',
-          zIndex: 10,
+          flex: 1,
+          minWidth: 0,
+          position: 'relative',
+          touchAction: 'none',
         }}
       >
-        {proposition.steps.map((_, i) => (
+        <canvas
+          ref={canvasRef}
+          data-element="euclid-canvas"
+          style={{
+            display: 'block',
+            width: '100%',
+            height: '100%',
+          }}
+        />
+
+        {/* Tool auto-switch toast */}
+        {toolToast && (
           <div
-            key={i}
+            data-element="tool-toast"
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: completedSteps[i]
-                ? '#10b981'
-                : i === currentStep
-                  ? '#4E79A7'
-                  : '#d1d5db',
-              transition: 'background 0.3s ease',
+              position: 'absolute',
+              bottom: 84,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '5px 14px',
+              borderRadius: 8,
+              background: 'rgba(78, 121, 167, 0.12)',
+              color: '#4E79A7',
+              fontSize: 12,
+              fontWeight: 500,
+              fontFamily: 'system-ui, sans-serif',
+              pointerEvents: 'none',
+              zIndex: 10,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {toolToast} selected
+          </div>
+        )}
+
+        {/* Tool selector */}
+        <div
+          data-element="tool-selector"
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            gap: 8,
+            zIndex: 10,
+          }}
+        >
+          <ToolButton
+            label="Compass"
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="5" r="1" />
+                <path d="M12 6l-4 14" />
+                <path d="M12 6l4 14" />
+                <path d="M6 18a6 6 0 0 0 12 0" />
+              </svg>
+            }
+            active={activeTool === 'compass'}
+            onClick={() => setActiveTool('compass')}
+          />
+          <ToolButton
+            label="Straightedge"
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="20" x2="20" y2="4" />
+              </svg>
+            }
+            active={activeTool === 'straightedge'}
+            onClick={() => setActiveTool('straightedge')}
+          />
+          <ToolButton
+            label="Ruler"
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="8" x2="4" y2="16" />
+                <line x1="20" y1="8" x2="20" y2="16" />
+              </svg>
+            }
+            active={activeTool === 'ruler'}
+            onClick={() => {
+              if (activeTool === 'ruler') {
+                measurementsRef.current = []
+                rulerPhaseRef.current = { tag: 'idle' }
+                setActiveTool(preRulerToolRef.current)
+                needsDrawRef.current = true
+              } else {
+                if (activeTool === 'compass' || activeTool === 'straightedge') {
+                  preRulerToolRef.current = activeTool
+                }
+                setActiveTool('ruler')
+              }
             }}
           />
-        ))}
-      </div>
-
-      {/* Tool auto-switch toast */}
-      {toolToast && (
-        <div
-          data-element="tool-toast"
-          style={{
-            position: 'absolute',
-            bottom: 84,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '5px 14px',
-            borderRadius: 8,
-            background: 'rgba(78, 121, 167, 0.12)',
-            color: '#4E79A7',
-            fontSize: 12,
-            fontWeight: 500,
-            fontFamily: 'system-ui, sans-serif',
-            pointerEvents: 'none',
-            zIndex: 10,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {toolToast} selected
-        </div>
-      )}
-
-      {/* Proof transcript panel — always visible when facts exist */}
-      {proofFacts.length > 0 && (
-        <div
-          data-element="proof-transcript"
-          style={{
-            position: 'absolute',
-            bottom: 84,
-            left: 12,
-            right: 12,
-            maxHeight: '30%',
-            overflowY: 'auto',
-            padding: '10px 14px',
-            borderRadius: 12,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(203, 213, 225, 0.8)',
-            color: '#334155',
-            fontSize: 12,
-            fontFamily: 'Georgia, serif',
-            pointerEvents: 'auto',
-            zIndex: 10,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-          }}
-        >
-          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Proof</div>
-          {proofFacts.map(fact => (
-            <div key={fact.id} style={{ marginBottom: 4 }}>
-              <span style={{ color: '#4E79A7', fontWeight: 600 }}>{fact.statement}</span>
-              <span style={{ color: '#94a3b8', marginLeft: 8, fontStyle: 'italic', fontSize: 11 }}>
-                {fact.justification}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tool selector */}
-      <div
-        data-element="tool-selector"
-        style={{
-          position: 'absolute',
-          bottom: 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: 8,
-          zIndex: 10,
-        }}
-      >
-        <ToolButton
-          label="Compass"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="5" r="1" />
-              <path d="M12 6l-4 14" />
-              <path d="M12 6l4 14" />
-              <path d="M6 18a6 6 0 0 0 12 0" />
-            </svg>
-          }
-          active={activeTool === 'compass'}
-          onClick={() => setActiveTool('compass')}
-        />
-        <ToolButton
-          label="Straightedge"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="20" x2="20" y2="4" />
-            </svg>
-          }
-          active={activeTool === 'straightedge'}
-          onClick={() => setActiveTool('straightedge')}
-        />
-        <ToolButton
-          label="Ruler"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="12" x2="20" y2="12" />
-              <line x1="4" y1="8" x2="4" y2="16" />
-              <line x1="20" y1="8" x2="20" y2="16" />
-            </svg>
-          }
-          active={activeTool === 'ruler'}
-          onClick={() => {
-            if (activeTool === 'ruler') {
-              // Toggle off: clear measurements, restore prior tool
-              measurementsRef.current = []
-              rulerPhaseRef.current = { tag: 'idle' }
-              setActiveTool(preRulerToolRef.current)
-              needsDrawRef.current = true
-            } else {
-              // Toggle on: remember current tool, switch to ruler
-              if (activeTool === 'compass' || activeTool === 'straightedge') {
-                preRulerToolRef.current = activeTool
-              }
-              setActiveTool('ruler')
+          <ToolButton
+            label="Undo"
+            icon={
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7v6h6" />
+                <path d="M3 13a9 9 0 1 0 3-7.7L3 7" />
+              </svg>
             }
+            active={false}
+            onClick={handleUndo}
+          />
+        </div>
+
+        {/* Subtle "?" hint */}
+        <div
+          data-element="shortcuts-hint"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: 12,
+            fontSize: 12,
+            color: 'rgba(100, 116, 139, 0.5)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            fontFamily: 'system-ui, sans-serif',
           }}
-        />
-        <ToolButton
-          label="Undo"
-          icon={
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 7v6h6" />
-              <path d="M3 13a9 9 0 1 0 3-7.7L3 7" />
-            </svg>
-          }
-          active={false}
-          onClick={handleUndo}
-        />
+        >
+          Press ? for shortcuts
+        </div>
+
+        {/* Keyboard shortcuts overlay */}
+        {showShortcuts && (
+          <KeyboardShortcutsOverlay
+            shortcuts={SHORTCUTS}
+            onClose={() => setShowShortcuts(false)}
+            isDark={false}
+          />
+        )}
       </div>
 
-      {/* Subtle "?" hint */}
+      {/* ── Right pane: Proof panel ── */}
       <div
-        data-element="shortcuts-hint"
+        data-element="proof-panel"
         style={{
-          position: 'absolute',
-          bottom: 12,
-          left: 12,
-          fontSize: 12,
-          color: 'rgba(100, 116, 139, 0.5)',
-          pointerEvents: 'none',
-          userSelect: 'none',
-          fontFamily: 'system-ui, sans-serif',
+          width: 340,
+          minWidth: 340,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: '#FAFAF0',
+          borderLeft: '1px solid rgba(203, 213, 225, 0.6)',
         }}
       >
-        Press ? for shortcuts
-      </div>
+        {/* Proposition header */}
+        <div
+          data-element="proof-header"
+          style={{
+            padding: '16px 20px 12px',
+            borderBottom: '1px solid rgba(203, 213, 225, 0.5)',
+          }}
+        >
+          <div style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#94a3b8',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 4,
+            fontFamily: 'system-ui, sans-serif',
+          }}>
+            Proposition I.{proposition.id}
+          </div>
+          <div style={{
+            fontSize: 14,
+            fontWeight: 500,
+            color: '#334155',
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+            lineHeight: 1.4,
+          }}>
+            {proposition.title}
+          </div>
+        </div>
 
-      {/* Keyboard shortcuts overlay */}
-      {showShortcuts && (
-        <KeyboardShortcutsOverlay
-          shortcuts={SHORTCUTS}
-          onClose={() => setShowShortcuts(false)}
-          isDark={false}
-        />
-      )}
+        {/* Scrollable steps + proof chain */}
+        <div
+          ref={proofScrollRef}
+          data-element="proof-steps"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '12px 20px',
+          }}
+        >
+          {proposition.steps.map((step, i) => {
+            const isDone = completedSteps[i]
+            const isCurrent = i === currentStep && !isComplete
+            const isFuture = !isDone && !isCurrent
+            const stepFacts = factsByStep.get(i) ?? []
+
+            return (
+              <div
+                key={i}
+                data-element="proof-step"
+                data-step-current={isCurrent ? 'true' : undefined}
+                style={{
+                  marginBottom: 16,
+                  opacity: isFuture ? 0.35 : 1,
+                  transition: 'opacity 0.3s ease',
+                }}
+              >
+                {/* Step header: number + instruction + citation */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                }}>
+                  {/* Step indicator */}
+                  <div style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    marginTop: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: 'system-ui, sans-serif',
+                    background: isDone
+                      ? '#10b981'
+                      : isCurrent
+                        ? '#4E79A7'
+                        : '#e2e8f0',
+                    color: isDone || isCurrent ? '#fff' : '#94a3b8',
+                    transition: 'all 0.3s ease',
+                  }}>
+                    {isDone ? '\u2713' : i + 1}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Formal instruction */}
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: isCurrent ? 600 : 400,
+                      color: isCurrent ? '#1e293b' : '#475569',
+                      fontFamily: 'Georgia, serif',
+                      lineHeight: 1.4,
+                    }}>
+                      {step.instruction}
+                    </div>
+
+                    {/* Citation: progressive disclosure */}
+                    {step.citation && (() => {
+                      const cit = CITATIONS[step.citation]
+                      const ord = citationOrdinals.get(`step-${i}`) ?? 1
+                      const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
+                      const showText = ord === 1
+                      return (
+                        <div
+                          data-element="citation-text"
+                          style={{
+                            marginTop: 4,
+                            fontSize: 11,
+                            lineHeight: 1.4,
+                            color: isDone ? '#6b9b6b' : '#7893ab',
+                            fontFamily: 'Georgia, serif',
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          <span style={{
+                            fontWeight: 600,
+                            fontStyle: 'normal',
+                            fontSize: 10,
+                          }}>
+                            {label}
+                          </span>
+                          {showText && cit?.text && (
+                            <span style={{ marginLeft: 4 }}>
+                              — {cit.text}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    {/* Tutorial guidance for current step */}
+                    {isCurrent && currentInstruction && (
+                      <div
+                        data-element="step-guidance"
+                        style={{
+                          marginTop: 6,
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: 'rgba(78, 121, 167, 0.06)',
+                          border: '1px solid rgba(78, 121, 167, 0.15)',
+                          fontSize: 12,
+                          color: '#4E79A7',
+                          fontFamily: 'system-ui, sans-serif',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {currentInstruction}
+                      </div>
+                    )}
+
+                    {/* Facts derived at this step */}
+                    {stepFacts.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        {stepFacts.map(fact => {
+                          const factCit = citationDefFromFact(fact.citation)
+                          const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
+                          const citLabel = factCit
+                            ? (ord <= 2 ? factCit.label : factCit.key)
+                            : null
+                          const showText = ord === 1 && factCit
+                          const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
+                          const highlighted = hoveredDpKeys != null && (
+                            hoveredDpKeys.has(distancePairKey(fact.left)) ||
+                            hoveredDpKeys.has(distancePairKey(fact.right))
+                          )
+                          return (
+                            <div key={fact.id} style={{
+                              fontSize: 11,
+                              marginBottom: 3,
+                              paddingLeft: 8,
+                              borderLeft: highlighted
+                                ? '2px solid #10b981'
+                                : '2px solid rgba(78, 121, 167, 0.2)',
+                              background: highlighted
+                                ? 'rgba(16, 185, 129, 0.08)'
+                                : 'transparent',
+                              borderRadius: highlighted ? 2 : 0,
+                              transition: 'all 0.15s ease',
+                            }}>
+                              <div>
+                                <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
+                                  {fact.statement}
+                                </span>
+                                {citLabel && (
+                                  <span style={{
+                                    color: '#94a3b8',
+                                    fontFamily: 'Georgia, serif',
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    marginLeft: 6,
+                                  }}>
+                                    [{citLabel}]
+                                  </span>
+                                )}
+                              </div>
+                              {showText && factCit?.text && (
+                                <div style={{
+                                  color: '#94a3b8',
+                                  fontStyle: 'italic',
+                                  fontFamily: 'Georgia, serif',
+                                  fontSize: 10,
+                                  lineHeight: 1.3,
+                                  marginTop: 1,
+                                }}>
+                                  {factCit.text}
+                                </div>
+                              )}
+                              <div style={{
+                                color: '#94a3b8',
+                                fontStyle: 'italic',
+                                fontFamily: 'Georgia, serif',
+                                fontSize: 10,
+                                lineHeight: 1.3,
+                                marginTop: 1,
+                              }}>
+                                {explanation}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Conclusion facts (atStep === steps.length) */}
+          {(() => {
+            const conclusionFacts = factsByStep.get(proposition.steps.length) ?? []
+            if (conclusionFacts.length === 0 && !isComplete) return null
+            return conclusionFacts.map(fact => {
+              const factCit = citationDefFromFact(fact.citation)
+              const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
+              const citLabel = factCit
+                ? (ord <= 2 ? factCit.label : factCit.key)
+                : null
+              const showText = ord === 1 && factCit
+              const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
+              const highlighted = hoveredDpKeys != null && (
+                hoveredDpKeys.has(distancePairKey(fact.left)) ||
+                hoveredDpKeys.has(distancePairKey(fact.right))
+              )
+              return (
+                <div key={fact.id} style={{
+                  fontSize: 11,
+                  marginBottom: 3,
+                  paddingLeft: 28,
+                  marginLeft: 0,
+                }}>
+                  <div style={{
+                    paddingLeft: 8,
+                    borderLeft: highlighted
+                      ? '2px solid #10b981'
+                      : '2px solid rgba(16, 185, 129, 0.3)',
+                    background: highlighted
+                      ? 'rgba(16, 185, 129, 0.08)'
+                      : 'transparent',
+                    borderRadius: highlighted ? 2 : 0,
+                    transition: 'all 0.15s ease',
+                  }}>
+                    <div>
+                      <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
+                        {fact.statement}
+                      </span>
+                      {citLabel && (
+                        <span style={{
+                          color: '#94a3b8',
+                          fontFamily: 'Georgia, serif',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          marginLeft: 6,
+                        }}>
+                          [{citLabel}]
+                        </span>
+                      )}
+                    </div>
+                    {showText && factCit?.text && (
+                      <div style={{
+                        color: '#94a3b8',
+                        fontStyle: 'italic',
+                        fontFamily: 'Georgia, serif',
+                        fontSize: 10,
+                        lineHeight: 1.3,
+                        marginTop: 1,
+                      }}>
+                        {factCit.text}
+                      </div>
+                    )}
+                    <div style={{
+                      color: '#94a3b8',
+                      fontStyle: 'italic',
+                      fontFamily: 'Georgia, serif',
+                      fontSize: 10,
+                      lineHeight: 1.3,
+                      marginTop: 1,
+                    }}>
+                      {explanation}
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+
+        {/* Conclusion bar — pinned at bottom, segments are hoverable */}
+        {isComplete && completionResult && (
+          <div
+            data-element="proof-conclusion"
+            style={{
+              padding: '12px 20px',
+              borderTop: completionResult.status === 'proven'
+                ? '2px solid rgba(16, 185, 129, 0.4)'
+                : '2px solid rgba(239, 68, 68, 0.4)',
+              background: completionResult.status === 'proven'
+                ? 'rgba(16, 185, 129, 0.06)'
+                : 'rgba(239, 68, 68, 0.06)',
+            }}
+            onMouseLeave={() => setHoveredProofDp(null)}
+          >
+            {completionResult.status === 'proven' ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{
+                  color: '#10b981',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  fontFamily: 'Georgia, serif',
+                }}>
+                  {'∴ '}
+                  {completionResult.segments.map((seg, idx) => (
+                    <span key={seg.label}>
+                      {idx > 0 && (
+                        <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>
+                      )}
+                      <span
+                        data-element="conclusion-segment"
+                        onMouseEnter={() => setHoveredProofDp(seg.dp)}
+                        style={{
+                          cursor: 'default',
+                          borderBottom: hoveredDpKeys?.has(distancePairKey(seg.dp))
+                            ? '2px solid #10b981'
+                            : '2px solid transparent',
+                          transition: 'border-color 0.15s ease',
+                        }}
+                      >
+                        {seg.label}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+                <span style={{
+                  color: '#10b981',
+                  fontStyle: 'italic',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: 'Georgia, serif',
+                  letterSpacing: '0.02em',
+                }}>
+                  Q.E.F.
+                </span>
+              </div>
+            ) : (
+              <span style={{ color: '#ef4444', fontWeight: 600, fontSize: 13, fontFamily: 'Georgia, serif' }}>
+                Proof incomplete — could not establish equality for {completionResult.statement}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
