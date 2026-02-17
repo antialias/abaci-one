@@ -16,8 +16,10 @@ import type { NodeStatus, LayoutEdge } from './data/propositionGraph'
 // ---------------------------------------------------------------------------
 
 const NODE_W = 130
-const NODE_H = 48
-const NODE_RX = 10
+const NODE_H = 48   // layout computation height (matches pre-computed layout)
+const RENDER_H = 108 // rendered height (room for diagram + text)
+const NODE_RX = 8
+const ICON_SIZE = 44 // geometric thumbnail area
 
 const STATUS_STYLES: Record<NodeStatus, {
   fill: string
@@ -51,6 +53,201 @@ const STATUS_STYLES: Record<NodeStatus, {
     strokeDash: '4 3',
     opacity: 0.5,
   },
+}
+
+// ---------------------------------------------------------------------------
+// Geometric thumbnails per proposition / thematic block
+// ---------------------------------------------------------------------------
+
+import type { ThematicBlock } from './data/book1'
+
+/**
+ * Small SVG geometric diagram for a proposition node.
+ * Specific icons for implemented props; block-based for the rest.
+ */
+function PropThumbnail({ propId, block, color }: {
+  propId: number
+  block: ThematicBlock
+  color: string
+}) {
+  const s = ICON_SIZE
+  const c = s / 2 // center
+  const o = 0.65  // opacity
+  const sw = 1.5  // base stroke width
+
+  // Specific diagrams for implemented propositions
+  switch (propId) {
+    case 1: // Equilateral triangle on a line
+      return (
+        <g opacity={o}>
+          <line x1={3} y1={s - 3} x2={s - 3} y2={s - 3} stroke={color} strokeWidth={sw} />
+          <polygon points={`${c},3 ${3},${s - 3} ${s - 3},${s - 3}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.9} />
+          {/* Two construction arcs */}
+          <path d={`M ${s * 0.15} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 1 ${c} ${3}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
+          <path d={`M ${s * 0.85} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 0 ${c} ${3}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
+        </g>
+      )
+    case 2: // Transfer a segment to a point
+      return (
+        <g opacity={o}>
+          <circle cx={5} cy={c} r={2.5} fill={color} />
+          <line x1={8} y1={c} x2={s - 4} y2={c} stroke={color} strokeWidth={sw} />
+          <circle cx={s - 4} cy={c} r={2.5} fill={color} />
+          <line x1={5} y1={c + 10} x2={5 + (s * 0.55)} y2={c + 10}
+            stroke={color} strokeWidth={sw} strokeDasharray="3 2" />
+          <circle cx={5} cy={c + 10} r={2} fill={color} fillOpacity={0.5} />
+        </g>
+      )
+    case 3: // Cut the greater to equal the less
+      return (
+        <g opacity={o}>
+          <line x1={4} y1={c - 5} x2={s - 4} y2={c - 5} stroke={color} strokeWidth={sw * 1.2} />
+          <line x1={4} y1={c + 5} x2={c + 4} y2={c + 5} stroke={color} strokeWidth={sw * 1.2} />
+          <line x1={c + 4} y1={c - 9} x2={c + 4} y2={c + 9}
+            stroke={color} strokeWidth={sw * 0.7} strokeDasharray="2.5 1.5" />
+        </g>
+      )
+  }
+
+  // Block-based generic icons
+  switch (block) {
+    case 'basic-constructions':
+      // Compass arc
+      return (
+        <g opacity={o}>
+          <circle cx={c} cy={c - 2} r={2} fill={color} />
+          <line x1={c} y1={c - 2} x2={c - 10} y2={s - 3} stroke={color} strokeWidth={sw * 0.8} />
+          <line x1={c} y1={c - 2} x2={c + 10} y2={s - 3} stroke={color} strokeWidth={sw * 0.8} />
+          <path d={`M ${c - 12} ${s - 2} Q ${c} ${s - 10} ${c + 12} ${s - 2}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.8} />
+        </g>
+      )
+    case 'triangle-congruence':
+      // Two overlapping triangles (≅)
+      return (
+        <g opacity={o}>
+          <polygon points={`${c - 3},4 ${4},${s - 4} ${s - 8},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw} />
+          <polygon points={`${c + 3},4 ${8},${s - 4} ${s - 4},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+        </g>
+      )
+    case 'fundamental-constructions':
+      // Angle with bisector
+      return (
+        <g opacity={o}>
+          <line x1={5} y1={s - 4} x2={5} y2={4} stroke={color} strokeWidth={sw} />
+          <line x1={5} y1={s - 4} x2={s - 4} y2={s - 4} stroke={color} strokeWidth={sw} />
+          <line x1={5} y1={s - 4} x2={s - 6} y2={6}
+            stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+          {/* Right angle mark */}
+          <polyline points={`${5},${s - 10} ${11},${s - 10} ${11},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.6} />
+        </g>
+      )
+    case 'angle-arithmetic':
+      // Two angles at a point (vertical angles)
+      return (
+        <g opacity={o}>
+          <line x1={c} y1={s - 4} x2={3} y2={4} stroke={color} strokeWidth={sw} />
+          <line x1={c} y1={s - 4} x2={s - 3} y2={4} stroke={color} strokeWidth={sw} />
+          <line x1={3} y1={s - 4} x2={s - 3} y2={s - 4} stroke={color} strokeWidth={sw} />
+        </g>
+      )
+    case 'triangle-inequalities':
+      // Triangle with one highlighted side
+      return (
+        <g opacity={o}>
+          <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.8} />
+          <line x1={4} y1={s - 4} x2={s - 4} y2={s - 4} stroke={color} strokeWidth={sw * 1.8} />
+        </g>
+      )
+    case 'parallel-lines':
+      // Two parallel lines with transversal
+      return (
+        <g opacity={o}>
+          <line x1={3} y1={12} x2={s - 3} y2={12} stroke={color} strokeWidth={sw} />
+          <line x1={3} y1={s - 12} x2={s - 3} y2={s - 12} stroke={color} strokeWidth={sw} />
+          <line x1={s - 10} y1={3} x2={10} y2={s - 3}
+            stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+        </g>
+      )
+    case 'construction-from-parts':
+      // Triangle constructed from given parts
+      return (
+        <g opacity={o}>
+          <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw} />
+          <path d={`M ${9} ${s - 8} A 6 6 0 0 1 ${10} ${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+          <path d={`M ${s - 9} ${s - 8} A 6 6 0 0 0 ${s - 10} ${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+        </g>
+      )
+    case 'parallelogram-basics':
+      // Parallelogram with diagonal
+      return (
+        <g opacity={o}>
+          <polygon points={`${10},${5} ${s - 3},${5} ${s - 10},${s - 5} ${3},${s - 5}`}
+            fill="none" stroke={color} strokeWidth={sw} />
+          <line x1={10} y1={5} x2={s - 10} y2={s - 5}
+            stroke={color} strokeWidth={sw * 0.7} strokeDasharray="3 2" />
+        </g>
+      )
+    case 'the-finale':
+      // Right triangle with squares on sides (Pythagorean)
+      return (
+        <g opacity={o}>
+          <polygon points={`${5},${s - 5} ${5},${10} ${s - 8},${s - 5}`}
+            fill="none" stroke={color} strokeWidth={sw} />
+          {/* Right angle mark */}
+          <polyline points={`${5},${s - 10} ${10},${s - 10} ${10},${s - 5}`}
+            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+          {/* Small square on hypotenuse hint */}
+          <rect x={s - 15} y={6} width={8} height={8}
+            fill="none" stroke={color} strokeWidth={sw * 0.5} />
+        </g>
+      )
+    case 'more-congruence':
+      // Two triangles with matching marks (SAS/ASA)
+      return (
+        <g opacity={o}>
+          <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw} />
+          {/* Tick marks on two sides */}
+          <line x1={c - 5} y1={c - 2} x2={c - 3} y2={c + 1} stroke={color} strokeWidth={sw * 0.7} />
+          <line x1={c + 5} y1={c - 2} x2={c + 3} y2={c + 1} stroke={color} strokeWidth={sw * 0.7} />
+        </g>
+      )
+    case 'area-theory':
+      // Triangle inscribed in rectangle (area)
+      return (
+        <g opacity={o}>
+          <rect x={4} y={4} width={s - 8} height={s - 8}
+            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+          <polygon points={`${4},${s - 4} ${c},${4} ${s - 4},${s - 4}`}
+            fill="none" stroke={color} strokeWidth={sw} />
+        </g>
+      )
+    case 'application-of-areas':
+      // Rectangle with shaded region
+      return (
+        <g opacity={o}>
+          <rect x={4} y={6} width={s - 8} height={s - 12}
+            fill="none" stroke={color} strokeWidth={sw} />
+          <line x1={4} y1={6} x2={s - 4} y2={s - 6}
+            stroke={color} strokeWidth={sw * 0.7} strokeDasharray="3 2" />
+          <rect x={4} y={6} width={(s - 8) / 2} height={(s - 12) / 2}
+            fill={color} fillOpacity={0.15} stroke="none" />
+        </g>
+      )
+    default:
+      return null
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -127,11 +324,11 @@ function trimToBorders(
   const result = pts.map(p => ({ ...p }))
 
   // Trim start → source border (ray from center toward next point)
-  result[0] = rectBorderPoint(srcX, srcY, NODE_W, NODE_H, result[1].x, result[1].y)
+  result[0] = rectBorderPoint(srcX, srcY, NODE_W, RENDER_H, result[1].x, result[1].y)
 
   // Trim end → target border (ray from center toward prev point)
   const last = result.length - 1
-  result[last] = rectBorderPoint(tgtX, tgtY, NODE_W, NODE_H, result[last - 1].x, result[last - 1].y)
+  result[last] = rectBorderPoint(tgtX, tgtY, NODE_W, RENDER_H, result[last - 1].x, result[last - 1].y)
 
   return result
 }
@@ -197,8 +394,8 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
     for (const pos of layout.values()) {
       minX = Math.min(minX, pos.x - NODE_W / 2)
       maxX = Math.max(maxX, pos.x + NODE_W / 2)
-      minY = Math.min(minY, pos.y - NODE_H / 2)
-      maxY = Math.max(maxY, pos.y + NODE_H / 2)
+      minY = Math.min(minY, pos.y - RENDER_H / 2)
+      maxY = Math.max(maxY, pos.y + RENDER_H / 2)
     }
     // Also account for edge routing points
     for (const edge of edges) {
@@ -361,6 +558,13 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
             const style = STATUS_STYLES[status]
             const prop = getProposition(id)
             const isClickable = status === 'completed' || status === 'available'
+            const titleLines = prop ? wrapTitle(prop.title, 20) : []
+
+            // Vertical layout: thumbnail | number | title lines
+            const topY = pos.y - RENDER_H / 2
+            const thumbCenterY = topY + 5 // top of thumbnail area
+            const numberY = topY + ICON_SIZE + 12
+            const titleStartY = numberY + 13
 
             return (
               <g
@@ -379,17 +583,17 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                 {/* Opaque background so edges are occluded behind node */}
                 <rect
                   x={pos.x - NODE_W / 2}
-                  y={pos.y - NODE_H / 2}
+                  y={topY}
                   width={NODE_W}
-                  height={NODE_H}
+                  height={RENDER_H}
                   rx={NODE_RX}
                   fill="#FAFAF0"
                 />
                 <rect
                   x={pos.x - NODE_W / 2}
-                  y={pos.y - NODE_H / 2}
+                  y={topY}
                   width={NODE_W}
-                  height={NODE_H}
+                  height={RENDER_H}
                   rx={NODE_RX}
                   fill={style.fill}
                   stroke={style.stroke}
@@ -397,15 +601,23 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                   strokeDasharray={style.strokeDash}
                 />
 
+                {/* Geometric thumbnail */}
+                {prop && (
+                  <g transform={`translate(${pos.x - ICON_SIZE / 2}, ${thumbCenterY})`}>
+                    <PropThumbnail propId={id} block={prop.block} color={style.textColor} />
+                  </g>
+                )}
+
                 {/* Checkmark for completed */}
                 {status === 'completed' && (
                   <text
-                    x={pos.x - NODE_W / 2 + 14}
-                    y={pos.y}
-                    fontSize={14}
+                    x={pos.x + NODE_W / 2 - 14}
+                    y={topY + 10}
+                    fontSize={11}
                     fill="#10b981"
                     textAnchor="middle"
                     dominantBaseline="central"
+                    fontWeight={700}
                   >
                     ✓
                   </text>
@@ -414,8 +626,8 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                 {/* Prop number */}
                 <text
                   x={pos.x}
-                  y={pos.y - 7}
-                  fontSize={14}
+                  y={numberY}
+                  fontSize={12}
                   fontWeight={700}
                   fontFamily="Georgia, serif"
                   fill={style.textColor}
@@ -425,21 +637,22 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
                   I.{id}
                 </text>
 
-                {/* Short title */}
-                {prop && (
+                {/* Wrapped title (up to 3 lines) */}
+                {titleLines.map((line, i, arr) => (
                   <text
+                    key={i}
                     x={pos.x}
-                    y={pos.y + 11}
-                    fontSize={9}
+                    y={titleStartY + i * 10}
+                    fontSize={8}
                     fontFamily="Georgia, serif"
                     fill={style.textColor}
                     textAnchor="middle"
                     dominantBaseline="central"
-                    opacity={0.7}
+                    opacity={0.65}
                   >
-                    {truncateTitle(prop.title, 18)}
+                    {i === arr.length - 1 && line.length >= 20 ? line.slice(0, 19) + '…' : line}
                   </text>
-                )}
+                ))}
               </g>
             )
           })}
@@ -477,7 +690,25 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function truncateTitle(title: string, maxLen: number): string {
-  if (title.length <= maxLen) return title
-  return title.slice(0, maxLen - 1) + '…'
+/**
+ * Word-wrap a title into lines of at most `maxLen` characters.
+ * Breaks on word boundaries; returns at most 3 lines.
+ */
+function wrapTitle(title: string, maxLen: number): string[] {
+  if (title.length <= maxLen) return [title]
+  const words = title.split(' ')
+  const lines: string[] = []
+  let current = ''
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length > maxLen && current) {
+      lines.push(current)
+      current = word
+      if (lines.length >= 3) break
+    } else {
+      current = candidate
+    }
+  }
+  if (current && lines.length < 3) lines.push(current)
+  return lines.slice(0, 3)
 }
