@@ -6,9 +6,7 @@ import type {
   ConstructionState,
   CompassPhase,
   StraightedgePhase,
-  RulerPhase,
   MacroPhase,
-  Measurement,
   ActiveTool,
   IntersectionCandidate,
   ConstructionElement,
@@ -18,11 +16,10 @@ import type {
   ExpectedAction,
 } from './types'
 import { needsExtendedSegments } from './types'
-import { initializeGiven, addPoint, addCircle, addSegment, removeLastElement, getPoint, getAllSegments } from './engine/constructionState'
+import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
 import { renderTutorialHint } from './render/renderTutorialHint'
-import { renderMeasurements } from './render/renderMeasurements'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
 import { useToolInteraction } from './interaction/useToolInteraction'
@@ -32,7 +29,7 @@ import { PROP_2 } from './propositions/prop2'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
-import { createFactStore, queryEquality, getEqualDistances } from './engine/factStore'
+import { createFactStore, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { EqualityFact } from './engine/facts'
 import { distancePair, distancePairKey } from './engine/facts'
@@ -71,6 +68,23 @@ function computeInitialViewport(givenElements: readonly { kind: string; x?: numb
   const cy = (minY + maxY) / 2 + 1.5
 
   return { center: { x: cx, y: cy }, pixelsPerUnit: 50 }
+}
+
+interface ProofSnapshot {
+  construction: ConstructionState
+  candidates: IntersectionCandidate[]
+  proofFacts: EqualityFact[]
+}
+
+function captureSnapshot(
+  construction: ConstructionState,
+  candidates: IntersectionCandidate[],
+  proofFacts: EqualityFact[],
+): ProofSnapshot {
+  // ConstructionState is replaced on each mutation (spread), so storing the reference is safe.
+  // Same for candidates array (replaced via [...old, ...new]).
+  // proofFacts is also replaced via proofFactsRef.current = [...].
+  return { construction, candidates, proofFacts }
 }
 
 interface CompletionSegment {
@@ -189,9 +203,6 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const candidatesRef = useRef<IntersectionCandidate[]>([])
   const pointerCapturedRef = useRef(false)
   const activeToolRef = useRef<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
-  const rulerPhaseRef = useRef<RulerPhase>({ tag: 'idle' })
-  const measurementsRef = useRef<Measurement[]>([])
-  const preRulerToolRef = useRef<'compass' | 'straightedge'>(proposition.steps[0]?.tool === 'straightedge' ? 'straightedge' : 'compass')
   const expectedActionRef = useRef<ExpectedAction | null>(proposition.steps[0]?.expected ?? null)
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
@@ -211,9 +222,14 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const [toolToast, setToolToast] = useState<string | null>(null)
   const toolToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [proofFacts, setProofFacts] = useState<EqualityFact[]>([])
+  const proofFactsRef = useRef<EqualityFact[]>([])
+  const snapshotStackRef = useRef<ProofSnapshot[]>([
+    captureSnapshot(constructionRef.current, candidatesRef.current, []),
+  ])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
   const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
+  const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
 
   // Full equivalence class for the hovered dp — follow transitive chain
   const hoveredDpKeys = useMemo(() => {
@@ -321,7 +337,6 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       const toolLabels: Record<string, string> = {
         compass: 'Compass',
         straightedge: 'Straightedge',
-        ruler: 'Ruler',
         macro: 'Proposition',
       }
       const label = toolLabels[stepDef.tool] ?? stepDef.tool
@@ -349,7 +364,8 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       proposition.steps.length,
     )
     if (newFacts.length > 0) {
-      setProofFacts(prev => [...prev, ...newFacts])
+      proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
+      setProofFacts(proofFactsRef.current)
     }
   }, [isComplete, proposition.id, proposition.steps.length])
 
@@ -385,6 +401,12 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       const stepDef = proposition.steps[step]
       const valid = validateStep(stepDef.expected, constructionRef.current, element, candidate)
       if (valid) {
+        // Capture snapshot before advancing — state after this step completes
+        snapshotStackRef.current = [
+          ...snapshotStackRef.current,
+          captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current),
+        ]
+
         setCompletedSteps(prev => {
           const next = [...prev]
           next[step] = true
@@ -493,7 +515,8 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         step,
       )
       if (newFacts.length > 0) {
-        setProofFacts(prev => [...prev, ...newFacts])
+        proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
+        setProofFacts(proofFactsRef.current)
       }
 
       checkStep(result.point, candidate)
@@ -528,11 +551,18 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       candidatesRef.current = result.candidates
       // factStore is mutated in place by the macro — no reassignment needed
       if (result.newFacts.length > 0) {
-        setProofFacts(prev => [...prev, ...result.newFacts])
+        proofFactsRef.current = [...proofFactsRef.current, ...result.newFacts]
+        setProofFacts(proofFactsRef.current)
       }
 
       // Start animation
       macroAnimationRef.current = createMacroAnimation(result)
+
+      // Capture snapshot before advancing — state after this step completes
+      snapshotStackRef.current = [
+        ...snapshotStackRef.current,
+        captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current),
+      ]
 
       // Directly advance the step (macro validation is handled here, not in validateStep)
       setCompletedSteps(prev => {
@@ -552,16 +582,78 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     [proposition.steps, extendSegments, requestDraw],
   )
 
-  const handleUndo = useCallback(() => {
-    // Context-sensitive: ruler active → pop last measurement; otherwise → undo construction
-    if (activeToolRef.current === 'ruler' && measurementsRef.current.length > 0) {
-      measurementsRef.current = measurementsRef.current.slice(0, -1)
-    } else {
-      constructionRef.current = removeLastElement(constructionRef.current)
-      candidatesRef.current = []
-    }
-    requestDraw()
-  }, [requestDraw])
+  const handleRewindToStep = useCallback(
+    (targetStep: number) => {
+      const snapshot = snapshotStackRef.current[targetStep]
+      if (!snapshot) return
+
+      // 1. Reset all tool phases to idle, clear macro animation
+      compassPhaseRef.current = { tag: 'idle' }
+      straightedgePhaseRef.current = { tag: 'idle' }
+      macroPhaseRef.current = { tag: 'idle' }
+      macroAnimationRef.current = null
+      pointerCapturedRef.current = false
+
+      // 2. Restore construction, candidates, proofFacts from snapshot
+      constructionRef.current = snapshot.construction
+      candidatesRef.current = snapshot.candidates
+      proofFactsRef.current = snapshot.proofFacts
+      setProofFacts(snapshot.proofFacts)
+
+      // 3. Rebuild factStore via rebuildFactStore
+      factStoreRef.current = rebuildFactStore(snapshot.proofFacts)
+
+      // 4. Truncate snapshot stack to [0..targetStep]
+      snapshotStackRef.current = snapshotStackRef.current.slice(0, targetStep + 1)
+
+      // 5. Set currentStep, reset completedSteps from targetStep onward
+      currentStepRef.current = targetStep
+      setCurrentStep(targetStep)
+      setCompletedSteps(prev => {
+        const next = [...prev]
+        for (let i = targetStep; i < next.length; i++) {
+          next[i] = false
+        }
+        return next
+      })
+      setIsComplete(false)
+
+      // 6. Reset tutorial sub-step and hover state
+      tutorialSubStepRef.current = 0
+      setTutorialSubStep(0)
+      setHoveredProofDp(null)
+      prevCompassTagRef.current = 'idle'
+      prevStraightedgeTagRef.current = 'idle'
+
+      // 7. Sync tool/expectedAction refs for the new current step
+      if (targetStep < proposition.steps.length) {
+        const stepDef = proposition.steps[targetStep]
+        expectedActionRef.current = stepDef.expected
+        if (stepDef.tool !== null) {
+          setActiveTool(stepDef.tool)
+          activeToolRef.current = stepDef.tool
+
+          // Initialize macro phase when rewinding to a macro step
+          if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
+            const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
+            if (macroDef) {
+              macroPhaseRef.current = {
+                tag: 'selecting',
+                propId: stepDef.expected.propId,
+                inputLabels: macroDef.inputLabels,
+                selectedPointIds: [],
+              }
+            }
+          }
+        }
+      } else {
+        expectedActionRef.current = null
+      }
+
+      requestDraw()
+    },
+    [proposition.steps, requestDraw],
+  )
 
   // ── Hook up pan/zoom ──
   useEuclidTouch({
@@ -589,8 +681,6 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     onCommitSegment: handleCommitSegment,
     onMarkIntersection: handleMarkIntersection,
     expectedActionRef,
-    rulerPhaseRef,
-    measurementsRef,
     macroPhaseRef,
     onCommitMacro: handleCommitMacro,
   })
@@ -751,20 +841,6 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
               complete ? proposition.resultSegments : undefined,
             )
           }
-
-          // Render measurements overlay (with fact store for formal equality)
-          renderMeasurements(
-            ctx,
-            constructionRef.current,
-            viewportRef.current,
-            cssWidth,
-            cssHeight,
-            measurementsRef.current,
-            rulerPhaseRef.current,
-            snappedPointIdRef.current,
-            pointerWorldRef.current,
-            factStoreRef.current,
-          )
 
           // Render tutorial hint on top
           renderTutorialHint(
@@ -928,41 +1004,6 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             active={activeTool === 'straightedge'}
             onClick={() => setActiveTool('straightedge')}
           />
-          <ToolButton
-            label="Ruler"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="8" x2="4" y2="16" />
-                <line x1="20" y1="8" x2="20" y2="16" />
-              </svg>
-            }
-            active={activeTool === 'ruler'}
-            onClick={() => {
-              if (activeTool === 'ruler') {
-                measurementsRef.current = []
-                rulerPhaseRef.current = { tag: 'idle' }
-                setActiveTool(preRulerToolRef.current)
-                needsDrawRef.current = true
-              } else {
-                if (activeTool === 'compass' || activeTool === 'straightedge') {
-                  preRulerToolRef.current = activeTool
-                }
-                setActiveTool('ruler')
-              }
-            }}
-          />
-          <ToolButton
-            label="Undo"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7v6h6" />
-                <path d="M3 13a9 9 0 1 0 3-7.7L3 7" />
-              </svg>
-            }
-            active={false}
-            onClick={handleUndo}
-          />
         </div>
 
         {/* Subtle "?" hint */}
@@ -1053,15 +1094,23 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             const isFuture = !isDone && !isCurrent
             const stepFacts = factsByStep.get(i) ?? []
 
+            const isHovered = isDone && hoveredStepIndex === i
+
             return (
               <div
                 key={i}
                 data-element="proof-step"
                 data-step-current={isCurrent ? 'true' : undefined}
+                onClick={isDone ? () => handleRewindToStep(i) : undefined}
+                onMouseEnter={isDone ? () => setHoveredStepIndex(i) : undefined}
+                onMouseLeave={isDone ? () => setHoveredStepIndex(null) : undefined}
                 style={{
                   marginBottom: 16,
                   opacity: isFuture ? 0.35 : 1,
                   transition: 'opacity 0.3s ease',
+                  cursor: isDone ? 'pointer' : undefined,
+                  borderRadius: 6,
+                  background: isHovered ? 'rgba(16, 185, 129, 0.06)' : undefined,
                 }}
               >
                 {/* Step header: number + instruction + citation */}
@@ -1084,14 +1133,14 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
                     fontWeight: 700,
                     fontFamily: 'system-ui, sans-serif',
                     background: isDone
-                      ? '#10b981'
+                      ? (isHovered ? '#0d9668' : '#10b981')
                       : isCurrent
                         ? '#4E79A7'
                         : '#e2e8f0',
                     color: isDone || isCurrent ? '#fff' : '#94a3b8',
                     transition: 'all 0.3s ease',
                   }}>
-                    {isDone ? '\u2713' : i + 1}
+                    {isDone ? (isHovered ? '\u21BA' : '\u2713') : i + 1}
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>

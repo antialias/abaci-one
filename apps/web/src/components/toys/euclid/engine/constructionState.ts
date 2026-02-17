@@ -120,31 +120,6 @@ export function addSegment(
   }
 }
 
-export function removeLastElement(state: ConstructionState): ConstructionState {
-  if (state.elements.length === 0) return state
-  const last = state.elements[state.elements.length - 1]
-  let newElements = state.elements.slice(0, -1)
-
-  // If we removed a circle or segment, also remove any intersection points that depended on it
-  if (last.kind === 'circle' || last.kind === 'segment') {
-    newElements = newElements.filter(el => {
-      if (el.kind !== 'point' || el.origin !== 'intersection') return true
-      // Keep point only if it doesn't depend on the removed element
-      // We encode dependency in the ID — but simpler: just check if any remaining
-      // circle/segment could produce this point. For now, conservative: remove points
-      // added after the penultimate non-point element.
-      return true
-    })
-  }
-
-  return {
-    ...state,
-    elements: newElements,
-    nextLabelIndex: last.kind === 'point' ? state.nextLabelIndex - 1 : state.nextLabelIndex,
-    nextColorIndex: Math.max(0, state.nextColorIndex - 1),
-  }
-}
-
 // ── Lookups ────────────────────────────────────────────────────────
 
 export function getPoint(state: ConstructionState, id: string): ConstructionPoint | undefined {

@@ -152,6 +152,20 @@ export function queryEquality(
   return ufConnected(uf, keyA, keyB)
 }
 
+/**
+ * Create a fresh FactStore and replay the given facts via addFact().
+ * This rebuilds the union-find from scratch — necessary because the
+ * WeakMap-encapsulated UF can't be cloned.
+ */
+export function rebuildFactStore(facts: EqualityFact[]): FactStore {
+  const store = createFactStore()
+  for (const fact of facts) {
+    addFact(store, fact.left, fact.right, fact.citation,
+            fact.statement, fact.justification, fact.atStep)
+  }
+  return store
+}
+
 /** All distances known-equal to this one */
 export function getEqualDistances(store: FactStore, dp: DistancePair): DistancePair[] {
   const uf = getUf(store)

@@ -4,6 +4,7 @@ import {
   addFact,
   queryEquality,
   getEqualDistances,
+  rebuildFactStore,
 } from '../engine/factStore'
 import { distancePair, distancePairKey } from '../engine/facts'
 import type { FactStore } from '../engine/factStore'
@@ -237,6 +238,65 @@ describe('factStore', () => {
 
       const keys1 = new Set(class1.map(distancePairKey))
       expect(keys1.has(distancePairKey(dpEF))).toBe(false)
+    })
+  })
+
+  describe('rebuildFactStore', () => {
+    it('rebuilds union-find correctly (transitive equality preserved)', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+      const dpEF = distancePair('pt-E', 'pt-F')
+
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpCD, dpEF,
+        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+
+      const rebuilt = rebuildFactStore(original.facts)
+
+      // Transitive equality should be preserved
+      expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(true)
+      expect(rebuilt.facts).toHaveLength(2)
+      expect(rebuilt.nextId).toBe(3)
+    })
+
+    it('handles empty facts array', () => {
+      const rebuilt = rebuildFactStore([])
+      expect(rebuilt.facts).toEqual([])
+      expect(rebuilt.nextId).toBe(1)
+    })
+
+    it('rejects unknown equalities after rebuild', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+      const dpEF = distancePair('pt-E', 'pt-F')
+
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+
+      const rebuilt = rebuildFactStore(original.facts)
+      expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
+    })
+
+    it('rebuilt store is independent from original', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+
+      const rebuilt = rebuildFactStore(original.facts)
+
+      // Adding to original shouldn't affect rebuilt
+      const dpEF = distancePair('pt-E', 'pt-F')
+      addFact(original, dpCD, dpEF,
+        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+
+      expect(queryEquality(original, dpAB, dpEF)).toBe(true)
+      expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
     })
   })
 
