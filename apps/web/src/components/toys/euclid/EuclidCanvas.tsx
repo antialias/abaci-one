@@ -187,9 +187,11 @@ const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[
 
 interface EuclidCanvasProps {
   propositionId?: number
+  /** Called when the proposition is completed (all steps done + proven) */
+  onComplete?: (propId: number) => void
 }
 
-export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
+export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProps) {
   const proposition = PROPOSITIONS[propositionId] ?? PROP_1
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = TUTORIAL_GENERATORS[propositionId] ?? getProp1Tutorial
@@ -253,6 +255,13 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     // proofFacts in deps so we re-derive after conclusion facts are added
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete, proofFacts, proposition.resultSegments])
+
+  // ── Fire onComplete callback when proposition is proven ──
+  useEffect(() => {
+    if (isComplete && onComplete) {
+      onComplete(propositionId)
+    }
+  }, [isComplete, onComplete, propositionId])
 
   // ── Input mode detection ──
   const [isTouch, setIsTouch] = useState(true) // mobile-first default

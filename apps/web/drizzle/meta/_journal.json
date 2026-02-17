@@ -680,6 +680,13 @@
       "when": 1771700000000,
       "tag": "0096_nostalgic_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "6",
+      "when": 1771800000000,
+      "tag": "0097_omniscient_texas_twister",
+      "breakpoints": true
     }
   ]
 }

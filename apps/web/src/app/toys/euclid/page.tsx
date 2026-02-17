@@ -1,9 +1,22 @@
 'use client'
 
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { AppNavBar } from '@/components/AppNavBar'
-import { EuclidCanvas } from '@/components/toys/euclid/EuclidCanvas'
+import { EuclidMap } from '@/components/toys/euclid/EuclidMap'
+import { PlayerPicker } from '@/components/shared/PlayerPicker'
+import { useEuclidProgress } from '@/hooks/useEuclidProgress'
 
 export default function EuclidPage() {
+  const router = useRouter()
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const { data: completedList } = useEuclidProgress(selectedPlayerId)
+
+  const completed = useMemo(
+    () => new Set(completedList ?? []),
+    [completedList],
+  )
+
   return (
     <div
       data-component="euclid-page"
@@ -18,19 +31,40 @@ export default function EuclidPage() {
     >
       <AppNavBar
         navSlot={
-          <span
-            style={{
-              fontSize: '14px',
-              fontWeight: 600,
-              color: 'rgba(55, 65, 81, 1)',
-            }}
-          >
-            Euclid I.1
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: 'rgba(55, 65, 81, 1)',
+              }}
+            >
+              Euclid
+            </span>
+            <PlayerPicker
+              selectedPlayerId={selectedPlayerId}
+              onSelect={setSelectedPlayerId}
+            />
+          </div>
         }
       />
-      <div style={{ flex: 1, minHeight: 0, paddingTop: 'var(--app-nav-height)', touchAction: 'none' }}>
-        <EuclidCanvas propositionId={1} />
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          paddingTop: 'var(--app-nav-height)',
+          position: 'relative',
+        }}
+      >
+        <EuclidMap
+          completed={completed}
+          onSelectProp={(propId) => {
+            const params = selectedPlayerId
+              ? `?player=${encodeURIComponent(selectedPlayerId)}`
+              : ''
+            router.push(`/toys/euclid/${propId}${params}`)
+          }}
+        />
       </div>
     </div>
   )

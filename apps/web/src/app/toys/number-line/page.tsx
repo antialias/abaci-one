@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AppNavBar } from '@/components/AppNavBar'
 import { NumberLine } from '@/components/toys/number-line/NumberLine'
 import { useTheme } from '@/contexts/ThemeContext'
-import { PlayerPicker } from '@/components/toys/number-line/talkToNumber/PlayerPicker'
+import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import type { CallState } from '@/components/toys/number-line/talkToNumber/useRealtimeVoice'
 
 export default function NumberLinePage() {

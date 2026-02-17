@@ -106,6 +106,12 @@ export const practiceConfigKeys = {
   config: () => [...practiceConfigKeys.all, 'config'] as const,
 }
 
+// Euclid progress query keys (tech tree completion tracking)
+export const euclidKeys = {
+  all: ['euclid'] as const,
+  progress: (playerId: string) => [...euclidKeys.all, 'progress', playerId] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player
