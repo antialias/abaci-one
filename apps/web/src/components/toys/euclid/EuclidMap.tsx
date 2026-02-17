@@ -18,6 +18,7 @@ import type { NodeStatus, LayoutEdge } from './data/propositionGraph'
 const NODE_W = 130
 const NODE_H = 48   // layout computation height (matches pre-computed layout)
 const RENDER_H = 108 // rendered height (room for diagram + text)
+const Y_SCALE = 1.5  // stretch Y to add vertical breathing room between taller nodes
 const NODE_RX = 8
 const ICON_SIZE = 44 // geometric thumbnail area
 
@@ -61,6 +62,22 @@ const STATUS_STYLES: Record<NodeStatus, {
 
 import type { ThematicBlock } from './data/book1'
 
+/** Subtle accent colors per thematic block — muted but distinctive. */
+const BLOCK_ACCENTS: Record<ThematicBlock, string> = {
+  'basic-constructions':                '#3b82f6', // blue
+  'triangle-congruence':                '#8b5cf6', // violet
+  'fundamental-constructions':          '#0ea5e9', // sky
+  'angle-arithmetic':                   '#f59e0b', // amber
+  'triangle-inequalities':             '#ef4444', // red
+  'construction-from-parts':           '#10b981', // emerald
+  'more-congruence':                   '#a855f7', // purple
+  'parallel-lines':                    '#06b6d4', // cyan
+  'parallelogram-basics':             '#f97316', // orange
+  'area-theory':                       '#ec4899', // pink
+  'application-of-areas':             '#d946ef', // fuchsia
+  'the-finale':                        '#eab308', // yellow
+}
+
 /**
  * Small SVG geometric diagram for a proposition node.
  * Specific icons for implemented props; block-based for the rest.
@@ -73,6 +90,7 @@ function PropThumbnail({ propId, block, color }: {
   const s = ICON_SIZE
   const c = s / 2 // center
   const o = 0.65  // opacity
+  const accent = BLOCK_ACCENTS[block] ?? color
   const sw = 1.5  // base stroke width
 
   // Specific diagrams for implemented propositions
@@ -80,49 +98,49 @@ function PropThumbnail({ propId, block, color }: {
     case 1: // Equilateral triangle on a line
       return (
         <g opacity={o}>
-          <line x1={3} y1={s - 3} x2={s - 3} y2={s - 3} stroke={color} strokeWidth={sw} />
+          <line x1={3} y1={s - 3} x2={s - 3} y2={s - 3} stroke={accent} strokeWidth={sw} />
           <polygon points={`${c},3 ${3},${s - 3} ${s - 3},${s - 3}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.9} />
+            fill={accent} fillOpacity={0.12} stroke={accent} strokeWidth={sw * 0.9} />
           {/* Two construction arcs */}
           <path d={`M ${s * 0.15} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 1 ${c} ${3}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
+            fill="none" stroke={accent} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
           <path d={`M ${s * 0.85} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 0 ${c} ${3}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
+            fill="none" stroke={accent} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
         </g>
       )
     case 2: // Transfer a segment to a point
       return (
         <g opacity={o}>
-          <circle cx={5} cy={c} r={2.5} fill={color} />
-          <line x1={8} y1={c} x2={s - 4} y2={c} stroke={color} strokeWidth={sw} />
-          <circle cx={s - 4} cy={c} r={2.5} fill={color} />
+          <circle cx={5} cy={c} r={2.5} fill={accent} />
+          <line x1={8} y1={c} x2={s - 4} y2={c} stroke={accent} strokeWidth={sw} />
+          <circle cx={s - 4} cy={c} r={2.5} fill={accent} />
           <line x1={5} y1={c + 10} x2={5 + (s * 0.55)} y2={c + 10}
-            stroke={color} strokeWidth={sw} strokeDasharray="3 2" />
-          <circle cx={5} cy={c + 10} r={2} fill={color} fillOpacity={0.5} />
+            stroke={accent} strokeWidth={sw} strokeDasharray="3 2" />
+          <circle cx={5} cy={c + 10} r={2} fill={accent} fillOpacity={0.5} />
         </g>
       )
     case 3: // Cut the greater to equal the less
       return (
         <g opacity={o}>
-          <line x1={4} y1={c - 5} x2={s - 4} y2={c - 5} stroke={color} strokeWidth={sw * 1.2} />
-          <line x1={4} y1={c + 5} x2={c + 4} y2={c + 5} stroke={color} strokeWidth={sw * 1.2} />
+          <line x1={4} y1={c - 5} x2={s - 4} y2={c - 5} stroke={accent} strokeWidth={sw * 1.2} />
+          <line x1={4} y1={c + 5} x2={c + 4} y2={c + 5} stroke={accent} strokeWidth={sw * 1.2} />
           <line x1={c + 4} y1={c - 9} x2={c + 4} y2={c + 9}
-            stroke={color} strokeWidth={sw * 0.7} strokeDasharray="2.5 1.5" />
+            stroke={accent} strokeWidth={sw * 0.7} strokeDasharray="2.5 1.5" />
         </g>
       )
   }
 
-  // Block-based generic icons
+  // Block-based generic icons — use accent color for fills, color for strokes
   switch (block) {
     case 'basic-constructions':
       // Compass arc
       return (
         <g opacity={o}>
-          <circle cx={c} cy={c - 2} r={2} fill={color} />
+          <circle cx={c} cy={c - 2} r={2} fill={accent} />
           <line x1={c} y1={c - 2} x2={c - 10} y2={s - 3} stroke={color} strokeWidth={sw * 0.8} />
           <line x1={c} y1={c - 2} x2={c + 10} y2={s - 3} stroke={color} strokeWidth={sw * 0.8} />
           <path d={`M ${c - 12} ${s - 2} Q ${c} ${s - 10} ${c + 12} ${s - 2}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.8} />
+            fill="none" stroke={accent} strokeWidth={sw * 0.8} />
         </g>
       )
     case 'triangle-congruence':
@@ -130,7 +148,7 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <polygon points={`${c - 3},4 ${4},${s - 4} ${s - 8},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw} />
+            fill={accent} fillOpacity={0.1} stroke={accent} strokeWidth={sw} />
           <polygon points={`${c + 3},4 ${8},${s - 4} ${s - 4},${s - 4}`}
             fill="none" stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
         </g>
@@ -142,10 +160,10 @@ function PropThumbnail({ propId, block, color }: {
           <line x1={5} y1={s - 4} x2={5} y2={4} stroke={color} strokeWidth={sw} />
           <line x1={5} y1={s - 4} x2={s - 4} y2={s - 4} stroke={color} strokeWidth={sw} />
           <line x1={5} y1={s - 4} x2={s - 6} y2={6}
-            stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+            stroke={accent} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
           {/* Right angle mark */}
           <polyline points={`${5},${s - 10} ${11},${s - 10} ${11},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.6} />
+            fill="none" stroke={accent} strokeWidth={sw * 0.6} />
         </g>
       )
     case 'angle-arithmetic':
@@ -154,7 +172,10 @@ function PropThumbnail({ propId, block, color }: {
         <g opacity={o}>
           <line x1={c} y1={s - 4} x2={3} y2={4} stroke={color} strokeWidth={sw} />
           <line x1={c} y1={s - 4} x2={s - 3} y2={4} stroke={color} strokeWidth={sw} />
-          <line x1={3} y1={s - 4} x2={s - 3} y2={s - 4} stroke={color} strokeWidth={sw} />
+          <line x1={3} y1={s - 4} x2={s - 3} y2={s - 4} stroke={accent} strokeWidth={sw} />
+          {/* Angle arc highlight */}
+          <path d={`M ${c - 6} ${s - 4} A 8 8 0 0 1 ${c - 3} ${s - 9}`}
+            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
         </g>
       )
     case 'triangle-inequalities':
@@ -162,16 +183,16 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.8} />
-          <line x1={4} y1={s - 4} x2={s - 4} y2={s - 4} stroke={color} strokeWidth={sw * 1.8} />
+            fill={accent} fillOpacity={0.08} stroke={color} strokeWidth={sw * 0.8} />
+          <line x1={4} y1={s - 4} x2={s - 4} y2={s - 4} stroke={accent} strokeWidth={sw * 1.8} />
         </g>
       )
     case 'parallel-lines':
       // Two parallel lines with transversal
       return (
         <g opacity={o}>
-          <line x1={3} y1={12} x2={s - 3} y2={12} stroke={color} strokeWidth={sw} />
-          <line x1={3} y1={s - 12} x2={s - 3} y2={s - 12} stroke={color} strokeWidth={sw} />
+          <line x1={3} y1={12} x2={s - 3} y2={12} stroke={accent} strokeWidth={sw} />
+          <line x1={3} y1={s - 12} x2={s - 3} y2={s - 12} stroke={accent} strokeWidth={sw} />
           <line x1={s - 10} y1={3} x2={10} y2={s - 3}
             stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
         </g>
@@ -181,11 +202,11 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw} />
+            fill={accent} fillOpacity={0.1} stroke={color} strokeWidth={sw} />
           <path d={`M ${9} ${s - 8} A 6 6 0 0 1 ${10} ${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
           <path d={`M ${s - 9} ${s - 8} A 6 6 0 0 0 ${s - 10} ${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
         </g>
       )
     case 'parallelogram-basics':
@@ -193,7 +214,7 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <polygon points={`${10},${5} ${s - 3},${5} ${s - 10},${s - 5} ${3},${s - 5}`}
-            fill="none" stroke={color} strokeWidth={sw} />
+            fill={accent} fillOpacity={0.1} stroke={accent} strokeWidth={sw} />
           <line x1={10} y1={5} x2={s - 10} y2={s - 5}
             stroke={color} strokeWidth={sw * 0.7} strokeDasharray="3 2" />
         </g>
@@ -203,13 +224,13 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <polygon points={`${5},${s - 5} ${5},${10} ${s - 8},${s - 5}`}
-            fill="none" stroke={color} strokeWidth={sw} />
+            fill={accent} fillOpacity={0.1} stroke={color} strokeWidth={sw} />
           {/* Right angle mark */}
           <polyline points={`${5},${s - 10} ${10},${s - 10} ${10},${s - 5}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.7} />
+            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
           {/* Small square on hypotenuse hint */}
           <rect x={s - 15} y={6} width={8} height={8}
-            fill="none" stroke={color} strokeWidth={sw * 0.5} />
+            fill={accent} fillOpacity={0.15} stroke={accent} strokeWidth={sw * 0.5} />
         </g>
       )
     case 'more-congruence':
@@ -217,10 +238,10 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw} />
+            fill={accent} fillOpacity={0.08} stroke={color} strokeWidth={sw} />
           {/* Tick marks on two sides */}
-          <line x1={c - 5} y1={c - 2} x2={c - 3} y2={c + 1} stroke={color} strokeWidth={sw * 0.7} />
-          <line x1={c + 5} y1={c - 2} x2={c + 3} y2={c + 1} stroke={color} strokeWidth={sw * 0.7} />
+          <line x1={c - 5} y1={c - 2} x2={c - 3} y2={c + 1} stroke={accent} strokeWidth={sw * 0.9} />
+          <line x1={c + 5} y1={c - 2} x2={c + 3} y2={c + 1} stroke={accent} strokeWidth={sw * 0.9} />
         </g>
       )
     case 'area-theory':
@@ -230,7 +251,7 @@ function PropThumbnail({ propId, block, color }: {
           <rect x={4} y={4} width={s - 8} height={s - 8}
             fill="none" stroke={color} strokeWidth={sw * 0.7} />
           <polygon points={`${4},${s - 4} ${c},${4} ${s - 4},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw} />
+            fill={accent} fillOpacity={0.15} stroke={accent} strokeWidth={sw} />
         </g>
       )
     case 'application-of-areas':
@@ -242,7 +263,7 @@ function PropThumbnail({ propId, block, color }: {
           <line x1={4} y1={6} x2={s - 4} y2={s - 6}
             stroke={color} strokeWidth={sw * 0.7} strokeDasharray="3 2" />
           <rect x={4} y={6} width={(s - 8) / 2} height={(s - 12) / 2}
-            fill={color} fillOpacity={0.15} stroke="none" />
+            fill={accent} fillOpacity={0.2} stroke="none" />
         </g>
       )
     default:
@@ -382,10 +403,19 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
     [completed, showAll],
   )
 
-  const { nodes: layout, edges } = useMemo(
-    () => computeLayout(visibleIds),
-    [visibleIds],
-  )
+  const { nodes: layout, edges } = useMemo(() => {
+    const raw = computeLayout(visibleIds)
+    // Scale Y coordinates to add vertical breathing room
+    const scaledNodes = new Map<number, { x: number; y: number; level: number }>()
+    for (const [id, pos] of raw.nodes) {
+      scaledNodes.set(id, { x: pos.x, y: pos.y * Y_SCALE, level: pos.level })
+    }
+    const scaledEdges = raw.edges.map(e => ({
+      ...e,
+      points: e.points.map(p => ({ x: p.x, y: p.y * Y_SCALE })),
+    }))
+    return { nodes: scaledNodes, edges: scaledEdges }
+  }, [visibleIds])
 
   // Compute SVG viewBox
   const viewBox = useMemo(() => {
