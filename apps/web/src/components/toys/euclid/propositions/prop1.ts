@@ -42,30 +42,35 @@ export const PROP_1: PropositionDef = {
       expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
       highlightIds: ['pt-A', 'pt-B'],
       tool: 'compass',
+      citation: 'Post.3',
     },
     {
       instruction: 'Draw a circle centered at B through A',
       expected: { type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-A' },
       highlightIds: ['pt-B', 'pt-A'],
       tool: 'compass',
+      citation: 'Post.3',
     },
     {
       instruction: 'Mark the point where the circles meet',
       expected: { type: 'intersection', ofA: '', ofB: '' }, // accepts any intersection
       highlightIds: [],
       tool: null, // tap — no tool needed
+      citation: 'Def.15',
     },
     {
       instruction: 'Draw a line from C to A',
       expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-A' },
       highlightIds: ['pt-C', 'pt-A'],
       tool: 'straightedge',
+      citation: 'Post.1',
     },
     {
       instruction: 'Draw a line from C to B',
       expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-B' },
       highlightIds: ['pt-C', 'pt-B'],
       tool: 'straightedge',
+      citation: 'Post.1',
     },
   ],
   completionMessage: 'Equilateral triangle constructed!',

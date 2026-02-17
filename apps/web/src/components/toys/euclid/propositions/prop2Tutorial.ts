@@ -1,12 +1,11 @@
 import type { TutorialSubStep } from '../types'
 
 /**
- * Tutorial sub-steps for Proposition I.2.
- * Each inner array corresponds to one proposition step (indices 0–9).
+ * Tutorial sub-steps for Proposition I.2 (macro version).
+ * Each inner array corresponds to one proposition step (indices 0–5).
  *
- * I.2 is complex: it reuses I.1 to build an equilateral triangle, then
- * uses two more circles to transfer a distance. The tutorial walks the
- * student through every micro-gesture.
+ * I.2 uses the I.1 macro to construct the equilateral triangle in a single
+ * step, then uses two more circles to transfer a distance.
  */
 export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tap = isTouch ? 'Tap' : 'Click'
@@ -27,97 +26,27 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
     ],
 
-    // ── Step 1: Circle centered at A through B ──
+    // ── Step 1: Construct equilateral triangle (I.1 macro) ──
     [
       {
-        instruction: `${tapHold} point A`,
+        instruction: `${tap} point A`,
         speech: isTouch
-          ? "Now we'll build an equilateral triangle on line AB — just like Proposition One! Press and hold on A."
-          : "Now we'll build an equilateral triangle on line AB — just like Proposition One! Click and hold on A.",
+          ? "Now we'll build an equilateral triangle on line AB — just like Proposition One! Tap point A first."
+          : "Now we'll build an equilateral triangle on line AB — just like Proposition One! Click point A first.",
         hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: 'center-set',
+        advanceOn: 'macro-select-0',
       },
       {
-        instruction: `${drag} to point B`,
+        instruction: `${tap} point B`,
         speech: isTouch
-          ? 'Drag to B to set the radius.'
-          : 'Drag to B to set the radius.',
-        hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
-        advanceOn: 'radius-set',
-      },
-      {
-        instruction: `${sweep} all the way around`,
-        speech: isTouch
-          ? 'Sweep all the way around to draw the circle!'
-          : 'Move all the way around to draw the circle!',
-        hint: { type: 'sweep', centerId: 'pt-A', radiusPointId: 'pt-B' },
-        advanceOn: null,
-      },
-    ],
-
-    // ── Step 2: Circle centered at B through A ──
-    [
-      {
-        instruction: `${tapHold} point B`,
-        speech: isTouch
-          ? 'Now the second circle. Press and hold on B.'
-          : 'Now the second circle. Click and hold on B.',
+          ? 'Now tap point B to complete the triangle construction.'
+          : 'Now click point B to complete the triangle construction.',
         hint: { type: 'point', pointId: 'pt-B' },
-        advanceOn: 'center-set',
-      },
-      {
-        instruction: `${drag} to point A`,
-        speech: isTouch
-          ? 'Drag to A.'
-          : 'Drag to A.',
-        hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-A' },
-        advanceOn: 'radius-set',
-      },
-      {
-        instruction: `${sweep} around again`,
-        speech: isTouch
-          ? 'Sweep around again!'
-          : 'Move around again!',
-        hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-A' },
         advanceOn: null,
       },
     ],
 
-    // ── Step 3: Mark intersection D ──
-    [
-      {
-        instruction: `${tap} where the circles cross`,
-        speech: "See where the two circles cross? Tap there to mark point D. That completes our equilateral triangle!",
-        hint: { type: 'candidates', ofA: 'cir-1', ofB: 'cir-2' },
-        advanceOn: null,
-      },
-    ],
-
-    // ── Step 4: Segment D → A ──
-    [
-      {
-        instruction: `${drag} from D to A`,
-        speech: isTouch
-          ? "Now draw a line from D down to A. This is one side of the triangle."
-          : "Now draw a line from D to A. This is one side of the triangle.",
-        hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-A' },
-        advanceOn: null,
-      },
-    ],
-
-    // ── Step 5: Segment D → B ──
-    [
-      {
-        instruction: `${drag} from D to B`,
-        speech: isTouch
-          ? "And one more line from D to B. Now we have a complete triangle!"
-          : "And one more from D to B. Triangle complete!",
-        hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-B' },
-        advanceOn: null,
-      },
-    ],
-
-    // ── Step 6: Circle at B through C ──
+    // ── Step 2: Circle at B through C ──
     [
       {
         instruction: `${tapHold} point B`,
@@ -145,18 +74,18 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
     ],
 
-    // ── Step 7: Mark intersection E (Euclid's G) ──
+    // ── Step 3: Mark intersection E (Euclid's G) ──
     [
       {
         instruction: `${tap} where the circle crosses line DB, past B`,
         speech:
           "See where the new circle crosses the line from D through B? Tap the point on the far side of B — past B, away from D. That intersection captures the length we want to transfer.",
-        hint: { type: 'candidates', ofA: 'cir-3', ofB: 'seg-4', beyondId: 'pt-B' },
+        hint: { type: 'candidates', ofA: 'cir-1', ofB: 'seg-4', beyondId: 'pt-B' },
         advanceOn: null,
       },
     ],
 
-    // ── Step 8: Circle at D through E ──
+    // ── Step 4: Circle at D through E ──
     [
       {
         instruction: `${tapHold} point D`,
@@ -184,13 +113,13 @@ export function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
     ],
 
-    // ── Step 9: Mark intersection F (Euclid's L) ──
+    // ── Step 5: Mark intersection F (Euclid's L) ──
     [
       {
         instruction: `${tap} where the big circle crosses line DA, past A`,
         speech:
           "See where the big circle crosses the line from D through A? Tap the point past A — on the far side from D. The line from A to that new point is exactly the same length as BC!",
-        hint: { type: 'candidates', ofA: 'cir-4', ofB: 'seg-3', beyondId: 'pt-A' },
+        hint: { type: 'candidates', ofA: 'cir-2', ofB: 'seg-3', beyondId: 'pt-A' },
         advanceOn: null,
       },
     ],

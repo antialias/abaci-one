@@ -102,7 +102,11 @@ export interface Measurement {
   distance: number  // world-coordinate Euclidean distance
 }
 
-export type ActiveTool = 'compass' | 'straightedge' | 'ruler'
+export type ActiveTool = 'compass' | 'straightedge' | 'ruler' | 'macro'
+
+export type MacroPhase =
+  | { tag: 'idle' }
+  | { tag: 'selecting'; propId: number; inputLabels: string[]; selectedPointIds: string[] }
 
 // ── Tutorial hints ─────────────────────────────────────────────────
 
@@ -133,6 +137,7 @@ export type ExpectedAction =
   | { type: 'compass'; centerId: string; radiusPointId: string }
   | { type: 'intersection'; ofA: string; ofB: string; beyondId?: string }
   | { type: 'straightedge'; fromId: string; toId: string }
+  | { type: 'macro'; propId: number; inputPointIds: string[] }
 
 export interface PropositionStep {
   instruction: string
@@ -141,6 +146,8 @@ export interface PropositionStep {
   highlightIds: string[]
   /** Tool to auto-select for this step (null = no tool needed, e.g. tap intersection) */
   tool: ActiveTool | null
+  /** Citation reference for this step, e.g. "Post.1", "I.1", "Def.15" */
+  citation?: string
 }
 
 export interface PropositionDef {

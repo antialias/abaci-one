@@ -6,6 +6,9 @@ import type {
 } from '../types'
 import { getPoint } from '../engine/constructionState'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
+import type { FactStore } from '../engine/factStore'
+import { queryEquality } from '../engine/factStore'
+import { distancePair } from '../engine/facts'
 
 const TEAL = '#5b8a8a'
 const TEAL_HIGHLIGHT = '#3a7a7a'
@@ -35,15 +38,29 @@ function distancesEqual(a: number, b: number): boolean {
   return Math.abs(a - b) < EQUALITY_EPSILON
 }
 
+/** Check if two measurements are equal — via fact store (formal proof) or epsilon fallback. */
+function measurementsEqual(
+  a: Measurement,
+  b: Measurement,
+  factStore: FactStore | null,
+): boolean {
+  if (factStore) {
+    const dpA = distancePair(a.fromId, a.toId)
+    const dpB = distancePair(b.fromId, b.toId)
+    if (queryEquality(factStore, dpA, dpB)) return true
+  }
+  return distancesEqual(a.distance, b.distance)
+}
+
 /** Assign a tick-group number (1-based) to each measurement. Equal distances share a group. */
-function assignTickGroups(measurements: Measurement[]): number[] {
+function assignTickGroups(measurements: Measurement[], factStore: FactStore | null = null): number[] {
   const groups: number[][] = []
   const result: number[] = []
 
   for (let i = 0; i < measurements.length; i++) {
     let foundGroup = -1
     for (let g = 0; g < groups.length; g++) {
-      if (distancesEqual(measurements[i].distance, measurements[groups[g][0]].distance)) {
+      if (measurementsEqual(measurements[i], measurements[groups[g][0]], factStore)) {
         foundGroup = g
         break
       }
@@ -63,11 +80,15 @@ function assignTickGroups(measurements: Measurement[]): number[] {
 /** Find the tick group a distance belongs to, or 0 if no match. */
 function findMatchingGroup(
   distance: number,
+  fromId: string,
+  toId: string,
   measurements: Measurement[],
   tickGroups: number[],
+  factStore: FactStore | null,
 ): number {
+  const tempMeasurement: Measurement = { fromId, toId, distance }
   for (let i = 0; i < measurements.length; i++) {
-    if (distancesEqual(distance, measurements[i].distance)) {
+    if (measurementsEqual(tempMeasurement, measurements[i], factStore)) {
       return tickGroups[i]
     }
   }
@@ -173,10 +194,11 @@ export function renderMeasurements(
   rulerPhase: RulerPhase,
   snappedPointId: string | null,
   pointerWorld: { x: number; y: number } | null,
+  factStore: FactStore | null = null,
 ) {
   if (measurements.length === 0 && rulerPhase.tag === 'idle') return
 
-  const tickGroups = assignTickGroups(measurements)
+  const tickGroups = assignTickGroups(measurements, factStore)
 
   // Check if the live preview matches an existing group
   let previewMatchGroup = 0
@@ -188,7 +210,7 @@ export function renderMeasurements(
       const dy = to.y - from.y
       const dist = Math.sqrt(dx * dx + dy * dy)
       if (dist > 0.01) {
-        previewMatchGroup = findMatchingGroup(dist, measurements, tickGroups)
+        previewMatchGroup = findMatchingGroup(dist, rulerPhase.fromId, snappedPointId, measurements, tickGroups, factStore)
       }
     }
   }

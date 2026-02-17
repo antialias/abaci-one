@@ -51,6 +51,7 @@ export function renderConstruction(
   candidateFilter?: { ofA: string; ofB: string; beyondId?: string } | null,
   isComplete?: boolean,
   resultSegments?: Array<{ fromId: string; toId: string }>,
+  hiddenElementIds?: Set<string>,
 ) {
   const ppu = viewport.pixelsPerUnit
 
@@ -60,6 +61,7 @@ export function renderConstruction(
 
   // 2. Completed circles
   for (const circle of getAllCircles(state)) {
+    if (hiddenElementIds?.has(circle.id)) continue
     const center = getPoint(state, circle.centerId)
     if (!center) continue
     const r = getRadius(state, circle.id)
@@ -76,6 +78,7 @@ export function renderConstruction(
 
   // 3. Completed segments
   for (const seg of getAllSegments(state)) {
+    if (hiddenElementIds?.has(seg.id)) continue
     const from = getPoint(state, seg.fromId)
     const to = getPoint(state, seg.toId)
     if (!from || !to) continue
@@ -259,6 +262,7 @@ export function renderConstruction(
 
   // 6. Marked points — filled circles with labels
   for (const pt of getAllPoints(state)) {
+    if (hiddenElementIds?.has(pt.id)) continue
     const sp = toScreen(pt.x, pt.y, viewport, w, h)
 
     ctx.beginPath()

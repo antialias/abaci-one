@@ -7,6 +7,7 @@ import type {
   CompassPhase,
   StraightedgePhase,
   RulerPhase,
+  MacroPhase,
   Measurement,
   ActiveTool,
   IntersectionCandidate,
@@ -21,6 +22,7 @@ import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersect
 import { renderConstruction } from './render/renderConstruction'
 import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderMeasurements } from './render/renderMeasurements'
+import { renderEqualityMarks } from './render/renderEqualityMarks'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
 import { useToolInteraction } from './interaction/useToolInteraction'
 import { validateStep } from './propositions/validation'
@@ -29,6 +31,42 @@ import { PROP_2 } from './propositions/prop2'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
+import { createFactStore } from './engine/factStore'
+import type { FactStore } from './engine/factStore'
+import type { EqualityFact } from './engine/facts'
+import { deriveDef15Facts } from './engine/factDerivation'
+import { MACRO_REGISTRY } from './engine/macros'
+import type { MacroAnimation } from './engine/macroExecution'
+import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
+import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
+import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
+import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
+
+// ── Keyboard shortcuts ──
+
+const SHORTCUTS: ShortcutEntry[] = [
+  { key: 'V', description: 'Toggle pan/zoom (disabled by default)' },
+  { key: '?', description: 'Toggle this help' },
+]
+
+// ── Viewport centering ──
+
+/** Compute a good initial viewport center for a proposition's given elements. */
+function computeInitialViewport(givenElements: readonly { kind: string; x?: number; y?: number }[]): EuclidViewportState {
+  const points = givenElements.filter(e => e.kind === 'point' && e.x !== undefined && e.y !== undefined) as { x: number; y: number }[]
+  if (points.length === 0) return { center: { x: 0, y: 0 }, pixelsPerUnit: 60 }
+
+  const minX = Math.min(...points.map(p => p.x))
+  const maxX = Math.max(...points.map(p => p.x))
+  const minY = Math.min(...points.map(p => p.y))
+  const maxY = Math.max(...points.map(p => p.y))
+
+  // Center on given points, shifted up a bit to leave room for construction above
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2 + 1.5
+
+  return { center: { x: cx, y: cy }, pixelsPerUnit: 50 }
+}
 
 // ── Proposition registry ──
 
@@ -54,10 +92,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   // Core refs (performance-critical, not React state)
-  const viewportRef = useRef<EuclidViewportState>({
-    center: { x: 0, y: 0 },
-    pixelsPerUnit: 60,
-  })
+  const viewportRef = useRef<EuclidViewportState>(computeInitialViewport(proposition.givenElements))
   const constructionRef = useRef<ConstructionState>(initializeGiven(proposition.givenElements))
   const compassPhaseRef = useRef<CompassPhase>({ tag: 'idle' })
   const straightedgePhaseRef = useRef<StraightedgePhase>({ tag: 'idle' })
@@ -72,6 +107,10 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const expectedActionRef = useRef<ExpectedAction | null>(proposition.steps[0]?.expected ?? null)
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
+  const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
+  const macroAnimationRef = useRef<MacroAnimation | null>(null)
+  const factStoreRef = useRef<FactStore>(createFactStore())
+  const panZoomDisabledRef = useRef(true)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
@@ -83,6 +122,9 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
   const [isComplete, setIsComplete] = useState(false)
   const [toolToast, setToolToast] = useState<string | null>(null)
   const toolToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [proofFacts, setProofFacts] = useState<EqualityFact[]>([])
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [panZoomEnabled, setPanZoomEnabled] = useState(false)
 
   // ── Input mode detection ──
   const [isTouch, setIsTouch] = useState(true) // mobile-first default
@@ -142,7 +184,26 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
       setActiveTool(stepDef.tool)
       activeToolRef.current = stepDef.tool
 
-      const label = stepDef.tool === 'compass' ? 'Compass' : stepDef.tool === 'straightedge' ? 'Straightedge' : 'Ruler'
+      // Initialize macro phase when entering a macro step
+      if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
+        const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
+        if (macroDef) {
+          macroPhaseRef.current = {
+            tag: 'selecting',
+            propId: stepDef.expected.propId,
+            inputLabels: macroDef.inputLabels,
+            selectedPointIds: [],
+          }
+        }
+      }
+
+      const toolLabels: Record<string, string> = {
+        compass: 'Compass',
+        straightedge: 'Straightedge',
+        ruler: 'Ruler',
+        macro: 'Proposition',
+      }
+      const label = toolLabels[stepDef.tool] ?? stepDef.tool
       setToolToast(label)
       if (toolToastTimerRef.current) clearTimeout(toolToastTimerRef.current)
       toolToastTimerRef.current = setTimeout(() => setToolToast(null), 1800)
@@ -155,6 +216,44 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     tutorialSubStepRef.current = 0
     setTutorialSubStep(0)
   }, [currentStep])
+
+  // ── Derive proposition conclusion facts when complete ──
+  useEffect(() => {
+    if (!isComplete) return
+    const conclusionFn = PROP_CONCLUSIONS[proposition.id]
+    if (!conclusionFn) return
+    const result = conclusionFn(
+      factStoreRef.current,
+      constructionRef.current,
+      proposition.steps.length,
+    )
+    factStoreRef.current = result.store
+    if (result.newFacts.length > 0) {
+      setProofFacts(prev => [...prev, ...result.newFacts])
+    }
+  }, [isComplete, proposition.id, proposition.steps.length])
+
+  // ── Keyboard shortcuts ──
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      if (e.key === '?') {
+        e.preventDefault()
+        setShowShortcuts(prev => !prev)
+      } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        setPanZoomEnabled(prev => {
+          const next = !prev
+          panZoomDisabledRef.current = !next
+          return next
+        })
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // ── Step validation (uses ref to avoid stale closures) ──
 
@@ -257,10 +356,70 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         c => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001),
       )
 
+      // Derive Def.15 facts for intersection points on circles
+      const def15Result = deriveDef15Facts(
+        candidate,
+        result.point.id,
+        constructionRef.current,
+        factStoreRef.current,
+        step,
+      )
+      factStoreRef.current = def15Result.store
+      if (def15Result.newFacts.length > 0) {
+        setProofFacts(prev => [...prev, ...def15Result.newFacts])
+      }
+
       checkStep(result.point, candidate)
       requestDraw()
     },
     [checkStep, requestDraw, proposition.steps],
+  )
+
+  const handleCommitMacro = useCallback(
+    (propId: number, inputPointIds: string[]) => {
+      const macroDef = MACRO_REGISTRY[propId]
+      if (!macroDef) return
+
+      const step = currentStepRef.current
+
+      // Execute the macro — state is computed all at once
+      const result = macroDef.execute(
+        constructionRef.current,
+        inputPointIds,
+        candidatesRef.current,
+        factStoreRef.current,
+        proposition.extendSegments,
+      )
+
+      // Update atStep on macro's facts
+      const factsWithStep = result.newFacts.map(f => ({ ...f, atStep: step }))
+
+      constructionRef.current = result.state
+      candidatesRef.current = result.candidates
+      factStoreRef.current = result.factStore
+      if (factsWithStep.length > 0) {
+        setProofFacts(prev => [...prev, ...factsWithStep])
+      }
+
+      // Start animation
+      macroAnimationRef.current = createMacroAnimation(result)
+
+      // Directly advance the step (macro validation is handled here, not in validateStep)
+      setCompletedSteps(prev => {
+        const next = [...prev]
+        next[step] = true
+        return next
+      })
+      const nextStep = step + 1
+      currentStepRef.current = nextStep
+      if (nextStep >= proposition.steps.length) {
+        setIsComplete(true)
+      }
+      setCurrentStep(nextStep)
+
+      requestDraw()
+    },
+    [proposition.steps, proposition.extendSegments, requestDraw],
   )
 
   const handleUndo = useCallback(() => {
@@ -280,6 +439,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     canvasRef,
     pointerCapturedRef,
     onViewportChange: requestDraw,
+    panZoomDisabledRef,
   })
 
   // ── Hook up tool interaction ──
@@ -301,6 +461,8 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
     expectedActionRef,
     rulerPhaseRef,
     measurementsRef,
+    macroPhaseRef,
+    onCommitMacro: handleCommitMacro,
   })
 
   // ── Canvas resize observer ──
@@ -364,6 +526,31 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         }
       }
 
+      // ── Tick macro animation ──
+      const macroAnim = macroAnimationRef.current
+      if (macroAnim && macroAnim.revealedCount < macroAnim.elements.length) {
+        const newCount = tickMacroAnimation(macroAnim)
+        if (newCount !== macroAnim.revealedCount) {
+          macroAnim.revealedCount = newCount
+          needsDrawRef.current = true
+        }
+        if (newCount >= macroAnim.elements.length) {
+          macroAnimationRef.current = null
+        }
+      }
+
+      // ── Track macro phase for tutorial advancement ──
+      const macroPhase = macroPhaseRef.current
+      if (macroPhase.tag === 'selecting' && macroPhase.selectedPointIds.length > 0) {
+        const subStepDef = subSteps[step]?.[subStep]
+        const advanceTag = `macro-select-${macroPhase.selectedPointIds.length - 1}`
+        if (subStepDef?.advanceOn === advanceTag) {
+          const next = subStep + 1
+          tutorialSubStepRef.current = next
+          setTutorialSubStep(next)
+        }
+      }
+
       // ── Keep animating while tutorial hints are visible ──
       const hint = currentHintRef.current
       if (hint.type !== 'none') {
@@ -393,6 +580,9 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             : null
           const complete = curStep >= proposition.steps.length
 
+          // Compute hidden elements during macro animation
+          const hiddenIds = getHiddenElementIds(macroAnimationRef.current)
+
           renderConstruction(
             ctx,
             constructionRef.current,
@@ -408,9 +598,24 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             candFilter,
             complete,
             complete ? proposition.resultSegments : undefined,
+            hiddenIds.size > 0 ? hiddenIds : undefined,
           )
 
-          // Render measurements overlay
+          // Render equality tick marks on segments with proven equalities
+          if (factStoreRef.current.facts.length > 0) {
+            renderEqualityMarks(
+              ctx,
+              constructionRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight,
+              factStoreRef.current,
+              hiddenIds.size > 0 ? hiddenIds : undefined,
+              complete ? proposition.resultSegments : undefined,
+            )
+          }
+
+          // Render measurements overlay (with fact store for formal equality)
           renderMeasurements(
             ctx,
             constructionRef.current,
@@ -421,6 +626,7 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             rulerPhaseRef.current,
             snappedPointIdRef.current,
             pointerWorldRef.current,
+            factStoreRef.current,
           )
 
           // Render tutorial hint on top
@@ -500,6 +706,24 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
             {currentStep + 1}/{proposition.steps.length}
           </span>
           {currentInstruction}
+          {proposition.steps[currentStep]?.citation && (
+            <span
+              data-element="citation-badge"
+              style={{
+                marginLeft: 8,
+                padding: '1px 6px',
+                borderRadius: 4,
+                background: 'rgba(78, 121, 167, 0.12)',
+                color: '#4E79A7',
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+              }}
+            >
+              {proposition.steps[currentStep].citation}
+            </span>
+          )}
         </div>
       )}
 
@@ -586,6 +810,42 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
         </div>
       )}
 
+      {/* Proof transcript panel — always visible when facts exist */}
+      {proofFacts.length > 0 && (
+        <div
+          data-element="proof-transcript"
+          style={{
+            position: 'absolute',
+            bottom: 84,
+            left: 12,
+            right: 12,
+            maxHeight: '30%',
+            overflowY: 'auto',
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(203, 213, 225, 0.8)',
+            color: '#334155',
+            fontSize: 12,
+            fontFamily: 'Georgia, serif',
+            pointerEvents: 'auto',
+            zIndex: 10,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Proof</div>
+          {proofFacts.map(fact => (
+            <div key={fact.id} style={{ marginBottom: 4 }}>
+              <span style={{ color: '#4E79A7', fontWeight: 600 }}>{fact.statement}</span>
+              <span style={{ color: '#94a3b8', marginLeft: 8, fontStyle: 'italic', fontSize: 11 }}>
+                {fact.justification}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Tool selector */}
       <div
         data-element="tool-selector"
@@ -641,7 +901,9 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
               needsDrawRef.current = true
             } else {
               // Toggle on: remember current tool, switch to ruler
-              preRulerToolRef.current = activeTool as 'compass' | 'straightedge'
+              if (activeTool === 'compass' || activeTool === 'straightedge') {
+                preRulerToolRef.current = activeTool
+              }
               setActiveTool('ruler')
             }
           }}
@@ -658,6 +920,32 @@ export function EuclidCanvas({ propositionId = 1 }: EuclidCanvasProps) {
           onClick={handleUndo}
         />
       </div>
+
+      {/* Subtle "?" hint */}
+      <div
+        data-element="shortcuts-hint"
+        style={{
+          position: 'absolute',
+          bottom: 12,
+          left: 12,
+          fontSize: 12,
+          color: 'rgba(100, 116, 139, 0.5)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        Press ? for shortcuts
+      </div>
+
+      {/* Keyboard shortcuts overlay */}
+      {showShortcuts && (
+        <KeyboardShortcutsOverlay
+          shortcuts={SHORTCUTS}
+          onClose={() => setShowShortcuts(false)}
+          isDark={false}
+        />
+      )}
     </div>
   )
 }

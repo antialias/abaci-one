@@ -12,6 +12,9 @@ import { isCandidateBeyondPoint } from '../engine/intersections'
  *
  * For intersection steps, optionally validates that the candidate came from the
  * expected pair of elements (ofA/ofB).
+ *
+ * For macro steps, validation is handled externally (the macro commit handler
+ * validates input points and calls checkStep with a synthetic element).
  */
 export function validateStep(
   expected: ExpectedAction,
@@ -51,6 +54,9 @@ export function validateStep(
       (lastElement.fromId === expected.toId && lastElement.toId === expected.fromId)
     )
   }
+
+  // Macro steps are validated and advanced directly by handleCommitMacro
+  // in EuclidCanvas.tsx, not through this function.
 
   return false
 }

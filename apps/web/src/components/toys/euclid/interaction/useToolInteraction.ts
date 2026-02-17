@@ -5,6 +5,7 @@ import type {
   CompassPhase,
   StraightedgePhase,
   RulerPhase,
+  MacroPhase,
   Measurement,
   ActiveTool,
   IntersectionCandidate,
@@ -38,6 +39,8 @@ interface UseToolInteractionOptions {
   expectedActionRef: React.MutableRefObject<ExpectedAction | null>
   rulerPhaseRef: React.MutableRefObject<RulerPhase>
   measurementsRef: React.MutableRefObject<Measurement[]>
+  macroPhaseRef: React.MutableRefObject<MacroPhase>
+  onCommitMacro: (propId: number, inputPointIds: string[]) => void
 }
 
 function normalizeAngle(angle: number): number {
@@ -68,6 +71,8 @@ export function useToolInteraction({
   expectedActionRef,
   rulerPhaseRef,
   measurementsRef,
+  macroPhaseRef,
+  onCommitMacro,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -120,10 +125,15 @@ export function useToolInteraction({
       const hitPt = hitTestPoints(sx, sy, state, viewport, w, h, isTouch)
       snappedPointIdRef.current = hitPt?.id ?? null
 
-      // ── Intersection marking: tap near a candidate when tool is idle ──
+      // ── Intersection marking: tap near a candidate ──
+      // In guided mode, only allow candidate taps during intersection steps.
+      // Otherwise, accidental taps during compass/straightedge steps create
+      // unwanted points from leftover candidates.
       const compass = compassPhaseRef.current
       const straightedge = straightedgePhaseRef.current
-      if (compass.tag === 'idle' && straightedge.tag === 'idle') {
+      const expected = expectedActionRef.current
+      const allowCandidateTap = !expected || expected.type === 'intersection'
+      if (allowCandidateTap && compass.tag === 'idle' && straightedge.tag === 'idle') {
         const hitCandidate = hitTestIntersectionCandidates(
           sx, sy, candidatesRef.current, viewport, w, h, isTouch,
         )
@@ -172,6 +182,41 @@ export function useToolInteraction({
           e.stopPropagation()
           pointerCapturedRef.current = true
           rulerPhaseRef.current = { tag: 'from-set', fromId: hitPt.id }
+          requestDraw()
+          return
+        }
+      }
+
+      if (tool === 'macro') {
+        const macro = macroPhaseRef.current
+        if (macro.tag === 'selecting') {
+          e.stopPropagation()
+
+          // In guided mode, validate against expected input points
+          const expected = expectedActionRef.current
+          if (expected?.type === 'macro') {
+            const nextIdx = macro.selectedPointIds.length
+            if (nextIdx < expected.inputPointIds.length) {
+              if (hitPt.id !== expected.inputPointIds[nextIdx]) {
+                // Wrong point — ignore
+                requestDraw()
+                return
+              }
+            }
+          }
+
+          const newSelected = [...macro.selectedPointIds, hitPt.id]
+          if (newSelected.length >= macro.inputLabels.length) {
+            // All inputs collected — commit
+            macroPhaseRef.current = { tag: 'idle' }
+            pointerCapturedRef.current = false
+            onCommitMacro(macro.propId, newSelected)
+          } else {
+            macroPhaseRef.current = {
+              ...macro,
+              selectedPointIds: newSelected,
+            }
+          }
           requestDraw()
           return
         }
@@ -394,6 +439,7 @@ export function useToolInteraction({
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
       rulerPhaseRef.current = { tag: 'idle' }
+      macroPhaseRef.current = { tag: 'idle' }
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
@@ -430,6 +476,8 @@ export function useToolInteraction({
     expectedActionRef,
     rulerPhaseRef,
     measurementsRef,
+    macroPhaseRef,
+    onCommitMacro,
     getCanvasRect,
   ])
 }

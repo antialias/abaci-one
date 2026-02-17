@@ -8,6 +8,8 @@ interface UseEuclidTouchOptions {
   /** When true, a tool has captured the pointer — skip pan/zoom */
   pointerCapturedRef: React.MutableRefObject<boolean>
   onViewportChange: () => void
+  /** When true, pan/zoom gestures are completely disabled */
+  panZoomDisabledRef: React.MutableRefObject<boolean>
 }
 
 const MIN_PPU = 1
@@ -27,6 +29,7 @@ export function useEuclidTouch({
   canvasRef,
   pointerCapturedRef,
   onViewportChange,
+  panZoomDisabledRef,
 }: UseEuclidTouchOptions) {
   const dragAnchorRef = useRef<{ wx: number; wy: number } | null>(null)
   const pinchAnchorsRef = useRef<{
@@ -57,6 +60,7 @@ export function useEuclidTouch({
     // --- Touch handlers ---
 
     function handleTouchStart(e: TouchEvent) {
+      if (panZoomDisabledRef.current) return
       if (pointerCapturedRef.current) return
       e.preventDefault()
       const rect = getCanvasRect()
@@ -88,6 +92,7 @@ export function useEuclidTouch({
     }
 
     function handleTouchMove(e: TouchEvent) {
+      if (panZoomDisabledRef.current) return
       if (pointerCapturedRef.current) return
       e.preventDefault()
       const rect = getCanvasRect()
@@ -166,6 +171,7 @@ export function useEuclidTouch({
     let mouseAnchor: { wx: number; wy: number } | null = null
 
     function handleMouseDown(e: MouseEvent) {
+      if (panZoomDisabledRef.current) return
       if (pointerCapturedRef.current) return
       if (e.button !== 0) return
       const rect = getCanvasRect()
@@ -197,6 +203,7 @@ export function useEuclidTouch({
     // --- Wheel handler ---
 
     function handleWheel(e: WheelEvent) {
+      if (panZoomDisabledRef.current) return
       if (pointerCapturedRef.current) return
       e.preventDefault()
       const rect = getCanvasRect()
@@ -227,8 +234,6 @@ export function useEuclidTouch({
     window.addEventListener('mouseup', handleMouseUp)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
 
-    canvas.style.cursor = 'grab'
-
     return () => {
       canvas.removeEventListener('touchstart', handleTouchStart)
       canvas.removeEventListener('touchmove', handleTouchMove)
@@ -239,5 +244,5 @@ export function useEuclidTouch({
       window.removeEventListener('mouseup', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
     }
-  }, [canvasRef, viewportRef, pointerCapturedRef, onViewportChange, getCanvasRect])
+  }, [canvasRef, viewportRef, pointerCapturedRef, onViewportChange, getCanvasRect, panZoomDisabledRef])
 }
