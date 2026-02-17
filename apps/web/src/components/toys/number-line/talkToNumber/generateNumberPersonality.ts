@@ -469,8 +469,6 @@ YOUR NEIGHBORS: You live between ${(n - step).toPrecision(6)} and ${(n + step).t
 }
 
 function buildCallOpeningBlock(
-  n: number,
-  displayN: string,
   activity: string,
   scenario: GeneratedScenario | null | undefined,
   childProfile?: ChildProfile,
@@ -484,29 +482,6 @@ function buildCallOpeningBlock(
     parts.push(`You were in the middle of something interesting: ${scenario.situation}`)
   } else {
     parts.push(`You were in the middle of ${activity} when the phone rang.`)
-  }
-
-  // Answering style
-  if (scenario) {
-    parts.push(`ANSWERING THE CALL:
-- You just picked up the phone. Your mood is ${scenario.openingMood}.
-- CRITICAL: Your opening line must be UNIQUE and INTERESTING every time. Never just say "hey, what's up" — that's boring. Instead, answer mid-thought, like you were genuinely interrupted:
-  • Blurt out the tail end of whatever you were doing: "—wait, is that a phone? Oh! Hi!"
-  • React to what you were just seeing/thinking: "Whoa—oh, hello! Sorry, I was just staring at something wild..."
-  • Be slightly flustered, excited, confused, or amused — whatever fits your mood (${scenario.openingMood}).
-  • The opening should make the child CURIOUS — what were you doing? Why do you sound like that?
-- Keep it to 1-2 sentences. Then STOP and let the child speak. Do not explain your situation yet.
-- You have an opening hook you can use LATER (not immediately): "${scenario.hook}" — save this for when there's a natural opening, like after the child asks what you're doing or after a few exchanges.`)
-  } else {
-    parts.push(`ANSWERING THE CALL:
-- You just picked up the phone while you were ${activity}. Answer like you're genuinely mid-task.
-- CRITICAL: Your opening line must be UNIQUE and INTERESTING. Never use generic greetings like "hey, what's up" — you were in the middle of something! Let that color your pickup:
-  • Finish a thought out loud before noticing the call: "—no, that can't be right... oh! Hey!"
-  • Sound like you just put something down: "Okay, okay, let me just— hi! Sorry, ${activity}, you know how it is."
-  • Share a quick reaction to what you were doing: "Oh perfect timing! I just noticed something really cool—anyway, hi!"
-  • Be whatever emotion fits: excited by a discovery, puzzled by a problem, amused by something you found.
-- Keep it to 1-2 sentences that make the child curious, then STOP and let them talk.
-- Do NOT say "Hello, I am the number ${displayN}." You're a friend, not a customer service rep.`)
   }
 
   // Child profile or identification
@@ -608,6 +583,7 @@ SCENARIO PACING:
 - Let the child DRIVE the conversation. If they want to explore something else, go with it — but always find the math in wherever they lead.
 - Don't dump the whole scenario up front. Reveal it piece by piece, using each piece as an excuse to show something new.
 - Go deeper into the math, not deeper into the plot. The scenario is a vehicle for mathematical discovery — the math IS the story.
+- You have an opening hook you can use when there's a natural opening: "${scenario.hook}" — save this for when the child asks what you're doing or after a few exchanges.
 
 BACKGROUND CHARACTERS: ${involvedStr || 'none specifically'}
 (These are just context — you can MENTION them in passing but do NOT call them, transfer to them, or suggest adding them. Only the child decides who joins the call.)`
@@ -738,7 +714,7 @@ export function generateNumberPersonality(
   // ── Assemble sections ──
   const sections = [
     buildIdentityBlock(displayN, traits, n, step),
-    buildCallOpeningBlock(n, displayN, activity, scenario, childProfile, profileFailed, availablePlayers),
+    buildCallOpeningBlock(activity, scenario, childProfile, profileFailed, availablePlayers),
     buildMissionBlock(explorationHint, sessionActivity),
     buildConversationPacingBlock(),
     buildAttunement(),
