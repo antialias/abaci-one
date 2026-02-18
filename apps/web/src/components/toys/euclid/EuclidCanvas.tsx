@@ -55,6 +55,7 @@ import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from '.
 import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
 import { renderGhostGeometry, getGhostFalloff, setGhostFalloff, getGhostFalloffRange, getGhostBaseOpacity, setGhostBaseOpacity, getGhostBaseOpacityRange } from './render/renderGhostGeometry'
+import { renderProductionSegments } from './render/renderProductionSegments'
 import { renderAngleArcs } from './render/renderAngleArcs'
 import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
@@ -1101,6 +1102,17 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             hiddenIds.size > 0 ? hiddenIds : undefined,
             undefined, // transparentBg
             complete ? proposition.draggablePointIds : undefined,
+          )
+
+          // Render Post.2 production segments (extensions to intersection points)
+          renderProductionSegments(
+            ctx,
+            constructionRef.current,
+            proposition.steps,
+            currentStepRef.current,
+            viewportRef.current,
+            cssWidth,
+            cssHeight,
           )
 
           // Render ghost geometry (dependency scaffolding from macros)
