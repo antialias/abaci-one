@@ -202,6 +202,22 @@ export interface PropositionDef {
   computeGivenElements?: (positions: Map<string, { x: number; y: number }>) => ConstructionElement[]
 }
 
+// ── Ghost geometry (dependency visualization) ────────────────────
+
+/** Lightweight geometry for the ghost layer — not part of construction state */
+export interface GhostCircle { kind: 'circle'; cx: number; cy: number; r: number; color: string }
+export interface GhostSegment { kind: 'segment'; x1: number; y1: number; x2: number; y2: number; color: string }
+export interface GhostPoint { kind: 'point'; x: number; y: number; label: string; color: string }
+export type GhostElement = GhostCircle | GhostSegment | GhostPoint
+
+/** A collection of ghost elements from one macro invocation at a specific depth */
+export interface GhostLayer {
+  propId: number       // which proposition's internals these represent
+  depth: number        // 1 = direct dependency, 2 = dependency's dependency, etc.
+  elements: GhostElement[]
+  atStep: number       // construction step index that produced this layer
+}
+
 /**
  * Whether a proposition needs Post.2 segment extension for intersection computation.
  * Derived from step definitions: any step with `beyondId` implies the construction

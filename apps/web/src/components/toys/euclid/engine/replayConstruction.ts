@@ -33,6 +33,7 @@ export interface ReplayResult {
   factStore: FactStore
   proofFacts: EqualityFact[]
   candidates: IntersectionCandidate[]
+  ghostLayers: GhostLayer[]
   /** Number of proposition steps that were successfully replayed.
    *  When less than the total step count, the construction broke down
    *  (e.g. an intersection no longer exists). */
@@ -57,6 +58,7 @@ export function replayConstruction(
   const factStore = createFactStore()
   let candidates: IntersectionCandidate[] = []
   const proofFacts: EqualityFact[] = []
+  const ghostLayers: GhostLayer[] = []
   const extendSegments = needsExtendedSegments(propDef)
 
   // Pre-load given facts
@@ -149,6 +151,9 @@ export function replayConstruction(
         state = result.state
         candidates = result.candidates
         proofFacts.push(...result.newFacts)
+        if (result.ghostLayers) {
+          ghostLayers.push(...result.ghostLayers)
+        }
         stepSucceeded = true
       }
     }
@@ -200,5 +205,5 @@ export function replayConstruction(
     }
   }
 
-  return { state, factStore, proofFacts, candidates, stepsCompleted }
+  return { state, factStore, proofFacts, candidates, ghostLayers, stepsCompleted }
 }

@@ -53,7 +53,7 @@ import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
 import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
-import { renderGhostGeometry } from './render/renderGhostGeometry'
+import { renderGhostGeometry, getGhostFalloff, setGhostFalloff, getGhostFalloffRange, getGhostBaseOpacity, setGhostBaseOpacity, getGhostBaseOpacityRange } from './render/renderGhostGeometry'
 import { renderAngleArcs } from './render/renderAngleArcs'
 import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
@@ -250,7 +250,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const postCompletionActionsRef = useRef<PostCompletionAction[]>([])
   const ghostLayersRef = useRef<GhostLayer[]>([])
   const hoveredMacroStepRef = useRef<number | null>(null)
-  const ghostOpacitiesRef = useRef<Map<number, number>>(new Map())
+  const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
   const propositionRef = useRef(proposition)
   propositionRef.current = proposition
   const musicRef = useRef<UseEuclidMusicReturn | null>(null)
@@ -273,6 +273,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
   const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
+  const [ghostBaseOpacityVal, setGhostBaseOpacityVal] = useState(getGhostBaseOpacity)
+  const [ghostFalloffCoeff, setGhostFalloffCoeff] = useState(getGhostFalloff)
   const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
   const [autoCompleting, setAutoCompleting] = useState(false)
@@ -1994,6 +1996,24 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           step={0.001}
           onChange={v => { setFrictionCoeff(v); setFriction(v) }}
           formatValue={v => v.toFixed(3)}
+        />
+        <DebugSlider
+          label="Ghost opacity"
+          value={ghostBaseOpacityVal}
+          min={getGhostBaseOpacityRange().min}
+          max={getGhostBaseOpacityRange().max}
+          step={0.01}
+          onChange={v => { setGhostBaseOpacityVal(v); setGhostBaseOpacity(v); needsDrawRef.current = true }}
+          formatValue={v => v.toFixed(2)}
+        />
+        <DebugSlider
+          label="Ghost depth falloff"
+          value={ghostFalloffCoeff}
+          min={getGhostFalloffRange().min}
+          max={getGhostFalloffRange().max}
+          step={0.01}
+          onChange={v => { setGhostFalloffCoeff(v); setGhostFalloff(v); needsDrawRef.current = true }}
+          formatValue={v => v.toFixed(2)}
         />
         {!isComplete && proposition.steps.length > 0 && (
           <button
