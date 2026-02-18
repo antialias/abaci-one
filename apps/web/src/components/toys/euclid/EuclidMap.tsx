@@ -64,6 +64,7 @@ const STATUS_STYLES: Record<NodeStatus, {
 
 import { usePropPreviews } from './render/usePropPreviews'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ThematicBlock } from './data/book1'
 
 /** Subtle accent colors per thematic block — muted but distinctive. */
@@ -392,13 +393,15 @@ function pointsToPath(pts: Pt[]): string {
 interface EuclidMapProps {
   completed: Set<number>
   onSelectProp: (propId: number) => void
+  onSelectPlayground?: () => void
 }
 
-export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
+export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: EuclidMapProps) {
   const [showAll, setShowAll] = useState(false)
   const [hoveredNode, setHoveredNode] = useState<number | null>(null)
   const [comingSoonOpacity, setComingSoonOpacity] = useState(1)
   const previews = usePropPreviews()
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
 
   const completedCount = completed.size
   const totalImplemented = IMPLEMENTED_PROPS.size
@@ -506,25 +509,48 @@ export function EuclidMap({ completed, onSelectProp }: EuclidMapProps) {
           </span>
         </div>
 
-        <button
-          type="button"
-          data-action="toggle-show-all"
-          onClick={() => setShowAll(prev => !prev)}
-          style={{
-            padding: '6px 14px',
-            fontSize: 13,
-            fontWeight: 500,
-            fontFamily: 'system-ui, sans-serif',
-            background: showAll ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
-            color: showAll ? '#3b82f6' : '#6b7280',
-            border: `1px solid ${showAll ? '#93c5fd' : '#d1d5db'}`,
-            borderRadius: 8,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-        >
-          {showAll ? 'Show available' : 'Show all 48'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isVisualDebugEnabled && onSelectPlayground && (
+            <button
+              type="button"
+              data-action="open-playground"
+              onClick={onSelectPlayground}
+              style={{
+                padding: '6px 14px',
+                fontSize: 13,
+                fontWeight: 500,
+                fontFamily: 'system-ui, sans-serif',
+                background: 'rgba(245, 158, 11, 0.08)',
+                color: '#d97706',
+                border: '1px solid #fbbf24',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              Playground
+            </button>
+          )}
+          <button
+            type="button"
+            data-action="toggle-show-all"
+            onClick={() => setShowAll(prev => !prev)}
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: 'system-ui, sans-serif',
+              background: showAll ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+              color: showAll ? '#3b82f6' : '#6b7280',
+              border: `1px solid ${showAll ? '#93c5fd' : '#d1d5db'}`,
+              borderRadius: 8,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {showAll ? 'Show available' : 'Show all 48'}
+          </button>
+        </div>
       </div>
 
       {/* SVG map — scrollable */}

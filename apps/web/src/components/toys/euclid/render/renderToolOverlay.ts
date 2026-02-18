@@ -17,8 +17,8 @@ const COMPASS_LEG_WIDTH_TIP = 2
 const COMPASS_IDLE_SPREAD = 15 // px apart when idle
 
 const STRAIGHTEDGE_WIDTH = 24
-const STRAIGHTEDGE_MIN_LENGTH = 120
-const STRAIGHTEDGE_OVERHANG = 30
+export const STRAIGHTEDGE_MIN_LENGTH = 120
+export const STRAIGHTEDGE_OVERHANG = 30
 const STRAIGHTEDGE_IDLE_LENGTH = 80
 const STRAIGHTEDGE_IDLE_ANGLE = Math.PI / 6 // 30 degrees
 
@@ -33,12 +33,23 @@ const STRAIGHTEDGE_IDLE_ANGLE = Math.PI / 6 // 30 degrees
 //   α = -β · [ (3/(2L)) · vPerp + ω ]
 // where β = γ/ρ (friction-to-mass ratio) and vPerp is the component of Ṗ
 // perpendicular to the rod.
-let friction = 1 // β: friction-to-mass ratio (1/ms) — governs response speed
+// Stability limit: β × dt_max < 2, with dt_max = 50ms → β_max = 0.04
+const FRICTION_MIN = 0.001
+const FRICTION_MAX = 0.04
+let friction = FRICTION_MAX
+
+function clampFriction(v: number): number {
+  return Math.max(FRICTION_MIN, Math.min(FRICTION_MAX, v))
+}
 
 /** Get the current friction coefficient. */
 export function getFriction(): number { return friction }
-/** Set the friction coefficient (for debug tuning). */
-export function setFriction(value: number) { friction = value }
+/** Friction range for debug UI. */
+export function getFrictionRange(): { min: number; max: number } {
+  return { min: FRICTION_MIN, max: FRICTION_MAX }
+}
+/** Set the friction coefficient (clamped to safe range). */
+export function setFriction(value: number) { friction = clampFriction(value) }
 
 // ── Straightedge draw animation type ─────────────────────────────
 
@@ -137,6 +148,13 @@ function updateAnglePhysics(tipSx: number, tipSy: number, now: number): number {
   // Semi-implicit Euler integration (update ω first, then θ, for stability)
   sePhysics.omega += alpha * dt
   sePhysics.angle += sePhysics.omega * dt
+
+  // Safety: reset if non-finite (prevents infinite while loop in normalization)
+  if (!isFinite(sePhysics.angle) || !isFinite(sePhysics.omega)) {
+    sePhysics.omega = 0
+    sePhysics.angle = STRAIGHTEDGE_IDLE_ANGLE
+    return sePhysics.angle
+  }
 
   // Normalize angle to [-π, π]
   while (sePhysics.angle > Math.PI) sePhysics.angle -= 2 * Math.PI

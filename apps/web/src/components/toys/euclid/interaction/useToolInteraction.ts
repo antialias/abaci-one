@@ -11,8 +11,8 @@ import type {
   ExpectedAction,
 } from '../types'
 import { getPoint } from '../engine/constructionState'
-import { screenToWorld2D } from '../../shared/coordinateConversions'
-import { hitTestPoints, hitTestIntersectionCandidates } from './hitTesting'
+import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
+import { hitTestPoints, hitTestIntersectionCandidates, hitTestAlongRulerEdge } from './hitTesting'
 
 /** Sweep threshold: ~350 degrees → commit circle */
 const SWEEP_THRESHOLD = 2 * Math.PI - 0.26
@@ -348,8 +348,23 @@ export function useToolInteraction({
         return
       }
 
-      // ── Straightedge: from-set → just show preview ──
+      // ── Straightedge: from-set → snap to point closest to ruler edge ──
       if (straightedgePhaseRef.current.tag === 'from-set') {
+        const from = getPoint(state, straightedgePhaseRef.current.fromId)
+        if (from) {
+          const sf = worldToScreen2D(
+            from.x, from.y,
+            viewport.center.x, viewport.center.y,
+            viewport.pixelsPerUnit, viewport.pixelsPerUnit,
+            w, h,
+          )
+          const edgeHit = hitTestAlongRulerEdge(
+            sf.x, sf.y, sx, sy,
+            straightedgePhaseRef.current.fromId,
+            state, viewport, w, h, isTouch,
+          )
+          snappedPointIdRef.current = edgeHit?.id ?? null
+        }
         requestDraw()
         return
       }
@@ -378,11 +393,24 @@ export function useToolInteraction({
         return
       }
 
-      // ── Straightedge: commit if pointer up near another point ──
+      // ── Straightedge: commit to point closest to ruler edge ──
       if (straightedge.tag === 'from-set') {
-        const hitPt = hitTestPoints(sx, sy, state, viewport, w, h, isTouch)
-        if (hitPt && hitPt.id !== straightedge.fromId) {
-          onCommitSegment(straightedge.fromId, hitPt.id)
+        const from = getPoint(state, straightedge.fromId)
+        if (from) {
+          const sf = worldToScreen2D(
+            from.x, from.y,
+            viewport.center.x, viewport.center.y,
+            viewport.pixelsPerUnit, viewport.pixelsPerUnit,
+            w, h,
+          )
+          const edgeHit = hitTestAlongRulerEdge(
+            sf.x, sf.y, sx, sy,
+            straightedge.fromId,
+            state, viewport, w, h, isTouch,
+          )
+          if (edgeHit) {
+            onCommitSegment(straightedge.fromId, edgeHit.id)
+          }
         }
         straightedgePhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false

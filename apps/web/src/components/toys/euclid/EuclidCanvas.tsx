@@ -19,7 +19,7 @@ import { needsExtendedSegments, BYRNE_CYCLE } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
-import { renderToolOverlay, getFriction, setFriction } from './render/renderToolOverlay'
+import { renderToolOverlay, getFriction, setFriction, getFrictionRange } from './render/renderToolOverlay'
 import type { StraightedgeDrawAnim } from './render/renderToolOverlay'
 import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
@@ -29,6 +29,7 @@ import { validateStep } from './propositions/validation'
 import { PROP_1 } from './propositions/prop1'
 import { PROP_2 } from './propositions/prop2'
 import { PROP_3 } from './propositions/prop3'
+import { PLAYGROUND_PROP } from './propositions/playground'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { getProp3Tutorial } from './propositions/prop3Tutorial'
@@ -177,12 +178,14 @@ function deriveCompletionResult(
 // ── Proposition registry ──
 
 const PROPOSITIONS: Record<number, PropositionDef> = {
+  0: PLAYGROUND_PROP,
   1: PROP_1,
   2: PROP_2,
   3: PROP_3,
 }
 
 const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[][]> = {
+  0: () => [],
   1: getProp1Tutorial,
   2: getProp2Tutorial,
   3: getProp3Tutorial,
@@ -192,9 +195,11 @@ interface EuclidCanvasProps {
   propositionId?: number
   /** Called when the proposition is completed (all steps done + proven) */
   onComplete?: (propId: number) => void
+  /** Hides proof panel for free-form playground mode */
+  playgroundMode?: boolean
 }
 
-export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProps) {
+export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: EuclidCanvasProps) {
   const proposition = PROPOSITIONS[propositionId] ?? PROP_1
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = TUTORIAL_GENERATORS[propositionId] ?? getProp1Tutorial
@@ -848,7 +853,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
               candFilter = { ofA: resolvedA, ofB: resolvedB, beyondId: curExpected.beyondId }
             }
           }
-          const complete = curStep >= proposition.steps.length
+          const complete = !playgroundMode && curStep >= proposition.steps.length
 
           // Compute hidden elements during macro animation
           const hiddenIds = getHiddenElementIds(macroAnimationRef.current)
@@ -1106,8 +1111,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
         )}
       </div>
 
-      {/* ── Right pane: Proof panel ── */}
-      <div
+      {/* ── Right pane: Proof panel (hidden in playground mode) ── */}
+      {!playgroundMode && <div
         data-element="proof-panel"
         style={{
           width: 340,
@@ -1502,15 +1507,15 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       <ToyDebugPanel title="Straightedge">
         <DebugSlider
           label="Friction (β)"
           value={frictionCoeff}
-          min={0.01}
-          max={4}
-          step={0.01}
+          min={getFrictionRange().min}
+          max={getFrictionRange().max}
+          step={0.001}
           onChange={v => { setFrictionCoeff(v); setFriction(v) }}
           formatValue={v => v.toFixed(3)}
         />

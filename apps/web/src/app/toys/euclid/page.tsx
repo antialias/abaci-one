@@ -64,6 +64,7 @@ export default function EuclidPage() {
               : ''
             router.push(`/toys/euclid/${propId}${params}`)
           }}
+          onSelectPlayground={() => router.push('/toys/euclid/playground')}
         />
       </div>
     </div>
