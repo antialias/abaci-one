@@ -12,6 +12,7 @@ import { deriveDef15Facts } from '../engine/factDerivation'
 import { PROP_1 } from '../propositions/prop1'
 import { PROP_2 } from '../propositions/prop2'
 import { PROP_3 } from '../propositions/prop3'
+import { PROP_4 } from '../propositions/prop4'
 import { needsExtendedSegments } from '../types'
 import type { ConstructionState, IntersectionCandidate } from '../types'
 
@@ -163,10 +164,25 @@ export function buildProp3FinalState(): ConstructionState {
   return state
 }
 
+/**
+ * Replay Proposition I.4: SAS congruence theorem.
+ * Given: triangles ABC (complete) and DEF (missing EF). Draw EF.
+ */
+export function buildProp4FinalState(): ConstructionState {
+  let state = initializeGiven(PROP_4.givenElements)
+
+  // Step 0: Join E to F
+  const segEF = addSegment(state, 'pt-E', 'pt-F')
+  state = segEF.state
+
+  return state
+}
+
 const PROP_BUILDERS: Record<number, () => ConstructionState> = {
   1: buildProp1FinalState,
   2: buildProp2FinalState,
   3: buildProp3FinalState,
+  4: buildProp4FinalState,
 }
 
 export function buildFinalState(propId: number): ConstructionState | null {

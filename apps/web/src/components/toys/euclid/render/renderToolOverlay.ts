@@ -692,8 +692,6 @@ export function renderToolOverlay(
   isComplete: boolean,
   straightedgeDrawAnim: StraightedgeDrawAnim | null,
 ): void {
-  if (isComplete) return
-
   const ppu = viewport.pixelsPerUnit
 
   // ── Straightedge drawing animation (takes priority over everything) ──

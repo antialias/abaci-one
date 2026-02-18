@@ -54,6 +54,26 @@ export const CITATIONS: Record<string, CitationDef> = {
     label: 'Proposition I.2',
     text: 'A line equal to a given line can be placed at any given point.',
   },
+  'C.N.4': {
+    key: 'C.N.4',
+    label: 'Common Notion 4',
+    text: 'Things which coincide with one another equal one another.',
+  },
+  'Given': {
+    key: 'Given',
+    label: 'Given',
+    text: 'Stated as a hypothesis.',
+  },
+  'I.3': {
+    key: 'I.3',
+    label: 'Proposition I.3',
+    text: 'From the greater of two given lines, cut off a part equal to the less.',
+  },
+  'I.4': {
+    key: 'I.4',
+    label: 'Proposition I.4',
+    text: 'If two triangles have two sides and the included angle equal, the triangles are congruent.',
+  },
 }
 
 /** Get the citation def for a structured Citation from the fact engine. */
@@ -62,6 +82,8 @@ export function citationDefFromFact(citation: Citation): CitationDef | null {
     case 'def15': return CITATIONS['Def.15']
     case 'cn1': return CITATIONS['C.N.1']
     case 'cn3': return CITATIONS['C.N.3']
+    case 'cn4': return CITATIONS['C.N.4']
+    case 'given': return CITATIONS['Given']
     case 'prop': return CITATIONS[`I.${citation.propId}`] ?? null
   }
 }

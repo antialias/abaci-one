@@ -62,6 +62,37 @@ export function deriveProp2Conclusion(
   return allNewFacts
 }
 
+/**
+ * Derive I.4 conclusion: BC = EF via C.N.4 (superposition)
+ *
+ * Known from given facts:
+ * - AB = DE [Given]
+ * - AC = DF [Given]
+ * - ∠BAC = ∠EDF [Given — declared on the PropositionDef]
+ *
+ * Derivation:
+ * Since two sides and the included angle are equal, the triangles
+ * coincide by superposition (C.N.4), so BC = EF.
+ */
+export function deriveProp4Conclusion(
+  store: FactStore,
+  _state: ConstructionState,
+  atStep: number,
+): EqualityFact[] {
+  const dpBC = distancePair('pt-B', 'pt-C')
+  const dpEF = distancePair('pt-E', 'pt-F')
+
+  return addFact(
+    store,
+    dpBC,
+    dpEF,
+    { type: 'cn4' },
+    'BC = EF',
+    'C.N.4: Since AB = DE, AC = DF, and ∠BAC = ∠EDF, triangles coincide by superposition',
+    atStep,
+  )
+}
+
 /** Registry of per-proposition conclusion derivation functions.
  *  Each function mutates the store in place and returns newly derived facts. */
 export const PROP_CONCLUSIONS: Record<
@@ -69,4 +100,5 @@ export const PROP_CONCLUSIONS: Record<
   (store: FactStore, state: ConstructionState, atStep: number) => EqualityFact[]
 > = {
   2: deriveProp2Conclusion,
+  4: deriveProp4Conclusion,
 }

@@ -135,6 +135,15 @@ export interface TutorialSubStep {
   advanceOn: AdvanceOn | null
 }
 
+// ── Angle specification ──────────────────────────────────────────
+
+/** An angle defined by a vertex and two ray endpoints */
+export interface AngleSpec {
+  vertex: string
+  ray1End: string
+  ray2End: string
+}
+
 // ── Proposition stepper ────────────────────────────────────────────
 
 export type ExpectedAction =
@@ -162,6 +171,29 @@ export interface PropositionDef {
   completionMessage?: string
   /** Segments to highlight as the construction result on completion */
   resultSegments?: Array<{ fromId: string; toId: string }>
+  /** 'construction' (default) shows Q.E.F.; 'theorem' shows Q.E.D. */
+  kind?: 'construction' | 'theorem'
+  /** Equality facts pre-loaded into the fact store before any construction */
+  givenFacts?: Array<{
+    left: { a: string; b: string }
+    right: { a: string; b: string }
+    statement: string
+  }>
+  /** Angle arcs to render (visual indicators at vertices) */
+  givenAngles?: Array<{
+    spec: AngleSpec
+    color: string
+  }>
+  /** Pairs of equal angles — matching tick marks on arcs */
+  equalAngles?: Array<[AngleSpec, AngleSpec]>
+  /** Text conclusion for theorems (bypasses fact-store derivation display) */
+  theoremConclusion?: string
+  /** Superposition flash configuration for C.N.4 visual */
+  superpositionFlash?: {
+    pairs: Array<{ src: string; tgt: string }>
+    triA: [string, string, string]
+    triB: [string, string, string]
+  }
 }
 
 /**

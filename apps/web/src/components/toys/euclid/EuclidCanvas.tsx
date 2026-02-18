@@ -29,12 +29,14 @@ import { validateStep } from './propositions/validation'
 import { PROP_1 } from './propositions/prop1'
 import { PROP_2 } from './propositions/prop2'
 import { PROP_3 } from './propositions/prop3'
+import { PROP_4 } from './propositions/prop4'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { getProp3Tutorial } from './propositions/prop3Tutorial'
+import { getProp4Tutorial } from './propositions/prop4Tutorial'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
-import { createFactStore, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
+import { createFactStore, addFact, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { EqualityFact } from './engine/facts'
 import { distancePair, distancePairKey } from './engine/facts'
@@ -46,6 +48,9 @@ import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
 import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
+import { renderAngleArcs } from './render/renderAngleArcs'
+import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
+import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
@@ -182,6 +187,7 @@ const PROPOSITIONS: Record<number, PropositionDef> = {
   1: PROP_1,
   2: PROP_2,
   3: PROP_3,
+  4: PROP_4,
 }
 
 const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[][]> = {
@@ -189,6 +195,7 @@ const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[
   1: getProp1Tutorial,
   2: getProp2Tutorial,
   3: getProp3Tutorial,
+  4: getProp4Tutorial,
 }
 
 interface EuclidCanvasProps {
@@ -225,6 +232,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const factStoreRef = useRef<FactStore>(createFactStore())
   const panZoomDisabledRef = useRef(true)
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
+  const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
@@ -325,6 +333,29 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     needsDrawRef.current = true
   }, [])
 
+  // ── Load given facts into the fact store (for theorems like I.4) ──
+  useEffect(() => {
+    if (!proposition.givenFacts || proposition.givenFacts.length === 0) return
+    const store = factStoreRef.current
+    const newFacts: EqualityFact[] = []
+    for (const gf of proposition.givenFacts) {
+      const left = distancePair(gf.left.a, gf.left.b)
+      const right = distancePair(gf.right.a, gf.right.b)
+      newFacts.push(...addFact(
+        store, left, right,
+        { type: 'given' },
+        gf.statement,
+        'Given',
+        -1, // before any step
+      ))
+    }
+    if (newFacts.length > 0) {
+      proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
+      setProofFacts(proofFactsRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Sync active tool to ref
   useEffect(() => {
     activeToolRef.current = activeTool
@@ -391,7 +422,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
       setProofFacts(proofFactsRef.current)
     }
-  }, [isComplete, proposition.id, proposition.steps.length])
+
+    // Trigger superposition flash for C.N.4 theorems
+    if (proposition.superpositionFlash) {
+      superpositionFlashRef.current = {
+        startTime: performance.now(),
+        ...proposition.superpositionFlash,
+      }
+      needsDrawRef.current = true
+    }
+  }, [isComplete, proposition.id, proposition.steps.length, proposition.superpositionFlash])
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
@@ -630,11 +670,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       const snapshot = snapshotStackRef.current[targetStep]
       if (!snapshot) return
 
-      // 1. Reset all tool phases to idle, clear macro animation
+      // 1. Reset all tool phases to idle, clear animations
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
       macroPhaseRef.current = { tag: 'idle' }
       macroAnimationRef.current = null
+      superpositionFlashRef.current = null
       pointerCapturedRef.current = false
 
       // 2. Restore construction, candidates, proofFacts from snapshot
@@ -902,6 +943,37 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             )
           }
 
+          // Render angle arcs (for theorems with given angles)
+          if (proposition.givenAngles) {
+            renderAngleArcs(
+              ctx,
+              constructionRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight,
+              proposition.givenAngles,
+              proposition.equalAngles,
+            )
+          }
+
+          // Render superposition flash animation (C.N.4)
+          if (superpositionFlashRef.current) {
+            const stillAnimating = renderSuperpositionFlash(
+              ctx,
+              superpositionFlashRef.current,
+              constructionRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight,
+              performance.now(),
+            )
+            if (stillAnimating) {
+              needsDrawRef.current = true
+            } else {
+              superpositionFlashRef.current = null
+            }
+          }
+
           // Render tool overlay (geometric previews + physical tool body)
           const nextColor = BYRNE_CYCLE[constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
           renderToolOverlay(
@@ -1017,7 +1089,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             display: 'block',
             width: '100%',
             height: '100%',
-            cursor: (activeTool !== 'macro' && !isComplete) ? 'none' : undefined,
+            cursor: activeTool !== 'macro' ? 'none' : undefined,
           }}
         />
 
@@ -1166,6 +1238,77 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             padding: '12px 20px',
           }}
         >
+          {/* Given facts (atStep === -1, displayed before construction steps) */}
+          {(() => {
+            const givenFacts = factsByStep.get(-1) ?? []
+            if (givenFacts.length === 0) return null
+            return (
+              <div data-element="given-facts" style={{ marginBottom: 16 }}>
+                {givenFacts.map(fact => {
+                  const highlighted = hoveredDpKeys != null && (
+                    hoveredDpKeys.has(distancePairKey(fact.left)) ||
+                    hoveredDpKeys.has(distancePairKey(fact.right))
+                  )
+                  return (
+                    <div key={fact.id} style={{
+                      fontSize: 11,
+                      marginBottom: 3,
+                      paddingLeft: 8,
+                      borderLeft: highlighted
+                        ? '2px solid #10b981'
+                        : '2px solid rgba(78, 121, 167, 0.2)',
+                      background: highlighted
+                        ? 'rgba(16, 185, 129, 0.08)'
+                        : 'transparent',
+                      borderRadius: highlighted ? 2 : 0,
+                      transition: 'all 0.15s ease',
+                    }}>
+                      <div>
+                        <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
+                          {fact.statement}
+                        </span>
+                        <span style={{
+                          color: '#94a3b8',
+                          fontFamily: 'Georgia, serif',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          marginLeft: 6,
+                        }}>
+                          [Given]
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+                {proposition.equalAngles && proposition.equalAngles.length > 0 && (
+                  <div style={{
+                    fontSize: 11,
+                    marginBottom: 3,
+                    paddingLeft: 8,
+                    borderLeft: '2px solid rgba(78, 121, 167, 0.2)',
+                  }}>
+                    <div>
+                      <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
+                        {proposition.equalAngles.map(([a1, a2]) => {
+                          const label = (id: string) => id.replace('pt-', '')
+                          return `∠${label(a1.ray1End)}${label(a1.vertex)}${label(a1.ray2End)} = ∠${label(a2.ray1End)}${label(a2.vertex)}${label(a2.ray2End)}`
+                        }).join(', ')}
+                      </span>
+                      <span style={{
+                        color: '#94a3b8',
+                        fontFamily: 'Georgia, serif',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        marginLeft: 6,
+                      }}>
+                        [Given]
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           {proposition.steps.map((step, i) => {
             const isDone = completedSteps[i]
             const isCurrent = i === currentStep && !isComplete
@@ -1489,6 +1632,19 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                     </span>
                   ))}
                 </span>
+                {proposition.theoremConclusion && (
+                  <div style={{
+                    color: '#10b981',
+                    fontSize: 11,
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                    marginTop: 2,
+                    width: '100%',
+                    whiteSpace: 'pre-line',
+                  }}>
+                    {proposition.theoremConclusion}
+                  </div>
+                )}
                 <span style={{
                   color: '#10b981',
                   fontStyle: 'italic',
@@ -1497,7 +1653,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                   fontFamily: 'Georgia, serif',
                   letterSpacing: '0.02em',
                 }}>
-                  Q.E.F.
+                  {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
                 </span>
               </div>
             ) : (

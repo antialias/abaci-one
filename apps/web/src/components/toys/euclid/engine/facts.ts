@@ -21,6 +21,8 @@ export type Citation =
   | { type: 'def15'; circleId: string }
   | { type: 'cn1'; via: DistancePair }     // transitivity through shared equal
   | { type: 'cn3'; whole: DistancePair; part: DistancePair }  // subtraction
+  | { type: 'cn4' }                        // superposition (C.N.4)
+  | { type: 'given' }                      // hypothesis / given fact
   | { type: 'prop'; propId: number }
 
 export interface EqualityFact {

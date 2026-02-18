@@ -14,7 +14,7 @@ import { PRECOMPUTED_NODES, PRECOMPUTED_EDGES } from './book1Layout'
 // Which propositions are playable (have interactive implementations)
 // ---------------------------------------------------------------------------
 
-export const IMPLEMENTED_PROPS = new Set([1, 2, 3])
+export const IMPLEMENTED_PROPS = new Set([1, 2, 3, 4])
 
 // ---------------------------------------------------------------------------
 // Node status computation

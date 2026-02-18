@@ -7,6 +7,8 @@ import { getAllPoints, getAllCircles, getPoint, getRadius } from '../engine/cons
 import { PROP_1 } from '../propositions/prop1'
 import { PROP_2 } from '../propositions/prop2'
 import { PROP_3 } from '../propositions/prop3'
+import { PROP_4 } from '../propositions/prop4'
+import { IMPLEMENTED_PROPS } from '../data/propositionGraph'
 import type { ConstructionState, EuclidViewportState, PropositionDef } from '../types'
 
 const PREVIEW_W = 260
@@ -17,9 +19,8 @@ const PROP_DEFS: Record<number, PropositionDef> = {
   1: PROP_1,
   2: PROP_2,
   3: PROP_3,
+  4: PROP_4,
 }
-
-const IMPLEMENTED_IDS = [1, 2, 3]
 
 /**
  * Compute a viewport that fits all geometric elements (points + circle extents)
@@ -79,7 +80,7 @@ export function usePropPreviews(): Map<number, string> {
     const map = new Map<number, string>()
     const idle = { tag: 'idle' as const }
 
-    for (const propId of IMPLEMENTED_IDS) {
+    for (const propId of IMPLEMENTED_PROPS) {
       const finalState = buildFinalState(propId)
       if (!finalState) continue
 
