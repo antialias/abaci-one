@@ -33,7 +33,12 @@ const STRAIGHTEDGE_IDLE_ANGLE = Math.PI / 6 // 30 degrees
 //   α = -β · [ (3/(2L)) · vPerp + ω ]
 // where β = γ/ρ (friction-to-mass ratio) and vPerp is the component of Ṗ
 // perpendicular to the rod.
-const FRICTION = 0.015 // β: friction-to-mass ratio (1/ms) — governs response speed
+let friction = 1 // β: friction-to-mass ratio (1/ms) — governs response speed
+
+/** Get the current friction coefficient. */
+export function getFriction(): number { return friction }
+/** Set the friction coefficient (for debug tuning). */
+export function setFriction(value: number) { friction = value }
 
 // ── Straightedge draw animation type ─────────────────────────────
 
@@ -127,7 +132,7 @@ function updateAnglePhysics(tipSx: number, tipSy: number, now: number): number {
 
   // Angular acceleration from distributed friction along the rod
   const L = STRAIGHTEDGE_IDLE_LENGTH
-  const alpha = -FRICTION * ((3 / (2 * L)) * vPerp + sePhysics.omega)
+  const alpha = -friction * ((3 / (2 * L)) * vPerp + sePhysics.omega)
 
   // Semi-implicit Euler integration (update ω first, then θ, for stability)
   sePhysics.omega += alpha * dt

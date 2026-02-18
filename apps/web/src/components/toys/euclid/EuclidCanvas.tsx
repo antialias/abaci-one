@@ -19,7 +19,7 @@ import { needsExtendedSegments, BYRNE_CYCLE } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
-import { renderToolOverlay } from './render/renderToolOverlay'
+import { renderToolOverlay, getFriction, setFriction } from './render/renderToolOverlay'
 import type { StraightedgeDrawAnim } from './render/renderToolOverlay'
 import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
@@ -47,6 +47,7 @@ import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
+import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
 
 // ── Keyboard shortcuts ──
 
@@ -237,6 +238,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
   ])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
+  const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
   const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
 
@@ -1501,6 +1503,18 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
           </div>
         )}
       </div>
+
+      <ToyDebugPanel title="Straightedge">
+        <DebugSlider
+          label="Friction (β)"
+          value={frictionCoeff}
+          min={0.01}
+          max={4}
+          step={0.01}
+          onChange={v => { setFrictionCoeff(v); setFriction(v) }}
+          formatValue={v => v.toFixed(3)}
+        />
+      </ToyDebugPanel>
     </div>
   )
 }
