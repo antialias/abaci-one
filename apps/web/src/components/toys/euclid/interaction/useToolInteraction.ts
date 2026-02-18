@@ -101,6 +101,9 @@ export function useToolInteraction({
     // ── Pointer event handlers ──
 
     function handlePointerDown(e: PointerEvent) {
+      // Disable tool gestures when Move tool is active (drag interaction takes over)
+      if (activeToolRef.current === 'move') return
+
       const rect = getCanvasRect()
       if (!rect) return
       const sx = e.clientX - rect.left

@@ -8,6 +8,7 @@ import { BYRNE } from '../types'
 export const PROP_1: PropositionDef = {
   id: 1,
   title: 'Construct an equilateral triangle on a given line',
+  draggablePointIds: ['pt-A', 'pt-B'],
   givenElements: [
     {
       kind: 'point',

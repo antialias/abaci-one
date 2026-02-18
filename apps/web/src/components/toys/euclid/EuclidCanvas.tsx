@@ -18,13 +18,15 @@ import type {
 import { needsExtendedSegments, BYRNE_CYCLE } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
-import { renderConstruction } from './render/renderConstruction'
+import { renderConstruction, renderDragInvitation } from './render/renderConstruction'
 import { renderToolOverlay, getFriction, setFriction, getFrictionRange } from './render/renderToolOverlay'
 import type { StraightedgeDrawAnim } from './render/renderToolOverlay'
 import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
 import { useToolInteraction } from './interaction/useToolInteraction'
+import { useDragGivenPoints } from './interaction/useDragGivenPoints'
+import type { PostCompletionAction, ReplayResult } from './engine/replayConstruction'
 import { validateStep } from './propositions/validation'
 import { PROP_1 } from './propositions/prop1'
 import { PROP_2 } from './propositions/prop2'
@@ -233,6 +235,11 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const panZoomDisabledRef = useRef(true)
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
   const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
+  const isCompleteRef = useRef(false)
+  const completionTimeRef = useRef<number>(0)
+  const postCompletionActionsRef = useRef<PostCompletionAction[]>([])
+  const propositionRef = useRef(proposition)
+  propositionRef.current = proposition
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
@@ -254,6 +261,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
   const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
+  const [autoCompleting, setAutoCompleting] = useState(false)
 
   // Full equivalence class for the hovered dp — follow transitive chain
   const hoveredDpKeys = useMemo(() => {
@@ -274,12 +282,22 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete, proofFacts, proposition.resultSegments])
 
-  // ── Fire onComplete callback when proposition is proven ──
+  // Sync isCompleteRef with state + record completion time
+  if (isComplete && !isCompleteRef.current) {
+    completionTimeRef.current = performance.now()
+  }
+  isCompleteRef.current = isComplete
+
+  // ── Fire onComplete callback and auto-select Move tool ──
   useEffect(() => {
-    if (isComplete && onComplete) {
-      onComplete(propositionId)
+    if (isComplete) {
+      if (onComplete) onComplete(propositionId)
+      if (proposition.draggablePointIds) {
+        setActiveTool('move')
+        activeToolRef.current = 'move'
+      }
     }
-  }, [isComplete, onComplete, propositionId])
+  }, [isComplete, onComplete, propositionId, proposition.draggablePointIds])
 
   // ── Input mode detection ──
   const [isTouch, setIsTouch] = useState(true) // mobile-first default
@@ -502,6 +520,14 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
+      // Record post-completion action for replay during drag
+      if (isCompleteRef.current) {
+        postCompletionActionsRef.current = [
+          ...postCompletionActionsRef.current,
+          { type: 'circle', centerId, radiusPointId },
+        ]
+      }
+
       checkStep(result.circle)
       requestDraw()
     },
@@ -538,6 +564,14 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           startTime: performance.now(),
           duration,
         }
+      }
+
+      // Record post-completion action for replay during drag
+      if (isCompleteRef.current) {
+        postCompletionActionsRef.current = [
+          ...postCompletionActionsRef.current,
+          { type: 'segment', fromId, toId },
+        ]
       }
 
       checkStep(result.segment)
@@ -600,6 +634,14 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       if (newFacts.length > 0) {
         proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
         setProofFacts(proofFactsRef.current)
+      }
+
+      // Record post-completion action for replay during drag
+      if (isCompleteRef.current) {
+        postCompletionActionsRef.current = [
+          ...postCompletionActionsRef.current,
+          { type: 'intersection', ofA: candidate.ofA, ofB: candidate.ofB, which: candidate.which },
+        ]
       }
 
       checkStep(result.point, candidate)
@@ -677,6 +719,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       macroAnimationRef.current = null
       superpositionFlashRef.current = null
       pointerCapturedRef.current = false
+      postCompletionActionsRef.current = []
 
       // 2. Restore construction, candidates, proofFacts from snapshot
       constructionRef.current = snapshot.construction
@@ -739,6 +782,58 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     [proposition.steps, requestDraw],
   )
 
+  // ── Auto-complete: execute each step on 250ms interval ──
+  useEffect(() => {
+    if (!autoCompleting) return
+
+    const interval = setInterval(() => {
+      const step = currentStepRef.current
+      if (step >= proposition.steps.length) {
+        setAutoCompleting(false)
+        return
+      }
+
+      const expected = proposition.steps[step].expected
+
+      if (expected.type === 'compass') {
+        handleCommitCircle(expected.centerId, expected.radiusPointId)
+      } else if (expected.type === 'straightedge') {
+        handleCommitSegment(expected.fromId, expected.toId)
+      } else if (expected.type === 'intersection') {
+        const state = constructionRef.current
+        const candidates = candidatesRef.current
+        const resolvedA = expected.ofA != null ? resolveSelector(expected.ofA, state) : null
+        const resolvedB = expected.ofB != null ? resolveSelector(expected.ofB, state) : null
+
+        if (resolvedA && resolvedB) {
+          const match = candidates.find(c => {
+            const matches =
+              (c.ofA === resolvedA && c.ofB === resolvedB) ||
+              (c.ofA === resolvedB && c.ofB === resolvedA)
+            if (!matches) return false
+            if (expected.beyondId) {
+              return isCandidateBeyondPoint(c, expected.beyondId, c.ofA, c.ofB, state)
+            }
+            const hasHigher = candidates.some(other =>
+              other !== c &&
+              ((other.ofA === resolvedA && other.ofB === resolvedB) ||
+               (other.ofA === resolvedB && other.ofB === resolvedA)) &&
+              other.y > c.y,
+            )
+            return !hasHigher
+          })
+          if (match) {
+            handleMarkIntersection(match)
+          }
+        }
+      } else if (expected.type === 'macro') {
+        handleCommitMacro(expected.propId, expected.inputPointIds)
+      }
+    }, 250)
+
+    return () => clearInterval(interval)
+  }, [autoCompleting, proposition.steps, handleCommitCircle, handleCommitSegment, handleMarkIntersection, handleCommitMacro])
+
   // ── Hook up pan/zoom ──
   useEuclidTouch({
     viewportRef,
@@ -767,6 +862,30 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     expectedActionRef,
     macroPhaseRef,
     onCommitMacro: handleCommitMacro,
+  })
+
+  // ── Hook up drag interaction for post-completion play ──
+  const handleDragReplay = useCallback(
+    (result: ReplayResult) => {
+      proofFactsRef.current = result.proofFacts
+      setProofFacts(result.proofFacts)
+    },
+    [],
+  )
+
+  useDragGivenPoints({
+    canvasRef,
+    propositionRef,
+    constructionRef,
+    factStoreRef,
+    viewportRef,
+    isCompleteRef,
+    activeToolRef,
+    needsDrawRef,
+    pointerCapturedRef,
+    candidatesRef,
+    postCompletionActionsRef,
+    onReplayResult: handleDragReplay,
   })
 
   // ── Canvas resize observer ──
@@ -867,6 +986,11 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         needsDrawRef.current = true
       }
 
+      // ── Keep animating while draggable point pulse rings are visible ──
+      if (isCompleteRef.current && propositionRef.current.draggablePointIds) {
+        needsDrawRef.current = true
+      }
+
       const canvas = canvasRef.current
       if (canvas && needsDrawRef.current) {
         needsDrawRef.current = false
@@ -927,6 +1051,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             complete,
             complete ? proposition.resultSegments : undefined,
             hiddenIds.size > 0 ? hiddenIds : undefined,
+            undefined, // transparentBg
+            complete ? proposition.draggablePointIds : undefined,
           )
 
           // Render equality tick marks on segments with proven equalities
@@ -971,6 +1097,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               needsDrawRef.current = true
             } else {
               superpositionFlashRef.current = null
+            }
+          }
+
+          // Render drag invitation text post-completion
+          if (complete && completionTimeRef.current > 0 && propositionRef.current.draggablePointIds) {
+            const stillShowing = renderDragInvitation(
+              ctx, cssWidth, cssHeight, completionTimeRef.current,
+            )
+            if (stillShowing) {
+              needsDrawRef.current = true
             }
           }
 
@@ -1089,7 +1225,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             display: 'block',
             width: '100%',
             height: '100%',
-            cursor: activeTool !== 'macro' ? 'none' : undefined,
+            cursor: activeTool === 'move'
+              ? undefined // drag hook manages grab/grabbing cursor
+              : activeTool !== 'macro' ? 'none' : undefined,
           }}
         />
 
@@ -1131,6 +1269,21 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             zIndex: 10,
           }}
         >
+          {isComplete && proposition.draggablePointIds && (
+            <ToolButton
+              label="Move"
+              icon={
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" />
+                  <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v6" />
+                  <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+                  <path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 17" />
+                </svg>
+              }
+              active={activeTool === 'move'}
+              onClick={() => setActiveTool('move')}
+            />
+          )}
           <ToolButton
             label="Compass"
             icon={
@@ -1655,6 +1808,26 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 }}>
                   {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
                 </span>
+                {proposition.draggablePointIds && (
+                  <div
+                    data-element="drag-invitation"
+                    style={{
+                      marginTop: 10,
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(78, 121, 167, 0.08)',
+                      border: '1px solid rgba(78, 121, 167, 0.15)',
+                      color: '#4E79A7',
+                      fontSize: 12,
+                      fontFamily: 'system-ui, sans-serif',
+                      fontStyle: 'normal',
+                      fontWeight: 500,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Now try dragging the points to see that it always works.
+                  </div>
+                )}
               </div>
             ) : (
               <span style={{ color: '#ef4444', fontWeight: 600, fontSize: 13, fontFamily: 'Georgia, serif' }}>
@@ -1665,7 +1838,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         )}
       </div>}
 
-      <ToyDebugPanel title="Straightedge">
+      <ToyDebugPanel title="Euclid">
         <DebugSlider
           label="Friction (β)"
           value={frictionCoeff}
@@ -1675,6 +1848,26 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           onChange={v => { setFrictionCoeff(v); setFriction(v) }}
           formatValue={v => v.toFixed(3)}
         />
+        {!isComplete && proposition.steps.length > 0 && (
+          <button
+            data-action="auto-complete"
+            onClick={() => setAutoCompleting(true)}
+            disabled={autoCompleting}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: 'none',
+              background: autoCompleting ? 'rgba(129,140,248,0.4)' : 'rgba(129,140,248,0.8)',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: autoCompleting ? 'default' : 'pointer',
+              opacity: autoCompleting ? 0.7 : 1,
+            }}
+          >
+            {autoCompleting ? 'Completing…' : 'Complete Construction'}
+          </button>
+        )}
       </ToyDebugPanel>
     </div>
   )

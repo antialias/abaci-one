@@ -120,6 +120,20 @@ export function addSegment(
   }
 }
 
+/** Advance label/color indices as if a point had been created, without actually creating one.
+ *  Used when an intersection step must be skipped (geometry no longer intersects)
+ *  to keep subsequent point labels stable during drag replay. */
+export function skipPointLabel(state: ConstructionState, explicitLabel?: string): ConstructionState {
+  const labelIndex = explicitLabel ? LABELS.indexOf(explicitLabel) : -1
+  return {
+    ...state,
+    nextLabelIndex: explicitLabel
+      ? Math.max(state.nextLabelIndex, labelIndex + 1)
+      : state.nextLabelIndex + 1,
+    nextColorIndex: state.nextColorIndex + 1,
+  }
+}
+
 // ── Lookups ────────────────────────────────────────────────────────
 
 export function getPoint(state: ConstructionState, id: string): ConstructionPoint | undefined {

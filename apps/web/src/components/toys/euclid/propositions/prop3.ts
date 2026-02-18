@@ -22,6 +22,7 @@ import { BYRNE } from '../types'
 export const PROP_3: PropositionDef = {
   id: 3,
   title: 'Cut off from the greater a line equal to the less',
+  draggablePointIds: ['pt-A', 'pt-B', 'pt-C', 'pt-D'],
   resultSegments: [
     { fromId: 'pt-A', toId: 'pt-F' },
   ],

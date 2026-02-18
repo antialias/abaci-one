@@ -19,32 +19,69 @@ import { BYRNE } from '../types'
  *   and translating to D.
  */
 
-// Triangle ABC (left side)
-const A = { x: -4, y: -0.5 }
-const B = { x: -6.2, y: -1.5 }
-const C = { x: -2.8, y: 1.8 }
+// ── Default positions ──
+const DEFAULT_A = { x: -4, y: -0.5 }
+const DEFAULT_B = { x: -6.2, y: -1.5 }
+const DEFAULT_C = { x: -2.8, y: 1.8 }
+const DEFAULT_D = { x: 2.5, y: -0.5 }
+const THETA = 0.4 // rotation angle in radians
 
-// Triangle DEF (right side) — constructed to guarantee SAS equality
-// Rotate vectors (B-A) and (C-A) by θ and translate to D
-const D = { x: 2.5, y: -0.5 }
-const theta = 0.4 // rotation angle in radians
-const cosT = Math.cos(theta)
-const sinT = Math.sin(theta)
+/**
+ * Recompute all given elements from current draggable point positions.
+ * E and F are derived from A, B, C, D to maintain SAS invariants:
+ *   E = D + Rot(θ)·(B−A), F = D + Rot(θ)·(C−A)
+ */
+export function computeProp4GivenElements(
+  positions: Map<string, { x: number; y: number }>,
+): ConstructionElement[] {
+  const A = positions.get('pt-A') ?? DEFAULT_A
+  const B = positions.get('pt-B') ?? DEFAULT_B
+  const C = positions.get('pt-C') ?? DEFAULT_C
+  const D = positions.get('pt-D') ?? DEFAULT_D
 
-// Rotate (B-A) by θ
-const baDx = B.x - A.x
-const baDy = B.y - A.y
-const E = {
-  x: D.x + cosT * baDx - sinT * baDy,
-  y: D.y + sinT * baDx + cosT * baDy,
+  const cosT = Math.cos(THETA)
+  const sinT = Math.sin(THETA)
+
+  const E = {
+    x: D.x + cosT * (B.x - A.x) - sinT * (B.y - A.y),
+    y: D.y + sinT * (B.x - A.x) + cosT * (B.y - A.y),
+  }
+  const F = {
+    x: D.x + cosT * (C.x - A.x) - sinT * (C.y - A.y),
+    y: D.y + sinT * (C.x - A.x) + cosT * (C.y - A.y),
+  }
+
+  return [
+    // Triangle ABC — all 3 points + 3 segments
+    { kind: 'point', id: 'pt-A', x: A.x, y: A.y, label: 'A', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-B', x: B.x, y: B.y, label: 'B', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-C', x: C.x, y: C.y, label: 'C', color: BYRNE.given, origin: 'given' },
+    { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: BYRNE.given, origin: 'given' },
+    { kind: 'segment', id: 'seg-AC', fromId: 'pt-A', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
+    { kind: 'segment', id: 'seg-BC', fromId: 'pt-B', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
+    // Triangle DEF — 3 points + 2 segments (EF missing — user draws it)
+    { kind: 'point', id: 'pt-D', x: D.x, y: D.y, label: 'D', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-E', x: E.x, y: E.y, label: 'E', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-F', x: F.x, y: F.y, label: 'F', color: BYRNE.given, origin: 'given' },
+    { kind: 'segment', id: 'seg-DE', fromId: 'pt-D', toId: 'pt-E', color: BYRNE.given, origin: 'given' },
+    { kind: 'segment', id: 'seg-DF', fromId: 'pt-D', toId: 'pt-F', color: BYRNE.given, origin: 'given' },
+  ] as ConstructionElement[]
 }
 
-// Rotate (C-A) by θ
-const caDx = C.x - A.x
-const caDy = C.y - A.y
+// ── Compute initial positions ──
+const cosT = Math.cos(THETA)
+const sinT = Math.sin(THETA)
+const baDx = DEFAULT_B.x - DEFAULT_A.x
+const baDy = DEFAULT_B.y - DEFAULT_A.y
+const E = {
+  x: DEFAULT_D.x + cosT * baDx - sinT * baDy,
+  y: DEFAULT_D.y + sinT * baDx + cosT * baDy,
+}
+const caDx = DEFAULT_C.x - DEFAULT_A.x
+const caDy = DEFAULT_C.y - DEFAULT_A.y
 const F = {
-  x: D.x + cosT * caDx - sinT * caDy,
-  y: D.y + sinT * caDx + cosT * caDy,
+  x: DEFAULT_D.x + cosT * caDx - sinT * caDy,
+  y: DEFAULT_D.y + sinT * caDx + cosT * caDy,
 }
 
 export const PROP_4: PropositionDef = {
@@ -87,16 +124,18 @@ export const PROP_4: PropositionDef = {
     triA: ['pt-A', 'pt-B', 'pt-C'],
     triB: ['pt-D', 'pt-E', 'pt-F'],
   },
+  draggablePointIds: ['pt-A', 'pt-B', 'pt-C', 'pt-D'],
+  computeGivenElements: computeProp4GivenElements,
   givenElements: [
     // Triangle ABC — all 3 points + 3 segments
-    { kind: 'point', id: 'pt-A', x: A.x, y: A.y, label: 'A', color: BYRNE.given, origin: 'given' },
-    { kind: 'point', id: 'pt-B', x: B.x, y: B.y, label: 'B', color: BYRNE.given, origin: 'given' },
-    { kind: 'point', id: 'pt-C', x: C.x, y: C.y, label: 'C', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-A', x: DEFAULT_A.x, y: DEFAULT_A.y, label: 'A', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-B', x: DEFAULT_B.x, y: DEFAULT_B.y, label: 'B', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-C', x: DEFAULT_C.x, y: DEFAULT_C.y, label: 'C', color: BYRNE.given, origin: 'given' },
     { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: BYRNE.given, origin: 'given' },
     { kind: 'segment', id: 'seg-AC', fromId: 'pt-A', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
     { kind: 'segment', id: 'seg-BC', fromId: 'pt-B', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
     // Triangle DEF — 3 points + 2 segments (EF missing — user draws it)
-    { kind: 'point', id: 'pt-D', x: D.x, y: D.y, label: 'D', color: BYRNE.given, origin: 'given' },
+    { kind: 'point', id: 'pt-D', x: DEFAULT_D.x, y: DEFAULT_D.y, label: 'D', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-E', x: E.x, y: E.y, label: 'E', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-F', x: F.x, y: F.y, label: 'F', color: BYRNE.given, origin: 'given' },
     { kind: 'segment', id: 'seg-DE', fromId: 'pt-D', toId: 'pt-E', color: BYRNE.given, origin: 'given' },

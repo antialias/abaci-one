@@ -53,6 +53,7 @@ export function renderConstruction(
   resultSegments?: Array<{ fromId: string; toId: string }>,
   hiddenElementIds?: Set<string>,
   transparentBg?: boolean,
+  draggablePointIds?: string[],
 ) {
   const ppu = viewport.pixelsPerUnit
 
@@ -153,6 +154,38 @@ export function renderConstruction(
     ctx.fillText(pt.label, sp.x + LABEL_OFFSET_X, sp.y + LABEL_OFFSET_Y)
   }
 
+  // 6b. Draggable point ripple rings (post-completion invitation to interact)
+  if (isComplete && draggablePointIds && draggablePointIds.length > 0) {
+    const time = performance.now() / 1000
+    const RIPPLE_PERIOD = 2.5 // seconds per full ripple cycle
+    const RIPPLE_COUNT = 2 // concurrent expanding rings per point
+    const RIPPLE_MAX_RADIUS = 22 // max ring radius (screen px)
+    const STAGGER_PER_POINT = 0.3 // seconds offset between points
+
+    for (let ptIdx = 0; ptIdx < draggablePointIds.length; ptIdx++) {
+      const ptId = draggablePointIds[ptIdx]
+      const pt = getPoint(state, ptId)
+      if (!pt) continue
+      if (hiddenElementIds?.has(ptId)) continue
+      const sp = toScreen(pt.x, pt.y, viewport, w, h)
+
+      for (let ring = 0; ring < RIPPLE_COUNT; ring++) {
+        // Stagger rings within a point + stagger between points
+        const offset = (ring / RIPPLE_COUNT) + (ptIdx * STAGGER_PER_POINT / RIPPLE_PERIOD)
+        const t = ((time / RIPPLE_PERIOD) + offset) % 1 // 0→1 phase
+        const radius = POINT_RADIUS + t * RIPPLE_MAX_RADIUS
+        // Fade out as ring expands: bright at birth, gone at max radius
+        const alpha = 0.5 * (1 - t)
+
+        ctx.beginPath()
+        ctx.arc(sp.x, sp.y, radius, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(78, 121, 167, ${alpha})`
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+    }
+  }
+
   // 7. Snap highlight — larger ring around nearest point
   if (snappedPointId) {
     const pt = getPoint(state, snappedPointId)
@@ -216,4 +249,58 @@ export function renderConstruction(
       }
     }
   }
+}
+
+/**
+ * Render a "drag the points" invitation text on the canvas post-completion.
+ * Fades in after a delay, lingers, then fades to a subtle level.
+ *
+ * @param completionTime - performance.now() when completion first happened
+ * @returns true if still animating (needs next frame)
+ */
+export function renderDragInvitation(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  completionTime: number,
+): boolean {
+  const now = performance.now()
+  const elapsed = now - completionTime
+
+  // Timeline: 1.5s delay → 0.6s fade in → 3s hold → 1s fade to residual
+  const DELAY = 1500
+  const FADE_IN = 600
+  const HOLD = 3000
+  const FADE_OUT = 1000
+  const RESIDUAL_ALPHA = 0.15 // stays faintly visible forever
+
+  if (elapsed < DELAY) return true // still waiting
+
+  let alpha: number
+  const t = elapsed - DELAY
+
+  if (t < FADE_IN) {
+    // Fading in
+    alpha = (t / FADE_IN) * 0.85
+  } else if (t < FADE_IN + HOLD) {
+    // Holding
+    alpha = 0.85
+  } else if (t < FADE_IN + HOLD + FADE_OUT) {
+    // Fading to residual
+    const ft = (t - FADE_IN - HOLD) / FADE_OUT
+    alpha = 0.85 - (0.85 - RESIDUAL_ALPHA) * ft
+  } else {
+    alpha = RESIDUAL_ALPHA
+  }
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.font = '600 15px system-ui, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.fillStyle = '#4E79A7'
+  ctx.fillText('Drag the points!', w / 2, h - 80)
+  ctx.restore()
+
+  return t < FADE_IN + HOLD + FADE_OUT // still animating?
 }

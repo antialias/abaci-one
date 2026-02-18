@@ -92,7 +92,7 @@ export type StraightedgePhase =
   | { tag: 'idle' }
   | { tag: 'from-set'; fromId: string }
 
-export type ActiveTool = 'compass' | 'straightedge' | 'macro'
+export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move'
 
 export type MacroPhase =
   | { tag: 'idle' }
@@ -194,6 +194,12 @@ export interface PropositionDef {
     triA: [string, string, string]
     triB: [string, string, string]
   }
+  /** IDs of given points the user can drag post-completion */
+  draggablePointIds?: string[]
+  /** Factory that recomputes all given elements from current point positions.
+   *  Called on each drag frame. Receives a map of draggable point ID → current {x,y}.
+   *  Returns a fresh givenElements array with updated coordinates. */
+  computeGivenElements?: (positions: Map<string, { x: number; y: number }>) => ConstructionElement[]
 }
 
 /**
