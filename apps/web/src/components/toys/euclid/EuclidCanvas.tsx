@@ -60,7 +60,7 @@ import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
-import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
+import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
 import { useEuclidMusic } from './audio/useEuclidMusic'
 import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
 
@@ -68,7 +68,6 @@ import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
 
 const SHORTCUTS: ShortcutEntry[] = [
   { key: 'V', description: 'Toggle pan/zoom (disabled by default)' },
-  { key: 'M', description: 'Toggle construction music' },
   { key: '?', description: 'Toggle this help' },
 ]
 
@@ -487,9 +486,6 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           panZoomDisabledRef.current = !next
           return next
         })
-      } else if ((e.key === 'm' || e.key === 'M') && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault()
-        musicRef.current?.toggle()
       }
     }
 
@@ -1377,39 +1373,6 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           />
         </div>
 
-        {/* Music toggle */}
-        <button
-          data-action="toggle-music"
-          onClick={() => music.toggle()}
-          title={music.isPlaying ? 'Stop construction music (M)' : 'Start construction music (M)'}
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 56,
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            border: '1px solid rgba(203, 213, 225, 0.8)',
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(8px)',
-            color: music.isPlaying ? '#4E79A7' : '#94a3b8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.15s ease',
-            zIndex: 10,
-            padding: 0,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18V5l12-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="18" cy="16" r="3" />
-          </svg>
-        </button>
-
         {/* Audio toggle */}
         <button
           data-action="toggle-audio"
@@ -1990,6 +1953,11 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       </div>}
 
       <ToyDebugPanel title="Euclid">
+        <DebugCheckbox
+          label="Construction music"
+          checked={music.isPlaying}
+          onChange={() => music.toggle()}
+        />
         <DebugSlider
           label="Friction (β)"
           value={frictionCoeff}

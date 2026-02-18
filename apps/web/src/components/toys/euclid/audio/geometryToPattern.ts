@@ -1,13 +1,14 @@
 /**
  * Pattern generator: ConstructionState + FactStore -> Strudel pattern string.
  *
- * Sound palette (all from loaded sample banks or built-in synths):
- * - Drone: switchangel pad (github:switchangel/pad)
- * - Circle voices: "arpy" from dirt-samples — pre-pitched, clear arpeggio tones
- * - Segment voices: switchangel pads pitched to note — warm sustained tones
- * - Texture bed: filtered brown noise
- * - Intersection chime: "tink" from dirt-samples
- * - Completion flourish: "arpy" ascending to D major
+ * Sound design influenced by Switch Angel's production techniques:
+ * - supersaw for rich, wide timbres (not thin raw oscillators)
+ * - Filter envelopes (lpenv/lpd/lps) for organic movement
+ * - Delay with feedback for depth and shimmer
+ * - Detuning for width
+ * - swpad samples for warm textural foundation
+ *
+ * @see https://github.com/switchangel/strudel-scripts
  */
 
 import type { ConstructionState } from '../types'
@@ -57,9 +58,6 @@ function getMedianSegmentLength(state: ConstructionState): number {
   return lengths[Math.floor(lengths.length / 2)]
 }
 
-/**
- * Group segments by equality using the FactStore's union-find.
- */
 function groupSegmentsByEquality(
   segments: Array<{ fromId: string; toId: string }>,
   factStore: FactStore,
@@ -69,12 +67,9 @@ function groupSegmentsByEquality(
 
   for (let i = 0; i < segments.length; i++) {
     if (grouped.has(i)) continue
-
     const group = [segments[i]]
     grouped.add(i)
-
     const dpI = distancePair(segments[i].fromId, segments[i].toId)
-
     for (let j = i + 1; j < segments.length; j++) {
       if (grouped.has(j)) continue
       const dpJ = distancePair(segments[j].fromId, segments[j].toId)
@@ -83,7 +78,6 @@ function groupSegmentsByEquality(
         grouped.add(j)
       }
     }
-
     groups.push(group)
   }
 
@@ -102,21 +96,26 @@ export function geometryToPattern(
 
   const refDistance = getMedianSegmentLength(state)
   const { minX, maxX } = getPointBounds(state)
-  const roomSize = isComplete ? 0.85 : 0.7
-  const lpfCeiling = isComplete ? 2000 : 1200
 
-  // Layer 1: Drone — switchangel pad, warm and slow
+  // Completion opens up the sound — brighter filter, wider reverb
+  const lpfCeiling = isComplete ? 2500 : 1400
+  const roomWet = isComplete ? 0.7 : 0.45
+  const roomSz = isComplete ? 0.85 : 0.65
+
+  // ── Layer 1: Pad drone — swpad foundation ──
+  // Slow-cycling pad with gentle filter, anchors the whole mix
   const dronePad = isComplete ? 2 : 0
   layers.push(
-    `sound("swpad:${dronePad}").slow(16).lpf(${Math.round(lpfCeiling * 0.5)}).gain(0.06)`,
+    `sound("swpad:${dronePad}").slow(16).lpf(${Math.round(lpfCeiling * 0.4)}).gain(0.055)`,
   )
 
-  // Layer 2: Texture bed — filtered brown noise
+  // ── Layer 2: Sub-bass — supersaw on D, very low, felt not heard ──
+  // Detuned for warmth, heavily filtered so it's just sub presence
   layers.push(
-    `sound("brown").gain(0.012).lpf(${isComplete ? 350 : 200})`,
+    `note("d2").sound("supersaw").detune(0.3).lpf(180).gain(0.04).slow(16)`,
   )
 
-  // Layer 3: Circle voices — "arpy" from dirt-samples, panned by center x
+  // ── Layer 3: Circle voices — supersaw arpeggios with delay shimmer ──
   const circles = getAllCircles(state)
   for (const circle of circles) {
     const radius = getCircleRadius(state, circle.centerId, circle.radiusPointId)
@@ -129,12 +128,14 @@ export function geometryToPattern(
     const slowFactor = radiusToSlowFactor(radius, refDistance)
     const pan = centerXToPan(center.x, minX, maxX)
 
+    // supersaw arpeggio: detuned for width, filter envelope for pluck,
+    // delay for shimmer — panned by circle's geometric center
     layers.push(
-      `note("${arpNotes}").sound("arpy").lpf(${lpfCeiling}).gain(0.04).slow(${slowFactor.toFixed(1)}).pan(${pan.toFixed(2)}).delay(0.25).delayfeedback(0.4).delaytime(0.125)`,
+      `note("${arpNotes}").sound("supersaw").detune(0.12).lpf(${lpfCeiling}).lpenv(2).lpd(0.2).lps(0.1).gain(0.035).slow(${slowFactor.toFixed(1)}).pan(${pan.toFixed(2)}).delay(0.3).delayfeedback(0.4).delaytime(0.125)`,
     )
   }
 
-  // Layer 4: Segment voices — pitched swpad per equality group
+  // ── Layer 4: Segment voices — pitched pads per equality group ──
   const segments = getAllSegments(state)
   if (segments.length > 0) {
     const groups = groupSegmentsByEquality(segments, factStore)
@@ -145,22 +146,23 @@ export function geometryToPattern(
       if (length <= 0) continue
 
       const note = distanceToNote(length, refDistance)
-      // Louder per member — equality reinforcement
-      const gain = Math.min(0.05, 0.02 + group.length * 0.01)
+      // More members in equality group = louder (proof reinforcement)
+      const gain = Math.min(0.055, 0.025 + group.length * 0.01)
       const pv = (gi + 1) % 5
 
+      // Pitched pad sample — warm sustained tone
       layers.push(
-        `note("${note}").sound("swpad:${pv}").lpf(${Math.round(lpfCeiling * 0.7)}).gain(${gain.toFixed(3)}).slow(8)`,
+        `note("${note}").sound("swpad:${pv}").lpf(${Math.round(lpfCeiling * 0.6)}).gain(${gain.toFixed(3)}).slow(8)`,
       )
     }
   }
 
-  return `stack(\n  ${layers.join(',\n  ')}\n).room(${roomSize}).roomsize(${isComplete ? 0.9 : 0.7})`
+  return `stack(\n  ${layers.join(',\n  ')}\n).room(${roomWet}).roomsize(${roomSz})`
 }
 
 /**
- * One-shot chime for intersection discovery.
- * Uses "tink" from dirt-samples — bright, clear percussive hit.
+ * One-shot intersection chime.
+ * FM bell synthesis à la Switch Angel's DX preset — metallic and resonant.
  */
 export function intersectionChimePattern(
   x: number,
@@ -169,15 +171,18 @@ export function intersectionChimePattern(
   maxX: number,
 ): string {
   const pan = centerXToPan(x, minX, maxX)
-  // Use different tink variations based on position for variety
-  const variation = Math.floor(Math.max(0, Math.min(1, (x - minX) / (maxX - minX || 1))) * 3)
+  const SCALE = ['d', 'f', 'g', 'a', 'c']
+  const range = maxX - minX || 1
+  const t = Math.max(0, Math.min(1, (x - minX) / range))
+  const scaleIdx = Math.floor(t * (SCALE.length - 1))
 
-  return `sound("tink:${variation}").gain(0.14).pan(${pan.toFixed(2)}).room(0.8).roomsize(0.9)`
+  // FM bell: high harmonicity (5.4) for metallic partials, envelope on FM for attack brightness
+  return `note("${SCALE[scaleIdx]}5").sound("sine").fm(3).fmh(5.4).fmenv(6).fmdecay(0.3).decay(1.5).sustain(0).gain(0.12).pan(${pan.toFixed(2)}).room(0.7).roomsize(0.8)`
 }
 
 /**
- * Completion flourish — ascending arpy resolving to D major (Picardy third).
+ * Completion flourish — ascending supersaw resolving to D major (Picardy third).
  */
 export function completionFlourishPattern(): string {
-  return 'note("d4 f4 a4 d5 f#5").sound("arpy").gain(0.09).slow(3).room(0.9).roomsize(0.9).delay(0.3).delayfeedback(0.5).delaytime(0.2)'
+  return 'note("d4 f4 a4 d5 f#5").sound("supersaw").detune(0.15).lpf(2500).lpenv(3).lpd(0.3).lps(0.1).gain(0.07).slow(3).delay(0.35).delayfeedback(0.5).delaytime(0.2).room(0.85).roomsize(0.9)'
 }

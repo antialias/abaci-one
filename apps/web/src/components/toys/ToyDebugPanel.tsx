@@ -72,6 +72,42 @@ export function DebugSlider({ label, value, min, max, step = 1, onChange, format
   )
 }
 
+interface DebugCheckboxProps {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}
+
+export function DebugCheckbox({ label, checked, onChange }: DebugCheckboxProps) {
+  return (
+    <label
+      data-element="debug-checkbox"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 11,
+        fontWeight: 500,
+        cursor: 'pointer',
+        userSelect: 'none',
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        style={{
+          accentColor: '#818cf8',
+          width: 14,
+          height: 14,
+          cursor: 'pointer',
+        }}
+      />
+      {label}
+    </label>
+  )
+}
+
 interface ToyDebugPanelProps {
   title: string
   children: ReactNode

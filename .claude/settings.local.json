@@ -985,7 +985,9 @@
       "WebFetch(domain:eggg.uk)",
       "WebFetch(domain:sound.intercrap.com)",
       "WebFetch(domain:hackaday.com)",
-      "WebFetch(domain:forum.renoise.com)"
+      "WebFetch(domain:forum.renoise.com)",
+      "WebFetch(domain:grimoire.jamesfraze.com)",
+      "WebFetch(domain:www.patreon.com)"
     ],
     "deny": [],
     "ask": []

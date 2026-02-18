@@ -3,6 +3,9 @@
  *
  * Manages Strudel lifecycle, throttled pattern evaluation, one-shot
  * chimes/flourishes, and playback state.
+ *
+ * Module-level Strudel state survives component unmount/remount so music
+ * persists across proposition navigation.
  */
 
 'use client'
@@ -22,6 +25,11 @@ declare global {
   function evaluate(code: string): Promise<unknown>
   function hush(): void
 }
+
+// ── Module-level Strudel state (survives unmount/remount) ──
+let strudelInitialized = false
+let strudelInitializing = false
+let strudelRepl: { stop?: () => void } | null = null
 
 interface UseEuclidMusicOptions {
   constructionRef: React.MutableRefObject<ConstructionState>
@@ -44,16 +52,39 @@ const FLOURISH_DURATION = 4000
 /** Throttle interval for pattern updates */
 const THROTTLE_MS = 80
 
+async function ensureStrudelInitialized(): Promise<boolean> {
+  if (strudelInitialized) return true
+  if (strudelInitializing) return false
+
+  strudelInitializing = true
+  try {
+    // @ts-expect-error - @strudel/web doesn't have type declarations
+    const { initStrudel, samples } = await import('@strudel/web')
+    const repl = await initStrudel({
+      prebake: () =>
+        Promise.all([
+          samples('github:switchangel/pad'),
+          samples('github:tidalcycles/dirt-samples'),
+        ]),
+    })
+    strudelRepl = repl
+    strudelInitialized = true
+    return true
+  } catch (err) {
+    console.error('[EuclidMusic] Initialization failed:', err)
+    return false
+  } finally {
+    strudelInitializing = false
+  }
+}
+
 export function useEuclidMusic({
   constructionRef,
   factStoreRef,
   isComplete,
 }: UseEuclidMusicOptions): UseEuclidMusicReturn {
   const [isPlaying, setIsPlaying] = useState(false)
-  const isPlayingRef = useRef(false)
-  const isInitializedRef = useRef(false)
-  const initializingRef = useRef(false)
-  const replRef = useRef<{ stop?: () => void } | null>(null)
+  const isPlayingRef = useRef(isPlaying)
 
   // Throttle state
   const lastUpdateRef = useRef(0)
@@ -67,9 +98,12 @@ export function useEuclidMusic({
   const isCompleteRef = useRef(isComplete)
   isCompleteRef.current = isComplete
 
+  // Track mounted state to avoid setState after unmount
+  const mountedRef = useRef(true)
+
   // Generate and evaluate the current construction pattern
   const evaluateCurrentPattern = useCallback(async () => {
-    if (!isPlayingRef.current || !isInitializedRef.current) return
+    if (!isPlayingRef.current || !strudelInitialized) return
 
     const pattern = geometryToPattern(
       constructionRef.current,
@@ -85,55 +119,47 @@ export function useEuclidMusic({
     }
   }, [constructionRef, factStoreRef])
 
-  // Initialize Strudel (must be called from user gesture)
-  const initialize = useCallback(async () => {
-    if (isInitializedRef.current || initializingRef.current) return
-    initializingRef.current = true
-
-    try {
-      // @ts-expect-error - @strudel/web doesn't have type declarations
-      const { initStrudel, samples } = await import('@strudel/web')
-      const repl = await initStrudel({
-        prebake: () =>
-          Promise.all([
-            samples('github:switchangel/pad'),
-            samples('github:tidalcycles/dirt-samples'),
-          ]),
-      })
-      replRef.current = repl
-      isInitializedRef.current = true
-    } catch (err) {
-      console.error('[EuclidMusic] Initialization failed:', err)
-    } finally {
-      initializingRef.current = false
-    }
-  }, [])
-
   // Toggle playback
   const toggle = useCallback(async () => {
-    if (!isInitializedRef.current) {
-      await initialize()
-    }
-
     if (isPlayingRef.current) {
       // Stop
       try {
         if (typeof hush === 'function') hush()
-        if (replRef.current?.stop) replRef.current.stop()
       } catch { /* ignore */ }
       isPlayingRef.current = false
-      setIsPlaying(false)
+      if (mountedRef.current) setIsPlaying(false)
     } else {
-      // Start
+      // Start — ensure Strudel is initialized (first toggle requires user gesture)
+      const ready = await ensureStrudelInitialized()
+      if (!ready) return
+
       isPlayingRef.current = true
-      setIsPlaying(true)
+      if (mountedRef.current) setIsPlaying(true)
       await evaluateCurrentPattern()
     }
-  }, [initialize, evaluateCurrentPattern])
+  }, [evaluateCurrentPattern])
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+
+      // Clear timers only — don't kill Strudel or reset module state
+      if (trailingTimerRef.current) clearTimeout(trailingTimerRef.current)
+      if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
+
+      // Silence current playback so there's no stale audio between propositions,
+      // but leave Strudel initialized for the next mount
+      try {
+        if (typeof hush === 'function') hush()
+      } catch { /* ignore */ }
+    }
+  }, [])
 
   // Throttled pattern update (leading + trailing edge)
   const notifyChange = useCallback(() => {
-    if (!isPlayingRef.current || !isInitializedRef.current) return
+    if (!isPlayingRef.current || !strudelInitialized) return
 
     const now = Date.now()
 
@@ -159,7 +185,7 @@ export function useEuclidMusic({
 
   // One-shot intersection chime
   const notifyIntersection = useCallback((x: number, y: number) => {
-    if (!isPlayingRef.current || !isInitializedRef.current) return
+    if (!isPlayingRef.current || !strudelInitialized) return
 
     const { minX, maxX } = getPointBounds(constructionRef.current)
 
@@ -189,7 +215,7 @@ export function useEuclidMusic({
 
   // Completion flourish
   const notifyCompletion = useCallback(() => {
-    if (!isPlayingRef.current || !isInitializedRef.current) return
+    if (!isPlayingRef.current || !strudelInitialized) return
 
     // Update the main pattern with isComplete=true
     const main = geometryToPattern(
@@ -217,23 +243,6 @@ export function useEuclidMusic({
       }
     }, FLOURISH_DURATION)
   }, [constructionRef, factStoreRef, evaluateCurrentPattern])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (trailingTimerRef.current) clearTimeout(trailingTimerRef.current)
-      if (oneShotTimerRef.current) clearTimeout(oneShotTimerRef.current)
-
-      try {
-        if (typeof hush === 'function') hush()
-        if (replRef.current?.stop) replRef.current.stop()
-      } catch { /* ignore */ }
-
-      replRef.current = null
-      isPlayingRef.current = false
-      isInitializedRef.current = false
-    }
-  }, [])
 
   return useMemo(() => ({
     isPlaying,
