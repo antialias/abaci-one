@@ -109,10 +109,19 @@ export function renderGhostGeometry(
         ctx.moveTo(from.x, from.y)
         ctx.lineTo(to.x, to.y)
         ctx.strokeStyle = el.color
-        ctx.lineWidth = 1.5
+        if (el.isProduction) {
+          // Post.2 production: thinner + reduced opacity
+          ctx.lineWidth = 1
+          ctx.globalAlpha = finalAlpha * 0.5
+        } else {
+          ctx.lineWidth = 1.5
+        }
         ctx.setLineDash([6, 4])
         ctx.stroke()
         ctx.setLineDash([])
+        if (el.isProduction) {
+          ctx.globalAlpha = finalAlpha // restore layer alpha
+        }
       } else if (el.kind === 'point') {
         const pos = toScreen(el.x, el.y, viewport, w, h)
         ctx.beginPath()

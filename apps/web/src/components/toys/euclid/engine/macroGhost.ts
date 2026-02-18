@@ -149,6 +149,31 @@ export function computeMacroGhost(
           label: result.point.label,
           color: result.point.color,
         })
+
+        // Synthesize a production segment for Post.2 extensions (beyondId)
+        if (expected.beyondId) {
+          const beyondPt = getPoint(state, expected.beyondId)
+          if (beyondPt) {
+            // Find the parent segment's color
+            let segColor = '#888'
+            for (const id of [resolvedA, resolvedB]) {
+              if (id) {
+                const el = state.elements.find(e => e.id === id)
+                if (el && el.kind === 'segment') {
+                  segColor = el.color
+                  break
+                }
+              }
+            }
+            ghostElements.push({
+              kind: 'segment',
+              x1: beyondPt.x, y1: beyondPt.y,
+              x2: matchingCandidate.x, y2: matchingCandidate.y,
+              color: segColor,
+              isProduction: true,
+            })
+          }
+        }
       } else {
         // Keep label indices stable even if intersection not found
         state = skipPointLabel(state, expected.label)

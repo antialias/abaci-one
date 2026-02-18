@@ -206,7 +206,7 @@ export interface PropositionDef {
 
 /** Lightweight geometry for the ghost layer — not part of construction state */
 export interface GhostCircle { kind: 'circle'; cx: number; cy: number; r: number; color: string }
-export interface GhostSegment { kind: 'segment'; x1: number; y1: number; x2: number; y2: number; color: string }
+export interface GhostSegment { kind: 'segment'; x1: number; y1: number; x2: number; y2: number; color: string; isProduction?: boolean }
 export interface GhostPoint { kind: 'point'; x: number; y: number; label: string; color: string }
 export type GhostElement = GhostCircle | GhostSegment | GhostPoint
 
