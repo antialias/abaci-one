@@ -48,6 +48,7 @@ import { distancePair, distancePairKey } from './engine/facts'
 import type { DistancePair } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
+import { computeMacroGhost } from './engine/macroGhost'
 import { resolveSelector } from './engine/selectors'
 import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
@@ -707,9 +708,10 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         setProofFacts(proofFactsRef.current)
       }
 
-      // Collect ghost layers from macro result
-      if (result.ghostLayers && result.ghostLayers.length > 0) {
-        ghostLayersRef.current = [...ghostLayersRef.current, ...result.ghostLayers]
+      // Compute ghost geometry via prop step replay
+      const macroGhosts = computeMacroGhost(propId, inputPointIds, constructionRef.current, step)
+      if (macroGhosts.length > 0) {
+        ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
       }
 
       // Start animation

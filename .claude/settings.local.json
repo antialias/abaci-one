@@ -978,7 +978,14 @@
       "WebFetch(domain:www.math.uga.edu)",
       "WebFetch(domain:www.cs.umb.edu)",
       "WebFetch(domain:erikbrinkman.github.io)",
-      "WebFetch(domain:snyk.io)"
+      "WebFetch(domain:snyk.io)",
+      "WebFetch(domain:strudel.cc)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:nicholasgriffin.dev)",
+      "WebFetch(domain:eggg.uk)",
+      "WebFetch(domain:sound.intercrap.com)",
+      "WebFetch(domain:hackaday.com)",
+      "WebFetch(domain:forum.renoise.com)"
     ],
     "deny": [],
     "ask": []

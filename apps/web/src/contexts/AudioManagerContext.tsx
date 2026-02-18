@@ -28,7 +28,7 @@ export function AudioManagerProvider({ children }: { children: ReactNode }) {
 
   // Apply persisted enabled / volume / subtitle speed on first render
   useEffect(() => {
-    const enabled = readLocalStorage(LS_KEY_ENABLED, 'false') === 'true'
+    const enabled = readLocalStorage(LS_KEY_ENABLED, 'true') === 'true'
     const volume = Number(readLocalStorage(LS_KEY_VOLUME, '80')) / 100
     const subtitleDurationMultiplier =
       Number(readLocalStorage(LS_KEY_SUBTITLE_SPEED, '1')) || 1
