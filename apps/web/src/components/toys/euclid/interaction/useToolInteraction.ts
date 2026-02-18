@@ -391,7 +391,10 @@ export function useToolInteraction({
       }
 
       pointerCapturedRef.current = false
-      pointerWorldRef.current = null
+      // Only clear pointer on touch — mouse keeps position for idle tool overlay
+      if (e.pointerType === 'touch') {
+        pointerWorldRef.current = null
+      }
       snappedPointIdRef.current = null
       requestDraw()
     }

@@ -15,10 +15,12 @@ import type {
   TutorialSubStep,
   ExpectedAction,
 } from './types'
-import { needsExtendedSegments } from './types'
+import { needsExtendedSegments, BYRNE_CYCLE } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction } from './render/renderConstruction'
+import { renderToolOverlay } from './render/renderToolOverlay'
+import type { StraightedgeDrawAnim } from './render/renderToolOverlay'
 import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
@@ -216,6 +218,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
   const macroAnimationRef = useRef<MacroAnimation | null>(null)
   const factStoreRef = useRef<FactStore>(createFactStore())
   const panZoomDisabledRef = useRef(true)
+  const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
@@ -470,6 +473,25 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
         extendSegments,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
+
+      // Start drawing animation — progressive line reveal
+      const fromPt = getPoint(result.state, fromId)
+      const toPt = getPoint(result.state, toId)
+      if (fromPt && toPt) {
+        const dx = toPt.x - fromPt.x
+        const dy = toPt.y - fromPt.y
+        const worldDist = Math.sqrt(dx * dx + dy * dy)
+        const screenDist = worldDist * viewportRef.current.pixelsPerUnit
+        const duration = Math.max(500, Math.min(2000, screenDist * 5))
+        straightedgeDrawAnimRef.current = {
+          segmentId: result.segment.id,
+          fromId,
+          toId,
+          color: result.segment.color,
+          startTime: performance.now(),
+          duration,
+        }
+      }
 
       checkStep(result.segment)
       requestDraw()
@@ -792,6 +814,11 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
         needsDrawRef.current = true
       }
 
+      // ── Keep animating while tool overlay is visible (idle bob animation) ──
+      if (pointerWorldRef.current && activeToolRef.current !== 'macro') {
+        needsDrawRef.current = true
+      }
+
       const canvas = canvasRef.current
       if (canvas && needsDrawRef.current) {
         needsDrawRef.current = false
@@ -824,6 +851,18 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
           // Compute hidden elements during macro animation
           const hiddenIds = getHiddenElementIds(macroAnimationRef.current)
 
+          // Handle straightedge drawing animation — hide the segment while it's being progressively drawn
+          const drawAnim = straightedgeDrawAnimRef.current
+          if (drawAnim) {
+            const elapsed = performance.now() - drawAnim.startTime
+            if (elapsed >= drawAnim.duration) {
+              straightedgeDrawAnimRef.current = null
+            } else {
+              hiddenIds.add(drawAnim.segmentId)
+              needsDrawRef.current = true
+            }
+          }
+
           renderConstruction(
             ctx,
             constructionRef.current,
@@ -855,6 +894,23 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
               complete ? proposition.resultSegments : undefined,
             )
           }
+
+          // Render tool overlay (geometric previews + physical tool body)
+          const nextColor = BYRNE_CYCLE[constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
+          renderToolOverlay(
+            ctx,
+            activeToolRef.current,
+            compassPhaseRef.current,
+            straightedgePhaseRef.current,
+            pointerWorldRef.current,
+            constructionRef.current,
+            viewportRef.current,
+            cssWidth,
+            cssHeight,
+            nextColor,
+            complete,
+            straightedgeDrawAnimRef.current,
+          )
 
           // Render tutorial hint on top
           renderTutorialHint(
@@ -954,6 +1010,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete }: EuclidCanvasProp
             display: 'block',
             width: '100%',
             height: '100%',
+            cursor: (activeTool !== 'macro' && !isComplete) ? 'none' : undefined,
           }}
         />
 

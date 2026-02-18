@@ -5,7 +5,7 @@ import type {
   StraightedgePhase,
   IntersectionCandidate,
 } from '../types'
-import { BYRNE, BYRNE_CYCLE } from '../types'
+import { BYRNE } from '../types'
 import { getAllPoints, getAllCircles, getAllSegments, getPoint, getRadius } from '../engine/constructionState'
 import { isCandidateBeyondPoint } from '../engine/intersections'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
@@ -133,137 +133,7 @@ export function renderConstruction(
     ctx.stroke()
   }
 
-  // 5. Active tool previews
-  const nextColor = BYRNE_CYCLE[nextColorIndex % BYRNE_CYCLE.length]
-
-  // Compass previews
-  if (compassPhase.tag === 'center-set' && pointerWorld) {
-    const center = getPoint(state, compassPhase.centerId)
-    if (center) {
-      const sc = toScreen(center.x, center.y, viewport, w, h)
-      const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
-
-      // Dashed line center → pointer
-      ctx.beginPath()
-      ctx.setLineDash([6, 4])
-      ctx.moveTo(sc.x, sc.y)
-      ctx.lineTo(sp.x, sp.y)
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.5)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // Faint circle at current radius
-      const dx = pointerWorld.x - center.x
-      const dy = pointerWorld.y - center.y
-      const r = Math.sqrt(dx * dx + dy * dy) * ppu
-      if (r > 1) {
-        ctx.beginPath()
-        ctx.arc(sc.x, sc.y, r, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(100, 100, 100, 0.2)'
-        ctx.lineWidth = 1
-        ctx.stroke()
-      }
-    }
-  }
-
-  if (compassPhase.tag === 'radius-set' && pointerWorld) {
-    const center = getPoint(state, compassPhase.centerId)
-    if (center) {
-      const sc = toScreen(center.x, center.y, viewport, w, h)
-      const sr = compassPhase.radius * ppu
-
-      // Faint guide ring
-      ctx.beginPath()
-      ctx.arc(sc.x, sc.y, sr, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.15)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-
-      // Line center → pointer
-      const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
-      ctx.beginPath()
-      ctx.moveTo(sc.x, sc.y)
-      ctx.lineTo(sp.x, sp.y)
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-    }
-  }
-
-  if (compassPhase.tag === 'sweeping') {
-    const center = getPoint(state, compassPhase.centerId)
-    if (center) {
-      const sc = toScreen(center.x, center.y, viewport, w, h)
-      const sr = compassPhase.radius * ppu
-
-      // Faint guide ring
-      ctx.beginPath()
-      ctx.arc(sc.x, sc.y, sr, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.12)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-
-      // Arc from startAngle through cumulativeSweep
-      // Y-inversion: negate angles for screen rendering
-      const screenStartAngle = -compassPhase.startAngle
-      const screenEndAngle = -(compassPhase.startAngle + compassPhase.cumulativeSweep)
-      const counterclockwise = compassPhase.cumulativeSweep > 0
-
-      ctx.beginPath()
-      ctx.arc(sc.x, sc.y, sr, screenStartAngle, screenEndAngle, counterclockwise)
-      ctx.strokeStyle = nextColor
-      ctx.lineWidth = 2.5
-      ctx.stroke()
-
-      // Thin line from center to current pointer angle
-      if (pointerWorld) {
-        const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
-        ctx.beginPath()
-        ctx.moveTo(sc.x, sc.y)
-        ctx.lineTo(sp.x, sp.y)
-        ctx.strokeStyle = 'rgba(100, 100, 100, 0.2)'
-        ctx.lineWidth = 0.5
-        ctx.stroke()
-      }
-    }
-  }
-
-  // Straightedge preview
-  if (straightedgePhase.tag === 'from-set' && pointerWorld) {
-    const from = getPoint(state, straightedgePhase.fromId)
-    if (from) {
-      const sf = toScreen(from.x, from.y, viewport, w, h)
-      const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
-
-      // Extend line to viewport edges
-      const dx = sp.x - sf.x
-      const dy = sp.y - sf.y
-      const len = Math.sqrt(dx * dx + dy * dy)
-      if (len > 0.1) {
-        const extend = Math.max(w, h) * 2
-        const nx = dx / len
-        const ny = dy / len
-
-        ctx.beginPath()
-        ctx.moveTo(sf.x - nx * extend, sf.y - ny * extend)
-        ctx.lineTo(sf.x + nx * extend, sf.y + ny * extend)
-        ctx.strokeStyle = 'rgba(100, 100, 100, 0.15)'
-        ctx.lineWidth = 1
-        ctx.stroke()
-      }
-
-      // Actual segment preview
-      ctx.beginPath()
-      ctx.moveTo(sf.x, sf.y)
-      ctx.lineTo(sp.x, sp.y)
-      ctx.strokeStyle = nextColor
-      ctx.lineWidth = 2
-      ctx.setLineDash([8, 4])
-      ctx.stroke()
-      ctx.setLineDash([])
-    }
-  }
+  // 5. (Active tool previews moved to renderToolOverlay.ts)
 
   // 6. Marked points — filled circles with labels
   for (const pt of getAllPoints(state)) {
