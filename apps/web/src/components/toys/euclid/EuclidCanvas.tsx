@@ -14,6 +14,7 @@ import type {
   PropositionDef,
   TutorialSubStep,
   ExpectedAction,
+  GhostLayer,
 } from './types'
 import { needsExtendedSegments, BYRNE_CYCLE } from './types'
 import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
@@ -37,7 +38,9 @@ import { getProp1Tutorial } from './propositions/prop1Tutorial'
 import { getProp2Tutorial } from './propositions/prop2Tutorial'
 import { getProp3Tutorial } from './propositions/prop3Tutorial'
 import { getProp4Tutorial } from './propositions/prop4Tutorial'
+import { useAudioManager } from '@/hooks/useAudioManager'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
+import { EXPLORATION_NARRATION } from './propositions/explorationNarration'
 import { createFactStore, addFact, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { EqualityFact } from './engine/facts'
@@ -50,17 +53,21 @@ import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
 import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
+import { renderGhostGeometry } from './render/renderGhostGeometry'
 import { renderAngleArcs } from './render/renderAngleArcs'
 import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
+import { useEuclidMusic } from './audio/useEuclidMusic'
+import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
 
 // ── Keyboard shortcuts ──
 
 const SHORTCUTS: ShortcutEntry[] = [
   { key: 'V', description: 'Toggle pan/zoom (disabled by default)' },
+  { key: 'M', description: 'Toggle construction music' },
   { key: '?', description: 'Toggle this help' },
 ]
 
@@ -87,17 +94,20 @@ interface ProofSnapshot {
   construction: ConstructionState
   candidates: IntersectionCandidate[]
   proofFacts: EqualityFact[]
+  ghostLayers: GhostLayer[]
 }
 
 function captureSnapshot(
   construction: ConstructionState,
   candidates: IntersectionCandidate[],
   proofFacts: EqualityFact[],
+  ghostLayers: GhostLayer[],
 ): ProofSnapshot {
   // ConstructionState is replaced on each mutation (spread), so storing the reference is safe.
   // Same for candidates array (replaced via [...old, ...new]).
   // proofFacts is also replaced via proofFactsRef.current = [...].
-  return { construction, candidates, proofFacts }
+  // ghostLayers is also replaced via ghostLayersRef.current = [...].
+  return { construction, candidates, proofFacts, ghostLayers }
 }
 
 interface CompletionSegment {
@@ -238,8 +248,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const isCompleteRef = useRef(false)
   const completionTimeRef = useRef<number>(0)
   const postCompletionActionsRef = useRef<PostCompletionAction[]>([])
+  const ghostLayersRef = useRef<GhostLayer[]>([])
+  const hoveredMacroStepRef = useRef<number | null>(null)
+  const ghostOpacitiesRef = useRef<Map<number, number>>(new Map())
   const propositionRef = useRef(proposition)
   propositionRef.current = proposition
+  const musicRef = useRef<UseEuclidMusicReturn | null>(null)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
@@ -254,7 +268,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [proofFacts, setProofFacts] = useState<EqualityFact[]>([])
   const proofFactsRef = useRef<EqualityFact[]>([])
   const snapshotStackRef = useRef<ProofSnapshot[]>([
-    captureSnapshot(constructionRef.current, candidatesRef.current, []),
+    captureSnapshot(constructionRef.current, candidatesRef.current, [], []),
   ])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
@@ -296,6 +310,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         setActiveTool('move')
         activeToolRef.current = 'move'
       }
+      musicRef.current?.notifyCompletion()
     }
   }, [isComplete, onComplete, propositionId, proposition.draggablePointIds])
 
@@ -339,12 +354,15 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   }, [proofFacts])
 
   // ── TTS integration ──
-  useEuclidAudioHelp({
+  const { isEnabled: audioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
+  const explorationNarration = EXPLORATION_NARRATION[propositionId]
+  const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
     celebrationText: completionResult?.status === 'proven' && completionResult.statement
       ? completionResult.statement
       : 'Construction complete!',
+    explorationNarration,
   })
 
   const requestDraw = useCallback(() => {
@@ -466,6 +484,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           panZoomDisabledRef.current = !next
           return next
         })
+      } else if ((e.key === 'm' || e.key === 'M') && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        musicRef.current?.toggle()
       }
     }
 
@@ -486,7 +507,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         // Capture snapshot before advancing — state after this step completes
         snapshotStackRef.current = [
           ...snapshotStackRef.current,
-          captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current),
+          captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current, ghostLayersRef.current),
         ]
 
         setCompletedSteps(prev => {
@@ -530,6 +551,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
       checkStep(result.circle)
       requestDraw()
+      musicRef.current?.notifyChange()
     },
     [checkStep, requestDraw, extendSegments],
   )
@@ -576,6 +598,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
       checkStep(result.segment)
       requestDraw()
+      musicRef.current?.notifyChange()
     },
     [checkStep, requestDraw, extendSegments],
   )
@@ -646,6 +669,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
       checkStep(result.point, candidate)
       requestDraw()
+      musicRef.current?.notifyIntersection(candidate.x, candidate.y)
+      musicRef.current?.notifyChange()
     },
     [checkStep, requestDraw, proposition.steps],
   )
@@ -680,13 +705,18 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         setProofFacts(proofFactsRef.current)
       }
 
+      // Collect ghost layers from macro result
+      if (result.ghostLayers && result.ghostLayers.length > 0) {
+        ghostLayersRef.current = [...ghostLayersRef.current, ...result.ghostLayers]
+      }
+
       // Start animation
       macroAnimationRef.current = createMacroAnimation(result)
 
       // Capture snapshot before advancing — state after this step completes
       snapshotStackRef.current = [
         ...snapshotStackRef.current,
-        captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current),
+        captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current, ghostLayersRef.current),
       ]
 
       // Directly advance the step (macro validation is handled here, not in validateStep)
@@ -703,6 +733,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       setCurrentStep(nextStep)
 
       requestDraw()
+      musicRef.current?.notifyChange()
     },
     [proposition.steps, extendSegments, requestDraw],
   )
@@ -721,11 +752,13 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       pointerCapturedRef.current = false
       postCompletionActionsRef.current = []
 
-      // 2. Restore construction, candidates, proofFacts from snapshot
+      // 2. Restore construction, candidates, proofFacts, ghostLayers from snapshot
       constructionRef.current = snapshot.construction
       candidatesRef.current = snapshot.candidates
       proofFactsRef.current = snapshot.proofFacts
       setProofFacts(snapshot.proofFacts)
+      ghostLayersRef.current = snapshot.ghostLayers
+      ghostOpacitiesRef.current = new Map()
 
       // 3. Rebuild factStore via rebuildFactStore
       factStoreRef.current = rebuildFactStore(snapshot.proofFacts)
@@ -865,12 +898,22 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   })
 
   // ── Hook up drag interaction for post-completion play ──
+  const constructionIntactRef = useRef(true)
   const handleDragReplay = useCallback(
     (result: ReplayResult) => {
       proofFactsRef.current = result.proofFacts
       setProofFacts(result.proofFacts)
+      ghostLayersRef.current = result.ghostLayers
+      musicRef.current?.notifyChange()
+
+      // Detect construction breakdown: was intact, now incomplete
+      const intact = result.stepsCompleted >= propositionRef.current.steps.length
+      if (constructionIntactRef.current && !intact) {
+        handleConstructionBreakdown()
+      }
+      constructionIntactRef.current = intact
     },
-    [],
+    [handleConstructionBreakdown],
   )
 
   useDragGivenPoints({
@@ -886,7 +929,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     candidatesRef,
     postCompletionActionsRef,
     onReplayResult: handleDragReplay,
+    onDragStart: handleDragStart,
   })
+
+  // ── Construction music ──
+  const music = useEuclidMusic({ constructionRef, factStoreRef, isComplete })
+  musicRef.current = music
 
   // ── Canvas resize observer ──
   useEffect(() => {
@@ -1054,6 +1102,22 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             undefined, // transparentBg
             complete ? proposition.draggablePointIds : undefined,
           )
+
+          // Render ghost geometry (dependency scaffolding from macros)
+          if (ghostLayersRef.current.length > 0) {
+            const ghostAnimating = renderGhostGeometry(
+              ctx,
+              ghostLayersRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight,
+              hoveredMacroStepRef.current,
+              ghostOpacitiesRef.current,
+            )
+            if (ghostAnimating || hoveredMacroStepRef.current !== null) {
+              needsDrawRef.current = true
+            }
+          }
 
           // Render equality tick marks on segments with proven equalities
           if (factStoreRef.current.facts.length > 0) {
@@ -1309,6 +1373,78 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           />
         </div>
 
+        {/* Music toggle */}
+        <button
+          data-action="toggle-music"
+          onClick={() => music.toggle()}
+          title={music.isPlaying ? 'Stop construction music (M)' : 'Start construction music (M)'}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 56,
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            border: '1px solid rgba(203, 213, 225, 0.8)',
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(8px)',
+            color: music.isPlaying ? '#4E79A7' : '#94a3b8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.15s ease',
+            zIndex: 10,
+            padding: 0,
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+          </svg>
+        </button>
+
+        {/* Audio toggle */}
+        <button
+          data-action="toggle-audio"
+          onClick={() => setAudioEnabled(!audioEnabled)}
+          title={audioEnabled ? 'Mute narration' : 'Enable narration'}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            border: '1px solid rgba(203, 213, 225, 0.8)',
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(8px)',
+            color: audioEnabled ? '#4E79A7' : '#94a3b8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'all 0.15s ease',
+            zIndex: 10,
+            padding: 0,
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            {audioEnabled ? (
+              <>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </>
+            ) : (
+              <line x1="23" y1="9" x2="17" y2="15" />
+            )}
+          </svg>
+        </button>
+
         {/* Subtle "?" hint */}
         <div
           data-element="shortcuts-hint"
@@ -1476,8 +1612,19 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 data-element="proof-step"
                 data-step-current={isCurrent ? 'true' : undefined}
                 onClick={isDone ? () => handleRewindToStep(i) : undefined}
-                onMouseEnter={isDone ? () => setHoveredStepIndex(i) : undefined}
-                onMouseLeave={isDone ? () => setHoveredStepIndex(null) : undefined}
+                onMouseEnter={isDone ? () => {
+                  setHoveredStepIndex(i)
+                  // Activate ghost geometry hover for macro steps
+                  if (step.expected.type === 'macro') {
+                    hoveredMacroStepRef.current = i
+                    needsDrawRef.current = true
+                  }
+                } : undefined}
+                onMouseLeave={isDone ? () => {
+                  setHoveredStepIndex(null)
+                  hoveredMacroStepRef.current = null
+                  needsDrawRef.current = true
+                } : undefined}
                 style={{
                   marginBottom: 16,
                   opacity: isFuture ? 0.35 : 1,

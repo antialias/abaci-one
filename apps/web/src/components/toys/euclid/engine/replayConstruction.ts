@@ -4,6 +4,7 @@ import type {
   PropositionDef,
   ConstructionState,
   IntersectionCandidate,
+  GhostLayer,
 } from '../types'
 import { needsExtendedSegments } from '../types'
 import { initializeGiven, addSegment, addCircle, addPoint, skipPointLabel } from './constructionState'
@@ -32,6 +33,10 @@ export interface ReplayResult {
   factStore: FactStore
   proofFacts: EqualityFact[]
   candidates: IntersectionCandidate[]
+  /** Number of proposition steps that were successfully replayed.
+   *  When less than the total step count, the construction broke down
+   *  (e.g. an intersection no longer exists). */
+  stepsCompleted: number
 }
 
 /**
@@ -71,20 +76,25 @@ export function replayConstruction(
   }
 
   // Execute each proposition step
+  let stepsCompleted = 0
   for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
     const step = steps[stepIdx]
     const expected = step.expected
+
+    let stepSucceeded = false
 
     if (expected.type === 'straightedge') {
       const result = addSegment(state, expected.fromId, expected.toId)
       state = result.state
       const newCands = findNewIntersections(state, result.segment, candidates, extendSegments)
       candidates = [...candidates, ...newCands]
+      stepSucceeded = true
     } else if (expected.type === 'compass') {
       const result = addCircle(state, expected.centerId, expected.radiusPointId)
       state = result.state
       const newCands = findNewIntersections(state, result.circle, candidates, extendSegments)
       candidates = [...candidates, ...newCands]
+      stepSucceeded = true
     } else if (expected.type === 'intersection') {
       // Find the matching candidate
       const resolvedA = expected.ofA != null ? resolveSelector(expected.ofA, state) : null
@@ -119,6 +129,7 @@ export function replayConstruction(
         )
         const newFacts = deriveDef15Facts(matchingCandidate, result.point.id, state, factStore, stepIdx)
         proofFacts.push(...newFacts)
+        stepSucceeded = true
       } else {
         // Advance label/color indices so subsequent point labels stay stable
         state = skipPointLabel(state, expected.label)
@@ -138,8 +149,11 @@ export function replayConstruction(
         state = result.state
         candidates = result.candidates
         proofFacts.push(...result.newFacts)
+        stepSucceeded = true
       }
     }
+
+    if (stepSucceeded) stepsCompleted = stepIdx + 1
   }
 
   // Run conclusion function
@@ -186,5 +200,5 @@ export function replayConstruction(
     }
   }
 
-  return { state, factStore, proofFacts, candidates }
+  return { state, factStore, proofFacts, candidates, stepsCompleted }
 }

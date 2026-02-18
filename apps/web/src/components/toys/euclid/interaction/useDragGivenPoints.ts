@@ -33,6 +33,8 @@ interface UseDragGivenPointsOptions {
   postCompletionActionsRef: React.MutableRefObject<PostCompletionAction[]>
   /** Called when construction state is replaced during drag */
   onReplayResult: (result: ReplayResult) => void
+  /** Called once when a drag gesture starts on a given point */
+  onDragStart?: (pointId: string) => void
 }
 
 /**
@@ -54,6 +56,7 @@ export function useDragGivenPoints({
   candidatesRef,
   postCompletionActionsRef,
   onReplayResult,
+  onDragStart,
 }: UseDragGivenPointsOptions): void {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -152,6 +155,7 @@ export function useDragGivenPoints({
         pointerCapturedRef.current = true
         canvas!.style.cursor = 'grabbing'
         needsDrawRef.current = true
+        onDragStart?.(hit.id)
       }
     }
 
@@ -260,6 +264,7 @@ export function useDragGivenPoints({
     candidatesRef,
     postCompletionActionsRef,
     onReplayResult,
+    onDragStart,
     getCanvasRect,
   ])
 }
