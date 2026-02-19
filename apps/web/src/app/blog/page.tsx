@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getAllPostsMetadata, getFeaturedPosts } from '@/lib/blog'
+import { getAllPostsMetadata, type BlogPostMetadata } from '@/lib/blog'
 import { css } from '../../../styled-system/css'
 
 export const metadata: Metadata = {
@@ -17,8 +17,210 @@ export const metadata: Metadata = {
   },
 }
 
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+function Tags({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null
+  return (
+    <div
+      data-element="tags"
+      className={css({
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+      })}
+    >
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className={css({
+            px: '0.5rem',
+            py: '0.125rem',
+            bg: 'bg.muted',
+            color: 'text.secondary',
+            borderRadius: '0.25rem',
+            fontSize: '0.75rem',
+            fontWeight: 500,
+          })}
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function ImageCard({ post }: { post: BlogPostMetadata }) {
+  return (
+    <Link
+      href={`/blog/${post.slug}`}
+      data-action="view-post"
+      data-component="image-card"
+      className={css({
+        display: 'block',
+        borderRadius: '0.75rem',
+        overflow: 'hidden',
+        bg: 'bg.surface',
+        border: '1px solid',
+        borderColor: 'border.muted',
+        transition: 'all 0.3s',
+        _hover: {
+          transform: 'translateY(-2px)',
+          borderColor: 'accent.emphasis',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+        },
+      })}
+    >
+      <article>
+        <div
+          data-element="image-banner"
+          className={css({
+            position: 'relative',
+            width: '100%',
+            aspectRatio: { base: '16 / 9', md: '2.4 / 1' },
+            overflow: 'hidden',
+          })}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={post.heroImageUrl}
+            alt={post.title}
+            style={{ objectPosition: post.heroCrop || 'center' }}
+            className={css({
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            })}
+          />
+        </div>
+        <div
+          className={css({
+            p: { base: '1rem', md: '1.5rem' },
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: { base: '1.5rem', md: '1.875rem' },
+              fontWeight: 600,
+              mb: '0.5rem',
+              color: 'text.primary',
+            })}
+          >
+            {post.title}
+          </h3>
+          <div
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              alignItems: 'center',
+              fontSize: '0.875rem',
+              color: 'text.muted',
+              mb: '0.75rem',
+            })}
+          >
+            <span>{post.author}</span>
+            <span>·</span>
+            <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+          </div>
+          <p
+            className={css({
+              color: 'text.secondary',
+              lineHeight: '1.6',
+              mb: '1rem',
+            })}
+          >
+            {post.excerpt || post.description}
+          </p>
+          <Tags tags={post.tags} />
+        </div>
+      </article>
+    </Link>
+  )
+}
+
+function TextCard({ post }: { post: BlogPostMetadata }) {
+  return (
+    <Link
+      href={`/blog/${post.slug}`}
+      data-action="view-post"
+      data-component="text-card"
+      className={css({
+        display: 'block',
+        borderRadius: '0.5rem',
+        bg: 'bg.surface',
+        border: '1px solid',
+        borderColor: 'border.muted',
+        p: { base: '1rem', md: '1.5rem' },
+        transition: 'all 0.2s',
+        _hover: {
+          borderColor: 'border.default',
+          '& h3': {
+            color: 'accent.emphasis',
+          },
+        },
+      })}
+    >
+      <article>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: { base: 'column', md: 'row' },
+            alignItems: { md: 'baseline' },
+            gap: { base: '0.25rem', md: '0.75rem' },
+            mb: '0.5rem',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: { base: '1.25rem', md: '1.375rem' },
+              fontWeight: 600,
+              color: 'text.primary',
+              transition: 'color 0.2s',
+            })}
+          >
+            {post.title}
+          </h3>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '0.5rem',
+              alignItems: 'center',
+              fontSize: '0.8125rem',
+              color: 'text.muted',
+              flexShrink: 0,
+            })}
+          >
+            <span>{post.author}</span>
+            <span>·</span>
+            <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+          </div>
+        </div>
+        <p
+          className={css({
+            color: 'text.secondary',
+            lineHeight: '1.6',
+            mb: '0.75rem',
+            fontSize: '0.9375rem',
+          })}
+        >
+          {post.excerpt || post.description}
+        </p>
+        <Tags tags={post.tags} />
+      </article>
+    </Link>
+  )
+}
+
 export default async function BlogIndex() {
-  const featuredPosts = await getFeaturedPosts()
   const allPosts = await getAllPostsMetadata()
 
   return (
@@ -87,250 +289,22 @@ export default async function BlogIndex() {
           </p>
         </header>
 
-        {/* Featured Posts */}
-        {featuredPosts.length > 0 && (
-          <section
-            data-section="featured-posts"
-            className={css({
-              mb: '4rem',
-            })}
-          >
-            <h2
-              className={css({
-                fontSize: { base: '1.5rem', md: '1.875rem' },
-                fontWeight: 'bold',
-                mb: '1.5rem',
-                color: 'accent.emphasis',
-              })}
-            >
-              Featured
-            </h2>
-            <div
-              className={css({
-                display: 'grid',
-                gridTemplateColumns: {
-                  base: '1fr',
-                  md: 'repeat(auto-fit, minmax(300px, 1fr))',
-                },
-                gap: '1.5rem',
-              })}
-            >
-              {featuredPosts.map((post) => {
-                const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })
-
-                return (
-                  <Link
-                    key={post.slug}
-                    href={`/blog/${post.slug}`}
-                    data-action="view-featured-post"
-                    className={css({
-                      display: 'block',
-                      p: '1.5rem',
-                      bg: 'accent.subtle',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '0.75rem',
-                      border: '1px solid',
-                      borderColor: 'accent.default',
-                      transition: 'all 0.3s',
-                      _hover: {
-                        bg: 'accent.muted',
-                        borderColor: 'accent.emphasis',
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 24px token(colors.accent.muted)',
-                      },
-                    })}
-                  >
-                    <h3
-                      className={css({
-                        fontSize: { base: '1.25rem', md: '1.5rem' },
-                        fontWeight: 600,
-                        mb: '0.5rem',
-                        color: 'text.primary',
-                      })}
-                    >
-                      {post.title}
-                    </h3>
-                    <p
-                      className={css({
-                        color: 'text.secondary',
-                        mb: '1rem',
-                        lineHeight: '1.6',
-                      })}
-                    >
-                      {post.excerpt || post.description}
-                    </p>
-                    <div
-                      className={css({
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '0.75rem',
-                        alignItems: 'center',
-                        fontSize: '0.875rem',
-                        color: 'text.muted',
-                      })}
-                    >
-                      <span>{post.author}</span>
-                      <span>•</span>
-                      <time dateTime={post.publishedAt}>{publishedDate}</time>
-                    </div>
-                    {post.tags.length > 0 && (
-                      <div
-                        className={css({
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '0.5rem',
-                          mt: '1rem',
-                        })}
-                      >
-                        {post.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className={css({
-                              px: '0.5rem',
-                              py: '0.125rem',
-                              bg: 'accent.muted',
-                              color: 'accent.emphasis',
-                              borderRadius: '0.25rem',
-                              fontSize: '0.75rem',
-                              fontWeight: 500,
-                            })}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* All Posts */}
-        <section data-section="all-posts">
-          <h2
-            className={css({
-              fontSize: { base: '1.5rem', md: '1.875rem' },
-              fontWeight: 'bold',
-              mb: '1.5rem',
-              color: 'accent.emphasis',
-            })}
-          >
-            All Posts
-          </h2>
-          <div
-            className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2rem',
-            })}
-          >
-            {allPosts.map((post) => {
-              const publishedDate = new Date(post.publishedAt).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })
-
-              return (
-                <article
-                  key={post.slug}
-                  data-element="post-preview"
-                  className={css({
-                    pb: '2rem',
-                    borderBottom: '1px solid',
-                    borderColor: 'border.muted',
-                    _last: {
-                      borderBottom: 'none',
-                    },
-                  })}
-                >
-                  <Link
-                    href={`/blog/${post.slug}`}
-                    data-action="view-post"
-                    className={css({
-                      display: 'block',
-                      _hover: {
-                        '& h3': {
-                          color: 'accent.emphasis',
-                        },
-                      },
-                    })}
-                  >
-                    <h3
-                      className={css({
-                        fontSize: { base: '1.5rem', md: '1.875rem' },
-                        fontWeight: 600,
-                        mb: '0.5rem',
-                        color: 'text.primary',
-                        transition: 'color 0.2s',
-                      })}
-                    >
-                      {post.title}
-                    </h3>
-                  </Link>
-
-                  <div
-                    className={css({
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '0.75rem',
-                      alignItems: 'center',
-                      fontSize: '0.875rem',
-                      color: 'text.muted',
-                      mb: '1rem',
-                    })}
-                  >
-                    <span>{post.author}</span>
-                    <span>•</span>
-                    <time dateTime={post.publishedAt}>{publishedDate}</time>
-                  </div>
-
-                  <p
-                    className={css({
-                      color: 'text.secondary',
-                      lineHeight: '1.6',
-                      mb: '1rem',
-                    })}
-                  >
-                    {post.excerpt || post.description}
-                  </p>
-
-                  {post.tags.length > 0 && (
-                    <div
-                      className={css({
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '0.5rem',
-                      })}
-                    >
-                      {post.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={css({
-                            px: '0.5rem',
-                            py: '0.125rem',
-                            bg: 'bg.muted',
-                            color: 'text.secondary',
-                            borderRadius: '0.25rem',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                          })}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              )
-            })}
-          </div>
+        {/* Unified post stream */}
+        <section
+          data-section="posts"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+          })}
+        >
+          {allPosts.map((post) =>
+            post.heroImageUrl ? (
+              <ImageCard key={post.slug} post={post} />
+            ) : (
+              <TextCard key={post.slug} post={post} />
+            )
+          )}
         </section>
       </div>
     </div>

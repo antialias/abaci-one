@@ -19,12 +19,14 @@ export interface BlogPost {
   heroPrompt?: string
   heroImage?: string
   heroAspectRatio?: string
+  heroCrop?: string
   content: string
   html: string
 }
 
 export interface BlogPostMetadata extends Omit<BlogPost, 'content' | 'html'> {
   excerpt?: string
+  heroImageUrl?: string
 }
 
 /**
@@ -46,17 +48,32 @@ export function getAllPostSlugs(): string[] {
  * Get metadata for all posts (without full content)
  */
 export async function getAllPostsMetadata(): Promise<BlogPostMetadata[]> {
+  const publicDir = path.join(process.cwd(), 'public')
   const slugs = getAllPostSlugs()
   const posts = await Promise.all(
     slugs.map(async (slug) => {
       const post = await getPostBySlug(slug)
       const { content, html, ...metadata } = post
-      // Create excerpt from first text paragraph (skip images, headings, HRs)
+      // Create excerpt from first prose paragraph (skip images, headings, HRs, HTML blocks)
       const firstPara = content.split('\n\n').find(
-        (p) => p.trim() && !p.trim().startsWith('![') && !p.trim().startsWith('#') && p.trim() !== '---'
+        (p) => {
+          const t = p.trim()
+          return t && !t.startsWith('![') && !t.startsWith('#') && t !== '---' && !t.includes('<')
+        }
       ) ?? ''
-      const excerpt = `${firstPara.replace(/^#+\s+/, '').substring(0, 200)}...`
-      return { ...metadata, excerpt }
+      // Strip markdown bold/italic markers for clean display
+      const stripped = firstPara.replace(/^#+\s+/, '').replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+      const excerpt = `${stripped.substring(0, 200)}...`
+
+      // Resolve hero image URL
+      let heroImageUrl: string | undefined
+      if (metadata.heroImage) {
+        heroImageUrl = metadata.heroImage
+      } else if (fs.existsSync(path.join(publicDir, 'blog', `${slug}.png`))) {
+        heroImageUrl = `/blog/${slug}.png`
+      }
+
+      return { ...metadata, excerpt, heroImageUrl }
     })
   )
 
@@ -96,6 +113,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
     heroPrompt: data.heroPrompt || undefined,
     heroImage: data.heroImage || undefined,
     heroAspectRatio: data.heroAspectRatio || undefined,
+    heroCrop: data.heroCrop || undefined,
     content,
     html,
   }
