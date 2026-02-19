@@ -8,7 +8,6 @@ import type {
   ActiveTool,
 } from '../types'
 import type { FactStore } from '../engine/factStore'
-import type { EqualityFact } from '../engine/facts'
 import type { IntersectionCandidate } from '../types'
 import type { PostCompletionAction, ReplayResult } from '../engine/replayConstruction'
 import { getAllPoints } from '../engine/constructionState'

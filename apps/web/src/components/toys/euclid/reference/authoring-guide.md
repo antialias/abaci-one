@@ -16,7 +16,8 @@ Every proposition is a `PropositionDef` object exported from `propositions/propN
 | `kind` | no | `'construction'` (Q.E.F.) or `'theorem'` (Q.E.D.) — default: construction |
 | `draggablePointIds` | no | IDs of given points the user can drag post-completion |
 | `computeGivenElements` | no | Factory for recomputing given elements during drag (needed for theorems with derived points like I.4) |
-| `givenFacts` | no | Equality facts pre-loaded into the fact store |
+| `givenFacts` | no | Distance equality facts pre-loaded into the fact store |
+| `givenAngleFacts` | no | Angle equality facts pre-loaded into the fact store (shown as [Given] in proof panel) |
 | `givenAngles` | no | Angle arcs to render at vertices |
 | `equalAngles` | no | Pairs of equal angles for matching tick marks |
 | `theoremConclusion` | no | Text conclusion for theorems (bypasses fact-store display) |
@@ -176,7 +177,41 @@ givenFacts: [
 ],
 ```
 
-**Conclusion functions** — defined as `deriveConclusion` on the `PropositionDef`. Called when the proposition completes to derive final equality facts.
+**Given angle facts** — pre-loaded angle equalities for theorems (real facts in the store, shown as [Given] in proof panel):
+
+```typescript
+givenAngleFacts: [{
+  left: { vertex: 'pt-A', ray1: 'pt-B', ray2: 'pt-C' },
+  right: { vertex: 'pt-D', ray1: 'pt-E', ray2: 'pt-F' },
+  statement: '∠BAC = ∠EDF',
+}],
+```
+
+**Conclusion functions** — defined as `deriveConclusion` on the `PropositionDef`. Called when the proposition completes to derive final facts. Returns `ProofFact[]` (union of `EqualityFact | AngleEqualityFact`).
+
+For angle conclusions, use `addAngleFact()` from `engine/factStore.ts` and `angleMeasure()` from `engine/facts.ts`:
+
+```typescript
+import { angleMeasure } from '../engine/facts'
+import { addAngleFact } from '../engine/factStore'
+
+// In deriveConclusion:
+const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
+const angDEF = angleMeasure('pt-E', 'pt-D', 'pt-F')
+allNewFacts.push(...addAngleFact(
+  store, angABC, angDEF,
+  { type: 'cn4' },
+  '∠ABC = ∠DEF',
+  'C.N.4: Remaining angles of congruent triangles coincide',
+  atStep,
+))
+```
+
+**Available angle citations:**
+- `{ type: 'cn4' }` — C.N.4 (superposition/congruence)
+- `{ type: 'cn3-angle', whole: AngleMeasure, part: AngleMeasure }` — C.N.3 angle subtraction
+- `{ type: 'prop', propId: N }` — derived from a proposition
+- `{ type: 'given' }` — hypothesis
 
 **Result segments** — segments whose equality is checked and displayed in the conclusion bar:
 

@@ -17,7 +17,7 @@ import {
 } from '../engine/factStore'
 import { distancePair } from '../engine/facts'
 import type { ConstructionState, IntersectionCandidate } from '../types'
-import type { EqualityFact } from '../engine/facts'
+import type { ProofFact } from '../engine/facts'
 
 // ── Helpers ──
 
@@ -25,7 +25,7 @@ import type { EqualityFact } from '../engine/facts'
 function captureSnapshot(
   construction: ConstructionState,
   candidates: IntersectionCandidate[],
-  proofFacts: EqualityFact[],
+  proofFacts: ProofFact[],
 ) {
   return { construction, candidates, proofFacts }
 }
@@ -144,7 +144,7 @@ describe('snapshot system', () => {
       const newFacts = addFact(store, dpAB, dpCD,
         { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
 
-      const facts0: EqualityFact[] = [...newFacts]
+      const facts0: ProofFact[] = [...newFacts]
       const snap = captureSnapshot(givenAB(), [], facts0)
 
       // Replace proofFacts array (as proofFactsRef.current = [...old, ...new])
@@ -398,12 +398,12 @@ describe('snapshot system', () => {
 
       // Step 0: Draw circle centered at A through B
       const { state: s1 } = addCircle(s0, 'pt-A', 'pt-B')
-      const facts0: EqualityFact[] = []
+      const facts0: ProofFact[] = []
       snapshots.push(captureSnapshot(s1, [], facts0))
 
       // Step 1: Draw circle centered at B through A
       const { state: s2 } = addCircle(s1, 'pt-B', 'pt-A')
-      const facts1: EqualityFact[] = []
+      const facts1: ProofFact[] = []
       snapshots.push(captureSnapshot(s2, [], facts1))
 
       // Step 2: Mark intersection C

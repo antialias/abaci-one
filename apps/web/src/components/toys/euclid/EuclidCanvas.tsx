@@ -32,10 +32,11 @@ import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
-import { createFactStore, addFact, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
+import { createFactStore, addFact, addAngleFact, queryEquality, getEqualDistances, getEqualAngles, rebuildFactStore } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
-import type { EqualityFact } from './engine/facts'
-import { distancePair, distancePairKey } from './engine/facts'
+import type { ProofFact } from './engine/facts'
+import { distancePair, distancePairKey, angleMeasure, angleMeasureKey, isAngleFact } from './engine/facts'
+import type { AngleMeasure } from './engine/facts'
 import type { DistancePair } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
@@ -81,17 +82,31 @@ function computeInitialViewport(givenElements: readonly { kind: string; x?: numb
   return { center: { x: cx, y: cy }, pixelsPerUnit: 50 }
 }
 
+/**
+ * Compute a citation group key for cross-type hover highlighting.
+ * Facts from the same derivation (e.g., same I.4 triangle congruence) share a group.
+ */
+function citGroupKey(fact: ProofFact): string | null {
+  const j = fact.justification
+  // Match triangle congruence pattern: △ABC ≅ △DEF
+  const triMatch = j.match(/△\w+ ≅ △\w+/)
+  if (triMatch) return `${fact.atStep}:tri:${triMatch[0]}`
+  // Group C.N.4 facts at the same step (superposition derives all conclusions at once)
+  if (fact.citation.type === 'cn4') return `${fact.atStep}:cn4`
+  return null
+}
+
 interface ProofSnapshot {
   construction: ConstructionState
   candidates: IntersectionCandidate[]
-  proofFacts: EqualityFact[]
+  proofFacts: ProofFact[]
   ghostLayers: GhostLayer[]
 }
 
 function captureSnapshot(
   construction: ConstructionState,
   candidates: IntersectionCandidate[],
-  proofFacts: EqualityFact[],
+  proofFacts: ProofFact[],
   ghostLayers: GhostLayer[],
 ): ProofSnapshot {
   // ConstructionState is replaced on each mutation (spread), so storing the reference is safe.
@@ -238,8 +253,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [isComplete, setIsComplete] = useState(false)
   const [toolToast, setToolToast] = useState<string | null>(null)
   const toolToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [proofFacts, setProofFacts] = useState<EqualityFact[]>([])
-  const proofFactsRef = useRef<EqualityFact[]>([])
+  const [proofFacts, setProofFacts] = useState<ProofFact[]>([])
+  const proofFactsRef = useRef<ProofFact[]>([])
   const snapshotStackRef = useRef<ProofSnapshot[]>([
     captureSnapshot(constructionRef.current, candidatesRef.current, [], []),
   ])
@@ -249,15 +264,68 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [ghostBaseOpacityVal, setGhostBaseOpacityVal] = useState(getGhostBaseOpacity)
   const [ghostFalloffCoeff, setGhostFalloffCoeff] = useState(getGhostFalloff)
   const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
+  const [hoveredFactId, setHoveredFactId] = useState<number | null>(null)
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
   const [autoCompleting, setAutoCompleting] = useState(false)
 
-  // Full equivalence class for the hovered dp — follow transitive chain
-  const hoveredDpKeys = useMemo(() => {
-    if (!hoveredProofDp) return null
-    const eqDps = getEqualDistances(factStoreRef.current, hoveredProofDp)
-    return new Set(eqDps.map(distancePairKey))
-  }, [hoveredProofDp])
+  // Combined highlight state: distance keys, angle keys, citation group
+  const highlightState = useMemo(() => {
+    const dpKeys = new Set<string>()
+    const angleKeys = new Set<string>()
+    let citGroup: string | null = null
+
+    // From conclusion bar segment hover (distance only)
+    if (hoveredProofDp) {
+      for (const dp of getEqualDistances(factStoreRef.current, hoveredProofDp)) {
+        dpKeys.add(distancePairKey(dp))
+      }
+    }
+
+    // From fact row hover
+    if (hoveredFactId != null) {
+      const fact = proofFacts.find(f => f.id === hoveredFactId)
+      if (fact) {
+        if (isAngleFact(fact)) {
+          for (const am of getEqualAngles(factStoreRef.current, fact.left)) {
+            angleKeys.add(angleMeasureKey(am))
+          }
+        } else {
+          for (const dp of getEqualDistances(factStoreRef.current, fact.left)) {
+            dpKeys.add(distancePairKey(dp))
+          }
+        }
+        citGroup = citGroupKey(fact)
+      }
+    }
+
+    return {
+      dpKeys: dpKeys.size > 0 ? dpKeys : null,
+      angleKeys: angleKeys.size > 0 ? angleKeys : null,
+      citGroup,
+    }
+  }, [hoveredProofDp, hoveredFactId, proofFacts])
+
+  /** Check if a proof fact should be highlighted given the current hover state */
+  const isFactHighlighted = useCallback((fact: ProofFact): boolean => {
+    const { dpKeys, angleKeys, citGroup } = highlightState
+    // Distance equivalence class
+    if (!isAngleFact(fact) && dpKeys != null) {
+      if (dpKeys.has(distancePairKey(fact.left)) || dpKeys.has(distancePairKey(fact.right))) {
+        return true
+      }
+    }
+    // Angle equivalence class
+    if (isAngleFact(fact) && angleKeys != null) {
+      if (angleKeys.has(angleMeasureKey(fact.left)) || angleKeys.has(angleMeasureKey(fact.right))) {
+        return true
+      }
+    }
+    // Citation group (cross-type: same derivation highlights related facts)
+    if (citGroup != null && citGroupKey(fact) === citGroup) {
+      return true
+    }
+    return false
+  }, [highlightState])
 
   // ── Completion result derived from proof ──
   const completionResult = useMemo(() => {
@@ -319,7 +387,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
   // ── Group proof facts by step ──
   const factsByStep = useMemo(() => {
-    const map = new Map<number, EqualityFact[]>()
+    const map = new Map<number, ProofFact[]>()
     for (const fact of proofFacts) {
       const existing = map.get(fact.atStep) ?? []
       existing.push(fact)
@@ -346,19 +414,36 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
   // ── Load given facts into the fact store (for theorems like I.4) ──
   useEffect(() => {
-    if (!proposition.givenFacts || proposition.givenFacts.length === 0) return
+    const hasDistanceFacts = proposition.givenFacts && proposition.givenFacts.length > 0
+    const hasAngleFacts = proposition.givenAngleFacts && proposition.givenAngleFacts.length > 0
+    if (!hasDistanceFacts && !hasAngleFacts) return
     const store = factStoreRef.current
-    const newFacts: EqualityFact[] = []
-    for (const gf of proposition.givenFacts) {
-      const left = distancePair(gf.left.a, gf.left.b)
-      const right = distancePair(gf.right.a, gf.right.b)
-      newFacts.push(...addFact(
-        store, left, right,
-        { type: 'given' },
-        gf.statement,
-        'Given',
-        -1, // before any step
-      ))
+    const newFacts: ProofFact[] = []
+    if (proposition.givenFacts) {
+      for (const gf of proposition.givenFacts) {
+        const left = distancePair(gf.left.a, gf.left.b)
+        const right = distancePair(gf.right.a, gf.right.b)
+        newFacts.push(...addFact(
+          store, left, right,
+          { type: 'given' },
+          gf.statement,
+          'Given',
+          -1, // before any step
+        ))
+      }
+    }
+    if (proposition.givenAngleFacts) {
+      for (const gaf of proposition.givenAngleFacts) {
+        const left = angleMeasure(gaf.left.vertex, gaf.left.ray1, gaf.left.ray2)
+        const right = angleMeasure(gaf.right.vertex, gaf.right.ray1, gaf.right.ray2)
+        newFacts.push(...addAngleFact(
+          store, left, right,
+          { type: 'given' },
+          gaf.statement,
+          'Given',
+          -1,
+        ))
+      }
     }
     if (newFacts.length > 0) {
       proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
@@ -775,6 +860,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       tutorialSubStepRef.current = 0
       setTutorialSubStep(0)
       setHoveredProofDp(null)
+      setHoveredFactId(null)
       prevCompassTagRef.current = 'idle'
       prevStraightedgeTagRef.current = 'idle'
 
@@ -1505,24 +1591,27 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             return (
               <div data-element="given-facts" style={{ marginBottom: 16 }}>
                 {givenFacts.map(fact => {
-                  const highlighted = hoveredDpKeys != null && (
-                    hoveredDpKeys.has(distancePairKey(fact.left)) ||
-                    hoveredDpKeys.has(distancePairKey(fact.right))
-                  )
+                  const highlighted = isFactHighlighted(fact)
                   return (
-                    <div key={fact.id} style={{
-                      fontSize: 11,
-                      marginBottom: 3,
-                      paddingLeft: 8,
-                      borderLeft: highlighted
-                        ? '2px solid #10b981'
-                        : '2px solid rgba(78, 121, 167, 0.2)',
-                      background: highlighted
-                        ? 'rgba(16, 185, 129, 0.08)'
-                        : 'transparent',
-                      borderRadius: highlighted ? 2 : 0,
-                      transition: 'all 0.15s ease',
-                    }}>
+                    <div
+                      key={fact.id}
+                      onMouseEnter={() => setHoveredFactId(fact.id)}
+                      onMouseLeave={() => setHoveredFactId(null)}
+                      style={{
+                        fontSize: 11,
+                        marginBottom: 3,
+                        paddingLeft: 8,
+                        cursor: 'default',
+                        borderLeft: highlighted
+                          ? '2px solid #10b981'
+                          : '2px solid rgba(78, 121, 167, 0.2)',
+                        background: highlighted
+                          ? 'rgba(16, 185, 129, 0.08)'
+                          : 'transparent',
+                        borderRadius: highlighted ? 2 : 0,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
                       <div>
                         <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
                           {fact.statement}
@@ -1540,32 +1629,6 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                     </div>
                   )
                 })}
-                {proposition.givenEqualAngles && proposition.givenEqualAngles.length > 0 && (
-                  <div style={{
-                    fontSize: 11,
-                    marginBottom: 3,
-                    paddingLeft: 8,
-                    borderLeft: '2px solid rgba(78, 121, 167, 0.2)',
-                  }}>
-                    <div>
-                      <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
-                        {proposition.givenEqualAngles.map(([a1, a2]) => {
-                          const label = (id: string) => id.replace('pt-', '')
-                          return `∠${label(a1.ray1End)}${label(a1.vertex)}${label(a1.ray2End)} = ∠${label(a2.ray1End)}${label(a2.vertex)}${label(a2.ray2End)}`
-                        }).join(', ')}
-                      </span>
-                      <span style={{
-                        color: '#94a3b8',
-                        fontFamily: 'Georgia, serif',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        marginLeft: 6,
-                      }}>
-                        [Given]
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             )
           })()}
@@ -1712,16 +1775,18 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                             : null
                           const showText = ord === 1 && factCit
                           const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
-                          const highlighted = hoveredDpKeys != null && (
-                            hoveredDpKeys.has(distancePairKey(fact.left)) ||
-                            hoveredDpKeys.has(distancePairKey(fact.right))
-                          )
+                          const highlighted = isFactHighlighted(fact)
                           return (
-                            <div key={fact.id} style={{
-                              fontSize: 11,
-                              marginBottom: 3,
-                              paddingLeft: 8,
-                              borderLeft: highlighted
+                            <div
+                              key={fact.id}
+                              onMouseEnter={() => setHoveredFactId(fact.id)}
+                              onMouseLeave={() => setHoveredFactId(null)}
+                              style={{
+                                fontSize: 11,
+                                marginBottom: 3,
+                                paddingLeft: 8,
+                                cursor: 'default',
+                                borderLeft: highlighted
                                 ? '2px solid #10b981'
                                 : '2px solid rgba(78, 121, 167, 0.2)',
                               background: highlighted
@@ -1791,17 +1856,20 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 : null
               const showText = ord === 1 && factCit
               const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
-              const highlighted = hoveredDpKeys != null && (
-                hoveredDpKeys.has(distancePairKey(fact.left)) ||
-                hoveredDpKeys.has(distancePairKey(fact.right))
-              )
+              const highlighted = isFactHighlighted(fact)
               return (
-                <div key={fact.id} style={{
-                  fontSize: 11,
-                  marginBottom: 3,
-                  paddingLeft: 28,
-                  marginLeft: 0,
-                }}>
+                <div
+                  key={fact.id}
+                  onMouseEnter={() => setHoveredFactId(fact.id)}
+                  onMouseLeave={() => setHoveredFactId(null)}
+                  style={{
+                    fontSize: 11,
+                    marginBottom: 3,
+                    paddingLeft: 28,
+                    marginLeft: 0,
+                    cursor: 'default',
+                  }}
+                >
                   <div style={{
                     paddingLeft: 8,
                     borderLeft: highlighted
@@ -1871,7 +1939,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 ? 'rgba(16, 185, 129, 0.06)'
                 : 'rgba(239, 68, 68, 0.06)',
             }}
-            onMouseLeave={() => setHoveredProofDp(null)}
+            onMouseLeave={() => { setHoveredProofDp(null); setHoveredFactId(null) }}
           >
             {completionResult.status === 'proven' ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -1892,7 +1960,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                         onMouseEnter={() => setHoveredProofDp(seg.dp)}
                         style={{
                           cursor: 'default',
-                          borderBottom: hoveredDpKeys?.has(distancePairKey(seg.dp))
+                          borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
                             ? '2px solid #10b981'
                             : '2px solid transparent',
                           transition: 'border-color 0.15s ease',
@@ -1903,19 +1971,60 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                     </span>
                   ))}
                 </span>
-                {proposition.theoremConclusion && (
-                  <div style={{
-                    color: '#10b981',
-                    fontSize: 11,
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    marginTop: 2,
-                    width: '100%',
-                    whiteSpace: 'pre-line',
-                  }}>
-                    {proposition.theoremConclusion}
-                  </div>
-                )}
+                {(() => {
+                  // Render angle conclusion facts as interactive hoverable spans
+                  const conclusionAngleFacts = (factsByStep.get(proposition.steps.length) ?? [])
+                    .filter(isAngleFact)
+                  if (conclusionAngleFacts.length > 0) {
+                    return (
+                      <div style={{
+                        color: '#10b981',
+                        fontSize: 11,
+                        fontFamily: 'Georgia, serif',
+                        fontStyle: 'italic',
+                        marginTop: 2,
+                        width: '100%',
+                      }}>
+                        {conclusionAngleFacts.map((fact, idx) => (
+                          <span key={fact.id}>
+                            {idx > 0 && ', '}
+                            <span
+                              data-element="conclusion-angle"
+                              onMouseEnter={() => setHoveredFactId(fact.id)}
+                              onMouseLeave={() => setHoveredFactId(null)}
+                              style={{
+                                cursor: 'default',
+                                borderBottom: isFactHighlighted(fact)
+                                  ? '2px solid #10b981'
+                                  : '2px solid transparent',
+                                transition: 'border-color 0.15s ease',
+                              }}
+                            >
+                              {fact.statement}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    )
+                  }
+                  // Fall back to static theorem conclusion text
+                  if (proposition.theoremConclusion) {
+                    return (
+                      <div style={{
+                        color: '#10b981',
+                        fontSize: 11,
+                        fontFamily: 'Georgia, serif',
+                        fontStyle: 'italic',
+                        marginTop: 2,
+                        width: '100%',
+                        whiteSpace: 'pre-line',
+                      }}>
+                        {proposition.theoremConclusion}
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
                 <span style={{
                   color: '#10b981',
                   fontStyle: 'italic',

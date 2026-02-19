@@ -8,10 +8,10 @@ import type {
 } from '../types'
 import { needsExtendedSegments } from '../types'
 import { initializeGiven, addSegment, addCircle, addPoint, skipPointLabel } from './constructionState'
-import { createFactStore, addFact } from './factStore'
+import { createFactStore, addFact, addAngleFact } from './factStore'
 import type { FactStore } from './factStore'
-import type { EqualityFact } from './facts'
-import { distancePair } from './facts'
+import type { ProofFact } from './facts'
+import { distancePair, angleMeasure } from './facts'
 import { findNewIntersections } from './intersections'
 import { deriveDef15Facts } from './factDerivation'
 import { resolveSelector } from './selectors'
@@ -31,7 +31,7 @@ export type PostCompletionAction =
 export interface ReplayResult {
   state: ConstructionState
   factStore: FactStore
-  proofFacts: EqualityFact[]
+  proofFacts: ProofFact[]
   candidates: IntersectionCandidate[]
   ghostLayers: GhostLayer[]
   /** Number of proposition steps that were successfully replayed.
@@ -57,7 +57,7 @@ export function replayConstruction(
   let state = initializeGiven(givenElements)
   const factStore = createFactStore()
   let candidates: IntersectionCandidate[] = []
-  const proofFacts: EqualityFact[] = []
+  const proofFacts: ProofFact[] = []
   const ghostLayers: GhostLayer[] = []
   const extendSegments = needsExtendedSegments(propDef)
 
@@ -70,6 +70,22 @@ export function replayConstruction(
         factStore, left, right,
         { type: 'given' },
         gf.statement,
+        'Given',
+        -1,
+      )
+      proofFacts.push(...newFacts)
+    }
+  }
+
+  // Pre-load given angle facts
+  if (propDef.givenAngleFacts) {
+    for (const gaf of propDef.givenAngleFacts) {
+      const left = angleMeasure(gaf.left.vertex, gaf.left.ray1, gaf.left.ray2)
+      const right = angleMeasure(gaf.right.vertex, gaf.right.ray1, gaf.right.ray2)
+      const newFacts = addAngleFact(
+        factStore, left, right,
+        { type: 'given' },
+        gaf.statement,
         'Given',
         -1,
       )

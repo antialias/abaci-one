@@ -1,9 +1,9 @@
 import type { PropositionDef, ConstructionElement, ConstructionState, TutorialSubStep } from '../types'
 import { BYRNE } from '../types'
 import type { FactStore } from '../engine/factStore'
-import type { EqualityFact } from '../engine/facts'
-import { distancePair } from '../engine/facts'
-import { addFact } from '../engine/factStore'
+import type { ProofFact } from '../engine/facts'
+import { distancePair, angleMeasure } from '../engine/facts'
+import { addFact, addAngleFact } from '../engine/factStore'
 
 function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
@@ -24,17 +24,20 @@ function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
 }
 
 /**
- * Derive I.4 conclusion: BC = EF via C.N.4 (superposition)
+ * Derive I.4 conclusion: BC = EF via C.N.4 (superposition),
+ * plus ∠ABC = ∠DEF and ∠ACB = ∠DFE via C.N.4
  */
 function deriveProp4Conclusion(
   store: FactStore,
   _state: ConstructionState,
   atStep: number,
-): EqualityFact[] {
+): ProofFact[] {
+  const allNewFacts: ProofFact[] = []
+
+  // Distance: BC = EF
   const dpBC = distancePair('pt-B', 'pt-C')
   const dpEF = distancePair('pt-E', 'pt-F')
-
-  return addFact(
+  allNewFacts.push(...addFact(
     store,
     dpBC,
     dpEF,
@@ -42,7 +45,35 @@ function deriveProp4Conclusion(
     'BC = EF',
     'C.N.4: Since AB = DE, AC = DF, and ∠BAC = ∠EDF, triangles coincide by superposition',
     atStep,
-  )
+  ))
+
+  // Angle: ∠ABC = ∠DEF
+  const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
+  const angDEF = angleMeasure('pt-E', 'pt-D', 'pt-F')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angABC,
+    angDEF,
+    { type: 'cn4' },
+    '∠ABC = ∠DEF',
+    'C.N.4: Remaining angles of congruent triangles coincide',
+    atStep,
+  ))
+
+  // Angle: ∠ACB = ∠DFE
+  const angACB = angleMeasure('pt-C', 'pt-A', 'pt-B')
+  const angDFE = angleMeasure('pt-F', 'pt-D', 'pt-E')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angACB,
+    angDFE,
+    { type: 'cn4' },
+    '∠ACB = ∠DFE',
+    'C.N.4: Remaining angles of congruent triangles coincide',
+    atStep,
+  ))
+
+  return allNewFacts
 }
 
 /**
@@ -158,12 +189,11 @@ export const PROP_4: PropositionDef = {
       { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' },
     ],
   ],
-  givenEqualAngles: [
-    [
-      { vertex: 'pt-A', ray1End: 'pt-B', ray2End: 'pt-C' },
-      { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' },
-    ],
-  ],
+  givenAngleFacts: [{
+    left: { vertex: 'pt-A', ray1: 'pt-B', ray2: 'pt-C' },
+    right: { vertex: 'pt-D', ray1: 'pt-E', ray2: 'pt-F' },
+    statement: '∠BAC = ∠EDF',
+  }],
   theoremConclusion: '△ABC = △DEF\n∠ABC = ∠DEF, ∠ACB = ∠DFE',
   superpositionFlash: {
     pairs: [

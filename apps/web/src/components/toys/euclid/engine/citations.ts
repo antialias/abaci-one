@@ -92,6 +92,7 @@ export function citationDefFromFact(citation: Citation): CitationDef | null {
     case 'def15': return CITATIONS['Def.15']
     case 'cn1': return CITATIONS['C.N.1']
     case 'cn3': return CITATIONS['C.N.3']
+    case 'cn3-angle': return CITATIONS['C.N.3']
     case 'cn4': return CITATIONS['C.N.4']
     case 'given': return CITATIONS['Given']
     case 'prop': return CITATIONS[`I.${citation.propId}`] ?? null

@@ -1,5 +1,5 @@
 import type { FactStore } from './engine/factStore'
-import type { EqualityFact } from './engine/facts'
+import type { ProofFact } from './engine/facts'
 
 // ── Byrne-inspired palette ─────────────────────────────────────────
 export const BYRNE = {
@@ -189,9 +189,13 @@ export interface PropositionDef {
   }>
   /** Pairs of equal angles — matching tick marks on arcs (visual only) */
   equalAngles?: Array<[AngleSpec, AngleSpec]>
-  /** Subset of equalAngles that are hypotheses (displayed as "[Given]" in proof panel).
-   *  If omitted, no angle equalities are shown as given. */
-  givenEqualAngles?: Array<[AngleSpec, AngleSpec]>
+  /** Angle equality facts pre-loaded into the fact store before any construction.
+   *  These appear as real [Given] facts in the proof panel. */
+  givenAngleFacts?: Array<{
+    left: { vertex: string; ray1: string; ray2: string }
+    right: { vertex: string; ray1: string; ray2: string }
+    statement: string
+  }>
   /** Text conclusion for theorems (bypasses fact-store derivation display) */
   theoremConclusion?: string
   /** Superposition flash configuration for C.N.4 visual */
@@ -214,7 +218,7 @@ export interface PropositionDef {
   explorationNarration?: ExplorationNarration
   /** Derive conclusion facts when the proposition completes. Mutates the
    *  fact store in place and returns newly derived facts. */
-  deriveConclusion?: (store: FactStore, state: ConstructionState, atStep: number) => EqualityFact[]
+  deriveConclusion?: (store: FactStore, state: ConstructionState, atStep: number) => ProofFact[]
 }
 
 // ── Exploration narration (post-completion drag phase) ────────────

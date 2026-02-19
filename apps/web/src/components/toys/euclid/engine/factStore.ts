@@ -1,5 +1,5 @@
-import type { DistancePair, EqualityFact, Citation } from './facts'
-import { distancePairKey, distancePairsEqual } from './facts'
+import type { DistancePair, EqualityFact, AngleEqualityFact, Citation, AngleMeasure, ProofFact } from './facts'
+import { distancePairKey, distancePairsEqual, angleMeasureKey, angleMeasuresEqual, isAngleFact } from './facts'
 
 // ── Union-Find internals ──
 // The UF is a derived cache over a store's facts. It's encapsulated here
@@ -89,11 +89,12 @@ function ufGetSet(uf: UnionFind, key: string): string[] {
 
 export interface FactStore {
   facts: EqualityFact[]
+  angleFacts: AngleEqualityFact[]
   nextId: number
 }
 
 export function createFactStore(): FactStore {
-  const store: FactStore = { facts: [], nextId: 1 }
+  const store: FactStore = { facts: [], angleFacts: [], nextId: 1 }
   ufMap.set(store, { nodes: new Map() })
   return store
 }
@@ -137,6 +138,59 @@ export function addFact(
   return [fact]
 }
 
+/**
+ * Add an angle equality fact via union-find merge.
+ * Mutates the store in place and returns the newly created facts.
+ */
+export function addAngleFact(
+  store: FactStore,
+  left: AngleMeasure,
+  right: AngleMeasure,
+  citation: Citation,
+  statement: string,
+  justification: string,
+  atStep: number,
+): AngleEqualityFact[] {
+  const uf = getUf(store)
+  const keyL = angleMeasureKey(left)
+  const keyR = angleMeasureKey(right)
+
+  // Don't add duplicate facts
+  if (ufConnected(uf, keyL, keyR)) {
+    return []
+  }
+
+  const fact: AngleEqualityFact = {
+    id: store.nextId,
+    left,
+    right,
+    citation,
+    statement,
+    justification,
+    atStep,
+  }
+
+  store.angleFacts.push(fact)
+  store.nextId++
+  ufUnion(uf, keyL, keyR, fact.id)
+
+  return [fact]
+}
+
+/** Are these two angles known-equal? */
+export function queryAngleEquality(
+  store: FactStore,
+  a: AngleMeasure,
+  b: AngleMeasure,
+): boolean {
+  if (angleMeasuresEqual(a, b)) return true
+  const uf = getUf(store)
+  const keyA = angleMeasureKey(a)
+  const keyB = angleMeasureKey(b)
+  if (!uf.nodes.has(keyA) || !uf.nodes.has(keyB)) return false
+  return ufConnected(uf, keyA, keyB)
+}
+
 /** Are these two distances known-equal? */
 export function queryEquality(
   store: FactStore,
@@ -153,15 +207,20 @@ export function queryEquality(
 }
 
 /**
- * Create a fresh FactStore and replay the given facts via addFact().
+ * Create a fresh FactStore and replay the given facts via addFact()/addAngleFact().
  * This rebuilds the union-find from scratch — necessary because the
  * WeakMap-encapsulated UF can't be cloned.
  */
-export function rebuildFactStore(facts: EqualityFact[]): FactStore {
+export function rebuildFactStore(facts: ProofFact[]): FactStore {
   const store = createFactStore()
   for (const fact of facts) {
-    addFact(store, fact.left, fact.right, fact.citation,
-            fact.statement, fact.justification, fact.atStep)
+    if (isAngleFact(fact)) {
+      addAngleFact(store, fact.left, fact.right, fact.citation,
+                   fact.statement, fact.justification, fact.atStep)
+    } else {
+      addFact(store, fact.left, fact.right, fact.citation,
+              fact.statement, fact.justification, fact.atStep)
+    }
   }
   return store
 }
@@ -177,4 +236,20 @@ export function getEqualDistances(store: FactStore, dp: DistancePair): DistanceP
     const [a, b] = k.split('|')
     return { a, b }
   })
+}
+
+/** All angles known-equal to this one */
+export function getEqualAngles(store: FactStore, am: AngleMeasure): AngleMeasure[] {
+  const uf = getUf(store)
+  const key = angleMeasureKey(am)
+  if (!uf.nodes.has(key)) return [am]
+
+  const setKeys = ufGetSet(uf, key)
+  // Only return keys that are angle keys (∠ prefix)
+  return setKeys
+    .filter(k => k.startsWith('∠'))
+    .map(k => {
+      const [vertex, ray1, ray2] = k.slice(1).split('|')
+      return { vertex, ray1, ray2 }
+    })
 }

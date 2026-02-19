@@ -1,9 +1,9 @@
 import type { PropositionDef, ConstructionElement, ConstructionState, TutorialSubStep } from '../types'
 import { BYRNE } from '../types'
 import type { FactStore } from '../engine/factStore'
-import type { EqualityFact } from '../engine/facts'
-import { distancePair } from '../engine/facts'
-import { addFact } from '../engine/factStore'
+import type { ProofFact } from '../engine/facts'
+import { distancePair, angleMeasure } from '../engine/facts'
+import { addFact, addAngleFact } from '../engine/factStore'
 
 function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tap = isTouch ? 'Tap' : 'Click'
@@ -114,21 +114,28 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
 }
 
 /**
- * Derive I.5 conclusion: CG = BF via C.N.3, FC = GB via I.4
+ * Derive I.5 conclusion: full 7-fact derivation chain
+ *   1. CG = BF           [C.N.3 distance subtraction]
+ *   2. FC = GB           [I.4: △AFC ≅ △AGB]
+ *   3. ∠AFC = ∠AGB       [I.4: △AFC ≅ △AGB — remaining angles]
+ *   4. ∠ACF = ∠ABG       [I.4: △AFC ≅ △AGB — remaining angles]
+ *   5. ∠FBC = ∠GCB       [I.4: △BFC ≅ △CGB — under-base angles]
+ *   6. ∠BCF = ∠CBG       [I.4: △BFC ≅ △CGB — remaining angles]
+ *   7. ∠ABC = ∠ACB       [C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF]
  */
 function deriveProp5Conclusion(
   store: FactStore,
   _state: ConstructionState,
   atStep: number,
-): EqualityFact[] {
-  const allNewFacts: EqualityFact[] = []
+): ProofFact[] {
+  const allNewFacts: ProofFact[] = []
 
   const dpCG = distancePair('pt-C', 'pt-G')
   const dpBF = distancePair('pt-B', 'pt-F')
   const dpAG = distancePair('pt-A', 'pt-G')
   const dpAC = distancePair('pt-A', 'pt-C')
 
-  // Step 1: C.N.3 — CG = BF
+  // 1. C.N.3 — CG = BF
   allNewFacts.push(...addFact(
     store,
     dpCG,
@@ -139,7 +146,7 @@ function deriveProp5Conclusion(
     atStep,
   ))
 
-  // Step 2: I.4 (SAS) — FC = GB
+  // 2. I.4 (SAS) — FC = GB
   const dpFC = distancePair('pt-F', 'pt-C')
   const dpGB = distancePair('pt-G', 'pt-B')
 
@@ -150,6 +157,71 @@ function deriveProp5Conclusion(
     { type: 'prop', propId: 4 },
     'FC = GB',
     'I.4: △AFC ≅ △AGB (AF = AG, AC = AB, ∠FAC = ∠GAB)',
+    atStep,
+  ))
+
+  // 3. ∠AFC = ∠AGB (I.4: remaining angles of △AFC ≅ △AGB)
+  const angAFC = angleMeasure('pt-F', 'pt-A', 'pt-C')
+  const angAGB = angleMeasure('pt-G', 'pt-A', 'pt-B')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angAFC,
+    angAGB,
+    { type: 'prop', propId: 4 },
+    '∠AFC = ∠AGB',
+    'I.4: △AFC ≅ △AGB — remaining angles',
+    atStep,
+  ))
+
+  // 4. ∠ACF = ∠ABG (I.4: remaining angles of △AFC ≅ △AGB)
+  const angACF = angleMeasure('pt-C', 'pt-A', 'pt-F')
+  const angABG = angleMeasure('pt-B', 'pt-A', 'pt-G')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angACF,
+    angABG,
+    { type: 'prop', propId: 4 },
+    '∠ACF = ∠ABG',
+    'I.4: △AFC ≅ △AGB — remaining angles',
+    atStep,
+  ))
+
+  // 5. ∠FBC = ∠GCB (I.4: △BFC ≅ △CGB — under-base angles)
+  const angFBC = angleMeasure('pt-B', 'pt-F', 'pt-C')
+  const angGCB = angleMeasure('pt-C', 'pt-G', 'pt-B')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angFBC,
+    angGCB,
+    { type: 'prop', propId: 4 },
+    '∠FBC = ∠GCB',
+    'I.4: △BFC ≅ △CGB — under-base angles',
+    atStep,
+  ))
+
+  // 6. ∠BCF = ∠CBG (I.4: △BFC ≅ △CGB — remaining angles)
+  const angBCF = angleMeasure('pt-C', 'pt-B', 'pt-F')
+  const angCBG = angleMeasure('pt-B', 'pt-C', 'pt-G')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angBCF,
+    angCBG,
+    { type: 'prop', propId: 4 },
+    '∠BCF = ∠CBG',
+    'I.4: △BFC ≅ △CGB — remaining angles',
+    atStep,
+  ))
+
+  // 7. ∠ABC = ∠ACB (C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF)
+  const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
+  const angACB = angleMeasure('pt-C', 'pt-A', 'pt-B')
+  allNewFacts.push(...addAngleFact(
+    store,
+    angABC,
+    angACB,
+    { type: 'cn3-angle', whole: angABG, part: angCBG },
+    '∠ABC = ∠ACB',
+    'C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF',
     atStep,
   ))
 

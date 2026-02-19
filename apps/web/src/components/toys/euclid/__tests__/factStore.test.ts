@@ -2,11 +2,14 @@ import { describe, it, expect } from 'vitest'
 import {
   createFactStore,
   addFact,
+  addAngleFact,
   queryEquality,
+  queryAngleEquality,
   getEqualDistances,
+  getEqualAngles,
   rebuildFactStore,
 } from '../engine/factStore'
-import { distancePair, distancePairKey } from '../engine/facts'
+import { distancePair, distancePairKey, angleMeasure, angleMeasureKey } from '../engine/facts'
 import type { FactStore } from '../engine/factStore'
 
 describe('factStore', () => {
@@ -425,6 +428,184 @@ describe('factStore', () => {
       )).toBe(true)
 
       expect(store.facts).toHaveLength(3)
+    })
+  })
+
+  describe('addAngleFact', () => {
+    it('adds an angle fact and returns it', () => {
+      const store = createFactStore()
+      const left = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const right = angleMeasure('pt-E', 'pt-D', 'pt-F')
+      const newFacts = addAngleFact(store, left, right,
+        { type: 'cn4' }, '∠ABC = ∠DEF', 'test justification', 0)
+
+      expect(newFacts).toHaveLength(1)
+      expect(newFacts[0].statement).toBe('∠ABC = ∠DEF')
+      expect(newFacts[0].id).toBe(1)
+      expect(newFacts[0].atStep).toBe(0)
+      expect(store.angleFacts).toHaveLength(1)
+    })
+
+    it('rejects duplicate angle facts', () => {
+      const store = createFactStore()
+      const left = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const right = angleMeasure('pt-E', 'pt-D', 'pt-F')
+
+      const first = addAngleFact(store, left, right,
+        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
+      expect(first).toHaveLength(1)
+
+      const second = addAngleFact(store, left, right,
+        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
+      expect(second).toHaveLength(0)
+      expect(store.angleFacts).toHaveLength(1)
+    })
+
+    it('stores angle facts separately from distance facts', () => {
+      const store = createFactStore()
+      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addAngleFact(store, angleMeasure('pt-B', 'pt-A', 'pt-C'), angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
+
+      expect(store.facts).toHaveLength(1)
+      expect(store.angleFacts).toHaveLength(1)
+    })
+
+    it('shares ID counter with distance facts', () => {
+      const store = createFactStore()
+      const f1 = addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      const f2 = addAngleFact(store, angleMeasure('pt-B', 'pt-A', 'pt-C'), angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 1)
+
+      expect(f1[0].id).toBe(1)
+      expect(f2[0].id).toBe(2)
+      expect(store.nextId).toBe(3)
+    })
+  })
+
+  describe('queryAngleEquality', () => {
+    it('returns true for identical angle measures', () => {
+      const store = createFactStore()
+      const am = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      expect(queryAngleEquality(store, am, am)).toBe(true)
+    })
+
+    it('returns true for directly established angle equality', () => {
+      const store = createFactStore()
+      const left = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const right = angleMeasure('pt-E', 'pt-D', 'pt-F')
+      addAngleFact(store, left, right, { type: 'cn4' }, 'test', 'test', 0)
+
+      expect(queryAngleEquality(store, left, right)).toBe(true)
+      expect(queryAngleEquality(store, right, left)).toBe(true)
+    })
+
+    it('returns false for unrelated angles', () => {
+      const store = createFactStore()
+      const am1 = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const am2 = angleMeasure('pt-E', 'pt-D', 'pt-F')
+      const am3 = angleMeasure('pt-H', 'pt-G', 'pt-I')
+
+      addAngleFact(store, am1, am2, { type: 'cn4' }, 'test', 'test', 0)
+      expect(queryAngleEquality(store, am1, am3)).toBe(false)
+    })
+
+    it('angle and distance key spaces are separate', () => {
+      const store = createFactStore()
+      // Add a distance fact for pt-A|pt-B
+      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+
+      // Angle with same vertex/ray point IDs should not be connected
+      const am1 = angleMeasure('pt-A', 'pt-B', 'pt-C')
+      const am2 = angleMeasure('pt-D', 'pt-E', 'pt-F')
+      expect(queryAngleEquality(store, am1, am2)).toBe(false)
+    })
+  })
+
+  describe('getEqualAngles', () => {
+    it('returns just the input for an unknown angle', () => {
+      const store = createFactStore()
+      const am = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const result = getEqualAngles(store, am)
+      expect(result).toHaveLength(1)
+      expect(result[0]).toEqual(am)
+    })
+
+    it('returns the full equivalence class', () => {
+      const store = createFactStore()
+      const am1 = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const am2 = angleMeasure('pt-E', 'pt-D', 'pt-F')
+      const am3 = angleMeasure('pt-H', 'pt-G', 'pt-I')
+
+      addAngleFact(store, am1, am2, { type: 'cn4' }, 'test', 'test', 0)
+      addAngleFact(store, am2, am3, { type: 'cn4' }, 'test', 'test', 1)
+
+      const eqClass = getEqualAngles(store, am1)
+      const keys = new Set(eqClass.map(angleMeasureKey))
+
+      expect(keys.size).toBe(3)
+      expect(keys.has(angleMeasureKey(am1))).toBe(true)
+      expect(keys.has(angleMeasureKey(am2))).toBe(true)
+      expect(keys.has(angleMeasureKey(am3))).toBe(true)
+    })
+
+    it('does not include distance keys in angle equivalence class', () => {
+      const store = createFactStore()
+      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      const am = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      addAngleFact(store, am, angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' }, 'test', 'test', 1)
+
+      const result = getEqualAngles(store, am)
+      // Should only have angle entries, not distance entries
+      expect(result).toHaveLength(2)
+      for (const r of result) {
+        expect('vertex' in r).toBe(true)
+      }
+    })
+  })
+
+  describe('rebuildFactStore with mixed facts', () => {
+    it('rebuilds both distance and angle facts', () => {
+      const original = createFactStore()
+      const dpAB = distancePair('pt-A', 'pt-B')
+      const dpCD = distancePair('pt-C', 'pt-D')
+      const am1 = angleMeasure('pt-B', 'pt-A', 'pt-C')
+      const am2 = angleMeasure('pt-E', 'pt-D', 'pt-F')
+
+      addFact(original, dpAB, dpCD,
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addAngleFact(original, am1, am2,
+        { type: 'cn4' }, '∠BAC = ∠EDF', 'test', 1)
+
+      const allFacts = [...original.facts, ...original.angleFacts]
+      const rebuilt = rebuildFactStore(allFacts)
+
+      expect(queryEquality(rebuilt, dpAB, dpCD)).toBe(true)
+      expect(queryAngleEquality(rebuilt, am1, am2)).toBe(true)
+      expect(rebuilt.facts).toHaveLength(1)
+      expect(rebuilt.angleFacts).toHaveLength(1)
+    })
+
+    it('rebuilt store preserves ID ordering with mixed facts', () => {
+      const original = createFactStore()
+      addFact(original, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addAngleFact(original, angleMeasure('pt-B', 'pt-A', 'pt-C'), angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' }, '∠BAC = ∠EDF', 'test', 1)
+      addFact(original, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 2)
+
+      const allFacts = [...original.facts, ...original.angleFacts]
+      const rebuilt = rebuildFactStore(allFacts)
+
+      expect(rebuilt.facts).toHaveLength(2)
+      expect(rebuilt.angleFacts).toHaveLength(1)
+      expect(rebuilt.nextId).toBe(4)
     })
   })
 })
