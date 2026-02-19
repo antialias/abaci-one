@@ -1235,6 +1235,18 @@ function GetStartedSection() {
             <span>{t('getStarted.cta')}</span>
             <span>→</span>
           </Link>
+          <Link
+            href="/for-teachers"
+            data-action="for-teachers"
+            className={css({
+              color: 'gray.400',
+              fontSize: 'sm',
+              transition: 'color 0.2s',
+              _hover: { color: 'amber.400' },
+            })}
+          >
+            {t('getStarted.forTeachers')}
+          </Link>
         </div>
       </div>
     </section>

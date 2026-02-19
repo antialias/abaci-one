@@ -707,6 +707,19 @@ function CTASection() {
             {t('secondaryButton')}
           </Link>
         </div>
+        <Link
+          href="/for-teachers"
+          data-action="for-teachers"
+          className={css({
+            color: 'gray.500',
+            _dark: { color: 'gray.400' },
+            fontSize: 'sm',
+            transition: 'color 0.2s',
+            _hover: { color: '#d97706' },
+          })}
+        >
+          {t('forTeachers')}
+        </Link>
       </div>
     </Section>
   )

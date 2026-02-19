@@ -131,7 +131,8 @@
     "getStarted": {
       "title": "Try it now — no account needed",
       "subtitle": "Create a student profile and start your first practice session. Everything works without signing up.",
-      "cta": "Get started"
+      "cta": "Get started",
+      "forTeachers": "Soroban teacher? See what we built for you →"
     }
   }
 }
