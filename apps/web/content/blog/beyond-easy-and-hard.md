@@ -6,6 +6,7 @@ publishedAt: "2025-11-07"
 updatedAt: "2025-11-07"
 tags: ["education", "difficulty", "pedagogy", "soroban", "worksheets"]
 featured: true
+heroPrompt: "A top-down view of a teacher's desk with two math worksheets side by side — one dense with scaffolding (color-coded columns, carry boxes, ten-frames) and one clean and minimal. Between them, a hand-drawn coordinate grid on graph paper with Challenge and Support axes, a diagonal band shaded in pencil. Warm overhead lamp light, scattered colored pencils, a coffee mug. Flat-lay photography, educational aesthetic."
 ---
 
 # Beyond Easy and Hard: A 2D Approach to Worksheet Difficulty

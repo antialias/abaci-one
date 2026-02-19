@@ -14,6 +14,7 @@ tags:
     "worksheets",
   ]
 featured: true
+heroPrompt: "A close-up of a child's hands arranging colorful round counters on a large printed ten-frame grid — seven blue counters fill the top row and part of the bottom, with three empty spaces remaining. A second ten-frame nearby is partially filled. Bright, even classroom lighting on a light wood table. The counters are vivid primary colors. Overhead perspective, clean educational photography."
 ---
 
 # Making the Invisible Visible: Ten-Frames for Teaching Regrouping

@@ -6,6 +6,7 @@ publishedAt: "2025-11-07"
 updatedAt: "2025-11-07"
 tags: ["education", "history", "soroban", "pedagogy", "mental-math"]
 featured: true
+heroPrompt: "A split composition: on the left, a vintage 1970s Texas Instruments calculator sits on an American classroom desk with a flag in the background; on the right, a traditional Japanese soroban (wooden abacus) rests on a tatami-edged surface with cherry blossoms visible through a window. The two halves are separated by a subtle vertical divide. Warm, nostalgic lighting on both sides. Cinematic documentary photography."
 ---
 
 # The Calculator Won: Why the Abacus Never Reached American Schools

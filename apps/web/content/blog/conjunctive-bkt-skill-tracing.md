@@ -14,6 +14,7 @@ tags:
     "adaptive-learning",
   ]
 featured: true
+heroPrompt: "A moody overhead shot of a soroban abacus with beads mid-calculation, surrounded by scattered handwritten mathematical notation — Bayesian formulas, probability trees, and small skill-hierarchy diagrams on graph paper. A soft blue glow from a laptop screen illuminates the edges. Dark academic aesthetic, shallow depth of field on the abacus beads. Technical research photography."
 ---
 
 # Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work

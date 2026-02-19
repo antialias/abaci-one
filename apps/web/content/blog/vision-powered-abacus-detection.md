@@ -6,6 +6,7 @@ publishedAt: "2026-01-07"
 updatedAt: "2026-01-07"
 tags: ["vision", "machine-learning", "physical-abacus", "practice", "feedback"]
 featured: true
+heroPrompt: "A child practicing on a physical soroban abacus at a desk, with a tablet propped up nearby showing a live camera feed of the same abacus overlaid with green detection boxes around each column and digit labels floating above the beads. Warm home-study lighting, the child's hands in motion. The screen glows with a clean UI showing checkmarks next to completed steps. Modern educational technology photography."
 ---
 
 # See What They're Doing: Vision-Powered Abacus Detection

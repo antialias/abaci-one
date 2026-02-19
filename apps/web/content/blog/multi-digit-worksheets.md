@@ -6,6 +6,7 @@ publishedAt: "2025-11-08"
 updatedAt: "2025-11-08"
 tags: ["worksheets", "multi-digit", "place-value", "scaffolding"]
 featured: true
+heroPrompt: "A child's hands working through a multi-digit addition problem on a printed worksheet, columns color-coded in soft pastels — blue ones, green tens, yellow hundreds, pink thousands. Pencil in hand, eraser shavings on the desk. The worksheet shows neatly printed problems with carry boxes. Bright classroom light from a window, shallow depth of field on the hands. Warm, inviting educational photography."
 ---
 
 # Beyond Two Digits: Multi-Digit Arithmetic Worksheets

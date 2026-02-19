@@ -46,6 +46,9 @@ export default function BlogImagesAdmin() {
   const [taskId, setTaskId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cropEditorSlug, setCropEditorSlug] = useState<string | null>(null)
+  const [editingPromptSlug, setEditingPromptSlug] = useState<string | null>(null)
+  const [promptDraft, setPromptDraft] = useState('')
+  const [savingPromptSlug, setSavingPromptSlug] = useState<string | null>(null)
 
   const { state: taskState } = useBackgroundTask<BlogImageGenerateOutput>(taskId)
 
@@ -212,6 +215,36 @@ export default function BlogImagesAdmin() {
         ),
       }
     })
+  }
+
+  function startEditingPrompt(post: BlogPostStatus) {
+    setEditingPromptSlug(post.slug)
+    setPromptDraft(post.heroPrompt ?? '')
+  }
+
+  async function handleSavePrompt(slug: string) {
+    const trimmed = promptDraft.trim()
+    setSavingPromptSlug(slug)
+    try {
+      const res = await fetch(`/api/admin/blog/${slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroPrompt: trimmed }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to save prompt')
+        return
+      }
+      setEditingPromptSlug(null)
+      setPromptDraft('')
+      // Re-fetch to move post between sections
+      await fetchStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSavingPromptSlug(null)
+    }
   }
 
   // Build per-slug error and fallback maps from task events
@@ -672,17 +705,94 @@ export default function BlogImagesAdmin() {
                             </span>
                           )}
                         </div>
-                        <div
-                          className={css({
-                            fontSize: '12px',
-                            color: '#8b949e',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          })}
-                        >
-                          {post.heroPrompt}
-                        </div>
+                        {editingPromptSlug === post.slug ? (
+                          <div data-element="prompt-editor-inline">
+                            <textarea
+                              data-element="prompt-textarea"
+                              value={promptDraft}
+                              onChange={(e) => setPromptDraft(e.target.value)}
+                              rows={3}
+                              className={css({
+                                width: '100%',
+                                backgroundColor: '#0d1117',
+                                border: '1px solid #30363d',
+                                borderRadius: '6px',
+                                padding: '8px 12px',
+                                color: '#c9d1d9',
+                                fontSize: '12px',
+                                resize: 'vertical',
+                                fontFamily: 'inherit',
+                                '&:focus': {
+                                  outline: 'none',
+                                  borderColor: '#58a6ff',
+                                },
+                              })}
+                            />
+                            <div
+                              className={css({
+                                display: 'flex',
+                                gap: '8px',
+                                marginTop: '4px',
+                              })}
+                            >
+                              <button
+                                data-action="cancel-prompt"
+                                onClick={() => {
+                                  setEditingPromptSlug(null)
+                                  setPromptDraft('')
+                                }}
+                                className={css({
+                                  backgroundColor: '#21262d',
+                                  color: '#c9d1d9',
+                                  border: '1px solid #30363d',
+                                  borderRadius: '6px',
+                                  padding: '2px 10px',
+                                  fontSize: '11px',
+                                  cursor: 'pointer',
+                                  '&:hover': { backgroundColor: '#30363d' },
+                                })}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                data-action="save-prompt"
+                                onClick={() => handleSavePrompt(post.slug)}
+                                disabled={!promptDraft.trim() || savingPromptSlug === post.slug}
+                                className={css({
+                                  backgroundColor: '#238636',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '2px 10px',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  '&:hover': { backgroundColor: '#2ea043' },
+                                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                                })}
+                              >
+                                {savingPromptSlug === post.slug ? 'Saving...' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            data-action="edit-prompt"
+                            onClick={() => startEditingPrompt(post)}
+                            title="Click to edit prompt"
+                            className={css({
+                              fontSize: '12px',
+                              color: '#8b949e',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                              '&:hover': { color: '#c9d1d9' },
+                            })}
+                          >
+                            {post.heroPrompt}
+                          </div>
+                        )}
                         {post.imageExists && post.sizeBytes && (
                           <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px' })}>
                             {formatBytes(post.sizeBytes)}
@@ -819,17 +929,178 @@ export default function BlogImagesAdmin() {
             >
               Posts without Hero Prompt ({postsWithoutPrompt.length})
             </h2>
-            <div
-              className={css({
-                fontSize: '13px',
-                color: '#484f58',
-                padding: '12px 16px',
-                backgroundColor: '#161b22',
-                borderRadius: '8px',
-                border: '1px solid #21262d',
-              })}
-            >
-              {postsWithoutPrompt.map((p) => p.title).join(', ')}
+            <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
+              {postsWithoutPrompt.map((post) => (
+                <div
+                  key={post.slug}
+                  data-element="post-card-no-prompt"
+                  className={css({
+                    padding: '16px',
+                    backgroundColor: '#161b22',
+                    borderRadius: '8px',
+                    border: '1px solid #21262d',
+                  })}
+                >
+                  <div
+                    className={css({
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: editingPromptSlug === post.slug ? '12px' : '0',
+                    })}
+                  >
+                    <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
+                      {/* Featured checkbox */}
+                      <label
+                        data-element="featured-toggle"
+                        className={css({ cursor: 'pointer' })}
+                        title={post.featured ? 'Featured — click to unfeature' : 'Not featured — click to feature'}
+                      >
+                        <input
+                          data-action="toggle-featured"
+                          type="checkbox"
+                          checked={post.featured}
+                          onChange={() => handleToggleFeatured(post)}
+                          className={css({
+                            width: '16px',
+                            height: '16px',
+                            cursor: 'pointer',
+                            accentColor: '#58a6ff',
+                          })}
+                        />
+                      </label>
+                      <div>
+                        <div
+                          className={css({
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#f0f6fc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          })}
+                        >
+                          {post.title}
+                          {post.featured && (
+                            <span
+                              className={css({
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                color: '#58a6ff',
+                                backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                                border: '1px solid rgba(88, 166, 255, 0.3)',
+                                borderRadius: '4px',
+                                padding: '1px 6px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              })}
+                            >
+                              Featured
+                            </span>
+                          )}
+                        </div>
+                        <div className={css({ fontSize: '11px', color: '#484f58' })}>
+                          {post.slug}
+                        </div>
+                      </div>
+                    </div>
+                    {editingPromptSlug !== post.slug && (
+                      <button
+                        data-action="add-prompt"
+                        onClick={() => startEditingPrompt(post)}
+                        className={css({
+                          backgroundColor: '#21262d',
+                          color: '#c9d1d9',
+                          border: '1px solid #30363d',
+                          borderRadius: '6px',
+                          padding: '4px 12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: '#30363d' },
+                        })}
+                      >
+                        Add Prompt
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Prompt editor */}
+                  {editingPromptSlug === post.slug && (
+                    <div data-element="prompt-editor">
+                      <textarea
+                        data-element="prompt-textarea"
+                        value={promptDraft}
+                        onChange={(e) => setPromptDraft(e.target.value)}
+                        placeholder="Describe the hero image to generate..."
+                        rows={3}
+                        className={css({
+                          width: '100%',
+                          backgroundColor: '#0d1117',
+                          border: '1px solid #30363d',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          color: '#c9d1d9',
+                          fontSize: '13px',
+                          resize: 'vertical',
+                          fontFamily: 'inherit',
+                          '&:focus': {
+                            outline: 'none',
+                            borderColor: '#58a6ff',
+                          },
+                        })}
+                      />
+                      <div
+                        className={css({
+                          display: 'flex',
+                          gap: '8px',
+                          marginTop: '8px',
+                          justifyContent: 'flex-end',
+                        })}
+                      >
+                        <button
+                          data-action="cancel-prompt"
+                          onClick={() => {
+                            setEditingPromptSlug(null)
+                            setPromptDraft('')
+                          }}
+                          className={css({
+                            backgroundColor: '#21262d',
+                            color: '#c9d1d9',
+                            border: '1px solid #30363d',
+                            borderRadius: '6px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            '&:hover': { backgroundColor: '#30363d' },
+                          })}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          data-action="save-prompt"
+                          onClick={() => handleSavePrompt(post.slug)}
+                          disabled={!promptDraft.trim() || savingPromptSlug === post.slug}
+                          className={css({
+                            backgroundColor: '#238636',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            '&:hover': { backgroundColor: '#2ea043' },
+                            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                          })}
+                        >
+                          {savingPromptSlug === post.slug ? 'Saving...' : 'Save Prompt'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
