@@ -18,7 +18,6 @@ import { resolveSelector } from './selectors'
 import { isCandidateBeyondPoint } from './intersections'
 import { MACRO_REGISTRY } from './macros'
 import { computeMacroGhost } from './macroGhost'
-import { PROP_CONCLUSIONS } from '../propositions/prop2Facts'
 
 /**
  * A user action recorded after proposition completion.
@@ -174,7 +173,7 @@ export function replayConstruction(
   }
 
   // Run conclusion function
-  const conclusionFn = PROP_CONCLUSIONS[propDef.id]
+  const conclusionFn = propDef.deriveConclusion
   if (conclusionFn) {
     const conclusionFacts = conclusionFn(factStore, state, steps.length)
     proofFacts.push(...conclusionFacts)

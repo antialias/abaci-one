@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManager } from '@/hooks/useAudioManager'
-import type { ExplorationNarration } from '../propositions/explorationNarration'
+import type { ExplorationNarration } from '../types'
 
 // Stable tone constants
 const INSTRUCTION_TONE =

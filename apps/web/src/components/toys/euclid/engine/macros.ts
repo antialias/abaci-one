@@ -252,7 +252,116 @@ const MACRO_PROP_2: MacroDef = {
   },
 }
 
+/**
+ * Macro for Proposition I.3: Cut off from the greater a part equal to the less.
+ *
+ * Inputs: [cutPointId, targetPointId, segFromId, segToId]
+ *   - cutPointId: start of the greater segment (where to cut)
+ *   - targetPointId: end of the greater segment (direction to cut along)
+ *   - segFromId, segToId: endpoints of the lesser segment (length to copy)
+ *
+ * Output: 1 point + 1 fact
+ *   - Point on ray cutPoint→targetPoint at distance |segFrom-segTo| from cutPoint
+ *   - Fact: dist(cutPoint, result) = dist(segFrom, segTo) with citation { type: 'prop', propId: 3 }
+ *
+ * When cutPoint coincides with segFrom, the I.2 transfer is skipped (optimization).
+ * Ghost geometry is computed separately by macroGhost.
+ */
+const MACRO_PROP_3: MacroDef = {
+  propId: 3,
+  label: 'Cut off equal (I.3)',
+  inputCount: 4,
+  inputLabels: ['Start of greater', 'End of greater', 'Start of less', 'End of less'],
+  inputToGivenIds: ['pt-A', 'pt-B', 'pt-C', 'pt-D'],
+  execute(
+    state: ConstructionState,
+    inputPointIds: string[],
+    candidates: IntersectionCandidate[],
+    factStore: FactStore,
+    atStep: number,
+    extendSegments: boolean = false,
+    outputLabels?: Record<string, string>,
+  ): MacroResult {
+    const [cutId, targetId, segFromId, segToId] = inputPointIds
+    const addedElements: ConstructionElement[] = []
+    let currentState = state
+    let currentCandidates = [...candidates]
+    const allNewFacts: EqualityFact[] = []
+
+    const cutPoint = getPoint(currentState, cutId)
+    const targetPoint = getPoint(currentState, targetId)
+    const segFrom = getPoint(currentState, segFromId)
+    const segTo = getPoint(currentState, segToId)
+    if (!cutPoint || !targetPoint || !segFrom || !segTo) {
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
+    }
+
+    // Optimization: skip I.2 transfer if cutPoint coincides with segFrom
+    const cdx = cutPoint.x - segFrom.x
+    const cdy = cutPoint.y - segFrom.y
+    const coincident = Math.sqrt(cdx * cdx + cdy * cdy) < 1e-9
+
+    if (!coincident) {
+      // Call MACRO_PROP_2 to transfer the distance to cutPoint
+      const i2Result = MACRO_PROP_2.execute(
+        currentState, [cutId, segFromId, segToId],
+        currentCandidates, factStore, atStep, extendSegments,
+      )
+      currentState = i2Result.state
+      currentCandidates = i2Result.candidates
+      addedElements.push(...i2Result.addedElements)
+      allNewFacts.push(...i2Result.newFacts)
+    }
+
+    // Compute result position: point on ray cutPoint→targetPoint at distance |segFrom-segTo|
+    const radius = Math.sqrt((segFrom.x - segTo.x) ** 2 + (segFrom.y - segTo.y) ** 2)
+    let dirX = targetPoint.x - cutPoint.x
+    let dirY = targetPoint.y - cutPoint.y
+    const dirLen = Math.sqrt(dirX * dirX + dirY * dirY)
+    if (dirLen < 1e-9) {
+      dirX = 0
+      dirY = 1
+    } else {
+      dirX /= dirLen
+      dirY /= dirLen
+    }
+
+    const resultX = cutPoint.x + radius * dirX
+    const resultY = cutPoint.y + radius * dirY
+
+    // Add result point
+    const ptResult = addPoint(currentState, resultX, resultY, 'intersection', outputLabels?.result)
+    currentState = ptResult.state
+    addedElements.push(ptResult.point)
+
+    // Add fact: dist(cutPoint, result) = dist(segFrom, segTo)
+    const resultId = ptResult.point.id
+    const resultLabel = ptResult.point.label
+    const cutLabel = cutPoint.label
+    const segFromLabel = segFrom.label
+    const segToLabel = segTo.label
+
+    const left = distancePair(cutId, resultId)
+    const right = distancePair(segFromId, segToId)
+    allNewFacts.push(...addFact(
+      factStore, left, right,
+      { type: 'prop', propId: 3 },
+      `${cutLabel}${resultLabel} = ${segFromLabel}${segToLabel}`,
+      `I.3: cut off from ${cutLabel}${targetPoint.label} a part equal to ${segFromLabel}${segToLabel}`,
+      atStep,
+    ))
+
+    return {
+      state: currentState,
+      candidates: currentCandidates,
+      addedElements,
+      newFacts: allNewFacts,
+    }
+  },
+}
+
 export const MACRO_REGISTRY: Record<number, MacroDef> = {
   1: MACRO_PROP_1,
   2: MACRO_PROP_2,
+  3: MACRO_PROP_3,
 }

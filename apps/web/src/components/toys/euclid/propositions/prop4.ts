@@ -1,5 +1,49 @@
-import type { PropositionDef, ConstructionElement } from '../types'
+import type { PropositionDef, ConstructionElement, ConstructionState, TutorialSubStep } from '../types'
 import { BYRNE } from '../types'
+import type { FactStore } from '../engine/factStore'
+import type { EqualityFact } from '../engine/facts'
+import { distancePair } from '../engine/facts'
+import { addFact } from '../engine/factStore'
+
+function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
+  const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
+
+  return [
+    // ── Step 0: Draw segment EF (straightedge) ──
+    [
+      {
+        instruction: `${tapHold} point E`,
+        speech: isTouch
+          ? "We're given two triangles with two sides and the included angle equal. Complete triangle DEF by pressing and holding on point E."
+          : "We're given two triangles with two sides and the included angle equal. Complete triangle DEF by clicking and holding on point E.",
+        hint: { type: 'point', pointId: 'pt-E' },
+        advanceOn: null,
+      },
+    ],
+  ]
+}
+
+/**
+ * Derive I.4 conclusion: BC = EF via C.N.4 (superposition)
+ */
+function deriveProp4Conclusion(
+  store: FactStore,
+  _state: ConstructionState,
+  atStep: number,
+): EqualityFact[] {
+  const dpBC = distancePair('pt-B', 'pt-C')
+  const dpEF = distancePair('pt-E', 'pt-F')
+
+  return addFact(
+    store,
+    dpBC,
+    dpEF,
+    { type: 'cn4' },
+    'BC = EF',
+    'C.N.4: Since AB = DE, AC = DF, and ∠BAC = ∠EDF, triangles coincide by superposition',
+    atStep,
+  )
+}
 
 /**
  * Proposition I.4 — SAS Congruence (Theorem)
@@ -114,6 +158,12 @@ export const PROP_4: PropositionDef = {
       { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' },
     ],
   ],
+  givenEqualAngles: [
+    [
+      { vertex: 'pt-A', ray1End: 'pt-B', ray2End: 'pt-C' },
+      { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' },
+    ],
+  ],
   theoremConclusion: '△ABC = △DEF\n∠ABC = ∠DEF, ∠ACB = ∠DFE',
   superpositionFlash: {
     pairs: [
@@ -150,4 +200,32 @@ export const PROP_4: PropositionDef = {
       citation: 'Post.1',
     },
   ],
+  getTutorial: getProp4Tutorial,
+  explorationNarration: {
+    introSpeech:
+      'You proved two triangles are congruent! Now drag the points to test it with different triangles.',
+    pointTips: [
+      {
+        pointId: 'pt-A',
+        speech:
+          'See how triangle DEF reshapes to keep matching? The congruence holds for any vertex position.',
+      },
+      {
+        pointId: 'pt-B',
+        speech:
+          'Watch the matching side of DEF change too. Both triangles stay congruent!',
+      },
+      {
+        pointId: 'pt-C',
+        speech:
+          'See how EF always equals BC? The third side always matches.',
+      },
+      {
+        pointId: 'pt-D',
+        speech:
+          'Watch the congruence hold everywhere. It doesn\'t matter where the second triangle sits!',
+      },
+    ],
+  },
+  deriveConclusion: deriveProp4Conclusion,
 }

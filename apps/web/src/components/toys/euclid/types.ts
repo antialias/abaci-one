@@ -1,3 +1,6 @@
+import type { FactStore } from './engine/factStore'
+import type { EqualityFact } from './engine/facts'
+
 // ── Byrne-inspired palette ─────────────────────────────────────────
 export const BYRNE = {
   given: '#1A1A2E',
@@ -184,8 +187,11 @@ export interface PropositionDef {
     spec: AngleSpec
     color: string
   }>
-  /** Pairs of equal angles — matching tick marks on arcs */
+  /** Pairs of equal angles — matching tick marks on arcs (visual only) */
   equalAngles?: Array<[AngleSpec, AngleSpec]>
+  /** Subset of equalAngles that are hypotheses (displayed as "[Given]" in proof panel).
+   *  If omitted, no angle equalities are shown as given. */
+  givenEqualAngles?: Array<[AngleSpec, AngleSpec]>
   /** Text conclusion for theorems (bypasses fact-store derivation display) */
   theoremConclusion?: string
   /** Superposition flash configuration for C.N.4 visual */
@@ -200,6 +206,32 @@ export interface PropositionDef {
    *  Called on each drag frame. Receives a map of draggable point ID → current {x,y}.
    *  Returns a fresh givenElements array with updated coordinates. */
   computeGivenElements?: (positions: Map<string, { x: number; y: number }>) => ConstructionElement[]
+  /** Tutorial sub-step generator for guided interaction. Each inner array
+   *  corresponds to one proposition step; sub-steps break the gesture into
+   *  teachable micro-interactions. */
+  getTutorial?: (isTouch: boolean) => TutorialSubStep[][]
+  /** Post-completion exploration narration (intro speech + per-point tips) */
+  explorationNarration?: ExplorationNarration
+  /** Derive conclusion facts when the proposition completes. Mutates the
+   *  fact store in place and returns newly derived facts. */
+  deriveConclusion?: (store: FactStore, state: ConstructionState, atStep: number) => EqualityFact[]
+}
+
+// ── Exploration narration (post-completion drag phase) ────────────
+
+export interface PointExplorationTip {
+  pointId: string
+  speech: string
+}
+
+export interface ExplorationNarration {
+  /** Speech played once when the proposition is first completed */
+  introSpeech: string
+  /** Per-point tips played on first drag of each given point */
+  pointTips: PointExplorationTip[]
+  /** Speech played once when the construction breaks down during drag
+   *  (e.g. a precondition is violated and intersections disappear) */
+  breakdownTip?: string
 }
 
 // ── Ghost geometry (dependency visualization) ────────────────────

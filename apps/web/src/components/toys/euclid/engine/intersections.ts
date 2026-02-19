@@ -43,6 +43,8 @@ export function circleLineIntersections(
   cx: number, cy: number, cr: number,
   x1: number, y1: number, x2: number, y2: number,
 ): Vec2[] {
+  // Degenerate: two identical points can't define a line
+  if (Math.abs(x1 - x2) < TOLERANCE && Math.abs(y1 - y2) < TOLERANCE) return []
   const fc = new Flatten.Circle(new Flatten.Point(cx, cy), cr)
   const fl = new Flatten.Line(new Flatten.Point(x1, y1), new Flatten.Point(x2, y2))
   const pts = fc.intersect(fl)
@@ -192,8 +194,8 @@ export function findNewIntersections(
       const segPts = circleSegmentIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
       addCandidates(segPts, newElement.id, s.id)
       // Additionally check line extension if the circle's center is at a segment endpoint
-      // (Euclid's Post.2: "produce" a constructed segment beyond its endpoint)
-      if (extendSegments && s.origin === 'straightedge' && isEndpoint(newData.cx, newData.cy, d)) {
+      // (Euclid's Post.2: "produce" a finite straight line beyond its endpoint)
+      if (extendSegments && (s.origin === 'straightedge' || s.origin === 'given') && isEndpoint(newData.cx, newData.cy, d)) {
         const linePts = circleLineIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
         const extensionPts = removeAlreadyFound(linePts, segPts)
         addCandidates(extensionPts, newElement.id, s.id)
@@ -211,7 +213,7 @@ export function findNewIntersections(
       const segPts = circleSegmentIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
       addCandidates(segPts, newElement.id, c.id)
       // Additionally check line extension if the circle's center is at a segment endpoint
-      if (extendSegments && newElement.origin === 'straightedge' && isEndpoint(d.cx, d.cy, newData)) {
+      if (extendSegments && (newElement.origin === 'straightedge' || newElement.origin === 'given') && isEndpoint(d.cx, d.cy, newData)) {
         const linePts = circleLineIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
         const extensionPts = removeAlreadyFound(linePts, segPts)
         addCandidates(extensionPts, newElement.id, c.id)

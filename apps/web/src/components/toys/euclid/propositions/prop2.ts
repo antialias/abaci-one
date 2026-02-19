@@ -1,5 +1,176 @@
-import type { PropositionDef, ConstructionElement } from '../types'
+import type { PropositionDef, ConstructionElement, ConstructionState, TutorialSubStep } from '../types'
 import { BYRNE } from '../types'
+import type { FactStore } from '../engine/factStore'
+import type { EqualityFact } from '../engine/facts'
+import { distancePair } from '../engine/facts'
+import { addFact, queryEquality } from '../engine/factStore'
+
+function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
+  const tap = isTouch ? 'Tap' : 'Click'
+  const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
+  const drag = isTouch ? 'Drag' : 'Drag'
+  const sweep = isTouch ? 'Sweep your finger' : 'Move your mouse'
+
+  return [
+    // ── Step 0: Join A to B ──
+    [
+      {
+        instruction: `${drag} from A to B`,
+        speech: isTouch
+          ? "First, we need to connect point A to one end of the given line. Put your finger on A and drag it to B."
+          : "First, we need to connect point A to one end of the given line. Click A and drag to B.",
+        hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 1: Construct equilateral triangle (I.1 macro) ──
+    [
+      {
+        instruction: `${tap} point A`,
+        speech: isTouch
+          ? "Now we'll build an equilateral triangle on line AB — just like Proposition One! Tap point A first."
+          : "Now we'll build an equilateral triangle on line AB — just like Proposition One! Click point A first.",
+        hint: { type: 'point', pointId: 'pt-A' },
+        advanceOn: { kind: 'macro-select', index: 0 },
+      },
+      {
+        instruction: `${tap} point B`,
+        speech: isTouch
+          ? 'Now tap point B to complete the triangle construction.'
+          : 'Now click point B to complete the triangle construction.',
+        hint: { type: 'point', pointId: 'pt-B' },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 2: Circle at B through C ──
+    [
+      {
+        instruction: `${tapHold} point B`,
+        speech: isTouch
+          ? "Here's the clever part. We need to copy the length of line BC. Press and hold on B."
+          : "Here's the clever part. We need to copy the length of line BC. Click and hold on B.",
+        hint: { type: 'point', pointId: 'pt-B' },
+        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
+      },
+      {
+        instruction: `${drag} to point C`,
+        speech: isTouch
+          ? 'Drag to C — this makes the circle the same size as the given line.'
+          : 'Drag to C — this makes the circle match the given line.',
+        hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-C' },
+        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
+      },
+      {
+        instruction: `${sweep} around`,
+        speech: isTouch
+          ? 'Sweep around to draw the circle!'
+          : 'Move around to draw the circle!',
+        hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-C' },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 3: Mark intersection E (Euclid's G) ──
+    [
+      {
+        instruction: `${tap} where the circle crosses line DB, past B`,
+        speech:
+          "See where the new circle crosses the line from D through B? Tap the point on the far side of B — past B, away from D. That intersection captures the length we want to transfer.",
+        hint: {
+          type: 'candidates',
+          ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
+          ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-B' },
+          beyondId: 'pt-B',
+        },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 4: Circle at D through E ──
+    [
+      {
+        instruction: `${tapHold} point D`,
+        speech: isTouch
+          ? "Almost there! Now we use point D as a compass center. Press and hold on D."
+          : "Almost there! Now we use point D as a compass center. Click and hold on D.",
+        hint: { type: 'point', pointId: 'pt-D' },
+        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
+      },
+      {
+        instruction: `${drag} to point E`,
+        speech: isTouch
+          ? 'Drag to the point E we just marked.'
+          : 'Drag to point E.',
+        hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-E' },
+        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
+      },
+      {
+        instruction: `${sweep} around`,
+        speech: isTouch
+          ? "Sweep all the way around. This is the big circle that transfers the distance!"
+          : "Move all the way around. This big circle transfers the distance!",
+        hint: { type: 'sweep', centerId: 'pt-D', radiusPointId: 'pt-E' },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 5: Mark intersection F (Euclid's L) ──
+    [
+      {
+        instruction: `${tap} where the big circle crosses line DA, past A`,
+        speech:
+          "See where the big circle crosses the line from D through A? Tap the point past A — on the far side from D. The line from A to that new point is exactly the same length as BC!",
+        hint: {
+          type: 'candidates',
+          ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
+          ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-A' },
+          beyondId: 'pt-A',
+        },
+        advanceOn: null,
+      },
+    ],
+  ]
+}
+
+/**
+ * Derive I.2 conclusion: AF = BC via C.N.3 + C.N.1
+ */
+function deriveProp2Conclusion(
+  store: FactStore,
+  _state: ConstructionState,
+  atStep: number,
+): EqualityFact[] {
+  const allNewFacts: EqualityFact[] = []
+
+  const dpAF = distancePair('pt-A', 'pt-F')
+  const dpBE = distancePair('pt-B', 'pt-E')
+  const dpBC = distancePair('pt-B', 'pt-C')
+  const dpDF = distancePair('pt-D', 'pt-F')
+  const dpDA = distancePair('pt-D', 'pt-A')
+
+  // Step 1: C.N.3 — AF = BE
+  allNewFacts.push(...addFact(
+    store,
+    dpAF,
+    dpBE,
+    { type: 'cn3', whole: dpDF, part: dpDA },
+    'AF = BE',
+    'C.N.3: DF − DA = DE − DB (since DA = DB)',
+    atStep,
+  ))
+
+  // Step 2: C.N.1 transitivity — AF = BC
+  if (!queryEquality(store, dpAF, dpBC)) {
+    allNewFacts.push(...addFact(
+      store,
+      dpAF,
+      dpBC,
+      { type: 'cn1', via: dpBE },
+      'AF = BC',
+      'C.N.1: AF = BE and BE = BC',
+      atStep,
+    ))
+  }
+
+  return allNewFacts
+}
 
 /**
  * Proposition I.2: To place at a given point a straight line equal
@@ -136,4 +307,27 @@ export const PROP_2: PropositionDef = {
       citation: 'Def.15',
     },
   ],
+  getTutorial: getProp2Tutorial,
+  explorationNarration: {
+    introSpeech:
+      'You copied a distance! Now drag the points around to prove this construction always works, no matter where the points are.',
+    pointTips: [
+      {
+        pointId: 'pt-A',
+        speech:
+          'See how AF always equals BC? The copy works wherever A ends up.',
+      },
+      {
+        pointId: 'pt-B',
+        speech:
+          'Watch the equilateral triangle and circles all shift. The copy still works!',
+      },
+      {
+        pointId: 'pt-C',
+        speech:
+          'See AF changing to match? It always copies the exact length of BC.',
+      },
+    ],
+  },
+  deriveConclusion: deriveProp2Conclusion,
 }

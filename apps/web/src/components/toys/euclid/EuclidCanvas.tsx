@@ -11,7 +11,6 @@ import type {
   IntersectionCandidate,
   ConstructionElement,
   TutorialHint,
-  PropositionDef,
   TutorialSubStep,
   ExpectedAction,
   GhostLayer,
@@ -29,18 +28,10 @@ import { useToolInteraction } from './interaction/useToolInteraction'
 import { useDragGivenPoints } from './interaction/useDragGivenPoints'
 import type { PostCompletionAction, ReplayResult } from './engine/replayConstruction'
 import { validateStep } from './propositions/validation'
-import { PROP_1 } from './propositions/prop1'
-import { PROP_2 } from './propositions/prop2'
-import { PROP_3 } from './propositions/prop3'
-import { PROP_4 } from './propositions/prop4'
+import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
-import { getProp1Tutorial } from './propositions/prop1Tutorial'
-import { getProp2Tutorial } from './propositions/prop2Tutorial'
-import { getProp3Tutorial } from './propositions/prop3Tutorial'
-import { getProp4Tutorial } from './propositions/prop4Tutorial'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
-import { EXPLORATION_NARRATION } from './propositions/explorationNarration'
 import { createFactStore, addFact, queryEquality, getEqualDistances, rebuildFactStore } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { EqualityFact } from './engine/facts'
@@ -52,7 +43,6 @@ import { computeMacroGhost } from './engine/macroGhost'
 import { resolveSelector } from './engine/selectors'
 import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
-import { PROP_CONCLUSIONS } from './propositions/prop2Facts'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
 import { renderGhostGeometry, getGhostFalloff, setGhostFalloff, getGhostFalloffRange, getGhostBaseOpacity, setGhostBaseOpacity, getGhostBaseOpacityRange } from './render/renderGhostGeometry'
 import { renderProductionSegments } from './render/renderProductionSegments'
@@ -193,24 +183,6 @@ function deriveCompletionResult(
   }
 }
 
-// ── Proposition registry ──
-
-const PROPOSITIONS: Record<number, PropositionDef> = {
-  0: PLAYGROUND_PROP,
-  1: PROP_1,
-  2: PROP_2,
-  3: PROP_3,
-  4: PROP_4,
-}
-
-const TUTORIAL_GENERATORS: Record<number, (isTouch: boolean) => TutorialSubStep[][]> = {
-  0: () => [],
-  1: getProp1Tutorial,
-  2: getProp2Tutorial,
-  3: getProp3Tutorial,
-  4: getProp4Tutorial,
-}
-
 interface EuclidCanvasProps {
   propositionId?: number
   /** Called when the proposition is completed (all steps done + proven) */
@@ -220,9 +192,9 @@ interface EuclidCanvasProps {
 }
 
 export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: EuclidCanvasProps) {
-  const proposition = PROPOSITIONS[propositionId] ?? PROP_1
+  const proposition = (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
-  const getTutorial = TUTORIAL_GENERATORS[propositionId] ?? getProp1Tutorial
+  const getTutorial = proposition.getTutorial ?? (() => [] as TutorialSubStep[][])
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -358,7 +330,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
   // ── TTS integration ──
   const { isEnabled: audioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
-  const explorationNarration = EXPLORATION_NARRATION[propositionId]
+  const explorationNarration = proposition.explorationNarration
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
@@ -450,7 +422,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   // ── Derive proposition conclusion facts when complete ──
   useEffect(() => {
     if (!isComplete) return
-    const conclusionFn = PROP_CONCLUSIONS[proposition.id]
+    const conclusionFn = proposition.deriveConclusion
     if (!conclusionFn) return
     const newFacts = conclusionFn(
       factStoreRef.current,
@@ -1568,7 +1540,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                     </div>
                   )
                 })}
-                {proposition.equalAngles && proposition.equalAngles.length > 0 && (
+                {proposition.givenEqualAngles && proposition.givenEqualAngles.length > 0 && (
                   <div style={{
                     fontSize: 11,
                     marginBottom: 3,
@@ -1577,7 +1549,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                   }}>
                     <div>
                       <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
-                        {proposition.equalAngles.map(([a1, a2]) => {
+                        {proposition.givenEqualAngles.map(([a1, a2]) => {
                           const label = (id: string) => id.replace('pt-', '')
                           return `∠${label(a1.ray1End)}${label(a1.vertex)}${label(a1.ray2End)} = ∠${label(a2.ray1End)}${label(a2.vertex)}${label(a2.ray2End)}`
                         }).join(', ')}

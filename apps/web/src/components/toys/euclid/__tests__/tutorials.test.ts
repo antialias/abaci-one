@@ -1,7 +1,4 @@
 import { describe, it, expect } from 'vitest'
-import { getProp1Tutorial } from '../propositions/prop1Tutorial'
-import { getProp2Tutorial } from '../propositions/prop2Tutorial'
-import { getProp3Tutorial } from '../propositions/prop3Tutorial'
 import { PROP_1 } from '../propositions/prop1'
 import { PROP_2 } from '../propositions/prop2'
 import { PROP_3 } from '../propositions/prop3'
@@ -39,7 +36,7 @@ describe('tutorial definitions', () => {
     const label = isTouch ? 'touch' : 'mouse'
 
     describe(`Prop I.1 (${label})`, () => {
-      const subSteps = getProp1Tutorial(isTouch)
+      const subSteps = PROP_1.getTutorial!(isTouch)
 
       it('has one sub-step array per proposition step', () => {
         expect(subSteps).toHaveLength(PROP_1.steps.length)
@@ -76,7 +73,7 @@ describe('tutorial definitions', () => {
     })
 
     describe(`Prop I.2 (${label})`, () => {
-      const subSteps = getProp2Tutorial(isTouch)
+      const subSteps = PROP_2.getTutorial!(isTouch)
 
       it('has one sub-step array per proposition step', () => {
         expect(subSteps).toHaveLength(PROP_2.steps.length)
@@ -120,7 +117,7 @@ describe('tutorial definitions', () => {
     })
 
     describe(`Prop I.3 (${label})`, () => {
-      const subSteps = getProp3Tutorial(isTouch)
+      const subSteps = PROP_3.getTutorial!(isTouch)
 
       it('has one sub-step array per proposition step', () => {
         expect(subSteps).toHaveLength(PROP_3.steps.length)

@@ -9,12 +9,13 @@
 import { graphStratify, sugiyama, decrossOpt, coordSimplex, layeringSimplex } from 'd3-dag'
 import { propositions, getPrerequisites, getDependents, getProposition, getAllPrerequisites } from './book1'
 import { PRECOMPUTED_NODES, PRECOMPUTED_EDGES } from './book1Layout'
+import { PROP_REGISTRY } from '../propositions/registry'
 
 // ---------------------------------------------------------------------------
 // Which propositions are playable (have interactive implementations)
 // ---------------------------------------------------------------------------
 
-export const IMPLEMENTED_PROPS = new Set([1, 2, 3, 4])
+export const IMPLEMENTED_PROPS = new Set(Object.keys(PROP_REGISTRY).map(Number))
 
 // ---------------------------------------------------------------------------
 // Node status computation

@@ -13,7 +13,6 @@ import {
 import { findNewIntersections, isCandidateBeyondPoint } from '../engine/intersections'
 import { createFactStore } from '../engine/factStore'
 import { deriveDef15Facts } from '../engine/factDerivation'
-import { PROP_CONCLUSIONS } from '../propositions/prop2Facts'
 import { queryEquality } from '../engine/factStore'
 import { distancePair } from '../engine/facts'
 import type { ConstructionState, IntersectionCandidate } from '../types'
@@ -136,11 +135,11 @@ describe('Proposition I.2 full construction with selectors', () => {
     expect(validateStep(steps[5].expected, state, ptF.point, candF)).toBe(true)
 
     // ── Derive conclusion: AF = BC ──
-    const conclusionFn = PROP_CONCLUSIONS[2]
+    const conclusionFn = PROP_2.deriveConclusion
     expect(conclusionFn).toBeDefined()
 
     // Mutates factStore in place, returns new facts
-    conclusionFn(factStore, state, steps.length)
+    conclusionFn!(factStore, state, steps.length)
 
     // The proof engine should establish AF = BC
     const dpAF = distancePair('pt-A', 'pt-F')

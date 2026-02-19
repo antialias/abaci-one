@@ -74,6 +74,16 @@ export const CITATIONS: Record<string, CitationDef> = {
     label: 'Proposition I.4',
     text: 'If two triangles have two sides and the included angle equal, the triangles are congruent.',
   },
+  'I.5': {
+    key: 'I.5',
+    label: 'Proposition I.5',
+    text: 'In isosceles triangles the base angles are equal.',
+  },
+  'Def.20': {
+    key: 'Def.20',
+    label: 'Definition 20',
+    text: 'An isosceles triangle has two sides equal.',
+  },
 }
 
 /** Get the citation def for a structured Citation from the fact engine. */

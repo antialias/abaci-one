@@ -77,10 +77,10 @@ Each step is a `PropositionStep`:
 
 ## 4. Tutorial Sub-Steps
 
-Each construction step can have multiple tutorial sub-steps that guide the child through the gesture. Defined in `propositions/propNTutorial.ts`:
+Each construction step can have multiple tutorial sub-steps that guide the child through the gesture. Defined as `getTutorial` on the `PropositionDef`:
 
 ```typescript
-export function getPropNTutorial(isTouch: boolean): TutorialSubStep[][] {
+getTutorial: (isTouch: boolean): TutorialSubStep[][] => {
   return [
     // Step 0 sub-steps
     [
@@ -99,7 +99,7 @@ export function getPropNTutorial(isTouch: boolean): TutorialSubStep[][] {
     ],
     // Step 1 sub-steps...
   ]
-}
+},
 ```
 
 **Key fields:**
@@ -112,16 +112,16 @@ export function getPropNTutorial(isTouch: boolean): TutorialSubStep[][] {
 
 ## 5. Exploration Narration
 
-Post-completion narration that plays during the drag exploration phase. Defined in `propositions/explorationNarration.ts`:
+Post-completion narration that plays during the drag exploration phase. Defined as `explorationNarration` on the `PropositionDef`:
 
 ```typescript
-EXPLORATION_NARRATION[N] = {
+explorationNarration: {
   introSpeech: 'You built an equilateral triangle! Now try dragging...',
   pointTips: [
     { pointId: 'pt-A', speech: 'Notice how all three sides stay equal...' },
     { pointId: 'pt-B', speech: 'Move B closer or farther away...' },
   ],
-}
+},
 ```
 
 ### Writing good intro speech
@@ -142,7 +142,7 @@ Keep tips under ~25 words. Use the child's perspective — "you", "watch", "noti
 
 ### Examples from existing propositions
 
-See `explorationNarration.ts` for all 4 implemented propositions.
+See any `propositions/propN.ts` file for examples.
 
 ## 6. Draggable Points
 
@@ -176,7 +176,7 @@ givenFacts: [
 ],
 ```
 
-**Conclusion functions** — registered in `propositions/prop2Facts.ts` as `PROP_CONCLUSIONS[propId]`. Called when the proposition completes to derive final equality facts.
+**Conclusion functions** — defined as `deriveConclusion` on the `PropositionDef`. Called when the proposition completes to derive final equality facts.
 
 **Result segments** — segments whose equality is checked and displayed in the conclusion bar:
 
@@ -205,10 +205,8 @@ For each new proposition, verify:
 
 ### Registration checklist
 
-After creating all files for a new proposition:
+After creating the `PropositionDef` in `propositions/propN.ts` (with `getTutorial`, `explorationNarration`, and `deriveConclusion` defined inline):
 
-1. Add `PROP_N` to `PROPOSITIONS` in `EuclidCanvas.tsx`
-2. Add `getPropNTutorial` to `TUTORIAL_GENERATORS` in `EuclidCanvas.tsx`
-3. Add narration to `EXPLORATION_NARRATION` in `explorationNarration.ts`
-4. Add conclusion function to `PROP_CONCLUSIONS` in `prop2Facts.ts` (if needed)
-5. Add macro to `MACRO_REGISTRY` in `engine/macros.ts` (if this prop is used as a macro later)
+1. **`PROP_REGISTRY`** in `propositions/registry.ts` — **the only required registration**. This is the single source of truth: it gates the map UI (`IMPLEMENTED_PROPS` is derived from it), provides runtime proposition lookup, tutorial, narration, and conclusion functions.
+2. **`MACRO_REGISTRY`** in `engine/macros.ts` — only if this proposition becomes a macro used by later propositions
+3. **`CITATIONS`** in `engine/citations.ts` — only if new citation keys are used in steps
