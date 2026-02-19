@@ -122,6 +122,12 @@ export function replayConstruction(
           )
           return !hasHigher
         })
+      } else if (expected.ofA == null && expected.ofB == null && candidates.length > 0) {
+        // Wildcard intersection (no ofA/ofB specified): pick highest-Y candidate
+        matchingCandidate = candidates.reduce(
+          (best, c) => (c.y > best.y ? c : best),
+          candidates[0],
+        )
       }
 
       if (matchingCandidate) {
@@ -174,18 +180,27 @@ export function replayConstruction(
     proofFacts.push(...conclusionFacts)
   }
 
-  // Replay post-completion user actions
+  // Replay post-completion user actions (always extend segments in freeform mode)
   if (extraActions) {
+    // Recompute candidates with extension enabled for post-completion play
+    if (!extendSegments) {
+      for (const el of state.elements) {
+        if (el.kind === 'point') continue
+        const additional = findNewIntersections(state, el, candidates, true)
+        candidates = [...candidates, ...additional]
+      }
+    }
+
     for (const action of extraActions) {
       if (action.type === 'circle') {
         const result = addCircle(state, action.centerId, action.radiusPointId)
         state = result.state
-        const newCands = findNewIntersections(state, result.circle, candidates, extendSegments)
+        const newCands = findNewIntersections(state, result.circle, candidates, true)
         candidates = [...candidates, ...newCands]
       } else if (action.type === 'segment') {
         const result = addSegment(state, action.fromId, action.toId)
         state = result.state
-        const newCands = findNewIntersections(state, result.segment, candidates, extendSegments)
+        const newCands = findNewIntersections(state, result.segment, candidates, true)
         candidates = [...candidates, ...newCands]
       } else if (action.type === 'intersection') {
         // Find matching candidate by parent elements and which-index

@@ -519,11 +519,21 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         currentStepRef.current = nextStep
         if (nextStep >= proposition.steps.length) {
           setIsComplete(true)
+          // Recompute candidates with segment extension for post-completion play
+          if (!extendSegments) {
+            let updatedCandidates = [...candidatesRef.current]
+            for (const el of constructionRef.current.elements) {
+              if (el.kind === 'point') continue
+              const additional = findNewIntersections(constructionRef.current, el, updatedCandidates, true)
+              updatedCandidates = [...updatedCandidates, ...additional]
+            }
+            candidatesRef.current = updatedCandidates
+          }
         }
         setCurrentStep(nextStep)
       }
     },
-    [proposition.steps],
+    [proposition.steps, extendSegments],
   )
 
   // ── Commit handlers ──
@@ -537,7 +547,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         result.state,
         result.circle,
         candidatesRef.current,
-        extendSegments,
+        extendSegments || isCompleteRef.current,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
@@ -565,7 +575,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         result.state,
         result.segment,
         candidatesRef.current,
-        extendSegments,
+        extendSegments || isCompleteRef.current,
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
@@ -730,6 +740,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       currentStepRef.current = nextStep
       if (nextStep >= proposition.steps.length) {
         setIsComplete(true)
+        // Recompute candidates with segment extension for post-completion play
+        if (!extendSegments) {
+          let updatedCandidates = [...candidatesRef.current]
+          for (const el of constructionRef.current.elements) {
+            if (el.kind === 'point') continue
+            const additional = findNewIntersections(constructionRef.current, el, updatedCandidates, true)
+            updatedCandidates = [...updatedCandidates, ...additional]
+          }
+          candidatesRef.current = updatedCandidates
+        }
       }
       setCurrentStep(nextStep)
 
