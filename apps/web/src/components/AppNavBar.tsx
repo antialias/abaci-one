@@ -336,6 +336,7 @@ function MenuContent({
             <div style={sectionHeaderStyle}>Navigation</div>
 
             {renderNavLink('/', '🧮', 'Home')}
+            {renderNavLink('/why-abacus', '💡', 'Why Abacus')}
             {renderNavLink('/create', '✏️', 'Create')}
             {renderNavLink('/practice', '📚', 'Practice')}
             {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
@@ -708,6 +709,7 @@ function MenuContent({
           <div style={sectionHeaderStyle}>Navigation</div>
 
           {renderNavLink('/', '🧮', 'Home')}
+          {renderNavLink('/why-abacus', '💡', 'Why Abacus')}
           {renderNavLink('/create', '✏️', 'Create')}
           {renderNavLink('/practice', '📚', 'Practice')}
           {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}

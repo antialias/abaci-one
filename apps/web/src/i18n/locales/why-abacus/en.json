@@ -1,0 +1,55 @@
+{
+  "whyAbacus": {
+    "hook": {
+      "headline": "Your kid can add 4+3. But do they *understand* why it's 7?",
+      "p1": "Most kids learn math by memorizing. They remember that 4+3=7 the same way they remember a phone number — as a fact, not a concept. When the numbers get bigger or the problems get harder, they hit a wall. There's nothing underneath the memorization to build on.",
+      "p2": "The abacus makes numbers visible. Instead of abstract symbols on a page, kids see and touch quantities. They discover that 7 is five and two more. They watch carries happen. And over time, they internalize a mental picture of numbers that no amount of flashcard drilling can replicate."
+    },
+    "represent": {
+      "headline": "A number you can touch",
+      "description": "On a soroban (Japanese abacus), each column represents a place value. The top bead is worth 5; each bottom bead is worth 1. Slide beads toward the bar to add their value. Try it — click the beads to make different numbers.",
+      "currentValue": "Current value: {value}"
+    },
+    "friends": {
+      "headline": "The secret shortcuts",
+      "description": "The abacus teaches two fundamental shortcuts that make mental math fast. \"Friends of 5\" are pairs that add to 5 (like 2+3). \"Friends of 10\" are pairs that add to 10 (like 3+7). These aren't tricks — they're the foundation of how abacus students add and subtract without counting.",
+      "friendsOf5": "Friends of 5",
+      "friendsOf10": "Friends of 10",
+      "friendsOf5Desc": "Pairs that sum to 5: when you can't add directly, subtract the complement from 5.",
+      "friendsOf10Desc": "Pairs that sum to 10: when a column overflows, carry to the next column using the complement."
+    },
+    "progression": {
+      "headline": "Physical \u2192 visualization \u2192 mental calculation",
+      "description": "Abacus training follows a proven three-stage progression used in Japan, where soroban is part of the national curriculum.",
+      "physical": "Physical",
+      "physicalDesc": "Move real beads. Build muscle memory. Understand place value by touching it.",
+      "visualization": "Visualization",
+      "visualizationDesc": "Close your eyes and picture the abacus. Move imaginary beads to solve problems.",
+      "anzan": "Mental Math (Anzan)",
+      "anzanDesc": "No abacus needed — the mental image is fast enough to beat a calculator."
+    },
+    "research": {
+      "headline": "What the research says (honestly)",
+      "p1": "Studies consistently show that abacus-trained students outperform peers in mental arithmetic speed, working memory, and numerical processing. Brain imaging research shows they activate spatial processing regions when doing math — they're literally seeing numbers differently.",
+      "p2": "The honest caveat: most studies come from East Asian contexts where abacus training is culturally embedded and starts early. We don't have strong Western RCTs yet. But the neurological mechanism — building a visuospatial representation of number — is well-established and not culture-dependent.",
+      "blogLink": "Read more: Why the abacus never reached US schools"
+    },
+    "objections": {
+      "headline": "But wait...",
+      "q1": "Isn't the abacus outdated?",
+      "a1": "The physical tool is ancient. The mental math method built on top of it is cutting-edge. Japan, China, South Korea, India, and Malaysia all use abacus training in schools today — not because of tradition, but because it works. The goal isn't to replace calculators; it's to build the number sense that makes all math easier.",
+      "q2": "My kid already has a calculator.",
+      "a2": "A calculator tells you the answer. The abacus teaches you why it's the answer. Kids who understand number relationships don't just compute — they estimate, check their work, and catch errors. That's the difference between knowing math and depending on a tool.",
+      "q3": "This sounds like a lot of work.",
+      "a3": "Five to ten minutes a day is enough. Abacus practice is more like learning an instrument than grinding through worksheets — short, focused sessions build skill surprisingly fast. And because kids can see and touch the math, it's more engaging than abstract drills.",
+      "q4": "Where's the proof it works for my kid?",
+      "a4": "Fair question. The best proof is trying it. The practice tool on this site is free, adapts to your child's level, and you'll see results within a few weeks. No commitment, no cost, no risk."
+    },
+    "cta": {
+      "headline": "See for yourself",
+      "description": "The practice tool is free and adapts to your child's level. No account needed to start.",
+      "primaryButton": "Start practicing",
+      "secondaryButton": "Read the guide"
+    }
+  }
+}
