@@ -399,6 +399,49 @@ export type PhiExploreGenerateEvent =
     }
 
 // ============================================================================
+// Blog Image Generate domain events
+// ============================================================================
+
+export type BlogImageGenerateEvent =
+  | {
+      type: 'image_started'
+      slug: string
+      model: string
+      provider: string
+    }
+  | {
+      type: 'image_complete'
+      slug: string
+      filePath: string
+      sizeBytes: number
+      usedFallback?: boolean
+    }
+  | {
+      type: 'image_error'
+      slug: string
+      error: string
+    }
+  | {
+      type: 'image_fallback'
+      slug: string
+      primaryError: string
+      fallbackProvider: string
+      fallbackModel: string
+    }
+  | {
+      type: 'batch_progress'
+      completed: number
+      total: number
+      currentSlug: string
+    }
+  | {
+      type: 'batch_complete'
+      generated: number
+      skipped: number
+      failed: number
+    }
+
+// ============================================================================
 // Demo task events
 // ============================================================================
 
@@ -462,6 +505,7 @@ export interface TaskEventMap {
   'collected-clip-generate': CollectedClipGenerateEvent
   'image-generate': ImageGenerateEvent
   'phi-explore-generate': PhiExploreGenerateEvent
+  'blog-image-generate': BlogImageGenerateEvent
   demo: DemoTaskEvent
   'demo-refine': DemoRefineEvent
   'session-plan': SessionPlanEvent

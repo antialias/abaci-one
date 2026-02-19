@@ -16,6 +16,9 @@ export interface BlogPost {
   updatedAt: string
   tags: string[]
   featured: boolean
+  heroPrompt?: string
+  heroImage?: string
+  heroAspectRatio?: string
   content: string
   html: string
 }
@@ -48,8 +51,10 @@ export async function getAllPostsMetadata(): Promise<BlogPostMetadata[]> {
     slugs.map(async (slug) => {
       const post = await getPostBySlug(slug)
       const { content, html, ...metadata } = post
-      // Create excerpt from first paragraph
-      const firstPara = content.split('\n\n')[0]
+      // Create excerpt from first text paragraph (skip images, headings, HRs)
+      const firstPara = content.split('\n\n').find(
+        (p) => p.trim() && !p.trim().startsWith('![') && !p.trim().startsWith('#') && p.trim() !== '---'
+      ) ?? ''
       const excerpt = `${firstPara.replace(/^#+\s+/, '').substring(0, 200)}...`
       return { ...metadata, excerpt }
     })
@@ -88,6 +93,9 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
     updatedAt: data.updatedAt || data.publishedAt || new Date().toISOString(),
     tags: data.tags || [],
     featured: data.featured || false,
+    heroPrompt: data.heroPrompt || undefined,
+    heroImage: data.heroImage || undefined,
+    heroAspectRatio: data.heroAspectRatio || undefined,
     content,
     html,
   }

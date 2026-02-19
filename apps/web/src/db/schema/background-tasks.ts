@@ -128,6 +128,7 @@ export type TaskType =
   | 'collected-clip-generate'
   | 'image-generate'
   | 'phi-explore-generate'
+  | 'blog-image-generate'
   | 'demo'
   | 'demo-refine'
   | 'session-plan'

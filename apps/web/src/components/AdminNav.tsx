@@ -42,6 +42,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Constant illustrations',
   },
   {
+    href: '/admin/blog-images',
+    label: 'Blog',
+    description: 'Post hero images',
+  },
+  {
     href: '/admin/audio',
     label: 'Audio',
     description: 'TTS clips',
