@@ -1,15 +1,28 @@
 {
   "home": {
-    "learnByDoing": {
-      "title": "Learn by Doing",
-      "subtitle": "Interactive tutorials teach you step-by-step. Try this example right now:"
+    "hero": {
+      "subtitles": [
+        "Screen time that builds real math skills",
+        "Math practice that adapts to your child",
+        "Mental math starts here",
+        "The world's oldest calculator, reimagined"
+      ]
+    },
+    "promise": {
+      "title": "Your child can learn to calculate in their head",
+      "body": "The abacus is the world's most proven tool for building mental math. Kids who learn it don't just memorize facts — they build a mental picture of how numbers work. And they can practice right here.",
+      "learnWhy": "Learn why it works →"
+    },
+    "method": {
+      "title": "The abacus teaches kids to see numbers",
+      "subtitle": "Children who learn the abacus don't just memorize math facts — they build a mental picture of how numbers work. That's why abacus students develop faster mental arithmetic than any other method."
     },
     "whatYouLearn": {
       "title": "What You'll Learn"
     },
     "skills": {
       "readNumbers": {
-        "title": "📖 Read and set numbers",
+        "title": "Read and set numbers",
         "desc": "Master abacus number representation from zero to thousands",
         "example": "0-9999",
         "badge": "Foundation",
@@ -17,7 +30,7 @@
         "tutorialDesc": "Master abacus number representation from zero to thousands"
       },
       "friends": {
-        "title": "🤝 Friends techniques",
+        "title": "Friends techniques",
         "desc": "Add and subtract using complement pairs and mental shortcuts",
         "example": "5 = 2+3",
         "badge": "Core",
@@ -25,15 +38,15 @@
         "tutorialDesc": "Add and subtract using complement pairs: 5 = 2+3"
       },
       "multiply": {
-        "title": "✖️ Multiply & divide",
+        "title": "Multiply & divide",
         "desc": "Fluent multi-digit calculations with advanced techniques",
-        "example": "12×34",
+        "example": "12\u00d734",
         "badge": "Advanced",
         "tutorialTitle": "Multiplication",
         "tutorialDesc": "Fluent multi-digit calculations with advanced techniques"
       },
       "mental": {
-        "title": "🧠 Mental calculation",
+        "title": "Mental calculation",
         "desc": "Visualize and compute without the physical tool (Anzan)",
         "example": "Speed math",
         "badge": "Expert",
@@ -41,37 +54,84 @@
         "tutorialDesc": "Visualize and compute without the physical tool (Anzan)"
       }
     },
+    "practice": {
+      "title": "Practice that meets your child where they are",
+      "subtitle": "Not too easy. Not too hard. Every session adapts.",
+      "features": {
+        "mastery": {
+          "title": "Tracks real mastery",
+          "desc": "Every answer updates a skill model of your child's abilities. Practice sessions target what they're ready to learn next — not what a grade level says they should know."
+        },
+        "rewards": {
+          "title": "Games that teach in disguise",
+          "desc": "Between drills, kids earn solo game rounds — but every game is still teaching. Match abacus images to numbers, answer complements to drive a train, race through mental math. They're always learning, whether they know it or not."
+        },
+        "multiKid": {
+          "title": "Works for multiple kids",
+          "desc": "Set up profiles for each child with independent progress tracking. Each gets their own adaptive path."
+        }
+      },
+      "cta": "Start practicing"
+    },
     "arcade": {
       "title": "The Arcade",
-      "subtitle": "Single-player challenges and multiplayer battles in networked rooms. Invite friends to play or watch live.",
+      "subtitle": "Math games worth earning. Solo challenges and multiplayer battles that kids actually want to play.",
       "soloChallenge": "Solo challenge",
       "playersCount": "{min}-{max} players"
     },
-    "journey": {
-      "title": "Your Journey",
-      "subtitle": "Progress from beginner to master"
+    "explorations": {
+      "title": "Mathematical playgrounds",
+      "subtitle": "Not everything has to be a drill. Explore geometry, number lines, and more — tools for curiosity, not just correctness.",
+      "euclid": {
+        "title": "Euclid's Elements",
+        "desc": "Compass-and-straightedge geometry, proposition by proposition"
+      },
+      "constantDemos": {
+        "title": "Constant Demos",
+        "desc": "Watch pi roll, e branch, and the golden ratio spiral — 10 animated explorations"
+      },
+      "talkToNumber": {
+        "title": "Talk to a Number",
+        "desc": "Dial any number on the line and have a voice conversation about its properties"
+      },
+      "coordinatePlane": {
+        "title": "Coordinate Plane",
+        "desc": "Word problems on a magnitude-aware 2D grid"
+      },
+      "dice": {
+        "title": "Dice Tray",
+        "desc": "3D physics dice. Add them up."
+      }
     },
     "flashcards": {
-      "title": "Create Custom Flashcards",
-      "subtitle": "Design beautiful flashcards for learning and practice",
+      "title": "Printable practice materials",
+      "subtitle": "Generate worksheets, flashcards, and calendars — better than what you can buy. Customize everything. Download as PDF.",
       "features": {
         "formats": {
-          "icon": "📄",
+          "icon": "\ud83d\udcc4",
           "title": "Multiple Formats",
           "desc": "PDF, PNG, SVG, HTML"
         },
         "customizable": {
-          "icon": "🎨",
+          "icon": "\ud83c\udfa8",
           "title": "Customizable",
           "desc": "Bead shapes, colors, layouts"
         },
         "paperSizes": {
-          "icon": "📐",
+          "icon": "\ud83d\udcd0",
           "title": "All Paper Sizes",
           "desc": "A3, A4, A5, US Letter"
         }
       },
-      "cta": "Create Flashcards"
+      "cta": "Create materials"
+    },
+    "builtBy": {
+      "statement": "Built by a parent, for their kids. Not a startup. Not ad-supported. Just better math practice."
+    },
+    "getStarted": {
+      "title": "Try it now — no account needed",
+      "subtitle": "Create a student profile and start your first practice session. Everything works without signing up.",
+      "cta": "Get started"
     }
   }
 }
