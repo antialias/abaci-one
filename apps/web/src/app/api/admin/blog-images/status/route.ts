@@ -38,6 +38,9 @@ export async function GET() {
       heroPrompt: post.heroPrompt ?? null,
       heroImage: post.heroImage ?? null,
       heroAspectRatio: post.heroAspectRatio ?? null,
+      featured: post.featured,
+      heroCrop: post.heroCrop ?? null,
+      heroImageUrl: post.heroImageUrl ?? null,
       imageExists,
       sizeBytes: generatedExists
         ? statSync(generatedFile).size

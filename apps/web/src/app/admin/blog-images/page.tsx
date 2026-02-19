@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
+import { BlogCropEditor } from '@/components/admin/BlogCropEditor'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { BlogImageGenerateOutput } from '@/lib/tasks/blog-image-generate'
 
@@ -13,6 +14,9 @@ interface BlogPostStatus {
   heroPrompt: string | null
   heroImage: string | null
   heroAspectRatio: string | null
+  featured: boolean
+  heroCrop: string | null
+  heroImageUrl: string | null
   imageExists: boolean
   sizeBytes?: number
 }
@@ -41,6 +45,7 @@ export default function BlogImagesAdmin() {
   const [fallbackValue, setFallbackValue] = useState('')
   const [taskId, setTaskId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cropEditorSlug, setCropEditorSlug] = useState<string | null>(null)
 
   const { state: taskState } = useBackgroundTask<BlogImageGenerateOutput>(taskId)
 
@@ -151,6 +156,62 @@ export default function BlogImagesAdmin() {
       .filter((r) => promptMap.has(r.slug))
       .map((r) => ({ slug: r.slug, prompt: promptMap.get(r.slug)! }))
     if (targets.length > 0) generate(targets, true)
+  }
+
+  async function handleToggleFeatured(post: BlogPostStatus) {
+    const newFeatured = !post.featured
+    // Optimistically update local state
+    setStatus((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        posts: prev.posts.map((p) =>
+          p.slug === post.slug ? { ...p, featured: newFeatured } : p
+        ),
+      }
+    })
+    try {
+      const res = await fetch(`/api/admin/blog/${post.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured: newFeatured }),
+      })
+      if (!res.ok) {
+        // Revert on failure
+        setStatus((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            posts: prev.posts.map((p) =>
+              p.slug === post.slug ? { ...p, featured: !newFeatured } : p
+            ),
+          }
+        })
+      }
+    } catch {
+      // Revert on error
+      setStatus((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          posts: prev.posts.map((p) =>
+            p.slug === post.slug ? { ...p, featured: !newFeatured } : p
+          ),
+        }
+      })
+    }
+  }
+
+  function handleCropSave(slug: string, crop: string) {
+    setStatus((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        posts: prev.posts.map((p) =>
+          p.slug === slug ? { ...p, heroCrop: crop } : p
+        ),
+      }
+    })
   }
 
   // Build per-slug error and fallback maps from task events
@@ -502,145 +563,242 @@ export default function BlogImagesAdmin() {
               {postsWithPrompt.map((post) => {
                 const isCurrentlyGenerating = isGenerating && currentSlug === post.slug
                 const slugError = slugErrors.get(post.slug)
+                const imageUrl = post.heroImageUrl || post.heroImage || `/blog/${post.slug}.png`
                 return (
-                  <div
-                    key={post.slug}
-                    data-element="post-card"
-                    className={css({
-                      display: 'flex',
-                      gap: '16px',
-                      padding: '16px',
-                      backgroundColor: '#161b22',
-                      borderRadius: '8px',
-                      border: slugError ? '1px solid #f85149' : '1px solid #30363d',
-                      alignItems: 'flex-start',
-                    })}
-                  >
-                    {/* Thumbnail */}
+                  <div key={post.slug}>
                     <div
+                      data-element="post-card"
                       className={css({
-                        width: '120px',
-                        height: '80px',
-                        flexShrink: 0,
-                        borderRadius: '6px',
-                        overflow: 'hidden',
-                        backgroundColor: '#0d1117',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid #21262d',
+                        gap: '16px',
+                        padding: '16px',
+                        backgroundColor: '#161b22',
+                        borderRadius: cropEditorSlug === post.slug ? '8px 8px 0 0' : '8px',
+                        border: slugError ? '1px solid #f85149' : '1px solid #30363d',
+                        alignItems: 'flex-start',
                       })}
                     >
-                      {post.imageExists ? (
-                        <img
-                          src={`${post.heroImage || `/blog/${post.slug}.png`}?t=${Date.now()}`}
-                          alt={post.title}
+                      {/* Featured checkbox */}
+                      <label
+                        data-element="featured-toggle"
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          alignSelf: 'center',
+                        })}
+                        title={post.featured ? 'Featured — click to unfeature' : 'Not featured — click to feature'}
+                      >
+                        <input
+                          data-action="toggle-featured"
+                          type="checkbox"
+                          checked={post.featured}
+                          onChange={() => handleToggleFeatured(post)}
                           className={css({
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
+                            width: '16px',
+                            height: '16px',
+                            cursor: 'pointer',
+                            accentColor: '#58a6ff',
                           })}
                         />
-                      ) : isCurrentlyGenerating ? (
-                        <span className={css({ fontSize: '24px' })}>...</span>
-                      ) : (
-                        <span className={css({ fontSize: '11px', color: '#484f58' })}>
-                          No image
-                        </span>
-                      )}
-                    </div>
+                      </label>
 
-                    {/* Info */}
-                    <div className={css({ flex: 1, minWidth: 0 })}>
+                      {/* Thumbnail */}
                       <div
                         className={css({
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#f0f6fc',
-                          marginBottom: '4px',
-                        })}
-                      >
-                        {post.title}
-                      </div>
-                      <div
-                        className={css({
-                          fontSize: '12px',
-                          color: '#8b949e',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        })}
-                      >
-                        {post.heroPrompt}
-                      </div>
-                      {post.imageExists && post.sizeBytes && (
-                        <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px' })}>
-                          {formatBytes(post.sizeBytes)}
-                        </div>
-                      )}
-                      {slugFallbacks.get(post.slug) && !slugError && (
-                        <div
-                          className={css({
-                            marginTop: '8px',
-                            padding: '6px 10px',
-                            backgroundColor: 'rgba(210, 153, 34, 0.1)',
-                            border: '1px solid rgba(210, 153, 34, 0.3)',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            color: '#d29922',
-                            wordBreak: 'break-word',
-                          })}
-                        >
-                          {slugFallbacks.get(post.slug)}
-                        </div>
-                      )}
-                      {slugError && (
-                        <div
-                          className={css({
-                            marginTop: '8px',
-                            padding: '6px 10px',
-                            backgroundColor: 'rgba(248, 81, 73, 0.1)',
-                            border: '1px solid rgba(248, 81, 73, 0.3)',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            color: '#f85149',
-                            wordBreak: 'break-word',
-                          })}
-                        >
-                          {slugError}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Status + actions */}
-                    <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 })}>
-                      {post.imageExists && (
-                        <span className={css({ fontSize: '11px', color: '#3fb950' })}>
-                          exists
-                        </span>
-                      )}
-                      <button
-                        data-action="generate-single"
-                        onClick={() => handleGenerateSingle(post, post.imageExists)}
-                        disabled={isGenerating}
-                        className={css({
-                          backgroundColor: post.imageExists ? '#21262d' : '#238636',
-                          color: post.imageExists ? '#c9d1d9' : '#fff',
-                          border: post.imageExists ? '1px solid #30363d' : 'none',
+                          width: '120px',
+                          height: '80px',
+                          flexShrink: 0,
                           borderRadius: '6px',
-                          padding: '4px 12px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: post.imageExists ? '#30363d' : '#2ea043',
-                          },
-                          '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                          overflow: 'hidden',
+                          backgroundColor: '#0d1117',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #21262d',
                         })}
                       >
-                        {post.imageExists ? 'Regenerate' : 'Generate'}
-                      </button>
+                        {post.imageExists ? (
+                          <img
+                            src={`${imageUrl}?t=${Date.now()}`}
+                            alt={post.title}
+                            style={post.heroCrop ? { objectPosition: post.heroCrop } : undefined}
+                            className={css({
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            })}
+                          />
+                        ) : isCurrentlyGenerating ? (
+                          <span className={css({ fontSize: '24px' })}>...</span>
+                        ) : (
+                          <span className={css({ fontSize: '11px', color: '#484f58' })}>
+                            No image
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className={css({ flex: 1, minWidth: 0 })}>
+                        <div
+                          className={css({
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#f0f6fc',
+                            marginBottom: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          })}
+                        >
+                          {post.title}
+                          {post.featured && (
+                            <span
+                              className={css({
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                color: '#58a6ff',
+                                backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                                border: '1px solid rgba(88, 166, 255, 0.3)',
+                                borderRadius: '4px',
+                                padding: '1px 6px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              })}
+                            >
+                              Featured
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className={css({
+                            fontSize: '12px',
+                            color: '#8b949e',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          })}
+                        >
+                          {post.heroPrompt}
+                        </div>
+                        {post.imageExists && post.sizeBytes && (
+                          <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px' })}>
+                            {formatBytes(post.sizeBytes)}
+                            {post.heroCrop && (
+                              <span className={css({ marginLeft: '8px' })}>
+                                crop: {post.heroCrop}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {slugFallbacks.get(post.slug) && !slugError && (
+                          <div
+                            className={css({
+                              marginTop: '8px',
+                              padding: '6px 10px',
+                              backgroundColor: 'rgba(210, 153, 34, 0.1)',
+                              border: '1px solid rgba(210, 153, 34, 0.3)',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              color: '#d29922',
+                              wordBreak: 'break-word',
+                            })}
+                          >
+                            {slugFallbacks.get(post.slug)}
+                          </div>
+                        )}
+                        {slugError && (
+                          <div
+                            className={css({
+                              marginTop: '8px',
+                              padding: '6px 10px',
+                              backgroundColor: 'rgba(248, 81, 73, 0.1)',
+                              border: '1px solid rgba(248, 81, 73, 0.3)',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              color: '#f85149',
+                              wordBreak: 'break-word',
+                            })}
+                          >
+                            {slugError}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status + actions */}
+                      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 })}>
+                        {post.imageExists && (
+                          <>
+                            <span className={css({ fontSize: '11px', color: '#3fb950' })}>
+                              exists
+                            </span>
+                            <button
+                              data-action="open-crop-editor"
+                              onClick={() =>
+                                setCropEditorSlug(cropEditorSlug === post.slug ? null : post.slug)
+                              }
+                              className={css({
+                                backgroundColor: cropEditorSlug === post.slug ? '#30363d' : '#21262d',
+                                color: '#c9d1d9',
+                                border: '1px solid #30363d',
+                                borderRadius: '6px',
+                                padding: '4px 12px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                '&:hover': { backgroundColor: '#30363d' },
+                              })}
+                            >
+                              Crop
+                            </button>
+                          </>
+                        )}
+                        <button
+                          data-action="generate-single"
+                          onClick={() => handleGenerateSingle(post, post.imageExists)}
+                          disabled={isGenerating}
+                          className={css({
+                            backgroundColor: post.imageExists ? '#21262d' : '#238636',
+                            color: post.imageExists ? '#c9d1d9' : '#fff',
+                            border: post.imageExists ? '1px solid #30363d' : 'none',
+                            borderRadius: '6px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              backgroundColor: post.imageExists ? '#30363d' : '#2ea043',
+                            },
+                            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                          })}
+                        >
+                          {post.imageExists ? 'Regenerate' : 'Generate'}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Crop editor expansion */}
+                    {cropEditorSlug === post.slug && post.imageExists && (
+                      <div
+                        className={css({
+                          borderLeft: '1px solid #30363d',
+                          borderRight: '1px solid #30363d',
+                          borderBottom: '1px solid #30363d',
+                          borderRadius: '0 0 8px 8px',
+                          backgroundColor: '#161b22',
+                        })}
+                      >
+                        <BlogCropEditor
+                          slug={post.slug}
+                          imageUrl={imageUrl}
+                          currentCrop={post.heroCrop}
+                          onSave={(crop) => handleCropSave(post.slug, crop)}
+                          onClose={() => setCropEditorSlug(null)}
+                        />
+                      </div>
+                    )}
                   </div>
                 )
               })}
