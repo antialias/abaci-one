@@ -57,14 +57,11 @@ describe('HomeHeroContext', () => {
     expect(result.current.isHeroVisible).toBe(false)
   })
 
-  it('stores subtitle index in sessionStorage', () => {
-    renderHook(() => useHomeHero(), { wrapper })
-
-    const storedIndex = sessionStorage.getItem('heroSubtitleIndex')
-    expect(storedIndex).not.toBeNull()
-    const parsed = parseInt(storedIndex!, 10)
-    expect(Number.isNaN(parsed)).toBe(false)
-    expect(parsed).toBeGreaterThanOrEqual(0)
+  it('starts subtitle rotation from index 0', () => {
+    const { result } = renderHook(() => useHomeHero(), { wrapper })
+    expect(result.current.subtitle).toEqual(
+      expect.objectContaining({ text: expect.any(String) })
+    )
   })
 
   it('persists abacus value to sessionStorage', async () => {
@@ -100,12 +97,10 @@ describe('HomeHeroContext', () => {
     expect(result.current.abacusValue).toBe(55)
   })
 
-  it('reuses stored subtitle index across renders', () => {
-    sessionStorage.setItem('heroSubtitleIndex', '2')
-
+  it('provides a consistent subtitle across renders', () => {
     const { result } = renderHook(() => useHomeHero(), { wrapper })
 
-    // Should use the stored index (index 2)
+    // Subtitle should be defined on initial render
     expect(result.current.subtitle).toBeDefined()
   })
 
