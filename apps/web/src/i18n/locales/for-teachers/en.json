@@ -1,0 +1,69 @@
+{
+  "forTeachers": {
+    "hook": {
+      "headline": "Teaching soroban remotely shouldn't feel broken.",
+      "p1": "You know the problem. Over video, you can't see your student's abacus clearly. You can't tell if their beads are in the right position. You're squinting at a grainy camera feed while trying to teach friends-of-10 carries. The physical nature of the abacus — its greatest strength in person — becomes its biggest liability on a screen.",
+      "p2": "We built the tools that fix this. Computer vision that sees and reads the abacus for you. Adaptive problem generation that knows each student's weak spots. Skill reporting that would take you hours to compile manually. Everything a soroban teacher needs to teach effectively, whether your student is across the table or across the country."
+    },
+    "vision": {
+      "headline": "See their abacus. Clearly.",
+      "description": "The student points their camera at their physical soroban. Our computer vision system detects it, crops it, corrects the perspective, and streams a clean view to you — no more squinting at a messy video call.",
+      "autoRead": "The abacus value is read automatically",
+      "autoReadDesc": "Computer vision detects the bead positions and enters the value, so the student stays focused on solving the problem instead of typing answers. As they work through each term, checkmarks appear in real time showing their progress.",
+      "liveTeaching": "Built for live lessons, not just homework",
+      "liveTeachingDesc": "You see the current problem, the student's abacus, and their progress — all in one view. Pause the session when you need to explain something. Manipulate their on-screen abacus to demonstrate a technique. This is a teaching tool, not just an assignment tool.",
+      "playback": "Review any problem after the fact",
+      "playbackDesc": "Every problem is recorded with synchronized video and metadata. Click any past problem in the session to watch exactly how the student worked through it — what they saw, what they entered, where they hesitated."
+    },
+    "skills": {
+      "headline": "Know exactly which skills need work.",
+      "description": "Even expert teachers struggle to isolate which specific skills a student has mastered and which they haven't. Is it friends-of-5 addition that's shaky, or friends-of-10 carrying? Heaven bead subtraction or simple complements? With a physical abacus and manual observation, this is incredibly hard to tease apart.",
+      "bkt": "Bayesian skill tracking does it automatically",
+      "bktDesc": "Every problem exercises specific skills. The system tracks performance on each one independently using Bayesian Knowledge Tracing, classifying each skill as Strong, Developing, or Weak — with response time data so you can distinguish \"slow but accurate\" from \"fast but careless.\"",
+      "targeting": "Problems target weak skills automatically",
+      "targetingDesc": "The adaptive problem generator uses the BKT model to select problems that exercise the skills each student most needs to practice. Weak skills get more reps. Strong skills get maintained. You can override this per student if you disagree with the model.",
+      "reporting": "Reports you'd never have time to build manually",
+      "reportingDesc": "Per-student, per-skill mastery breakdown. Session-over-session progress. Speed trends. The kind of data that would take hours to compile from manual observation, generated automatically from every practice session."
+    },
+    "adaptive": {
+      "headline": "Every student gets the right problems.",
+      "description": "A single worksheet gives every student the same problems at the same difficulty. That's the opposite of good teaching. The practice system generates problems individually, considering:",
+      "skillLevel": "Current skill mastery — weak skills get more practice, strong skills get maintained",
+      "sessionTime": "Session time remaining — harder problems early, review problems near the end",
+      "structure": "3-part structure: abacus work, visualization, and mental math — with adjustable weights per student",
+      "helpMode": "Help mode: automatic hints, manual only, or teacher-approved — your choice per student",
+      "needsAttention": "The dashboard flags students who are struggling before they fall behind."
+    },
+    "observation": {
+      "headline": "Observe any session. From anywhere.",
+      "description": "Open any student's active session in your browser. See what they see: the current problem, their camera feed with detected abacus value, their answer, and their accuracy — all live.",
+      "remoteControl": "Remote abacus control",
+      "remoteControlDesc": "Manipulate the student's on-screen abacus to demonstrate a technique. They see your moves in real time.",
+      "parentLinks": "Shareable observation links",
+      "parentLinksDesc": "Send a link to parents so they can watch their child practice. No account needed.",
+      "mobile": "Works on your phone",
+      "mobileDesc": "Check in on any student from anywhere. The observation view is fully responsive."
+    },
+    "features": {
+      "headline": "Everything else you need",
+      "classroom": "Classroom Join Codes",
+      "classroomDesc": "Create a classroom, share a code, students join in seconds. Parent consent built in.",
+      "printable": "Printable Materials",
+      "printableDesc": "Worksheets, flashcards, and calendars ready to print.",
+      "notes": "Student Notes",
+      "notesDesc": "Free-form observations attached to each student.",
+      "history": "Session History",
+      "historyDesc": "Full record of every practice session with video playback.",
+      "bulk": "Multi-Student Management",
+      "bulkDesc": "Bulk actions, filtering, and archiving across your roster.",
+      "devices": "Works on Any Device",
+      "devicesDesc": "Browser-based. Nothing to install. Students use whatever they have."
+    },
+    "cta": {
+      "headline": "Set up your first classroom",
+      "primaryButton": "Create a classroom",
+      "secondaryButton": "See how practice works",
+      "reassurance": "Free to use. No credit card. No time limit."
+    }
+  }
+}

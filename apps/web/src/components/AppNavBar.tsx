@@ -337,6 +337,7 @@ function MenuContent({
 
             {renderNavLink('/', '🧮', 'Home')}
             {renderNavLink('/why-abacus', '💡', 'Why Abacus')}
+            {renderNavLink('/for-teachers', '🏫', 'For Teachers')}
             {renderNavLink('/create', '✏️', 'Create')}
             {renderNavLink('/practice', '📚', 'Practice')}
             {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
@@ -710,6 +711,7 @@ function MenuContent({
 
           {renderNavLink('/', '🧮', 'Home')}
           {renderNavLink('/why-abacus', '💡', 'Why Abacus')}
+          {renderNavLink('/for-teachers', '🏫', 'For Teachers')}
           {renderNavLink('/create', '✏️', 'Create')}
           {renderNavLink('/practice', '📚', 'Practice')}
           {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}

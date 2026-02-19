@@ -7,6 +7,7 @@ import { gamesMessages } from '@/i18n/locales/games/messages'
 import { guideMessages } from '@/i18n/locales/guide/messages'
 import { homeMessages } from '@/i18n/locales/home/messages'
 import { tutorialMessages } from '@/i18n/locales/tutorial/messages'
+import { forTeachersMessages } from '@/i18n/locales/for-teachers/messages'
 import { whyAbacusMessages } from '@/i18n/locales/why-abacus/messages'
 
 export type Locale = 'en' | 'de' | 'ja' | 'hi' | 'es' | 'la' | 'goh'
@@ -49,6 +50,7 @@ export async function getMessages(locale: Locale) {
     { tutorial: tutorialMessages[locale] },
     { calendar: calendarMessages[locale] },
     { create: createMessages[locale] },
-    { whyAbacus: whyAbacusMessages[locale] }
+    { whyAbacus: whyAbacusMessages[locale] },
+    { forTeachers: forTeachersMessages[locale] }
   )
 }

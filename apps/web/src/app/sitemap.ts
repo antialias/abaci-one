@@ -4,7 +4,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://abaci.one'
 
   // Main pages
-  const routes = ['', '/arcade', '/create', '/guide', '/about'].map((route) => ({
+  const routes = ['', '/arcade', '/create', '/guide', '/about', '/why-abacus', '/for-teachers'].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,
