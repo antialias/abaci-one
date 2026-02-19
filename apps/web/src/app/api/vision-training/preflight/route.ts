@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkDependencies, ensureVenvReady, isPlatformSupported, TRAINING_PYTHON } from '../config'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route checks system dependencies at runtime
 export const dynamic = 'force-dynamic'
@@ -35,7 +36,10 @@ export interface PreflightResult {
  *
  * Returns a structured result indicating if training can proceed.
  */
-export async function GET(): Promise<NextResponse<PreflightResult>> {
+export async function GET(): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   // Check platform support first
   const platformCheck = isPlatformSupported()
   if (!platformCheck.supported) {

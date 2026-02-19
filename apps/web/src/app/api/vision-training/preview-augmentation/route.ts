@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 import { TRAINING_PYTHON, PYTHON_ENV, ensureVenvReady } from '../config'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 interface PipelineStepVariant {
   image_base64: string
@@ -39,6 +40,8 @@ interface PipelinePreviewResult {
  * This ensures the preview matches exactly what goes through the training pipeline.
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const body = await request.json()
     const { imageData, corners, applyMasking = true, applyAugmentation = true } = body

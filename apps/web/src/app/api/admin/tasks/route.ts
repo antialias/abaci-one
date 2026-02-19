@@ -8,8 +8,12 @@
 import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 export async function GET(request: Request) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const url = new URL(request.url)
   const taskId = url.searchParams.get('taskId')
 

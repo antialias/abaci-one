@@ -40,7 +40,6 @@ import type { AngleMeasure } from './engine/facts'
 import type { DistancePair } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
-import { computeMacroGhost } from './engine/macroGhost'
 import { resolveSelector } from './engine/selectors'
 import type { MacroAnimation } from './engine/macroExecution'
 import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
@@ -772,8 +771,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         setProofFacts(proofFactsRef.current)
       }
 
-      // Compute ghost geometry via prop step replay
-      const macroGhosts = computeMacroGhost(propId, inputPointIds, constructionRef.current, step)
+      // Collect ghost layers produced by the macro itself
+      const macroGhosts = result.ghostLayers.map(gl => ({ ...gl, atStep: step }))
       if (macroGhosts.length > 0) {
         ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
       }

@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import type { TrainingDataRequest, TrainingDataResponse } from '@/lib/vision/trainingData'
 import { valueToDigitLabels } from '@/lib/vision/trainingData'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * Directory where collected training data is stored
@@ -18,6 +19,8 @@ const TRAINING_DATA_DIR = path.join(process.cwd(), 'data', 'vision-training', 'c
  * Images are organized by digit (0-9) in subdirectories.
  */
 export async function POST(request: NextRequest): Promise<NextResponse<TrainingDataResponse>> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth as NextResponse<TrainingDataResponse>
   try {
     const body: TrainingDataRequest = await request.json()
     const { columns, correctAnswer, playerId, sessionId } = body

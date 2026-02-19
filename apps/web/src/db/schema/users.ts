@@ -31,6 +31,9 @@ export const users = sqliteTable('users', {
 
   /** Profile photo URL (from Google OAuth) */
   image: text('image'),
+
+  /** User role for authorization: 'user' (default) or 'admin' */
+  role: text('role').notNull().default('user'),
 })
 
 export type User = typeof users.$inferSelect

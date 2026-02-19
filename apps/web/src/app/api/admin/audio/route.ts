@@ -6,6 +6,7 @@ import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS, ttsCollectedClips } from '@/db/schema'
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
 import { ALL_VOICES } from '@/lib/audio/voices'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -15,6 +16,9 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  * Returns the audio manifest, active voice, and per-voice clip counts.
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     // Fetch active voice from DB
     const [settings] = await db

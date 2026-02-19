@@ -1,6 +1,8 @@
 import { createId } from '@paralleldrive/cuid2'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -73,6 +75,9 @@ async function ensureManifestsDir(): Promise<void> {
  * }
  */
 export async function POST(request: Request): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const { modelType, filters, items } = body
@@ -166,6 +171,9 @@ export async function POST(request: Request): Promise<Response> {
  * - modelType (optional): Filter by model type
  */
 export async function GET(request: Request): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { searchParams } = new URL(request.url)
     const modelTypeFilter = searchParams.get('modelType')

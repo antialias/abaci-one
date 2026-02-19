@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { requireAdmin } from '@/lib/auth/requireRole'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom/classroom-manager'
 import { createTask } from '@/lib/task-manager'
 import type { SeedStudentsEvent } from '@/lib/tasks/events'
@@ -20,6 +21,8 @@ import {
  * This avoids shipping ~2000 lines of profile data as client JS.
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   return NextResponse.json({
     profiles: getProfileInfoList(),
     categories: ['bkt', 'session', 'edge'] as ProfileCategory[],
@@ -33,6 +36,8 @@ export async function GET() {
  * Accepts optional filters: { profiles?: string[], categories?: string[] }
  */
 export async function POST(req: Request) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const body = await req.json().catch(() => ({}))
     const profileNames = (body.profiles ?? []) as string[]

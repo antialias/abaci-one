@@ -7,11 +7,11 @@ import { getMessages } from '@/i18n/messages'
 export const metadata: Metadata = {
   metadataBase: new URL('https://abaci.one'),
   title: {
-    default: 'Abaci.One - Interactive Soroban Learning',
-    template: '%s | Abaci.One',
+    default: 'Abaci One — Adaptive Abacus Math Practice for Kids',
+    template: '%s | Abaci One',
   },
   description:
-    'Master the Japanese abacus (soroban) with interactive tutorials, arcade-style math games, and beautiful flashcards. Learn arithmetic through play with Rithmomachia, Complement Race, and more.',
+    'Screen time that builds real math skills. Adaptive daily practice, printable materials, and multiplayer math games — all built around the world\'s most effective mental math tool.',
   keywords: [
     'soroban',
     'abacus',
@@ -22,13 +22,15 @@ export const metadata: Metadata = {
     'soroban learning',
     'arithmetic practice',
     'educational games',
-    'Rithmomachia',
-    'number bonds',
-    'complement training',
+    'math practice for kids',
+    'adaptive math',
+    'mental math for kids',
+    'abacus for kids',
+    'math screen time',
   ],
-  authors: [{ name: 'Abaci.One' }],
-  creator: 'Abaci.One',
-  publisher: 'Abaci.One',
+  authors: [{ name: 'Abaci One' }],
+  creator: 'Abaci One',
+  publisher: 'Abaci One',
 
   // Open Graph
   openGraph: {
@@ -36,16 +38,18 @@ export const metadata: Metadata = {
     locale: 'en_US',
     alternateLocale: ['de_DE', 'ja_JP', 'hi_IN', 'es_ES', 'la'],
     url: 'https://abaci.one',
-    title: 'Abaci.One - Interactive Soroban Learning',
-    description: 'Master the Japanese abacus through interactive games, tutorials, and practice',
-    siteName: 'Abaci.One',
+    title: 'Abaci One — Adaptive Abacus Math Practice for Kids',
+    description:
+      'Screen time that builds real math skills. Adaptive daily practice, printable materials, and multiplayer math games — all built around the world\'s most effective mental math tool.',
+    siteName: 'Abaci One',
   },
 
   // Twitter
   twitter: {
     card: 'summary_large_image',
-    title: 'Abaci.One - Interactive Soroban Learning',
-    description: 'Master the Japanese abacus through games and practice',
+    title: 'Abaci One — Adaptive Abacus Math Practice for Kids',
+    description:
+      'Adaptive abacus math practice for kids. Daily practice that adapts, multiplayer math games, and printable materials.',
   },
 
   // Icons
@@ -58,11 +62,11 @@ export const metadata: Metadata = {
   },
 
   // App-specific
-  applicationName: 'Abaci.One',
+  applicationName: 'Abaci One',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Abaci.One',
+    title: 'Abaci One',
   },
 
   // Modern web app capable meta tag (non-Apple browsers)

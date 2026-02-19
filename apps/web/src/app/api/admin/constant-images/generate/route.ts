@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { MATH_CONSTANTS } from '@/components/toys/number-line/constants/constantsData'
 import { startImageGeneration } from '@/lib/tasks/image-generate'
 import type { ImageGenerateInput } from '@/lib/tasks/image-generate'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const VALID_PROVIDERS = ['gemini', 'openai'] as const
 const VALID_STYLES = ['metaphor', 'math'] as const
@@ -15,6 +16,9 @@ const VALID_THEMES = ['light', 'dark'] as const
  * Response: { taskId: string }
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const { provider, model, targets, forceRegenerate, theme } = body

@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
 
 const postsDirectory = path.join(process.cwd(), 'content', 'blog')
+const heroHtmlDirectory = path.join(postsDirectory, 'hero-html')
 
 export interface BlogPost {
   slug: string
@@ -20,6 +21,8 @@ export interface BlogPost {
   heroImage?: string
   heroAspectRatio?: string
   heroCrop?: string
+  heroType?: string
+  heroStoryId?: string
   content: string
   html: string
 }
@@ -27,6 +30,7 @@ export interface BlogPost {
 export interface BlogPostMetadata extends Omit<BlogPost, 'content' | 'html'> {
   excerpt?: string
   heroImageUrl?: string
+  heroHtml?: string
 }
 
 /**
@@ -73,7 +77,16 @@ export async function getAllPostsMetadata(): Promise<BlogPostMetadata[]> {
         heroImageUrl = `/blog/${slug}.png`
       }
 
-      return { ...metadata, excerpt, heroImageUrl }
+      // Read hero HTML for component-type heroes
+      let heroHtml: string | undefined
+      if (metadata.heroType === 'component') {
+        const htmlPath = path.join(heroHtmlDirectory, `${slug}.html`)
+        if (fs.existsSync(htmlPath)) {
+          heroHtml = fs.readFileSync(htmlPath, 'utf8')
+        }
+      }
+
+      return { ...metadata, excerpt, heroImageUrl, heroHtml }
     })
   )
 
@@ -114,6 +127,8 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
     heroImage: data.heroImage || undefined,
     heroAspectRatio: data.heroAspectRatio || undefined,
     heroCrop: data.heroCrop || undefined,
+    heroType: data.heroType || undefined,
+    heroStoryId: data.heroStoryId || undefined,
     content,
     html,
   }

@@ -56,6 +56,49 @@ function Tags({ tags }: { tags: string[] }) {
   )
 }
 
+function HeroBanner({ post }: { post: BlogPostMetadata }) {
+  if (post.heroHtml) {
+    return (
+      <div
+        data-element="component-banner"
+        className={css({
+          position: 'relative',
+          width: '100%',
+          aspectRatio: { base: '16 / 9', md: '2.4 / 1' },
+          overflow: 'hidden',
+        })}
+        dangerouslySetInnerHTML={{ __html: post.heroHtml }}
+      />
+    )
+  }
+
+  return (
+    <div
+      data-element="image-banner"
+      className={css({
+        position: 'relative',
+        width: '100%',
+        aspectRatio: { base: '16 / 9', md: '2.4 / 1' },
+        overflow: 'hidden',
+      })}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={post.heroImageUrl}
+        alt={post.title}
+        style={{ objectPosition: post.heroCrop || 'center' }}
+        className={css({
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        })}
+      />
+    </div>
+  )
+}
+
 function ImageCard({ post }: { post: BlogPostMetadata }) {
   return (
     <Link
@@ -78,29 +121,7 @@ function ImageCard({ post }: { post: BlogPostMetadata }) {
       })}
     >
       <article>
-        <div
-          data-element="image-banner"
-          className={css({
-            position: 'relative',
-            width: '100%',
-            aspectRatio: { base: '16 / 9', md: '2.4 / 1' },
-            overflow: 'hidden',
-          })}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={post.heroImageUrl}
-            alt={post.title}
-            style={{ objectPosition: post.heroCrop || 'center' }}
-            className={css({
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            })}
-          />
-        </div>
+        <HeroBanner post={post} />
         <div
           className={css({
             p: { base: '1rem', md: '1.5rem' },
@@ -299,7 +320,7 @@ export default async function BlogIndex() {
           })}
         >
           {allPosts.map((post) =>
-            post.heroImageUrl ? (
+            post.heroImageUrl || post.heroHtml ? (
               <ImageCard key={post.slug} post={post} />
             ) : (
               <TextCard key={post.slug} post={post} />

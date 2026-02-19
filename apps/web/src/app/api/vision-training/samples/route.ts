@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route reads from disk which changes at runtime
 export const dynamic = 'force-dynamic'
@@ -47,6 +48,8 @@ type SamplesResponse = ColumnClassifierSamplesResponse | BoundaryDetectorSamples
  * - boundary-detector: Returns frame images with corner annotations
  */
 export async function GET(request: NextRequest): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   const searchParams = request.nextUrl.searchParams
   const modelType = searchParams.get('type') || 'column-classifier'
 

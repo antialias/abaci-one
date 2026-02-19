@@ -5,6 +5,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import type { Subtitle } from '../data/abaciOneSubtitles'
 import { subtitles } from '../data/abaciOneSubtitles'
 
+const ROTATION_INTERVAL = 5000 // 5 seconds
+
 interface HomeHeroContextValue {
   subtitle: Subtitle
   abacusValue: number
@@ -20,31 +22,21 @@ const HomeHeroContext = createContext<HomeHeroContextValue | null>(null)
 export { HomeHeroContext }
 
 export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
-  // Use first subtitle for SSR, then select random one on client mount
-  const [subtitle, setSubtitle] = useState<Subtitle>(subtitles[0])
+  const [subtitleIndex, setSubtitleIndex] = useState(0)
   const [isSubtitleLoaded, setIsSubtitleLoaded] = useState(false)
 
-  // Select random subtitle only on client side, persist per-session
+  // Rotate subtitles on a 5-second interval
   useEffect(() => {
-    // Check if we have a stored subtitle index for this session
-    const storedIndex = sessionStorage.getItem('heroSubtitleIndex')
-
-    if (storedIndex !== null) {
-      // Use the stored subtitle index
-      const index = parseInt(storedIndex, 10)
-      if (!Number.isNaN(index) && index >= 0 && index < subtitles.length) {
-        setSubtitle(subtitles[index])
-        setIsSubtitleLoaded(true)
-        return
-      }
-    }
-
-    // Generate a new random index and store it
-    const randomIndex = Math.floor(Math.random() * subtitles.length)
-    sessionStorage.setItem('heroSubtitleIndex', randomIndex.toString())
-    setSubtitle(subtitles[randomIndex])
     setIsSubtitleLoaded(true)
+
+    const timer = setInterval(() => {
+      setSubtitleIndex((prev) => (prev + 1) % subtitles.length)
+    }, ROTATION_INTERVAL)
+
+    return () => clearInterval(timer)
   }, [])
+
+  const subtitle = subtitles[subtitleIndex]
 
   // Shared abacus value - always start at 0 for SSR/hydration consistency
   const [abacusValue, setAbacusValue] = useState(0)

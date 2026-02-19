@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * POST /api/admin/audio/preview
@@ -7,6 +8,9 @@ import { type NextRequest, NextResponse } from 'next/server'
  * Nothing is saved to disk or DB.
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'LLM_OPENAI_API_KEY is not configured' }, { status: 500 })

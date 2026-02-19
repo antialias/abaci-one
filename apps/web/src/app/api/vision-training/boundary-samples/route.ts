@@ -1,8 +1,9 @@
 import fs from 'fs'
 import path from 'path'
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import type { QuadCorners } from '@/types/vision'
 import { deleteBoundaryDetectorSample } from '@/lib/vision/trainingDataDeletion'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route writes to disk
 export const dynamic = 'force-dynamic'
@@ -56,6 +57,8 @@ function detectImageFormat(base64Data: string): 'png' | 'jpeg' | 'unknown' {
  * - deviceId: Optional identifier for the capture device
  */
 export async function POST(request: NextRequest): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const body: BoundarySampleRequest = await request.json()
 
@@ -160,6 +163,8 @@ interface BoundaryFrame {
  * Add ?list=true to get full list of frames with metadata.
  */
 export async function GET(request: NextRequest): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const searchParams = request.nextUrl.searchParams
     const listFrames = searchParams.get('list') === 'true'
@@ -265,6 +270,8 @@ export async function GET(request: NextRequest): Promise<Response> {
  * - baseName: Base filename (without extension)
  */
 export async function DELETE(request: NextRequest): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const searchParams = request.nextUrl.searchParams
     const deviceId = searchParams.get('deviceId') || 'default'

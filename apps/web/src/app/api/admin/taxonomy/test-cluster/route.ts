@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
 import { generateEmbeddings, EMBEDDING_DIMENSIONS } from '@/lib/flowcharts/embedding'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * POST /api/admin/taxonomy/test-cluster
@@ -23,6 +24,9 @@ import { generateEmbeddings, EMBEDDING_DIMENSIONS } from '@/lib/flowcharts/embed
  * }
  */
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await req.json()
     const topics: string[] = body.topics

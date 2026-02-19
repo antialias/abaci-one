@@ -1,5 +1,7 @@
 import fs from 'fs'
 import path from 'path'
+import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route reads from disk which changes at runtime
 export const dynamic = 'force-dynamic'
@@ -52,6 +54,8 @@ function calculateBoundaryDetectorQuality(totalFrames: number): DataQuality {
  * Used by the model selection card in the training wizard.
  */
 export async function GET(): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     // --- Column Classifier Summary ---
     let columnTotalImages = 0

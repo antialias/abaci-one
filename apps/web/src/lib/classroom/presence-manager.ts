@@ -25,6 +25,7 @@ import {
   type Player,
 } from '@/db/schema'
 import { getSocketIO } from '@/lib/socket-io'
+import { syncPresence, removePresence } from '@/lib/auth/sync-relationships'
 
 // ============================================================================
 // Enter/Leave Classroom
@@ -78,6 +79,20 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
     }
   }
 
+  // Helper: sync presence to Casbin (non-fatal)
+  const syncPresenceToCasbin = () => {
+    db.query.classrooms
+      .findFirst({ where: eq(classrooms.id, classroomId) })
+      .then((classroom) => {
+        if (classroom) {
+          syncPresence(classroom.teacherId, playerId).catch((err) =>
+            console.error('[auth-sync] Failed to sync presence:', err)
+          )
+        }
+      })
+      .catch((err) => console.error('[auth-sync] Failed to look up classroom:', err))
+  }
+
   // Upsert presence
   if (currentPresence) {
     // Already in this classroom, update timestamp
@@ -86,6 +101,7 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
       .set({ enteredAt: new Date(), enteredBy })
       .where(eq(classroomPresence.playerId, playerId))
       .returning()
+    syncPresenceToCasbin()
     return { success: true, presence: updated }
   }
 
@@ -113,6 +129,8 @@ export async function enterClassroom(params: EnterClassroomParams): Promise<Ente
     })
   }
 
+  syncPresenceToCasbin()
+
   return { success: true, presence: inserted }
 }
 
@@ -139,6 +157,16 @@ export async function leaveClassroom(playerId: string): Promise<void> {
       playerId,
       playerName: player?.name ?? 'Unknown',
     })
+  }
+
+  // Sync to Casbin — downgrade teacher-present back to teacher-enrolled (non-fatal)
+  const classroom = await db.query.classrooms.findFirst({
+    where: eq(classrooms.id, presence.classroomId),
+  })
+  if (classroom) {
+    removePresence(classroom.teacherId, playerId).catch((err) =>
+      console.error('[auth-sync] Failed to remove presence:', err)
+    )
   }
 }
 

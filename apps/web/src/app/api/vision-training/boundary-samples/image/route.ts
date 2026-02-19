@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -17,6 +18,8 @@ const BOUNDARY_DETECTOR_DIR = path.join(process.cwd(), 'data/vision-training/bou
  * - baseName: Base filename (without extension)
  */
 export async function GET(request: NextRequest): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const searchParams = request.nextUrl.searchParams
     const deviceId = searchParams.get('deviceId') || 'default'

@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 import {
@@ -7,6 +8,7 @@ import {
   TRAINING_PYTHON,
   TRAINING_SCRIPTS_DIR,
 } from '../config'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route runs system commands at runtime
 export const dynamic = 'force-dynamic'
@@ -37,6 +39,9 @@ const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
  * Runs a Python script that queries TensorFlow for available devices.
  */
 export async function GET(): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   // Check platform support first - don't even try to set up venv on unsupported platforms
   const platformCheck = isPlatformSupported()
   if (!platformCheck.supported) {

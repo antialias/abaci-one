@@ -47,6 +47,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Post hero images',
   },
   {
+    href: '/admin/homepage-previews',
+    label: 'Homepage',
+    description: 'Preview images',
+  },
+  {
     href: '/admin/audio',
     label: 'Audio',
     description: 'TTS clips',
@@ -55,6 +60,11 @@ const adminNavItems: AdminNavItem[] = [
     href: '/admin/tts-lab',
     label: 'TTS Lab',
     description: 'Reliability tests',
+  },
+  {
+    href: '/admin/euclid-editor',
+    label: 'Euclid',
+    description: 'Proof editor',
   },
   {
     href: '/vision-training',

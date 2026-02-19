@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const postsDirectory = path.join(process.cwd(), 'content', 'blog')
 
@@ -14,6 +15,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const { slug } = await params
 
   const filePath = path.join(postsDirectory, `${slug}.md`)
@@ -21,7 +25,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  let body: { featured?: boolean; heroCrop?: string; heroPrompt?: string }
+  let body: {
+    featured?: boolean
+    heroCrop?: string
+    heroPrompt?: string
+    heroType?: string
+    heroStoryId?: string
+  }
   try {
     body = await request.json()
   } catch {
@@ -44,6 +54,20 @@ export async function PATCH(
       delete data.heroPrompt
     }
   }
+  if (typeof body.heroType === 'string') {
+    if (body.heroType.trim()) {
+      data.heroType = body.heroType.trim()
+    } else {
+      delete data.heroType
+    }
+  }
+  if (typeof body.heroStoryId === 'string') {
+    if (body.heroStoryId.trim()) {
+      data.heroStoryId = body.heroStoryId.trim()
+    } else {
+      delete data.heroStoryId
+    }
+  }
 
   const updated = matter.stringify(content, data)
   fs.writeFileSync(filePath, updated, 'utf8')
@@ -53,5 +77,7 @@ export async function PATCH(
     featured: data.featured ?? false,
     heroCrop: data.heroCrop ?? null,
     heroPrompt: data.heroPrompt ?? null,
+    heroType: data.heroType ?? null,
+    heroStoryId: data.heroStoryId ?? null,
   })
 }

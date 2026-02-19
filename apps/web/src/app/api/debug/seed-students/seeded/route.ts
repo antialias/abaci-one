@@ -2,6 +2,7 @@ import { eq, desc } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * GET /api/debug/seed-students/seeded
@@ -11,6 +12,8 @@ import { getDbUserId } from '@/lib/viewer'
  * player for each profile.
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const userId = await getDbUserId()
 

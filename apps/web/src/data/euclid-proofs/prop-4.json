@@ -1,0 +1,38 @@
+{
+  "id": 4,
+  "title": "If two triangles have two sides and the included angle equal, the triangles are congruent",
+  "kind": "theorem",
+  "givenElements": [
+    { "kind": "point", "id": "pt-A", "label": "A", "x": -4, "y": -0.5, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "point", "id": "pt-B", "label": "B", "x": -6.2, "y": -1.5, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "point", "id": "pt-C", "label": "C", "x": -2.8, "y": 1.8, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "segment", "id": "seg-AB", "fromId": "pt-A", "toId": "pt-B", "color": "#1A1A2E", "origin": "given" },
+    { "kind": "segment", "id": "seg-AC", "fromId": "pt-A", "toId": "pt-C", "color": "#1A1A2E", "origin": "given" },
+    { "kind": "segment", "id": "seg-BC", "fromId": "pt-B", "toId": "pt-C", "color": "#1A1A2E", "origin": "given" },
+    { "kind": "point", "id": "pt-D", "label": "D", "x": 2.5, "y": -0.5, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "point", "id": "pt-E", "label": "E", "x": 0.863, "y": -2.278, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "point", "id": "pt-F", "label": "F", "x": 2.710, "y": 2.086, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "segment", "id": "seg-DE", "fromId": "pt-D", "toId": "pt-E", "color": "#1A1A2E", "origin": "given" },
+    { "kind": "segment", "id": "seg-DF", "fromId": "pt-D", "toId": "pt-F", "color": "#1A1A2E", "origin": "given" }
+  ],
+  "steps": [
+    {
+      "citation": "Post.1",
+      "instruction": "Join E to F",
+      "action": { "type": "straightedge", "fromId": "pt-E", "toId": "pt-F" },
+      "notes": "The only construction step. The proof is by superposition (C.N.4): since AB = DE, AC = DF, and angle BAC = angle EDF, placing triangle ABC onto DEF makes them coincide. Therefore BC = EF, angle ABC = angle DEF, and angle ACB = angle DFE."
+    }
+  ],
+  "givenFacts": [
+    { "left": { "a": "pt-A", "b": "pt-B" }, "right": { "a": "pt-D", "b": "pt-E" }, "statement": "AB = DE" },
+    { "left": { "a": "pt-A", "b": "pt-C" }, "right": { "a": "pt-D", "b": "pt-F" }, "statement": "AC = DF" }
+  ],
+  "givenAngleFacts": [
+    { "left": { "vertex": "pt-A", "ray1": "pt-B", "ray2": "pt-C" }, "right": { "vertex": "pt-D", "ray1": "pt-E", "ray2": "pt-F" }, "statement": "angle BAC = angle EDF" }
+  ],
+  "resultSegments": [
+    { "fromId": "pt-B", "toId": "pt-C" },
+    { "fromId": "pt-E", "toId": "pt-F" }
+  ],
+  "authorNotes": "SAS congruence theorem. E and F are computed from A, B, C, D via rotation matrix (theta=0.4 rad) to maintain the SAS invariants exactly. When dragging, computeGivenElements recalculates E and F. The superposition flash (C.N.4 visual) maps A→D, B→E, C→F. Conclusion: BC = EF, angle ABC = angle DEF, angle ACB = angle DFE."
+}

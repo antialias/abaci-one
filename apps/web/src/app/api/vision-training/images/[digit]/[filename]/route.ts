@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { NextResponse } from 'next/server'
 import { deleteColumnClassifierSample } from '@/lib/vision/trainingDataDeletion'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * Directory where collected training data is stored
@@ -21,6 +22,8 @@ interface RouteParams {
  * Serves a training image file.
  */
 export async function GET(_request: Request, { params }: RouteParams): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const { digit, filename } = await params
 
@@ -60,6 +63,8 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
  * Body: { newDigit: number }
  */
 export async function PATCH(request: Request, { params }: RouteParams): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const { digit, filename } = await params
     const body = await request.json()
@@ -130,6 +135,8 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
  * Deletes a training image file and records to tombstone.
  */
 export async function DELETE(_request: Request, { params }: RouteParams): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const { digit, filename } = await params
 

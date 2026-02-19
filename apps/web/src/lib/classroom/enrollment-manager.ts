@@ -24,6 +24,7 @@ import {
   type Classroom,
   type Player,
 } from '@/db/schema'
+import { syncEnrollment, removeEnrollment } from '@/lib/auth/sync-relationships'
 
 // ============================================================================
 // Create Enrollment Request
@@ -165,6 +166,16 @@ export async function approveEnrollmentRequest(
       .update(enrollmentRequests)
       .set({ status: 'approved', resolvedAt: new Date() })
       .where(eq(enrollmentRequests.id, requestId))
+
+    // Sync to Casbin (non-fatal) — need teacher's userId
+    const classroom = await db.query.classrooms.findFirst({
+      where: eq(classrooms.id, request.classroomId),
+    })
+    if (classroom) {
+      syncEnrollment(classroom.teacherId, request.playerId).catch((err) =>
+        console.error('[auth-sync] Failed to sync enrollment from approval:', err)
+      )
+    }
   }
 
   return { request: updated, fullyApproved }
@@ -420,6 +431,16 @@ export async function unenrollStudent(classroomId: string, playerId: string): Pr
         eq(enrollmentRequests.status, 'pending')
       )
     )
+
+  // Sync to Casbin (non-fatal) — need teacher's userId
+  const classroom = await db.query.classrooms.findFirst({
+    where: eq(classrooms.id, classroomId),
+  })
+  if (classroom) {
+    removeEnrollment(classroom.teacherId, playerId).catch((err) =>
+      console.error('[auth-sync] Failed to remove enrollment:', err)
+    )
+  }
 }
 
 /**
@@ -500,6 +521,16 @@ export async function directEnrollStudent(classroomId: string, playerId: string)
     classroomId,
     playerId,
   })
+
+  // Sync to Casbin (non-fatal) — need teacher's userId
+  const classroom = await db.query.classrooms.findFirst({
+    where: eq(classrooms.id, classroomId),
+  })
+  if (classroom) {
+    syncEnrollment(classroom.teacherId, playerId).catch((err) =>
+      console.error('[auth-sync] Failed to sync direct enrollment:', err)
+    )
+  }
 
   return true
 }

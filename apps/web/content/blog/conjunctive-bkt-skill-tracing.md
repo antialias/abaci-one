@@ -1,20 +1,28 @@
 ---
-title: "Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work"
-description: "How we use conjunctive Bayesian Knowledge Tracing to infer which visual-motor patterns a student has automated when all we observe is 'problem correct' or 'problem incorrect'."
-author: "Abaci.one Team"
-publishedAt: "2025-12-14"
-updatedAt: "2025-12-16"
+title: 'Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work'
+description: >-
+  How we use conjunctive Bayesian Knowledge Tracing to infer which visual-motor
+  patterns a student has automated when all we observe is 'problem correct' or
+  'problem incorrect'.
+author: Abaci.one Team
+publishedAt: '2025-12-14'
+updatedAt: '2025-12-16'
 tags:
-  [
-    "education",
-    "machine-learning",
-    "bayesian",
-    "soroban",
-    "knowledge-tracing",
-    "adaptive-learning",
-  ]
+  - education
+  - machine-learning
+  - bayesian
+  - soroban
+  - knowledge-tracing
+  - adaptive-learning
 featured: true
-heroPrompt: "A moody overhead shot of a soroban abacus with beads mid-calculation, surrounded by scattered handwritten mathematical notation — Bayesian formulas, probability trees, and small skill-hierarchy diagrams on graph paper. A soft blue glow from a laptop screen illuminates the edges. Dark academic aesthetic, shallow depth of field on the abacus beads. Technical research photography."
+heroPrompt: >-
+  A moody overhead shot of a soroban abacus with beads mid-calculation,
+  surrounded by scattered handwritten mathematical notation — Bayesian formulas,
+  probability trees, and small skill-hierarchy diagrams on graph paper. A soft
+  blue glow from a laptop screen illuminates the edges. Dark academic aesthetic,
+  shallow depth of field on the abacus beads. Technical research photography.
+heroType: storybook
+heroStoryId: practice-readinessreport--multiple-skills
 ---
 
 # Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work

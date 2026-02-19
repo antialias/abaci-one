@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { startCollectedClipGeneration } from '@/lib/tasks/collected-clip-generate'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * POST /api/admin/audio/generate-collected
@@ -10,6 +11,9 @@ import { startCollectedClipGeneration } from '@/lib/tasks/collected-clip-generat
  * Response: { taskId: string }
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const { voice, clipIds } = body

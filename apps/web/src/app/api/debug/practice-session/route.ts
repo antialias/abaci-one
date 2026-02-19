@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { requireAdmin } from '@/lib/auth/requireRole'
 import { generateFamilyCode, parentChild } from '@/db/schema'
 import {
   DEFAULT_SESSION_PREFERENCES,
@@ -66,6 +67,8 @@ type PresetName = keyof typeof PRESETS
  * player info so the caller can open the StartPracticeModal instead.
  */
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const body = await req.json()
     const preset = (body.preset as PresetName) || 'game-break'

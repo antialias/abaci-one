@@ -1,12 +1,28 @@
 ---
-title: "See What They're Doing: Vision-Powered Abacus Detection"
-description: "Our new ML-powered vision system watches your child's physical abacus in real-time, providing instant feedback as they work through problems—bridging the gap between hands-on learning and digital guidance."
-author: "Abaci.one Team"
-publishedAt: "2026-01-07"
-updatedAt: "2026-01-07"
-tags: ["vision", "machine-learning", "physical-abacus", "practice", "feedback"]
+title: 'See What They''re Doing: Vision-Powered Abacus Detection'
+description: >-
+  Our new ML-powered vision system watches your child's physical abacus in
+  real-time, providing instant feedback as they work through problems—bridging
+  the gap between hands-on learning and digital guidance.
+author: Abaci.one Team
+publishedAt: '2026-01-07'
+updatedAt: '2026-01-07'
+tags:
+  - vision
+  - machine-learning
+  - physical-abacus
+  - practice
+  - feedback
 featured: true
-heroPrompt: "A child practicing on a physical soroban abacus at a desk, with a tablet propped up nearby showing a live camera feed of the same abacus overlaid with green detection boxes around each column and digit labels floating above the beads. Warm home-study lighting, the child's hands in motion. The screen glows with a clean UI showing checkmarks next to completed steps. Modern educational technology photography."
+heroPrompt: >-
+  A child practicing on a physical soroban abacus at a desk, with a tablet
+  propped up nearby showing a live camera feed of the same abacus overlaid with
+  green detection boxes around each column and digit labels floating above the
+  beads. Warm home-study lighting, the child's hands in motion. The screen glows
+  with a clean UI showing checkmarks next to completed steps. Modern educational
+  technology photography.
+heroType: storybook
+heroStoryId: vision-detection-feedback--before-after
 ---
 
 # See What They're Doing: Vision-Powered Abacus Detection

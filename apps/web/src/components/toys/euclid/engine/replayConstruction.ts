@@ -17,7 +17,6 @@ import { deriveDef15Facts } from './factDerivation'
 import { resolveSelector } from './selectors'
 import { isCandidateBeyondPoint } from './intersections'
 import { MACRO_REGISTRY } from './macros'
-import { computeMacroGhost } from './macroGhost'
 
 /**
  * A user action recorded after proposition completion.
@@ -173,14 +172,10 @@ export function replayConstruction(
         state = result.state
         candidates = result.candidates
         proofFacts.push(...result.newFacts)
-        // Compute ghost geometry via prop step replay
-        const macroGhosts = computeMacroGhost(
-          expected.propId,
-          expected.inputPointIds,
-          state,
-          stepIdx,
-        )
-        ghostLayers.push(...macroGhosts)
+        // Collect ghost layers produced by the macro itself
+        for (const gl of result.ghostLayers) {
+          ghostLayers.push({ ...gl, atStep: stepIdx })
+        }
         stepSucceeded = true
       }
     }

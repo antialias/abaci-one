@@ -2,22 +2,23 @@ import type {
   ConstructionState,
   ConstructionElement,
   IntersectionCandidate,
+  GhostElement,
+  GhostLayer,
 } from '../types'
+import { BYRNE_CYCLE } from '../types'
 import type { FactStore } from './factStore'
 import type { EqualityFact } from './facts'
 import { distancePair } from './facts'
 import { addSegment, addPoint, getPoint } from './constructionState'
-import { findNewIntersections, circleCircleIntersections } from './intersections'
-import { addFact } from './factStore'
+import { findNewIntersections, circleCircleIntersections, circleLineIntersections } from './intersections'
+import { addFact, createFactStore } from './factStore'
 
 export interface MacroDef {
   propId: number
   label: string
   inputCount: number
   inputLabels: string[]
-  /** Maps macro inputs to the source proposition's given point IDs.
-   *  inputToGivenIds[i] is the given point ID that the i-th input maps to.
-   *  Used by macroGhost to replay the proposition's steps with correct positions. */
+  /** Maps macro inputs to the source proposition's given point IDs. */
   inputToGivenIds: string[]
   execute: (
     state: ConstructionState,
@@ -35,6 +36,27 @@ export interface MacroResult {
   candidates: IntersectionCandidate[]
   addedElements: ConstructionElement[]
   newFacts: EqualityFact[]
+  ghostLayers: GhostLayer[]
+}
+
+/**
+ * Find the intersection of a circle with a line (defined by two points)
+ * that lies "beyond" lineThrough — i.e., on the extension past lineThrough
+ * in the direction lineFrom→lineThrough.
+ */
+function intersectionBeyond(
+  lineFrom: { x: number; y: number },
+  lineThrough: { x: number; y: number },
+  cx: number, cy: number, cr: number,
+): { x: number; y: number } | null {
+  const pts = circleLineIntersections(cx, cy, cr, lineFrom.x, lineFrom.y, lineThrough.x, lineThrough.y)
+  const dx = lineThrough.x - lineFrom.x
+  const dy = lineThrough.y - lineFrom.y
+  for (const p of pts) {
+    const dot = (p.x - lineThrough.x) * dx + (p.y - lineThrough.y) * dy
+    if (dot > 0) return p
+  }
+  return null
 }
 
 /**
@@ -42,7 +64,8 @@ export interface MacroResult {
  *
  * The construction circles are internal to the proof of I.1 and are NOT
  * rendered — this is a proven tool, so only the result (apex point + two
- * segments) is shown. Ghost geometry is computed separately by macroGhost.
+ * segments) is shown. Ghost geometry (the two circles) is included in
+ * the returned ghostLayers.
  *
  * Steps:
  * 1. Compute circle-circle intersection directly (no circles in state)
@@ -79,7 +102,7 @@ const MACRO_PROP_1: MacroDef = {
     const pA = getPoint(currentState, ptA)
     const pB = getPoint(currentState, ptB)
     if (!pA || !pB) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
     }
     const radius = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2)
     const intersections = circleCircleIntersections(
@@ -92,7 +115,7 @@ const MACRO_PROP_1: MacroDef = {
       intersections[0],
     )
     if (!apex) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
     }
 
     // 2. Add the apex point (use explicit label if provided)
@@ -145,11 +168,26 @@ const MACRO_PROP_1: MacroDef = {
     const newCands2 = findNewIntersections(currentState, seg2.segment, currentCandidates, extendSegments)
     currentCandidates = [...currentCandidates, ...newCands2]
 
+    // Ghost: the two construction circles hidden by the macro
+    const ghostLayers: GhostLayer[] = []
+    if (radius > 1e-9) {
+      ghostLayers.push({
+        propId: 1,
+        depth: 1,
+        atStep: 0, // relative; caller stamps actual step
+        elements: [
+          { kind: 'circle', cx: pA.x, cy: pA.y, r: radius, color: BYRNE_CYCLE[0] },
+          { kind: 'circle', cx: pB.x, cy: pB.y, r: radius, color: BYRNE_CYCLE[1] },
+        ],
+      })
+    }
+
     return {
       state: currentState,
       candidates: currentCandidates,
       addedElements,
       newFacts: allNewFacts,
+      ghostLayers,
     }
   },
 }
@@ -166,7 +204,8 @@ const MACRO_PROP_1: MacroDef = {
  *   - Segment from target to output point
  *   - Fact: dist(target, output) = dist(segFrom, segTo) with citation { type: 'prop', propId: 2 }
  *
- * Ghost geometry is computed separately by macroGhost.
+ * Ghost geometry shows the full I.2 construction: equilateral triangle,
+ * circles, and intersection points used in the proof.
  */
 const MACRO_PROP_2: MacroDef = {
   propId: 2,
@@ -193,7 +232,7 @@ const MACRO_PROP_2: MacroDef = {
     const segFrom = getPoint(currentState, segFromId)
     const segTo = getPoint(currentState, segToId)
     if (!target || !segFrom || !segTo) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
     }
 
     // 1. Compute distance to copy
@@ -243,11 +282,139 @@ const MACRO_PROP_2: MacroDef = {
       atStep,
     ))
 
+    // ── Ghost geometry: full I.2 construction replay ──
+    const ghostElements: GhostElement[] = []
+    const childGhostLayers: GhostLayer[] = []
+    let colorIndex = 0
+
+    // Step 1: Straightedge A→B
+    ghostElements.push({
+      kind: 'segment',
+      x1: target.x, y1: target.y,
+      x2: segFrom.x, y2: segFrom.y,
+      color: BYRNE_CYCLE[colorIndex++ % 3],
+    })
+
+    // Step 2: Equilateral triangle on A,B (I.1 internal construction)
+    const abRadius = Math.sqrt((target.x - segFrom.x) ** 2 + (target.y - segFrom.y) ** 2)
+
+    if (abRadius > 1e-9) {
+      // Non-degenerate: full I.2 construction ghost with equilateral triangle,
+      // circles, intersection points, and production segments.
+      const apexCandidates = circleCircleIntersections(
+        target.x, target.y, abRadius,
+        segFrom.x, segFrom.y, abRadius,
+      )
+      const apexD = apexCandidates.reduce(
+        (best, p) => (p.y > best.y ? p : best),
+        apexCandidates[0],
+      ) ?? { x: target.x, y: target.y + abRadius * Math.sqrt(3) / 2 }
+
+      // Ghost point D + segments DA, DB
+      ghostElements.push(
+        { kind: 'point', x: apexD.x, y: apexD.y, label: 'D', color: BYRNE_CYCLE[colorIndex++ % 3] },
+      )
+      const segDA_color = BYRNE_CYCLE[colorIndex % 3]
+      ghostElements.push(
+        { kind: 'segment', x1: apexD.x, y1: apexD.y, x2: target.x, y2: target.y, color: BYRNE_CYCLE[colorIndex++ % 3] },
+      )
+      const segDB_color = BYRNE_CYCLE[colorIndex % 3]
+      ghostElements.push(
+        { kind: 'segment', x1: apexD.x, y1: apexD.y, x2: segFrom.x, y2: segFrom.y, color: BYRNE_CYCLE[colorIndex++ % 3] },
+      )
+
+      // I.1's ghost layers (two construction circles) at depth+1
+      childGhostLayers.push({
+        propId: 1,
+        depth: 2, // I.2 is depth 1, I.1 inside it is depth 2
+        atStep: 0,
+        elements: [
+          { kind: 'circle', cx: target.x, cy: target.y, r: abRadius, color: BYRNE_CYCLE[0] },
+          { kind: 'circle', cx: segFrom.x, cy: segFrom.y, r: abRadius, color: BYRNE_CYCLE[1] },
+        ],
+      })
+
+      // Step 3: Circle at B through C
+      const bcRadius = dist
+      ghostElements.push({
+        kind: 'circle',
+        cx: segFrom.x, cy: segFrom.y,
+        r: bcRadius,
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
+
+      // Direction D→B (for "produce DB to E")
+      let dbDirX = segFrom.x - apexD.x
+      let dbDirY = segFrom.y - apexD.y
+      const dbLen = Math.sqrt(dbDirX * dbDirX + dbDirY * dbDirY)
+      if (dbLen < 1e-9) { dbDirX = 0; dbDirY = 1 }
+      else { dbDirX /= dbLen; dbDirY /= dbLen }
+
+      // Step 4: E = point on circle(B, |BC|) along ray D→B past B
+      const ptE = { x: segFrom.x + bcRadius * dbDirX, y: segFrom.y + bcRadius * dbDirY }
+      ghostElements.push(
+        { kind: 'point', x: ptE.x, y: ptE.y, label: 'E', color: BYRNE_CYCLE[colorIndex++ % 3] },
+      )
+      ghostElements.push({
+        kind: 'segment',
+        x1: segFrom.x, y1: segFrom.y,
+        x2: ptE.x, y2: ptE.y,
+        color: segDB_color,
+        isProduction: true,
+      })
+
+      // Step 5: Circle at D through E
+      const deRadius = Math.sqrt((apexD.x - ptE.x) ** 2 + (apexD.y - ptE.y) ** 2)
+      ghostElements.push({
+        kind: 'circle',
+        cx: apexD.x, cy: apexD.y,
+        r: deRadius,
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
+
+      // Direction D→A (for "produce DA to F")
+      let daDirX = target.x - apexD.x
+      let daDirY = target.y - apexD.y
+      const daLen = Math.sqrt(daDirX * daDirX + daDirY * daDirY)
+      if (daLen < 1e-9) { daDirX = 0; daDirY = 1 }
+      else { daDirX /= daLen; daDirY /= daLen }
+
+      // Step 6: F = point on circle(D, |DE|) along ray D→A past A
+      const ptF = { x: apexD.x + deRadius * daDirX, y: apexD.y + deRadius * daDirY }
+      ghostElements.push(
+        { kind: 'point', x: ptF.x, y: ptF.y, label: 'F', color: BYRNE_CYCLE[colorIndex++ % 3] },
+      )
+      ghostElements.push({
+        kind: 'segment',
+        x1: target.x, y1: target.y,
+        x2: ptF.x, y2: ptF.y,
+        color: segDA_color,
+        isProduction: true,
+      })
+    } else {
+      // Degenerate: target = segFrom (I.2 trivially satisfied).
+      // The distance is already at the target point, so there's no meaningful
+      // I.2 construction to show. Just ghost the circle at B through C.
+      ghostElements.push({
+        kind: 'circle',
+        cx: segFrom.x, cy: segFrom.y,
+        r: dist,
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
+    }
+
+    const ghostLayers: GhostLayer[] = []
+    if (ghostElements.length > 0) {
+      ghostLayers.push({ propId: 2, depth: 1, atStep: 0, elements: ghostElements })
+    }
+    ghostLayers.push(...childGhostLayers)
+
     return {
       state: currentState,
       candidates: currentCandidates,
       addedElements,
       newFacts: allNewFacts,
+      ghostLayers,
     }
   },
 }
@@ -264,8 +431,9 @@ const MACRO_PROP_2: MacroDef = {
  *   - Point on ray cutPoint→targetPoint at distance |segFrom-segTo| from cutPoint
  *   - Fact: dist(cutPoint, result) = dist(segFrom, segTo) with citation { type: 'prop', propId: 3 }
  *
- * When cutPoint coincides with segFrom, the I.2 transfer is skipped (optimization).
- * Ghost geometry is computed separately by macroGhost.
+ * When cutPoint coincides with segFrom, the I.2 transfer is skipped for state
+ * modification (optimization), but I.2 is still called for ghost layer computation
+ * so the full dependency chain is visible even in degenerate cases.
  */
 const MACRO_PROP_3: MacroDef = {
   propId: 3,
@@ -293,20 +461,26 @@ const MACRO_PROP_3: MacroDef = {
     const segFrom = getPoint(currentState, segFromId)
     const segTo = getPoint(currentState, segToId)
     if (!cutPoint || !targetPoint || !segFrom || !segTo) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts }
+      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
     }
 
-    // Optimization: skip I.2 transfer if cutPoint coincides with segFrom
+    // Optimization: skip I.2 state modification if cutPoint coincides with segFrom
     const cdx = cutPoint.x - segFrom.x
     const cdy = cutPoint.y - segFrom.y
     const coincident = Math.sqrt(cdx * cdx + cdy * cdy) < 1e-9
 
+    // Always call I.2 to get ghost layers (even in coincident/degenerate case).
+    // When coincident, use a throwaway factStore so we don't pollute the real one.
+    const i2Result = MACRO_PROP_2.execute(
+      currentState, [cutId, segFromId, segToId],
+      currentCandidates, coincident ? createFactStore() : factStore,
+      atStep, extendSegments,
+    )
+    const i2GhostLayers = i2Result.ghostLayers
+    const i2AddedElements = i2Result.addedElements
+
     if (!coincident) {
-      // Call MACRO_PROP_2 to transfer the distance to cutPoint
-      const i2Result = MACRO_PROP_2.execute(
-        currentState, [cutId, segFromId, segToId],
-        currentCandidates, factStore, atStep, extendSegments,
-      )
+      // Use I.2's state modifications for the actual construction
       currentState = i2Result.state
       currentCandidates = i2Result.candidates
       addedElements.push(...i2Result.addedElements)
@@ -351,11 +525,59 @@ const MACRO_PROP_3: MacroDef = {
       atStep,
     ))
 
+    // ── Ghost geometry ──
+    const ghostElements: GhostElement[] = []
+    const childGhostLayers: GhostLayer[] = []
+    let ghostColorIndex = 0
+
+    // I.2's output elements → ghost at depth 1 (showing the transferred segment)
+    // Use i2Result.state to resolve endpoints (has I.2's added elements even in coincident case)
+    for (const el of i2AddedElements) {
+      const color = BYRNE_CYCLE[ghostColorIndex++ % 3]
+      if (el.kind === 'point') {
+        ghostElements.push({ kind: 'point', x: el.x, y: el.y, label: el.label, color })
+      } else if (el.kind === 'segment') {
+        const from = getPoint(i2Result.state, el.fromId)
+        const to = getPoint(i2Result.state, el.toId)
+        if (from && to) {
+          ghostElements.push({ kind: 'segment', x1: from.x, y1: from.y, x2: to.x, y2: to.y, color })
+        }
+      }
+    }
+
+    // I.2's internal ghost layers → depth incremented by 1
+    for (const gl of i2GhostLayers) {
+      childGhostLayers.push({ ...gl, depth: gl.depth + 1 })
+    }
+
+    // Ghost circle at cutPoint with radius = |segFrom-segTo|
+    ghostElements.push({
+      kind: 'circle',
+      cx: cutPoint.x, cy: cutPoint.y,
+      r: radius,
+      color: BYRNE_CYCLE[ghostColorIndex++ % 3],
+    })
+
+    // Ghost result point (intersection of circle with ray cutPoint→targetPoint)
+    ghostElements.push({
+      kind: 'point',
+      x: resultX, y: resultY,
+      label: ptResult.point.label,
+      color: BYRNE_CYCLE[ghostColorIndex++ % 3],
+    })
+
+    const ghostLayers: GhostLayer[] = []
+    if (ghostElements.length > 0) {
+      ghostLayers.push({ propId: 3, depth: 1, atStep: 0, elements: ghostElements })
+    }
+    ghostLayers.push(...childGhostLayers)
+
     return {
       state: currentState,
       candidates: currentCandidates,
       addedElements,
       newFacts: allNewFacts,
+      ghostLayers,
     }
   },
 }

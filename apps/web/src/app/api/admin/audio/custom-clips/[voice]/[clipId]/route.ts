@@ -9,6 +9,7 @@
 import { mkdir, rename, unlink, stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -26,6 +27,9 @@ function validateSegment(segment: string): boolean {
  * Upload a recorded audio clip. Expects multipart FormData with an `audio` field.
  */
 export async function POST(request: Request, { params }: RouteParams) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { voice, clipId } = await params
 
@@ -63,6 +67,9 @@ export async function POST(request: Request, { params }: RouteParams) {
  * Body: { action: 'deactivate' | 'reactivate' }
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { voice, clipId } = await params
 
@@ -118,6 +125,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * Permanently remove a clip from both active and deactivated locations.
  */
 export async function DELETE(_request: Request, { params }: RouteParams) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { voice, clipId } = await params
 

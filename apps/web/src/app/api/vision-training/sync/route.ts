@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { visionTrainingSyncHistory } from '@/db/schema'
 import {
@@ -9,6 +9,7 @@ import {
   pruneTombstone,
   readTombstone,
 } from '@/lib/vision/trainingDataDeletion'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route reads from disk and runs rsync
 export const dynamic = 'force-dynamic'
@@ -49,6 +50,9 @@ function getModelType(request: NextRequest): ModelType {
  * - modelType: 'column-classifier' | 'boundary-detector' (default: column-classifier)
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const modelType = getModelType(request)
   const paths = MODEL_PATHS[modelType]
   const encoder = new TextEncoder()
@@ -307,6 +311,9 @@ export async function POST(request: NextRequest) {
  * - modelType: 'column-classifier' | 'boundary-detector' (default: column-classifier)
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const modelType = getModelType(request)
   const paths = MODEL_PATHS[modelType]
 

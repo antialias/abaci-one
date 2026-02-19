@@ -264,3 +264,79 @@ export function needsExtendedSegments(prop: PropositionDef): boolean {
     s => s.expected.type === 'intersection' && s.expected.beyondId != null,
   )
 }
+
+// ── Proof Editor JSON types ────────────────────────────────────────
+
+export interface ProofJSON {
+  id: number
+  title: string
+  kind: 'construction' | 'theorem'
+  givenElements: SerializedElement[]
+  steps: SerializedStep[]
+  givenFacts?: SerializedEqualityFact[]
+  givenAngleFacts?: SerializedAngleEqualityFact[]
+  resultSegments?: { fromId: string; toId: string }[]
+  authorNotes?: string
+}
+
+export interface SerializedElement {
+  kind: 'point' | 'circle' | 'segment'
+  id: string
+  label?: string
+  x?: number
+  y?: number
+  centerId?: string
+  radiusPointId?: string
+  fromId?: string
+  toId?: string
+  color: string
+  origin: ElementOrigin | 'compass' | 'given'
+}
+
+export interface SerializedStep {
+  citation: string
+  instruction: string
+  action: SerializedAction
+  intersections?: SerializedIntersection[]
+  notes?: string
+}
+
+export type SerializedAction =
+  | { type: 'compass'; centerId: string; radiusPointId: string }
+  | { type: 'straightedge'; fromId: string; toId: string }
+  | { type: 'intersection'; ofA: string; ofB: string; label: string; beyondId?: string }
+  | { type: 'macro'; propId: number; inputPointIds: string[]; outputLabels?: Record<string, string> }
+  | { type: 'fact-only' }
+
+export interface SerializedIntersection {
+  x: number
+  y: number
+  ofA: string
+  ofB: string
+  label: string
+}
+
+export interface SerializedEqualityFact {
+  left: { a: string; b: string }
+  right: { a: string; b: string }
+  statement: string
+}
+
+export interface SerializedAngleEqualityFact {
+  left: { vertex: string; ray1: string; ray2: string }
+  right: { vertex: string; ray1: string; ray2: string }
+  statement: string
+}
+
+// ── Proposition reference data ────────────────────────────────────
+
+export interface PropositionRef {
+  id: number
+  type: 'C' | 'T'
+  title: string
+  statement: string
+  method: string
+  deps: string[]
+  note: string
+  block: string
+}

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -17,6 +18,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ voice: string }> }
 ) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { voice } = await params
 

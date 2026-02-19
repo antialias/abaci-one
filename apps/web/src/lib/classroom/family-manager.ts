@@ -11,6 +11,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { generateFamilyCode, parentChild, type Player, players, type User } from '@/db/schema'
+import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
 
 /**
  * Result of linking a parent to a child
@@ -61,6 +62,11 @@ export async function linkParentToChild(
     parentUserId,
     childPlayerId: player.id,
   })
+
+  // Sync to Casbin (non-fatal)
+  syncParentLink(parentUserId, player.id).catch((err) =>
+    console.error('[auth-sync] Failed to sync parent link:', err)
+  )
 
   return { success: true, player }
 }
@@ -134,6 +140,11 @@ export async function unlinkParentFromChild(
   await db
     .delete(parentChild)
     .where(and(eq(parentChild.parentUserId, parentUserId), eq(parentChild.childPlayerId, playerId)))
+
+  // Sync to Casbin (non-fatal)
+  removeParentLink(parentUserId, playerId).catch((err) =>
+    console.error('[auth-sync] Failed to remove parent link:', err)
+  )
 
   return { success: true }
 }

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getAllPostsMetadata } from '@/lib/blog'
 import { startBlogImageGeneration } from '@/lib/tasks/blog-image-generate'
 import type { BlogImageGenerateInput } from '@/lib/tasks/blog-image-generate'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const VALID_PROVIDERS = ['gemini', 'openai'] as const
 
@@ -13,6 +14,9 @@ const VALID_PROVIDERS = ['gemini', 'openai'] as const
  * Response: { taskId }
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const { provider, model, fallbackProvider, fallbackModel, targets, forceRegenerate } = body

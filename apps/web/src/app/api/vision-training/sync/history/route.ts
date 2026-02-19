@@ -1,7 +1,8 @@
 import { desc, eq } from 'drizzle-orm'
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { visionTrainingSyncHistory, toSyncHistorySummary } from '@/db/schema'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering - this route reads from database
 export const dynamic = 'force-dynamic'
@@ -18,6 +19,9 @@ type ModelType = 'column-classifier' | 'boundary-detector'
  * - limit: Number of records to return (default: 20, max: 100)
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const searchParams = request.nextUrl.searchParams
     const modelTypeParam = searchParams.get('modelType')
@@ -77,6 +81,9 @@ export async function GET(request: NextRequest) {
  * - id: Record ID to delete
  */
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get('id')

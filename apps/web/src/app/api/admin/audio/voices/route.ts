@@ -3,6 +3,7 @@ import { join } from 'path'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -16,6 +17,9 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  * - Deletes all rows from tts_collected_clip_say then tts_collected_clips
  */
 export async function DELETE() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     // 1. Remove voice directories from disk
     let removedDirs = 0

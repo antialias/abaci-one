@@ -44,6 +44,7 @@ export function angleMeasuresEqual(x: AngleMeasure, y: AngleMeasure): boolean {
 export type Citation =
   | { type: 'def15'; circleId: string }
   | { type: 'cn1'; via: DistancePair }     // transitivity through shared equal
+  | { type: 'cn2' }                        // addition (C.N.2)
   | { type: 'cn3'; whole: DistancePair; part: DistancePair }  // subtraction
   | { type: 'cn3-angle'; whole: AngleMeasure; part: AngleMeasure }  // angle subtraction
   | { type: 'cn4' }                        // superposition (C.N.4)

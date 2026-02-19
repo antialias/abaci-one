@@ -1,0 +1,61 @@
+{
+  "id": 3,
+  "title": "Cut off from the greater a line equal to the less",
+  "kind": "construction",
+  "givenElements": [
+    {
+      "kind": "point",
+      "id": "pt-A",
+      "label": "A",
+      "x": -2.5,
+      "y": 0.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-B",
+      "label": "B",
+      "x": 1.5,
+      "y": 0.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-C",
+      "label": "C",
+      "x": 0.5,
+      "y": -1.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-D",
+      "label": "D",
+      "x": 2,
+      "y": -1.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "segment",
+      "id": "seg-AB",
+      "fromId": "pt-A",
+      "toId": "pt-B",
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "segment",
+      "id": "seg-CD",
+      "fromId": "pt-C",
+      "toId": "pt-D",
+      "color": "#1A1A2E",
+      "origin": "given"
+    }
+  ],
+  "steps": [],
+  "authorNotes": "Precondition: AB > CD (the greater must actually be greater). When dragging points such that CD > AB, the construction breaks — the circle doesn't intersect segment AB. The breakdownTip speech covers this case. The proof chain: AE = CD (I.2), AF = AE (Def.15), AF = CD (C.N.1)."
+}

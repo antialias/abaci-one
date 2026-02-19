@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import path from 'path'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 interface AlignmentConfig {
   scale: number
@@ -31,6 +32,9 @@ async function readAlignment(): Promise<AlignmentData> {
  * Format: { [subjectId]: { [theme]: AlignmentConfig } }
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const data = await readAlignment()
   return NextResponse.json(data)
 }
@@ -42,6 +46,9 @@ export async function GET() {
  * Merges the alignment for the given subject+theme and writes back.
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const { subjectId, theme, alignment } = body

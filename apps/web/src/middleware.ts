@@ -52,6 +52,13 @@ export async function middleware(request: NextRequest) {
   // Check if user has a NextAuth session (authenticated user)
   const hasAuthSession = !!request.cookies.get(NEXTAUTH_SESSION_COOKIE)?.value
 
+  // Protect /admin pages — redirect unauthenticated users to sign-in
+  if (request.nextUrl.pathname.startsWith('/admin') && !hasAuthSession) {
+    const signInUrl = new URL('/auth/signin', request.url)
+    signInUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
+    return NextResponse.redirect(signInUrl)
+  }
+
   // Guest cookie handling: skip for authenticated users
   let existing = request.cookies.get(GUEST_COOKIE_NAME)?.value
   let guestId: string | null = null

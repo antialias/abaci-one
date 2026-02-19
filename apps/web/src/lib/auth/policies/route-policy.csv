@@ -1,0 +1,69 @@
+# Role hierarchy
+g, user, guest
+g, admin, user
+
+# Guest-accessible (public endpoints)
+p, guest, /api/health, *
+p, guest, /api/heartbeat, *
+p, guest, /api/build-info, *
+p, guest, /api/auth/*, *
+p, guest, /api/blog/*, GET
+p, guest, /api/images/*, GET
+p, guest, /api/observe/*, GET
+p, guest, /api/flowcharts/browse, GET
+p, guest, /api/flowcharts/suggest, GET
+p, guest, /api/flowcharts/seeds, GET
+p, guest, /api/flowcharts/pdf, *
+p, guest, /api/flowcharts/:id, GET
+p, guest, /api/flowcharts/:id/related, GET
+p, guest, /api/flowcharts/:id/worksheet, GET
+p, guest, /api/viewer, GET
+p, guest, /api/smoke-test-status, GET
+p, guest, /api/smoke-test-results, GET
+p, guest, /api/metrics, GET
+p, guest, /api/coverage-results, GET
+p, guest, /api/worksheets/share/*, GET
+p, guest, /api/worksheets/preview, *
+p, guest, /api/worksheets/download/*, GET
+p, guest, /api/download/*, GET
+p, guest, /api/audio/clips/*, GET
+p, guest, /api/audio/collected-clips, GET
+p, guest, /api/audio/collected-clips/manifest, GET
+p, guest, /api/create/*, *
+
+# Authenticated user routes (inherited by admin)
+p, user, /api/players/*, *
+p, user, /api/family/*, *
+p, user, /api/classrooms/*, *
+p, user, /api/classroom/*, *
+p, user, /api/curriculum/*, *
+p, user, /api/game-results/*, *
+p, user, /api/player-stats/*, *
+p, user, /api/settings/*, *
+p, user, /api/worksheets/*, *
+p, user, /api/sessions/*, *
+p, user, /api/enrollment-requests/*, *
+p, user, /api/entry-prompts/*, *
+p, user, /api/flowcharts/*, *
+p, user, /api/flowchart-workshop/*, *
+p, user, /api/teacher-flowcharts/*, *
+p, user, /api/abacus-settings, *
+p, user, /api/scanner-settings, *
+p, user, /api/arcade/*, *
+p, user, /api/arcade-session, *
+p, user, /api/realtime/*, *
+p, user, /api/euclid/*, *
+p, user, /api/audio/*, *
+p, user, /api/generate, *
+p, user, /api/user-stats, *
+p, user, /api/mcp, *
+p, user, /api/vision/*, *
+p, user, /api/remote-camera, *
+p, user, /api/demo/*, *
+p, user, /api/gameplay/*, *
+
+# Admin-only routes
+p, admin, /api/admin/*, *
+p, admin, /api/debug/*, *
+p, admin, /api/vision-training/*, *
+p, admin, /api/dev/*, *

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getEmbeddingStatus, regenerateEmbeddings } from '@/lib/seed/embedding-search'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * GET /api/debug/seed-students/embeddings
@@ -8,6 +9,8 @@ import { getEmbeddingStatus, regenerateEmbeddings } from '@/lib/seed/embedding-s
  * cached embeddings are stale (profile content changed since generation).
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const status = getEmbeddingStatus()
     return NextResponse.json(status)
@@ -27,6 +30,8 @@ export async function GET() {
  * profile content. Use this after updating profile intentionNotes.
  */
 export async function POST() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const status = await regenerateEmbeddings()
     return NextResponse.json(status)

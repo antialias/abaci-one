@@ -5,6 +5,7 @@ import Nodemailer from 'next-auth/providers/nodemailer'
 import { db, schema } from '@/db'
 import { GUEST_COOKIE_NAME, verifyGuestToken } from '@/lib/guest-token'
 import { abacisAdapter } from '@/lib/auth/adapter'
+import { isAdminEmail } from '@/lib/auth/admin-emails'
 import { mergeGuestIntoUser } from '@/lib/auth/mergeGuestIntoUser'
 import { upgradeGuestToUser } from '@/lib/auth/upgradeGuestToUser'
 
@@ -16,7 +17,7 @@ import { upgradeGuestToUser } from '@/lib/auth/upgradeGuestToUser'
  * Handles seamless guest-to-account upgrade on sign-in.
  */
 
-export type Role = 'guest' | 'user'
+export type Role = 'guest' | 'user' | 'admin'
 
 // Extend NextAuth types to include our custom fields
 declare module 'next-auth' {
@@ -143,6 +144,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
         }
 
         token.guestId = guestId
+
+        // Auto-promote admins based on ADMIN_EMAILS env var
+        const email = user.email ?? token.email
+        if (isAdminEmail(email)) {
+          token.role = 'admin'
+          // Sync admin role to DB (non-fatal)
+          if (token.sub) {
+            db.update(schema.users)
+              .set({ role: 'admin' })
+              .where(eq(schema.users.id, token.sub))
+              .catch((err: unknown) =>
+                console.error('[auth] Failed to sync admin role to DB:', err)
+              )
+          }
+        }
       }
 
       return token

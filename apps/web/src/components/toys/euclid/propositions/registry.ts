@@ -5,8 +5,7 @@ import { PROP_3 } from './prop3'
 import { PROP_4 } from './prop4'
 import { PROP_5 } from './prop5'
 
-/** Lookup table: propId → PropositionDef. Used by macroGhost to replay
- *  a proposition's steps for ghost geometry generation. */
+/** Lookup table: propId → PropositionDef. */
 export const PROP_REGISTRY: Record<number, PropositionDef> = {
   1: PROP_1,
   2: PROP_2,

@@ -1,0 +1,43 @@
+{
+  "id": 1,
+  "title": "Construct an equilateral triangle on a given line",
+  "kind": "construction",
+  "givenElements": [
+    { "kind": "point", "id": "pt-A", "label": "A", "x": -2, "y": 0, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "point", "id": "pt-B", "label": "B", "x": 2, "y": 0, "color": "#1A1A2E", "origin": "given" },
+    { "kind": "segment", "id": "seg-AB", "fromId": "pt-A", "toId": "pt-B", "color": "#1A1A2E", "origin": "given" }
+  ],
+  "steps": [
+    {
+      "citation": "Post.3",
+      "instruction": "Draw a circle centered at A through B",
+      "action": { "type": "compass", "centerId": "pt-A", "radiusPointId": "pt-B" }
+    },
+    {
+      "citation": "Post.3",
+      "instruction": "Draw a circle centered at B through A",
+      "action": { "type": "compass", "centerId": "pt-B", "radiusPointId": "pt-A" }
+    },
+    {
+      "citation": "Def.15",
+      "instruction": "Mark the point where the circles meet",
+      "action": { "type": "intersection", "ofA": "cir-1", "ofB": "cir-2", "label": "C" }
+    },
+    {
+      "citation": "Post.1",
+      "instruction": "Draw a line from C to A",
+      "action": { "type": "straightedge", "fromId": "pt-C", "toId": "pt-A" }
+    },
+    {
+      "citation": "Post.1",
+      "instruction": "Draw a line from C to B",
+      "action": { "type": "straightedge", "fromId": "pt-C", "toId": "pt-B" }
+    }
+  ],
+  "resultSegments": [
+    { "fromId": "pt-A", "toId": "pt-C" },
+    { "fromId": "pt-C", "toId": "pt-B" },
+    { "fromId": "pt-A", "toId": "pt-B" }
+  ],
+  "authorNotes": "Classic equilateral triangle construction. Two circles of equal radius, connect apex to both endpoints. Def.15 gives AC = AB and BC = BA, then C.N.1 transitivity yields AC = BC = AB."
+}

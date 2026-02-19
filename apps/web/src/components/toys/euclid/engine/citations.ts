@@ -39,6 +39,11 @@ export const CITATIONS: Record<string, CitationDef> = {
     label: 'Common Notion 1',
     text: 'Things equal to the same thing are also equal to one another.',
   },
+  'C.N.2': {
+    key: 'C.N.2',
+    label: 'Common Notion 2',
+    text: 'If equals are added to equals, the wholes are equal.',
+  },
   'C.N.3': {
     key: 'C.N.3',
     label: 'Common Notion 3',
@@ -91,6 +96,7 @@ export function citationDefFromFact(citation: Citation): CitationDef | null {
   switch (citation.type) {
     case 'def15': return CITATIONS['Def.15']
     case 'cn1': return CITATIONS['C.N.1']
+    case 'cn2': return CITATIONS['C.N.2']
     case 'cn3': return CITATIONS['C.N.3']
     case 'cn3-angle': return CITATIONS['C.N.3']
     case 'cn4': return CITATIONS['C.N.4']

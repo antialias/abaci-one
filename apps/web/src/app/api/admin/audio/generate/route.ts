@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { startAudioGeneration } from '@/lib/tasks/audio-generate'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * POST /api/admin/audio/generate
@@ -11,6 +12,9 @@ import { startAudioGeneration } from '@/lib/tasks/audio-generate'
  * Response: { taskId: string }
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const { voice, clipIds } = body

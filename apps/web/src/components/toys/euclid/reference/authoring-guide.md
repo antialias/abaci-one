@@ -2,6 +2,18 @@
 
 A practical reference for implementing new propositions in the Euclid interactive tool. Covers every piece needed — geometry definition, tutorial scripting, exploration narration, and draggable point configuration.
 
+## 0. Foundational Principle: Proposition Applications Must Be Executable
+
+**Every proposition invocation must be provable by executing that proposition's construction steps with the actual inputs.** There is no such thing as a "trivially satisfied" proposition. If you invoke I.3, you must be able to run I.3's construction (which includes calling I.2, which includes calling I.1). If any step in the chain cannot be executed with the mapped inputs, the invocation is **invalid** and the proof structure needs to be fixed.
+
+This rule applies ONLY to propositions. Common notions, definitions, and postulates can be applied directly without construction.
+
+**Practical consequences for authoring:**
+- When a macro step calls I.3, the "greater" segment must ACTUALLY be longer than the "less". If it isn't, you're missing a prerequisite step (e.g., producing/extending a line via Post.2).
+- When I.2 is invoked (directly or inside I.3), the target point and the segment start must be distinct points so the equilateral triangle (I.1) can be constructed.
+- When I.1 is invoked, the two input points must be distinct so the construction circles have nonzero radius.
+- Ghost geometry for macros must always be producible by running the proposition's actual construction. If the ghost degenerates, the proof inputs are wrong.
+
 ## 1. Proposition Definition Checklist
 
 Every proposition is a `PropositionDef` object exported from `propositions/propN.ts`. Fields:

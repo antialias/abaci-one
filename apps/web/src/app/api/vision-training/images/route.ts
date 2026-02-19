@@ -2,6 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { NextResponse } from 'next/server'
 import { deleteColumnClassifierSample } from '@/lib/vision/trainingDataDeletion'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * Directory where collected training data is stored
@@ -117,6 +118,8 @@ async function collectMatchingImages(filters: FilterCriteria): Promise<TrainingI
  *   - sessionId: Filter by session ID prefix
  */
 export async function GET(request: Request): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const url = new URL(request.url)
     const filters: FilterCriteria = {
@@ -152,6 +155,8 @@ export async function GET(request: Request): Promise<NextResponse> {
  * If you need bulk delete by filter, use a separate admin tool.
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const body = await request.json()
 
@@ -242,6 +247,8 @@ export async function DELETE(request: Request): Promise<NextResponse> {
  *   - newDigit: Target digit (0-9)
  */
 export async function PATCH(request: Request): Promise<NextResponse> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
   try {
     const body = await request.json()
 

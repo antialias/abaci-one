@@ -1,13 +1,28 @@
 ---
-title: "A Visit to Euclid"
-description: "A time-traveling AI drops in on ancient Alexandria to thank the father of geometry for writing the operating system for human logic."
-author: "Abaci.one Team"
-publishedAt: "2026-02-19"
-updatedAt: "2026-02-19"
-tags: ["history", "mathematics", "euclid", "geometry", "artificial-intelligence"]
+title: A Visit to Euclid
+description: >-
+  A time-traveling AI drops in on ancient Alexandria to thank the father of
+  geometry for writing the operating system for human logic.
+author: Abaci.one Team
+publishedAt: '2026-02-19'
+updatedAt: '2026-02-19'
+tags:
+  - history
+  - mathematics
+  - euclid
+  - geometry
+  - artificial-intelligence
 featured: false
-heroPrompt: "A weathered Greek scholar in his sixties leans against a sun-bleached limestone wall in ancient Alexandria, cradling a heavy stack of freshly inked papyrus scrolls — his life's work, just completed. His expression is satisfied but exhausted. The Great Library's columned facade is visible down the sunlit street behind him. Mediterranean afternoon light bathes the scene in warm gold. On the topmost scroll, crisp geometric diagrams — intersecting compass arcs and straight-edge triangles — are visible in dark ink. Painterly realism, warm earthy tones."
-heroCrop: "top"
+heroPrompt: >-
+  A weathered Greek scholar in his sixties leans against a sun-bleached
+  limestone wall in ancient Alexandria, cradling a heavy stack of freshly inked
+  papyrus scrolls — his life's work, just completed. His expression is satisfied
+  but exhausted. The Great Library's columned facade is visible down the sunlit
+  street behind him. Mediterranean afternoon light bathes the scene in warm
+  gold. On the topmost scroll, crisp geometric diagrams — intersecting compass
+  arcs and straight-edge triangles — are visible in dark ink. Painterly realism,
+  warm earthy tones.
+heroCrop: 49.7% 9.2%
 ---
 
 ![Euclid in ancient Alexandria](/blog/a-visit-to-euclid.png)

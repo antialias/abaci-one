@@ -1,12 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
 import { BlogCropEditor } from '@/components/admin/BlogCropEditor'
+import { RefinePromptModal } from '@/components/admin/RefinePromptModal'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { BlogImageGenerateOutput } from '@/lib/tasks/blog-image-generate'
+
+type HeroType = 'generated' | 'storybook' | 'component'
 
 interface BlogPostStatus {
   slug: string
@@ -17,6 +20,8 @@ interface BlogPostStatus {
   featured: boolean
   heroCrop: string | null
   heroImageUrl: string | null
+  heroType: string | null
+  heroStoryId: string | null
   imageExists: boolean
   sizeBytes?: number
 }
@@ -39,6 +44,52 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+/** Determine effective hero type: explicit heroType, or inferred from heroPrompt */
+function getEffectiveHeroType(post: BlogPostStatus): HeroType | null {
+  if (post.heroType) return post.heroType as HeroType
+  if (post.heroPrompt) return 'generated'
+  return null
+}
+
+/** A post is "configured" if it has a heroType or heroPrompt */
+function isConfigured(post: BlogPostStatus): boolean {
+  return getEffectiveHeroType(post) !== null
+}
+
+const HERO_TYPE_OPTIONS: { value: HeroType; label: string }[] = [
+  { value: 'generated', label: 'Generated' },
+  { value: 'storybook', label: 'Storybook' },
+  { value: 'component', label: 'Component' },
+]
+
+const segmentBtnStyle = (active: boolean) =>
+  css({
+    backgroundColor: active ? '#30363d' : 'transparent',
+    color: active ? '#f0f6fc' : '#8b949e',
+    border: '1px solid #30363d',
+    borderRadius: '0',
+    padding: '3px 12px',
+    fontSize: '11px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    '&:first-of-type': { borderRadius: '6px 0 0 6px' },
+    '&:last-of-type': { borderRadius: '0 6px 6px 0' },
+    '&:hover': { color: '#c9d1d9' },
+  })
+
+const smallBtnStyle = css({
+  backgroundColor: '#21262d',
+  color: '#c9d1d9',
+  border: '1px solid #30363d',
+  borderRadius: '6px',
+  padding: '4px 12px',
+  fontSize: '12px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  '&:hover': { backgroundColor: '#30363d' },
+  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+})
+
 export default function BlogImagesAdmin() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [selectedValue, setSelectedValue] = useState('')
@@ -49,6 +100,22 @@ export default function BlogImagesAdmin() {
   const [editingPromptSlug, setEditingPromptSlug] = useState<string | null>(null)
   const [promptDraft, setPromptDraft] = useState('')
   const [savingPromptSlug, setSavingPromptSlug] = useState<string | null>(null)
+
+  // Refine modal state
+  const [refineModalOpen, setRefineModalOpen] = useState(false)
+  const [refineLoading, setRefineLoading] = useState(false)
+  const [refineOriginal, setRefineOriginal] = useState('')
+  const [refineRefined, setRefineRefined] = useState('')
+  const [refineSlug, setRefineSlug] = useState<string | null>(null)
+
+  // Storybook state
+  const [storyIdDrafts, setStoryIdDrafts] = useState<Record<string, string>>({})
+  const [capturingSlug, setCapturingSlug] = useState<string | null>(null)
+
+  // Component HTML state
+  const [htmlDrafts, setHtmlDrafts] = useState<Record<string, string>>({})
+  const [loadedHtmlSlugs, setLoadedHtmlSlugs] = useState<Set<string>>(new Set())
+  const htmlSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const { state: taskState } = useBackgroundTask<BlogImageGenerateOutput>(taskId)
 
@@ -101,9 +168,10 @@ export default function BlogImagesAdmin() {
     return () => clearInterval(interval)
   }, [isGenerating, fetchStatus])
 
-  const postsWithPrompt = status?.posts.filter((p) => p.heroPrompt) ?? []
-  const postsWithoutPrompt = status?.posts.filter((p) => !p.heroPrompt) ?? []
-  const missingImages = postsWithPrompt.filter((p) => !p.imageExists)
+  const configuredPosts = status?.posts.filter(isConfigured) ?? []
+  const unconfiguredPosts = status?.posts.filter((p) => !isConfigured(p)) ?? []
+  const generatedPosts = configuredPosts.filter((p) => getEffectiveHeroType(p) === 'generated')
+  const missingImages = generatedPosts.filter((p) => !p.imageExists)
 
   async function generate(targets: Array<{ slug: string; prompt: string }>, forceRegenerate = false) {
     if (!selectedProvider || !selectedModel) {
@@ -153,8 +221,8 @@ export default function BlogImagesAdmin() {
   }
 
   function handleRetryFailed() {
-    if (!failedResults.length || !postsWithPrompt.length) return
-    const promptMap = new Map(postsWithPrompt.map((p) => [p.slug, p.heroPrompt!]))
+    if (!failedResults.length || !generatedPosts.length) return
+    const promptMap = new Map(generatedPosts.map((p) => [p.slug, p.heroPrompt!]))
     const targets = failedResults
       .filter((r) => promptMap.has(r.slug))
       .map((r) => ({ slug: r.slug, prompt: promptMap.get(r.slug)! }))
@@ -163,7 +231,6 @@ export default function BlogImagesAdmin() {
 
   async function handleToggleFeatured(post: BlogPostStatus) {
     const newFeatured = !post.featured
-    // Optimistically update local state
     setStatus((prev) => {
       if (!prev) return prev
       return {
@@ -180,7 +247,6 @@ export default function BlogImagesAdmin() {
         body: JSON.stringify({ featured: newFeatured }),
       })
       if (!res.ok) {
-        // Revert on failure
         setStatus((prev) => {
           if (!prev) return prev
           return {
@@ -192,7 +258,6 @@ export default function BlogImagesAdmin() {
         })
       }
     } catch {
-      // Revert on error
       setStatus((prev) => {
         if (!prev) return prev
         return {
@@ -238,13 +303,189 @@ export default function BlogImagesAdmin() {
       }
       setEditingPromptSlug(null)
       setPromptDraft('')
-      // Re-fetch to move post between sections
       await fetchStatus()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSavingPromptSlug(null)
     }
+  }
+
+  async function handleChangeHeroType(post: BlogPostStatus, newType: HeroType) {
+    setStatus((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        posts: prev.posts.map((p) =>
+          p.slug === post.slug ? { ...p, heroType: newType } : p
+        ),
+      }
+    })
+    try {
+      const res = await fetch(`/api/admin/blog/${post.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroType: newType }),
+      })
+      if (!res.ok) {
+        // Revert
+        setStatus((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            posts: prev.posts.map((p) =>
+              p.slug === post.slug ? { ...p, heroType: post.heroType } : p
+            ),
+          }
+        })
+      }
+    } catch {
+      setStatus((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          posts: prev.posts.map((p) =>
+            p.slug === post.slug ? { ...p, heroType: post.heroType } : p
+          ),
+        }
+      })
+    }
+  }
+
+  // Refine prompt
+  async function handleRefine(post: BlogPostStatus) {
+    setRefineSlug(post.slug)
+    setRefineOriginal(post.heroPrompt ?? '')
+    setRefineRefined('')
+    setRefineLoading(true)
+    setRefineModalOpen(true)
+    try {
+      const res = await fetch(`/api/admin/blog/${post.slug}/refine-prompt`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Refine failed')
+        setRefineModalOpen(false)
+        return
+      }
+      const data = await res.json()
+      setRefineRefined(data.refined)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refine failed')
+      setRefineModalOpen(false)
+    } finally {
+      setRefineLoading(false)
+    }
+  }
+
+  async function handleAcceptRefined(refined: string) {
+    if (!refineSlug) return
+    setSavingPromptSlug(refineSlug)
+    try {
+      const res = await fetch(`/api/admin/blog/${refineSlug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroPrompt: refined }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to save refined prompt')
+        return
+      }
+      await fetchStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSavingPromptSlug(null)
+      setRefineSlug(null)
+    }
+  }
+
+  // Storybook capture
+  async function handleSaveStoryId(post: BlogPostStatus) {
+    const storyId = storyIdDrafts[post.slug]?.trim()
+    if (!storyId) return
+    try {
+      const res = await fetch(`/api/admin/blog/${post.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroStoryId: storyId }),
+      })
+      if (res.ok) {
+        setStatus((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            posts: prev.posts.map((p) =>
+              p.slug === post.slug ? { ...p, heroStoryId: storyId } : p
+            ),
+          }
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save story ID')
+    }
+  }
+
+  async function handleCaptureStorybook(post: BlogPostStatus) {
+    const storyId = post.heroStoryId || storyIdDrafts[post.slug]?.trim()
+    if (!storyId) {
+      setError('Set a Story ID first')
+      return
+    }
+    setCapturingSlug(post.slug)
+    try {
+      const res = await fetch('/api/admin/blog-images/capture-storybook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: post.slug, storyId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Capture failed')
+        return
+      }
+      await fetchStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Capture failed')
+    } finally {
+      setCapturingSlug(null)
+    }
+  }
+
+  // Component HTML
+  async function loadHeroHtml(slug: string) {
+    if (loadedHtmlSlugs.has(slug)) return
+    try {
+      const res = await fetch(`/api/admin/blog/${slug}/hero-html`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.html !== null) {
+          setHtmlDrafts((prev) => ({ ...prev, [slug]: data.html }))
+        }
+      }
+    } catch {
+      // ignore
+    }
+    setLoadedHtmlSlugs((prev) => new Set([...prev, slug]))
+  }
+
+  function handleHtmlChange(slug: string, html: string) {
+    setHtmlDrafts((prev) => ({ ...prev, [slug]: html }))
+    // Debounce save
+    if (htmlSaveTimers.current[slug]) {
+      clearTimeout(htmlSaveTimers.current[slug])
+    }
+    htmlSaveTimers.current[slug] = setTimeout(() => {
+      fetch(`/api/admin/blog/${slug}/hero-html`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html }),
+      }).catch(() => {
+        // ignore
+      })
+    }, 500)
   }
 
   // Build per-slug error and fallback maps from task events
@@ -272,7 +513,6 @@ export default function BlogImagesAdmin() {
         )
       }
     } else if (event.eventType === 'image_complete') {
-      // Clear error/fallback on success
       const payload = event.payload as { slug?: string }
       if (payload.slug) {
         slugErrors.delete(payload.slug)
@@ -310,6 +550,15 @@ export default function BlogImagesAdmin() {
         <AdminNav />
       </div>
 
+      <RefinePromptModal
+        open={refineModalOpen}
+        onOpenChange={setRefineModalOpen}
+        original={refineOriginal}
+        refined={refineRefined}
+        loading={refineLoading}
+        onAccept={handleAcceptRefined}
+      />
+
       <div
         className={css({
           maxWidth: '1200px',
@@ -323,12 +572,12 @@ export default function BlogImagesAdmin() {
             Blog Hero Images
           </h1>
           <p className={css({ fontSize: '13px', color: '#8b949e' })}>
-            Generate AI hero images for blog posts. Posts need a <code>heroPrompt</code> in
-            frontmatter.
-            {postsWithPrompt.length > 0 && (
+            Manage hero images for blog posts. Supports AI-generated, Storybook screenshots, and
+            HTML/CSS components.
+            {generatedPosts.length > 0 && (
               <>
                 {' '}
-                {postsWithPrompt.filter((p) => p.imageExists).length}/{postsWithPrompt.length}{' '}
+                {generatedPosts.filter((p) => p.imageExists).length}/{generatedPosts.length}{' '}
                 generated.
               </>
             )}
@@ -350,7 +599,6 @@ export default function BlogImagesAdmin() {
             border: '1px solid #30363d',
           })}
         >
-          {/* Provider/model selector */}
           <select
             data-action="select-provider"
             value={selectedValue}
@@ -373,7 +621,6 @@ export default function BlogImagesAdmin() {
             )}
           </select>
 
-          {/* Fallback provider/model selector */}
           <select
             data-action="select-fallback"
             value={fallbackValue}
@@ -399,7 +646,6 @@ export default function BlogImagesAdmin() {
             )}
           </select>
 
-          {/* Generate All Missing */}
           <button
             data-action="generate-all-missing"
             onClick={handleGenerateAll}
@@ -420,7 +666,6 @@ export default function BlogImagesAdmin() {
             Generate Missing ({missingImages.length})
           </button>
 
-          {/* Refresh */}
           <button
             data-action="refresh"
             onClick={fetchStatus}
@@ -441,7 +686,7 @@ export default function BlogImagesAdmin() {
           </button>
         </div>
 
-        {/* Error display — local errors and task-level failures */}
+        {/* Error display */}
         {(error || taskState?.status === 'failed') && (
           <div
             className={css({
@@ -578,8 +823,8 @@ export default function BlogImagesAdmin() {
           </div>
         )}
 
-        {/* Posts with heroPrompt */}
-        {postsWithPrompt.length > 0 && (
+        {/* Posts with Hero Config */}
+        {configuredPosts.length > 0 && (
           <div className={css({ marginBottom: '32px' })}>
             <h2
               className={css({
@@ -589,11 +834,12 @@ export default function BlogImagesAdmin() {
                 color: '#f0f6fc',
               })}
             >
-              Posts with Hero Prompt
+              Posts with Hero Config
             </h2>
 
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
-              {postsWithPrompt.map((post) => {
+              {configuredPosts.map((post) => {
+                const effectiveType = getEffectiveHeroType(post)!
                 const isCurrentlyGenerating = isGenerating && currentSlug === post.slug
                 const slugError = slugErrors.get(post.slug)
                 const imageUrl = post.heroImageUrl || post.heroImage || `/blog/${post.slug}.png`
@@ -705,95 +951,64 @@ export default function BlogImagesAdmin() {
                             </span>
                           )}
                         </div>
-                        {editingPromptSlug === post.slug ? (
-                          <div data-element="prompt-editor-inline">
-                            <textarea
-                              data-element="prompt-textarea"
-                              value={promptDraft}
-                              onChange={(e) => setPromptDraft(e.target.value)}
-                              rows={3}
-                              className={css({
-                                width: '100%',
-                                backgroundColor: '#0d1117',
-                                border: '1px solid #30363d',
-                                borderRadius: '6px',
-                                padding: '8px 12px',
-                                color: '#c9d1d9',
-                                fontSize: '12px',
-                                resize: 'vertical',
-                                fontFamily: 'inherit',
-                                '&:focus': {
-                                  outline: 'none',
-                                  borderColor: '#58a6ff',
-                                },
-                              })}
-                            />
-                            <div
-                              className={css({
-                                display: 'flex',
-                                gap: '8px',
-                                marginTop: '4px',
-                              })}
+
+                        {/* Hero type selector */}
+                        <div
+                          data-element="hero-type-selector"
+                          className={css({
+                            display: 'flex',
+                            marginBottom: '8px',
+                          })}
+                        >
+                          {HERO_TYPE_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              data-action={`select-hero-type-${opt.value}`}
+                              onClick={() => handleChangeHeroType(post, opt.value)}
+                              className={segmentBtnStyle(effectiveType === opt.value)}
                             >
-                              <button
-                                data-action="cancel-prompt"
-                                onClick={() => {
-                                  setEditingPromptSlug(null)
-                                  setPromptDraft('')
-                                }}
-                                className={css({
-                                  backgroundColor: '#21262d',
-                                  color: '#c9d1d9',
-                                  border: '1px solid #30363d',
-                                  borderRadius: '6px',
-                                  padding: '2px 10px',
-                                  fontSize: '11px',
-                                  cursor: 'pointer',
-                                  '&:hover': { backgroundColor: '#30363d' },
-                                })}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                data-action="save-prompt"
-                                onClick={() => handleSavePrompt(post.slug)}
-                                disabled={!promptDraft.trim() || savingPromptSlug === post.slug}
-                                className={css({
-                                  backgroundColor: '#238636',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  padding: '2px 10px',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer',
-                                  '&:hover': { backgroundColor: '#2ea043' },
-                                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-                                })}
-                              >
-                                {savingPromptSlug === post.slug ? 'Saving...' : 'Save'}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            data-action="edit-prompt"
-                            onClick={() => startEditingPrompt(post)}
-                            title="Click to edit prompt"
-                            className={css({
-                              fontSize: '12px',
-                              color: '#8b949e',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              cursor: 'pointer',
-                              '&:hover': { color: '#c9d1d9' },
-                            })}
-                          >
-                            {post.heroPrompt}
-                          </div>
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Type-specific UI */}
+                        {effectiveType === 'generated' && (
+                          <GeneratedUI
+                            post={post}
+                            editingPromptSlug={editingPromptSlug}
+                            promptDraft={promptDraft}
+                            setPromptDraft={setPromptDraft}
+                            savingPromptSlug={savingPromptSlug}
+                            onStartEditing={() => startEditingPrompt(post)}
+                            onCancelEditing={() => { setEditingPromptSlug(null); setPromptDraft('') }}
+                            onSavePrompt={() => handleSavePrompt(post.slug)}
+                            onRefine={() => handleRefine(post)}
+                          />
                         )}
-                        {post.imageExists && post.sizeBytes && (
+
+                        {effectiveType === 'storybook' && (
+                          <StorybookUI
+                            post={post}
+                            storyIdDraft={storyIdDrafts[post.slug] ?? post.heroStoryId ?? ''}
+                            onStoryIdChange={(val) => setStoryIdDrafts((prev) => ({ ...prev, [post.slug]: val }))}
+                            onSaveStoryId={() => handleSaveStoryId(post)}
+                            onCapture={() => handleCaptureStorybook(post)}
+                            capturing={capturingSlug === post.slug}
+                          />
+                        )}
+
+                        {effectiveType === 'component' && (
+                          <ComponentUI
+                            post={post}
+                            htmlDraft={htmlDrafts[post.slug] ?? ''}
+                            onHtmlChange={(val) => handleHtmlChange(post.slug, val)}
+                            onLoad={() => loadHeroHtml(post.slug)}
+                          />
+                        )}
+
+                        {/* Status line */}
+                        {post.imageExists && post.sizeBytes && effectiveType === 'generated' && (
                           <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px' })}>
                             {formatBytes(post.sizeBytes)}
                             {post.heroCrop && (
@@ -839,53 +1054,59 @@ export default function BlogImagesAdmin() {
 
                       {/* Status + actions */}
                       <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 })}>
-                        {post.imageExists && (
+                        {effectiveType === 'generated' && (
                           <>
-                            <span className={css({ fontSize: '11px', color: '#3fb950' })}>
-                              exists
-                            </span>
-                            <button
-                              data-action="open-crop-editor"
-                              onClick={() =>
-                                setCropEditorSlug(cropEditorSlug === post.slug ? null : post.slug)
-                              }
-                              className={css({
-                                backgroundColor: cropEditorSlug === post.slug ? '#30363d' : '#21262d',
-                                color: '#c9d1d9',
-                                border: '1px solid #30363d',
-                                borderRadius: '6px',
-                                padding: '4px 12px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                '&:hover': { backgroundColor: '#30363d' },
-                              })}
-                            >
-                              Crop
-                            </button>
+                            {post.imageExists && (
+                              <>
+                                <span className={css({ fontSize: '11px', color: '#3fb950' })}>
+                                  exists
+                                </span>
+                                <button
+                                  data-action="open-crop-editor"
+                                  onClick={() =>
+                                    setCropEditorSlug(cropEditorSlug === post.slug ? null : post.slug)
+                                  }
+                                  className={css({
+                                    backgroundColor: cropEditorSlug === post.slug ? '#30363d' : '#21262d',
+                                    color: '#c9d1d9',
+                                    border: '1px solid #30363d',
+                                    borderRadius: '6px',
+                                    padding: '4px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    '&:hover': { backgroundColor: '#30363d' },
+                                  })}
+                                >
+                                  Crop
+                                </button>
+                              </>
+                            )}
+                            {post.heroPrompt && (
+                              <button
+                                data-action="generate-single"
+                                onClick={() => handleGenerateSingle(post, post.imageExists)}
+                                disabled={isGenerating}
+                                className={css({
+                                  backgroundColor: post.imageExists ? '#21262d' : '#238636',
+                                  color: post.imageExists ? '#c9d1d9' : '#fff',
+                                  border: post.imageExists ? '1px solid #30363d' : 'none',
+                                  borderRadius: '6px',
+                                  padding: '4px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    backgroundColor: post.imageExists ? '#30363d' : '#2ea043',
+                                  },
+                                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                                })}
+                              >
+                                {post.imageExists ? 'Regenerate' : 'Generate'}
+                              </button>
+                            )}
                           </>
                         )}
-                        <button
-                          data-action="generate-single"
-                          onClick={() => handleGenerateSingle(post, post.imageExists)}
-                          disabled={isGenerating}
-                          className={css({
-                            backgroundColor: post.imageExists ? '#21262d' : '#238636',
-                            color: post.imageExists ? '#c9d1d9' : '#fff',
-                            border: post.imageExists ? '1px solid #30363d' : 'none',
-                            borderRadius: '6px',
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            '&:hover': {
-                              backgroundColor: post.imageExists ? '#30363d' : '#2ea043',
-                            },
-                            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-                          })}
-                        >
-                          {post.imageExists ? 'Regenerate' : 'Generate'}
-                        </button>
                       </div>
                     </div>
 
@@ -916,8 +1137,8 @@ export default function BlogImagesAdmin() {
           </div>
         )}
 
-        {/* Posts without heroPrompt */}
-        {postsWithoutPrompt.length > 0 && (
+        {/* Posts without Hero Config */}
+        {unconfiguredPosts.length > 0 && (
           <div>
             <h2
               className={css({
@@ -927,13 +1148,13 @@ export default function BlogImagesAdmin() {
                 color: '#8b949e',
               })}
             >
-              Posts without Hero Prompt ({postsWithoutPrompt.length})
+              Posts without Hero Config ({unconfiguredPosts.length})
             </h2>
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '8px' })}>
-              {postsWithoutPrompt.map((post) => (
+              {unconfiguredPosts.map((post) => (
                 <div
                   key={post.slug}
-                  data-element="post-card-no-prompt"
+                  data-element="post-card-no-config"
                   className={css({
                     padding: '16px',
                     backgroundColor: '#161b22',
@@ -950,7 +1171,6 @@ export default function BlogImagesAdmin() {
                     })}
                   >
                     <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
-                      {/* Featured checkbox */}
                       <label
                         data-element="featured-toggle"
                         className={css({ cursor: 'pointer' })}
@@ -1004,25 +1224,27 @@ export default function BlogImagesAdmin() {
                         </div>
                       </div>
                     </div>
-                    {editingPromptSlug !== post.slug && (
-                      <button
-                        data-action="add-prompt"
-                        onClick={() => startEditingPrompt(post)}
-                        className={css({
-                          backgroundColor: '#21262d',
-                          color: '#c9d1d9',
-                          border: '1px solid #30363d',
-                          borderRadius: '6px',
-                          padding: '4px 12px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          '&:hover': { backgroundColor: '#30363d' },
-                        })}
-                      >
-                        Add Prompt
-                      </button>
-                    )}
+                    <div className={css({ display: 'flex', gap: '8px' })}>
+                      {editingPromptSlug !== post.slug && (
+                        <button
+                          data-action="add-prompt"
+                          onClick={() => startEditingPrompt(post)}
+                          className={smallBtnStyle}
+                        >
+                          Add Prompt
+                        </button>
+                      )}
+                      {HERO_TYPE_OPTIONS.filter((o) => o.value !== 'generated').map((opt) => (
+                        <button
+                          key={opt.value}
+                          data-action={`set-hero-type-${opt.value}`}
+                          onClick={() => handleChangeHeroType(post, opt.value)}
+                          className={smallBtnStyle}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Prompt editor */}
@@ -1064,16 +1286,7 @@ export default function BlogImagesAdmin() {
                             setEditingPromptSlug(null)
                             setPromptDraft('')
                           }}
-                          className={css({
-                            backgroundColor: '#21262d',
-                            color: '#c9d1d9',
-                            border: '1px solid #30363d',
-                            borderRadius: '6px',
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            '&:hover': { backgroundColor: '#30363d' },
-                          })}
+                          className={smallBtnStyle}
                         >
                           Cancel
                         </button>
@@ -1112,6 +1325,283 @@ export default function BlogImagesAdmin() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Type-specific sub-components                                               */
+/* -------------------------------------------------------------------------- */
+
+function GeneratedUI({
+  post,
+  editingPromptSlug,
+  promptDraft,
+  setPromptDraft,
+  savingPromptSlug,
+  onStartEditing,
+  onCancelEditing,
+  onSavePrompt,
+  onRefine,
+}: {
+  post: BlogPostStatus
+  editingPromptSlug: string | null
+  promptDraft: string
+  setPromptDraft: (v: string) => void
+  savingPromptSlug: string | null
+  onStartEditing: () => void
+  onCancelEditing: () => void
+  onSavePrompt: () => void
+  onRefine: () => void
+}) {
+  if (editingPromptSlug === post.slug) {
+    return (
+      <div data-element="prompt-editor-inline">
+        <textarea
+          data-element="prompt-textarea"
+          value={promptDraft}
+          onChange={(e) => setPromptDraft(e.target.value)}
+          rows={3}
+          className={css({
+            width: '100%',
+            backgroundColor: '#0d1117',
+            border: '1px solid #30363d',
+            borderRadius: '6px',
+            padding: '8px 12px',
+            color: '#c9d1d9',
+            fontSize: '12px',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+          })}
+        />
+        <div className={css({ display: 'flex', gap: '8px', marginTop: '4px' })}>
+          <button
+            data-action="cancel-prompt"
+            onClick={onCancelEditing}
+            className={smallBtnStyle}
+          >
+            Cancel
+          </button>
+          <button
+            data-action="save-prompt"
+            onClick={onSavePrompt}
+            disabled={!promptDraft.trim() || savingPromptSlug === post.slug}
+            className={css({
+              backgroundColor: '#238636',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '2px 10px',
+              fontSize: '11px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              '&:hover': { backgroundColor: '#2ea043' },
+              '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            {savingPromptSlug === post.slug ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+      <div
+        data-action="edit-prompt"
+        onClick={onStartEditing}
+        title="Click to edit prompt"
+        className={css({
+          fontSize: '12px',
+          color: '#8b949e',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+          flex: 1,
+          '&:hover': { color: '#c9d1d9' },
+        })}
+      >
+        {post.heroPrompt || 'No prompt — click to add'}
+      </div>
+      {post.heroPrompt && (
+        <button
+          data-action="refine-prompt"
+          onClick={onRefine}
+          className={css({
+            backgroundColor: '#1f2937',
+            color: '#a78bfa',
+            border: '1px solid #4c1d95',
+            borderRadius: '6px',
+            padding: '2px 10px',
+            fontSize: '11px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            flexShrink: 0,
+            '&:hover': { backgroundColor: '#2d1b69', borderColor: '#7c3aed' },
+          })}
+        >
+          Refine
+        </button>
+      )}
+    </div>
+  )
+}
+
+function StorybookUI({
+  post,
+  storyIdDraft,
+  onStoryIdChange,
+  onSaveStoryId,
+  onCapture,
+  capturing,
+}: {
+  post: BlogPostStatus
+  storyIdDraft: string
+  onStoryIdChange: (val: string) => void
+  onSaveStoryId: () => void
+  onCapture: () => void
+  capturing: boolean
+}) {
+  const storyId = post.heroStoryId || storyIdDraft
+
+  return (
+    <div data-element="storybook-ui">
+      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' })}>
+        <input
+          data-element="story-id-input"
+          type="text"
+          value={storyIdDraft}
+          onChange={(e) => onStoryIdChange(e.target.value)}
+          placeholder="Story ID (e.g. components-abacus--default)"
+          className={css({
+            flex: 1,
+            backgroundColor: '#0d1117',
+            border: '1px solid #30363d',
+            borderRadius: '6px',
+            padding: '4px 8px',
+            color: '#c9d1d9',
+            fontSize: '12px',
+            '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+          })}
+        />
+        <button
+          data-action="save-story-id"
+          onClick={onSaveStoryId}
+          disabled={!storyIdDraft.trim()}
+          className={smallBtnStyle}
+        >
+          Save ID
+        </button>
+        <button
+          data-action="capture-storybook"
+          onClick={onCapture}
+          disabled={!storyId || capturing}
+          className={css({
+            backgroundColor: '#238636',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '4px 12px',
+            fontSize: '12px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            '&:hover': { backgroundColor: '#2ea043' },
+            '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+          })}
+        >
+          {capturing ? 'Capturing...' : 'Capture Screenshot'}
+        </button>
+      </div>
+      {storyId && (
+        <div
+          data-element="storybook-preview"
+          className={css({
+            borderRadius: '6px',
+            overflow: 'hidden',
+            border: '1px solid #21262d',
+            aspectRatio: '2.4 / 1',
+            maxHeight: '200px',
+          })}
+        >
+          <iframe
+            src={`http://localhost:6006/iframe.html?id=${encodeURIComponent(storyId)}&viewMode=story`}
+            title="Storybook preview"
+            className={css({
+              width: '100%',
+              height: '100%',
+              border: 'none',
+            })}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ComponentUI({
+  post,
+  htmlDraft,
+  onHtmlChange,
+  onLoad,
+}: {
+  post: BlogPostStatus
+  htmlDraft: string
+  onHtmlChange: (val: string) => void
+  onLoad: () => void
+}) {
+  useEffect(() => {
+    onLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.slug])
+
+  return (
+    <div data-element="component-ui">
+      <textarea
+        data-element="html-textarea"
+        value={htmlDraft}
+        onChange={(e) => onHtmlChange(e.target.value)}
+        placeholder="<div style='...'>\n  Your hero HTML + CSS here\n</div>"
+        rows={6}
+        className={css({
+          width: '100%',
+          backgroundColor: '#0d1117',
+          border: '1px solid #30363d',
+          borderRadius: '6px',
+          padding: '8px 12px',
+          color: '#c9d1d9',
+          fontSize: '12px',
+          resize: 'vertical',
+          fontFamily: 'monospace',
+          '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+        })}
+      />
+      <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px', marginBottom: '8px' })}>
+        Auto-saves after 500ms
+      </div>
+      {htmlDraft && (
+        <div
+          data-element="component-preview"
+          className={css({
+            borderRadius: '6px',
+            overflow: 'hidden',
+            border: '1px solid #21262d',
+            aspectRatio: '2.4 / 1',
+            maxHeight: '200px',
+            backgroundColor: '#0d1117',
+          })}
+        >
+          <div
+            dangerouslySetInnerHTML={{ __html: htmlDraft }}
+            className={css({
+              width: '100%',
+              height: '100%',
+            })}
+          />
+        </div>
+      )}
     </div>
   )
 }

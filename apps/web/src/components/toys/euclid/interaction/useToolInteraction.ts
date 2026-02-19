@@ -37,6 +37,8 @@ interface UseToolInteractionOptions {
   expectedActionRef: React.MutableRefObject<ExpectedAction | null>
   macroPhaseRef: React.MutableRefObject<MacroPhase>
   onCommitMacro: (propId: number, inputPointIds: string[]) => void
+  /** When true, all tool gestures are disabled (e.g. during given-setup mode in editor) */
+  disabledRef?: React.MutableRefObject<boolean>
 }
 
 function normalizeAngle(angle: number): number {
@@ -67,6 +69,7 @@ export function useToolInteraction({
   expectedActionRef,
   macroPhaseRef,
   onCommitMacro,
+  disabledRef,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -101,6 +104,8 @@ export function useToolInteraction({
     // ── Pointer event handlers ──
 
     function handlePointerDown(e: PointerEvent) {
+      // Disable all tool gestures when disabled (e.g. given-setup mode)
+      if (disabledRef?.current) return
       // Disable tool gestures when Move tool is active (drag interaction takes over)
       if (activeToolRef.current === 'move') return
 
@@ -210,6 +215,7 @@ export function useToolInteraction({
     }
 
     function handlePointerMove(e: PointerEvent) {
+      if (disabledRef?.current) return
       const rect = getCanvasRect()
       if (!rect) return
       const sx = e.clientX - rect.left
@@ -376,6 +382,7 @@ export function useToolInteraction({
     }
 
     function handlePointerUp(e: PointerEvent) {
+      if (disabledRef?.current) return
       const rect = getCanvasRect()
       if (!rect) return
       const sx = e.clientX - rect.left

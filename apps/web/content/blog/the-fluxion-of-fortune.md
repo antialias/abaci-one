@@ -1,14 +1,26 @@
 ---
-title: "The Fluxion of Fortune"
-description: "for Isaac, who mastered the Mint but not the market"
-author: "Abaci.one Team"
-publishedAt: "2025-12-07"
-updatedAt: "2025-12-07"
-tags: ["poetry", "history", "mathematics", "newton", "calculus"]
+title: The Fluxion of Fortune
+description: 'for Isaac, who mastered the Mint but not the market'
+author: Abaci.one Team
+publishedAt: '2025-12-07'
+updatedAt: '2025-12-07'
+tags:
+  - poetry
+  - history
+  - mathematics
+  - newton
+  - calculus
 featured: false
-heroImage: "/blog/newton-fluxional-lament.jpeg"
-heroPrompt: "Sir Isaac Newton sits alone at a heavy oak desk in a dim candlelit study, head resting wearily in one hand, staring down at scattered financial papers and South Sea Company stock certificates. His other hand rests on a leather-bound copy of Principia Mathematica. Through a window behind him, stars are visible in the night sky — the cosmos he mastered but whose earthly counterpart, the market, defeated him. Melancholy oil painting in the style of Rembrandt, dark rich tones with warm golden candlelight."
-heroCrop: "center 20%"
+heroImage: /blog/newton-fluxional-lament.jpeg
+heroPrompt: >-
+  Sir Isaac Newton sits alone at a heavy oak desk in a dim candlelit study, head
+  resting wearily in one hand, staring down at scattered financial papers and
+  South Sea Company stock certificates. His other hand rests on a leather-bound
+  copy of Principia Mathematica. Through a window behind him, stars are visible
+  in the night sky — the cosmos he mastered but whose earthly counterpart, the
+  market, defeated him. Melancholy oil painting in the style of Rembrandt, dark
+  rich tones with warm golden candlelight.
+heroCrop: 59.5% 76.3%
 ---
 
 ![Newton contemplating his losses](/blog/newton-fluxional-lament.jpeg)

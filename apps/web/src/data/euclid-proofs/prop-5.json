@@ -1,0 +1,17 @@
+{
+  "id": 5,
+  "title": "Pons Asinorum (\"Bridge of Asses\")",
+  "kind": "theorem",
+  "givenElements": [
+    {
+      "kind": "point",
+      "id": "pt-A",
+      "label": "A",
+      "x": 0.5,
+      "y": 6.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    }
+  ],
+  "steps": []
+}

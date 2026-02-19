@@ -1,5 +1,7 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -16,6 +18,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const { id } = await params
 
   if (!id) {
@@ -59,6 +64,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   const { id } = await params
 
   if (!id) {

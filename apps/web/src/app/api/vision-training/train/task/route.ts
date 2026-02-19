@@ -21,6 +21,7 @@ import { db } from '@/db'
 import { backgroundTasks } from '@/db/schema/background-tasks'
 import { startVisionTraining, requestEarlyStop } from '@/lib/tasks/vision-training'
 import { cancelTask } from '@/lib/task-manager'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,9 @@ export const dynamic = 'force-dynamic'
  * POST - Start vision training as a background task
  */
 export async function POST(request: Request) {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     // Check for already-running training task
     const existingTask = await db
@@ -93,6 +97,9 @@ export async function POST(request: Request) {
  * GET - Check for active training task
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const tasks = await db
       .select({
@@ -131,6 +138,9 @@ export async function GET() {
  * DELETE - Cancel the active training task
  */
 export async function DELETE() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const tasks = await db
       .select()
@@ -159,6 +169,9 @@ export async function DELETE() {
  * PUT - Request early stop (save model at end of current epoch)
  */
 export async function PUT() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const tasks = await db
       .select()

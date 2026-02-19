@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { regenerateTaxonomy } from '@/lib/flowcharts/generate-taxonomy'
+import { requireAdmin } from '@/lib/auth/requireRole'
 
 /**
  * POST /api/admin/taxonomy
@@ -16,6 +17,9 @@ import { regenerateTaxonomy } from '@/lib/flowcharts/generate-taxonomy'
  * The new taxonomy will be used immediately by the browse API.
  */
 export async function POST() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const result = await regenerateTaxonomy()
 
@@ -39,6 +43,9 @@ export async function POST() {
  * Get the current taxonomy status.
  */
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { db, schema } = await import('@/db')
     const { count } = await import('drizzle-orm')
