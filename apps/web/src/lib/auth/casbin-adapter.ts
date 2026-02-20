@@ -26,14 +26,14 @@ export class DrizzleCasbinAdapter implements Adapter {
     await db.delete(schema.casbinRules)
 
     // Save all policy rules
-    const astMap = model.model
-    for (const [ptype, ast] of Object.entries(astMap)) {
-      for (const [key, assertion] of Object.entries(ast)) {
-        const typedAssertion = assertion as { policy: string[][] }
-        const fullPtype = ptype === 'p' ? key : key
-        for (const rule of typedAssertion.policy) {
+    // model.model is a Map<string, Map<string, Assertion>>, not a plain object
+    const astMap = model.model as Map<string, Map<string, { policy: string[][] }>>
+    for (const [, sectionMap] of astMap) {
+      for (const [key, assertion] of sectionMap) {
+        if (!assertion.policy) continue
+        for (const rule of assertion.policy) {
           await db.insert(schema.casbinRules).values({
-            ptype: fullPtype,
+            ptype: key,
             v0: rule[0] ?? '',
             v1: rule[1] ?? '',
             v2: rule[2] ?? '',

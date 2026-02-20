@@ -126,6 +126,7 @@ kubectl get applications -n argocd
 | Number line guided experiences | `.claude/reference/number-line-guided-experiences.md` |
 | Feature flags | `.claude/reference/feature-flags.md` |
 | Fixbot system | `.claude/FIXBOT.md` |
+| Forge JWT for browser testing | `.claude/procedures/forge-jwt-for-testing.md` |
 
 ---
 
