@@ -12,17 +12,25 @@ import { css } from '../../../styled-system/css'
 
 type BillingInterval = 'month' | 'year'
 
-const FEATURES = [
+const FEATURES: readonly Feature[] = [
   { label: 'Students', free: '1', family: 'Unlimited' },
   { label: 'Session duration', free: 'Up to 10 min', family: 'Up to 20 min' },
   { label: 'Sessions per week', free: '5', family: 'Unlimited' },
   { label: 'Worksheet parsing', free: '3/month', family: '30/month' },
-  { label: 'Session history', free: true, family: true },
+  { label: 'Cross-device sync', free: true, family: true, guestNote: 'requires account' },
+  { label: 'Session history', free: true, family: true, guestNote: 'browser-only for guests' },
   { label: 'Adaptive practice', free: true, family: true },
   { label: 'Progress dashboard', free: true, family: true },
   { label: 'Games & toys', free: true, family: true },
-  { label: 'Observation links', free: true, family: true },
-] as const
+  { label: 'Observation links', free: true, family: true, guestNote: 'requires account' },
+]
+
+interface Feature {
+  label: string
+  free: string | true
+  family: string | true
+  guestNote?: string
+}
 
 async function createCheckout(interval: BillingInterval): Promise<string> {
   const res = await api('billing/checkout', {
@@ -50,7 +58,7 @@ export default function PricingPage() {
 
   const isFamily = tier === 'family'
   const monthlyPrice = 6
-  const annualPrice = 50
+  const annualPrice = 37.68 // $3.14/mo — pi pricing for a math app
   const annualMonthly = Math.round((annualPrice / 12) * 100) / 100
 
   return (
@@ -145,7 +153,7 @@ export default function PricingPage() {
                       fontWeight: '600',
                     })}
                   >
-                    Save 30%
+                    Save 48%
                   </span>
                 )}
               </button>
@@ -157,7 +165,7 @@ export default function PricingPage() {
             data-element="plan-cards"
             className={css({
               display: 'grid',
-              gridTemplateColumns: { base: '1fr', md: '1fr 1fr' },
+              gridTemplateColumns: { base: '1fr', md: '9fr 10fr' },
               gap: '1.5rem',
               maxWidth: '750px',
               margin: '0 auto',
@@ -247,7 +255,7 @@ export default function PricingPage() {
                 </div>
               )}
 
-              <FeatureList features={FEATURES} column="free" isDark={isDark} />
+              <FeatureList features={FEATURES} column="free" isDark={isDark} showGuestNotes />
             </div>
 
             {/* Family Plan */}
@@ -421,23 +429,25 @@ function FeatureList({
   features,
   column,
   isDark,
+  showGuestNotes = false,
 }: {
-  features: typeof FEATURES
+  features: readonly Feature[]
   column: 'free' | 'family'
   isDark: boolean
+  showGuestNotes?: boolean
 }) {
   return (
     <ul className={css({ listStyle: 'none', padding: 0, margin: 0 })}>
       {features.map((f) => {
         const value = f[column]
-        const isIncluded = value === true
+        const guestNote = showGuestNotes ? f.guestNote : undefined
 
         return (
           <li
             key={f.label}
             className={css({
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'baseline',
               gap: '0.5rem',
               padding: '0.375rem 0',
               fontSize: '0.875rem',
@@ -456,6 +466,8 @@ function FeatureList({
                       ? 'green.400'
                       : 'green.500',
                 flexShrink: 0,
+                position: 'relative',
+                top: '2px',
               })}
             />
             <span>
@@ -469,6 +481,18 @@ function FeatureList({
                   })}
                 >
                   — {value}
+                </span>
+              )}
+              {guestNote && (
+                <span
+                  className={css({
+                    display: 'block',
+                    fontSize: '0.75rem',
+                    color: isDark ? 'gray.500' : 'gray.400',
+                    fontStyle: 'italic',
+                  })}
+                >
+                  {guestNote}
                 </span>
               )}
             </span>
