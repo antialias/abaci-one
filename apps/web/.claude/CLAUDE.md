@@ -138,6 +138,22 @@ kubectl get applications -n argocd
 
 ---
 
+## Stripe Test Mode
+
+App uses Stripe test keys locally. To test checkout, use these fake cards:
+
+| Card | Simulates |
+|------|-----------|
+| `4242 4242 4242 4242` | Successful payment |
+| `4000 0000 0000 3220` | 3D Secure required |
+| `4000 0000 0000 9995` | Declined |
+
+Use any future expiry, any 3-digit CVC, any 5-digit ZIP.
+
+The verify-on-redirect flow (`/api/billing/checkout/verify`) syncs the subscription locally after Stripe redirects back, so webhooks aren't needed for local dev.
+
+---
+
 ## Known Issues
 
 ### @soroban/abacus-react TypeScript
