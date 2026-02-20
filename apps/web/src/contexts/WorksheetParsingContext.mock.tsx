@@ -214,11 +214,11 @@ export const mockParsingStates = {
   },
 
   /** Parsing failed with error */
-  error: (attachmentId: string, errorMessage: string): Partial<ParsingContextState> => ({
+  error: (attachmentId: string, errorMessage: string, code?: string): Partial<ParsingContextState> => ({
     activeStreams: new Map(),
     lastResults: new Map(),
     lastStats: new Map(),
-    lastErrors: new Map([[attachmentId, errorMessage]]),
+    lastErrors: new Map([[attachmentId, { message: errorMessage, code }]]),
   }),
 
   /** Re-parsing specific problems */

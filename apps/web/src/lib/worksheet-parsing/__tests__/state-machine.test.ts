@@ -348,8 +348,51 @@ describe('parsingReducer', () => {
 
       // Stream should be removed from activeStreams
       expect(state.activeStreams.has(TEST_ATTACHMENT_ID)).toBe(false)
-      // Error should be stored in lastErrors
-      expect(state.lastErrors.get(TEST_ATTACHMENT_ID)).toBe('Network error occurred')
+      // Error should be stored in lastErrors as structured object
+      expect(state.lastErrors.get(TEST_ATTACHMENT_ID)).toEqual({ message: 'Network error occurred', code: undefined })
+    })
+
+    it('should store error code when provided', () => {
+      let state = parsingReducer(initialParsingState, {
+        type: 'START_STREAMING',
+        attachmentId: TEST_ATTACHMENT_ID,
+        streamType: 'initial',
+      })
+
+      state = parsingReducer(state, {
+        type: 'PARSE_FAILED',
+        attachmentId: TEST_ATTACHMENT_ID,
+        error: 'Monthly parsing limit reached',
+        code: 'PARSING_LIMIT_REACHED',
+      })
+
+      expect(state.activeStreams.has(TEST_ATTACHMENT_ID)).toBe(false)
+      const error = state.lastErrors.get(TEST_ATTACHMENT_ID)
+      expect(error).toEqual({ message: 'Monthly parsing limit reached', code: 'PARSING_LIMIT_REACHED' })
+    })
+
+    it('should clear previous error on START_STREAMING', () => {
+      // First, create a failed state with error code
+      let state = parsingReducer(initialParsingState, {
+        type: 'START_STREAMING',
+        attachmentId: TEST_ATTACHMENT_ID,
+        streamType: 'initial',
+      })
+      state = parsingReducer(state, {
+        type: 'PARSE_FAILED',
+        attachmentId: TEST_ATTACHMENT_ID,
+        error: 'Limit reached',
+        code: 'PARSING_LIMIT_REACHED',
+      })
+      expect(state.lastErrors.has(TEST_ATTACHMENT_ID)).toBe(true)
+
+      // Start a new stream — should clear the error
+      state = parsingReducer(state, {
+        type: 'START_STREAMING',
+        attachmentId: TEST_ATTACHMENT_ID,
+        streamType: 'initial',
+      })
+      expect(state.lastErrors.has(TEST_ATTACHMENT_ID)).toBe(false)
     })
   })
 

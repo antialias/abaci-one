@@ -80,7 +80,7 @@ export interface ParsingContextState {
   /** Last parsing stats per attachment */
   lastStats: Map<string, ParsingStats>
   /** Last error messages per attachment */
-  lastErrors: Map<string, string>
+  lastErrors: Map<string, { message: string; code?: string }>
 }
 
 // ============================================================================
@@ -119,7 +119,7 @@ export type ParsingAction =
       result: WorksheetParsingResult | null
       stats?: ParsingStats
     }
-  | { type: 'PARSE_FAILED'; attachmentId: string; error: string }
+  | { type: 'PARSE_FAILED'; attachmentId: string; error: string; code?: string }
 
 // ============================================================================
 // Initial State
@@ -286,9 +286,9 @@ export function parsingReducer(
       const newStreams = new Map(state.activeStreams)
       newStreams.delete(action.attachmentId)
 
-      // Store error
+      // Store error with optional code
       const newErrors = new Map(state.lastErrors)
-      newErrors.set(action.attachmentId, action.error)
+      newErrors.set(action.attachmentId, { message: action.error, code: action.code })
 
       return {
         ...state,

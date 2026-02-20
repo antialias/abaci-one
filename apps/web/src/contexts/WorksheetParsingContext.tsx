@@ -548,10 +548,17 @@ export function WorksheetParsingProvider({
         if (!response.ok) {
           const error = await response.json()
           console.error(`[Parse:${shortId}] API error:`, error.error || error)
+          // Update attachment status to reflect the failure
+          if (response.status === 403) {
+            updateAttachmentStatus(attachmentId, {
+              parsingError: error.error ?? 'Forbidden',
+            })
+          }
           dispatch({
             type: 'PARSE_FAILED',
             attachmentId,
             error: error.error ?? 'Failed to start parsing',
+            code: error.code,
           })
           return
         }
@@ -631,10 +638,16 @@ export function WorksheetParsingProvider({
         if (!response.ok) {
           const error = await response.json()
           console.error(`[Reparse:${shortId}] API error:`, error.error || error)
+          if (response.status === 403) {
+            updateAttachmentStatus(attachmentId, {
+              parsingError: error.error ?? 'Forbidden',
+            })
+          }
           dispatch({
             type: 'PARSE_FAILED',
             attachmentId,
             error: error.error ?? 'Failed to start re-parsing',
+            code: error.code,
           })
           return
         }
