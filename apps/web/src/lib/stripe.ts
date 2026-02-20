@@ -1,13 +1,21 @@
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.warn('[stripe] STRIPE_SECRET_KEY is not set — Stripe calls will fail')
-}
+let _stripe: Stripe | null = null
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2026-01-28.clover',
-  typescript: true,
-})
+/** Lazily initialised Stripe client — avoids crashes at build time when env vars are absent. */
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY
+    if (!key) {
+      throw new Error('[stripe] STRIPE_SECRET_KEY is not set')
+    }
+    _stripe = new Stripe(key, {
+      apiVersion: '2026-01-28.clover',
+      typescript: true,
+    })
+  }
+  return _stripe
+}
 
 /** Price ID for the Family plan (monthly). Set in Stripe dashboard. */
 export const FAMILY_MONTHLY_PRICE_ID = process.env.STRIPE_FAMILY_MONTHLY_PRICE_ID ?? ''

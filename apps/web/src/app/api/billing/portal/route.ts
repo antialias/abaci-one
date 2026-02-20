@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 
@@ -23,7 +23,7 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'No billing account found' }, { status: 404 })
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: sub.stripeCustomerId,
       return_url: `${APP_URL}/settings`,
     })

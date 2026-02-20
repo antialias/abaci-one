@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type Stripe from 'stripe'
-import { stripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe'
+import { getStripe, STRIPE_WEBHOOK_SECRET } from '@/lib/stripe'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { createId } from '@paralleldrive/cuid2'
+import { syncCheckoutSession } from '@/lib/billing-sync'
 
 /**
  * POST /api/billing/webhook
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)
+    event = getStripe().webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)
   } catch (err) {
     console.error('[stripe webhook] Signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
@@ -59,57 +59,7 @@ export async function POST(request: NextRequest) {
  * New checkout completed — create or update subscription record.
  */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.client_reference_id || session.metadata?.userId
-  if (!userId || !session.subscription || !session.customer) return
-
-  const stripeSubscriptionId =
-    typeof session.subscription === 'string' ? session.subscription : session.subscription.id
-  const stripeCustomerId =
-    typeof session.customer === 'string' ? session.customer : session.customer.id
-
-  // Fetch full subscription to get current_period_end (lives on SubscriptionItem in newer API versions)
-  const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId)
-  const firstItem = sub.items.data[0]
-  const currentPeriodEnd = firstItem?.current_period_end
-    ? new Date(firstItem.current_period_end * 1000)
-    : new Date()
-
-  const now = new Date()
-  const existing = await db
-    .select({ id: schema.subscriptions.id })
-    .from(schema.subscriptions)
-    .where(eq(schema.subscriptions.userId, userId))
-    .get()
-
-  if (existing) {
-    await db
-      .update(schema.subscriptions)
-      .set({
-        stripeCustomerId,
-        stripeSubscriptionId,
-        plan: 'family',
-        status: 'active',
-        currentPeriodEnd,
-        cancelAtPeriodEnd: false,
-        updatedAt: now,
-      })
-      .where(eq(schema.subscriptions.userId, userId))
-  } else {
-    await db.insert(schema.subscriptions).values({
-      id: createId(),
-      userId,
-      stripeCustomerId,
-      stripeSubscriptionId,
-      plan: 'family',
-      status: 'active',
-      currentPeriodEnd,
-      cancelAtPeriodEnd: false,
-      createdAt: now,
-      updatedAt: now,
-    })
-  }
-
-  console.log(`[stripe webhook] checkout.session.completed: user=${userId} plan=family`)
+  await syncCheckoutSession(session.id)
 }
 
 /**
