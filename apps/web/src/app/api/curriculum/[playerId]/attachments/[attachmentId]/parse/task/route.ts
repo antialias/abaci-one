@@ -10,7 +10,7 @@
  *   - Get task ID for an attachment (if parsing is in progress)
  */
 
-import { eq } from 'drizzle-orm'
+import { and, eq, gte } from 'drizzle-orm'
 import { readFile } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
@@ -19,6 +19,7 @@ import { backgroundTasks } from '@/db/schema/background-tasks'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import { getLimitsForUser } from '@/lib/subscription'
 import { startWorksheetParsing } from '@/lib/tasks/worksheet-parse'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -45,6 +46,34 @@ export const POST = withAuth(async (request, { params }) => {
     const canParse = await canPerformAction(userId, playerId, 'start-session')
     if (!canParse) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
+    // Enforce monthly offline parsing limit
+    const limits = await getLimitsForUser(userId)
+    const monthStart = new Date()
+    monthStart.setDate(1)
+    monthStart.setHours(0, 0, 0, 0)
+    const parseTasksThisMonth = await db
+      .select({ id: backgroundTasks.id })
+      .from(backgroundTasks)
+      .where(
+        and(
+          eq(backgroundTasks.type, 'worksheet-parse'),
+          eq(backgroundTasks.userId, userId),
+          gte(backgroundTasks.createdAt, monthStart)
+        )
+      )
+      .all()
+    if (parseTasksThisMonth.length >= limits.maxOfflineParsingPerMonth) {
+      return NextResponse.json(
+        {
+          error: 'Monthly parsing limit reached',
+          code: 'PARSING_LIMIT_REACHED',
+          limit: limits.maxOfflineParsingPerMonth,
+          count: parseTasksThisMonth.length,
+        },
+        { status: 403 }
+      )
     }
 
     // Get attachment record

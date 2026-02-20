@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD COLUMN `is_practice_student` integer NOT NULL DEFAULT 1;

@@ -2,7 +2,9 @@
 
 import { useAbacusDisplay } from '@soroban/abacus-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Key, Languages, Palette, Settings as SettingsIcon, Volume2 } from 'lucide-react'
+import { CreditCard, Key, Languages, Palette, Settings as SettingsIcon, Volume2 } from 'lucide-react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { AbacusStylePanel } from '@/components/AbacusDisplayDropdown'
 import { AbacusDock } from '@/components/AbacusDock'
@@ -10,12 +12,13 @@ import { LanguageSelector } from '@/components/LanguageSelector'
 import { PageWithNav } from '@/components/PageWithNav'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTier } from '@/hooks/useTier'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 
-type TabId = 'general' | 'abacus' | 'mcp-keys'
+type TabId = 'general' | 'abacus' | 'billing' | 'mcp-keys'
 
 interface Tab {
   id: TabId
@@ -26,6 +29,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: 'general', label: 'General', icon: <SettingsIcon size={16} /> },
   { id: 'abacus', label: 'Abacus Style', icon: <Palette size={16} /> },
+  { id: 'billing', label: 'Billing', icon: <CreditCard size={16} /> },
   { id: 'mcp-keys', label: 'MCP Keys', icon: <Key size={16} /> },
 ]
 
@@ -35,7 +39,11 @@ const TABS: Tab[] = [
 export default function SettingsPage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const [activeTab, setActiveTab] = useState<TabId>('general')
+  const searchParams = useSearchParams()
+  const initialTab = TABS.some((t) => t.id === searchParams.get('tab'))
+    ? (searchParams.get('tab') as TabId)
+    : 'general'
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
   return (
     <PageWithNav>
@@ -137,6 +145,7 @@ export default function SettingsPage() {
           {/* Tab Content */}
           {activeTab === 'general' && <GeneralTab isDark={isDark} />}
           {activeTab === 'abacus' && <AbacusTab isDark={isDark} />}
+          {activeTab === 'billing' && <BillingTab isDark={isDark} />}
           {activeTab === 'mcp-keys' && <McpKeysTab isDark={isDark} />}
         </div>
       </main>
@@ -367,6 +376,202 @@ function AbacusTab({ isDark }: { isDark: boolean }) {
             </p>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// Billing Tab - Subscription Management
+// ============================================
+
+function BillingTab({ isDark }: { isDark: boolean }) {
+  const { tier, limits } = useTier()
+  const searchParams = useSearchParams()
+  const billingResult = searchParams.get('billing')
+
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api('billing/portal', { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to open billing portal')
+      const data = await res.json()
+      return data.url as string
+    },
+    onSuccess: (url) => {
+      window.location.href = url
+    },
+  })
+
+  const isFamily = tier === 'family'
+  const tierLabel = tier === 'family' ? 'Family' : tier === 'guest' ? 'Guest' : 'Free'
+
+  return (
+    <div data-section="billing-tab">
+      {/* Success/cancel banners from Stripe redirect */}
+      {billingResult === 'success' && (
+        <div
+          className={css({
+            backgroundColor: isDark ? 'green.900/50' : 'green.50',
+            border: '1px solid',
+            borderColor: isDark ? 'green.700' : 'green.200',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            color: isDark ? 'green.300' : 'green.800',
+          })}
+        >
+          Subscription activated! You now have access to the Family plan.
+        </div>
+      )}
+      {billingResult === 'canceled' && (
+        <div
+          className={css({
+            backgroundColor: isDark ? 'yellow.900/50' : 'yellow.50',
+            border: '1px solid',
+            borderColor: isDark ? 'yellow.700' : 'yellow.200',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            color: isDark ? 'yellow.300' : 'yellow.800',
+          })}
+        >
+          Checkout was cancelled. No charges were made.
+        </div>
+      )}
+
+      {/* Current Plan */}
+      <SectionCard isDark={isDark}>
+        <SectionHeader icon={<CreditCard size={18} />} title="Current Plan" isDark={isDark} />
+        <SettingRow
+          label="Plan"
+          description={
+            isFamily
+              ? 'Unlimited students, 20-min sessions, unlimited weekly sessions'
+              : '1 student, 10-min sessions, 5 sessions per week'
+          }
+          isDark={isDark}
+          noBorder={!isFamily}
+        >
+          <span
+            className={css({
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '9999px',
+              fontSize: '0.8125rem',
+              fontWeight: '600',
+              backgroundColor: isFamily
+                ? isDark
+                  ? 'purple.900/50'
+                  : 'purple.50'
+                : isDark
+                  ? 'gray.700'
+                  : 'gray.100',
+              color: isFamily
+                ? isDark
+                  ? 'purple.300'
+                  : 'purple.700'
+                : isDark
+                  ? 'gray.300'
+                  : 'gray.600',
+            })}
+          >
+            {tierLabel}
+          </span>
+        </SettingRow>
+
+        {isFamily ? (
+          <SettingRow
+            label="Manage Subscription"
+            description="Update payment method, view invoices, or cancel"
+            isDark={isDark}
+            noBorder
+          >
+            <button
+              type="button"
+              onClick={() => portalMutation.mutate()}
+              disabled={portalMutation.isPending}
+              data-action="open-billing-portal"
+              className={css({
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                backgroundColor: 'transparent',
+                color: isDark ? 'white' : 'gray.800',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                _hover: {
+                  backgroundColor: isDark ? 'gray.700' : 'gray.50',
+                },
+                _disabled: {
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                },
+              })}
+            >
+              {portalMutation.isPending ? 'Opening...' : 'Manage in Stripe'}
+            </button>
+          </SettingRow>
+        ) : (
+          <SettingRow
+            label="Upgrade"
+            description="Get unlimited students, longer sessions, and more"
+            isDark={isDark}
+            noBorder
+          >
+            <Link
+              href="/pricing"
+              data-action="view-pricing"
+              className={css({
+                display: 'inline-block',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                backgroundColor: isDark ? 'purple.600' : 'purple.500',
+                color: 'white',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                textDecoration: 'none',
+                _hover: {
+                  backgroundColor: isDark ? 'purple.500' : 'purple.600',
+                },
+              })}
+            >
+              View Plans
+            </Link>
+          </SettingRow>
+        )}
+      </SectionCard>
+
+      {/* Usage summary */}
+      <div className={css({ marginTop: '1.5rem' })}>
+        <SectionCard isDark={isDark}>
+          <SectionHeader icon={<SettingsIcon size={18} />} title="Current Limits" isDark={isDark} />
+          <SettingRow label="Students" isDark={isDark}>
+            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+              {limits.maxPracticeStudents === null ? 'Unlimited' : limits.maxPracticeStudents}
+            </span>
+          </SettingRow>
+          <SettingRow label="Session duration" isDark={isDark}>
+            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+              Up to {limits.maxSessionMinutes} min
+            </span>
+          </SettingRow>
+          <SettingRow label="Sessions per week" isDark={isDark}>
+            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+              {limits.maxSessionsPerWeek === null ? 'Unlimited' : limits.maxSessionsPerWeek}
+            </span>
+          </SettingRow>
+          <SettingRow label="Worksheet parsing" isDark={isDark} noBorder>
+            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+              {limits.maxOfflineParsingPerMonth}/month
+            </span>
+          </SettingRow>
+        </SectionCard>
       </div>
     </div>
   )

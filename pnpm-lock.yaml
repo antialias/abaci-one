@@ -369,6 +369,9 @@ importers:
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.1
+      stripe:
+        specifier: ^20.3.1
+        version: 20.3.1(@types/node@20.19.19)
       three:
         specifier: ^0.169.0
         version: 0.169.0
@@ -12164,6 +12167,15 @@ packages:
 
   strip-literal@2.1.1:
     resolution: {integrity: sha512-631UJ6O00eNGfMiWG78ck80dfBab8X6IVFB51jZK5Icd7XAs60Z5y7QdSd/wGIklnWvRbUNloVzhOKKmutxQ6Q==}
+
+  stripe@20.3.1:
+    resolution: {integrity: sha512-k990yOT5G5rhX3XluRPw5Y8RLdJDW4dzQ29wWT66piHrbnM2KyamJ1dKgPsw4HzGHRWjDiSSdcI2WdxQUPV3aQ==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@types/node': '>=16'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   style-loader@3.3.4:
     resolution: {integrity: sha512-0WqXzrsMTyb8yjZJHDqwmnwRJvhALK9LfRtRc6B4UTWe8AijYLZYZ9thuJTZc2VfQWINADW/j+LiJnfy2RoC1w==}
@@ -27392,6 +27404,10 @@ snapshots:
   strip-literal@2.1.1:
     dependencies:
       js-tokens: 9.0.1
+
+  stripe@20.3.1(@types/node@20.19.19):
+    optionalDependencies:
+      '@types/node': 20.19.19
 
   style-loader@3.3.4(webpack@5.102.0(esbuild@0.27.2)):
     dependencies:

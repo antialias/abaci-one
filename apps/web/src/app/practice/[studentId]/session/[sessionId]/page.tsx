@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
-import { getPlayer, getRecentSessionResults, getSessionPlan } from '@/lib/curriculum/server'
+import { getPracticeStudent, getRecentSessionResults, getSessionPlan } from '@/lib/curriculum/server'
 import { getDbUserId } from '@/lib/viewer'
 import { SummaryClient } from '../../summary/SummaryClient'
 
@@ -24,7 +24,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
 
   // Fetch player, session, and problem history in parallel
   const [player, session, problemHistory] = await Promise.all([
-    getPlayer(studentId),
+    getPracticeStudent(studentId),
     getSessionPlan(sessionId),
     getRecentSessionResults(studentId, 100),
   ])

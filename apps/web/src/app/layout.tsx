@@ -6,7 +6,9 @@ import { ClientProviders } from '@/components/ClientProviders'
 import { isAdminEmail } from '@/lib/auth/admin-emails'
 import { getAllFlags } from '@/lib/feature-flags'
 import { getQueryClient } from '@/lib/queryClient'
-import { featureFlagKeys } from '@/lib/queryKeys'
+import { billingKeys, featureFlagKeys } from '@/lib/queryKeys'
+import { getTierForUser } from '@/lib/subscription'
+import { TIER_LIMITS } from '@/lib/tier-limits'
 import { getRequestLocale } from '@/i18n/request'
 import { getMessages } from '@/i18n/messages'
 
@@ -104,11 +106,30 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     ? isAdminEmail(session.user.email) ? 'admin' : 'user'
     : 'guest'
   const queryClient = getQueryClient()
-  await queryClient.prefetchQuery({
-    queryKey: featureFlagKeys.all,
-    queryFn: async () => ({ flags: await getAllFlags(session?.user?.id, userRole) }),
-    staleTime: 60_000,
-  })
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: featureFlagKeys.all,
+      queryFn: async () => ({ flags: await getAllFlags(session?.user?.id, userRole) }),
+      staleTime: 60_000,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: billingKeys.tier(),
+      queryFn: async () => {
+        const tier = userRole === 'guest' ? 'guest' as const : await getTierForUser(session?.user?.id)
+        const limits = TIER_LIMITS[tier]
+        return {
+          tier,
+          limits: {
+            maxPracticeStudents: limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
+            maxSessionMinutes: limits.maxSessionMinutes,
+            maxSessionsPerWeek: limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
+            maxOfflineParsingPerMonth: limits.maxOfflineParsingPerMonth,
+          },
+        }
+      },
+      staleTime: 60_000,
+    }),
+  ])
 
   return (
     <html lang={locale} suppressHydrationWarning>

@@ -1,11 +1,12 @@
-import { existsSync, statSync } from 'fs'
+import { existsSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import { NextResponse } from 'next/server'
-import { getAllPostsMetadata } from '@/lib/blog'
+import { getAllPostsMetadata, getPostBySlug } from '@/lib/blog'
 import { IMAGE_PROVIDERS } from '@/lib/tasks/blog-image-generate'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const BLOG_IMAGES_DIR = join(process.cwd(), 'public', 'blog')
+const EMBEDS_DIR = join(process.cwd(), 'content', 'blog', 'embeds')
 
 /**
  * GET /api/admin/blog-images/status
@@ -15,7 +16,12 @@ const BLOG_IMAGES_DIR = join(process.cwd(), 'public', 'blog')
 export const GET = withAuth(async () => {
   const allPosts = await getAllPostsMetadata()
 
-  const posts = allPosts.map((post) => {
+  // Load full posts to get embeds (parsed from markdown content)
+  const fullPosts = await Promise.all(
+    allPosts.map((meta) => getPostBySlug(meta.slug))
+  )
+
+  const posts = allPosts.map((post, idx) => {
     // Check generated image at convention path
     const generatedFile = join(BLOG_IMAGES_DIR, `${post.slug}.png`)
     const generatedExists = existsSync(generatedFile)
@@ -33,6 +39,24 @@ export const GET = withAuth(async () => {
 
     const imageExists = generatedExists || heroImageExists
 
+    // Read embed config to check which embeds are configured
+    const fullPost = fullPosts[idx]
+    let embedConfig: Record<string, unknown> = {}
+    const embedConfigPath = join(EMBEDS_DIR, `${post.slug}.json`)
+    if (existsSync(embedConfigPath)) {
+      try {
+        embedConfig = JSON.parse(readFileSync(embedConfigPath, 'utf8'))
+      } catch {
+        // ignore
+      }
+    }
+
+    const embeds = fullPost.embeds.map((embed) => ({
+      id: embed.id,
+      description: embed.description,
+      configured: embed.id in embedConfig,
+    }))
+
     return {
       slug: post.slug,
       title: post.title,
@@ -49,6 +73,7 @@ export const GET = withAuth(async () => {
       sizeBytes: generatedExists
         ? statSync(generatedFile).size
         : heroImageSize,
+      embeds,
     }
   })
 

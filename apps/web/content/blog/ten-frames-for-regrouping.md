@@ -14,14 +14,8 @@ tags:
   - scaffolding
   - worksheets
 featured: true
-heroPrompt: >-
-  A close-up of a child's hands arranging colorful round counters on a large
-  printed ten-frame grid — seven blue counters fill the top row and part of the
-  bottom, with three empty spaces remaining. A second ten-frame nearby is
-  partially filled. Bright, even classroom lighting on a light wood table. The
-  counters are vivid primary colors. Overhead perspective, clean educational
-  photography.
-heroType: html
+heroType: component
+heroComponentId: ten-frames
 ---
 
 # Making the Invisible Visible: Ten-Frames for Teaching Regrouping
@@ -156,12 +150,12 @@ Let's compare the same problem with and without ten-frames to see the difference
 
 #### With Ten-Frames: Visual Support for Regrouping
 
-![Problem 47 + 38 with ten-frames](/blog/ten-frame-examples/with-ten-frames.svg)
+<!-- EMBED: with-ten-frames "Problem 47 + 38 with ten-frame scaffolding" -->
 _Ten-frames appear below the ones column, showing how 7 + 8 = 15 breaks down into 1 ten (carried) and 5 ones (remaining). The bottom frame (blue) shows the 5 ones that stay, while the top frame (green) shows the 1 ten that gets carried._
 
 #### Without Ten-Frames: Abstract Representation
 
-![Problem 47 + 38 without ten-frames](/blog/ten-frame-examples/without-ten-frames.svg)
+<!-- EMBED: without-ten-frames "Problem 47 + 38 without ten-frame scaffolding" -->
 _The same problem without ten-frames requires students to mentally visualize the regrouping process._
 
 Notice how the ten-frames make the invisible visible. In 47 + 38, when adding the ones column:
@@ -179,7 +173,7 @@ Like all scaffolding, ten-frames should be **introduced when needed and faded wh
 
 **Use when**: Introducing regrouping for the first time
 
-![Beginner problem 28 + 15 with ten-frames](/blog/ten-frame-examples/beginner-ten-frames.svg)
+<!-- EMBED: beginner-ten-frames "Beginner problem 28 + 15 with ten-frame scaffolding" -->
 _A simpler problem (28 + 15) with ten-frames. Students see 8 + 5 = 13, which requires regrouping. The ten-frame shows this as 1 full ten (carried) plus 3 ones (remaining)._
 
 At this level, ten-frames appear when problems involve regrouping. This helps students:
@@ -195,7 +189,7 @@ At this level, ten-frames appear when problems involve regrouping. This helps st
 
 **Use when**: Students understand basic regrouping but need support for complex problems
 
-![Problem with ten-frames in multiple columns](/blog/ten-frame-examples/ten-frames-both-columns.svg)
+<!-- EMBED: ten-frames-both-columns "Problem 57 + 68 with ten-frames in both place value columns" -->
 _A more complex problem (57 + 68) that requires regrouping in BOTH place values. Ten-frames appear below both the ones column (7 + 8 = 15) and the tens column (5 + 6 + 1 = 12), showing students how each overflow creates a carry._
 
 This is the "smart scaffolding" level. Ten-frames appear only when they're needed—when a column sum exceeds 10. This:

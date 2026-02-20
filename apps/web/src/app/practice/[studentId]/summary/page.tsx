@@ -3,7 +3,7 @@ import { canPerformAction } from '@/lib/classroom/access-control'
 import {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
-  getPlayer,
+  getPracticeStudent,
   getRecentSessionResults,
   getRecentSessions,
 } from '@/lib/curriculum/server'
@@ -41,7 +41,7 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   // Fetch player, active session, most recent completed session, problem history, and recent sessions in parallel
   const [player, activeSession, completedSession, problemHistory, recentSessions] =
     await Promise.all([
-      getPlayer(studentId),
+      getPracticeStudent(studentId),
       getActiveSessionPlan(studentId),
       getMostRecentCompletedSession(studentId),
       getRecentSessionResults(studentId, 100),

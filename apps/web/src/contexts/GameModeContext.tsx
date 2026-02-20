@@ -24,7 +24,7 @@ export interface GameModeProviderProps {
   isLoading: boolean
   // Mutations from useUserPlayers (with optional callbacks)
   createPlayer: (
-    player: { name: string; emoji: string; color: string; isActive: boolean },
+    player: { name: string; emoji: string; color: string; isActive: boolean; isPracticeStudent?: boolean },
     options?: MutationOptions
   ) => void
   updatePlayerMutation: (
@@ -199,13 +199,14 @@ export function GameModeProvider({
           return name
         })
 
-        // Create default players with generated names
+        // Create default players with generated names (arcade players, not practice students)
         DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
           createPlayer({
             name: generatedNames[index],
             emoji: config.emoji,
             color: config.color,
             isActive: index === 0, // First player active by default
+            isPracticeStudent: false,
           })
         })
         console.log('✅ Created default players via API with auto-generated names:', generatedNames)
@@ -229,6 +230,7 @@ export function GameModeProvider({
       emoji,
       color: playerData?.color ?? getNextPlayerColor(playerList),
       isActive: playerData?.isActive ?? false,
+      isPracticeStudent: false, // Arcade players are not practice students
     }
 
     createPlayer(newPlayer, {
@@ -318,13 +320,14 @@ export function GameModeProvider({
       return name
     })
 
-    // Create default players with generated names
+    // Create default players with generated names (arcade players, not practice students)
     DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
       createPlayer({
         name: generatedNames[index],
         emoji: config.emoji,
         color: config.color,
         isActive: index === 0,
+        isPracticeStudent: false,
       })
     })
 

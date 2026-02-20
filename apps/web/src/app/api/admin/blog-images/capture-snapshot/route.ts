@@ -4,12 +4,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const heroHtmlDirectory = path.join(process.cwd(), 'content', 'blog', 'hero-html')
+const embedHtmlDirectory = path.join(process.cwd(), 'content', 'blog', 'embed-html')
 
 /**
  * POST /api/admin/blog-images/capture-snapshot
  *
  * Fetches an internal URL (e.g. /api/worksheets/preview), extracts content
- * from the response, and saves it as a hero-html file for a blog post.
+ * from the response, and saves it as a hero-html or embed-html file for a blog post.
+ *
+ * When `embedId` is provided, saves to content/blog/embed-html/{slug}/{embedId}.html
+ * Otherwise saves to content/blog/hero-html/{slug}.html
  */
 export const POST = withAuth(async (request: NextRequest) => {
   let body: {
@@ -18,6 +22,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     method?: string
     body?: unknown
     extractPath?: string
+    embedId?: string
   }
   try {
     body = await request.json()
@@ -25,7 +30,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { slug, url, method = 'GET', body: fetchBody, extractPath } = body
+  const { slug, url, method = 'GET', body: fetchBody, extractPath, embedId } = body
 
   if (!slug || !url) {
     return NextResponse.json({ error: 'slug and url are required' }, { status: 400 })
@@ -89,12 +94,22 @@ export const POST = withAuth(async (request: NextRequest) => {
       content = await res.text()
     }
 
-    // Ensure directory exists
-    if (!fs.existsSync(heroHtmlDirectory)) {
-      fs.mkdirSync(heroHtmlDirectory, { recursive: true })
+    // Determine save path: embed-html/{slug}/{embedId}.html or hero-html/{slug}.html
+    let targetDir: string
+    let filePath: string
+    if (embedId) {
+      targetDir = path.join(embedHtmlDirectory, slug)
+      filePath = path.join(targetDir, `${embedId}.html`)
+    } else {
+      targetDir = heroHtmlDirectory
+      filePath = path.join(targetDir, `${slug}.html`)
     }
 
-    const filePath = path.join(heroHtmlDirectory, `${slug}.html`)
+    // Ensure directory exists
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true })
+    }
+
     fs.writeFileSync(filePath, content, 'utf8')
 
     return NextResponse.json({

@@ -31,7 +31,7 @@ Our new subtraction worksheets provide visual scaffolds that make this invisible
 
 For beginners, start with problems that don't require any borrowing:
 
-![Simple subtraction problems](/blog/subtraction-examples/no-borrowing.svg)
+<!-- EMBED: no-borrowing "Simple subtraction problems with no borrowing required" -->
 
 Clean, straightforward layout with answer boxes - perfect for building confidence with basic subtraction. These problems are carefully generated so the top digit is always larger than the bottom digit in each place value.
 
@@ -39,7 +39,7 @@ Clean, straightforward layout with answer boxes - perfect for building confidenc
 
 Before adding scaffolding, let's see what borrowing problems look like in their traditional form:
 
-![Subtraction without notation](/blog/subtraction-examples/comparison-no-notation.svg)
+<!-- EMBED: comparison-no-notation "Subtraction problems without borrow notation scaffolding" -->
 
 **The challenge:** Students must mentally track:
 
@@ -54,7 +54,7 @@ Many students get lost or make careless errors without visual guidance.
 
 Now watch what happens when we add **borrow notation boxes** to the exact same problems:
 
-![Subtraction with borrow notation](/blog/subtraction-examples/comparison-with-notation.svg)
+<!-- EMBED: comparison-with-notation "Same subtraction problems with borrow notation boxes added" -->
 
 **Immediate improvements:**
 
@@ -69,7 +69,7 @@ The problems are identical, but the scaffolding makes the borrowing process visi
 
 For targeted practice on the borrowing mechanism, use problems that require exactly one borrow:
 
-![Single borrow in ones place](/blog/subtraction-examples/single-borrow-ones.svg)
+<!-- EMBED: single-borrow-ones "Single borrow focus with place value colors" -->
 
 **Place value colors help students see:**
 
@@ -83,7 +83,7 @@ This focused practice builds the mental model before tackling more complex probl
 
 For students who need step-by-step guidance, enable **borrowing hints**:
 
-![Detailed borrowing hints](/blog/subtraction-examples/hints-detail.svg)
+<!-- EMBED: hints-detail "Borrowing hints with curved arrows and step-by-step calculations" -->
 
 **Borrowing hints show:**
 
@@ -104,7 +104,7 @@ Note: This example uses a single-column layout with only 2 problems so you can s
 
 Once students master single-column borrowing, challenge them with problems that require borrowing in multiple places:
 
-![Complex subtraction with multiple borrows](/blog/subtraction-examples/multiple-borrows.svg)
+<!-- EMBED: multiple-borrows "Complex subtraction requiring borrowing in multiple place values" -->
 
 **The same scaffolding system scales up:**
 
@@ -117,7 +117,7 @@ Once students master single-column borrowing, challenge them with problems that 
 
 The trickiest type of borrowing is when it **cascades** across multiple place values:
 
-![Cascading borrows across places](/blog/subtraction-examples/cascading-borrows.svg)
+<!-- EMBED: cascading-borrows "Cascading borrows across multiple place values" -->
 
 **Examples of cascading borrows:**
 

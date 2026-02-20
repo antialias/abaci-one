@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getPlayerAccess, isParentOf } from '@/lib/classroom'
-import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
+import { getActiveSessionPlan, getPracticeStudent } from '@/lib/curriculum/server'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { getDbUserId } from '@/lib/viewer'
 import { ObservationClient } from './ObservationClient'
@@ -16,7 +16,7 @@ export default async function PracticeObservationPage({ params }: ObservationPag
   const { studentId } = await params
   const [observerId, player, activeSession] = await Promise.all([
     getDbUserId(),
-    getPlayer(studentId),
+    getPracticeStudent(studentId),
     getActiveSessionPlan(studentId),
   ])
 

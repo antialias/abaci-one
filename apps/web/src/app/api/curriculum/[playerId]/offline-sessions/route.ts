@@ -9,15 +9,17 @@
 
 import { createId } from '@paralleldrive/cuid2'
 import { randomUUID } from 'crypto'
+import { and, eq, gte, inArray } from 'drizzle-orm'
 import { mkdir, writeFile } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
 import { getPracticeType, isValidPracticeTypeId } from '@/constants/practiceTypes'
-import { db } from '@/db'
+import { db, schema } from '@/db'
 import { practiceAttachments, sessionPlans } from '@/db/schema'
 import type { SessionPart, SessionPartType, SessionSummary } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import { getLimitsForUser } from '@/lib/subscription'
 import { getDbUserId } from '@/lib/viewer'
 
 /**
@@ -92,6 +94,35 @@ export const POST = withAuth(async (request, { params }) => {
     const canCreate = await canPerformAction(userId, playerId, 'start-session')
     if (!canCreate) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
+    // Enforce sessions-per-week limit (rolling 7-day window)
+    const limits = await getLimitsForUser(userId)
+    if (limits.maxSessionsPerWeek !== Infinity) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      const completedStatuses = ['completed', 'in_progress', 'approved'] as const
+      const recentSessions = await db
+        .select({ id: schema.sessionPlans.id })
+        .from(schema.sessionPlans)
+        .where(
+          and(
+            eq(schema.sessionPlans.playerId, playerId),
+            inArray(schema.sessionPlans.status, [...completedStatuses]),
+            gte(schema.sessionPlans.createdAt, sevenDaysAgo)
+          )
+        )
+        .all()
+      if (recentSessions.length >= limits.maxSessionsPerWeek) {
+        return NextResponse.json(
+          {
+            error: 'Weekly session limit reached',
+            code: 'SESSION_LIMIT_REACHED',
+            limit: limits.maxSessionsPerWeek,
+            count: recentSessions.length,
+          },
+          { status: 403 }
+        )
+      }
     }
 
     // Parse form data

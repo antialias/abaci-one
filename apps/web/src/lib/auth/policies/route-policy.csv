@@ -66,12 +66,18 @@ p, guest, /api/classrooms/:id/*, *
 p, guest, /api/classrooms/code/:code, GET
 p, guest, /api/classroom/*, *
 
-# Authenticated user routes — classroom creation/management & teacher features
+# Billing — tier info + webhook are guest-accessible
+p, guest, /api/billing/tier, GET
+p, guest, /api/billing/webhook, POST
+
+# Authenticated user routes — classroom creation/management, teacher features, billing
 # (user inherits all guest permissions via role hierarchy)
 p, user, /api/classrooms, *
 p, user, /api/classrooms/*, *
 p, user, /api/teacher-flowcharts/*, *
 p, user, /api/mcp, *
+p, user, /api/billing/checkout, POST
+p, user, /api/billing/portal, POST
 
 # Admin-only routes
 p, admin, /api/admin/*, *

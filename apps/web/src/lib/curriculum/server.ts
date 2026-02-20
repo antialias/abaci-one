@@ -218,16 +218,23 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
   })
   const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
 
-  // Get all players: created by this user OR linked via parent_child
+  // Get practice students: created by this user OR linked via parent_child
+  // Only returns players flagged as practice students (excludes arcade-only players)
   let players: Player[]
   if (linkedIds.length > 0) {
     players = await db.query.players.findMany({
-      where: or(eq(schema.players.userId, userId), inArray(schema.players.id, linkedIds)),
+      where: and(
+        or(eq(schema.players.userId, userId), inArray(schema.players.id, linkedIds)),
+        eq(schema.players.isPracticeStudent, true)
+      ),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
     })
   } else {
     players = await db.query.players.findMany({
-      where: eq(schema.players.userId, userId),
+      where: and(
+        eq(schema.players.userId, userId),
+        eq(schema.players.isPracticeStudent, true)
+      ),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
     })
   }
@@ -325,6 +332,19 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
 
 // Re-export the individual functions for granular prefetching
 export { getPlayer } from '@/lib/arcade/player-manager'
+
+/**
+ * Get a player that is flagged as a practice student.
+ * Returns undefined if the player doesn't exist or isn't a practice student.
+ *
+ * Use this instead of getPlayer() in practice routes to enforce the invariant
+ * that only practice students can access the practice system.
+ */
+export async function getPracticeStudent(playerId: string): Promise<Player | undefined> {
+  const player = await getPlayer(playerId)
+  if (!player || !player.isPracticeStudent) return undefined
+  return player
+}
 export {
   getAllSkillMastery,
   getPaginatedSessions,

@@ -12,14 +12,8 @@ tags:
   - place-value
   - scaffolding
 featured: true
-heroPrompt: >-
-  A child's hands working through a multi-digit addition problem on a printed
-  worksheet, columns color-coded in soft pastels — blue ones, green tens, yellow
-  hundreds, pink thousands. Pencil in hand, eraser shavings on the desk. The
-  worksheet shows neatly printed problems with carry boxes. Bright classroom
-  light from a window, shallow depth of field on the hands. Warm, inviting
-  educational photography.
-heroType: html
+heroType: component
+heroComponentId: multi-digit
 ---
 
 # Beyond Two Digits: Multi-Digit Arithmetic Worksheets
@@ -47,7 +41,7 @@ Our worksheet creator now supports **1 to 5 digits** for both addition and subtr
 
 Let's start with familiar 2-digit problems to establish a baseline:
 
-![2-digit addition problems](/blog/multi-digit-examples/two-digit.svg)
+<!-- EMBED: two-digit "2-digit addition problems with carry boxes" -->
 
 Clean, straightforward layout with carry boxes. This is what students are used to.
 
@@ -55,7 +49,7 @@ Clean, straightforward layout with carry boxes. This is what students are used t
 
 When we add a third digit, the worksheet automatically adapts:
 
-![3-digit addition with place value colors](/blog/multi-digit-examples/three-digit-colors.svg)
+<!-- EMBED: three-digit-colors "3-digit addition with place value colors" -->
 
 **Notice the changes:**
 
@@ -70,7 +64,7 @@ The colors aren't decorative - they're cognitive aids. Students can instantly se
 
 As problems get larger, the scaffolding stays consistent:
 
-![4-digit addition](/blog/multi-digit-examples/four-digit.svg)
+<!-- EMBED: four-digit "4-digit addition problems with place value colors" -->
 
 **New place value**: Pink for thousands
 
@@ -86,7 +80,7 @@ The beauty of this system is **consistency**. Whether it's 2 digits or 4 digits,
 
 For advanced students, we support up to **5-digit problems**:
 
-![5-digit addition](/blog/multi-digit-examples/five-digit.svg)
+<!-- EMBED: five-digit "5-digit addition problems with all place value colors" -->
 
 **New place value**: Purple for ten-thousands
 
@@ -101,7 +95,7 @@ At this level, students are working with numbers like 48,532 + 61,749. The same 
 
 Here's where it gets interesting. In the real world, problems aren't all the same size. So we support **mixed digit ranges**:
 
-![Mixed 2-4 digit problems](/blog/multi-digit-examples/mixed-range.svg)
+<!-- EMBED: mixed-range "Mixed 2-4 digit problems with adaptive scaffolding" -->
 
 **What you see:**
 
@@ -118,7 +112,7 @@ This creates a **progressive difficulty curve** within a single worksheet - perf
 
 Multi-digit support isn't just for addition. Subtraction with borrowing works the same way:
 
-![3-digit subtraction](/blog/multi-digit-examples/three-digit-subtraction.svg)
+<!-- EMBED: three-digit-subtraction "3-digit subtraction with borrow notation and place value colors" -->
 
 **Subtraction features:**
 

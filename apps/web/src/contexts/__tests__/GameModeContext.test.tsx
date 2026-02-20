@@ -31,6 +31,7 @@ function makePlayer(overrides: Partial<DBPlayer> & { id: string; name: string; u
     helpSettings: null,
     notes: null,
     isArchived: false,
+    isPracticeStudent: true,
     age: null,
     familyCode: null,
     ...overrides,

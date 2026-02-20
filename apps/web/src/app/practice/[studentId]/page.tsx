@@ -1,7 +1,7 @@
 import nextDynamic from 'next/dynamic'
 import { notFound, redirect } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
-import { getActiveSessionPlan, getPlayer } from '@/lib/curriculum/server'
+import { getActiveSessionPlan, getPracticeStudent } from '@/lib/curriculum/server'
 import { getDbUserId } from '@/lib/viewer'
 
 // Skip SSR for PracticeClient — practice is fully interactive and has hooks
@@ -36,11 +36,11 @@ export default async function StudentPracticePage({ params }: StudentPracticePag
 
   // Fetch player and active session in parallel
   const [player, activeSession] = await Promise.all([
-    getPlayer(studentId),
+    getPracticeStudent(studentId),
     getActiveSessionPlan(studentId),
   ])
 
-  // 404 if player doesn't exist
+  // 404 if player doesn't exist or is not a practice student
   if (!player) {
     notFound()
   }

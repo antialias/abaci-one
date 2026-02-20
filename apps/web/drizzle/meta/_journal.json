@@ -722,6 +722,20 @@
       "when": 1772300000000,
       "tag": "0102_backfill-guest-ids-to-user-ids",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "6",
+      "when": 1772400000000,
+      "tag": "0103_create_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "6",
+      "when": 1771610345829,
+      "tag": "0104_add_is_practice_student",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,6 @@
+import { and, eq, gte, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { db, schema } from '@/db'
 import type { SessionPlan, GameBreakSettings } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
@@ -10,6 +12,7 @@ import {
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { getLimitsForUser } from '@/lib/subscription'
 import { startSessionPlanGeneration } from '@/lib/tasks/session-plan'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -80,8 +83,11 @@ export const POST = withAuth(async (request, { params }) => {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
+    // Enforce tier limits (duration cap + sessions-per-week)
+    const limits = await getLimitsForUser(userId)
+
     const body = await request.json()
-    const {
+    let {
       durationMinutes,
       abacusTermCount,
       enabledParts,
@@ -100,6 +106,39 @@ export const POST = withAuth(async (request, { params }) => {
         { error: 'durationMinutes is required and must be a number' },
         { status: 400 }
       )
+    }
+
+    // Clamp duration to tier max
+    if (durationMinutes > limits.maxSessionMinutes) {
+      durationMinutes = limits.maxSessionMinutes
+    }
+
+    // Enforce sessions-per-week limit (rolling 7-day window)
+    if (limits.maxSessionsPerWeek !== Infinity) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      const completedStatuses = ['completed', 'in_progress', 'approved'] as const
+      const recentSessions = await db
+        .select({ id: schema.sessionPlans.id })
+        .from(schema.sessionPlans)
+        .where(
+          and(
+            eq(schema.sessionPlans.playerId, playerId),
+            inArray(schema.sessionPlans.status, [...completedStatuses]),
+            gte(schema.sessionPlans.createdAt, sevenDaysAgo)
+          )
+        )
+        .all()
+      if (recentSessions.length >= limits.maxSessionsPerWeek) {
+        return NextResponse.json(
+          {
+            error: 'Weekly session limit reached',
+            code: 'SESSION_LIMIT_REACHED',
+            limit: limits.maxSessionsPerWeek,
+            count: recentSessions.length,
+          },
+          { status: 403 }
+        )
+      }
     }
 
     // Validate enabledParts if provided

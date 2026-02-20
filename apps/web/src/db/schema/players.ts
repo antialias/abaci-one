@@ -92,6 +92,13 @@ export const players = sqliteTable(
     isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
 
     /**
+     * Whether this player is a practice student (appears in practice system).
+     * Arcade-only players have this set to false — they don't count toward
+     * the practice student limit and don't appear in the practice UI.
+     */
+    isPracticeStudent: integer('is_practice_student', { mode: 'boolean' }).notNull().default(true),
+
+    /**
      * Child's age in years (optional, set by parent/teacher)
      * Used to adapt voice agent conversations to appropriate level
      */

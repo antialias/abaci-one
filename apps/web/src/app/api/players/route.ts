@@ -1,24 +1,26 @@
-import { eq, inArray, or } from 'drizzle-orm'
+import { and, eq, inArray, or } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { generateFamilyCode, parentChild } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
+import { getValidParentLinks } from '@/lib/classroom/access-control'
+import { getLimitsForUser } from '@/lib/subscription'
 import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players
  * List all players for the current viewer (guest or user)
  * Includes both created players and linked children via parent_child
+ *
+ * Guest sharing expiry is handled centrally by getValidParentLinks().
  */
 export const GET = withAuth(async () => {
   try {
     const userId = await getDbUserId()
 
-    // Get player IDs linked via parent_child table
-    const linkedPlayerIds = await db.query.parentChild.findMany({
-      where: eq(parentChild.parentUserId, userId),
-    })
-    const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
+    // Get valid parent links (applies guest share expiry centrally)
+    const validLinks = await getValidParentLinks(userId)
+    const linkedIds = validLinks.map((link) => link.childPlayerId)
 
     // Get all players: created by this user OR linked via parent_child
     let players
@@ -59,6 +61,36 @@ export const POST = withAuth(async (request) => {
       )
     }
 
+    const isPracticeStudent = body.isPracticeStudent ?? true
+
+    // Enforce practice student limit (arcade players are unlimited)
+    if (isPracticeStudent) {
+      const limits = await getLimitsForUser(userId)
+      if (limits.maxPracticeStudents !== Infinity) {
+        const practiceStudentCount = await db
+          .select({ id: schema.players.id })
+          .from(schema.players)
+          .where(
+            and(
+              eq(schema.players.userId, userId),
+              eq(schema.players.isArchived, false),
+              eq(schema.players.isPracticeStudent, true)
+            )
+          )
+          .all()
+        if (practiceStudentCount.length >= limits.maxPracticeStudents) {
+          return NextResponse.json(
+            {
+              error: 'Practice student limit reached',
+              code: 'PRACTICE_STUDENT_LIMIT_REACHED',
+              limit: limits.maxPracticeStudents,
+            },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     // Generate a unique family code for the new player
     const familyCode = generateFamilyCode()
 
@@ -71,6 +103,7 @@ export const POST = withAuth(async (request) => {
         emoji: body.emoji,
         color: body.color,
         isActive: body.isActive ?? false,
+        isPracticeStudent,
         familyCode,
       })
       .returning()

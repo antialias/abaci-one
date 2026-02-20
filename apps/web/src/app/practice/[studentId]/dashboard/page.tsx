@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import {
   getAllSkillMastery,
-  getPlayer,
   getPlayerCurriculum,
+  getPracticeStudent,
   getRecentSessions,
   getRecentSessionResults,
 } from '@/lib/curriculum/server'
@@ -44,7 +44,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   // Fetch player data in parallel (includes session mode to avoid client-side waterfall)
   const [player, curriculum, skills, recentSessions, activeSession, problemHistory, sessionMode] =
     await Promise.all([
-      getPlayer(studentId),
+      getPracticeStudent(studentId),
       getPlayerCurriculum(studentId),
       getAllSkillMastery(studentId),
       getRecentSessions(studentId, 200),

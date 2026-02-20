@@ -10,7 +10,7 @@
 
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { generateFamilyCode, parentChild, type Player, players, type User } from '@/db/schema'
+import { generateFamilyCode, parentChild, type Player, players, users, type User } from '@/db/schema'
 import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
 
 /**
@@ -43,6 +43,15 @@ export async function linkParentToChild(
 
   if (!player) {
     return { success: false, error: 'Invalid family code' }
+  }
+
+  // Only students owned by non-guest (authenticated) users can be shared.
+  // Guest-created students are ephemeral and shouldn't be linked to other accounts.
+  const owner = await db.query.users.findFirst({
+    where: eq(users.id, player.userId),
+  })
+  if (!owner?.upgradedAt) {
+    return { success: false, error: 'This student cannot be shared' }
   }
 
   // Check if already linked

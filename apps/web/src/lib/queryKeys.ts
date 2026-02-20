@@ -112,6 +112,12 @@ export const euclidKeys = {
   progress: (playerId: string) => [...euclidKeys.all, 'progress', playerId] as const,
 }
 
+// Billing/tier query keys (subscription tier + limits)
+export const billingKeys = {
+  all: ['billing'] as const,
+  tier: () => [...billingKeys.all, 'tier'] as const,
+}
+
 // Feature flag query keys (admin + client feature gating)
 export const featureFlagKeys = {
   all: ['feature-flags'] as const,

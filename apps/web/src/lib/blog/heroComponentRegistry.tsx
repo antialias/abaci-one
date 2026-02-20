@@ -19,99 +19,7 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
     label: 'Difficulty Plot (Mastery)',
     description: 'DifficultyPlot2D showing mastery progression custom points',
     component: dynamic(
-      () =>
-        import(
-          '@/app/create/worksheets/components/config-panel/DifficultyPlot2D'
-        ).then((mod) => {
-          const DifficultyPlot2D = mod.DifficultyPlot2D
-          function DifficultyPlotHero() {
-            return (
-              <DifficultyPlot2D
-                pAnyStart={0.5}
-                pAllStart={0.2}
-                displayRules={{
-                  carryBoxes: 'always',
-                  answerBoxes: 'always',
-                  placeValueColors: 'always',
-                  tenFrames: 'never',
-                  problemNumbers: 'always',
-                  cellBorders: 'always',
-                  borrowNotation: 'never',
-                  borrowingHints: 'never',
-                }}
-                onChange={() => {}}
-                isDark={true}
-                customPoints={[
-                  {
-                    id: 'beginner',
-                    label: 'Beginner',
-                    pAnyStart: 0.1,
-                    pAllStart: 0.0,
-                    displayRules: {
-                      carryBoxes: 'always',
-                      answerBoxes: 'always',
-                      placeValueColors: 'always',
-                      tenFrames: 'always',
-                      problemNumbers: 'always',
-                      cellBorders: 'always',
-                      borrowNotation: 'always',
-                      borrowingHints: 'always',
-                    },
-                  },
-                  {
-                    id: 'intermediate',
-                    label: 'Intermediate',
-                    pAnyStart: 0.5,
-                    pAllStart: 0.2,
-                    displayRules: {
-                      carryBoxes: 'always',
-                      answerBoxes: 'always',
-                      placeValueColors: 'always',
-                      tenFrames: 'never',
-                      problemNumbers: 'always',
-                      cellBorders: 'always',
-                      borrowNotation: 'never',
-                      borrowingHints: 'never',
-                    },
-                  },
-                  {
-                    id: 'advanced',
-                    label: 'Advanced',
-                    pAnyStart: 0.8,
-                    pAllStart: 0.6,
-                    displayRules: {
-                      carryBoxes: 'whenRegrouping',
-                      answerBoxes: 'always',
-                      placeValueColors: 'never',
-                      tenFrames: 'never',
-                      problemNumbers: 'always',
-                      cellBorders: 'never',
-                      borrowNotation: 'never',
-                      borrowingHints: 'never',
-                    },
-                  },
-                  {
-                    id: 'expert',
-                    label: 'Expert',
-                    pAnyStart: 1.0,
-                    pAllStart: 1.0,
-                    displayRules: {
-                      carryBoxes: 'never',
-                      answerBoxes: 'never',
-                      placeValueColors: 'never',
-                      tenFrames: 'never',
-                      problemNumbers: 'never',
-                      cellBorders: 'never',
-                      borrowNotation: 'never',
-                      borrowingHints: 'never',
-                    },
-                  },
-                ]}
-              />
-            )
-          }
-          return DifficultyPlotHero
-        }),
+      () => import('@/components/blog/heroes/DifficultyPlotHero'),
       { ssr: false }
     ),
   },
@@ -251,9 +159,27 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
   'subtraction-scaffolding': {
     label: 'Subtraction Scaffolding',
     description:
-      'Interactive scaffolding editor showing RuleThermometer controls for subtraction worksheet configuration',
+      'Triptych showing subtraction problem (352 − 117) at three scaffolding levels',
     component: dynamic(
       () => import('@/components/blog/heroes/SubtractionScaffoldingHero'),
+      { ssr: false }
+    ),
+  },
+  'ten-frames': {
+    label: 'Ten-Frames',
+    description:
+      'Triptych showing addition problem (27 + 14) progressing from plain to ten-frames',
+    component: dynamic(
+      () => import('@/components/blog/heroes/TenFramesHero'),
+      { ssr: false }
+    ),
+  },
+  'multi-digit': {
+    label: 'Multi-Digit',
+    description:
+      'Triptych showing 4-digit addition (1027 + 2034) with progressive place value scaffolding',
+    component: dynamic(
+      () => import('@/components/blog/heroes/MultiDigitHero'),
       { ssr: false }
     ),
   },

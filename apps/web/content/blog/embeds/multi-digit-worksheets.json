@@ -1,0 +1,20 @@
+{
+  "two-digit": {
+    "type": "html"
+  },
+  "three-digit-colors": {
+    "type": "html"
+  },
+  "four-digit": {
+    "type": "html"
+  },
+  "five-digit": {
+    "type": "html"
+  },
+  "mixed-range": {
+    "type": "html"
+  },
+  "three-digit-subtraction": {
+    "type": "html"
+  }
+}

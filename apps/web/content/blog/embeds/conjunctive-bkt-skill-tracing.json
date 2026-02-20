@@ -1,0 +1,30 @@
+{
+  "blame-attribution": {
+    "type": "component",
+    "componentId": "blame-attribution"
+  },
+  "evidence-quality": {
+    "type": "component",
+    "componentId": "evidence-quality-charts"
+  },
+  "automaticity-multipliers": {
+    "type": "component",
+    "componentId": "automaticity-multipliers"
+  },
+  "classification": {
+    "type": "component",
+    "componentId": "classification-charts"
+  },
+  "skill-difficulty": {
+    "type": "component",
+    "componentId": "skill-difficulty-charts"
+  },
+  "validation-results": {
+    "type": "component",
+    "componentId": "validation-results"
+  },
+  "three-way-comparison": {
+    "type": "component",
+    "componentId": "three-way-comparison"
+  }
+}

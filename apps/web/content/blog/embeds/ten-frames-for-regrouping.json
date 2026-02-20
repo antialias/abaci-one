@@ -1,0 +1,14 @@
+{
+  "with-ten-frames": {
+    "type": "html"
+  },
+  "without-ten-frames": {
+    "type": "html"
+  },
+  "beginner-ten-frames": {
+    "type": "html"
+  },
+  "ten-frames-both-columns": {
+    "type": "html"
+  }
+}

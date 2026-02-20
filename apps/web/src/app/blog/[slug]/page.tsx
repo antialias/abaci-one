@@ -1,39 +1,19 @@
+import fs from 'fs'
+import path from 'path'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { SkillDifficultyCharts } from '@/components/blog/SkillDifficultyCharts'
-import {
-  AutomaticityMultiplierCharts,
-  BlameAttributionCharts,
-  ClassificationCharts,
-  EvidenceQualityCharts,
-  ThreeWayComparisonCharts,
-  ValidationResultsCharts,
-} from '@/components/blog/ValidationCharts'
+import { BlogContent } from '@/components/blog/BlogContent'
+import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
 import { getAllPostSlugs, getPostBySlug } from '@/lib/blog'
 import { css } from '../../../../styled-system/css'
 
-interface ChartInjection {
-  component: React.ComponentType
-  /** Marker ID to find in the markdown (e.g., "EvidenceQuality" matches <!-- CHART: EvidenceQuality -->) */
-  markerId: string
+interface EmbedConfig {
+  type: 'component' | 'html'
+  componentId?: string
 }
 
-/** Blog posts that have interactive chart sections */
-const POSTS_WITH_CHARTS: Record<string, ChartInjection[]> = {
-  'conjunctive-bkt-skill-tracing': [
-    { component: EvidenceQualityCharts, markerId: 'EvidenceQuality' },
-    {
-      component: AutomaticityMultiplierCharts,
-      markerId: 'AutomaticityMultipliers',
-    },
-    { component: ClassificationCharts, markerId: 'Classification' },
-    { component: SkillDifficultyCharts, markerId: 'SkillDifficulty' },
-    { component: ThreeWayComparisonCharts, markerId: 'ThreeWayComparison' },
-    { component: ValidationResultsCharts, markerId: 'ValidationResults' },
-    { component: BlameAttributionCharts, markerId: 'BlameAttribution' },
-  ],
-}
+type EmbedConfigMap = Record<string, EmbedConfig>
 
 interface Props {
   params: {
@@ -103,6 +83,51 @@ export default async function BlogPost({ params }: Props) {
 
   const showUpdatedDate = post.publishedAt !== post.updatedAt
 
+  // Resolve hero data for rendering
+  const contentDir = path.join(process.cwd(), 'content', 'blog')
+  const publicDir = path.join(process.cwd(), 'public')
+  const heroHtmlDir = path.join(contentDir, 'hero-html')
+
+  let heroImageUrl: string | undefined
+  if (post.heroImage) {
+    heroImageUrl = post.heroImage
+  } else if (fs.existsSync(path.join(publicDir, 'blog', `${params.slug}.png`))) {
+    heroImageUrl = `/blog/${params.slug}.png`
+  }
+
+  let heroHtml: string | undefined
+  if (post.heroType === 'html') {
+    const htmlPath = path.join(heroHtmlDir, `${params.slug}.html`)
+    if (fs.existsSync(htmlPath)) {
+      heroHtml = fs.readFileSync(htmlPath, 'utf8')
+    }
+  }
+
+  // Load embed config for inline embeds
+  let embedConfigs: EmbedConfigMap = {}
+  const embedConfigPath = path.join(contentDir, 'embeds', `${params.slug}.json`)
+  if (fs.existsSync(embedConfigPath)) {
+    try {
+      embedConfigs = JSON.parse(fs.readFileSync(embedConfigPath, 'utf8'))
+    } catch {
+      // Invalid JSON — ignore
+    }
+  }
+
+  // Pre-load HTML for html-type embeds
+  const embedHtmlDir = path.join(contentDir, 'embed-html', params.slug)
+  const embedHtmlMap: Record<string, string> = {}
+  for (const [embedId, config] of Object.entries(embedConfigs)) {
+    if (config.type === 'html') {
+      const htmlPath = path.join(embedHtmlDir, `${embedId}.html`)
+      if (fs.existsSync(htmlPath)) {
+        embedHtmlMap[embedId] = fs.readFileSync(htmlPath, 'utf8')
+      }
+    }
+  }
+
+  const hasHero = !!(post.heroComponentId || heroHtml || heroImageUrl)
+
   return (
     <div
       data-component="blog-post-page"
@@ -157,6 +182,59 @@ export default async function BlogPost({ params }: Props) {
           <span>←</span>
           <span>Back to Blog</span>
         </Link>
+
+        {/* Hero Banner */}
+        {hasHero && (
+          <div
+            data-element="post-hero"
+            className={css({
+              mb: '2rem',
+              borderRadius: '0.75rem',
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'border.muted',
+            })}
+          >
+            {post.heroComponentId ? (
+              <HeroComponentBanner componentId={post.heroComponentId} />
+            ) : heroHtml ? (
+              <div
+                data-element="html-banner"
+                className={css({
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: { base: '16 / 9', md: '2.4 / 1' },
+                  overflow: 'hidden',
+                })}
+                dangerouslySetInnerHTML={{ __html: heroHtml }}
+              />
+            ) : heroImageUrl ? (
+              <div
+                data-element="image-banner"
+                className={css({
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: { base: '16 / 9', md: '2.4 / 1' },
+                  overflow: 'hidden',
+                })}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={heroImageUrl}
+                  alt={post.title}
+                  style={{ objectPosition: post.heroCrop || 'center' }}
+                  className={css({
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  })}
+                />
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {/* Article */}
         <article data-element="blog-article">
@@ -245,7 +323,7 @@ export default async function BlogPost({ params }: Props) {
           </header>
 
           {/* Article Content */}
-          <BlogContent slug={params.slug} html={post.html} />
+          <BlogContent html={post.html} embedConfigs={embedConfigs} embedHtmlMap={embedHtmlMap} />
         </article>
 
         {/* JSON-LD Structured Data */}
@@ -272,217 +350,3 @@ export default async function BlogPost({ params }: Props) {
   )
 }
 
-/** Content component that handles chart injection */
-function BlogContent({ slug, html }: { slug: string; html: string }) {
-  const chartConfigs = POSTS_WITH_CHARTS[slug]
-
-  // If no charts for this post, render full content
-  if (!chartConfigs || chartConfigs.length === 0) {
-    return (
-      <div
-        data-section="article-content"
-        className={articleContentStyles}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    )
-  }
-
-  // Build injection points: find each marker comment and its position
-  // Markers look like: <!-- CHART: EvidenceQuality -->
-  const injections: Array<{
-    position: number
-    length: number
-    component: React.ComponentType
-  }> = []
-
-  for (const config of chartConfigs) {
-    // Match the marker comment exactly
-    const markerPattern = new RegExp(`<!--\\s*CHART:\\s*${config.markerId}\\s*-->`, 'i')
-    const match = html.match(markerPattern)
-
-    if (match && match.index !== undefined) {
-      // Replace the marker with the chart (position is where marker starts, length is marker length)
-      injections.push({
-        position: match.index,
-        length: match[0].length,
-        component: config.component,
-      })
-    }
-  }
-
-  // Sort by position (ascending) so we process in order
-  injections.sort((a, b) => a.position - b.position)
-
-  // If no injections found, render full content
-  if (injections.length === 0) {
-    return (
-      <div
-        data-section="article-content"
-        className={articleContentStyles}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    )
-  }
-
-  // Split HTML at injection points and render with charts
-  const segments: React.ReactNode[] = []
-  let lastPosition = 0
-
-  for (let i = 0; i < injections.length; i++) {
-    const { position, length, component: ChartComponent } = injections[i]
-
-    // Add HTML segment before this injection (up to the marker)
-    const htmlSegment = html.slice(lastPosition, position)
-    if (htmlSegment) {
-      segments.push(
-        <div
-          key={`html-${i}`}
-          data-section={`article-content-${i}`}
-          className={articleContentStyles}
-          dangerouslySetInnerHTML={{ __html: htmlSegment }}
-        />
-      )
-    }
-
-    // Add the chart component (replacing the marker)
-    segments.push(<ChartComponent key={`chart-${i}`} />)
-    // Skip past the marker
-    lastPosition = position + length
-  }
-
-  // Add remaining HTML after last injection
-  const remainingHtml = html.slice(lastPosition)
-  if (remainingHtml) {
-    segments.push(
-      <div
-        key="html-final"
-        data-section="article-content-final"
-        className={articleContentStyles}
-        dangerouslySetInnerHTML={{ __html: remainingHtml }}
-      />
-    )
-  }
-
-  return <>{segments}</>
-}
-
-const articleContentStyles = css({
-  fontSize: { base: '1rem', md: '1.125rem' },
-  lineHeight: '1.75',
-  color: 'text.primary',
-
-  // Typography styles for markdown content
-  '& h1': {
-    fontSize: { base: '1.875rem', md: '2.25rem' },
-    fontWeight: 'bold',
-    mt: '2.5rem',
-    mb: '1rem',
-    lineHeight: '1.25',
-    color: 'text.primary',
-  },
-  '& h2': {
-    fontSize: { base: '1.5rem', md: '1.875rem' },
-    fontWeight: 'bold',
-    mt: '2rem',
-    mb: '0.875rem',
-    lineHeight: '1.3',
-    color: 'accent.emphasis',
-  },
-  '& h3': {
-    fontSize: { base: '1.25rem', md: '1.5rem' },
-    fontWeight: 600,
-    mt: '1.75rem',
-    mb: '0.75rem',
-    lineHeight: '1.4',
-    color: 'accent.default',
-  },
-  '& p': {
-    mb: '1.25rem',
-  },
-  '& strong': {
-    fontWeight: 600,
-    color: 'text.primary',
-  },
-  '& a': {
-    color: 'accent.emphasis',
-    textDecoration: 'underline',
-    _hover: {
-      color: 'accent.default',
-    },
-  },
-  '& ul, & ol': {
-    pl: '1.5rem',
-    mb: '1.25rem',
-  },
-  '& li': {
-    mb: '0.5rem',
-  },
-  '& code': {
-    bg: 'bg.muted',
-    px: '0.375rem',
-    py: '0.125rem',
-    borderRadius: '0.25rem',
-    fontSize: '0.875em',
-    fontFamily: 'monospace',
-    color: 'accent.emphasis',
-    border: '1px solid',
-    borderColor: 'accent.default',
-  },
-  '& pre': {
-    bg: 'bg.surface',
-    border: '1px solid',
-    borderColor: 'border.default',
-    color: 'text.primary',
-    p: '1rem',
-    borderRadius: '0.5rem',
-    overflow: 'auto',
-    mb: '1.25rem',
-  },
-  '& pre code': {
-    bg: 'transparent',
-    p: '0',
-    border: 'none',
-    color: 'inherit',
-    fontSize: '0.875rem',
-  },
-  '& blockquote': {
-    borderLeft: '4px solid',
-    borderColor: 'accent.default',
-    pl: '1rem',
-    py: '0.5rem',
-    my: '1.5rem',
-    color: 'text.secondary',
-    fontStyle: 'italic',
-    bg: 'accent.subtle',
-    borderRadius: '0 0.25rem 0.25rem 0',
-  },
-  '& hr': {
-    my: '2rem',
-    borderColor: 'border.muted',
-  },
-  '& table': {
-    width: '100%',
-    mb: '1.25rem',
-    borderCollapse: 'collapse',
-  },
-  '& th': {
-    bg: 'accent.muted',
-    px: '1rem',
-    py: '0.75rem',
-    textAlign: 'left',
-    fontWeight: 600,
-    borderBottom: '2px solid',
-    borderColor: 'accent.default',
-    color: 'accent.emphasis',
-  },
-  '& td': {
-    px: '1rem',
-    py: '0.75rem',
-    borderBottom: '1px solid',
-    borderColor: 'border.muted',
-    color: 'text.secondary',
-  },
-  '& tr:hover td': {
-    bg: 'accent.subtle',
-  },
-})

@@ -77,6 +77,7 @@ export async function mergeGuestIntoUser(
   await reparentOrDrop('scanner_settings', 'user_id')
   await reparentOrDrop('user_stats', 'user_id')
   await reparentOrDrop('feature_flag_overrides', 'user_id')
+  await reparentOrDrop('subscriptions', 'user_id')
 
   // Tables with differently named FK columns
   await reparent('classrooms', 'teacher_id')

@@ -9,9 +9,16 @@ import { RefinePromptModal } from '@/components/admin/RefinePromptModal'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { BlogImageGenerateOutput } from '@/lib/tasks/blog-image-generate'
 import { getHeroComponentList } from '@/lib/blog/heroComponentRegistry'
+import { getInlineComponentList } from '@/lib/blog/inlineComponentRegistry'
 import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
 
 type HeroType = 'generated' | 'storybook' | 'component' | 'html'
+
+interface EmbedStatus {
+  id: string
+  description: string
+  configured: boolean
+}
 
 interface BlogPostStatus {
   slug: string
@@ -27,6 +34,7 @@ interface BlogPostStatus {
   heroComponentId: string | null
   imageExists: boolean
   sizeBytes?: number
+  embeds: EmbedStatus[]
 }
 
 interface ProviderInfo {
@@ -158,6 +166,230 @@ const CAPTURE_BODY_DEFAULTS: Record<string, string> = {
   }, null, 2),
 }
 
+/** Helper to build a worksheet capture body */
+function worksheetCaptureBody(overrides: {
+  operator?: string
+  pAnyStart?: number
+  pAllStart?: number
+  digitRange?: { min: number; max: number }
+  carryBoxes?: string
+  borrowNotation?: string
+  borrowingHints?: string
+  placeValueColors?: string
+  tenFrames?: string
+  seed?: number
+  problemsPerPage?: number
+  cols?: number
+}): string {
+  return JSON.stringify({
+    config: {
+      version: 4,
+      mode: 'custom',
+      problemsPerPage: overrides.problemsPerPage ?? 6,
+      cols: overrides.cols ?? 3,
+      pages: 1,
+      orientation: 'landscape',
+      name: '',
+      digitRange: overrides.digitRange ?? { min: 2, max: 2 },
+      operator: overrides.operator ?? 'addition',
+      pAnyStart: overrides.pAnyStart ?? 0,
+      pAllStart: overrides.pAllStart ?? 0,
+      interpolate: false,
+      displayRules: {
+        carryBoxes: overrides.carryBoxes ?? 'never',
+        answerBoxes: 'always',
+        placeValueColors: overrides.placeValueColors ?? 'never',
+        tenFrames: overrides.tenFrames ?? 'never',
+        problemNumbers: 'always',
+        cellBorders: 'always',
+        borrowNotation: overrides.borrowNotation ?? 'never',
+        borrowingHints: overrides.borrowingHints ?? 'never',
+      },
+      fontSize: 16,
+      seed: overrides.seed ?? 42,
+      includeAnswerKey: false,
+      includeQRCode: false,
+    },
+  }, null, 2)
+}
+
+/** Pre-populated capture bodies for inline embeds, keyed by "slug/embedId" */
+const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
+  // No borrowing required — pAnyStart=0, pAllStart=0
+  'subtraction-worksheets/no-borrowing': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0,
+    pAllStart: 0,
+    seed: 100,
+  }),
+  // Borrowing problems, but no scaffolding shown
+  'subtraction-worksheets/comparison-no-notation': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0.8,
+    pAllStart: 0.3,
+    borrowNotation: 'never',
+    seed: 200,
+  }),
+  // Same problems with borrow notation boxes
+  'subtraction-worksheets/comparison-with-notation': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0.8,
+    pAllStart: 0.3,
+    borrowNotation: 'always',
+    seed: 200,
+  }),
+  // Single borrow in ones place, with place value colors
+  'subtraction-worksheets/single-borrow-ones': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0.6,
+    pAllStart: 0,
+    borrowNotation: 'always',
+    placeValueColors: 'always',
+    seed: 300,
+  }),
+  // Borrowing hints with curved arrows
+  'subtraction-worksheets/hints-detail': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0.8,
+    pAllStart: 0.3,
+    borrowNotation: 'always',
+    borrowingHints: 'always',
+    placeValueColors: 'always',
+    seed: 400,
+  }),
+  // Multiple borrows — 3-digit numbers
+  'subtraction-worksheets/multiple-borrows': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0.9,
+    pAllStart: 0.5,
+    digitRange: { min: 3, max: 3 },
+    borrowNotation: 'always',
+    placeValueColors: 'always',
+    seed: 500,
+  }),
+  // Cascading borrows — 3-4 digit numbers
+  'subtraction-worksheets/cascading-borrows': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 1.0,
+    pAllStart: 0.8,
+    digitRange: { min: 3, max: 4 },
+    borrowNotation: 'always',
+    placeValueColors: 'always',
+    borrowingHints: 'always',
+    seed: 600,
+    problemsPerPage: 4,
+    cols: 2,
+  }),
+
+  // --- multi-digit-worksheets ---
+  // 2-digit addition, basic carry boxes
+  'multi-digit-worksheets/two-digit': worksheetCaptureBody({
+    pAnyStart: 0.75,
+    pAllStart: 0.25,
+    digitRange: { min: 2, max: 2 },
+    carryBoxes: 'always',
+    problemsPerPage: 8,
+    cols: 4,
+    seed: 42,
+  }),
+  // 3-digit addition with place value colors
+  'multi-digit-worksheets/three-digit-colors': worksheetCaptureBody({
+    pAnyStart: 0.6,
+    pAllStart: 0.15,
+    digitRange: { min: 3, max: 3 },
+    carryBoxes: 'always',
+    placeValueColors: 'always',
+    problemsPerPage: 8,
+    cols: 4,
+    seed: 77,
+  }),
+  // 4-digit addition with place value colors
+  'multi-digit-worksheets/four-digit': worksheetCaptureBody({
+    pAnyStart: 0.6,
+    pAllStart: 0.15,
+    digitRange: { min: 4, max: 4 },
+    carryBoxes: 'always',
+    placeValueColors: 'always',
+    problemsPerPage: 6,
+    cols: 3,
+    seed: 88,
+  }),
+  // 5-digit addition with all place value colors
+  'multi-digit-worksheets/five-digit': worksheetCaptureBody({
+    pAnyStart: 0.7,
+    pAllStart: 0.2,
+    digitRange: { min: 5, max: 5 },
+    carryBoxes: 'always',
+    placeValueColors: 'always',
+    problemsPerPage: 4,
+    cols: 2,
+    seed: 99,
+  }),
+  // Mixed 2-4 digit problems
+  'multi-digit-worksheets/mixed-range': worksheetCaptureBody({
+    pAnyStart: 0.6,
+    pAllStart: 0.15,
+    digitRange: { min: 2, max: 4 },
+    carryBoxes: 'always',
+    placeValueColors: 'when3PlusDigits',
+    problemsPerPage: 8,
+    cols: 4,
+    seed: 55,
+  }),
+  // 3-digit subtraction with borrow notation
+  'multi-digit-worksheets/three-digit-subtraction': worksheetCaptureBody({ operator: 'subtraction',
+    pAnyStart: 0.7,
+    pAllStart: 0.2,
+    digitRange: { min: 3, max: 3 },
+    borrowNotation: 'always',
+    placeValueColors: 'always',
+    problemsPerPage: 6,
+    cols: 3,
+    seed: 66,
+  }),
+
+  // --- ten-frames-for-regrouping ---
+  // Problem with ten-frames (e.g. 47+38)
+  'ten-frames-for-regrouping/with-ten-frames': worksheetCaptureBody({
+    pAnyStart: 0.8,
+    pAllStart: 0.3,
+    digitRange: { min: 2, max: 2 },
+    carryBoxes: 'always',
+    placeValueColors: 'always',
+    tenFrames: 'always',
+    problemsPerPage: 1,
+    cols: 1,
+    seed: 47,
+  }),
+  // Same problem without ten-frames
+  'ten-frames-for-regrouping/without-ten-frames': worksheetCaptureBody({
+    pAnyStart: 0.8,
+    pAllStart: 0.3,
+    digitRange: { min: 2, max: 2 },
+    carryBoxes: 'always',
+    problemsPerPage: 1,
+    cols: 1,
+    seed: 47,
+  }),
+  // Beginner problem with ten-frames (e.g. 28+15)
+  'ten-frames-for-regrouping/beginner-ten-frames': worksheetCaptureBody({
+    pAnyStart: 0.6,
+    pAllStart: 0,
+    digitRange: { min: 2, max: 2 },
+    carryBoxes: 'always',
+    placeValueColors: 'always',
+    tenFrames: 'always',
+    problemsPerPage: 1,
+    cols: 1,
+    seed: 28,
+  }),
+  // Problem with ten-frames in both columns (e.g. 57+68)
+  'ten-frames-for-regrouping/ten-frames-both-columns': worksheetCaptureBody({
+    pAnyStart: 1.0,
+    pAllStart: 1.0,
+    digitRange: { min: 2, max: 2 },
+    carryBoxes: 'always',
+    placeValueColors: 'always',
+    tenFrames: 'always',
+    problemsPerPage: 1,
+    cols: 1,
+    seed: 57,
+  }),
+}
+
 export default function BlogImagesAdmin() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [selectedValue, setSelectedValue] = useState('')
@@ -194,6 +426,20 @@ export default function BlogImagesAdmin() {
 
   // Component registry state
   const [componentIdDrafts, setComponentIdDrafts] = useState<Record<string, string>>({})
+
+  // Inline embed state: slug -> { embedId -> config }
+  const [embedConfigDrafts, setEmbedConfigDrafts] = useState<
+    Record<string, Record<string, { type: string; componentId?: string }>>
+  >({})
+  const [loadedEmbedConfigSlugs, setLoadedEmbedConfigSlugs] = useState<Set<string>>(new Set())
+  const [embedHtmlDrafts, setEmbedHtmlDrafts] = useState<Record<string, string>>({})
+  const [loadedEmbedHtmlKeys, setLoadedEmbedHtmlKeys] = useState<Set<string>>(new Set())
+  const embedHtmlSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const [expandedEmbedSlugs, setExpandedEmbedSlugs] = useState<Set<string>>(new Set())
+
+  // Embed capture-from-URL state (keyed by "slug/embedId")
+  const [embedCaptureBodyDrafts, setEmbedCaptureBodyDrafts] = useState<Record<string, string>>(EMBED_CAPTURE_DEFAULTS)
+  const [capturingEmbedKey, setCapturingEmbedKey] = useState<string | null>(null)
 
   const { state: taskState } = useBackgroundTask<BlogImageGenerateOutput>(taskId)
 
@@ -638,6 +884,139 @@ export default function BlogImagesAdmin() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save component ID')
+    }
+  }
+
+  // Inline embed helpers
+  async function loadEmbedConfig(slug: string) {
+    if (loadedEmbedConfigSlugs.has(slug)) return
+    try {
+      const res = await fetch(`/api/admin/blog/${slug}/embeds`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.config && Object.keys(data.config).length > 0) {
+          setEmbedConfigDrafts((prev) => ({ ...prev, [slug]: data.config }))
+        }
+      }
+    } catch {
+      // ignore
+    }
+    setLoadedEmbedConfigSlugs((prev) => new Set([...prev, slug]))
+  }
+
+  async function saveEmbedConfig(slug: string, config: Record<string, { type: string; componentId?: string }>) {
+    setEmbedConfigDrafts((prev) => ({ ...prev, [slug]: config }))
+    try {
+      await fetch(`/api/admin/blog/${slug}/embeds`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config }),
+      })
+    } catch {
+      // ignore
+    }
+  }
+
+  function handleEmbedTypeChange(slug: string, embedId: string, newType: string) {
+    const current = embedConfigDrafts[slug] ?? {}
+    const updated = { ...current, [embedId]: { ...current[embedId], type: newType } }
+    if (newType !== 'component') {
+      delete updated[embedId].componentId
+    }
+    saveEmbedConfig(slug, updated)
+  }
+
+  function handleEmbedComponentChange(slug: string, embedId: string, componentId: string) {
+    const current = embedConfigDrafts[slug] ?? {}
+    const updated = { ...current, [embedId]: { ...current[embedId], type: 'component', componentId } }
+    saveEmbedConfig(slug, updated)
+  }
+
+  async function loadEmbedHtml(slug: string, embedId: string) {
+    const key = `${slug}/${embedId}`
+    if (loadedEmbedHtmlKeys.has(key)) return
+    try {
+      const res = await fetch(`/api/admin/blog/${slug}/embed-html/${embedId}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.html !== null) {
+          setEmbedHtmlDrafts((prev) => ({ ...prev, [key]: data.html }))
+        }
+      }
+    } catch {
+      // ignore
+    }
+    setLoadedEmbedHtmlKeys((prev) => new Set([...prev, key]))
+  }
+
+  function handleEmbedHtmlChange(slug: string, embedId: string, html: string) {
+    const key = `${slug}/${embedId}`
+    setEmbedHtmlDrafts((prev) => ({ ...prev, [key]: html }))
+    // Debounce save
+    if (embedHtmlSaveTimers.current[key]) {
+      clearTimeout(embedHtmlSaveTimers.current[key])
+    }
+    embedHtmlSaveTimers.current[key] = setTimeout(() => {
+      fetch(`/api/admin/blog/${slug}/embed-html/${embedId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html }),
+      }).catch(() => {
+        // ignore
+      })
+    }, 500)
+  }
+
+  async function handleCaptureEmbedSnapshot(slug: string, embedId: string) {
+    const key = `${slug}/${embedId}`
+    const bodyText = embedCaptureBodyDrafts[key] ?? ''
+    if (!bodyText.trim()) {
+      setError('No capture body configured for this embed')
+      return
+    }
+    setCapturingEmbedKey(key)
+    setError(null)
+    try {
+      const payload: Record<string, unknown> = {
+        slug,
+        embedId,
+        url: captureUrl.trim() || '/api/worksheets/preview',
+        method: captureMethod,
+      }
+      if (captureMethod === 'POST' && bodyText.trim()) {
+        try {
+          payload.body = JSON.parse(bodyText)
+        } catch {
+          setError('Invalid JSON in embed capture body')
+          setCapturingEmbedKey(null)
+          return
+        }
+      }
+      if (captureExtractPath.trim()) {
+        payload.extractPath = captureExtractPath.trim()
+      }
+      const res = await fetch('/api/admin/blog-images/capture-snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Embed capture failed')
+        return
+      }
+      // Re-load the embed HTML into the draft
+      const htmlRes = await fetch(`/api/admin/blog/${slug}/embed-html/${embedId}`)
+      if (htmlRes.ok) {
+        const data = await htmlRes.json()
+        if (data.html !== null) {
+          setEmbedHtmlDrafts((prev) => ({ ...prev, [key]: data.html }))
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Embed capture failed')
+    } finally {
+      setCapturingEmbedKey(null)
     }
   }
 
@@ -1302,6 +1681,36 @@ export default function BlogImagesAdmin() {
                         />
                       </div>
                     )}
+
+                    {/* Inline embeds section */}
+                    {post.embeds.length > 0 && (
+                      <InlineEmbedsSection
+                        post={post}
+                        expanded={expandedEmbedSlugs.has(post.slug)}
+                        onToggle={() =>
+                          setExpandedEmbedSlugs((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(post.slug)) {
+                              next.delete(post.slug)
+                            } else {
+                              next.add(post.slug)
+                              loadEmbedConfig(post.slug)
+                            }
+                            return next
+                          })
+                        }
+                        embedConfigs={embedConfigDrafts[post.slug] ?? {}}
+                        onEmbedTypeChange={(embedId, type) => handleEmbedTypeChange(post.slug, embedId, type)}
+                        onEmbedComponentChange={(embedId, componentId) => handleEmbedComponentChange(post.slug, embedId, componentId)}
+                        embedHtmlDrafts={embedHtmlDrafts}
+                        onLoadEmbedHtml={(embedId) => loadEmbedHtml(post.slug, embedId)}
+                        onEmbedHtmlChange={(embedId, html) => handleEmbedHtmlChange(post.slug, embedId, html)}
+                        embedCaptureBodyDrafts={embedCaptureBodyDrafts}
+                        onEmbedCaptureBodyChange={(embedId, val) => setEmbedCaptureBodyDrafts((prev) => ({ ...prev, [`${post.slug}/${embedId}`]: val }))}
+                        capturingEmbedKey={capturingEmbedKey}
+                        onCaptureEmbed={(embedId) => handleCaptureEmbedSnapshot(post.slug, embedId)}
+                      />
+                    )}
                   </div>
                 )
               })}
@@ -1483,6 +1892,36 @@ export default function BlogImagesAdmin() {
                         </button>
                       </div>
                     </div>
+                  )}
+
+                  {/* Inline embeds section for unconfigured posts */}
+                  {post.embeds.length > 0 && (
+                    <InlineEmbedsSection
+                      post={post}
+                      expanded={expandedEmbedSlugs.has(post.slug)}
+                      onToggle={() =>
+                        setExpandedEmbedSlugs((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(post.slug)) {
+                            next.delete(post.slug)
+                          } else {
+                            next.add(post.slug)
+                            loadEmbedConfig(post.slug)
+                          }
+                          return next
+                        })
+                      }
+                      embedConfigs={embedConfigDrafts[post.slug] ?? {}}
+                      onEmbedTypeChange={(embedId, type) => handleEmbedTypeChange(post.slug, embedId, type)}
+                      onEmbedComponentChange={(embedId, componentId) => handleEmbedComponentChange(post.slug, embedId, componentId)}
+                      embedHtmlDrafts={embedHtmlDrafts}
+                      onLoadEmbedHtml={(embedId) => loadEmbedHtml(post.slug, embedId)}
+                      onEmbedHtmlChange={(embedId, html) => handleEmbedHtmlChange(post.slug, embedId, html)}
+                      embedCaptureBodyDrafts={embedCaptureBodyDrafts}
+                      onEmbedCaptureBodyChange={(embedId, val) => setEmbedCaptureBodyDrafts((prev) => ({ ...prev, [`${post.slug}/${embedId}`]: val }))}
+                      capturingEmbedKey={capturingEmbedKey}
+                      onCaptureEmbed={(embedId) => handleCaptureEmbedSnapshot(post.slug, embedId)}
+                    />
                   )}
                 </div>
               ))}
@@ -1975,6 +2414,386 @@ function HtmlUI({
 }
 
 const heroComponentList = getHeroComponentList()
+const inlineComponentList = getInlineComponentList()
+
+function InlineEmbedsSection({
+  post,
+  expanded,
+  onToggle,
+  embedConfigs,
+  onEmbedTypeChange,
+  onEmbedComponentChange,
+  embedHtmlDrafts,
+  onLoadEmbedHtml,
+  onEmbedHtmlChange,
+  embedCaptureBodyDrafts,
+  onEmbedCaptureBodyChange,
+  capturingEmbedKey,
+  onCaptureEmbed,
+}: {
+  post: BlogPostStatus
+  expanded: boolean
+  onToggle: () => void
+  embedConfigs: Record<string, { type: string; componentId?: string }>
+  onEmbedTypeChange: (embedId: string, type: string) => void
+  onEmbedComponentChange: (embedId: string, componentId: string) => void
+  embedHtmlDrafts: Record<string, string>
+  onLoadEmbedHtml: (embedId: string) => void
+  onEmbedHtmlChange: (embedId: string, html: string) => void
+  embedCaptureBodyDrafts: Record<string, string>
+  onEmbedCaptureBodyChange: (embedId: string, val: string) => void
+  capturingEmbedKey: string | null
+  onCaptureEmbed: (embedId: string) => void
+}) {
+  const configuredCount = post.embeds.filter((e) => e.id in embedConfigs).length
+
+  return (
+    <div
+      data-element="inline-embeds-section"
+      className={css({
+        marginTop: '8px',
+        border: '1px solid #21262d',
+        borderRadius: '6px',
+        overflow: 'hidden',
+      })}
+    >
+      <button
+        data-action="toggle-embeds"
+        onClick={onToggle}
+        className={css({
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '8px 12px',
+          backgroundColor: '#0d1117',
+          border: 'none',
+          color: '#c9d1d9',
+          fontSize: '12px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          '&:hover': { backgroundColor: '#161b22' },
+        })}
+      >
+        <span>
+          Inline Embeds ({post.embeds.length})
+          {configuredCount > 0 && (
+            <span className={css({ color: '#3fb950', marginLeft: '6px', fontSize: '11px', fontWeight: 'normal' })}>
+              {configuredCount}/{post.embeds.length} configured
+            </span>
+          )}
+        </span>
+        <span>{expanded ? '\u25B2' : '\u25BC'}</span>
+      </button>
+
+      {expanded && (
+        <div className={css({ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px' })}>
+          {post.embeds.map((embed) => {
+            const config = embedConfigs[embed.id]
+            const embedType = config?.type ?? ''
+            return (
+              <InlineEmbedRow
+                key={embed.id}
+                slug={post.slug}
+                embed={embed}
+                embedType={embedType}
+                componentId={config?.componentId ?? ''}
+                onTypeChange={(type) => onEmbedTypeChange(embed.id, type)}
+                onComponentChange={(componentId) => onEmbedComponentChange(embed.id, componentId)}
+                htmlDraft={embedHtmlDrafts[`${post.slug}/${embed.id}`] ?? ''}
+                onLoadHtml={() => onLoadEmbedHtml(embed.id)}
+                onHtmlChange={(html) => onEmbedHtmlChange(embed.id, html)}
+                captureBody={embedCaptureBodyDrafts[`${post.slug}/${embed.id}`] ?? ''}
+                onCaptureBodyChange={(val) => onEmbedCaptureBodyChange(embed.id, val)}
+                capturing={capturingEmbedKey === `${post.slug}/${embed.id}`}
+                onCapture={() => onCaptureEmbed(embed.id)}
+              />
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function InlineEmbedRow({
+  slug,
+  embed,
+  embedType,
+  componentId,
+  onTypeChange,
+  onComponentChange,
+  htmlDraft,
+  onLoadHtml,
+  onHtmlChange,
+  captureBody,
+  onCaptureBodyChange,
+  capturing,
+  onCapture,
+}: {
+  slug: string
+  embed: EmbedStatus
+  embedType: string
+  componentId: string
+  onTypeChange: (type: string) => void
+  onComponentChange: (componentId: string) => void
+  htmlDraft: string
+  onLoadHtml: () => void
+  onHtmlChange: (html: string) => void
+  captureBody: string
+  onCaptureBodyChange: (val: string) => void
+  capturing: boolean
+  onCapture: () => void
+}) {
+  const hasCapture = !!captureBody.trim()
+  const [captureOpen, setCaptureOpen] = useState(hasCapture)
+
+  useEffect(() => {
+    if (embedType === 'html') {
+      onLoadHtml()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedType, slug, embed.id])
+
+  return (
+    <div
+      data-element={`inline-embed-${embed.id}`}
+      className={css({
+        padding: '10px 12px',
+        backgroundColor: '#161b22',
+        borderRadius: '6px',
+        border: '1px solid #21262d',
+      })}
+    >
+      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' })}>
+        <div>
+          <div className={css({ fontSize: '12px', fontWeight: '600', color: '#f0f6fc' })}>
+            {embed.id}
+          </div>
+          <div className={css({ fontSize: '11px', color: '#8b949e', marginTop: '2px' })}>
+            &ldquo;{embed.description}&rdquo;
+          </div>
+        </div>
+      </div>
+
+      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center' })}>
+        <select
+          data-action={`embed-type-${embed.id}`}
+          value={embedType}
+          onChange={(e) => onTypeChange(e.target.value)}
+          className={css({
+            backgroundColor: '#0d1117',
+            border: '1px solid #30363d',
+            borderRadius: '6px',
+            padding: '3px 8px',
+            color: '#c9d1d9',
+            fontSize: '11px',
+            cursor: 'pointer',
+          })}
+        >
+          <option value="">Not configured</option>
+          <option value="component">Component</option>
+          <option value="html">HTML</option>
+        </select>
+
+        {embedType === 'component' && (
+          <select
+            data-action={`embed-component-${embed.id}`}
+            value={componentId}
+            onChange={(e) => onComponentChange(e.target.value)}
+            className={css({
+              flex: 1,
+              backgroundColor: '#0d1117',
+              border: '1px solid #30363d',
+              borderRadius: '6px',
+              padding: '3px 8px',
+              color: '#c9d1d9',
+              fontSize: '11px',
+              cursor: 'pointer',
+            })}
+          >
+            <option value="">Select component...</option>
+            {inlineComponentList.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {embedType === 'html' && (
+        <div className={css({ marginTop: '6px' })}>
+          {/* Capture from URL section */}
+          <div
+            data-element={`embed-capture-section-${embed.id}`}
+            className={css({
+              marginBottom: '8px',
+              border: hasCapture ? '1px solid #30363d' : '1px solid #21262d',
+              borderRadius: '6px',
+              overflow: 'hidden',
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: '#0d1117',
+              })}
+            >
+              <button
+                data-action={`toggle-embed-capture-${embed.id}`}
+                onClick={() => setCaptureOpen(!captureOpen)}
+                className={css({
+                  flex: 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '5px 8px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: hasCapture ? '#c9d1d9' : '#8b949e',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  '&:hover': { color: '#c9d1d9' },
+                })}
+              >
+                <span>
+                  Capture from URL
+                  {hasCapture && (
+                    <span className={css({ color: '#3fb950', marginLeft: '6px', fontSize: '9px' })}>
+                      configured
+                    </span>
+                  )}
+                </span>
+                <span>{captureOpen ? '\u25B2' : '\u25BC'}</span>
+              </button>
+              {hasCapture && (
+                <button
+                  data-action={`clear-embed-capture-${embed.id}`}
+                  onClick={() => {
+                    onCaptureBodyChange('')
+                    setCaptureOpen(false)
+                  }}
+                  title="Clear capture config"
+                  className={css({
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#484f58',
+                    fontSize: '10px',
+                    padding: '3px 6px',
+                    cursor: 'pointer',
+                    '&:hover': { color: '#f85149' },
+                  })}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {captureOpen && (
+              <div
+                data-element={`embed-capture-fields-${embed.id}`}
+                className={css({
+                  padding: '8px',
+                  backgroundColor: '#0d1117',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                })}
+              >
+                <textarea
+                  data-element={`embed-capture-body-${embed.id}`}
+                  value={captureBody}
+                  onChange={(e) => onCaptureBodyChange(e.target.value)}
+                  placeholder='{"config": {...}}'
+                  rows={4}
+                  className={css({
+                    width: '100%',
+                    backgroundColor: '#161b22',
+                    border: '1px solid #30363d',
+                    borderRadius: '6px',
+                    padding: '6px 8px',
+                    color: '#c9d1d9',
+                    fontSize: '10px',
+                    resize: 'vertical',
+                    fontFamily: 'monospace',
+                    '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+                  })}
+                />
+                <div className={css({ display: 'flex', justifyContent: 'flex-end' })}>
+                  <button
+                    data-action={`capture-embed-${embed.id}`}
+                    onClick={onCapture}
+                    disabled={capturing || !captureBody.trim()}
+                    className={css({
+                      backgroundColor: '#238636',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '3px 12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: '#2ea043' },
+                      '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                    })}
+                  >
+                    {capturing ? 'Capturing...' : 'Capture'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <textarea
+            data-element={`embed-html-${embed.id}`}
+            value={htmlDraft}
+            onChange={(e) => onHtmlChange(e.target.value)}
+            placeholder="<div>Embed HTML here</div>"
+            rows={3}
+            className={css({
+              width: '100%',
+              backgroundColor: '#0d1117',
+              border: '1px solid #30363d',
+              borderRadius: '6px',
+              padding: '6px 8px',
+              color: '#c9d1d9',
+              fontSize: '11px',
+              resize: 'vertical',
+              fontFamily: 'monospace',
+              '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+            })}
+          />
+          <div className={css({ fontSize: '10px', color: '#484f58', marginTop: '2px' })}>
+            Auto-saves after 500ms
+          </div>
+          {htmlDraft && (
+            <div
+              data-element={`embed-preview-${embed.id}`}
+              className={css({
+                marginTop: '6px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                border: '1px solid #21262d',
+                maxHeight: '300px',
+                backgroundColor: '#fff',
+              })}
+            >
+              <div
+                dangerouslySetInnerHTML={{ __html: htmlDraft }}
+                className={css({
+                  width: '100%',
+                  height: '100%',
+                })}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function ComponentRegistryUI({
   post,

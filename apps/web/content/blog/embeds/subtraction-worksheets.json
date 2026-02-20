@@ -1,0 +1,23 @@
+{
+  "no-borrowing": {
+    "type": "html"
+  },
+  "comparison-no-notation": {
+    "type": "html"
+  },
+  "comparison-with-notation": {
+    "type": "html"
+  },
+  "single-borrow-ones": {
+    "type": "html"
+  },
+  "hints-detail": {
+    "type": "html"
+  },
+  "multiple-borrows": {
+    "type": "html"
+  },
+  "cascading-borrows": {
+    "type": "html"
+  }
+}

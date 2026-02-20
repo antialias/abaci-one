@@ -1,13 +1,17 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
+import { useTier } from '@/hooks/useTier'
 import { estimateSessionProblemCount } from '@/lib/curriculum/time-estimation'
+import { DURATION_OPTIONS } from '@/lib/tier-limits'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
 
 export function DurationSelector() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const { limits } = useTier()
+  const availableOptions = DURATION_OPTIONS.filter((d) => d <= limits.maxSessionMinutes)
   const { durationMinutes, setDurationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm } =
     useStartPracticeModal()
 
@@ -40,7 +44,7 @@ export function DurationSelector() {
           },
         })}
       >
-        {[5, 10, 15, 20].map((min) => {
+        {availableOptions.map((min) => {
           // Estimate problems for this duration using weight-based time allocation
           const totalWeight = PART_TYPES.reduce((sum, p) => sum + partWeights[p.type], 0)
           let problems = 0

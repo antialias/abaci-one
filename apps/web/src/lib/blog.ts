@@ -8,6 +8,11 @@ import remarkHtml from 'remark-html'
 const postsDirectory = path.join(process.cwd(), 'content', 'blog')
 const heroHtmlDirectory = path.join(postsDirectory, 'hero-html')
 
+export interface BlogEmbed {
+  id: string
+  description: string
+}
+
 export interface BlogPost {
   slug: string
   title: string
@@ -26,6 +31,7 @@ export interface BlogPost {
   heroComponentId?: string
   content: string
   html: string
+  embeds: BlogEmbed[]
 }
 
 export interface BlogPostMetadata extends Omit<BlogPost, 'content' | 'html'> {
@@ -114,7 +120,35 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
     .use(remarkHtml, { sanitize: false })
     .process(content)
 
-  const html = processedContent.toString()
+  let html = processedContent.toString()
+
+  // Strip leading H1 if it duplicates the frontmatter title
+  const title = data.title || 'Untitled'
+  const leadingH1 = html.match(/^\s*<h1>(.*?)<\/h1>\s*/i)
+  if (leadingH1) {
+    // Compare text content (strip HTML tags from the H1 content)
+    const h1Text = leadingH1[1].replace(/<[^>]*>/g, '').trim()
+    if (h1Text === title.trim()) {
+      html = html.slice(leadingH1[0].length)
+    }
+  }
+
+  // Strip leading image if the post has a hero (the page template renders the hero separately)
+  const hasHero = !!(data.heroPrompt || data.heroImage || data.heroType || data.heroComponentId)
+  if (hasHero) {
+    const leadingImg = html.match(/^\s*<p>\s*<img[^>]*src="([^"]*)"[^>]*>\s*<\/p>\s*/i)
+    if (leadingImg) {
+      html = html.slice(leadingImg[0].length)
+    }
+  }
+
+  // Parse <!-- EMBED: id "description" --> markers from raw markdown
+  const embedPattern = /<!--\s*EMBED:\s*([\w-]+)\s+"([^"]+)"\s*-->/g
+  const embeds: BlogEmbed[] = []
+  let embedMatch
+  while ((embedMatch = embedPattern.exec(content)) !== null) {
+    embeds.push({ id: embedMatch[1], description: embedMatch[2] })
+  }
 
   return {
     slug,
@@ -134,6 +168,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
     heroComponentId: data.heroComponentId || undefined,
     content,
     html,
+    embeds,
   }
 }
 

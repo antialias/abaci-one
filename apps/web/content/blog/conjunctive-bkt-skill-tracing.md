@@ -251,7 +251,7 @@ We validated both approaches using our journey simulator across 5 random seeds a
 | Bayesian (exact)   | 0.356                      | 2/5  |
 | **t-test**         | t = -0.41, **p > 0.05**    |      |
 
-<!-- CHART: BlameAttribution -->
+<!-- EMBED: blame-attribution "Animated blame distribution across skills for incorrect answers" -->
 
 **Result**: No statistically significant difference. The heuristic's softer blame attribution appears equally effective—possibly more robust to the noise inherent in learning dynamics.
 
@@ -261,7 +261,7 @@ We retain the Bayesian implementation for reproducibility and potential future r
 
 Not all observations are equally informative. We weight the evidence based on help level and response time.
 
-<!-- CHART: EvidenceQuality -->
+<!-- EMBED: evidence-quality "Chart showing evidence weighting by help level and response time" -->
 
 ## Automaticity-Aware Problem Generation
 
@@ -289,7 +289,7 @@ Each pattern has a **base complexity cost**:
 
 The cost is scaled by the student's estimated mastery from BKT. The multiplier uses a non-linear (squared) mapping from P(known) to provide better differentiation at high mastery levels. When BKT confidence is insufficient (< 30%), we fall back to discrete fluency states based on recent streaks.
 
-<!-- CHART: AutomaticityMultipliers -->
+<!-- EMBED: automaticity-multipliers "Automaticity multiplier curves from P(known) to cost scaling" -->
 
 ### Adaptive Session Planning
 
@@ -440,7 +440,7 @@ Once we have a P(known) estimate with sufficient confidence, we classify each sk
 
 The confidence threshold is user-adjustable (default 50%), allowing teachers to be more or less strict about what counts as "confident enough to classify." Skills with insufficient data remain in "Learning" until more evidence accumulates.
 
-<!-- CHART: Classification -->
+<!-- EMBED: classification "BKT skill classification thresholds and confidence intervals" -->
 
 ## Skill-Specific Difficulty Model
 
@@ -454,7 +454,7 @@ These multipliers affect the Hill function's K parameter (the exposure count whe
 
 The interactive charts below show how these difficulty multipliers affect learning trajectories. Data is derived from validated simulation tests ([source code](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/test/journey-simulator/skill-difficulty.test.ts)).
 
-<!-- CHART: SkillDifficulty -->
+<!-- EMBED: skill-difficulty "Skill-specific difficulty multipliers and learning trajectories" -->
 
 ## Validation: Does Adaptive Targeting Actually Work?
 
@@ -498,13 +498,13 @@ assessSkill(skillId: string, trials: number = 20): SkillAssessment {
 
 The key question: How fast does each mode bring a weak skill to mastery? The data below is generated from our journey simulator test suite ([source code](https://github.com/antialias/soroban-abacus-flashcards/blob/main/apps/web/src/test/journey-simulator/journey-simulator.test.ts)).
 
-<!-- CHART: ValidationResults -->
+<!-- EMBED: validation-results "Convergence speed results across journey simulator modes" -->
 
 ### 3-Way Comparison: BKT vs Fluency Multipliers
 
 We also compared whether using BKT for cost calculation (in addition to targeting) provides additional benefit over fluency-based cost calculation.
 
-<!-- CHART: ThreeWayComparison -->
+<!-- EMBED: three-way-comparison "Three-way comparison: BKT vs fluency multipliers vs baseline" -->
 
 ### Why Adaptive Wins
 

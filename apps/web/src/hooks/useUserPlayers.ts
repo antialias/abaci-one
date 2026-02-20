@@ -33,15 +33,27 @@ async function fetchPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
 /**
  * Create a new player
  */
+/** Error with a machine-readable code for limit-reached responses */
+export class ApiError extends Error {
+  code?: string
+  constructor(message: string, code?: string) {
+    super(message)
+    this.code = code
+  }
+}
+
 async function createPlayer(
-  newPlayer: Pick<Player, 'name' | 'emoji' | 'color'> & { isActive?: boolean }
+  newPlayer: Pick<Player, 'name' | 'emoji' | 'color'> & { isActive?: boolean; isPracticeStudent?: boolean }
 ): Promise<Player> {
   const res = await api('players', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(newPlayer),
   })
-  if (!res.ok) throw new Error('Failed to create player')
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new ApiError(data.error || 'Failed to create player', data.code)
+  }
   const data = await res.json()
   return data.player
 }
@@ -184,6 +196,7 @@ export function useCreatePlayer() {
         ...newPlayer,
         createdAt: new Date(),
         isActive: newPlayer.isActive ?? false,
+        isPracticeStudent: newPlayer.isPracticeStudent ?? true,
         isArchived: false,
         userId: 'temp-user', // Temporary userId, will be replaced by server response
         helpSettings: null, // Will be set by server with default values
