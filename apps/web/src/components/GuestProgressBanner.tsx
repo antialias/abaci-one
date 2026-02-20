@@ -10,16 +10,26 @@ const STORAGE_KEY = 'guest-session-count'
 const DISMISSED_KEY = 'guest-banner-dismissed'
 const LAST_VISIT_KEY = 'guest-last-visit'
 
+interface GuestMessageOptions {
+  /** Current session accuracy (0-1) */
+  sessionAccuracy?: number | null
+  /** Previous session accuracy (0-1) */
+  previousAccuracy?: number | null
+}
+
 /**
  * Determine which guest progress message to show.
  *
  * Returns null if the user is not a guest, the banner was dismissed,
  * or there's no compelling reason to show it yet.
+ *
+ * Priority order: returning after 24h+ > accuracy gain > 3+ sessions.
  */
-function useGuestMessage(): {
+function useGuestMessage(options: GuestMessageOptions = {}): {
   message: string
   cta: string
 } | null {
+  const { sessionAccuracy, previousAccuracy } = options
   const { tier } = useTier()
   const [result, setResult] = useState<{ message: string; cta: string } | null>(null)
 
@@ -55,6 +65,21 @@ function useGuestMessage(): {
         }
       }
 
+      // Accuracy improvement >= 5 percentage points
+      if (
+        sessionAccuracy != null &&
+        previousAccuracy != null &&
+        sessionAccuracy - previousAccuracy >= 0.05
+      ) {
+        const prevPct = Math.round(previousAccuracy * 100)
+        const curPct = Math.round(sessionAccuracy * 100)
+        setResult({
+          message: `Great session! Your accuracy jumped from ${prevPct}% to ${curPct}%.`,
+          cta: 'Create a free account to track your progress',
+        })
+        return
+      }
+
       // After 3+ sessions
       if (count >= 3) {
         setResult({
@@ -68,7 +93,7 @@ function useGuestMessage(): {
     } catch {
       setResult(null)
     }
-  }, [tier])
+  }, [tier, sessionAccuracy, previousAccuracy])
 
   return result
 }
@@ -83,15 +108,31 @@ export function recordGuestSession(): void {
   }
 }
 
+interface GuestProgressBannerProps {
+  /**
+   * When true, hides the dismiss button and uses subtler styling.
+   * Used on the dashboard where the banner should always be visible.
+   */
+  persistent?: boolean
+  /** Current session accuracy (0-1) */
+  sessionAccuracy?: number | null
+  /** Previous session accuracy (0-1) */
+  previousAccuracy?: number | null
+}
+
 /**
  * Subtle banner prompting guests to create an account.
- * Shows after 3 sessions, after returning from 24h+ absence, etc.
- * Dismissible — won't show again once closed.
+ * Shows after 3 sessions, after returning from 24h+ absence, or after accuracy improvement.
+ * Dismissible (unless `persistent` is set) — won't show again once closed.
  */
-export function GuestProgressBanner() {
+export function GuestProgressBanner({
+  persistent = false,
+  sessionAccuracy,
+  previousAccuracy,
+}: GuestProgressBannerProps = {}) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const message = useGuestMessage()
+  const message = useGuestMessage({ sessionAccuracy, previousAccuracy })
   const [visible, setVisible] = useState(true)
 
   const handleDismiss = useCallback(() => {
@@ -114,13 +155,25 @@ export function GuestProgressBanner() {
         justifyContent: 'space-between',
         gap: '0.75rem',
         padding: '0.625rem 1rem',
-        backgroundColor: isDark ? 'blue.900/40' : 'blue.50',
-        borderBottom: '1px solid',
+        backgroundColor: persistent
+          ? isDark
+            ? 'blue.900/20'
+            : 'blue.50/70'
+          : isDark
+            ? 'blue.900/40'
+            : 'blue.50',
+        borderBottom: persistent ? 'none' : '1px solid',
         borderColor: isDark ? 'blue.800' : 'blue.100',
         fontSize: '0.8125rem',
+        ...(persistent && {
+          borderRadius: '8px',
+          border: '1px solid',
+          borderColor: isDark ? 'blue.800/50' : 'blue.100',
+          margin: '0.75rem',
+        }),
       })}
     >
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 })}>
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, flexWrap: 'wrap' })}>
         <span className={css({ color: isDark ? 'blue.300' : 'blue.700' })}>{message.message}</span>
         <Link
           href="/auth/signin"
@@ -137,25 +190,27 @@ export function GuestProgressBanner() {
           {message.cta}
         </Link>
       </div>
-      <button
-        type="button"
-        onClick={handleDismiss}
-        data-action="dismiss-guest-banner"
-        className={css({
-          background: 'none',
-          border: 'none',
-          color: isDark ? 'gray.500' : 'gray.400',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          lineHeight: 1,
-          padding: '0.25rem',
-          flexShrink: 0,
-          _hover: { color: isDark ? 'gray.300' : 'gray.600' },
-        })}
-        aria-label="Dismiss"
-      >
-        ×
-      </button>
+      {!persistent && (
+        <button
+          type="button"
+          onClick={handleDismiss}
+          data-action="dismiss-guest-banner"
+          className={css({
+            background: 'none',
+            border: 'none',
+            color: isDark ? 'gray.500' : 'gray.400',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            lineHeight: 1,
+            padding: '0.25rem',
+            flexShrink: 0,
+            _hover: { color: isDark ? 'gray.300' : 'gray.600' },
+          })}
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      )}
     </div>
   )
 }

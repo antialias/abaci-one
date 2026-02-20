@@ -65,6 +65,7 @@ import {
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys } from '@/lib/queryKeys'
+import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 import { css } from '../../../../../styled-system/css'
 import { ScoreboardTab } from './ScoreboardTab'
 import { SettingsTab } from './SettingsTab'
@@ -3083,6 +3084,8 @@ export function DashboardClient({
           pageContext="dashboard"
           onObserveSession={handleObserveSession}
         />
+
+        <GuestProgressBanner persistent />
 
         <PracticeErrorBoundary studentName={player.name}>
           <main

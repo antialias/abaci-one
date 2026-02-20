@@ -252,6 +252,13 @@ export function SummaryClient({
   const sessionResults = (session?.results ?? []) as SlotResult[]
   const hasProblems = sessionResults.length > 0
 
+  // Compute current session accuracy for guest banner
+  const sessionAccuracy = useMemo(() => {
+    if (sessionResults.length === 0) return null
+    const correct = sessionResults.filter((r) => r.isCorrect).length
+    return correct / sessionResults.length
+  }, [sessionResults])
+
   // Compute BKT from problem history to get skill masteries
   const skillMasteries = useMemo<Record<string, SkillBktResult>>(() => {
     if (!problemHistory || problemHistory.length === 0) {
@@ -324,7 +331,10 @@ export function SummaryClient({
           <PracticeSubNav student={player} pageContext="summary" />
 
           {/* Guest save-your-progress banner */}
-          <GuestProgressBanner />
+          <GuestProgressBanner
+            sessionAccuracy={sessionAccuracy}
+            previousAccuracy={previousAccuracy}
+          />
 
           <main
             data-component="practice-summary-page"
