@@ -248,7 +248,7 @@ describe('useUserPlayers hooks', () => {
         const rolledBackList = queryClient.getQueryData<Player[]>(playerKeys.list())
         expect(rolledBackList).toHaveLength(1)
         expect(rolledBackList?.[0]).toEqual(mockPlayer)
-        expect(errorReceived?.message).toBe('Failed to create player')
+        expect(errorReceived?.message).toBe('Server error')
       })
 
       test('rolls back listWithSkillData() on server error', async () => {
