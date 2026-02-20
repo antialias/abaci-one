@@ -21,8 +21,8 @@ heroPrompt: >-
   beads. Warm home-study lighting, the child's hands in motion. The screen glows
   with a clean UI showing checkmarks next to completed steps. Modern educational
   technology photography.
-heroType: storybook
-heroStoryId: vision-detection-feedback--before-after
+heroType: component
+heroComponentId: vision-showcase
 ---
 
 # See What They're Doing: Vision-Powered Abacus Detection

@@ -22,6 +22,7 @@ heroPrompt: >-
   overhead lamp light, scattered colored pencils, a coffee mug. Flat-lay
   photography, educational aesthetic.
 heroType: component
+heroComponentId: difficulty-plot-mastery
 ---
 
 # Beyond Easy and Hard: A 2D Approach to Worksheet Difficulty

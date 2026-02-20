@@ -23,6 +23,7 @@ export interface BlogPost {
   heroCrop?: string
   heroType?: string
   heroStoryId?: string
+  heroComponentId?: string
   content: string
   html: string
 }
@@ -77,15 +78,16 @@ export async function getAllPostsMetadata(): Promise<BlogPostMetadata[]> {
         heroImageUrl = `/blog/${slug}.png`
       }
 
-      // Read hero HTML for component-type heroes
+      // Read hero HTML for html-type heroes (raw HTML from file)
       let heroHtml: string | undefined
-      if (metadata.heroType === 'component') {
+      if (metadata.heroType === 'html') {
         const htmlPath = path.join(heroHtmlDirectory, `${slug}.html`)
         if (fs.existsSync(htmlPath)) {
           heroHtml = fs.readFileSync(htmlPath, 'utf8')
         }
       }
 
+      // heroComponentId is passed through from frontmatter for component-type heroes
       return { ...metadata, excerpt, heroImageUrl, heroHtml }
     })
   )
@@ -129,6 +131,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
     heroCrop: data.heroCrop || undefined,
     heroType: data.heroType || undefined,
     heroStoryId: data.heroStoryId || undefined,
+    heroComponentId: data.heroComponentId || undefined,
     content,
     html,
   }

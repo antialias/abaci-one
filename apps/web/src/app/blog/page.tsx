@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPostsMetadata, type BlogPostMetadata } from '@/lib/blog'
+import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
 import { css } from '../../../styled-system/css'
 
 export const metadata: Metadata = {
@@ -57,10 +58,14 @@ function Tags({ tags }: { tags: string[] }) {
 }
 
 function HeroBanner({ post }: { post: BlogPostMetadata }) {
+  if (post.heroComponentId) {
+    return <HeroComponentBanner componentId={post.heroComponentId} />
+  }
+
   if (post.heroHtml) {
     return (
       <div
-        data-element="component-banner"
+        data-element="html-banner"
         className={css({
           position: 'relative',
           width: '100%',
@@ -320,7 +325,7 @@ export default async function BlogIndex() {
           })}
         >
           {allPosts.map((post) =>
-            post.heroImageUrl || post.heroHtml ? (
+            post.heroImageUrl || post.heroHtml || post.heroComponentId ? (
               <ImageCard key={post.slug} post={post} />
             ) : (
               <TextCard key={post.slug} post={post} />

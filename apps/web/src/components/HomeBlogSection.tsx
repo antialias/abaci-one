@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import type { BlogPostMetadata } from '@/lib/blog'
+import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
 import { css } from '../../styled-system/css'
 
 function formatDate(dateString: string) {
@@ -14,9 +15,10 @@ function formatDate(dateString: string) {
 }
 
 function PostCard({ post }: { post: BlogPostMetadata }) {
+  const hasComponent = !!post.heroComponentId
   const hasImage = !!post.heroImageUrl
   const hasHtml = !!post.heroHtml
-  const hasBanner = hasImage || hasHtml
+  const hasBanner = hasComponent || hasImage || hasHtml
 
   return (
     <Link
@@ -41,9 +43,11 @@ function PostCard({ post }: { post: BlogPostMetadata }) {
       })}
     >
       {hasBanner && (
-        hasHtml ? (
+        hasComponent ? (
+          <HeroComponentBanner componentId={post.heroComponentId!} />
+        ) : hasHtml ? (
           <div
-            data-element="component-banner"
+            data-element="html-banner"
             className={css({
               position: 'relative',
               width: '100%',
