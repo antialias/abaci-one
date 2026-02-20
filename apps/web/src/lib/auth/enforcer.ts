@@ -1,9 +1,138 @@
-import path from 'path'
-import { newEnforcer, type Enforcer } from 'casbin'
+import { newEnforcer, newModelFromString, StringAdapter, type Enforcer } from 'casbin'
 import { DrizzleCasbinAdapter } from './casbin-adapter'
 import { createRedisClient } from '@/lib/redis'
 
-const POLICIES_DIR = path.join(process.cwd(), 'src', 'lib', 'auth', 'policies')
+/**
+ * Inline model/policy definitions.
+ *
+ * These were previously loaded from .conf/.csv files on disk, but Next.js
+ * production builds don't bundle non-JS source files, so the filesystem
+ * paths (src/lib/auth/policies/*) don't exist at runtime in Docker.
+ */
+
+const ROUTE_MODEL = `
+[request_definition]
+r = sub, obj, act
+
+[policy_definition]
+p = sub, obj, act
+
+[role_definition]
+g = _, _
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
+[matchers]
+m = g(r.sub, p.sub) && keyMatch2(r.obj, p.obj) && (r.act == p.act || p.act == "*")
+`
+
+const RESOURCE_MODEL = `
+[request_definition]
+r = sub, dom, obj, act
+
+[policy_definition]
+p = sub, dom, obj, act
+
+[role_definition]
+g = _, _, _
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
+[matchers]
+m = g(r.sub, p.sub, r.dom) && (r.dom == p.dom || p.dom == "*") && r.obj == p.obj && (r.act == p.act || p.act == "*")
+`
+
+const ROUTE_POLICY = `
+# Role hierarchy
+g, user, guest
+g, admin, user
+
+# Guest-accessible (public endpoints)
+p, guest, /api/health, *
+p, guest, /api/heartbeat, *
+p, guest, /api/build-info, *
+p, guest, /api/auth/*, *
+p, guest, /api/blog/*, GET
+p, guest, /api/images/*, GET
+p, guest, /api/observe/*, GET
+p, guest, /api/flowcharts/browse, GET
+p, guest, /api/flowcharts/suggest, GET
+p, guest, /api/flowcharts/seeds, GET
+p, guest, /api/flowcharts/pdf, *
+p, guest, /api/flowcharts/:id, GET
+p, guest, /api/flowcharts/:id/related, GET
+p, guest, /api/flowcharts/:id/worksheet, GET
+p, guest, /api/viewer, GET
+p, guest, /api/smoke-test-status, GET
+p, guest, /api/smoke-test-results, GET
+p, guest, /api/metrics, GET
+p, guest, /api/coverage-results, GET
+p, guest, /api/worksheets/share/*, GET
+p, guest, /api/worksheets/preview, *
+p, guest, /api/worksheets/download/*, GET
+p, guest, /api/download/*, GET
+p, guest, /api/audio/clips/*, GET
+p, guest, /api/audio/collected-clips, GET
+p, guest, /api/audio/collected-clips/manifest, GET
+p, guest, /api/create/*, *
+p, guest, /api/feature-flags, GET
+
+# Guest-accessible practice & app routes
+p, guest, /api/players, *
+p, guest, /api/players/*, *
+p, guest, /api/family/*, *
+p, guest, /api/curriculum/*, *
+p, guest, /api/game-results/*, *
+p, guest, /api/player-stats/*, *
+p, guest, /api/settings/*, *
+p, guest, /api/worksheets/*, *
+p, guest, /api/sessions/*, *
+p, guest, /api/enrollment-requests/*, *
+p, guest, /api/entry-prompts/*, *
+p, guest, /api/flowcharts/*, *
+p, guest, /api/flowchart-workshop/*, *
+p, guest, /api/abacus-settings, *
+p, guest, /api/scanner-settings, *
+p, guest, /api/arcade/*, *
+p, guest, /api/arcade-session, *
+p, guest, /api/realtime/*, *
+p, guest, /api/euclid/*, *
+p, guest, /api/audio/*, *
+p, guest, /api/generate, *
+p, guest, /api/user-stats, *
+p, guest, /api/vision/*, *
+p, guest, /api/remote-camera, *
+p, guest, /api/demo/*, *
+p, guest, /api/gameplay/*, *
+
+# Guest classroom access (student-side participation only)
+# Guests can view a classroom and participate, but cannot create or manage classrooms
+p, guest, /api/classrooms/:id, GET
+p, guest, /api/classrooms/:id/*, *
+p, guest, /api/classrooms/code/:code, GET
+p, guest, /api/classroom/*, *
+
+# Billing — tier info + webhook are guest-accessible
+p, guest, /api/billing/tier, GET
+p, guest, /api/billing/webhook, POST
+
+# Authenticated user routes — classroom creation/management, teacher features, billing
+# (user inherits all guest permissions via role hierarchy)
+p, user, /api/classrooms, *
+p, user, /api/classrooms/*, *
+p, user, /api/teacher-flowcharts/*, *
+p, user, /api/mcp, *
+p, user, /api/billing/checkout, POST
+p, user, /api/billing/portal, POST
+
+# Admin-only routes
+p, admin, /api/admin/*, *
+p, admin, /api/debug/*, *
+p, admin, /api/vision-training/*, *
+p, admin, /api/dev/*, *
+`
 
 const REDIS_CHANNEL = 'casbin:policy-changed'
 
@@ -15,15 +144,14 @@ let subscriberSetup = false
 /**
  * Get the route-level RBAC enforcer (Layer 1).
  *
- * Loads from static files (route-model.conf + route-policy.csv).
+ * Uses inline model + policy strings (no filesystem access needed).
  * Singleton — created once, reused across requests.
  */
 export async function getRouteEnforcer(): Promise<Enforcer> {
   if (!routeEnforcerPromise) {
-    routeEnforcerPromise = newEnforcer(
-      path.join(POLICIES_DIR, 'route-model.conf'),
-      path.join(POLICIES_DIR, 'route-policy.csv')
-    )
+    const model = newModelFromString(ROUTE_MODEL)
+    const adapter = new StringAdapter(ROUTE_POLICY)
+    routeEnforcerPromise = newEnforcer(model, adapter)
   }
   return routeEnforcerPromise
 }
@@ -31,14 +159,15 @@ export async function getRouteEnforcer(): Promise<Enforcer> {
 /**
  * Get the resource-level RBAC enforcer (Layer 2).
  *
- * Loads from DB via custom adapter. Domain-scoped roles for
+ * Uses inline model string + DB adapter. Domain-scoped roles for
  * parent/teacher access to specific players/classrooms.
  * Singleton — created once, reloaded on policy changes via Redis pub/sub.
  */
 export async function getResourceEnforcer(): Promise<Enforcer> {
   if (!resourceEnforcerPromise) {
+    const model = newModelFromString(RESOURCE_MODEL)
     const adapter = new DrizzleCasbinAdapter()
-    resourceEnforcerPromise = newEnforcer(path.join(POLICIES_DIR, 'resource-model.conf'), adapter)
+    resourceEnforcerPromise = newEnforcer(model, adapter)
 
     // Set up Redis subscriber for cross-replica invalidation
     if (!subscriberSetup) {
