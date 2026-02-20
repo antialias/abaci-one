@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from 'next'
+import { dehydrate } from '@tanstack/react-query'
 import './globals.css'
+import { auth } from '@/auth'
 import { ClientProviders } from '@/components/ClientProviders'
+import { isAdminEmail } from '@/lib/auth/admin-emails'
+import { getAllFlags } from '@/lib/feature-flags'
+import { getQueryClient } from '@/lib/queryClient'
+import { featureFlagKeys } from '@/lib/queryKeys'
 import { getRequestLocale } from '@/i18n/request'
 import { getMessages } from '@/i18n/messages'
 
@@ -90,10 +96,28 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getRequestLocale()
   const messages = await getMessages(locale)
 
+  // Prefetch feature flags server-side so they're instantly available
+  // on the client without an extra API request.
+  // Session-aware: logged-in users get their per-user overrides merged in.
+  const session = await auth()
+  const userRole = session?.user?.id
+    ? isAdminEmail(session.user.email) ? 'admin' : 'user'
+    : 'guest'
+  const queryClient = getQueryClient()
+  await queryClient.prefetchQuery({
+    queryKey: featureFlagKeys.all,
+    queryFn: async () => ({ flags: await getAllFlags(session?.user?.id, userRole) }),
+    staleTime: 60_000,
+  })
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <body data-deploy-test="argocd-2026-01-31">
-        <ClientProviders initialLocale={locale} initialMessages={messages}>
+        <ClientProviders
+          initialLocale={locale}
+          initialMessages={messages}
+          dehydratedState={dehydrate(queryClient)}
+        >
           {children}
         </ClientProviders>
       </body>

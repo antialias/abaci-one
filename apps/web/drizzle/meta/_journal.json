@@ -694,6 +694,27 @@
       "when": 1771900000000,
       "tag": "0098_add-user-role-and-casbin-rules",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "6",
+      "when": 1772000000000,
+      "tag": "0099_create_feature_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "6",
+      "when": 1772100000000,
+      "tag": "0100_create_feature_flag_overrides",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "6",
+      "when": 1772200000000,
+      "tag": "0101_petite_jamie_braddock",
+      "breakpoints": true
     }
   ]
 }

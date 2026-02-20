@@ -112,6 +112,13 @@ export const euclidKeys = {
   progress: (playerId: string) => [...euclidKeys.all, 'progress', playerId] as const,
 }
 
+// Feature flag query keys (admin + client feature gating)
+export const featureFlagKeys = {
+  all: ['feature-flags'] as const,
+  list: () => [...featureFlagKeys.all, 'list'] as const,
+  detail: (key: string) => [...featureFlagKeys.all, 'detail', key] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

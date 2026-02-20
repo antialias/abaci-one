@@ -1,7 +1,7 @@
 'use client'
 
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { HydrationBoundary, QueryClientProvider, type DehydratedState } from '@tanstack/react-query'
 import { SessionProvider } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl'
 import dynamic from 'next/dynamic'
@@ -34,6 +34,7 @@ interface ClientProvidersProps {
   children: ReactNode
   initialLocale: Locale
   initialMessages: Record<string, any>
+  dehydratedState?: DehydratedState
 }
 
 function InnerProviders({ children }: { children: ReactNode }) {
@@ -73,6 +74,7 @@ export function ClientProviders({
   children,
   initialLocale,
   initialMessages,
+  dehydratedState,
 }: ClientProvidersProps) {
   // Create a stable QueryClient instance that persists across renders
   const [queryClient] = useState(() => createQueryClient())
@@ -80,13 +82,15 @@ export function ClientProviders({
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <VisualDebugProvider>
-            <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
-              <InnerProviders>{children}</InnerProviders>
-            </LocaleProvider>
-          </VisualDebugProvider>
-        </ThemeProvider>
+        <HydrationBoundary state={dehydratedState}>
+          <ThemeProvider>
+            <VisualDebugProvider>
+              <LocaleProvider initialLocale={initialLocale} initialMessages={initialMessages}>
+                <InnerProviders>{children}</InnerProviders>
+              </LocaleProvider>
+            </VisualDebugProvider>
+          </ThemeProvider>
+        </HydrationBoundary>
       </QueryClientProvider>
     </SessionProvider>
   )

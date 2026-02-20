@@ -30,6 +30,7 @@ p, guest, /api/audio/clips/*, GET
 p, guest, /api/audio/collected-clips, GET
 p, guest, /api/audio/collected-clips/manifest, GET
 p, guest, /api/create/*, *
+p, guest, /api/feature-flags, GET
 
 # Authenticated user routes (inherited by admin)
 p, user, /api/players/*, *
