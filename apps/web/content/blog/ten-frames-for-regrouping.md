@@ -21,8 +21,7 @@ heroPrompt: >-
   partially filled. Bright, even classroom lighting on a light wood table. The
   counters are vivid primary colors. Overhead perspective, clean educational
   photography.
-heroType: storybook
-heroStoryId: worksheets-complete-full-worksheet-generator--smart-mode-early-learner
+heroType: html
 ---
 
 # Making the Invisible Visible: Ten-Frames for Teaching Regrouping

@@ -19,8 +19,7 @@ heroPrompt: >-
   worksheet shows neatly printed problems with carry boxes. Bright classroom
   light from a window, shallow depth of field on the hands. Warm, inviting
   educational photography.
-heroType: storybook
-heroStoryId: worksheets-complete-full-worksheet-generator--addition-worksheet
+heroType: html
 ---
 
 # Beyond Two Digits: Multi-Digit Arithmetic Worksheets

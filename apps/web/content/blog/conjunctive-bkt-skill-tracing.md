@@ -21,8 +21,8 @@ heroPrompt: >-
   probability trees, and small skill-hierarchy diagrams on graph paper. A soft
   blue glow from a laptop screen illuminates the edges. Dark academic aesthetic,
   shallow depth of field on the abacus beads. Technical research photography.
-heroType: storybook
-heroStoryId: practice-readinessreport--multiple-skills
+heroType: component
+heroComponentId: blame-distribution
 ---
 
 # Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work
