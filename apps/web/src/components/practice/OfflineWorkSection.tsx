@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation } from '@tanstack/react-query'
+import Link from 'next/link'
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
@@ -545,50 +546,95 @@ export function OfflineWorkSection({
                 {/* Parse button - show if not parsed yet OR if failed (to allow retry) */}
                 {(onParse || parsingContext) &&
                   (!att.parsingStatus || att.parsingStatus === 'failed') &&
-                  !att.sessionCreated && (
-                    <button
-                      type="button"
-                      data-action="parse-worksheet"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleParse(att.id)
-                      }}
-                      disabled={parsingId === att.id || isAttachmentParsing(att.id)}
-                      className={css({
-                        position: 'absolute',
-                        bottom: '0.5rem',
-                        right: '0.5rem',
-                        height: '24px',
-                        paddingX: '0.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.25rem',
-                        backgroundColor: att.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
-                        color: 'white',
-                        borderRadius: 'full',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.6875rem',
-                        fontWeight: '600',
-                        transition: 'background-color 0.2s',
-                        _hover: {
+                  !att.sessionCreated &&
+                  (() => {
+                    const lastError = parsingContext.state.lastErrors.get(att.id)
+                    const isLimitReached =
+                      att.parsingStatus === 'failed' && lastError?.code === 'PARSING_LIMIT_REACHED'
+
+                    if (isLimitReached) {
+                      return (
+                        <Link
+                          href="/pricing"
+                          data-action="upgrade-parsing-limit"
+                          onClick={(e) => e.stopPropagation()}
+                          className={css({
+                            position: 'absolute',
+                            bottom: '0.5rem',
+                            right: '0.5rem',
+                            height: '24px',
+                            paddingX: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.25rem',
+                            backgroundColor: 'amber.500',
+                            color: 'white',
+                            borderRadius: 'full',
+                            fontSize: '0.6875rem',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            transition: 'background-color 0.2s',
+                            _hover: {
+                              backgroundColor: 'amber.600',
+                            },
+                          })}
+                        >
+                          Upgrade Plan
+                        </Link>
+                      )
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        data-action="parse-worksheet"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleParse(att.id)
+                        }}
+                        disabled={parsingId === att.id || isAttachmentParsing(att.id)}
+                        className={css({
+                          position: 'absolute',
+                          bottom: '0.5rem',
+                          right: '0.5rem',
+                          height: '24px',
+                          paddingX: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.25rem',
                           backgroundColor:
-                            att.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
-                        },
-                        _disabled: {
-                          backgroundColor: 'gray.400',
-                          cursor: 'wait',
-                        },
-                      })}
-                      aria-label={
-                        att.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
-                      }
-                    >
-                      {parsingId === att.id ? '⏳' : att.parsingStatus === 'failed' ? '🔄' : '🔍'}{' '}
-                      {att.parsingStatus === 'failed' ? 'Retry' : 'Parse'}
-                    </button>
-                  )}
+                            att.parsingStatus === 'failed' ? 'orange.500' : 'blue.500',
+                          color: 'white',
+                          borderRadius: 'full',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.6875rem',
+                          fontWeight: '600',
+                          transition: 'background-color 0.2s',
+                          _hover: {
+                            backgroundColor:
+                              att.parsingStatus === 'failed' ? 'orange.600' : 'blue.600',
+                          },
+                          _disabled: {
+                            backgroundColor: 'gray.400',
+                            cursor: 'wait',
+                          },
+                        })}
+                        aria-label={
+                          att.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
+                        }
+                      >
+                        {parsingId === att.id
+                          ? '⏳'
+                          : att.parsingStatus === 'failed'
+                            ? '🔄'
+                            : '🔍'}{' '}
+                        {att.parsingStatus === 'failed' ? 'Retry' : 'Parse'}
+                      </button>
+                    )
+                  })()}
 
                 {/* Parsing status badge - show result status or active processing indicator */}
                 {/* Don't show for 'failed' since retry button is shown instead */}
