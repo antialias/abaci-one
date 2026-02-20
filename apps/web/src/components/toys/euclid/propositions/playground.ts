@@ -65,9 +65,12 @@ function generatePoints(): ConstructionElement[] {
  * Playground "proposition" — free-form construction sandbox.
  * 25 seeded-random given points, no steps, no validation.
  */
+const givenElements = generatePoints()
+
 export const PLAYGROUND_PROP: PropositionDef = {
   id: 0,
   title: 'Construction Playground',
-  givenElements: generatePoints(),
+  givenElements,
+  draggablePointIds: givenElements.map(el => el.id),
   steps: [],
 }
