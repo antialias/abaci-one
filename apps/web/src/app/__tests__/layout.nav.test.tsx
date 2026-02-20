@@ -16,6 +16,19 @@ vi.mock('../../i18n/messages', () => ({
   getMessages: vi.fn(() => Promise.resolve({})),
 }))
 
+// Mock auth and feature flags (layout imports these server-side modules)
+vi.mock('../../auth', () => ({
+  auth: vi.fn(() => Promise.resolve(null)),
+}))
+
+vi.mock('../../lib/auth/admin-emails', () => ({
+  isAdminEmail: vi.fn(() => false),
+}))
+
+vi.mock('../../lib/feature-flags', () => ({
+  getAllFlags: vi.fn(() => Promise.resolve({})),
+}))
+
 // Mock ClientProviders
 vi.mock('../../components/ClientProviders', () => ({
   ClientProviders: ({ children }: { children: React.ReactNode }) => (
