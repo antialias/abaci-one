@@ -135,7 +135,7 @@ describe('OfflineWorkSection - PARSING_LIMIT_REACHED', () => {
     expect(upgradeLink.closest('a')?.getAttribute('href')).toBe('/pricing')
 
     // Should NOT show retry button
-    expect(screen.queryByText('Retry')).toBeNull()
+    expect(screen.queryByLabelText('Retry parsing')).toBeNull()
   })
 
   it('shows "Retry" button for regular parse failures', () => {
@@ -157,8 +157,8 @@ describe('OfflineWorkSection - PARSING_LIMIT_REACHED', () => {
       </Wrapper>
     )
 
-    // Should show retry button, not upgrade link
-    expect(screen.getByText('Retry')).toBeTruthy()
+    // Should show retry button (aria-label: "Retry parsing"), not upgrade link
+    expect(screen.getByLabelText('Retry parsing')).toBeTruthy()
     expect(screen.queryByText('Upgrade Plan')).toBeNull()
   })
 
@@ -181,7 +181,7 @@ describe('OfflineWorkSection - PARSING_LIMIT_REACHED', () => {
       </Wrapper>
     )
 
-    expect(screen.getByText('Retry')).toBeTruthy()
+    expect(screen.getByLabelText('Retry parsing')).toBeTruthy()
     expect(screen.queryByText('Upgrade Plan')).toBeNull()
   })
 
@@ -195,8 +195,8 @@ describe('OfflineWorkSection - PARSING_LIMIT_REACHED', () => {
       </Wrapper>
     )
 
-    expect(screen.getByText('Parse')).toBeTruthy()
-    expect(screen.queryByText('Retry')).toBeNull()
+    expect(screen.getByLabelText('Parse worksheet')).toBeTruthy()
+    expect(screen.queryByLabelText('Retry parsing')).toBeNull()
     expect(screen.queryByText('Upgrade Plan')).toBeNull()
   })
 })
