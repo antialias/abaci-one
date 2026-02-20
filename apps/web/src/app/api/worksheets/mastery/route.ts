@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import type { SkillId } from '@/app/create/worksheets/skills'
 import { db, schema } from '@/db'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -18,7 +18,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator')
 
@@ -36,7 +36,7 @@ export const GET = withAuth(async (request) => {
     const masteryRecords = await db
       .select()
       .from(schema.worksheetMastery)
-      .where(eq(schema.worksheetMastery.userId, viewerId))
+      .where(eq(schema.worksheetMastery.userId, userId))
 
     return NextResponse.json({
       masteryStates: masteryRecords,
@@ -65,7 +65,7 @@ export const GET = withAuth(async (request) => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     const { skillId, isMastered, totalAttempts, correctAttempts, lastAccuracy } = body
@@ -87,7 +87,7 @@ export const POST = withAuth(async (request) => {
       .from(schema.worksheetMastery)
       .where(
         and(
-          eq(schema.worksheetMastery.userId, viewerId),
+          eq(schema.worksheetMastery.userId, userId),
           eq(schema.worksheetMastery.skillId, skillId)
         )
       )
@@ -124,7 +124,7 @@ export const POST = withAuth(async (request) => {
       const id = crypto.randomUUID()
       const newRecord = {
         id,
-        userId: viewerId,
+        userId: userId,
         skillId: skillId as SkillId,
         isMastered,
         totalAttempts: totalAttempts || 0,

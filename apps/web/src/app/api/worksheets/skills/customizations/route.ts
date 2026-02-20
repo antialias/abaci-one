@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { skillCustomizations } from '@/db/schema'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -12,13 +12,13 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null
 
     const query = operator
-      ? and(eq(skillCustomizations.userId, viewerId), eq(skillCustomizations.operator, operator))
-      : eq(skillCustomizations.userId, viewerId)
+      ? and(eq(skillCustomizations.userId, userId), eq(skillCustomizations.operator, operator))
+      : eq(skillCustomizations.userId, userId)
 
     const customizations = await db.query.skillCustomizations.findMany({
       where: query,

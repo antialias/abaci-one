@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomHistoricalMembersWithStatus } from '@/lib/arcade/room-member-history'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/rooms/:roomId/history
@@ -12,11 +12,11 @@ import { getViewerId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })

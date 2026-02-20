@@ -1,7 +1,5 @@
-import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
-import { db, schema } from '@/db'
 import {
   getAllSkillMastery,
   getPlayer,
@@ -12,24 +10,8 @@ import {
 import { getSessionMode } from '@/lib/curriculum/session-mode'
 import { getSessionModeComfortLevel } from '@/lib/curriculum/session-mode-comfort'
 import { getActiveSessionPlan } from '@/lib/curriculum/session-planner'
-import { getDbUserId, getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { DashboardClient } from './DashboardClient'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
 
 // Disable caching for this page - progress data should be fresh
 export const dynamic = 'force-dynamic'
@@ -56,9 +38,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const { studentId } = await params
   const { tab } = await searchParams
 
-  // Get viewer ID for session observation authorization
-  const viewerId = await getViewerId()
-  const user = await getOrCreateUser(viewerId)
+  // Get database user ID for authorization and socket notifications
+  const userId = await getDbUserId()
 
   // Fetch player data in parallel (includes session mode to avoid client-side waterfall)
   const [player, curriculum, skills, recentSessions, activeSession, problemHistory, sessionMode] =
@@ -78,8 +59,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   }
 
   // Check authorization - user must have view access to this player
-  const dbUserId = await getDbUserId()
-  const hasAccess = await canPerformAction(dbUserId, studentId, 'view')
+  const hasAccess = await canPerformAction(userId, studentId, 'view')
   if (!hasAccess) {
     notFound() // Return 404 to avoid leaking existence of player
   }
@@ -102,7 +82,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       currentPracticingSkillIds={currentPracticingSkillIds}
       problemHistory={problemHistory}
       initialTab={tab as 'overview' | 'skills' | 'history' | 'settings' | undefined}
-      userId={user.id}
+      userId={userId}
       initialSessionMode={{
         sessionMode,
         comfortLevel: comfortResult.overall,

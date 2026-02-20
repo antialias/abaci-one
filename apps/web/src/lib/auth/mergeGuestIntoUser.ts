@@ -47,11 +47,36 @@ export async function mergeGuestIntoUser(
   await reparent('skill_customizations', 'user_id')
   await reparent('workshop_sessions', 'user_id')
 
+  // Arcade tables
+  await reparent('arcade_rooms', 'created_by')
+  await reparentOrDrop('room_members', 'user_id')
+  await reparent('room_bans', 'user_id')
+  await reparent('room_bans', 'banned_by')
+  await reparent('room_reports', 'reporter_id')
+  await reparent('room_reports', 'reported_user_id')
+  await reparent('room_reports', 'reviewed_by')
+  await reparent('room_invitations', 'user_id')
+  await reparent('room_invitations', 'invited_by')
+  await reparent('room_join_requests', 'user_id')
+  await reparent('room_join_requests', 'reviewed_by')
+  await reparent('room_member_history', 'user_id')
+
+  // Worksheet tables
+  await reparentOrDrop('worksheet_settings', 'user_id')
+  await reparent('worksheet_mastery', 'user_id')
+  await reparent('worksheet_attempts', 'user_id')
+  await reparent('problem_attempts', 'user_id')
+
+  // Game results and observation shares
+  await reparent('game_results', 'user_id')
+  await reparent('session_observation_shares', 'created_by')
+
   // Tables with unique constraint on user_id (one settings row per user)
   // Prefer the target user's settings; drop the guest's if both exist
   await reparentOrDrop('abacus_settings', 'user_id')
   await reparentOrDrop('scanner_settings', 'user_id')
   await reparentOrDrop('user_stats', 'user_id')
+  await reparentOrDrop('feature_flag_overrides', 'user_id')
 
   // Tables with differently named FK columns
   await reparent('classrooms', 'teacher_id')

@@ -4,7 +4,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/rooms/:roomId/join-requests
@@ -13,11 +13,11 @@ import { getViewerId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -41,12 +41,12 @@ export const GET = withAuth(async (_request, { params }) => {
  * POST /api/arcade/rooms/:roomId/join-requests
  * Create a join request for an approval-only room
  * Body:
- *   - displayName?: string (optional, will generate from viewerId if not provided)
+ *   - displayName?: string (optional, will generate from userId if not provided)
  */
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json().catch(() => ({}))
 
     // Get room to verify it exists
@@ -64,7 +64,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Get or generate display name
-    const displayName = body.displayName || `Guest ${viewerId.slice(-4)}`
+    const displayName = body.displayName || `Guest ${userId.slice(-4)}`
 
     // Validate display name length
     if (displayName.length > 50) {
@@ -77,12 +77,12 @@ export const POST = withAuth(async (request, { params }) => {
     // Create join request
     const joinRequest = await createJoinRequest({
       roomId,
-      userId: viewerId,
+      userId: userId,
       userName: displayName,
     })
 
     console.log(
-      `[Join Requests] Created request for user ${viewerId} (${displayName}) to join room ${roomId}`
+      `[Join Requests] Created request for user ${userId} (${displayName}) to join room ${roomId}`
     )
 
     // Broadcast to the room host (creator) only via socket

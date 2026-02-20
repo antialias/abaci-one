@@ -1,25 +1,7 @@
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db, schema } from '@/db'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
 
 /**
  * GET /api/classrooms
@@ -29,10 +11,9 @@ async function getOrCreateUser(viewerId: string) {
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
-    const classroom = await getTeacherClassroom(user.id)
+    const classroom = await getTeacherClassroom(userId)
 
     return NextResponse.json({ classroom })
   } catch (error) {
@@ -50,8 +31,7 @@ export const GET = withAuth(async () => {
  */
 export const POST = withAuth(async (req) => {
   try {
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
     const body = await req.json()
 
     if (!body.name) {
@@ -59,7 +39,7 @@ export const POST = withAuth(async (req) => {
     }
 
     const result = await createClassroom({
-      teacherId: user.id,
+      teacherId: userId,
       name: body.name,
     })
 

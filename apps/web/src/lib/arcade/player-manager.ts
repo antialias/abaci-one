@@ -15,21 +15,11 @@ export {
 
 /**
  * Get all players for a user (regardless of isActive status)
- * @param viewerId - The guestId from the cookie (same as what getViewerId() returns)
+ * @param userId - The database user.id (from getDbUserId())
  */
-export async function getAllPlayers(viewerId: string): Promise<Player[]> {
-  // First get the user record by guestId
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    return []
-  }
-
-  // Now query all players by the actual user.id (no isActive filter)
+export async function getAllPlayers(userId: string): Promise<Player[]> {
   return await db.query.players.findMany({
-    where: eq(schema.players.userId, user.id),
+    where: eq(schema.players.userId, userId),
     orderBy: schema.players.createdAt,
   })
 }
@@ -37,21 +27,11 @@ export async function getAllPlayers(viewerId: string): Promise<Player[]> {
 /**
  * Get a user's active players (solo mode)
  * These are the players that will participate when the user joins a solo game
- * @param viewerId - The guestId from the cookie (same as what getViewerId() returns)
+ * @param userId - The database user.id (from getDbUserId())
  */
-export async function getActivePlayers(viewerId: string): Promise<Player[]> {
-  // First get the user record by guestId
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    return []
-  }
-
-  // Now query players by the actual user.id
+export async function getActivePlayers(userId: string): Promise<Player[]> {
   return await db.query.players.findMany({
-    where: and(eq(schema.players.userId, user.id), eq(schema.players.isActive, true)),
+    where: and(eq(schema.players.userId, userId), eq(schema.players.isActive, true)),
     orderBy: schema.players.createdAt,
   })
 }

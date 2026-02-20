@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { skillCustomizations } from '@/db/schema'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -12,7 +12,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const POST = withAuth(async (request, { params }) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { skillId } = (await params) as { skillId: string }
     const body = await request.json()
 
@@ -33,7 +33,7 @@ export const POST = withAuth(async (request, { params }) => {
     // Check if customization already exists
     const existing = await db.query.skillCustomizations.findFirst({
       where: and(
-        eq(skillCustomizations.userId, viewerId),
+        eq(skillCustomizations.userId, userId),
         eq(skillCustomizations.skillId, skillId),
         eq(skillCustomizations.operator, operator)
       ),
@@ -51,7 +51,7 @@ export const POST = withAuth(async (request, { params }) => {
         })
         .where(
           and(
-            eq(skillCustomizations.userId, viewerId),
+            eq(skillCustomizations.userId, userId),
             eq(skillCustomizations.skillId, skillId),
             eq(skillCustomizations.operator, operator)
           )
@@ -59,7 +59,7 @@ export const POST = withAuth(async (request, { params }) => {
     } else {
       // Insert new customization
       await db.insert(skillCustomizations).values({
-        userId: viewerId,
+        userId: userId,
         skillId,
         operator,
         digitRange: JSON.stringify(digitRange),
@@ -72,7 +72,7 @@ export const POST = withAuth(async (request, { params }) => {
     // Fetch the updated/created customization
     const customization = await db.query.skillCustomizations.findFirst({
       where: and(
-        eq(skillCustomizations.userId, viewerId),
+        eq(skillCustomizations.userId, userId),
         eq(skillCustomizations.skillId, skillId),
         eq(skillCustomizations.operator, operator)
       ),
@@ -104,7 +104,7 @@ export const POST = withAuth(async (request, { params }) => {
  */
 export const DELETE = withAuth(async (request, { params }) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { skillId } = (await params) as { skillId: string }
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null
@@ -120,7 +120,7 @@ export const DELETE = withAuth(async (request, { params }) => {
     // Check if customization exists
     const existing = await db.query.skillCustomizations.findFirst({
       where: and(
-        eq(skillCustomizations.userId, viewerId),
+        eq(skillCustomizations.userId, userId),
         eq(skillCustomizations.skillId, skillId),
         eq(skillCustomizations.operator, operator)
       ),
@@ -135,7 +135,7 @@ export const DELETE = withAuth(async (request, { params }) => {
       .delete(skillCustomizations)
       .where(
         and(
-          eq(skillCustomizations.userId, viewerId),
+          eq(skillCustomizations.userId, userId),
           eq(skillCustomizations.skillId, skillId),
           eq(skillCustomizations.operator, operator)
         )

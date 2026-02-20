@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { customSkills } from '@/db/schema'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -12,7 +12,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const PUT = withAuth(async (request, { params }) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { id } = (await params) as { id: string }
     const body = await request.json()
 
@@ -20,7 +20,7 @@ export const PUT = withAuth(async (request, { params }) => {
 
     // Verify skill exists and belongs to user
     const existing = await db.query.customSkills.findFirst({
-      where: and(eq(customSkills.id, id), eq(customSkills.userId, viewerId)),
+      where: and(eq(customSkills.id, id), eq(customSkills.userId, userId)),
     })
 
     if (!existing) {
@@ -41,11 +41,11 @@ export const PUT = withAuth(async (request, { params }) => {
     await db
       .update(customSkills)
       .set(updates)
-      .where(and(eq(customSkills.id, id), eq(customSkills.userId, viewerId)))
+      .where(and(eq(customSkills.id, id), eq(customSkills.userId, userId)))
 
     // Fetch updated skill
     const updated = await db.query.customSkills.findFirst({
-      where: and(eq(customSkills.id, id), eq(customSkills.userId, viewerId)),
+      where: and(eq(customSkills.id, id), eq(customSkills.userId, userId)),
     })
 
     if (!updated) {
@@ -74,12 +74,12 @@ export const PUT = withAuth(async (request, { params }) => {
  */
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { id } = (await params) as { id: string }
 
     // Verify skill exists and belongs to user
     const existing = await db.query.customSkills.findFirst({
-      where: and(eq(customSkills.id, id), eq(customSkills.userId, viewerId)),
+      where: and(eq(customSkills.id, id), eq(customSkills.userId, userId)),
     })
 
     if (!existing) {
@@ -89,7 +89,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
     // Delete the skill
     await db
       .delete(customSkills)
-      .where(and(eq(customSkills.id, id), eq(customSkills.userId, viewerId)))
+      .where(and(eq(customSkills.id, id), eq(customSkills.userId, userId)))
 
     return NextResponse.json({ success: true })
   } catch (error) {

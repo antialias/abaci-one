@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getPlayer, getRoomActivePlayers, setPlayerActiveStatus } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -18,8 +18,8 @@ export const POST = withAuth(async (request, { params }) => {
     const { roomId } = (await params) as { roomId: string }
     console.log('[Deactivate Player API] roomId:', roomId)
 
-    const viewerId = await getViewerId()
-    console.log('[Deactivate Player API] viewerId:', viewerId)
+    const userId = await getDbUserId()
+    console.log('[Deactivate Player API] userId:', userId)
 
     const body = await request.json()
     console.log('[Deactivate Player API] body:', body)
@@ -35,7 +35,7 @@ export const POST = withAuth(async (request, { params }) => {
     const members = await getRoomMembers(roomId)
     console.log('[Deactivate Player API] members count:', members.length)
 
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
     console.log('[Deactivate Player API] currentMember:', currentMember)
 
     if (!currentMember) {
@@ -63,7 +63,7 @@ export const POST = withAuth(async (request, { params }) => {
     )
 
     // Can't deactivate your own players (use the regular player controls for that)
-    if (player.userId === viewerId) {
+    if (player.userId === userId) {
       console.log('[Deactivate Player API] ERROR: Cannot deactivate your own players')
       return NextResponse.json(
         {

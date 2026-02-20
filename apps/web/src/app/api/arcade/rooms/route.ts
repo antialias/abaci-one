@@ -4,7 +4,7 @@ import { addRoomMember, getRoomMembers, isMember } from '@/lib/arcade/room-membe
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { hasValidator, type GameName } from '@/lib/arcade/validators'
 
 /**
@@ -18,7 +18,7 @@ export const GET = withAuth(async (request) => {
     const { searchParams } = new URL(request.url)
     const gameName = searchParams.get('gameName') as GameName | null
 
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const rooms = await listActiveRooms(gameName || undefined)
 
     // Enrich with member counts, player counts, and membership status
@@ -26,7 +26,7 @@ export const GET = withAuth(async (request) => {
       rooms.map(async (room) => {
         const members = await getRoomMembers(room.id)
         const playerMap = await getRoomActivePlayers(room.id)
-        const userIsMember = await isMember(room.id, viewerId)
+        const userIsMember = await isMember(room.id, userId)
 
         let totalPlayers = 0
         for (const players of playerMap.values()) {
@@ -69,7 +69,7 @@ export const GET = withAuth(async (request) => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate game name if provided (gameName is now optional)
@@ -110,13 +110,13 @@ export const POST = withAuth(async (request) => {
       )
     }
 
-    // Get display name from body or generate from viewerId
-    const displayName = body.creatorName || `Guest ${viewerId.slice(-4)}`
+    // Get display name from body or generate from userId
+    const displayName = body.creatorName || `Guest ${userId.slice(-4)}`
 
     // Create room
     const room = await createRoom({
       name: roomName,
-      createdBy: viewerId,
+      createdBy: userId,
       creatorName: displayName,
       gameName: body.gameName || null,
       gameConfig: body.gameConfig || null,
@@ -128,7 +128,7 @@ export const POST = withAuth(async (request) => {
     // Add creator as first member (with auto-leave from other rooms)
     const { autoLeaveResult } = await addRoomMember({
       roomId: room.id,
-      userId: viewerId,
+      userId: userId,
       displayName,
       isCreator: true,
     })
@@ -152,14 +152,14 @@ export const POST = withAuth(async (request) => {
             // Broadcast to all remaining users in the old room
             io.to(`room:${leftRoomId}`).emit('member-left', {
               roomId: leftRoomId,
-              userId: viewerId,
+              userId: userId,
               members: leftRoomMembers,
               memberPlayers: leftRoomPlayersObj,
               reason: 'auto-left', // Indicate this was automatic, not voluntary
             })
 
             console.log(
-              `[Room Create] Broadcasted member-left for user ${viewerId} in room ${leftRoomId} (auto-leave)`
+              `[Room Create] Broadcasted member-left for user ${userId} in room ${leftRoomId} (auto-leave)`
             )
           } catch (socketError) {
             console.error(

@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import {
   parseAdditionConfig,
   serializeAdditionConfig,
@@ -27,7 +27,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { searchParams } = new URL(request.url)
     const worksheetType = searchParams.get('type')
 
@@ -49,7 +49,7 @@ export const GET = withAuth(async (request) => {
       .from(schema.worksheetSettings)
       .where(
         and(
-          eq(schema.worksheetSettings.userId, viewerId),
+          eq(schema.worksheetSettings.userId, userId),
           eq(schema.worksheetSettings.worksheetType, worksheetType)
         )
       )
@@ -90,7 +90,7 @@ export const GET = withAuth(async (request) => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     const { type: worksheetType, config } = body
@@ -150,7 +150,7 @@ export const POST = withAuth(async (request) => {
       .from(schema.worksheetSettings)
       .where(
         and(
-          eq(schema.worksheetSettings.userId, viewerId),
+          eq(schema.worksheetSettings.userId, userId),
           eq(schema.worksheetSettings.worksheetType, worksheetType)
         )
       )
@@ -177,7 +177,7 @@ export const POST = withAuth(async (request) => {
       const id = crypto.randomUUID()
       await db.insert(schema.worksheetSettings).values({
         id,
-        userId: viewerId,
+        userId: userId,
         worksheetType,
         config: configJson,
         createdAt: now,

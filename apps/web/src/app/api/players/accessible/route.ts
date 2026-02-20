@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getAccessiblePlayers } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players/accessible
@@ -15,9 +15,9 @@ import { getViewerId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
-    const accessible = await getAccessiblePlayers(viewerId)
+    const accessible = await getAccessiblePlayers(userId)
 
     return NextResponse.json(accessible)
   } catch (error) {

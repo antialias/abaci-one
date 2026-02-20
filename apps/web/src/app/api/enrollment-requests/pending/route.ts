@@ -1,25 +1,7 @@
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { db, schema } from '@/db'
 import { getPendingRequestsForParent } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/enrollment-requests/pending
@@ -32,10 +14,9 @@ async function getOrCreateUser(viewerId: string) {
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
-    const requests = await getPendingRequestsForParent(user.id)
+    const requests = await getPendingRequestsForParent(userId)
 
     return NextResponse.json({ requests })
   } catch (error) {

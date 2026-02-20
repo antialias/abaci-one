@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/scanner-settings
@@ -11,19 +11,18 @@ import { getViewerId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Find or create scanner settings
     let settings = await db.query.scannerSettings.findFirst({
-      where: eq(schema.scannerSettings.userId, user.id),
+      where: eq(schema.scannerSettings.userId, userId),
     })
 
     // If no settings exist, create with defaults
     if (!settings) {
       const [newSettings] = await db
         .insert(schema.scannerSettings)
-        .values({ userId: user.id })
+        .values({ userId })
         .returning()
       settings = newSettings
     }
@@ -53,7 +52,7 @@ export const GET = withAuth(async () => {
  */
 export const PATCH = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Handle empty or invalid JSON body gracefully
     let body: Record<string, unknown>
@@ -64,7 +63,7 @@ export const PATCH = withAuth(async (request) => {
     }
 
     // Security: Strip userId from request body - it must come from session only
-    const { userId: _, ...updates } = body
+    const { userId: _bodyUserId, ...updates } = body
 
     // Transform QuadDetectorConfig format to database format
     const dbUpdates: Record<string, unknown> = {}
@@ -96,11 +95,9 @@ export const PATCH = withAuth(async (request) => {
       dbUpdates.enableHoughLines = updates.enableHoughLines
     }
 
-    const user = await getOrCreateUser(viewerId)
-
     // Ensure settings exist
     const existingSettings = await db.query.scannerSettings.findFirst({
-      where: eq(schema.scannerSettings.userId, user.id),
+      where: eq(schema.scannerSettings.userId, userId),
     })
 
     let resultSettings: schema.ScannerSettings
@@ -109,7 +106,7 @@ export const PATCH = withAuth(async (request) => {
       // Create new settings with updates
       const [newSettings] = await db
         .insert(schema.scannerSettings)
-        .values({ userId: user.id, ...dbUpdates })
+        .values({ userId, ...dbUpdates })
         .returning()
       resultSettings = newSettings
     } else {
@@ -117,7 +114,7 @@ export const PATCH = withAuth(async (request) => {
       const [updatedSettings] = await db
         .update(schema.scannerSettings)
         .set(dbUpdates)
-        .where(eq(schema.scannerSettings.userId, user.id))
+        .where(eq(schema.scannerSettings.userId, userId))
         .returning()
       resultSettings = updatedSettings
     }
@@ -140,27 +137,3 @@ export const PATCH = withAuth(async (request) => {
     return NextResponse.json({ error: 'Failed to update scanner settings' }, { status: 500 })
   }
 })
-
-/**
- * Get or create a user record for the given viewer ID (guest or user)
- */
-async function getOrCreateUser(viewerId: string) {
-  // Try to find existing user by guest ID
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  // If no user exists, create one
-  if (!user) {
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({
-        guestId: viewerId,
-      })
-      .returning()
-
-    user = newUser
-  }
-
-  return user
-}

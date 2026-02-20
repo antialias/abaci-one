@@ -4,7 +4,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getAllGameConfigs } from '@/lib/arcade/game-config-helpers'
 
 /**
@@ -13,7 +13,7 @@ import { getAllGameConfigs } from '@/lib/arcade/game-config-helpers'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Get all rooms user is in (should be at most 1 due to modal room enforcement)
     const roomIds = await getUserRooms(userId)

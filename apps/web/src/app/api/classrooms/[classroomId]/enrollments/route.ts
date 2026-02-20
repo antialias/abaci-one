@@ -3,24 +3,8 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { directEnrollStudent, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
 import { emitEnrollmentCompleted } from '@/lib/classroom/socket-emitter'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
 
 /**
  * GET /api/classrooms/[classroomId]/enrollments
@@ -31,11 +15,10 @@ async function getOrCreateUser(viewerId: string) {
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Verify user is the teacher of this classroom
-    const classroom = await getTeacherClassroom(user.id)
+    const classroom = await getTeacherClassroom(userId)
     if (!classroom || classroom.id !== classroomId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
@@ -59,11 +42,10 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withAuth(async (req, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Verify user is the teacher of this classroom
-    const classroom = await getTeacherClassroom(user.id)
+    const classroom = await getTeacherClassroom(userId)
     if (!classroom || classroom.id !== classroomId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
@@ -85,7 +67,7 @@ export const POST = withAuth(async (req, { params }) => {
     }
 
     // Verify teacher owns this player
-    if (player.userId !== user.id) {
+    if (player.userId !== userId) {
       return NextResponse.json(
         { error: 'Can only directly enroll students you created' },
         { status: 403 }

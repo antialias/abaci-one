@@ -3,24 +3,8 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { denyEnrollmentRequest, getLinkedParentIds, getTeacherClassroom } from '@/lib/classroom'
 import { emitEnrollmentRequestDenied } from '@/lib/classroom/socket-emitter'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
 
 /**
  * POST /api/classrooms/[classroomId]/enrollment-requests/[requestId]/deny
@@ -31,16 +15,15 @@ async function getOrCreateUser(viewerId: string) {
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { classroomId, requestId } = (await params) as { classroomId: string; requestId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Verify user is the teacher of this classroom
-    const classroom = await getTeacherClassroom(user.id)
+    const classroom = await getTeacherClassroom(userId)
     if (!classroom || classroom.id !== classroomId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const request = await denyEnrollmentRequest(requestId, user.id, 'teacher')
+    const request = await denyEnrollmentRequest(requestId, userId, 'teacher')
 
     // Emit socket event for real-time updates
     try {

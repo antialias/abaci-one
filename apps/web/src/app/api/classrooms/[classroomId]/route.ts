@@ -1,30 +1,12 @@
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db, schema } from '@/db'
 import {
   deleteClassroom,
   getClassroom,
   updateClassroom,
   regenerateClassroomCode,
 } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
 
 /**
  * GET /api/classrooms/[classroomId]
@@ -59,13 +41,12 @@ export const GET = withAuth(async (_request, { params }) => {
 export const PATCH = withAuth(async (req, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
     const body = await req.json()
 
     // Handle code regeneration separately
     if (body.regenerateCode) {
-      const newCode = await regenerateClassroomCode(classroomId, user.id)
+      const newCode = await regenerateClassroomCode(classroomId, userId)
       if (!newCode) {
         return NextResponse.json(
           { error: 'Not authorized or classroom not found' },
@@ -92,7 +73,7 @@ export const PATCH = withAuth(async (req, { params }) => {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 })
     }
 
-    const classroom = await updateClassroom(classroomId, user.id, updates)
+    const classroom = await updateClassroom(classroomId, userId, updates)
 
     if (!classroom) {
       return NextResponse.json({ error: 'Not authorized or classroom not found' }, { status: 403 })
@@ -114,10 +95,9 @@ export const PATCH = withAuth(async (req, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
-    const success = await deleteClassroom(classroomId, user.id)
+    const success = await deleteClassroom(classroomId, userId)
 
     if (!success) {
       return NextResponse.json({ error: 'Not authorized or classroom not found' }, { status: 403 })

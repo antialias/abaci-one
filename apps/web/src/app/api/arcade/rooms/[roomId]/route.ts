@@ -9,7 +9,7 @@ import {
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/rooms/:roomId
@@ -18,7 +18,7 @@ import { getViewerId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     const room = await getRoomById(roomId)
     if (!room) {
@@ -26,7 +26,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     const members = await getRoomMembers(roomId)
-    const canModerate = await isRoomCreator(roomId, viewerId)
+    const canModerate = await isRoomCreator(roomId, userId)
 
     // Fetch active players for each member
     // This creates a map of userId -> Player[]
@@ -68,11 +68,11 @@ export const GET = withAuth(async (_request, { params }) => {
 export const PATCH = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Check if user is room creator
-    const isCreator = await isRoomCreator(roomId, viewerId)
+    const isCreator = await isRoomCreator(roomId, userId)
     if (!isCreator) {
       return NextResponse.json({ error: 'Only room creator can update room' }, { status: 403 })
     }
@@ -115,10 +115,10 @@ export const PATCH = withAuth(async (request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Check if user is room creator
-    const isCreator = await isRoomCreator(roomId, viewerId)
+    const isCreator = await isRoomCreator(roomId, userId)
     if (!isCreator) {
       return NextResponse.json({ error: 'Only room creator can delete room' }, { status: 403 })
     }

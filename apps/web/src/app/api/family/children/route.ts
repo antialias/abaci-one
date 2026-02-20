@@ -1,9 +1,7 @@
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { db, schema } from '@/db'
 import { getLinkedChildren } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/family/children
@@ -13,18 +11,9 @@ import { getViewerId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
-    // Resolve viewerId to actual user.id
-    const user = await db.query.users.findFirst({
-      where: eq(schema.users.guestId, viewerId),
-    })
-
-    if (!user) {
-      return NextResponse.json({ children: [] })
-    }
-
-    const children = await getLinkedChildren(user.id)
+    const children = await getLinkedChildren(userId)
 
     return NextResponse.json({ children })
   } catch (error) {

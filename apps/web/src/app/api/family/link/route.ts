@@ -1,25 +1,7 @@
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { db, schema } from '@/db'
 import { linkParentToChild } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * POST /api/family/link
@@ -30,17 +12,14 @@ async function getOrCreateUser(viewerId: string) {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     if (!body.familyCode) {
       return NextResponse.json({ success: false, error: 'Missing familyCode' }, { status: 400 })
     }
 
-    // Resolve viewerId to actual user.id (create user if needed)
-    const user = await getOrCreateUser(viewerId)
-
-    const result = await linkParentToChild(user.id, body.familyCode)
+    const result = await linkParentToChild(userId, body.familyCode)
 
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 })

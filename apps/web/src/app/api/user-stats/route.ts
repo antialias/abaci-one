@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -10,29 +10,11 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-
-    // Get user record
-    const user = await db.query.users.findFirst({
-      where: eq(schema.users.guestId, viewerId),
-    })
-
-    if (!user) {
-      // No user yet, return default stats
-      return NextResponse.json({
-        stats: {
-          gamesPlayed: 0,
-          totalWins: 0,
-          favoriteGameType: null,
-          bestTime: null,
-          highestAccuracy: 0,
-        },
-      })
-    }
+    const userId = await getDbUserId()
 
     // Get stats record
     let stats = await db.query.userStats.findFirst({
-      where: eq(schema.userStats.userId, user.id),
+      where: eq(schema.userStats.userId, userId),
     })
 
     // If no stats record exists, create one with defaults
@@ -40,7 +22,7 @@ export const GET = withAuth(async () => {
       const [newStats] = await db
         .insert(schema.userStats)
         .values({
-          userId: user.id,
+          userId,
         })
         .returning()
 
@@ -60,29 +42,12 @@ export const GET = withAuth(async () => {
  */
 export const PATCH = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
-
-    // Get or create user record
-    let user = await db.query.users.findFirst({
-      where: eq(schema.users.guestId, viewerId),
-    })
-
-    if (!user) {
-      // Create user if it doesn't exist
-      const [newUser] = await db
-        .insert(schema.users)
-        .values({
-          guestId: viewerId,
-        })
-        .returning()
-
-      user = newUser
-    }
 
     // Get existing stats
     const stats = await db.query.userStats.findFirst({
-      where: eq(schema.userStats.userId, user.id),
+      where: eq(schema.userStats.userId, userId),
     })
 
     // Prepare update values
@@ -98,7 +63,7 @@ export const PATCH = withAuth(async (request) => {
       const [updatedStats] = await db
         .update(schema.userStats)
         .set(updates)
-        .where(eq(schema.userStats.userId, user.id))
+        .where(eq(schema.userStats.userId, userId))
         .returning()
 
       return NextResponse.json({ stats: updatedStats })
@@ -107,7 +72,7 @@ export const PATCH = withAuth(async (request) => {
       const [newStats] = await db
         .insert(schema.userStats)
         .values({
-          userId: user.id,
+          userId,
           ...updates,
         })
         .returning()

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { createJoinRequest, getJoinRequest } from '@/lib/arcade/room-join-requests'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -16,7 +16,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -45,13 +45,13 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Check if user is already in the room
     const members = await getRoomMembers(roomId)
-    const existingMember = members.find((m) => m.userId === viewerId)
+    const existingMember = members.find((m) => m.userId === userId)
     if (existingMember) {
       return NextResponse.json({ error: 'You are already in this room' }, { status: 400 })
     }
 
     // Check if user already has a pending request
-    const existingRequest = await getJoinRequest(roomId, viewerId)
+    const existingRequest = await getJoinRequest(roomId, userId)
     if (existingRequest && existingRequest.status === 'pending') {
       return NextResponse.json(
         { error: 'You already have a pending join request' },
@@ -62,7 +62,7 @@ export const POST = withAuth(async (request, { params }) => {
     // Create join request
     const joinRequest = await createJoinRequest({
       roomId,
-      userId: viewerId,
+      userId: userId,
       userName: body.userName,
     })
 
@@ -84,7 +84,7 @@ export const POST = withAuth(async (request, { params }) => {
           })
         }
 
-        console.log(`[Join Request API] User ${viewerId} requested to join room ${roomId}`)
+        console.log(`[Join Request API] User ${userId} requested to join room ${roomId}`)
       } catch (socketError) {
         console.error('[Join Request API] Failed to broadcast request:', socketError)
       }

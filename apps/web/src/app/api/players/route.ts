@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { generateFamilyCode, parentChild } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players
@@ -12,14 +12,11 @@ import { getViewerId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-
-    // Get or create user record
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Get player IDs linked via parent_child table
     const linkedPlayerIds = await db.query.parentChild.findMany({
-      where: eq(parentChild.parentUserId, user.id),
+      where: eq(parentChild.parentUserId, userId),
     })
     const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
 
@@ -27,13 +24,13 @@ export const GET = withAuth(async () => {
     let players
     if (linkedIds.length > 0) {
       players = await db.query.players.findMany({
-        where: or(eq(schema.players.userId, user.id), inArray(schema.players.id, linkedIds)),
+        where: or(eq(schema.players.userId, userId), inArray(schema.players.id, linkedIds)),
         orderBy: (players, { desc }) => [desc(players.createdAt)],
       })
     } else {
       // No linked players, just get created players
       players = await db.query.players.findMany({
-        where: eq(schema.players.userId, user.id),
+        where: eq(schema.players.userId, userId),
         orderBy: (players, { desc }) => [desc(players.createdAt)],
       })
     }
@@ -51,7 +48,7 @@ export const GET = withAuth(async () => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -62,9 +59,6 @@ export const POST = withAuth(async (request) => {
       )
     }
 
-    // Get or create user record
-    const user = await getOrCreateUser(viewerId)
-
     // Generate a unique family code for the new player
     const familyCode = generateFamilyCode()
 
@@ -72,7 +66,7 @@ export const POST = withAuth(async (request) => {
     const [player] = await db
       .insert(schema.players)
       .values({
-        userId: user.id,
+        userId,
         name: body.name,
         emoji: body.emoji,
         color: body.color,
@@ -83,7 +77,7 @@ export const POST = withAuth(async (request) => {
 
     // Create parent-child relationship
     await db.insert(parentChild).values({
-      parentUserId: user.id,
+      parentUserId: userId,
       childPlayerId: player.id,
     })
 
@@ -93,27 +87,3 @@ export const POST = withAuth(async (request) => {
     return NextResponse.json({ error: 'Failed to create player' }, { status: 500 })
   }
 })
-
-/**
- * Get or create a user record for the given viewer ID (guest or user)
- */
-async function getOrCreateUser(viewerId: string) {
-  // Try to find existing user by guest ID
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  // If no user exists, create one
-  if (!user) {
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({
-        guestId: viewerId,
-      })
-      .returning()
-
-    user = newUser
-  }
-
-  return user
-}

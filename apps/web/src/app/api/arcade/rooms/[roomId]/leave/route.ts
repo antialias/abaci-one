@@ -3,7 +3,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers, isMember, removeMember } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -13,7 +13,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Get room
     const room = await getRoomById(roomId)
@@ -22,7 +22,7 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Check if member - if not, return success (idempotent: already left)
-    const isMemberOfRoom = await isMember(roomId, viewerId)
+    const isMemberOfRoom = await isMember(roomId, userId)
     if (!isMemberOfRoom) {
       // Already not a member - return success since desired state is achieved
       // This handles the case where user was auto-left from creating/joining another room
@@ -30,7 +30,7 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Remove member
-    await removeMember(roomId, viewerId)
+    await removeMember(roomId, userId)
 
     // Broadcast to all remaining users in the room via socket
     const io = await getSocketIO()
@@ -48,12 +48,12 @@ export const POST = withAuth(async (_request, { params }) => {
         // Broadcast to all users in this room
         io.to(`room:${roomId}`).emit('member-left', {
           roomId,
-          userId: viewerId,
+          userId: userId,
           members,
           memberPlayers: memberPlayersObj,
         })
 
-        console.log(`[Leave API] Broadcasted member-left for user ${viewerId} in room ${roomId}`)
+        console.log(`[Leave API] Broadcasted member-left for user ${userId} in room ${roomId}`)
       } catch (socketError) {
         // Log but don't fail the request if socket broadcast fails
         console.error('[Leave API] Failed to broadcast member-left:', socketError)

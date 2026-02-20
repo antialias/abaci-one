@@ -3,24 +3,8 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getLinkedParentIds, getTeacherClassroom, isParent, unenrollStudent } from '@/lib/classroom'
 import { emitStudentUnenrolled } from '@/lib/classroom/socket-emitter'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
 
 /**
  * DELETE /api/classrooms/[classroomId]/enrollments/[playerId]
@@ -31,13 +15,12 @@ async function getOrCreateUser(viewerId: string) {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { classroomId, playerId } = (await params) as { classroomId: string; playerId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Check authorization: must be teacher of classroom OR parent of student
-    const classroom = await getTeacherClassroom(user.id)
+    const classroom = await getTeacherClassroom(userId)
     const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(user.id, playerId)
+    const parentCheck = await isParent(userId, playerId)
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(

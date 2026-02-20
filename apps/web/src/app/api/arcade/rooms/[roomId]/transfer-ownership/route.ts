@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -15,7 +15,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -25,7 +25,7 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Check if user is the current host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -39,7 +39,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Can't transfer to yourself
-    if (body.newOwnerId === viewerId) {
+    if (body.newOwnerId === userId) {
       return NextResponse.json({ error: 'You are already the owner' }, { status: 400 })
     }
 
@@ -78,14 +78,14 @@ export const POST = withAuth(async (request, { params }) => {
 
         io.to(`room:${roomId}`).emit('ownership-transferred', {
           roomId,
-          oldOwnerId: viewerId,
+          oldOwnerId: userId,
           newOwnerId: body.newOwnerId,
           newOwnerName: newOwner.displayName,
           members: updatedMembers,
         })
 
         console.log(
-          `[Ownership Transfer] Room ${roomId} ownership transferred from ${viewerId} to ${body.newOwnerId}`
+          `[Ownership Transfer] Room ${roomId} ownership transferred from ${userId} to ${body.newOwnerId}`
         )
       } catch (socketError) {
         console.error('[Ownership Transfer] Failed to broadcast transfer:', socketError)

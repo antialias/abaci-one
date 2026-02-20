@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getActivePlayers } from '@/lib/arcade/player-manager'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
@@ -14,28 +14,18 @@ export const dynamic = 'force-dynamic'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-
-    // Get user record
-    const user = await db.query.users.findFirst({
-      where: eq(schema.users.guestId, viewerId),
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found', viewerId }, { status: 404 })
-    }
+    const userId = await getDbUserId()
 
     // Get ALL players for this user
     const allPlayers = await db.query.players.findMany({
-      where: eq(schema.players.userId, user.id),
+      where: eq(schema.players.userId, userId),
     })
 
     // Get active players using the helper
-    const activePlayers = await getActivePlayers(viewerId)
+    const activePlayers = await getActivePlayers(userId)
 
     return NextResponse.json({
-      viewerId,
-      userId: user.id,
+      userId,
       allPlayers: allPlayers.map((p) => ({
         id: p.id,
         name: p.name,

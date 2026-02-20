@@ -6,7 +6,7 @@ import { playerStats } from '@/db/schema/player-stats'
 import { players } from '@/db/schema/players'
 import type { GetAllPlayerStatsResponse, PlayerStatsData } from '@/lib/arcade/stats/types'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 // Force dynamic rendering - this route uses headers()
 export const dynamic = 'force-dynamic'
@@ -19,13 +19,13 @@ export const dynamic = 'force-dynamic'
 export const GET = withAuth(async () => {
   try {
     // 1. Authenticate user
-    const viewerId = await getViewerId()
-    if (!viewerId) {
+    const userId = await getDbUserId()
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // 2. Fetch all user's players
-    const userPlayers = await db.select().from(players).where(eq(players.userId, viewerId))
+    const userPlayers = await db.select().from(players).where(eq(players.userId, userId))
 
     const playerIds = userPlayers.map((p) => p.id)
 

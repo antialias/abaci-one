@@ -4,7 +4,7 @@ import { db, schema } from '@/db'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { denyJoinRequest } from '@/lib/arcade/room-join-requests'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -14,11 +14,11 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { roomId, requestId } = (await params) as { roomId: string; requestId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -44,7 +44,7 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Deny the request
-    const deniedRequest = await denyJoinRequest(requestId, viewerId, currentMember.displayName)
+    const deniedRequest = await denyJoinRequest(requestId, userId, currentMember.displayName)
 
     // Notify the requesting user via socket
     const io = await getSocketIO()

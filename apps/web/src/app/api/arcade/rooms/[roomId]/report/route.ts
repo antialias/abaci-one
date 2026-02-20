@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createReport } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -16,7 +16,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -34,13 +34,13 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Can't report yourself
-    if (body.reportedUserId === viewerId) {
+    if (body.reportedUserId === userId) {
       return NextResponse.json({ error: 'Cannot report yourself' }, { status: 400 })
     }
 
     // Get room members to verify both users are in the room and get names
     const members = await getRoomMembers(roomId)
-    const reporter = members.find((m) => m.userId === viewerId)
+    const reporter = members.find((m) => m.userId === userId)
     const reported = members.find((m) => m.userId === body.reportedUserId)
 
     if (!reporter) {
@@ -54,7 +54,7 @@ export const POST = withAuth(async (request, { params }) => {
     // Create report
     const report = await createReport({
       roomId,
-      reporterId: viewerId,
+      reporterId: userId,
       reporterName: reporter.displayName,
       reportedUserId: body.reportedUserId,
       reportedUserName: reported.displayName,

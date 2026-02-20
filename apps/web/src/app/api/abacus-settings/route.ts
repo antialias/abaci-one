@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/abacus-settings
@@ -11,19 +11,18 @@ import { getViewerId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Find or create abacus settings
     let settings = await db.query.abacusSettings.findFirst({
-      where: eq(schema.abacusSettings.userId, user.id),
+      where: eq(schema.abacusSettings.userId, userId),
     })
 
     // If no settings exist, create with defaults
     if (!settings) {
       const [newSettings] = await db
         .insert(schema.abacusSettings)
-        .values({ userId: user.id })
+        .values({ userId })
         .returning()
       settings = newSettings
     }
@@ -41,7 +40,7 @@ export const GET = withAuth(async () => {
  */
 export const PATCH = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Handle empty or invalid JSON body gracefully
     let body: Record<string, unknown>
@@ -52,20 +51,18 @@ export const PATCH = withAuth(async (request) => {
     }
 
     // Security: Strip userId from request body - it must come from session only
-    const { userId: _, ...updates } = body
-
-    const user = await getOrCreateUser(viewerId)
+    const { userId: _bodyUserId, ...updates } = body
 
     // Ensure settings exist
     const existingSettings = await db.query.abacusSettings.findFirst({
-      where: eq(schema.abacusSettings.userId, user.id),
+      where: eq(schema.abacusSettings.userId, userId),
     })
 
     if (!existingSettings) {
       // Create new settings with updates
       const [newSettings] = await db
         .insert(schema.abacusSettings)
-        .values({ userId: user.id, ...updates })
+        .values({ userId, ...updates })
         .returning()
       return NextResponse.json({ settings: newSettings })
     }
@@ -74,7 +71,7 @@ export const PATCH = withAuth(async (request) => {
     const [updatedSettings] = await db
       .update(schema.abacusSettings)
       .set(updates)
-      .where(eq(schema.abacusSettings.userId, user.id))
+      .where(eq(schema.abacusSettings.userId, userId))
       .returning()
 
     return NextResponse.json({ settings: updatedSettings })
@@ -83,27 +80,3 @@ export const PATCH = withAuth(async (request) => {
     return NextResponse.json({ error: 'Failed to update abacus settings' }, { status: 500 })
   }
 })
-
-/**
- * Get or create a user record for the given viewer ID (guest or user)
- */
-async function getOrCreateUser(viewerId: string) {
-  // Try to find existing user by guest ID
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  // If no user exists, create one
-  if (!user) {
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({
-        guestId: viewerId,
-      })
-      .returning()
-
-    user = newUser
-  }
-
-  return user
-}

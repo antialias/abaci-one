@@ -7,7 +7,7 @@ import { recordRoomMemberHistory } from '@/lib/arcade/room-member-history'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getAllGameConfigs, setGameConfig } from '@/lib/arcade/game-config-helpers'
 import { isValidGameName } from '@/lib/arcade/validators'
 import type { GameName } from '@/lib/arcade/validators'
@@ -32,7 +32,7 @@ import type { GameName } from '@/lib/arcade/validators'
 export const PATCH = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     console.log(
@@ -67,7 +67,7 @@ export const PATCH = withAuth(async (request, { params }) => {
 
     // Check if user is a room member
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/invitations/pending
@@ -11,7 +11,7 @@ import { getViewerId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Get pending invitations with room details
     const invitations = await db
@@ -32,14 +32,14 @@ export const GET = withAuth(async () => {
       })
       .from(schema.roomInvitations)
       .innerJoin(schema.arcadeRooms, eq(schema.roomInvitations.roomId, schema.arcadeRooms.id))
-      .where(eq(schema.roomInvitations.userId, viewerId))
+      .where(eq(schema.roomInvitations.userId, userId))
       .orderBy(schema.roomInvitations.createdAt)
 
     // Get all active bans for this user (bans are deleted when unbanned, so any existing ban is active)
     const activeBans = await db
       .select({ roomId: schema.roomBans.roomId })
       .from(schema.roomBans)
-      .where(eq(schema.roomBans.userId, viewerId))
+      .where(eq(schema.roomBans.userId, userId))
 
     const bannedRoomIds = new Set(activeBans.map((ban) => ban.roomId))
 

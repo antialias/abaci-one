@@ -8,22 +8,22 @@ import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
 import { isUserBanned } from '@/lib/arcade/room-moderation'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * POST /api/arcade/rooms/:roomId/join
  * Join a room
  * Body:
- *   - displayName?: string (optional, will generate from viewerId if not provided)
+ *   - displayName?: string (optional, will generate from userId if not provided)
  *   - password?: string (required for password-protected rooms)
  */
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json().catch(() => ({}))
 
-    console.log(`[Join API] User ${viewerId} attempting to join room ${roomId}`)
+    console.log(`[Join API] User ${userId} attempting to join room ${roomId}`)
 
     // Get room
     const room = await getRoomById(roomId)
@@ -37,15 +37,15 @@ export const POST = withAuth(async (request, { params }) => {
     )
 
     // Check if user is banned
-    const banned = await isUserBanned(roomId, viewerId)
+    const banned = await isUserBanned(roomId, userId)
     if (banned) {
       return NextResponse.json({ error: 'You are banned from this room' }, { status: 403 })
     }
 
     // Check if user is already a member (for locked/retired room access)
     const members = await getRoomMembers(roomId)
-    const isExistingMember = members.some((m) => m.userId === viewerId)
-    const isRoomCreator = room.createdBy === viewerId
+    const isExistingMember = members.some((m) => m.userId === userId)
+    const isRoomCreator = room.createdBy === userId
 
     // Track invitation/join request to mark as accepted after successful join
     let invitationToAccept: string | null = null
@@ -53,11 +53,11 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Check for pending invitation (regardless of access mode)
     // This ensures invitations are marked as accepted when user joins ANY room type
-    const invitation = await getInvitation(roomId, viewerId)
+    const invitation = await getInvitation(roomId, userId)
     if (invitation && invitation.status === 'pending') {
       invitationToAccept = invitation.id
       console.log(
-        `[Join API] Found pending invitation ${invitation.id} for user ${viewerId} in room ${roomId}`
+        `[Join API] Found pending invitation ${invitation.id} for user ${userId} in room ${roomId}`
       )
     }
 
@@ -103,7 +103,7 @@ export const POST = withAuth(async (request, { params }) => {
       }
 
       case 'restricted': {
-        console.log(`[Join API] Room is restricted, checking invitation for user ${viewerId}`)
+        console.log(`[Join API] Room is restricted, checking invitation for user ${userId}`)
         // Room creator can always rejoin their own room
         if (!isRoomCreator) {
           // For restricted rooms, invitation is REQUIRED
@@ -125,7 +125,7 @@ export const POST = withAuth(async (request, { params }) => {
         // Room creator can always rejoin their own room without approval
         if (!isRoomCreator) {
           // Check for approved join request
-          const joinRequest = await getJoinRequest(roomId, viewerId)
+          const joinRequest = await getJoinRequest(roomId, userId)
           if (!joinRequest || joinRequest.status !== 'approved') {
             return NextResponse.json(
               { error: 'Your join request must be approved by the host' },
@@ -144,7 +144,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Get or generate display name
-    const displayName = body.displayName || `Guest ${viewerId.slice(-4)}`
+    const displayName = body.displayName || `Guest ${userId.slice(-4)}`
 
     // Validate display name length
     if (displayName.length > 50) {
@@ -157,7 +157,7 @@ export const POST = withAuth(async (request, { params }) => {
     // Add member (with auto-leave logic for modal room enforcement)
     const { member, autoLeaveResult } = await addRoomMember({
       roomId,
-      userId: viewerId,
+      userId: userId,
       displayName,
       isCreator: false,
     })
@@ -165,7 +165,7 @@ export const POST = withAuth(async (request, { params }) => {
     // Mark invitation as accepted (if applicable)
     if (invitationToAccept) {
       await acceptInvitation(invitationToAccept)
-      console.log(`[Join API] Accepted invitation ${invitationToAccept} for user ${viewerId}`)
+      console.log(`[Join API] Accepted invitation ${invitationToAccept} for user ${userId}`)
     }
     // Note: Join requests stay in "approved" status (no need to update)
 
@@ -188,14 +188,14 @@ export const POST = withAuth(async (request, { params }) => {
             // Broadcast to all remaining users in the old room
             io.to(`room:${leftRoomId}`).emit('member-left', {
               roomId: leftRoomId,
-              userId: viewerId,
+              userId: userId,
               members: leftRoomMembers,
               memberPlayers: leftRoomPlayersObj,
               reason: 'auto-left', // Indicate this was automatic, not voluntary
             })
 
             console.log(
-              `[Join API] Broadcasted member-left for user ${viewerId} in room ${leftRoomId} (auto-leave)`
+              `[Join API] Broadcasted member-left for user ${userId} in room ${leftRoomId} (auto-leave)`
             )
           } catch (socketError) {
             console.error(
@@ -208,7 +208,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Fetch user's active players (these will participate in the game)
-    const activePlayers = await getActivePlayers(viewerId)
+    const activePlayers = await getActivePlayers(userId)
 
     // Update room activity to refresh TTL
     await touchRoom(roomId)
@@ -229,12 +229,12 @@ export const POST = withAuth(async (request, { params }) => {
         // Broadcast to all users in this room
         io.to(`room:${roomId}`).emit('member-joined', {
           roomId,
-          userId: viewerId,
+          userId: userId,
           members,
           memberPlayers: memberPlayersObj,
         })
 
-        console.log(`[Join API] Broadcasted member-joined for user ${viewerId} in room ${roomId}`)
+        console.log(`[Join API] Broadcasted member-joined for user ${userId} in room ${roomId}`)
       } catch (socketError) {
         // Log but don't fail the request if socket broadcast fails
         console.error('[Join API] Failed to broadcast member-joined:', socketError)
@@ -243,7 +243,7 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Build response with auto-leave info if applicable
     console.log(
-      `[Join API] Successfully added user ${viewerId} to room ${roomId} (invitation=${invitationToAccept ? 'accepted' : 'N/A'})`
+      `[Join API] Successfully added user ${userId} to room ${roomId} (invitation=${invitationToAccept ? 'accepted' : 'N/A'})`
     )
 
     return NextResponse.json(

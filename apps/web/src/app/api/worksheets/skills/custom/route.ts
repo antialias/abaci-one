@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { customSkills } from '@/db/schema'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { nanoid } from 'nanoid'
 import { withAuth } from '@/lib/auth/withAuth'
 
@@ -13,13 +13,13 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null
 
     const query = operator
-      ? and(eq(customSkills.userId, viewerId), eq(customSkills.operator, operator))
-      : eq(customSkills.userId, viewerId)
+      ? and(eq(customSkills.userId, userId), eq(customSkills.operator, operator))
+      : eq(customSkills.userId, userId)
 
     const skills = await db.query.customSkills.findMany({
       where: query,
@@ -48,7 +48,7 @@ export const GET = withAuth(async (request) => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     const { name, description, operator, digitRange, regroupingConfig, displayRules } = body
@@ -69,7 +69,7 @@ export const POST = withAuth(async (request) => {
 
     const newSkill = {
       id,
-      userId: viewerId,
+      userId: userId,
       operator,
       name,
       description: description || null,

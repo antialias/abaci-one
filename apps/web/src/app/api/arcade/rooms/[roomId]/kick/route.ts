@@ -3,7 +3,7 @@ import { kickUserFromRoom } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -15,7 +15,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -25,7 +25,7 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -36,7 +36,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Can't kick yourself
-    if (body.userId === viewerId) {
+    if (body.userId === userId) {
       return NextResponse.json({ error: 'Cannot kick yourself' }, { status: 400 })
     }
 

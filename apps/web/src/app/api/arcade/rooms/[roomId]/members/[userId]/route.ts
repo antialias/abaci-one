@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRoomById, isRoomCreator } from '@/lib/arcade/room-manager'
 import { isMember, removeMember } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * DELETE /api/arcade/rooms/:roomId/members/:userId
@@ -11,7 +11,7 @@ import { getViewerId } from '@/lib/viewer'
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { roomId, userId } = (await params) as { roomId: string; userId: string }
-    const viewerId = await getViewerId()
+    const currentUserId = await getDbUserId()
 
     // Get room
     const room = await getRoomById(roomId)
@@ -20,13 +20,13 @@ export const DELETE = withAuth(async (_request, { params }) => {
     }
 
     // Check if requester is room creator
-    const isCreator = await isRoomCreator(roomId, viewerId)
+    const isCreator = await isRoomCreator(roomId, currentUserId)
     if (!isCreator) {
       return NextResponse.json({ error: 'Only room creator can kick members' }, { status: 403 })
     }
 
     // Cannot kick self
-    if (userId === viewerId) {
+    if (userId === currentUserId) {
       return NextResponse.json({ error: 'Cannot kick yourself' }, { status: 400 })
     }
 

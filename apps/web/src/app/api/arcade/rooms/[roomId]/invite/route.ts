@@ -9,7 +9,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * POST /api/arcade/rooms/:roomId/invite
@@ -22,7 +22,7 @@ import { getViewerId } from '@/lib/viewer'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -49,7 +49,7 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -60,7 +60,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Can't invite yourself
-    if (body.userId === viewerId) {
+    if (body.userId === userId) {
       return NextResponse.json({ error: 'Cannot invite yourself' }, { status: 400 })
     }
 
@@ -75,7 +75,7 @@ export const POST = withAuth(async (request, { params }) => {
       roomId,
       userId: body.userId,
       userName: body.userName,
-      invitedBy: viewerId,
+      invitedBy: userId,
       invitedByName: currentMember.displayName,
       invitationType: 'manual',
       message: body.message,
@@ -117,11 +117,11 @@ export const POST = withAuth(async (request, { params }) => {
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
-    const currentMember = members.find((m) => m.userId === viewerId)
+    const currentMember = members.find((m) => m.userId === userId)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -148,10 +148,10 @@ export const GET = withAuth(async (_request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const viewerId = await getViewerId()
+    const userId = await getDbUserId()
 
     // Check if there's an invitation for this user
-    const invitation = await getInvitation(roomId, viewerId)
+    const invitation = await getInvitation(roomId, userId)
 
     if (!invitation) {
       return NextResponse.json({ error: 'No invitation found for this room' }, { status: 404 })

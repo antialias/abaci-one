@@ -5,23 +5,7 @@ import { db, schema } from '@/db'
 import { enrollmentRequests } from '@/db/schema'
 import { denyEnrollmentRequest, isParent } from '@/lib/classroom'
 import { emitEnrollmentRequestDenied } from '@/lib/classroom/socket-emitter'
-import { getViewerId } from '@/lib/viewer'
-
-/**
- * Get or create user record for a viewerId (guestId)
- */
-async function getOrCreateUser(viewerId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
-
-  return user
-}
+import { getDbUserId } from '@/lib/viewer'
 
 /**
  * POST /api/enrollment-requests/[requestId]/deny
@@ -32,8 +16,7 @@ async function getOrCreateUser(viewerId: string) {
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { requestId } = (await params) as { requestId: string }
-    const viewerId = await getViewerId()
-    const user = await getOrCreateUser(viewerId)
+    const userId = await getDbUserId()
 
     // Get the request to verify parent owns the child
     const request = await db.query.enrollmentRequests.findFirst({
@@ -45,12 +28,12 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Verify user is a parent of the child in the request
-    const parentCheck = await isParent(user.id, request.playerId)
+    const parentCheck = await isParent(userId, request.playerId)
     if (!parentCheck) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const updatedRequest = await denyEnrollmentRequest(requestId, user.id, 'parent')
+    const updatedRequest = await denyEnrollmentRequest(requestId, userId, 'parent')
 
     // Emit socket event for real-time updates (notify teacher via classroom channel)
     try {

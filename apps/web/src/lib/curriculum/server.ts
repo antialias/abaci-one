@@ -16,7 +16,7 @@ import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
-import { getViewerId } from '@/lib/viewer'
+import { getDbUserId } from '@/lib/viewer'
 import {
   computeIntervention,
   computeSkillCategory,
@@ -77,25 +77,14 @@ export async function prefetchPracticeData(playerId: string) {
 /**
  * Get all players for the current viewer (server-side)
  *
- * Uses getViewerId() to identify the current user/guest and fetches their players.
+ * Uses getDbUserId() to identify the current user and fetches their players.
  */
 export async function getPlayersForViewer(): Promise<Player[]> {
-  const viewerId = await getViewerId()
-
-  // Get or create user record
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    // Create user if doesn't exist
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
+  const userId = await getDbUserId()
 
   // Get all players for this user
   const players = await db.query.players.findMany({
-    where: eq(schema.players.userId, user.id),
+    where: eq(schema.players.userId, userId),
     orderBy: (players, { desc }) => [desc(players.createdAt)],
   })
 
@@ -221,21 +210,11 @@ async function batchGetActiveSessions(
  * - activeSession: Batch-fetched active session info
  */
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
-  const viewerId = await getViewerId()
-
-  // Get or create user record
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, viewerId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: viewerId }).returning()
-    user = newUser
-  }
+  const userId = await getDbUserId()
 
   // Get player IDs linked via parent_child table
   const linkedPlayerIds = await db.query.parentChild.findMany({
-    where: eq(parentChild.parentUserId, user.id),
+    where: eq(parentChild.parentUserId, userId),
   })
   const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
 
@@ -243,12 +222,12 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
   let players: Player[]
   if (linkedIds.length > 0) {
     players = await db.query.players.findMany({
-      where: or(eq(schema.players.userId, user.id), inArray(schema.players.id, linkedIds)),
+      where: or(eq(schema.players.userId, userId), inArray(schema.players.id, linkedIds)),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
     })
   } else {
     players = await db.query.players.findMany({
-      where: eq(schema.players.userId, user.id),
+      where: eq(schema.players.userId, userId),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
     })
   }
