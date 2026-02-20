@@ -75,3 +75,4 @@ scripts/train-column-classifier/.venv/
 # Python cache
 __pycache__/
 *.pyc
+e2e/.auth/
