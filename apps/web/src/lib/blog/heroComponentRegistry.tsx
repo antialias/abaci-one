@@ -248,6 +248,15 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
       { ssr: false }
     ),
   },
+  'subtraction-scaffolding': {
+    label: 'Subtraction Scaffolding',
+    description:
+      'Interactive scaffolding editor showing RuleThermometer controls for subtraction worksheet configuration',
+    component: dynamic(
+      () => import('@/components/blog/heroes/SubtractionScaffoldingHero'),
+      { ssr: false }
+    ),
+  },
 }
 
 /** Get list of available hero components for admin UI dropdowns */

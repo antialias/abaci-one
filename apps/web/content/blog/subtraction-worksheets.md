@@ -6,7 +6,8 @@ publishedAt: "2025-11-08"
 updatedAt: "2025-11-08"
 tags: ["worksheets", "subtraction", "scaffolding", "borrowing"]
 featured: true
-heroPrompt: "A neatly printed subtraction worksheet on a wooden school desk, showing problems with dotted borrow-notation boxes and curved arrows indicating the borrowing process. A child's hand holds a sharpened pencil mid-calculation. Place value columns are tinted in soft pastel colors. Warm classroom light, shallow depth of field. Clean educational photography with a hint of structured scaffolding."
+heroType: component
+heroComponentId: subtraction-scaffolding
 ---
 
 # Introducing Subtraction Worksheets with Smart Scaffolding
