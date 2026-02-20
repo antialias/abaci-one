@@ -13,10 +13,11 @@ vi.unmock('@/db')
 
 import { db, schema } from '@/db'
 import { mergeGuestIntoUser } from '../mergeGuestIntoUser'
+import { ensureTestSchema } from './setupTestDb'
 
-// mergeGuestIntoUser uses raw SQL against tables that may not exist in local dev DB.
-// Create minimal stubs so the UPDATE statements don't fail.
+// Run full migrations, then create stub tables for any that don't exist yet
 beforeAll(async () => {
+  await ensureTestSchema()
   for (const table of ['worksheet_mastery', 'worksheet_attempts', 'problem_attempts']) {
     await db.run(
       sql.raw(

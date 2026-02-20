@@ -6,13 +6,18 @@
  */
 
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Undo the global @/db mock from test setup so we use the real database
 vi.unmock('@/db')
 
 import { db, schema } from '@/db'
 import { upgradeGuestToUser } from '../upgradeGuestToUser'
+import { ensureTestSchema } from './setupTestDb'
+
+beforeAll(async () => {
+  await ensureTestSchema()
+})
 
 function uniqueId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
