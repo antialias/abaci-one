@@ -1,20 +1,17 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { euclidProgress } from '@/db/schema/euclid-progress'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
 /**
  * GET - Fetch completed proposition IDs for a player
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
@@ -37,14 +34,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching euclid progress:', error)
     return NextResponse.json({ error: 'Failed to fetch progress' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST - Mark a proposition as completed (idempotent upsert)
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
@@ -80,4 +77,4 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error marking euclid progress:', error)
     return NextResponse.json({ error: 'Failed to save progress' }, { status: 500 })
   }
-}
+})

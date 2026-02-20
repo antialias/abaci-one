@@ -5,7 +5,8 @@
  * distributed by difficulty tier, with an optional answer key.
  */
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { generateWorksheetPDF, type WorksheetConfig } from '@/lib/flowcharts/worksheet-generator'
 
 interface WorksheetRequest {
@@ -27,9 +28,9 @@ interface WorksheetRequest {
   orderByDifficulty?: boolean
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { id: flowchartId } = await params
+    const { id: flowchartId } = (await params) as { id: string }
     const body: WorksheetRequest = await request.json()
 
     // Validate required fields
@@ -89,4 +90,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 500 }
     )
   }
-}
+})

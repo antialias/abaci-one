@@ -6,6 +6,7 @@ import { db } from '@/db'
 import { worksheetAttempts } from '@/db/schema'
 import { processWorksheetAttempt } from '@/lib/grading/processAttempt'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Trigger processing in background without blocking response
@@ -28,7 +29,7 @@ function processAttemptInBackground(attemptId: string) {
  * Optional: sessionId can be provided to group multiple uploads together
  * (used for QR code batch upload workflow)
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     // Get viewer ID from session (works for both authenticated users and guests)
     const userId = await getViewerId()
@@ -106,4 +107,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

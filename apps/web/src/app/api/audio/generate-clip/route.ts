@@ -12,10 +12,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { voice, clipId, text, tone } = body
@@ -112,4 +113,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})

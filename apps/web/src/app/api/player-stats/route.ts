@@ -5,6 +5,7 @@ import type { GameStatsBreakdown } from '@/db/schema/player-stats'
 import { playerStats } from '@/db/schema/player-stats'
 import { players } from '@/db/schema/players'
 import type { GetAllPlayerStatsResponse, PlayerStatsData } from '@/lib/arcade/stats/types'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 
 // Force dynamic rendering - this route uses headers()
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic'
  *
  * Fetches stats for all of the current user's players.
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     // 1. Authenticate user
     const viewerId = await getViewerId()
@@ -63,7 +64,7 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+})
 
 /**
  * Convert DB record to PlayerStatsData

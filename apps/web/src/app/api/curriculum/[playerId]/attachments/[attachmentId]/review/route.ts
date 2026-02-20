@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import {
@@ -18,10 +19,6 @@ import {
   computeParsingStats,
   ProblemCorrectionSchema,
 } from '@/lib/worksheet-parsing'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
 
 /**
  * Request body schema for corrections
@@ -34,9 +31,9 @@ const ReviewRequestSchema = z.object({
 /**
  * PATCH - Submit corrections to parsed problems
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -141,4 +138,4 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     console.error('Error applying corrections:', error)
     return NextResponse.json({ error: 'Failed to apply corrections' }, { status: 500 })
   }
-}
+})

@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { type NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering - this route reads from disk which changes at runtime
 export const dynamic = 'force-dynamic'
@@ -47,9 +46,7 @@ type SamplesResponse = ColumnClassifierSamplesResponse | BoundaryDetectorSamples
  * - column-classifier: Returns digit images (0-9) with counts
  * - boundary-detector: Returns frame images with corner annotations
  */
-export async function GET(request: NextRequest): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async (request) => {
   const searchParams = request.nextUrl.searchParams
   const modelType = searchParams.get('type') || 'column-classifier'
 
@@ -62,7 +59,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     console.error('[vision-training/samples] Error:', error)
     return Response.json({ error: 'Failed to read training samples' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * Get column classifier samples (digit images)

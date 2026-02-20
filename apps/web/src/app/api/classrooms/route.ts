@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -26,7 +27,7 @@ async function getOrCreateUser(viewerId: string) {
  *
  * Returns: { classroom } or { classroom: null }
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
@@ -38,7 +39,7 @@ export async function GET() {
     console.error('Failed to fetch classroom:', error)
     return NextResponse.json({ error: 'Failed to fetch classroom' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/classrooms
@@ -47,7 +48,7 @@ export async function GET() {
  * Body: { name: string }
  * Returns: { success: true, classroom } or { success: false, error }
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req) => {
   try {
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
@@ -74,4 +75,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

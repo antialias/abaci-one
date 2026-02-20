@@ -8,17 +8,14 @@ import { NextResponse } from 'next/server'
 import { canPerformAction } from '@/lib/classroom'
 import { advanceToNextPhase } from '@/lib/curriculum/progress-manager'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST - Advance player to next curriculum phase
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -45,4 +42,4 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error advancing phase:', error)
     return NextResponse.json({ error: 'Failed to advance phase' }, { status: 500 })
   }
-}
+})

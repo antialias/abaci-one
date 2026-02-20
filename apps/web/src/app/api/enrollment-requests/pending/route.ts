@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getPendingRequestsForParent } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
@@ -29,7 +30,7 @@ async function getOrCreateUser(viewerId: string) {
  *
  * Returns: { requests: EnrollmentRequestWithRelations[] }
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
@@ -44,4 +45,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+})

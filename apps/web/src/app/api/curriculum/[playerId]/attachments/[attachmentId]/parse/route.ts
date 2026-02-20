@@ -16,20 +16,17 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import { computeParsingStats, type WorksheetParsingResult } from '@/lib/worksheet-parsing'
 
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
-
 /**
  * GET - Get parsing status and results
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -117,7 +114,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error getting parse status:', error)
     return NextResponse.json({ error: 'Failed to get parsing status' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE - Cancel/reset parsing status
@@ -125,9 +122,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
  * Allows user to cancel a stuck or in-progress parsing operation.
  * Resets the parsing status to null so they can retry.
  */
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -184,4 +181,4 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     console.error('Error cancelling parse:', error)
     return NextResponse.json({ error: 'Failed to cancel parsing' }, { status: 500 })
   }
-}
+})

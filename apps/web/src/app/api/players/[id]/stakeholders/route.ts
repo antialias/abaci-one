@@ -1,7 +1,8 @@
 import { and, eq, inArray } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { classrooms, enrollmentRequests, users } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   canPerformAction,
   getEnrolledClassrooms,
@@ -20,10 +21,6 @@ import type {
   ViewerRelationType,
 } from '@/types/student'
 
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 /**
  * GET /api/players/[id]/stakeholders
  *
@@ -34,9 +31,9 @@ interface RouteParams {
  * - Current classroom presence
  * - Viewer's relationship summary
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id: playerId } = await params
+    const { id: playerId } = (await params) as { id: string }
     const viewerId = await getDbUserId()
 
     // Check authorization: must have at least view access
@@ -198,4 +195,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch stakeholders:', error)
     return NextResponse.json({ error: 'Failed to fetch stakeholders' }, { status: 500 })
   }
-}
+})

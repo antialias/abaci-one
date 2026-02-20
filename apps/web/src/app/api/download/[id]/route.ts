@@ -1,9 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { assetStore } from '@/lib/asset-store'
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = params
+    const { id } = (await params) as { id: string }
 
     console.log('🔍 Looking for asset:', id)
     console.log('📦 Available assets:', await assetStore.keys())
@@ -43,4 +44,4 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       { status: 500 }
     )
   }
-}
+})

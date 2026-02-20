@@ -1,8 +1,8 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { PHI_EXPLORE_SUBJECTS } from '@/components/toys/number-line/constants/phiExploreData'
 import { startPhiExploreGeneration } from '@/lib/tasks/phi-explore-generate'
 import type { PhiExploreGenerateInput } from '@/lib/tasks/phi-explore-generate'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const VALID_PROVIDERS = ['gemini', 'openai'] as const
 const VALID_THEMES = ['light', 'dark'] as const
@@ -15,10 +15,7 @@ const VALID_THEMES = ['light', 'dark'] as const
  *   pipeline: true → generates all subjects × [base, light, dark] in a single server-side task
  * Response: { taskId: string }
  */
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { provider, model, targets, forceRegenerate, theme, pipeline } = body
@@ -97,4 +94,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

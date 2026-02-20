@@ -1,16 +1,17 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import {
   createArcadeSession,
   deleteArcadeSession,
   getArcadeSession,
 } from '@/lib/arcade/session-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import type { GameName } from '@/lib/arcade/validation'
 
 /**
  * GET /api/arcade-session?userId=xxx
  * Get the active arcade session for a user
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const userId = request.nextUrl.searchParams.get('userId')
 
@@ -38,13 +39,13 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching arcade session:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/arcade-session
  * Create a new arcade session
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { userId, gameName, gameUrl, initialState, activePlayers, roomId } = body
@@ -82,13 +83,13 @@ export async function POST(request: NextRequest) {
     console.error('Error creating arcade session:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/arcade-session?userId=xxx
  * Delete an arcade session
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request) => {
   try {
     const userId = request.nextUrl.searchParams.get('userId')
 
@@ -103,4 +104,4 @@ export async function DELETE(request: NextRequest) {
     console.error('Error deleting arcade session:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})

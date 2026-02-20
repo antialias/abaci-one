@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getAccessiblePlayers } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
 
@@ -12,7 +13,7 @@ import { getViewerId } from '@/lib/viewer'
  *   presentStudents: Player[]
  * }
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
 
@@ -23,4 +24,4 @@ export async function GET() {
     console.error('Failed to fetch accessible players:', error)
     return NextResponse.json({ error: 'Failed to fetch accessible players' }, { status: 500 })
   }
-}
+})

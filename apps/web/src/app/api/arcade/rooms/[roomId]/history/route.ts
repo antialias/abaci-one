@@ -1,20 +1,17 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomHistoricalMembersWithStatus } from '@/lib/arcade/room-member-history'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * GET /api/arcade/rooms/:roomId/history
  * Get all historical members with their current status (host only)
  * Returns: array of historical members with status info
  */
-export async function GET(req: NextRequest, context: RouteContext) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if user is the host
@@ -37,4 +34,4 @@ export async function GET(req: NextRequest, context: RouteContext) {
     console.error('Failed to get room history:', error)
     return NextResponse.json({ error: 'Failed to get room history' }, { status: 500 })
   }
-}
+})

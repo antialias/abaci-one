@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { searchProfiles } from '@/lib/seed/embedding-search'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/debug/seed-students/search?q=...
@@ -8,9 +8,7 @@ import { requireAdmin } from '@/lib/auth/requireRole'
  * Natural language search over seed student profiles using embeddings.
  * Returns profile names ranked by semantic similarity to the query.
  */
-export async function GET(req: Request) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async (req: Request) => {
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('q')?.trim()
 
@@ -28,4 +26,4 @@ export async function GET(req: Request) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

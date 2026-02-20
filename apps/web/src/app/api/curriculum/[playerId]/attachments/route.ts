@@ -10,19 +10,16 @@ import { NextResponse } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * GET - Get attachment counts per session
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -57,4 +54,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching attachment counts:', error)
     return NextResponse.json({ error: 'Failed to fetch attachment counts' }, { status: 500 })
   }
-}
+})

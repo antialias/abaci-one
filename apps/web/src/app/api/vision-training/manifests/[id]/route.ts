@@ -1,7 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
-import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -14,14 +13,8 @@ const MANIFESTS_DIR = path.join(process.cwd(), 'data/vision-training/manifests')
  *
  * Get a manifest by ID.
  */
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { id } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
 
   if (!id) {
     return new Response(JSON.stringify({ error: 'Manifest ID is required' }), {
@@ -53,21 +46,15 @@ export async function GET(
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/vision-training/manifests/[id]
  *
  * Delete a manifest by ID.
  */
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { id } = await params
+export const DELETE = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
 
   if (!id) {
     return new Response(JSON.stringify({ error: 'Manifest ID is required' }), {
@@ -99,4 +86,4 @@ export async function DELETE(
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
-}
+}, { role: 'admin' })

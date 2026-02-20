@@ -1,7 +1,7 @@
 import { existsSync, statSync } from 'fs'
 import { join } from 'path'
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   MATH_CONSTANTS,
   METAPHOR_PROMPT_PREFIX,
@@ -21,10 +21,7 @@ const PHI_EXPLORE_DIR = join(IMAGES_DIR, 'phi-explore')
  *
  * Returns which constant images exist on disk and available providers.
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async () => {
   const constants = MATH_CONSTANTS.map((c) => {
     const metaphorFile = join(IMAGES_DIR, `${c.id}-metaphor.png`)
     const mathFile = join(IMAGES_DIR, `${c.id}-math.png`)
@@ -87,4 +84,4 @@ export async function GET() {
   })
 
   return NextResponse.json({ constants, providers, phiExplore })
-}
+}, { role: 'admin' })

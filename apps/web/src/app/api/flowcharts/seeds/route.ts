@@ -1,6 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { withAuth } from '@/lib/auth/withAuth'
 import { FLOWCHART_SEEDS } from '@/lib/flowcharts/definitions'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -29,7 +30,7 @@ interface SeedStatus {
  * List all available flowchart seeds and their database status.
  * Only available when visual debug is enabled.
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     // Get seed IDs
     const seedIds = Object.keys(FLOWCHART_SEEDS)
@@ -68,7 +69,7 @@ export async function GET() {
     console.error('Failed to get seed status:', error)
     return NextResponse.json({ error: 'Failed to get seed status' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/flowcharts/seeds
@@ -80,7 +81,7 @@ export async function GET() {
  * - action: 'seed' | 'seed-all' | 'reset'
  * - id?: string (required for 'seed' and 'reset')
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     // Require authentication
     const userId = await getDbUserId()
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const body = await req.json()
+    const body = await request.json()
     const { action, id } = body as { action: string; id?: string }
 
     if (action === 'seed') {
@@ -212,4 +213,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to seed flowchart:', error)
     return NextResponse.json({ error: 'Failed to seed flowchart' }, { status: 500 })
   }
-}
+})

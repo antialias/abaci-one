@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import {
   getPlayerCurriculum,
@@ -16,19 +17,15 @@ import {
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
 /**
  * GET - Fetch player's full curriculum state
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   const routeStart = performance.now()
   const timings: Record<string, number> = {}
 
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -113,16 +110,16 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching curriculum:', error)
     return NextResponse.json({ error: 'Failed to fetch curriculum' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH - Update curriculum settings
  *
  * Only parents and present teachers can modify curriculum settings.
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -150,4 +147,4 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     console.error('Error updating curriculum:', error)
     return NextResponse.json({ error: 'Failed to update curriculum' }, { status: 500 })
   }
-}
+})

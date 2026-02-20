@@ -21,17 +21,14 @@ import { db } from '@/db'
 import { backgroundTasks } from '@/db/schema/background-tasks'
 import { startVisionTraining, requestEarlyStop } from '@/lib/tasks/vision-training'
 import { cancelTask } from '@/lib/task-manager'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST - Start vision training as a background task
  */
-export async function POST(request: Request) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request: Request) => {
   try {
     // Check for already-running training task
     const existingTask = await db
@@ -91,15 +88,12 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })
 
 /**
  * GET - Check for active training task
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async () => {
   try {
     const tasks = await db
       .select({
@@ -132,15 +126,12 @@ export async function GET() {
     console.error('[VisionTrainingTaskAPI] Error checking task:', error)
     return NextResponse.json({ error: 'Failed to check task status' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE - Cancel the active training task
  */
-export async function DELETE() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const DELETE = withAuth(async () => {
   try {
     const tasks = await db
       .select()
@@ -163,15 +154,12 @@ export async function DELETE() {
     console.error('[VisionTrainingTaskAPI] Error cancelling:', error)
     return NextResponse.json({ error: 'Failed to cancel training' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * PUT - Request early stop (save model at end of current epoch)
  */
-export async function PUT() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const PUT = withAuth(async () => {
   try {
     const tasks = await db
       .select()
@@ -196,4 +184,4 @@ export async function PUT() {
     console.error('[VisionTrainingTaskAPI] Error requesting early stop:', error)
     return NextResponse.json({ error: 'Failed to request early stop' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

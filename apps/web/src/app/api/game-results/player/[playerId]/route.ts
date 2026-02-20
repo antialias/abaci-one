@@ -8,12 +8,9 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { gameResults } from '@/db/schema'
 import { eq, desc, and, sql } from 'drizzle-orm'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * GET - Fetch player's game history with optional filters
@@ -23,9 +20,9 @@ interface RouteParams {
  * - category: Filter to specific category
  * - limit: Max number of results (default 50)
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -97,4 +94,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching player game history:', error)
     return NextResponse.json({ error: 'Failed to fetch game history' }, { status: 500 })
   }
-}
+})

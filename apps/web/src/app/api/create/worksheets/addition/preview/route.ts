@@ -1,12 +1,13 @@
 // API route for generating addition worksheet previews (SVG)
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { generateWorksheetPreview } from '@/app/create/worksheets/generatePreview'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body: WorksheetFormState = await request.json()
 
@@ -38,4 +39,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

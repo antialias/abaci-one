@@ -8,12 +8,9 @@
 import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
-export async function GET(request: Request) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async (request) => {
   const url = new URL(request.url)
   const taskId = url.searchParams.get('taskId')
 
@@ -84,7 +81,7 @@ export async function GET(request: Request) {
   }))
 
   return NextResponse.json({ tasks })
-}
+}, { role: 'admin' })
 
 /**
  * Remove or truncate large fields from event payloads

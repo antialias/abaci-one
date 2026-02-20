@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { NextResponse } from 'next/server'
 import { deleteColumnClassifierSample } from '@/lib/vision/trainingDataDeletion'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Directory where collected training data is stored
@@ -117,9 +117,7 @@ async function collectMatchingImages(filters: FilterCriteria): Promise<TrainingI
  *   - playerId: Filter by player ID prefix
  *   - sessionId: Filter by session ID prefix
  */
-export async function GET(request: Request): Promise<NextResponse> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async (request) => {
   try {
     const url = new URL(request.url)
     const filters: FilterCriteria = {
@@ -141,7 +139,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     console.error('[vision-training] Error listing images:', error)
     return NextResponse.json({ error: 'Failed to list images' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/vision-training/images
@@ -154,9 +152,7 @@ export async function GET(request: Request): Promise<NextResponse> {
  * This endpoint ONLY deletes explicitly specified files. No bulk operations.
  * If you need bulk delete by filter, use a separate admin tool.
  */
-export async function DELETE(request: Request): Promise<NextResponse> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const DELETE = withAuth(async (request) => {
   try {
     const body = await request.json()
 
@@ -236,7 +232,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     console.error('[vision-training] Error deleting images:', error)
     return NextResponse.json({ error: 'Failed to delete images' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * PATCH /api/vision-training/images
@@ -246,9 +242,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
  *   - images: Array of { digit: number, filename: string } to reclassify
  *   - newDigit: Target digit (0-9)
  */
-export async function PATCH(request: Request): Promise<NextResponse> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const PATCH = withAuth(async (request) => {
   try {
     const body = await request.json()
 
@@ -328,4 +322,4 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     console.error('[vision-training] Error reclassifying images:', error)
     return NextResponse.json({ error: 'Failed to reclassify images' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

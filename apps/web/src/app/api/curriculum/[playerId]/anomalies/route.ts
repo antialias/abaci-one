@@ -12,17 +12,14 @@ import { NextResponse } from 'next/server'
 import { canPerformAction } from '@/lib/classroom'
 import { getSkillAnomalies } from '@/lib/curriculum/skill-unlock'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET - Get skill anomalies for teacher review
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -44,4 +41,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching skill anomalies:', error)
     return NextResponse.json({ error: 'Failed to fetch skill anomalies' }, { status: 500 })
   }
-}
+})

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { NextResponse } from 'next/server'
 import { getAllPostsMetadata } from '@/lib/blog'
 import { IMAGE_PROVIDERS } from '@/lib/tasks/blog-image-generate'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const BLOG_IMAGES_DIR = join(process.cwd(), 'public', 'blog')
 
@@ -12,10 +12,7 @@ const BLOG_IMAGES_DIR = join(process.cwd(), 'public', 'blog')
  *
  * Returns blog posts with their hero image status and available providers.
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async () => {
   const allPosts = await getAllPostsMetadata()
 
   const posts = allPosts.map((post) => {
@@ -47,6 +44,7 @@ export async function GET() {
       heroImageUrl: post.heroImageUrl ?? null,
       heroType: post.heroType ?? null,
       heroStoryId: post.heroStoryId ?? null,
+      heroComponentId: post.heroComponentId ?? null,
       imageExists,
       sizeBytes: generatedExists
         ? statSync(generatedFile).size
@@ -69,4 +67,4 @@ export async function GET() {
   })
 
   return NextResponse.json({ posts, providers })
-}
+}, { role: 'admin' })

@@ -7,6 +7,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import {
   recordSkillAttempt,
@@ -15,17 +16,13 @@ import {
 } from '@/lib/curriculum/progress-manager'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
 /**
  * POST - Record a single skill attempt
  * Requires 'start-session' permission (parent or teacher-present)
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -56,16 +53,16 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error recording skill attempt:', error)
     return NextResponse.json({ error: 'Failed to record skill attempt' }, { status: 500 })
   }
-}
+})
 
 /**
  * PUT - Set which skills are mastered (teacher manual override)
  * Requires 'start-session' permission (parent or teacher-present)
  * Body: { masteredSkillIds: string[] }
  */
-export async function PUT(request: Request, { params }: RouteParams) {
+export const PUT = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -97,7 +94,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     console.error('Error setting mastered skills:', error)
     return NextResponse.json({ error: 'Failed to set mastered skills' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH - Refresh skill recency by inserting a sentinel record
@@ -113,9 +110,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
  *
  * Returns: { sessionId: string, timestamp: Date } or 404 if skill not found
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -146,4 +143,4 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     console.error('Error refreshing skill recency:', error)
     return NextResponse.json({ error: 'Failed to refresh skill recency' }, { status: 500 })
   }
-}
+})

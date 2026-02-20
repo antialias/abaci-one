@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { worksheetAttempts } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/worksheets/sessions/[sessionId]
@@ -9,9 +10,9 @@ import { worksheetAttempts } from '@/db/schema'
  * Returns all worksheet attempts for a given session ID
  * Used by desktop to poll for new uploads from smartphone QR scan workflow
  */
-export async function GET(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { sessionId } = params
+    const { sessionId } = (await params) as { sessionId: string }
 
     if (!sessionId) {
       return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 })
@@ -47,4 +48,4 @@ export async function GET(request: NextRequest, { params }: { params: { sessionI
       { status: 500 }
     )
   }
-}
+})

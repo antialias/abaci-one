@@ -1,13 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { kickUserFromRoom } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/kick
@@ -15,11 +12,11 @@ type RouteContext = {
  * Body:
  *   - userId: string
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.userId) {
@@ -92,4 +89,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('Failed to kick user:', error)
     return NextResponse.json({ error: 'Failed to kick user' }, { status: 500 })
   }
-}
+})

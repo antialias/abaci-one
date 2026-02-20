@@ -5,18 +5,15 @@
  * Returns computed skill metrics for scoreboard display.
  */
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { computeStudentSkillMetrics } from '@/lib/curriculum/skill-metrics'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * GET /api/curriculum/[playerId]/skills/metrics
@@ -29,8 +26,8 @@ interface RouteParams {
  * - Accuracy trends
  * - Progress metrics (improvement rate, streak, problem counts)
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { playerId } = (await params) as { playerId: string }
 
   try {
     // Authorization check
@@ -61,4 +58,4 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error fetching skill metrics:', error)
     return NextResponse.json({ error: 'Failed to fetch skill metrics' }, { status: 500 })
   }
-}
+})

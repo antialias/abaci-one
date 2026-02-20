@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
   createEnrollmentRequest,
@@ -9,6 +9,7 @@ import {
 } from '@/lib/classroom'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -26,10 +27,6 @@ async function getOrCreateUser(viewerId: string) {
   return user
 }
 
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
-
 /**
  * POST /api/classrooms/[classroomId]/enroll-by-family-code
  * Teacher looks up a student by family code and creates an enrollment request
@@ -37,9 +34,9 @@ interface RouteParams {
  * Body: { familyCode: string }
  * Returns: { success: true, request, player } or { success: false, error }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (req, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
     const body = await req.json()
@@ -136,4 +133,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
+})

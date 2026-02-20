@@ -1,8 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -74,10 +73,7 @@ async function ensureManifestsDir(): Promise<void> {
  *   itemCount: number
  * }
  */
-export async function POST(request: Request): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { modelType, filters, items } = body
@@ -160,7 +156,7 @@ export async function POST(request: Request): Promise<Response> {
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
-}
+}, { role: 'admin' })
 
 /**
  * GET /api/vision-training/manifests
@@ -170,10 +166,7 @@ export async function POST(request: Request): Promise<Response> {
  * Query params:
  * - modelType (optional): Filter by model type
  */
-export async function GET(request: Request): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const modelTypeFilter = searchParams.get('modelType')
@@ -225,4 +218,4 @@ export async function GET(request: Request): Promise<Response> {
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
-}
+}, { role: 'admin' })

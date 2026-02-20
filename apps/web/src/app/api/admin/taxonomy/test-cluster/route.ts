@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
 import { generateEmbeddings, EMBEDDING_DIMENSIONS } from '@/lib/flowcharts/embedding'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST /api/admin/taxonomy/test-cluster
@@ -23,10 +23,7 @@ import { requireAdmin } from '@/lib/auth/requireRole'
  *   topicCount: number    // Number of test topics (first N entries in ids)
  * }
  */
-export async function POST(req: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = await req.json()
     const topics: string[] = body.topics
@@ -97,7 +94,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })
 
 /**
  * Compute cosine similarity between two embedding vectors.

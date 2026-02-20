@@ -1,9 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -19,7 +20,7 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  *   - tone: freeform tone/instruction for TTS generation
  *   - playCount: number of times played since last flush
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const clips = body?.clips as
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     console.error('Error upserting collected clips:', error)
     return NextResponse.json({ error: 'Failed to upsert collected clips' }, { status: 500 })
   }
-}
+})
 
 /**
  * GET /api/audio/collected-clips
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
  * Returns all collected clips with their say entries, sorted by play count descending.
  * Optional `?voice=onyx` param adds per-clip generation status for that voice.
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const voice = request.nextUrl.searchParams.get('voice')
 
@@ -150,4 +151,4 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching collected clips:', error)
     return NextResponse.json({ error: 'Failed to fetch collected clips' }, { status: 500 })
   }
-}
+})

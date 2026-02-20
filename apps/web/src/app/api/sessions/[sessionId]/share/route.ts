@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction, isParentOf } from '@/lib/classroom'
 import { getSessionPlan } from '@/lib/curriculum'
 import {
@@ -10,10 +11,6 @@ import {
 import { getShareUrl } from '@/lib/share/urls'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ sessionId: string }>
-}
-
 /**
  * POST /api/sessions/[sessionId]/share
  * Create a new share link for a session
@@ -21,8 +18,8 @@ interface RouteParams {
  * Body: { expiresIn: '1h' | '24h' }
  * Returns: { token, url, expiresAt }
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { sessionId } = await params
+export const POST = withAuth(async (request, { params }) => {
+  const { sessionId } = (await params) as { sessionId: string }
 
   try {
     // Get current user
@@ -65,14 +62,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.error('Error creating session share:', error)
     return NextResponse.json({ error: 'Failed to create share link' }, { status: 500 })
   }
-}
+})
 
 /**
  * GET /api/sessions/[sessionId]/share
  * List all active shares for a session
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { sessionId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { sessionId } = (await params) as { sessionId: string }
 
   try {
     // Get current user
@@ -108,14 +105,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error listing session shares:', error)
     return NextResponse.json({ error: 'Failed to list shares' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/sessions/[sessionId]/share?token=xxx
  * Revoke a specific share link
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const { sessionId } = await params
+export const DELETE = withAuth(async (request, { params }) => {
+  const { sessionId } = (await params) as { sessionId: string }
   const token = request.nextUrl.searchParams.get('token')
 
   if (!token) {
@@ -149,4 +146,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     console.error('Error revoking session share:', error)
     return NextResponse.json({ error: 'Failed to revoke share' }, { status: 500 })
   }
-}
+})

@@ -15,6 +15,7 @@ import type {
   TrainingConfig,
   TrainingResult,
 } from '@/app/vision-training/train/components/wizard/types'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Model type to public directory mapping
@@ -74,7 +75,7 @@ function serializeSession(session: VisionTrainingSession) {
  * - modelType: 'column-classifier' | 'boundary-detector' (optional)
  * - activeOnly: 'true' (optional) - only return active sessions
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const modelType = searchParams.get('modelType') as ModelType | null
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching training sessions:', error)
     return NextResponse.json({ error: 'Failed to fetch training sessions' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/vision/sessions
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
  * - tags?: string[]
  * - setActive?: boolean - whether to set this as the active model (default: false)
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const {
@@ -204,4 +205,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating training session:', error)
     return NextResponse.json({ error: 'Failed to create training session' }, { status: 500 })
   }
-}
+})

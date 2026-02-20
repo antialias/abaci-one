@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { backgroundTasks } from '@/db/schema/background-tasks'
+import { withAuth } from '@/lib/auth/withAuth'
 import { startFlowchartEmbedding } from '@/lib/tasks/flowchart-embed'
 import { cancelTask } from '@/lib/task-manager'
 
@@ -24,7 +25,7 @@ export const dynamic = 'force-dynamic'
 /**
  * POST - Start flowchart embedding as a background task
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     // Check for already-running embedding task
     const existingTask = await db
@@ -69,12 +70,12 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})
 
 /**
  * GET - Check for active embedding task
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const tasks = await db
       .select({
@@ -107,12 +108,12 @@ export async function GET() {
     console.error('[FlowchartEmbedTaskAPI] Error checking task:', error)
     return NextResponse.json({ error: 'Failed to check task status' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE - Cancel the active embedding task
  */
-export async function DELETE() {
+export const DELETE = withAuth(async () => {
   try {
     const tasks = await db
       .select()
@@ -135,4 +136,4 @@ export async function DELETE() {
     console.error('[FlowchartEmbedTaskAPI] Error cancelling:', error)
     return NextResponse.json({ error: 'Failed to cancel embedding' }, { status: 500 })
   }
-}
+})

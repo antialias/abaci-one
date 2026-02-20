@@ -1,17 +1,14 @@
 import bcrypt from 'bcryptjs'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getInvitation, acceptInvitation } from '@/lib/arcade/room-invitations'
 import { getJoinRequest } from '@/lib/arcade/room-join-requests'
 import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
 import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
 import { isUserBanned } from '@/lib/arcade/room-moderation'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/join
@@ -20,11 +17,11 @@ type RouteContext = {
  *   - displayName?: string (optional, will generate from viewerId if not provided)
  *   - password?: string (required for password-protected rooms)
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json().catch(() => ({}))
+    const body = await request.json().catch(() => ({}))
 
     console.log(`[Join API] User ${viewerId} attempting to join room ${roomId}`)
 
@@ -284,4 +281,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
     // Generic error
     return NextResponse.json({ error: 'Failed to join room' }, { status: 500 })
   }
-}
+})

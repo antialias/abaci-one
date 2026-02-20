@@ -26,6 +26,7 @@ import { desc, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import { smokeTestRuns } from '@/db/schema'
 import { metrics, updateSmokeTestMetrics } from '@/lib/metrics'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,7 @@ interface SmokeTestResultsResponse {
   message?: string
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse<SmokeTestResultsResponse>> {
+export const POST = withAuth(async (request): Promise<NextResponse<SmokeTestResultsResponse>> => {
   try {
     const body = (await request.json()) as SmokeTestResultsRequest
 
@@ -151,4 +152,4 @@ export async function POST(request: NextRequest): Promise<NextResponse<SmokeTest
       { status: 500 }
     )
   }
-}
+})

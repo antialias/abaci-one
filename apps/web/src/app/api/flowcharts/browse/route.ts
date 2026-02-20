@@ -1,5 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
 import { getAllFlowchartEmbeddings, cosineSimilarity } from '@/lib/flowcharts/embedding-search'
@@ -20,9 +21,9 @@ import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
  *
  * Returns: { flowcharts: FlowchartMeta[], total: number }
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
-    const url = new URL(req.url)
+    const url = new URL(request.url)
     const difficulty = url.searchParams.get('difficulty') as
       | 'Beginner'
       | 'Intermediate'
@@ -160,4 +161,4 @@ export async function GET(req: NextRequest) {
     console.error('Failed to browse flowcharts:', error)
     return NextResponse.json({ error: 'Failed to browse flowcharts' }, { status: 500 })
   }
-}
+})

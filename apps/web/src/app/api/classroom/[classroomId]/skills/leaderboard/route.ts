@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getDbUserId } from '@/lib/viewer'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt/compute-bkt'
 import { BKT_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
@@ -27,17 +28,13 @@ import {
 } from '@/lib/curriculum/skill-metrics'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
-
 /**
  * GET /api/classroom/[classroomId]/skills/leaderboard
  * Get skill-based leaderboard for a classroom.
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
 
     if (!classroomId) {
       return NextResponse.json({ error: 'Classroom ID required' }, { status: 400 })
@@ -145,4 +142,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching classroom skills leaderboard:', error)
     return NextResponse.json({ error: 'Failed to fetch skills leaderboard' }, { status: 500 })
   }
-}
+})

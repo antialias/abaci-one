@@ -11,17 +11,14 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { clearDeferral, deferProgression } from '@/lib/curriculum/progression-deferrals'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     const { skillId } = await request.json()
 
     if (!playerId || !skillId) {
@@ -41,11 +38,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error deferring progression:', error)
     return NextResponse.json({ error: 'Failed to defer progression' }, { status: 500 })
   }
-}
+})
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export const DELETE = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     const { skillId } = await request.json()
 
     if (!playerId || !skillId) {
@@ -65,4 +62,4 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     console.error('Error clearing deferral:', error)
     return NextResponse.json({ error: 'Failed to clear deferral' }, { status: 500 })
   }
-}
+})

@@ -16,11 +16,12 @@
  * }
  */
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { desc } from 'drizzle-orm'
 import { db } from '@/db'
 import { coverageResults } from '@/db/schema'
 import { updateCoverageMetrics } from '@/lib/metrics'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ interface CoverageRequest {
   statements: number
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   // Verify authorization
   const authHeader = request.headers.get('authorization')
   const expectedToken = process.env.COVERAGE_API_TOKEN
@@ -102,4 +103,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

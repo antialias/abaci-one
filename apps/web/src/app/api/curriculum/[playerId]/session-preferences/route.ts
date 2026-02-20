@@ -13,16 +13,13 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { playerSessionPreferences } from '@/db/schema/player-session-preferences'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -47,11 +44,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching session preferences:', error)
     return NextResponse.json({ error: 'Failed to fetch session preferences' }, { status: 500 })
   }
-}
+})
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export const PUT = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -80,4 +77,4 @@ export async function PUT(request: Request, { params }: RouteParams) {
     console.error('Error saving session preferences:', error)
     return NextResponse.json({ error: 'Failed to save session preferences' }, { status: 500 })
   }
-}
+})

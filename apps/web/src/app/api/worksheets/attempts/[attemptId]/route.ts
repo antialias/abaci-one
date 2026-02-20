@@ -2,15 +2,16 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { problemAttempts, worksheetAttempts } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get grading results for a worksheet attempt
  *
  * Returns the grading status and full results once AI grading is complete.
  */
-export async function GET(request: NextRequest, { params }: { params: { attemptId: string } }) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { attemptId } = params
+    const { attemptId } = (await params) as { attemptId: string }
 
     // Get attempt record
     const [attempt] = await db
@@ -75,4 +76,4 @@ export async function GET(request: NextRequest, { params }: { params: { attemptI
       { status: 500 }
     )
   }
-}
+})

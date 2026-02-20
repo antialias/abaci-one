@@ -1,15 +1,17 @@
 // API route for generating a single worksheet page (SVG)
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { generateSinglePage } from '@/app/create/worksheets/generatePreview'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest, { params }: { params: { pageNumber: string } }) {
+export const POST = withAuth(async (request, { params }) => {
   try {
     const body: WorksheetFormState = await request.json()
-    const pageNumber = parseInt(params.pageNumber, 10)
+    const { pageNumber: pageNumberStr } = (await params) as { pageNumber: string }
+    const pageNumber = parseInt(pageNumberStr, 10)
 
     if (isNaN(pageNumber) || pageNumber < 0) {
       return NextResponse.json({ error: 'Invalid page number' }, { status: 400 })
@@ -46,4 +48,4 @@ export async function POST(request: NextRequest, { params }: { params: { pageNum
       { status: 500 }
     )
   }
-}
+})

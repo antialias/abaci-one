@@ -1,9 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { assetStore } from '@/lib/asset-store'
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = params
+    const { id } = (await params) as { id: string }
 
     const asset = await assetStore.get(id)
     if (!asset) {
@@ -25,4 +26,4 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     console.error('Asset download error:', error)
     return NextResponse.json({ error: 'Failed to download asset' }, { status: 500 })
   }
-}
+})

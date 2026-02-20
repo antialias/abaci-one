@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { storeImage } from '@/lib/image-storage'
 import { generateAndStoreImage } from '@/lib/image-generation'
 import { getPreviewTarget } from '@/lib/homepage-previews'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST /api/admin/homepage-previews/generate
@@ -15,10 +15,7 @@ import { requireAdmin } from '@/lib/auth/requireRole'
  * 2. AI generation:
  *    Body: { id, provider, model }
  */
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body = await request.json()
     const { id, imageData, provider, model } = body
@@ -97,4 +94,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

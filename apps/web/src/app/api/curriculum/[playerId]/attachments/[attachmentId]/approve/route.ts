@@ -15,17 +15,14 @@ import { sessionPlans, type SlotResult } from '@/db/schema/session-plans'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import { convertToSlotResults, computeParsingStats } from '@/lib/worksheet-parsing'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST - Approve parsing and add problems to existing session
  */
-export async function POST(_request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -166,4 +163,4 @@ export async function POST(_request: Request, { params }: RouteParams) {
     console.error('Error approving and adding to session:', error)
     return NextResponse.json({ error: 'Failed to approve and add to session' }, { status: 500 })
   }
-}
+})

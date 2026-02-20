@@ -1,12 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getPlayer, getRoomActivePlayers, setPlayerActiveStatus } from '@/lib/arcade/player-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/deactivate-player
@@ -14,17 +11,17 @@ type RouteContext = {
  * Body:
  *   - playerId: string - The player to deactivate
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   console.log('[Deactivate Player API] POST request received')
 
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     console.log('[Deactivate Player API] roomId:', roomId)
 
     const viewerId = await getViewerId()
     console.log('[Deactivate Player API] viewerId:', viewerId)
 
-    const body = await req.json()
+    const body = await request.json()
     console.log('[Deactivate Player API] body:', body)
 
     // Validate required fields
@@ -120,4 +117,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('[Deactivate Player API] Error stack:', error.stack)
     return NextResponse.json({ error: 'Failed to deactivate player' }, { status: 500 })
   }
-}
+})

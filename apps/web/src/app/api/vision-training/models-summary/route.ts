@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering - this route reads from disk which changes at runtime
 export const dynamic = 'force-dynamic'
@@ -53,9 +52,7 @@ function calculateBoundaryDetectorQuality(totalFrames: number): DataQuality {
  * Returns a summary of available training data for all model types.
  * Used by the model selection card in the training wizard.
  */
-export async function GET(): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async () => {
   try {
     // --- Column Classifier Summary ---
     let columnTotalImages = 0
@@ -123,4 +120,4 @@ export async function GET(): Promise<Response> {
     console.error('[vision-training/models-summary] Error:', error)
     return Response.json({ error: 'Failed to read model summaries' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

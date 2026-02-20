@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getLinkedChildren } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
@@ -10,7 +11,7 @@ import { getViewerId } from '@/lib/viewer'
  *
  * Returns: { children: Player[] }
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
 
@@ -30,4 +31,4 @@ export async function GET() {
     console.error('Failed to fetch children:', error)
     return NextResponse.json({ error: 'Failed to fetch children' }, { status: 500 })
   }
-}
+})

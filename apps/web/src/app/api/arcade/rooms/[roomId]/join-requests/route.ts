@@ -1,21 +1,18 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createJoinRequest, getPendingJoinRequests } from '@/lib/arcade/room-join-requests'
 import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * GET /api/arcade/rooms/:roomId/join-requests
  * Get all pending join requests for a room (host only)
  */
-export async function GET(req: NextRequest, context: RouteContext) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if user is the host
@@ -38,7 +35,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     console.error('Failed to get join requests:', error)
     return NextResponse.json({ error: 'Failed to get join requests' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/arcade/rooms/:roomId/join-requests
@@ -46,11 +43,11 @@ export async function GET(req: NextRequest, context: RouteContext) {
  * Body:
  *   - displayName?: string (optional, will generate from viewerId if not provided)
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json().catch(() => ({}))
+    const body = await request.json().catch(() => ({}))
 
     // Get room to verify it exists
     const room = await getRoomById(roomId)
@@ -78,7 +75,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     // Create join request
-    const request = await createJoinRequest({
+    const joinRequest = await createJoinRequest({
       roomId,
       userId: viewerId,
       userName: displayName,
@@ -96,10 +93,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
         io.to(`user:${room.createdBy}`).emit('join-request-submitted', {
           roomId,
           request: {
-            id: request.id,
-            userId: request.userId,
-            userName: request.userName,
-            createdAt: request.requestedAt,
+            id: joinRequest.id,
+            userId: joinRequest.userId,
+            userName: joinRequest.userName,
+            createdAt: joinRequest.requestedAt,
           },
         })
 
@@ -112,9 +109,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     }
 
-    return NextResponse.json({ request }, { status: 201 })
+    return NextResponse.json({ request: joinRequest }, { status: 201 })
   } catch (error: any) {
     console.error('Failed to create join request:', error)
     return NextResponse.json({ error: 'Failed to create join request' }, { status: 500 })
   }
-}
+})

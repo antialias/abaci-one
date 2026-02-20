@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   createRemoteCameraSession,
   getRemoteCameraSession,
@@ -8,7 +9,7 @@ import {
  * POST /api/remote-camera
  * Create a new remote camera session
  */
-export async function POST() {
+export const POST = withAuth(async () => {
   try {
     const session = await createRemoteCameraSession()
 
@@ -20,13 +21,13 @@ export async function POST() {
     console.error('Failed to create remote camera session:', error)
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
   }
-}
+})
 
 /**
  * GET /api/remote-camera?sessionId=xxx
  * Check if a session is valid and get its status
  */
-export async function GET(request: Request) {
+export const GET = withAuth(async (request) => {
   try {
     const url = new URL(request.url)
     const sessionId = url.searchParams.get('sessionId')
@@ -50,4 +51,4 @@ export async function GET(request: Request) {
     console.error('Failed to get remote camera session:', error)
     return NextResponse.json({ error: 'Failed to get session' }, { status: 500 })
   }
-}
+})

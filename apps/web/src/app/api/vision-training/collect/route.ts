@@ -2,9 +2,9 @@ import fs from 'fs/promises'
 import path from 'path'
 import { type NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import type { TrainingDataRequest, TrainingDataResponse } from '@/lib/vision/trainingData'
+import type { TrainingDataRequest } from '@/lib/vision/trainingData'
 import { valueToDigitLabels } from '@/lib/vision/trainingData'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Directory where collected training data is stored
@@ -18,9 +18,7 @@ const TRAINING_DATA_DIR = path.join(process.cwd(), 'data', 'vision-training', 'c
  * Saves column images for training the column classifier model.
  * Images are organized by digit (0-9) in subdirectories.
  */
-export async function POST(request: NextRequest): Promise<NextResponse<TrainingDataResponse>> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth as NextResponse<TrainingDataResponse>
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body: TrainingDataRequest = await request.json()
     const { columns, correctAnswer, playerId, sessionId } = body
@@ -93,4 +91,4 @@ export async function POST(request: NextRequest): Promise<NextResponse<TrainingD
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

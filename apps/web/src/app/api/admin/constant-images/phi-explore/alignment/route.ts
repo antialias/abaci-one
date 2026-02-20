@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import path from 'path'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 interface AlignmentConfig {
   scale: number
@@ -31,13 +30,10 @@ async function readAlignment(): Promise<AlignmentData> {
  * Returns the current alignment data for all subjects.
  * Format: { [subjectId]: { [theme]: AlignmentConfig } }
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async () => {
   const data = await readAlignment()
   return NextResponse.json(data)
-}
+}, { role: 'admin' })
 
 /**
  * POST /api/admin/constant-images/phi-explore/alignment
@@ -45,10 +41,7 @@ export async function GET() {
  * Body: { subjectId: string, theme: 'light' | 'dark', alignment: AlignmentConfig }
  * Merges the alignment for the given subject+theme and writes back.
  */
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { subjectId, theme, alignment } = body
@@ -95,4 +88,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

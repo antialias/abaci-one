@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { approveEnrollmentRequest, getLinkedParentIds, getTeacherClassroom } from '@/lib/classroom'
 import {
@@ -7,6 +7,7 @@ import {
   emitEnrollmentRequestApproved,
 } from '@/lib/classroom/socket-emitter'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -24,19 +25,15 @@ async function getOrCreateUser(viewerId: string) {
   return user
 }
 
-interface RouteParams {
-  params: Promise<{ classroomId: string; requestId: string }>
-}
-
 /**
  * POST /api/classrooms/[classroomId]/enrollment-requests/[requestId]/approve
  * Teacher approves enrollment request
  *
  * Returns: { request, enrolled: boolean }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId, requestId } = await params
+    const { classroomId, requestId } = (await params) as { classroomId: string; requestId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -104,4 +101,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const message = error instanceof Error ? error.message : 'Failed to approve enrollment request'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

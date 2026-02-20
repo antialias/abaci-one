@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 import { generateFamilyCode, parentChild } from '@/db/schema'
 import {
   DEFAULT_SESSION_PREFERENCES,
@@ -66,9 +66,7 @@ type PresetName = keyof typeof PRESETS
  * When `setupOnly: true`, skips session generation (steps 3-4) and returns
  * player info so the caller can open the StartPracticeModal instead.
  */
-export async function POST(req: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = await req.json()
     const preset = (body.preset as PresetName) || 'game-break'
@@ -192,4 +190,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

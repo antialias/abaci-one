@@ -15,11 +15,12 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { metricsRegistry, initSmokeTestMetrics, initCoverageMetrics } from '@/lib/metrics'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     // Initialize metrics from DB on first scrape (runs once per pod)
     await initSmokeTestMetrics()
@@ -40,4 +41,4 @@ export async function GET() {
 
     return NextResponse.json({ error: 'Failed to collect metrics' }, { status: 500 })
   }
-}
+})

@@ -12,6 +12,7 @@ import {
   WORKSHEET_LIMITS,
   validateWorksheetLimits,
 } from '@/app/create/worksheets/constants/validation'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/worksheets/settings?type=addition
@@ -24,10 +25,10 @@ import {
  *   - config: Parsed and validated config (latest version)
  *   - exists: boolean (true if user has saved settings)
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const { searchParams } = new URL(req.url)
+    const { searchParams } = new URL(request.url)
     const worksheetType = searchParams.get('type')
 
     if (!worksheetType) {
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
     console.error('Failed to load worksheet settings:', error)
     return NextResponse.json({ error: 'Failed to load worksheet settings' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/worksheets/settings
@@ -87,10 +88,10 @@ export async function GET(req: NextRequest) {
  *   - success: boolean
  *   - id: string (worksheet_settings row id)
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     const { type: worksheetType, config } = body
 
@@ -192,4 +193,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to save worksheet settings:', error)
     return NextResponse.json({ error: 'Failed to save worksheet settings' }, { status: 500 })
   }
-}
+})

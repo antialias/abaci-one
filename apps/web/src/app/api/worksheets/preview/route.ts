@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { generateWorksheetPreview } from '@/app/create/worksheets/generatePreview'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * POST /api/worksheets/preview
  * Generate a preview of a worksheet configuration
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { config } = body as { config: WorksheetFormState }
@@ -68,4 +69,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})

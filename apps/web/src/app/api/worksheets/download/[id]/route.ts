@@ -20,10 +20,11 @@ import {
 } from '@/app/create/worksheets/problemGenerator'
 import { generateTypstSource } from '@/app/create/worksheets/typstGenerator'
 import type { WorksheetProblem, WorksheetFormState } from '@/app/create/worksheets/types'
+import { withAuth } from '@/lib/auth/withAuth'
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
 
     // Validate ID format
     if (!isValidShareId(id)) {
@@ -150,4 +151,4 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       { status: 500 }
     )
   }
-}
+})

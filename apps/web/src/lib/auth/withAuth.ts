@@ -7,12 +7,17 @@ export interface AuthenticatedContext {
   userId: string
   userEmail: string | null
   userRole: 'guest' | 'user' | 'admin'
+  /** Next.js dynamic route params (e.g. { id: string }). Always present — resolves to {} for non-dynamic routes. */
+  params: Promise<Record<string, string | string[]>>
 }
 
 interface WithAuthOptions {
   /** Minimum role required. If not specified, route-level RBAC from Casbin decides. */
   role?: 'user' | 'admin'
 }
+
+/** The context Next.js passes as the second argument to route handlers. */
+type NextRouteContext = { params?: Promise<Record<string, string | string[]>> }
 
 type RouteHandler = (
   request: NextRequest,
@@ -36,7 +41,7 @@ type RouteHandler = (
  * ```
  */
 export function withAuth(handler: RouteHandler, options?: WithAuthOptions) {
-  return async (request: NextRequest) => {
+  return async (request: NextRequest, routeContext?: NextRouteContext) => {
     const session = await auth()
 
     // Determine role
@@ -84,6 +89,11 @@ export function withAuth(handler: RouteHandler, options?: WithAuthOptions) {
       }
     }
 
-    return handler(request, { userId, userEmail, userRole: role })
+    return handler(request, {
+      userId,
+      userEmail,
+      userRole: role,
+      params: routeContext?.params ?? Promise.resolve({}),
+    })
   }
 }

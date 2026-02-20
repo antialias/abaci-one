@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
-import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const postsDirectory = path.join(process.cwd(), 'content', 'blog')
 
@@ -11,14 +11,8 @@ const postsDirectory = path.join(process.cwd(), 'content', 'blog')
  *
  * Update blog post frontmatter fields (featured, heroCrop, heroPrompt).
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { slug } = await params
+export const PATCH = withAuth(async (request, { params }) => {
+  const { slug } = (await params) as { slug: string }
 
   const filePath = path.join(postsDirectory, `${slug}.md`)
   if (!fs.existsSync(filePath)) {
@@ -31,6 +25,7 @@ export async function PATCH(
     heroPrompt?: string
     heroType?: string
     heroStoryId?: string
+    heroComponentId?: string
   }
   try {
     body = await request.json()
@@ -68,6 +63,13 @@ export async function PATCH(
       delete data.heroStoryId
     }
   }
+  if (typeof body.heroComponentId === 'string') {
+    if (body.heroComponentId.trim()) {
+      data.heroComponentId = body.heroComponentId.trim()
+    } else {
+      delete data.heroComponentId
+    }
+  }
 
   const updated = matter.stringify(content, data)
   fs.writeFileSync(filePath, updated, 'utf8')
@@ -79,5 +81,6 @@ export async function PATCH(
     heroPrompt: data.heroPrompt ?? null,
     heroType: data.heroType ?? null,
     heroStoryId: data.heroStoryId ?? null,
+    heroComponentId: data.heroComponentId ?? null,
   })
-}
+}, { role: 'admin' })

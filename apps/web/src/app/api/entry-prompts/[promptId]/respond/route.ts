@@ -1,13 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { enterClassroom, isParent } from '@/lib/classroom'
 import { emitEntryPromptAccepted, emitEntryPromptDeclined } from '@/lib/classroom/socket-emitter'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ promptId: string }>
-}
 
 /**
  * POST /api/entry-prompts/[promptId]/respond
@@ -15,11 +12,11 @@ interface RouteParams {
  *
  * Body: { action: 'accept' | 'decline' }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { promptId } = await params
+    const { promptId } = (await params) as { promptId: string }
     const userId = await getDbUserId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate action
     if (!body.action || !['accept', 'decline'].includes(body.action)) {
@@ -167,4 +164,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to respond to entry prompt:', error)
     return NextResponse.json({ error: 'Failed to respond to entry prompt' }, { status: 500 })
   }
-}
+})

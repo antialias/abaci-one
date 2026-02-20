@@ -1,10 +1,10 @@
 import { existsSync, rmSync } from 'fs'
 import { join } from 'path'
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -14,15 +14,9 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  * Removes all clips for the given voice by deleting its directory.
  * Refuses to delete the currently active voice.
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ voice: string }> }
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { voice } = await params
+    const { voice } = (await params) as { voice: string }
 
     if (!voice || voice.trim().length === 0) {
       return NextResponse.json({ error: 'voice parameter is required' }, { status: 400 })
@@ -57,4 +51,4 @@ export async function DELETE(
     console.error('Error removing voice:', error)
     return NextResponse.json({ error: 'Failed to remove voice' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

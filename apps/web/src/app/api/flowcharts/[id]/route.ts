@@ -1,10 +1,7 @@
 import { and, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/flowcharts/[id]
@@ -15,9 +12,9 @@ interface RouteParams {
  *
  * Returns: { flowchart: { definition, mermaid, meta, source } } or 404
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
 
     // Load from database only
     const dbFlowchart = await db.query.teacherFlowcharts.findFirst({
@@ -59,4 +56,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch flowchart:', error)
     return NextResponse.json({ error: 'Failed to fetch flowchart' }, { status: 500 })
   }
-}
+})

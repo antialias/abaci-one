@@ -12,12 +12,9 @@ import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans, visionRecordings } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; sessionId: string }>
-}
 
 export interface SessionRecordingResponse {
   hasRecording: boolean
@@ -45,9 +42,9 @@ export interface SessionRecordingResponse {
 /**
  * GET - Get recording metadata for a session
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, sessionId } = await params
+    const { playerId, sessionId } = (await params) as { playerId: string; sessionId: string }
 
     if (!playerId || !sessionId) {
       return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
@@ -110,4 +107,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching session recording:', error)
     return NextResponse.json({ error: 'Failed to fetch recording' }, { status: 500 })
   }
-}
+})

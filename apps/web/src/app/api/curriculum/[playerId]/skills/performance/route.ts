@@ -1,18 +1,15 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { analyzeSkillPerformance } from '@/lib/curriculum/progress-manager'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * GET /api/curriculum/[playerId]/skills/performance
  * Get skill performance analysis for a player (response times, strengths/weaknesses)
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { playerId } = (await params) as { playerId: string }
 
   try {
     // Authorization check
@@ -28,4 +25,4 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error fetching skill performance:', error)
     return NextResponse.json({ error: 'Failed to fetch skill performance' }, { status: 500 })
   }
-}
+})

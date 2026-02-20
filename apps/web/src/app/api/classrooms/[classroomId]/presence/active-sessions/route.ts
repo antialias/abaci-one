@@ -1,8 +1,9 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getClassroomPresence, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -18,10 +19,6 @@ async function getOrCreateUser(viewerId: string) {
   }
 
   return user
-}
-
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
 }
 
 /**
@@ -58,9 +55,9 @@ interface ActiveSessionInfo {
  * It returns sessions for ALL enrolled students, not just present ones.
  * The `isPresent` field indicates whether the teacher can observe the session.
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -125,4 +122,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch active sessions:', error)
     return NextResponse.json({ error: 'Failed to fetch active sessions' }, { status: 500 })
   }
-}
+})

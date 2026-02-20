@@ -1,9 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { findRelatedFlowcharts } from '@/lib/flowcharts/embedding-search'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/flowcharts/[id]/related
@@ -13,9 +10,9 @@ interface RouteParams {
  *
  * Response: { related: FlowchartSearchResult[] }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
 
     const related = await findRelatedFlowcharts(id, {
       limit: 5,
@@ -27,4 +24,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to find related flowcharts:', error)
     return NextResponse.json({ error: 'Failed to find related flowcharts' }, { status: 500 })
   }
-}
+})

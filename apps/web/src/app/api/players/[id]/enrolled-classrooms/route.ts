@@ -1,10 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getEnrolledClassrooms, canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/players/[id]/enrolled-classrooms
@@ -12,9 +9,9 @@ interface RouteParams {
  *
  * Returns: { classrooms: Classroom[] }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id: playerId } = await params
+    const { id: playerId } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     // Check authorization: must have at least view access
@@ -30,4 +27,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch enrolled classrooms:', error)
     return NextResponse.json({ error: 'Failed to fetch enrolled classrooms' }, { status: 500 })
   }
-}
+})

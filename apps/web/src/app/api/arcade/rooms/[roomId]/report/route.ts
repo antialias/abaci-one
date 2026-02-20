@@ -1,12 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createReport } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/report
@@ -16,11 +13,11 @@ type RouteContext = {
  *   - reason: string (enum)
  *   - details?: string (optional)
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.reportedUserId || !body.reason) {
@@ -94,4 +91,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('Failed to submit report:', error)
     return NextResponse.json({ error: 'Failed to submit report' }, { status: 500 })
   }
-}
+})

@@ -10,6 +10,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import {
   getSkillTutorialProgress,
@@ -21,16 +22,12 @@ import {
 import { getSkillTutorialConfig } from '@/lib/curriculum/skill-unlock'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
 /**
  * GET - Get tutorial progress for a specific skill
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -68,14 +65,14 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching tutorial progress:', error)
     return NextResponse.json({ error: 'Failed to fetch tutorial progress' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST - Handle tutorial actions
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -132,4 +129,4 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error handling tutorial action:', error)
     return NextResponse.json({ error: 'Failed to handle tutorial action' }, { status: 500 })
   }
-}
+})

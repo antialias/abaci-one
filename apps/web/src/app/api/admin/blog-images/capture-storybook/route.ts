@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const BLOG_IMAGES_DIR = path.join(process.cwd(), 'public', 'blog')
 
@@ -11,10 +11,7 @@ const BLOG_IMAGES_DIR = path.join(process.cwd(), 'public', 'blog')
  * Captures a screenshot of a Storybook story using Puppeteer.
  * Requires Storybook running locally on port 6006.
  */
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request: NextRequest) => {
   let body: { slug: string; storyId: string; width?: number; height?: number }
   try {
     body = await request.json()
@@ -40,7 +37,11 @@ export async function POST(request: NextRequest) {
 
   let browser
   try {
-    browser = await puppeteer.default.launch({ headless: true })
+    browser = await puppeteer.default.launch({
+      headless: true,
+      protocolTimeout: 120000,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    })
     const page = await browser.newPage()
     await page.setViewport({ width, height })
 
@@ -74,4 +75,4 @@ export async function POST(request: NextRequest) {
       await browser.close()
     }
   }
-}
+}, { role: 'admin' })

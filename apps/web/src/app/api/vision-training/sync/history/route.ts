@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { visionTrainingSyncHistory, toSyncHistorySummary } from '@/db/schema'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering - this route reads from database
 export const dynamic = 'force-dynamic'
@@ -18,10 +18,7 @@ type ModelType = 'column-classifier' | 'boundary-detector'
  * - modelType: 'column-classifier' | 'boundary-detector' (default: column-classifier)
  * - limit: Number of records to return (default: 20, max: 100)
  */
-export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const modelTypeParam = searchParams.get('modelType')
@@ -70,7 +67,7 @@ export async function GET(request: NextRequest) {
     console.error('[vision-training/sync/history] Error:', error)
     return Response.json({ error: 'Failed to fetch sync history' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/vision-training/sync/history
@@ -80,10 +77,7 @@ export async function GET(request: NextRequest) {
  * Query params:
  * - id: Record ID to delete
  */
-export async function DELETE(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const DELETE = withAuth(async (request: NextRequest) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get('id')
@@ -99,4 +93,4 @@ export async function DELETE(request: NextRequest) {
     console.error('[vision-training/sync/history] DELETE Error:', error)
     return Response.json({ error: 'Failed to delete sync history record' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

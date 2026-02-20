@@ -10,12 +10,13 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
 import { generateApiKey } from '@/lib/mcp/auth'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET - List all API keys for the current user
  * Key values are masked for security (only shown on creation)
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const userId = await getDbUserId()
 
@@ -39,13 +40,13 @@ export async function GET() {
     console.error('Error fetching MCP API keys:', error)
     return NextResponse.json({ error: 'Failed to fetch API keys' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST - Create a new API key
  * Returns the full key value - this is the only time it's shown!
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const userId = await getDbUserId()
     console.log('[MCP-KEYS] Got userId:', userId)
@@ -90,4 +91,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
-import { NextResponse, type NextRequest } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const PROOFS_DIR = join(process.cwd(), 'src', 'data', 'euclid-proofs')
 
@@ -13,14 +13,8 @@ function proofPath(id: string): string {
  * GET /api/admin/euclid/[id]
  * Read a single proof JSON.
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { id } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
   const filePath = proofPath(id)
 
   if (!existsSync(filePath)) {
@@ -36,20 +30,14 @@ export async function GET(
       { status: 500 },
     )
   }
-}
+}, { role: 'admin' })
 
 /**
  * PUT /api/admin/euclid/[id]
  * Write/update a proof JSON.
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { id } = await params
+export const PUT = withAuth(async (request, { params }) => {
+  const { id } = (await params) as { id: string }
   const filePath = proofPath(id)
 
   try {
@@ -63,20 +51,14 @@ export async function PUT(
       { status: 500 },
     )
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/admin/euclid/[id]
  * Delete a proof JSON.
  */
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { id } = await params
+export const DELETE = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
   const filePath = proofPath(id)
 
   if (!existsSync(filePath)) {
@@ -92,4 +74,4 @@ export async function DELETE(
       { status: 500 },
     )
   }
-}
+}, { role: 'admin' })

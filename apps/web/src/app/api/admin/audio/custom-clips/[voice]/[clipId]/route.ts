@@ -9,13 +9,9 @@
 import { mkdir, rename, unlink, stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
-
-interface RouteParams {
-  params: Promise<{ voice: string; clipId: string }>
-}
 
 function validateSegment(segment: string): boolean {
   return !!segment && !segment.includes('/') && !segment.includes('..') && !segment.includes('\0')
@@ -26,12 +22,9 @@ function validateSegment(segment: string): boolean {
  *
  * Upload a recorded audio clip. Expects multipart FormData with an `audio` field.
  */
-export async function POST(request: Request, { params }: RouteParams) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { voice, clipId } = await params
+    const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
     if (!validateSegment(voice) || !validateSegment(clipId)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
@@ -58,7 +51,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error uploading custom clip:', error)
     return NextResponse.json({ error: 'Failed to upload clip' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * PATCH /api/admin/audio/custom-clips/[voice]/[clipId]
@@ -66,12 +59,9 @@ export async function POST(request: Request, { params }: RouteParams) {
  * Deactivate or reactivate a clip.
  * Body: { action: 'deactivate' | 'reactivate' }
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { voice, clipId } = await params
+    const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
     if (!validateSegment(voice) || !validateSegment(clipId)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
@@ -117,19 +107,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     console.error('Error patching custom clip:', error)
     return NextResponse.json({ error: 'Failed to update clip' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/admin/audio/custom-clips/[voice]/[clipId]
  *
  * Permanently remove a clip from both active and deactivated locations.
  */
-export async function DELETE(_request: Request, { params }: RouteParams) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { voice, clipId } = await params
+    const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
     if (!validateSegment(voice) || !validateSegment(clipId)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
@@ -158,4 +145,4 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     console.error('Error deleting custom clip:', error)
     return NextResponse.json({ error: 'Failed to delete clip' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

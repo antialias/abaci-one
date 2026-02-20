@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -7,6 +7,7 @@ import { generateMonthlyTypst, generateDailyTypst, getDaysInMonth } from '../uti
 import type { AbacusConfig } from '@soroban/abacus-react'
 import { generateCalendarComposite } from '@/utils/calendar/generateCalendarComposite'
 import { generateAbacusElement } from '@/utils/calendar/generateCalendarAbacus'
+import { withAuth } from '@/lib/auth/withAuth'
 
 interface CalendarRequest {
   month: number
@@ -16,7 +17,7 @@ interface CalendarRequest {
   abacusConfig?: AbacusConfig
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   let tempDir: string | null = null
 
   try {
@@ -135,4 +136,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

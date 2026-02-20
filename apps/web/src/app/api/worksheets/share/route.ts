@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
 import { generateShareId } from '@/lib/generateShareId'
 import { serializeAdditionConfig } from '@/app/create/worksheets/config-schemas'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST /api/worksheets/share
@@ -23,7 +24,7 @@ import { serializeAdditionConfig } from '@/app/create/worksheets/config-schemas'
  *   url: 'https://abaci.one/worksheets/shared/abc123X'
  * }
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { worksheetType, config, title } = body
@@ -110,4 +111,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating worksheet share:', error)
     return NextResponse.json({ error: 'Failed to create share' }, { status: 500 })
   }
-}
+})

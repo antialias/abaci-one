@@ -1,16 +1,18 @@
 import { and, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 
 /**
  * PATCH /api/players/[id]
  * Update a player (only if it belongs to the current viewer)
  */
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
+    const { id } = (await params) as { id: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Get user record (must exist if player exists)
     const user = await db.query.users.findFirst({
@@ -34,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(body.notes !== undefined && { notes: body.notes }),
         // userId is explicitly NOT included - it comes from session
       })
-      .where(and(eq(schema.players.id, params.id), eq(schema.players.userId, user.id)))
+      .where(and(eq(schema.players.id, id), eq(schema.players.userId, user.id)))
       .returning()
 
     if (!updatedPlayer) {
@@ -46,14 +48,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     console.error('Failed to update player:', error)
     return NextResponse.json({ error: 'Failed to update player' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/players/[id]
  * Delete a player (only if it belongs to the current viewer)
  */
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
+    const { id } = (await params) as { id: string }
     const viewerId = await getViewerId()
 
     // Get user record (must exist if player exists)
@@ -68,7 +71,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     // Delete player (only if it belongs to this user)
     const [deletedPlayer] = await db
       .delete(schema.players)
-      .where(and(eq(schema.players.id, params.id), eq(schema.players.userId, user.id)))
+      .where(and(eq(schema.players.id, id), eq(schema.players.userId, user.id)))
       .returning()
 
     if (!deletedPlayer) {
@@ -80,4 +83,4 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     console.error('Failed to delete player:', error)
     return NextResponse.json({ error: 'Failed to delete player' }, { status: 500 })
   }
-}
+})

@@ -4,13 +4,14 @@ import { db } from '@/db'
 import { customSkills } from '@/db/schema'
 import { getViewerId } from '@/lib/viewer'
 import { nanoid } from 'nanoid'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/worksheets/skills/custom
  *
  * Get all custom skills for the current user
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
     const { searchParams } = new URL(request.url)
@@ -38,14 +39,14 @@ export async function GET(request: NextRequest) {
     console.error('Failed to fetch custom skills:', error)
     return NextResponse.json({ error: 'Failed to fetch custom skills' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/worksheets/skills/custom
  *
  * Create a new custom skill
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
     const body = await request.json()
@@ -94,4 +95,4 @@ export async function POST(request: NextRequest) {
     console.error('Failed to create custom skill:', error)
     return NextResponse.json({ error: 'Failed to create custom skill' }, { status: 500 })
   }
-}
+})

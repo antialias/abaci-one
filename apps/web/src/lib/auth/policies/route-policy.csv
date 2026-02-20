@@ -32,36 +32,46 @@ p, guest, /api/audio/collected-clips/manifest, GET
 p, guest, /api/create/*, *
 p, guest, /api/feature-flags, GET
 
-# Authenticated user routes (inherited by admin)
-p, user, /api/players/*, *
-p, user, /api/family/*, *
+# Guest-accessible practice & app routes
+p, guest, /api/players/*, *
+p, guest, /api/family/*, *
+p, guest, /api/curriculum/*, *
+p, guest, /api/game-results/*, *
+p, guest, /api/player-stats/*, *
+p, guest, /api/settings/*, *
+p, guest, /api/worksheets/*, *
+p, guest, /api/sessions/*, *
+p, guest, /api/enrollment-requests/*, *
+p, guest, /api/entry-prompts/*, *
+p, guest, /api/flowcharts/*, *
+p, guest, /api/flowchart-workshop/*, *
+p, guest, /api/abacus-settings, *
+p, guest, /api/scanner-settings, *
+p, guest, /api/arcade/*, *
+p, guest, /api/arcade-session, *
+p, guest, /api/realtime/*, *
+p, guest, /api/euclid/*, *
+p, guest, /api/audio/*, *
+p, guest, /api/generate, *
+p, guest, /api/user-stats, *
+p, guest, /api/vision/*, *
+p, guest, /api/remote-camera, *
+p, guest, /api/demo/*, *
+p, guest, /api/gameplay/*, *
+
+# Guest classroom access (student-side participation only)
+# Guests can view a classroom and participate, but cannot create or manage classrooms
+p, guest, /api/classrooms/:id, GET
+p, guest, /api/classrooms/:id/*, *
+p, guest, /api/classrooms/code/:code, GET
+p, guest, /api/classroom/*, *
+
+# Authenticated user routes — classroom creation/management & teacher features
+# (user inherits all guest permissions via role hierarchy)
+p, user, /api/classrooms, *
 p, user, /api/classrooms/*, *
-p, user, /api/classroom/*, *
-p, user, /api/curriculum/*, *
-p, user, /api/game-results/*, *
-p, user, /api/player-stats/*, *
-p, user, /api/settings/*, *
-p, user, /api/worksheets/*, *
-p, user, /api/sessions/*, *
-p, user, /api/enrollment-requests/*, *
-p, user, /api/entry-prompts/*, *
-p, user, /api/flowcharts/*, *
-p, user, /api/flowchart-workshop/*, *
 p, user, /api/teacher-flowcharts/*, *
-p, user, /api/abacus-settings, *
-p, user, /api/scanner-settings, *
-p, user, /api/arcade/*, *
-p, user, /api/arcade-session, *
-p, user, /api/realtime/*, *
-p, user, /api/euclid/*, *
-p, user, /api/audio/*, *
-p, user, /api/generate, *
-p, user, /api/user-stats, *
 p, user, /api/mcp, *
-p, user, /api/vision/*, *
-p, user, /api/remote-camera, *
-p, user, /api/demo/*, *
-p, user, /api/gameplay/*, *
 
 # Admin-only routes
 p, admin, /api/admin/*, *

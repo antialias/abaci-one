@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { desc, inArray } from 'drizzle-orm'
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * - status: comma-separated list of statuses (e.g., "running,pending")
  * - limit: max number of tasks to return (default 50)
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const statusParam = searchParams.get('status')
@@ -49,4 +50,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

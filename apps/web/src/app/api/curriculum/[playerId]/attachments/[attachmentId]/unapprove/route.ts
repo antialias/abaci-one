@@ -12,19 +12,16 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { sessionPlans, type SlotResult } from '@/db/schema/session-plans'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
 
 /**
  * POST - Unapprove/revert a processed worksheet
  */
-export async function POST(_request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -109,4 +106,4 @@ export async function POST(_request: Request, { params }: RouteParams) {
     console.error('Error unapproving worksheet:', error)
     return NextResponse.json({ error: 'Failed to unapprove worksheet' }, { status: 500 })
   }
-}
+})

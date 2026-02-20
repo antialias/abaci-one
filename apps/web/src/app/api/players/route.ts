@@ -1,7 +1,8 @@
 import { eq, inArray, or } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { generateFamilyCode, parentChild } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -9,7 +10,7 @@ import { getViewerId } from '@/lib/viewer'
  * List all players for the current viewer (guest or user)
  * Includes both created players and linked children via parent_child
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
 
@@ -42,16 +43,16 @@ export async function GET() {
     console.error('Failed to fetch players:', error)
     return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/players
  * Create a new player for the current viewer
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.name || !body.emoji || !body.color) {
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
     console.error('Failed to create player:', error)
     return NextResponse.json({ error: 'Failed to create player' }, { status: 500 })
   }
-}
+})
 
 /**
  * Get or create a user record for the given viewer ID (guest or user)

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -8,7 +9,7 @@ import { getViewerId } from '@/lib/viewer'
  * Get all pending invitations for the current user with room details
  * Excludes invitations for rooms where the user is currently banned
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
 
@@ -52,4 +53,4 @@ export async function GET(req: NextRequest) {
     console.error('Failed to get pending invitations:', error)
     return NextResponse.json({ error: 'Failed to get pending invitations' }, { status: 500 })
   }
-}
+})

@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { gameResults } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
@@ -27,7 +28,7 @@ interface SaveGameResultRequest {
  * This endpoint is called when a game finishes to persist the result
  * for scoreboard and history features.
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body: SaveGameResultRequest = await request.json()
     const { playerId, userId, sessionType, sessionId, report } = body
@@ -92,4 +93,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})

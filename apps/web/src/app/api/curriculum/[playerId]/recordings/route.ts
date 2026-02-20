@@ -12,12 +12,9 @@ import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { visionRecordings } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 export interface PlayerRecordingItem {
   id: string
@@ -40,9 +37,9 @@ export interface PlayerRecordingsResponse {
 /**
  * GET - List all recordings for a player
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -105,4 +102,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching player recordings:', error)
     return NextResponse.json({ error: 'Failed to fetch recordings' }, { status: 500 })
   }
-}
+})

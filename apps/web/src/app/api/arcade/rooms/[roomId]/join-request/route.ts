@@ -1,14 +1,11 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { createJoinRequest, getJoinRequest } from '@/lib/arcade/room-join-requests'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/join-request
@@ -16,11 +13,11 @@ type RouteContext = {
  * Body:
  *   - userName: string
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.userName) {
@@ -63,7 +60,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     // Create join request
-    const request = await createJoinRequest({
+    const joinRequest = await createJoinRequest({
       roomId,
       userId: viewerId,
       userName: body.userName,
@@ -79,10 +76,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
           io.to(`user:${host.userId}`).emit('join-request-received', {
             roomId,
             request: {
-              id: request.id,
-              userId: request.userId,
-              userName: request.userName,
-              requestedAt: request.requestedAt,
+              id: joinRequest.id,
+              userId: joinRequest.userId,
+              userName: joinRequest.userName,
+              requestedAt: joinRequest.requestedAt,
             },
           })
         }
@@ -93,9 +90,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     }
 
-    return NextResponse.json({ request }, { status: 200 })
+    return NextResponse.json({ request: joinRequest }, { status: 200 })
   } catch (error: any) {
     console.error('Failed to create join request:', error)
     return NextResponse.json({ error: 'Failed to create join request' }, { status: 500 })
   }
-}
+})

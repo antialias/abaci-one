@@ -1,6 +1,6 @@
 // API route for generating addition worksheets
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 import { eq } from 'drizzle-orm'
 import { validateWorksheetConfig } from '@/app/create/worksheets/validation'
@@ -20,8 +20,9 @@ import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
 import { generateShareId } from '@/lib/generateShareId'
 import { getCurrentTraceId, recordError } from '@/lib/tracing'
+import { withAuth } from '@/lib/auth/withAuth'
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   const startTime = Date.now()
   try {
     const body: WorksheetFormState = await request.json()
@@ -215,4 +216,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

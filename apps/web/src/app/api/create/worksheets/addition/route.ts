@@ -1,6 +1,6 @@
 // API route for generating addition worksheets
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 import { validateWorksheetConfig } from '@/app/create/worksheets/validation'
 import {
@@ -10,8 +10,9 @@ import {
 } from '@/app/create/worksheets/problemGenerator'
 import { generateTypstSource } from '@/app/create/worksheets/typstGenerator'
 import type { WorksheetFormState, WorksheetProblem } from '@/app/create/worksheets/types'
+import { withAuth } from '@/lib/auth/withAuth'
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body: WorksheetFormState = await request.json()
 
@@ -114,4 +115,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

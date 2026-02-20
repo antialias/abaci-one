@@ -1,6 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { players } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   computeBktFromHistory,
   DEFAULT_BKT_OPTIONS,
@@ -17,7 +18,7 @@ import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
  * Query params:
  * - threshold: confidence threshold (default from BKT_THRESHOLDS.confidence)
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const threshold = parseFloat(searchParams.get('threshold') ?? String(BKT_THRESHOLDS.confidence))
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
     console.error('Error computing aggregate BKT stats:', error)
     return NextResponse.json({ error: 'Failed to compute stats' }, { status: 500 })
   }
-}
+})
 
 function classifySkill(skill: SkillBktResult, threshold: number): 'weak' | 'developing' | 'strong' {
   if (skill.confidence < threshold) {

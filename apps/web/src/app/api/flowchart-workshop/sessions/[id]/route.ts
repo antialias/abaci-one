@@ -1,11 +1,8 @@
 import { and, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/flowchart-workshop/sessions/[id]
@@ -13,9 +10,9 @@ interface RouteParams {
  *
  * Returns: { session: WorkshopSession } or 404
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     const session = await db.query.workshopSessions.findFirst({
@@ -51,7 +48,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch workshop session:', error)
     return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/flowchart-workshop/sessions/[id]
@@ -72,11 +69,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  *
  * Returns: { session: WorkshopSession }
  */
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Verify ownership
     const existing = await db.query.workshopSessions.findFirst({
@@ -134,7 +131,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to update workshop session:', error)
     return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/flowchart-workshop/sessions/[id]
@@ -142,9 +139,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
  *
  * Returns: { success: true }
  */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     // Verify ownership
@@ -163,4 +160,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to delete workshop session:', error)
     return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 })
   }
-}
+})

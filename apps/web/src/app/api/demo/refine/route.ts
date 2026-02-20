@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { spawn } from 'child_process'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -114,7 +115,7 @@ FIRST read the screenshot to see what the user is referring to:
 Interpret the magenta annotations as "look here" / "this area" markers in the context of the user's request.` : ''}`
 }
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
       { error: 'This endpoint is only available in development mode' },
@@ -290,4 +291,4 @@ export async function POST(request: Request) {
   )
 
   return NextResponse.json({ taskId })
-}
+})

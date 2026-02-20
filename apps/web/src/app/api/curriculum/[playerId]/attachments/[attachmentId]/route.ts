@@ -17,12 +17,9 @@ import { join } from 'path'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
 
 /**
  * PATCH - Replace the cropped file with a new version
@@ -30,9 +27,9 @@ interface RouteParams {
  * Used when re-editing a photo. The original file is preserved,
  * only the cropped/displayed version is replaced.
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -145,14 +142,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     console.error('Error replacing attachment:', error)
     return NextResponse.json({ error: 'Failed to replace attachment' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE - Delete an attachment
  */
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -211,4 +208,4 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     console.error('Error deleting attachment:', error)
     return NextResponse.json({ error: 'Failed to delete attachment' }, { status: 500 })
   }
-}
+})

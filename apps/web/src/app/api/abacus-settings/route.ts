@@ -1,14 +1,15 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 
 /**
  * GET /api/abacus-settings
  * Fetch abacus display settings for the current user
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
@@ -32,20 +33,20 @@ export async function GET() {
     console.error('Failed to fetch abacus settings:', error)
     return NextResponse.json({ error: 'Failed to fetch abacus settings' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/abacus-settings
  * Update abacus display settings for the current user
  */
-export async function PATCH(req: NextRequest) {
+export const PATCH = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
 
     // Handle empty or invalid JSON body gracefully
     let body: Record<string, unknown>
     try {
-      body = await req.json()
+      body = await request.json()
     } catch {
       return NextResponse.json({ error: 'Invalid or empty request body' }, { status: 400 })
     }
@@ -81,7 +82,7 @@ export async function PATCH(req: NextRequest) {
     console.error('Failed to update abacus settings:', error)
     return NextResponse.json({ error: 'Failed to update abacus settings' }, { status: 500 })
   }
-}
+})
 
 /**
  * Get or create a user record for the given viewer ID (guest or user)

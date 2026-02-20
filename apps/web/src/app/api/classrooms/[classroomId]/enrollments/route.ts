@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { directEnrollStudent, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
 import { emitEnrollmentCompleted } from '@/lib/classroom/socket-emitter'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -21,19 +22,15 @@ async function getOrCreateUser(viewerId: string) {
   return user
 }
 
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
-
 /**
  * GET /api/classrooms/[classroomId]/enrollments
  * Get all enrolled students (teacher only)
  *
  * Returns: { students: Player[] }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -50,7 +47,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch enrolled students:', error)
     return NextResponse.json({ error: 'Failed to fetch enrolled students' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/classrooms/[classroomId]/enrollments
@@ -59,9 +56,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * Body: { playerId: string }
  * Returns: { enrolled: boolean }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (req, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -124,4 +121,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to directly enroll student:', error)
     return NextResponse.json({ error: 'Failed to enroll student' }, { status: 500 })
   }
-}
+})

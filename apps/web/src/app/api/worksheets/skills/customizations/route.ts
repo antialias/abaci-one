@@ -3,13 +3,14 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { skillCustomizations } from '@/db/schema'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/worksheets/skills/customizations?operator=addition
  *
  * Get all skill customizations for the current user
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
     const { searchParams } = new URL(request.url)
@@ -37,4 +38,4 @@ export async function GET(request: NextRequest) {
     console.error('Failed to fetch skill customizations:', error)
     return NextResponse.json({ error: 'Failed to fetch skill customizations' }, { status: 500 })
   }
-}
+})

@@ -1,9 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { type NextRequest, NextResponse } from 'next/server'
 import type { QuadCorners } from '@/types/vision'
 import { deleteBoundaryDetectorSample } from '@/lib/vision/trainingDataDeletion'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering - this route writes to disk
 export const dynamic = 'force-dynamic'
@@ -56,9 +55,7 @@ function detectImageFormat(base64Data: string): 'png' | 'jpeg' | 'unknown' {
  * - frameHeight: Original frame height
  * - deviceId: Optional identifier for the capture device
  */
-export async function POST(request: NextRequest): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const POST = withAuth(async (request) => {
   try {
     const body: BoundarySampleRequest = await request.json()
 
@@ -142,7 +139,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })
 
 interface BoundaryFrame {
   baseName: string
@@ -162,9 +159,7 @@ interface BoundaryFrame {
  * Get statistics about collected boundary samples.
  * Add ?list=true to get full list of frames with metadata.
  */
-export async function GET(request: NextRequest): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async (request) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const listFrames = searchParams.get('list') === 'true'
@@ -258,7 +253,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     console.error('[boundary-samples] GET Error:', error)
     return Response.json({ error: 'Failed to read boundary samples' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/vision-training/boundary-samples
@@ -269,9 +264,7 @@ export async function GET(request: NextRequest): Promise<Response> {
  * - deviceId: Device directory (default: "default")
  * - baseName: Base filename (without extension)
  */
-export async function DELETE(request: NextRequest): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const DELETE = withAuth(async (request) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const deviceId = searchParams.get('deviceId') || 'default'
@@ -300,4 +293,4 @@ export async function DELETE(request: NextRequest): Promise<Response> {
     console.error('[boundary-samples] DELETE Error:', error)
     return Response.json({ success: false, error: 'Failed to delete sample' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

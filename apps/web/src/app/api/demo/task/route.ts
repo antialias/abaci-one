@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { createTask, type TaskHandle } from '@/lib/task-manager'
 import type { DemoTaskEvent } from '@/lib/tasks/events'
 
@@ -57,7 +58,7 @@ function generatePayload(sizeBytes: number): string {
  * - Optionally fails at specified percentage
  * - Supports configurable event count, interval, and payload size for stress testing
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const input: DemoTaskInput = await request.json()
 
@@ -123,4 +124,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

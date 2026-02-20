@@ -7,10 +7,7 @@ import {
 } from '@/db/schema/vision-training-sessions'
 import { promises as fs } from 'fs'
 import path from 'path'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Model type to public directory mapping
@@ -70,8 +67,8 @@ function serializeSession(session: VisionTrainingSession) {
  * 2. Copy model files to public/models/
  * 3. Mark this session as active
  */
-export async function PUT(_request: NextRequest, { params }: RouteParams) {
-  const { id } = await params
+export const PUT = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
 
   try {
     // Get session
@@ -136,4 +133,4 @@ export async function PUT(_request: NextRequest, { params }: RouteParams) {
     console.error('Error activating model:', error)
     return NextResponse.json({ error: 'Failed to activate model' }, { status: 500 })
   }
-}
+})

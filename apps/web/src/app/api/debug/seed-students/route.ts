@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom/classroom-manager'
 import { createTask } from '@/lib/task-manager'
 import type { SeedStudentsEvent } from '@/lib/tasks/events'
@@ -20,14 +20,12 @@ import {
  * Returns the list of available seed profiles for the UI.
  * This avoids shipping ~2000 lines of profile data as client JS.
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async () => {
   return NextResponse.json({
     profiles: getProfileInfoList(),
     categories: ['bkt', 'session', 'edge'] as ProfileCategory[],
   })
-}
+}, { role: 'admin' })
 
 /**
  * POST /api/debug/seed-students
@@ -35,9 +33,7 @@ export async function GET() {
  * Starts a background task to seed test students.
  * Accepts optional filters: { profiles?: string[], categories?: string[] }
  */
-export async function POST(req: Request) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const POST = withAuth(async (req: Request) => {
   try {
     const body = await req.json().catch(() => ({}))
     const profileNames = (body.profiles ?? []) as string[]
@@ -205,4 +201,4 @@ export async function POST(req: Request) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

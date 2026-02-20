@@ -12,19 +12,16 @@ import { and, asc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { sessionPlans, visionProblemVideos } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { generateAuthorizationError, getPlayerAccess } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; sessionId: string }>
-}
 
 /**
  * GET - List available problem videos for a session
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, sessionId } = await params
+    const { playerId, sessionId } = (await params) as { playerId: string; sessionId: string }
 
     if (!playerId || !sessionId) {
       return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
@@ -129,4 +126,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error listing session videos:', error)
     return NextResponse.json({ error: 'Failed to list videos' }, { status: 500 })
   }
-}
+})

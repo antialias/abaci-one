@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { type NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -17,9 +16,7 @@ const BOUNDARY_DETECTOR_DIR = path.join(process.cwd(), 'data/vision-training/bou
  * - deviceId: Device directory (default: "default")
  * - baseName: Base filename (without extension)
  */
-export async function GET(request: NextRequest): Promise<Response> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async (request) => {
   try {
     const searchParams = request.nextUrl.searchParams
     const deviceId = searchParams.get('deviceId') || 'default'
@@ -68,4 +65,4 @@ export async function GET(request: NextRequest): Promise<Response> {
     console.error('[boundary-samples/image] Error:', error)
     return new Response('Failed to serve image', { status: 500 })
   }
-}
+}, { role: 'admin' })

@@ -8,6 +8,7 @@ import {
   validateTermCountScaling,
   type TermCountScalingConfig,
 } from '@/lib/curriculum/config/term-count-scaling'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Ensure the default settings row exists.
@@ -25,7 +26,7 @@ async function ensureDefaultSettings() {
  * Returns the current term count scaling configuration.
  * If no custom config is saved, returns the hardcoded defaults.
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     await ensureDefaultSettings()
 
@@ -43,7 +44,7 @@ export async function GET() {
     console.error('Error fetching practice config:', error)
     return NextResponse.json({ error: 'Failed to fetch practice config' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/settings/practice-config
@@ -53,7 +54,7 @@ export async function GET() {
  * Body:
  * - config: TermCountScalingConfig | null (null = reset to defaults)
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { config } = body as { config: TermCountScalingConfig | null }
@@ -88,4 +89,4 @@ export async function PATCH(request: NextRequest) {
     console.error('Error updating practice config:', error)
     return NextResponse.json({ error: 'Failed to update practice config' }, { status: 500 })
   }
-}
+})

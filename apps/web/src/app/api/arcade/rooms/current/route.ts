@@ -3,6 +3,7 @@ import { getUserRooms } from '@/lib/arcade/room-membership'
 import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getAllGameConfigs } from '@/lib/arcade/game-config-helpers'
 
@@ -10,7 +11,7 @@ import { getAllGameConfigs } from '@/lib/arcade/game-config-helpers'
  * GET /api/arcade/rooms/current
  * Returns the user's current room (if any)
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const userId = await getViewerId()
 
@@ -69,4 +70,4 @@ export async function GET() {
     console.error('[Current Room API] Error:', error)
     return NextResponse.json({ error: 'Failed to fetch current room' }, { status: 500 })
   }
-}
+})

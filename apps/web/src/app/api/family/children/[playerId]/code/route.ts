@@ -1,12 +1,9 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getOrCreateFamilyCode, isParent, regenerateFamilyCode } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * Resolve viewerId (guestId) to actual user.id
@@ -24,9 +21,9 @@ async function getUserId(viewerId: string): Promise<string | null> {
  *
  * Returns: { familyCode: string }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     const viewerId = await getViewerId()
 
     // Resolve viewerId to actual user.id
@@ -52,7 +49,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to get family code:', error)
     return NextResponse.json({ error: 'Failed to get family code' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/family/children/[playerId]/code
@@ -60,9 +57,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  *
  * Returns: { familyCode: string }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     const viewerId = await getViewerId()
 
     // Resolve viewerId to actual user.id
@@ -88,4 +85,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to regenerate family code:', error)
     return NextResponse.json({ error: 'Failed to regenerate family code' }, { status: 500 })
   }
-}
+})

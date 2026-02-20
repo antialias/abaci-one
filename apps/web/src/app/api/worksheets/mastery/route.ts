@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import type { SkillId } from '@/app/create/worksheets/skills'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/worksheets/mastery?operator=addition
@@ -15,10 +16,10 @@ import { getViewerId } from '@/lib/viewer'
  *   - masteryStates: Array of mastery records
  *   - skillCount: Total number of skills tracked
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const { searchParams } = new URL(req.url)
+    const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator')
 
     if (!operator) {
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
     console.error('Failed to load mastery states:', error)
     return NextResponse.json({ error: 'Failed to load mastery states' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/worksheets/mastery
@@ -62,10 +63,10 @@ export async function GET(req: NextRequest) {
  *   - success: boolean
  *   - masteryState: Updated mastery record
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     const { skillId, isMastered, totalAttempts, correctAttempts, lastAccuracy } = body
 
@@ -147,4 +148,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to update mastery state:', error)
     return NextResponse.json({ error: 'Failed to update mastery state' }, { status: 500 })
   }
-}
+})

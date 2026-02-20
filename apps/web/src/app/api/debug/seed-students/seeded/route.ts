@@ -2,7 +2,7 @@ import { eq, desc } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/debug/seed-students/seeded
@@ -11,9 +11,7 @@ import { requireAdmin } from '@/lib/auth/requireRole'
  * keyed by profile name. Only returns the most recently seeded
  * player for each profile.
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async () => {
   try {
     const userId = await getDbUserId()
 
@@ -53,4 +51,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

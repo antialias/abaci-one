@@ -7,9 +7,10 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber/assembleChildProfile'
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { playerId } = body
@@ -35,4 +36,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})

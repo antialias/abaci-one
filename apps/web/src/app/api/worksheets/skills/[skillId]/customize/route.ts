@@ -3,19 +3,17 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { skillCustomizations } from '@/db/schema'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST /api/worksheets/skills/[skillId]/customize
  *
  * Save a customization of a default skill
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ skillId: string }> }
-) {
+export const POST = withAuth(async (request, { params }) => {
   try {
     const viewerId = await getViewerId()
-    const { skillId } = await params
+    const { skillId } = (await params) as { skillId: string }
     const body = await request.json()
 
     const { operator, digitRange, regroupingConfig, displayRules } = body
@@ -97,20 +95,17 @@ export async function POST(
     console.error('Failed to save skill customization:', error)
     return NextResponse.json({ error: 'Failed to save skill customization' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/worksheets/skills/[skillId]/customize?operator=addition
  *
  * Reset a skill to its default by deleting the customization
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ skillId: string }> }
-) {
+export const DELETE = withAuth(async (request, { params }) => {
   try {
     const viewerId = await getViewerId()
-    const { skillId } = await params
+    const { skillId } = (await params) as { skillId: string }
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null
 
@@ -151,4 +146,4 @@ export async function DELETE(
     console.error('Failed to delete skill customization:', error)
     return NextResponse.json({ error: 'Failed to delete skill customization' }, { status: 500 })
   }
-}
+})

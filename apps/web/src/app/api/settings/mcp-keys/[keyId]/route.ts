@@ -8,18 +8,15 @@ import { eq, and } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ keyId: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * DELETE - Revoke an API key
  * Sets revokedAt timestamp, doesn't actually delete the record
  */
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { keyId } = await params
+    const { keyId } = (await params) as { keyId: string }
     const userId = await getDbUserId()
 
     if (!keyId) {
@@ -53,4 +50,4 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     console.error('Error revoking MCP API key:', error)
     return NextResponse.json({ error: 'Failed to revoke API key' }, { status: 500 })
   }
-}
+})

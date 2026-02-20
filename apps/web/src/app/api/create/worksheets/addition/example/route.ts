@@ -9,7 +9,7 @@
 // maintaining consistency between what users see in documentation vs. the actual tool.
 
 import { execSync } from 'child_process'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import type { WorksheetOperator } from '@/app/create/worksheets/types'
 import {
   generatePlaceValueColors,
@@ -17,6 +17,7 @@ import {
   generateSubtractionProblemStackFunction,
   generateTypstHelpers,
 } from '@/app/create/worksheets/typstHelpers'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,7 +145,7 @@ ${generateSubtractionProblemStackFunction(cellSize, 3)}
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body: ExampleRequest = await request.json()
 
@@ -172,4 +173,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

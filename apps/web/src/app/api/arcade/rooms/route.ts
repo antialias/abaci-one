@@ -1,7 +1,8 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createRoom, listActiveRooms } from '@/lib/arcade/room-manager'
 import { addRoomMember, getRoomMembers, isMember } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
 import { hasValidator, type GameName } from '@/lib/arcade/validators'
@@ -12,9 +13,9 @@ import { hasValidator, type GameName } from '@/lib/arcade/validators'
  * Query params:
  *   - gameName?: string - Filter by game
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
-    const { searchParams } = new URL(req.url)
+    const { searchParams } = new URL(request.url)
     const gameName = searchParams.get('gameName') as GameName | null
 
     const viewerId = await getViewerId()
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
     console.error('Failed to fetch rooms:', error)
     return NextResponse.json({ error: 'Failed to fetch rooms' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/arcade/rooms
@@ -66,10 +67,10 @@ export async function GET(req: NextRequest) {
  *   - accessMode?: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
  *   - password?: string
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate game name if provided (gameName is now optional)
     if (body.gameName) {
@@ -203,4 +204,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to create room:', error)
     return NextResponse.json({ error: 'Failed to create room' }, { status: 500 })
   }
-}
+})

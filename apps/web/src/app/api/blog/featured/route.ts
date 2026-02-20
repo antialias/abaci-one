@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getFeaturedPosts } from '@/lib/blog'
+import { withAuth } from '@/lib/auth/withAuth'
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const posts = await getFeaturedPosts()
     return NextResponse.json(posts)
@@ -9,4 +10,4 @@ export async function GET() {
     console.error('Error fetching featured posts:', error)
     return NextResponse.json({ error: 'Failed to fetch featured posts' }, { status: 500 })
   }
-}
+})

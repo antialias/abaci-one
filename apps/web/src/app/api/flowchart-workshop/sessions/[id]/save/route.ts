@@ -1,14 +1,11 @@
 import { and, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
 import { validateFlowchartStructure } from '@/lib/flowcharts/validator'
 import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * POST /api/flowchart-workshop/sessions/[id]/save
@@ -19,9 +16,9 @@ interface RouteParams {
  *
  * Returns: { flowchart: TeacherFlowchart, session: WorkshopSession }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     // Get the session
@@ -261,4 +258,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to save workshop draft:', error)
     return NextResponse.json({ error: 'Failed to save draft' }, { status: 500 })
   }
-}
+})

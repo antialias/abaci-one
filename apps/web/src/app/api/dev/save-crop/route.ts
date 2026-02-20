@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
@@ -148,7 +149,7 @@ interface CropRequest {
   viewBox?: string
 }
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
@@ -192,9 +193,9 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })
 
-export async function DELETE(request: Request) {
+export const DELETE = withAuth(async (request) => {
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
@@ -255,4 +256,4 @@ export async function DELETE(request: Request) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

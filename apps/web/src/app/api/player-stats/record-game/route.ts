@@ -11,6 +11,7 @@ import type {
   RecordGameResponse,
   StatsUpdate,
 } from '@/lib/arcade/stats/types'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -21,7 +22,7 @@ import { getDbUserId } from '@/lib/viewer'
  * Supports cooperative games (team wins/losses) and competitive games.
  * Requires 'start-session' permission for each player being recorded.
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     // 1. Authenticate user and get database user ID
     const userId = await getDbUserId()
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})
 
 /**
  * Records stats for a single player's game result

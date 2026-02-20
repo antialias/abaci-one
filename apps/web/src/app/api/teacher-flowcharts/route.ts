@@ -2,6 +2,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/teacher-flowcharts
@@ -12,10 +13,10 @@ import { getDbUserId } from '@/lib/viewer'
  *
  * Returns: { flowcharts: TeacherFlowchart[] }
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const userId = await getDbUserId()
-    const url = new URL(req.url)
+    const url = new URL(request.url)
     const status = url.searchParams.get('status') as 'draft' | 'published' | 'archived' | null
 
     // Build where conditions
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
     console.error('Failed to list teacher flowcharts:', error)
     return NextResponse.json({ error: 'Failed to list flowcharts' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/teacher-flowcharts
@@ -81,10 +82,10 @@ export async function GET(req: NextRequest) {
  *
  * Returns: { flowchart: TeacherFlowchart }
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const userId = await getDbUserId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.title) {
@@ -133,4 +134,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to create teacher flowchart:', error)
     return NextResponse.json({ error: 'Failed to create flowchart' }, { status: 500 })
   }
-}
+})

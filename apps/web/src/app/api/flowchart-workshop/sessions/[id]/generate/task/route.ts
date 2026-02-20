@@ -13,6 +13,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { startFlowchartGeneration } from '@/lib/tasks/flowchart-generate'
@@ -21,15 +22,11 @@ import { getDbUserId } from '@/lib/viewer'
 
 export const dynamic = 'force-dynamic'
 
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 /**
  * POST - Start flowchart generation as a background task
  */
-export async function POST(request: Request, { params }: RouteParams) {
-  const { id: sessionId } = await params
+export const POST = withAuth(async (request, { params }) => {
+  const { id: sessionId } = (await params) as { id: string }
 
   // Authorization check
   let userId: string
@@ -94,13 +91,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
+})
 
 /**
  * GET - Check for active generation task on this session
  */
-export async function GET(_request: Request, { params }: RouteParams) {
-  const { id: sessionId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { id: sessionId } = (await params) as { id: string }
 
   let userId: string
   try {
@@ -136,13 +133,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
     progress: task.progress,
     progressMessage: task.progressMessage,
   })
-}
+})
 
 /**
  * DELETE - Cancel the active generation task
  */
-export async function DELETE(_request: Request, { params }: RouteParams) {
-  const { id: sessionId } = await params
+export const DELETE = withAuth(async (_request, { params }) => {
+  const { id: sessionId } = (await params) as { id: string }
 
   let userId: string
   try {
@@ -168,4 +165,4 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     cancelled,
     message: cancelled ? 'Generation cancellation requested' : 'Could not cancel generation',
   })
-}
+})

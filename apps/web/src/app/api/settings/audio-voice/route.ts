@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 
 async function ensureDefaultSettings() {
   const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
@@ -20,7 +21,7 @@ async function ensureDefaultSettings() {
  *
  * Returns the active TTS voice name.
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     await ensureDefaultSettings()
 
@@ -37,7 +38,7 @@ export async function GET() {
     console.error('Error fetching audio voice setting:', error)
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/settings/audio-voice
@@ -46,7 +47,7 @@ export async function GET() {
  *
  * Body: { audioVoice: string }
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { audioVoice } = body
@@ -97,4 +98,4 @@ export async function PATCH(request: NextRequest) {
     console.error('Error updating audio voice setting:', error)
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
   }
-}
+})

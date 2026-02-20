@@ -7,17 +7,14 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getPaginatedSessions } from '@/lib/curriculum/progress-manager'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -49,4 +46,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching paginated sessions:', error)
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 })
   }
-}
+})

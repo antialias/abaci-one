@@ -11,16 +11,13 @@
 import { readFile, stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
-interface RouteParams {
-  params: Promise<{ voice: string; clipId: string }>
-}
-
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { voice, clipId } = await params
+    const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
     // Validate path segments to prevent directory traversal
     if (
@@ -70,4 +67,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error serving audio clip:', error)
     return new NextResponse(null, { status: 500 })
   }
-}
+})

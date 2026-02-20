@@ -1,9 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { execSync } from 'child_process'
 import type { FlashcardConfig } from '@/app/create/flashcards/page'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   generateFlashcardFront,
   generateFlashcardBack,
@@ -59,7 +60,7 @@ function seededRandom(seed: number) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   let tempDir: string | null = null
 
   try {
@@ -256,10 +257,10 @@ ${pages.join('\n\n#pagebreak()\n\n')}
       { status: 500 }
     )
   }
-}
+})
 
 // Health check endpoint
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     // Check if Typst is available
     execSync('typst --version', { encoding: 'utf8' })
@@ -282,4 +283,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+})

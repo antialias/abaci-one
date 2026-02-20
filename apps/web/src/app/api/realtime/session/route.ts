@@ -7,6 +7,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
@@ -15,7 +16,7 @@ import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber
 import { answeringMode } from '@/components/toys/number-line/talkToNumber/sessionModes/answeringMode'
 import { getAnsweringTools } from '@/components/toys/number-line/talkToNumber/sessionModes/tools'
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { number, playerId, recommendedExplorations: rawRecommended, previousScenario, availablePlayers: rawAvailablePlayers } = body
@@ -178,4 +179,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+})

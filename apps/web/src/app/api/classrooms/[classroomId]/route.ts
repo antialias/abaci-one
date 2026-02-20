@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
   deleteClassroom,
@@ -8,6 +8,7 @@ import {
   regenerateClassroomCode,
 } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -25,19 +26,15 @@ async function getOrCreateUser(viewerId: string) {
   return user
 }
 
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
-
 /**
  * GET /api/classrooms/[classroomId]
  * Get classroom by ID
  *
  * Returns: { classroom } or 404
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
 
     const classroom = await getClassroom(classroomId)
 
@@ -50,7 +47,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch classroom:', error)
     return NextResponse.json({ error: 'Failed to fetch classroom' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/classrooms/[classroomId]
@@ -59,9 +56,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * Body: { name?: string, regenerateCode?: boolean, entryPromptExpiryMinutes?: number | null }
  * Returns: { classroom }
  */
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export const PATCH = withAuth(async (req, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
     const body = await req.json()
@@ -106,7 +103,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to update classroom:', error)
     return NextResponse.json({ error: 'Failed to update classroom' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/classrooms/[classroomId]
@@ -114,9 +111,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
  *
  * Returns: { success: true }
  */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -131,4 +128,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to delete classroom:', error)
     return NextResponse.json({ error: 'Failed to delete classroom' }, { status: 500 })
   }
-}
+})

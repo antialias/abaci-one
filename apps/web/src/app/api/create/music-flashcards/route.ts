@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { jsPDF } from 'jspdf'
 
 interface MusicFlashcardRequest {
@@ -114,7 +115,7 @@ function drawMusicCard(
   doc.setTextColor(0)
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const body: MusicFlashcardRequest = await request.json()
     const { clef, lowNote, highNote, layout, showNoteNames } = body
@@ -207,4 +208,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

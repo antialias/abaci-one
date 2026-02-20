@@ -18,13 +18,10 @@ import { join } from 'path'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { practiceAttachments, sessionPlans } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import { createId } from '@paralleldrive/cuid2'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; sessionId: string }>
-}
 
 export interface SessionAttachment {
   id: string
@@ -69,9 +66,9 @@ export interface SessionAttachment {
 /**
  * GET - List attachments for a session
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, sessionId } = await params
+    const { playerId, sessionId } = (await params) as { playerId: string; sessionId: string }
 
     if (!playerId || !sessionId) {
       return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
@@ -151,14 +148,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching session attachments:', error)
     return NextResponse.json({ error: 'Failed to fetch attachments' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST - Add photos to an existing session
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId, sessionId } = await params
+    const { playerId, sessionId } = (await params) as { playerId: string; sessionId: string }
 
     if (!playerId || !sessionId) {
       return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
@@ -350,4 +347,4 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error adding session attachments:', error)
     return NextResponse.json({ error: 'Failed to add attachments' }, { status: 500 })
   }
-}
+})

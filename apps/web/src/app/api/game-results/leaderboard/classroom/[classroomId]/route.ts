@@ -8,11 +8,8 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { gameResults, classroomEnrollments, players } from '@/db/schema'
 import { eq, desc, and, inArray, sql } from 'drizzle-orm'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
 
 /**
  * GET - Fetch classroom leaderboard
@@ -21,9 +18,9 @@ interface RouteParams {
  * - gameName: Filter to specific game
  * - category: Filter to specific category
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
 
     if (!classroomId) {
       return NextResponse.json({ error: 'Classroom ID required' }, { status: 400 })
@@ -101,4 +98,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching classroom leaderboard:', error)
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })
   }
-}
+})

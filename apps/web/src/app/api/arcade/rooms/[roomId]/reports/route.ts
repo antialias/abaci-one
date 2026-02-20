@@ -1,19 +1,16 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getAllReports } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * GET /api/arcade/rooms/:roomId/reports
  * Get all reports for a room (host only)
  */
-export async function GET(req: NextRequest, context: RouteContext) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if user is the host
@@ -36,4 +33,4 @@ export async function GET(req: NextRequest, context: RouteContext) {
     console.error('Failed to get reports:', error)
     return NextResponse.json({ error: 'Failed to get reports' }, { status: 500 })
   }
-}
+})

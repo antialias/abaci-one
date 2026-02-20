@@ -1,11 +1,8 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * GET /api/curriculum/[playerId]/problem-history
@@ -13,8 +10,8 @@ interface RouteParams {
  * Returns the recent problem history for a player.
  * Used for BKT computation and skill classification preview.
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { playerId } = (await params) as { playerId: string }
 
   try {
     // Authorization check
@@ -30,4 +27,4 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error fetching problem history:', error)
     return NextResponse.json({ error: 'Failed to fetch problem history' }, { status: 500 })
   }
-}
+})

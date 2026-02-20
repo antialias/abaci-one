@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import {
   deleteRoom,
   getRoomById,
@@ -8,19 +8,16 @@ import {
 } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getActivePlayers } from '@/lib/arcade/player-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * GET /api/arcade/rooms/:roomId
  * Get room details including members
  */
-export async function GET(_req: NextRequest, context: RouteContext) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     const room = await getRoomById(roomId)
@@ -57,7 +54,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     console.error('Failed to fetch room:', error)
     return NextResponse.json({ error: 'Failed to fetch room' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/arcade/rooms/:roomId
@@ -68,11 +65,11 @@ export async function GET(_req: NextRequest, context: RouteContext) {
  *
  * Note: For access control (accessMode, password), use PATCH /api/arcade/rooms/:roomId/settings
  */
-export async function PATCH(req: NextRequest, context: RouteContext) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Check if user is room creator
     const isCreator = await isRoomCreator(roomId, viewerId)
@@ -109,15 +106,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     console.error('Failed to update room:', error)
     return NextResponse.json({ error: 'Failed to update room' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/arcade/rooms/:roomId
  * Delete room (creator only)
  */
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if user is room creator
@@ -133,4 +130,4 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     console.error('Failed to delete room:', error)
     return NextResponse.json({ error: 'Failed to delete room' }, { status: 500 })
   }
-}
+})

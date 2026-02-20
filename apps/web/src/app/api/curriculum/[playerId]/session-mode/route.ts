@@ -13,14 +13,11 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getSessionMode, type SessionMode } from '@/lib/curriculum/session-mode'
 import { getSessionModeComfortLevel } from '@/lib/curriculum/session-mode-comfort'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 export interface SessionModeResponse {
   sessionMode: SessionMode
@@ -31,9 +28,9 @@ export interface SessionModeResponse {
 /**
  * GET - Get the session mode for a student
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -58,4 +55,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching session mode:', error)
     return NextResponse.json({ error: 'Failed to fetch session mode' }, { status: 500 })
   }
-}
+})

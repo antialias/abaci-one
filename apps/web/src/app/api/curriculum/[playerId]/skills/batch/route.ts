@@ -5,20 +5,17 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { recordSkillAttempts } from '@/lib/curriculum/progress-manager'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
 /**
  * POST - Record multiple skill attempts at once
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -55,4 +52,4 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error('Error recording batch skill attempts:', error)
     return NextResponse.json({ error: 'Failed to record skill attempts' }, { status: 500 })
   }
-}
+})

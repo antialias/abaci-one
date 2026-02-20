@@ -5,7 +5,8 @@
  * Includes a branded QR code linking to a remix version of the flowchart.
  */
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { execSync } from 'child_process'
 import * as fs from 'fs/promises'
 import * as path from 'path'
@@ -29,7 +30,7 @@ interface FlowchartPDFRequest {
   sessionId?: string
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   const tmpFiles: string[] = []
 
   try {
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
       }
     }
   }
-}
+})
 
 /**
  * Generate a flowchart-themed icon SVG for the QR code center

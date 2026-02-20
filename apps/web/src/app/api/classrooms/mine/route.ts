@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getTeacherClassroom } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/classrooms/mine
@@ -8,7 +9,7 @@ import { getDbUserId } from '@/lib/viewer'
  *
  * Returns: { classroom } or 404
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     // getDbUserId combines getViewerId + getOrCreateUser in one call
     const userId = await getDbUserId()
@@ -23,4 +24,4 @@ export async function GET() {
     console.error('Failed to fetch classroom:', error)
     return NextResponse.json({ error: 'Failed to fetch classroom' }, { status: 500 })
   }
-}
+})

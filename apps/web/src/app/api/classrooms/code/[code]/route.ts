@@ -1,9 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getClassroomByCode } from '@/lib/classroom'
-
-interface RouteParams {
-  params: Promise<{ code: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/classrooms/code/[code]
@@ -11,9 +8,9 @@ interface RouteParams {
  *
  * Returns: { classroom, teacher } or 404
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { code } = await params
+    const { code } = (await params) as { code: string }
 
     const classroom = await getClassroomByCode(code)
 
@@ -39,4 +36,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to lookup classroom:', error)
     return NextResponse.json({ error: 'Failed to lookup classroom' }, { status: 500 })
   }
-}
+})

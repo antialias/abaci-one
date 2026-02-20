@@ -17,6 +17,7 @@ import { NextResponse } from 'next/server'
 import { desc, ne } from 'drizzle-orm'
 import { db } from '@/db'
 import { smokeTestRuns } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +38,7 @@ interface SmokeTestStatusResponse {
 // Smoke tests run daily at 2 AM Central, so allow slightly over 24h for schedule drift
 const MAX_AGE_MS = 25 * 60 * 60 * 1000
 
-export async function GET(): Promise<NextResponse<SmokeTestStatusResponse>> {
+export const GET = withAuth(async (): Promise<NextResponse<SmokeTestStatusResponse>> => {
   try {
     // Get the most recent COMPLETED test run (not "running")
     const latestCompletedRun = await db
@@ -130,4 +131,4 @@ export async function GET(): Promise<NextResponse<SmokeTestStatusResponse>> {
       { status: 503 }
     )
   }
-}
+})

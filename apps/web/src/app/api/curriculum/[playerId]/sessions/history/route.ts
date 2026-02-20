@@ -18,19 +18,16 @@ import { NextResponse } from 'next/server'
 import { and, desc, eq, lt } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans } from '@/db/schema/session-plans'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
-
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   const routeStart = performance.now()
   const timings: Record<string, number> = {}
 
   try {
-    const { playerId } = await params
+    const { playerId } = (await params) as { playerId: string }
     const { searchParams } = new URL(request.url)
 
     const cursor = searchParams.get('cursor')
@@ -122,4 +119,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching session history:', error)
     return NextResponse.json({ error: 'Failed to fetch session history' }, { status: 500 })
   }
-}
+})

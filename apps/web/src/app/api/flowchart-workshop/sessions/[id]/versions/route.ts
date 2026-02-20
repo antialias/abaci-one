@@ -10,13 +10,10 @@
  */
 
 import { and, desc, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/flowchart-workshop/sessions/[id]/versions
@@ -24,9 +21,9 @@ interface RouteParams {
  *
  * Returns: { versions: FlowchartVersionHistory[], currentVersion: number }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     // Verify session ownership
@@ -59,7 +56,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch version history:', error)
     return NextResponse.json({ error: 'Failed to fetch versions' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/flowchart-workshop/sessions/[id]/versions
@@ -68,11 +65,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * Body: { versionNumber: number }
  * Returns: { success: true, session: WorkshopSession }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
-    const body = await req.json()
+    const body = await request.json()
 
     const { versionNumber } = body
     if (typeof versionNumber !== 'number') {
@@ -128,4 +125,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to restore version:', error)
     return NextResponse.json({ error: 'Failed to restore version' }, { status: 500 })
   }
-}
+})

@@ -1,12 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { players, sessionPlans } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { validateSessionShare } from '@/lib/session-share'
-
-interface RouteParams {
-  params: Promise<{ token: string }>
-}
 
 /**
  * GET /api/observe/[token]
@@ -14,8 +11,8 @@ interface RouteParams {
  *
  * This endpoint does NOT require authentication - anyone with the token can access it.
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { token } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { token } = (await params) as { token: string }
 
   try {
     // Validate the token
@@ -121,4 +118,4 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
+})

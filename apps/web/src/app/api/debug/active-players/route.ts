@@ -3,7 +3,7 @@ import { getViewerId } from '@/lib/viewer'
 import { getActivePlayers } from '@/lib/arcade/player-manager'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 // Force dynamic rendering - this route uses headers()
 export const dynamic = 'force-dynamic'
@@ -12,9 +12,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/debug/active-players
  * Debug endpoint to check active players for current user
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
 
@@ -60,4 +58,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

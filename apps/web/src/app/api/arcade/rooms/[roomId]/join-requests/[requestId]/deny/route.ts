@@ -1,22 +1,19 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { denyJoinRequest } from '@/lib/arcade/room-join-requests'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string; requestId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/join-requests/:requestId/deny
  * Deny a join request (host only)
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { roomId, requestId } = await context.params
+    const { roomId, requestId } = (await params) as { roomId: string; requestId: string }
     const viewerId = await getViewerId()
 
     // Check if user is the host
@@ -72,4 +69,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('Failed to deny join request:', error)
     return NextResponse.json({ error: 'Failed to deny join request' }, { status: 500 })
   }
-}
+})

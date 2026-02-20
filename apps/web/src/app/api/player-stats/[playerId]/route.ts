@@ -5,6 +5,7 @@ import type { GameStatsBreakdown } from '@/db/schema/player-stats'
 import { playerStats } from '@/db/schema/player-stats'
 import { players } from '@/db/schema/players'
 import type { GetPlayerStatsResponse, PlayerStatsData } from '@/lib/arcade/stats/types'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -12,9 +13,9 @@ import { getViewerId } from '@/lib/viewer'
  *
  * Fetches stats for a specific player (must be owned by current user).
  */
-export async function GET(_request: Request, { params }: { params: { playerId: string } }) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId } = params
+    const { playerId } = (await params) as { playerId: string }
 
     // 1. Authenticate user
     const viewerId = await getViewerId()
@@ -69,7 +70,7 @@ export async function GET(_request: Request, { params }: { params: { playerId: s
       { status: 500 }
     )
   }
-}
+})
 
 /**
  * Convert DB record to PlayerStatsData

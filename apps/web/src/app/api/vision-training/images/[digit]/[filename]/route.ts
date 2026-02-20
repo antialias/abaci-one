@@ -2,30 +2,21 @@ import fs from 'fs/promises'
 import path from 'path'
 import { NextResponse } from 'next/server'
 import { deleteColumnClassifierSample } from '@/lib/vision/trainingDataDeletion'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Directory where collected training data is stored
  */
 const TRAINING_DATA_DIR = path.join(process.cwd(), 'data', 'vision-training', 'collected')
 
-interface RouteParams {
-  params: Promise<{
-    digit: string
-    filename: string
-  }>
-}
-
 /**
  * GET /api/vision-training/images/[digit]/[filename]
  *
  * Serves a training image file.
  */
-export async function GET(_request: Request, { params }: RouteParams): Promise<NextResponse> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { digit, filename } = await params
+    const { digit, filename } = (await params) as { digit: string; filename: string }
 
     // Validate digit
     if (!/^[0-9]$/.test(digit)) {
@@ -54,7 +45,7 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
     console.error('[vision-training] Error serving image:', error)
     return NextResponse.json({ error: 'Failed to serve image' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * PATCH /api/vision-training/images/[digit]/[filename]
@@ -62,11 +53,9 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
  * Reclassifies a training image by moving it to a different digit folder.
  * Body: { newDigit: number }
  */
-export async function PATCH(request: Request, { params }: RouteParams): Promise<NextResponse> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { digit, filename } = await params
+    const { digit, filename } = (await params) as { digit: string; filename: string }
     const body = await request.json()
     const { newDigit } = body
 
@@ -127,18 +116,16 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
     console.error('[vision-training] Error reclassifying image:', error)
     return NextResponse.json({ error: 'Failed to reclassify image' }, { status: 500 })
   }
-}
+}, { role: 'admin' })
 
 /**
  * DELETE /api/vision-training/images/[digit]/[filename]
  *
  * Deletes a training image file and records to tombstone.
  */
-export async function DELETE(_request: Request, { params }: RouteParams): Promise<NextResponse> {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { digit, filename } = await params
+    const { digit, filename } = (await params) as { digit: string; filename: string }
 
     // Validate digit format (detailed validation in shared function)
     if (!/^[0-9]$/.test(digit)) {
@@ -165,4 +152,4 @@ export async function DELETE(_request: Request, { params }: RouteParams): Promis
     console.error('[vision-training] Error deleting image:', error)
     return NextResponse.json({ error: 'Failed to delete image' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

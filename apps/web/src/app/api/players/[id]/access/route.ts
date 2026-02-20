@@ -1,10 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/players/[id]/access
@@ -12,11 +9,11 @@ interface RouteParams {
  *
  * Returns: { accessLevel, isParent, isTeacher, isPresent, classroomId? }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   const routeStart = performance.now()
 
   try {
-    const { id: playerId } = await params
+    const { id: playerId } = (await params) as { id: string }
 
     // Use getDbUserId() to get the database user.id, not the guestId
     // This is required because parent_child links to user.id
@@ -44,4 +41,4 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to check player access:', error)
     return NextResponse.json({ error: 'Failed to check player access' }, { status: 500 })
   }
-}
+})

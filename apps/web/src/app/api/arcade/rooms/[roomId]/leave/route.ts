@@ -1,21 +1,18 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers, isMember, removeMember } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/leave
  * Leave a room
  */
-export async function POST(_req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Get room
@@ -68,4 +65,4 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     console.error('Failed to leave room:', error)
     return NextResponse.json({ error: 'Failed to leave room' }, { status: 500 })
   }
-}
+})

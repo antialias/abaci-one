@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
   createEnrollmentRequest,
@@ -11,6 +11,7 @@ import {
 } from '@/lib/classroom'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -28,10 +29,6 @@ async function getOrCreateUser(viewerId: string) {
   return user
 }
 
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
-
 /**
  * GET /api/classrooms/[classroomId]/enrollment-requests
  * Get pending enrollment requests (teacher only)
@@ -40,9 +37,9 @@ interface RouteParams {
  * - requests: Requests needing teacher approval (parent-initiated)
  * - awaitingParentApproval: Requests needing parent approval (teacher-initiated)
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -63,7 +60,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch enrollment requests:', error)
     return NextResponse.json({ error: 'Failed to fetch enrollment requests' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/classrooms/[classroomId]/enrollment-requests
@@ -72,9 +69,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * Body: { playerId: string }
  * Returns: { request }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (req, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
     const body = await req.json()
@@ -157,4 +154,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to create enrollment request:', error)
     return NextResponse.json({ error: 'Failed to create enrollment request' }, { status: 500 })
   }
-}
+})

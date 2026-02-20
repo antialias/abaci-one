@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { linkParentToChild } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
@@ -27,10 +28,10 @@ async function getOrCreateUser(viewerId: string) {
  * Body: { familyCode: string }
  * Returns: { success: true, player } or { success: false, error }
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     if (!body.familyCode) {
       return NextResponse.json({ success: false, error: 'Missing familyCode' }, { status: 400 })
@@ -53,4 +54,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

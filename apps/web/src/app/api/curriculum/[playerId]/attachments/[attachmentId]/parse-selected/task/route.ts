@@ -16,13 +16,10 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { backgroundTasks } from '@/db/schema/background-tasks'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { startWorksheetReparse, type WorksheetReparseInput } from '@/lib/tasks/worksheet-reparse'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
 
 // Request body schema
 const RequestBodySchema = z.object({
@@ -41,8 +38,8 @@ const RequestBodySchema = z.object({
 /**
  * POST - Start a new re-parse task
  */
-export async function POST(request: Request, { params }: RouteParams) {
-  const { playerId, attachmentId } = await params
+export const POST = withAuth(async (request, { params }) => {
+  const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
   if (!playerId || !attachmentId) {
     return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -144,13 +141,13 @@ export async function POST(request: Request, { params }: RouteParams) {
   console.log('[ReparseTaskAPI] Task created with ID:', taskId)
 
   return NextResponse.json({ taskId, status: 'started' })
-}
+})
 
 /**
  * GET - Check for active re-parse task (for reconnection)
  */
-export async function GET(request: Request, { params }: RouteParams) {
-  const { playerId, attachmentId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
   if (!playerId || !attachmentId) {
     return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -194,4 +191,4 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   return NextResponse.json({ taskId: null, status: 'none' })
-}
+})

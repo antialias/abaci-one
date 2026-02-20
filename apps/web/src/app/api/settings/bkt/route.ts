@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /** Default BKT confidence threshold */
 const DEFAULT_THRESHOLD = 0.3
@@ -27,7 +28,7 @@ async function ensureDefaultSettings() {
  * Returns the current BKT confidence threshold setting.
  * Creates the default row if it doesn't exist.
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     await ensureDefaultSettings()
 
@@ -44,7 +45,7 @@ export async function GET() {
     console.error('Error fetching BKT settings:', error)
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/settings/bkt
@@ -54,7 +55,7 @@ export async function GET() {
  * Body:
  * - bktConfidenceThreshold: number (0.1 to 0.9)
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { bktConfidenceThreshold } = body
@@ -87,4 +88,4 @@ export async function PATCH(request: NextRequest) {
     console.error('Error updating BKT settings:', error)
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
   }
-}
+})

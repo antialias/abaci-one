@@ -1,18 +1,15 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 import { TRAINING_PYTHON, PYTHON_ENV, ensureVenvReady } from '../config'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Preview marker masking using the EXACT SAME Python code as training.
  *
  * This ensures the preview matches what the model will see during training.
  */
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { imageData, corners, method = 'noise' } = body
@@ -112,4 +109,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+}, { role: 'admin' })

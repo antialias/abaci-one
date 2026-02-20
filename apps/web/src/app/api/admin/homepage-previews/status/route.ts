@@ -3,7 +3,7 @@ import { join } from 'path'
 import { NextResponse } from 'next/server'
 import { PREVIEW_TARGETS } from '@/lib/homepage-previews'
 import { IMAGE_PROVIDERS } from '@/lib/image-providers'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const HOMEPAGE_IMAGES_DIR = join(process.cwd(), 'public', 'images', 'homepage')
 
@@ -12,10 +12,7 @@ const HOMEPAGE_IMAGES_DIR = join(process.cwd(), 'public', 'images', 'homepage')
  *
  * Returns all preview targets with their image existence and file size.
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async () => {
   const targets = PREVIEW_TARGETS.map((target) => {
     const filePath = join(HOMEPAGE_IMAGES_DIR, `${target.id}.png`)
     const exists = existsSync(filePath)
@@ -47,4 +44,4 @@ export async function GET() {
   })
 
   return NextResponse.json({ targets, providers })
-}
+}, { role: 'admin' })

@@ -1,15 +1,12 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { banUserFromRoom, getRoomBans, unbanUserFromRoom } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getUserRoomHistory } from '@/lib/arcade/room-member-history'
 import { createInvitation } from '@/lib/arcade/room-invitations'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/ban
@@ -19,11 +16,11 @@ type RouteContext = {
  *   - reason: string (enum)
  *   - notes?: string (optional)
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.userId || !body.reason) {
@@ -112,7 +109,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('Failed to ban user:', error)
     return NextResponse.json({ error: 'Failed to ban user' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/arcade/rooms/:roomId/ban
@@ -120,11 +117,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
  * Body:
  *   - userId: string
  */
-export async function DELETE(req: NextRequest, context: RouteContext) {
+export const DELETE = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.userId) {
@@ -189,15 +186,15 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     console.error('Failed to unban user:', error)
     return NextResponse.json({ error: 'Failed to unban user' }, { status: 500 })
   }
-}
+})
 
 /**
  * GET /api/arcade/rooms/:roomId/ban
  * Get all bans for a room (host only)
  */
-export async function GET(req: NextRequest, context: RouteContext) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if user is the host
@@ -220,4 +217,4 @@ export async function GET(req: NextRequest, context: RouteContext) {
     console.error('Failed to get bans:', error)
     return NextResponse.json({ error: 'Failed to get bans' }, { status: 500 })
   }
-}
+})

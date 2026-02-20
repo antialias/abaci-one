@@ -5,7 +5,8 @@
  * Works with drafts that haven't been saved to the database yet.
  */
 
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db } from '@/db'
 import { workshopSessions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
@@ -35,9 +36,9 @@ interface WorksheetRequest {
   orderByDifficulty?: boolean
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { id: sessionId } = await params
+    const { id: sessionId } = (await params) as { id: string }
     const body: WorksheetRequest = await request.json()
 
     // Load the session
@@ -125,4 +126,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 500 }
     )
   }
-}
+})

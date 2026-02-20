@@ -1,5 +1,5 @@
 import { and, eq, inArray, lt } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
   getEnrolledStudents,
@@ -9,10 +9,7 @@ import {
 } from '@/lib/classroom'
 import { emitEntryPromptCreated } from '@/lib/classroom/socket-emitter'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Default expiry time for entry prompts (30 minutes)
@@ -23,9 +20,9 @@ const DEFAULT_EXPIRY_MINUTES = 30
  * GET /api/classrooms/[classroomId]/entry-prompts
  * Get pending entry prompts for the classroom (teacher only)
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const userId = await getDbUserId()
 
     // Verify user is the teacher of this classroom
@@ -51,7 +48,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch entry prompts:', error)
     return NextResponse.json({ error: 'Failed to fetch entry prompts' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/classrooms/[classroomId]/entry-prompts
@@ -60,9 +57,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * Body: { playerIds: string[], expiresInMinutes?: number }
  * Returns: { prompts: EntryPrompt[], skipped: { playerId: string, reason: string }[] }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (req, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const userId = await getDbUserId()
     const body = await req.json()
 
@@ -196,4 +193,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to create entry prompts:', error)
     return NextResponse.json({ error: 'Failed to create entry prompts' }, { status: 500 })
   }
-}
+})

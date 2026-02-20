@@ -1,7 +1,7 @@
 import { readdirSync, statSync, existsSync } from 'fs'
 import { join } from 'path'
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const PROOFS_DIR = join(process.cwd(), 'src', 'data', 'euclid-proofs')
 
@@ -9,10 +9,7 @@ const PROOFS_DIR = join(process.cwd(), 'src', 'data', 'euclid-proofs')
  * GET /api/admin/euclid
  * List all saved proof JSON files.
  */
-export async function GET() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const GET = withAuth(async () => {
   try {
     if (!existsSync(PROOFS_DIR)) {
       return NextResponse.json({ proofs: [] })
@@ -39,4 +36,4 @@ export async function GET() {
       { status: 500 },
     )
   }
-}
+}, { role: 'admin' })

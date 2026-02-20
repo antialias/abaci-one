@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { worksheetShares } from '@/db/schema'
 import { isValidShareId } from '@/lib/generateShareId'
 import { parseAdditionConfig } from '@/app/create/worksheets/config-schemas'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/worksheets/share/[id]
@@ -21,9 +22,9 @@ import { parseAdditionConfig } from '@/app/create/worksheets/config-schemas'
  *   title: 'Optional title'
  * }
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
 
     // Validate ID format
     if (!isValidShareId(id)) {
@@ -63,4 +64,4 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     console.error('Error fetching worksheet share:', error)
     return NextResponse.json({ error: 'Failed to fetch share' }, { status: 500 })
   }
-}
+})

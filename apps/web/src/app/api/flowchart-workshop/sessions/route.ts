@@ -1,5 +1,6 @@
 import { and, desc, eq, gt } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
 
@@ -9,7 +10,7 @@ import { getDbUserId } from '@/lib/viewer'
  *
  * Returns: { sessions: WorkshopSession[] }
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const userId = await getDbUserId()
     const now = new Date()
@@ -44,7 +45,7 @@ export async function GET() {
     console.error('Failed to list workshop sessions:', error)
     return NextResponse.json({ error: 'Failed to list sessions' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/flowchart-workshop/sessions
@@ -59,10 +60,10 @@ export async function GET() {
  *
  * Returns: { session: WorkshopSession }
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
     const userId = await getDbUserId()
-    const body = await req.json()
+    const body = await request.json()
 
     const now = new Date()
     const expiresAt = new Date()
@@ -175,4 +176,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to create workshop session:', error)
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
   }
-}
+})

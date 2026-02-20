@@ -15,17 +15,10 @@ import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans, visionProblemVideos } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import type { ProblemMetadata } from '@/lib/vision/recording'
-
-interface RouteParams {
-  params: Promise<{
-    playerId: string
-    sessionId: string
-    problemNumber: string
-  }>
-}
 
 /**
  * GET - Fetch problem metadata JSON
@@ -34,9 +27,9 @@ interface RouteParams {
  * - epoch: Epoch number (0 = initial pass, 1-2 = retry epochs). Defaults to 0.
  * - attempt: Attempt number within the epoch (1-indexed). Defaults to 1.
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId, sessionId, problemNumber: problemNumberStr } = await params
+    const { playerId, sessionId, problemNumber: problemNumberStr } = (await params) as { playerId: string; sessionId: string; problemNumber: string }
     const { searchParams } = new URL(request.url)
 
     if (!playerId || !sessionId || !problemNumberStr) {
@@ -127,4 +120,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching problem metadata:', error)
     return NextResponse.json({ error: 'Failed to fetch metadata' }, { status: 500 })
   }
-}
+})

@@ -1,19 +1,16 @@
 import bcrypt from 'bcryptjs'
 import { and, eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { recordRoomMemberHistory } from '@/lib/arcade/room-member-history'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
 import { getAllGameConfigs, setGameConfig } from '@/lib/arcade/game-config-helpers'
 import { isValidGameName } from '@/lib/arcade/validators'
 import type { GameName } from '@/lib/arcade/validators'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * PATCH /api/arcade/rooms/:roomId/settings
@@ -32,11 +29,11 @@ type RouteContext = {
  * Note: gameName is validated at runtime against the validator registry.
  * No need to update this file when adding new games!
  */
-export async function PATCH(req: NextRequest, context: RouteContext) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     console.log(
       '[Settings API] PATCH request received:',
@@ -304,4 +301,4 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     console.error('Failed to update room settings:', error)
     return NextResponse.json({ error: 'Failed to update room settings' }, { status: 500 })
   }
-}
+})

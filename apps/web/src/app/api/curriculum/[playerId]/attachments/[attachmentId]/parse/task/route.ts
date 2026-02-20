@@ -17,13 +17,10 @@ import { join } from 'path'
 import { db } from '@/db'
 import { backgroundTasks } from '@/db/schema/background-tasks'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { startWorksheetParsing } from '@/lib/tasks/worksheet-parse'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
 
 /**
  * POST - Start worksheet parsing as a background task
@@ -35,9 +32,9 @@ interface RouteParams {
  * Returns:
  *   - taskId: string - ID to subscribe via Socket.IO
  */
-export async function POST(request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -131,14 +128,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
+})
 
 /**
  * GET - Get active task ID for an attachment
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -182,4 +179,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error getting parse task:', error)
     return NextResponse.json({ error: 'Failed to get task status' }, { status: 500 })
   }
-}
+})

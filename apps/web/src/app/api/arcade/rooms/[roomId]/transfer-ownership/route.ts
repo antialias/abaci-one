@@ -1,13 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/transfer-ownership
@@ -15,11 +12,11 @@ type RouteContext = {
  * Body:
  *   - newOwnerId: string
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.newOwnerId) {
@@ -100,4 +97,4 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('Failed to transfer ownership:', error)
     return NextResponse.json({ error: 'Failed to transfer ownership' }, { status: 500 })
   }
-}
+})

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -16,10 +16,7 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  * - Deletes every voice directory under data/audio/ (preserves the parent)
  * - Deletes all rows from tts_collected_clip_say then tts_collected_clips
  */
-export async function DELETE() {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
+export const DELETE = withAuth(async () => {
   try {
     // 1. Remove voice directories from disk
     let removedDirs = 0
@@ -43,4 +40,4 @@ export async function DELETE() {
     console.error('Error nuking all clips:', error)
     return NextResponse.json({ error: 'Failed to remove clips' }, { status: 500 })
   }
-}
+}, { role: 'admin' })

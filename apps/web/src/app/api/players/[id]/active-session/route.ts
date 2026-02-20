@@ -2,12 +2,9 @@ import { NextResponse } from 'next/server'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans, type SessionPart, type SlotResult } from '@/db/schema/session-plans'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * GET /api/players/[id]/active-session
@@ -19,9 +16,9 @@ interface RouteParams {
  * - { session: null } if no active session
  * - { session: { sessionId, status, completedProblems, totalProblems } } if active
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id: playerId } = await params
+    const { id: playerId } = (await params) as { id: string }
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -73,4 +70,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error fetching active session:', error)
     return NextResponse.json({ error: 'Failed to fetch active session' }, { status: 500 })
   }
-}
+})

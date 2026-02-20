@@ -8,6 +8,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { readPersistentImage } from '@/lib/image-storage'
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -19,13 +20,9 @@ const CONTENT_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
 }
 
-interface RouteParams {
-  params: Promise<{ category: string; filename: string }>
-}
-
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { category, filename } = await params
+    const { category, filename } = (await params) as { category: string; filename: string }
 
     // Validate path segments to prevent directory traversal
     if (
@@ -58,4 +55,4 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error serving generated image:', error)
     return new NextResponse(null, { status: 500 })
   }
-}
+})

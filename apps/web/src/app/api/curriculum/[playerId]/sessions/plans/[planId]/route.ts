@@ -1,8 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { players } from '@/db/schema'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction, getStudentPresence } from '@/lib/classroom'
 import {
   emitSessionEnded,
@@ -23,10 +24,6 @@ import {
 } from '@/lib/curriculum'
 import { getDbUserId } from '@/lib/viewer'
 
-interface RouteParams {
-  params: Promise<{ playerId: string; planId: string }>
-}
-
 /**
  * Serialize a SessionPlan for JSON response.
  * Converts Date objects to timestamps (milliseconds) for consistent client handling.
@@ -45,8 +42,8 @@ function serializePlan(plan: SessionPlan) {
  * GET /api/curriculum/[playerId]/sessions/plans/[planId]
  * Get a specific session plan
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { planId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { planId } = (await params) as { playerId: string; planId: string }
 
   try {
     const plan = await getSessionPlan(planId)
@@ -58,7 +55,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error fetching plan:', error)
     return NextResponse.json({ error: 'Failed to fetch plan' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/curriculum/[playerId]/sessions/plans/[planId]
@@ -69,8 +66,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  * - result?: SlotResult (for 'record' action)
  * - reason?: string (for 'end_early' action)
  */
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const { playerId, planId } = await params
+export const PATCH = withAuth(async (request, { params }) => {
+  const { playerId, planId } = (await params) as { playerId: string; planId: string }
 
   try {
     // Authorization: require 'start-session' permission (parent or teacher-present)
@@ -162,7 +159,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     console.error('Error updating plan:', error)
     return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
   }
-}
+})
 
 /**
  * Helper to emit session socket events to both:

@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import {
   createInvitation,
   declineInvitation,
@@ -7,12 +7,9 @@ import {
 } from '@/lib/arcade/room-invitations'
 import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string }>
-}
 
 /**
  * POST /api/arcade/rooms/:roomId/invite
@@ -22,11 +19,11 @@ type RouteContext = {
  *   - userName: string
  *   - message?: string (optional)
  */
-export async function POST(req: NextRequest, context: RouteContext) {
+export const POST = withAuth(async (request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Validate required fields
     if (!body.userId || !body.userName) {
@@ -111,15 +108,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.error('Failed to send invitation:', error)
     return NextResponse.json({ error: 'Failed to send invitation' }, { status: 500 })
   }
-}
+})
 
 /**
  * GET /api/arcade/rooms/:roomId/invite
  * Get all invitations for a room (host only)
  */
-export async function GET(req: NextRequest, context: RouteContext) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if user is the host
@@ -142,15 +139,15 @@ export async function GET(req: NextRequest, context: RouteContext) {
     console.error('Failed to get invitations:', error)
     return NextResponse.json({ error: 'Failed to get invitations' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/arcade/rooms/:roomId/invite
  * Decline an invitation (invited user only)
  */
-export async function DELETE(req: NextRequest, context: RouteContext) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { roomId } = await context.params
+    const { roomId } = (await params) as { roomId: string }
     const viewerId = await getViewerId()
 
     // Check if there's an invitation for this user
@@ -172,4 +169,4 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     console.error('Failed to decline invitation:', error)
     return NextResponse.json({ error: 'Failed to decline invitation' }, { status: 500 })
   }
-}
+})

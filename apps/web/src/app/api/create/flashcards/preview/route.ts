@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -8,6 +8,7 @@ import {
   generateFlashcardFront,
   generateFlashcardBack,
 } from '@/utils/flashcards/generateFlashcardSvgs'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ function parseRangeForPreview(range: string, step: number, cardsPerPage: number)
   return numbers.slice(0, cardsPerPage)
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request) => {
   let tempDir: string | null = null
 
   try {
@@ -185,4 +186,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})

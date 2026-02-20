@@ -1,12 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getSessionPlan } from '@/lib/curriculum'
 import { updateSessionPlanResults } from '@/lib/curriculum/session-planner'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; planId: string; resultIndex: string }>
-}
 
 /**
  * PATCH /api/curriculum/[playerId]/sessions/plans/[planId]/results/[resultIndex]
@@ -17,8 +14,8 @@ interface RouteParams {
  * - exclude: Mark result as excluded from tracking (source: 'teacher-excluded')
  * - include: Remove exclusion (restore original source)
  */
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const { playerId, planId, resultIndex: resultIndexStr } = await params
+export const PATCH = withAuth(async (request, { params }) => {
+  const { playerId, planId, resultIndex: resultIndexStr } = (await params) as { playerId: string; planId: string; resultIndex: string }
   const resultIndex = parseInt(resultIndexStr, 10)
 
   if (isNaN(resultIndex) || resultIndex < 0) {
@@ -155,4 +152,4 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     console.error('Error updating result:', error)
     return NextResponse.json({ error: 'Failed to update result' }, { status: 500 })
   }
-}
+})

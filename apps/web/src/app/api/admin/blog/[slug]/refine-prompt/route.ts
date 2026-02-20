@@ -1,10 +1,10 @@
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { llm } from '@/lib/llm'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const postsDirectory = path.join(process.cwd(), 'content', 'blog')
 
@@ -15,14 +15,8 @@ const SYSTEM_CONTEXT = `You are an expert prompt engineer for AI image generatio
  *
  * Uses an LLM to refine the current heroPrompt for better image generation.
  */
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { slug } = await params
+export const POST = withAuth(async (_request, { params }) => {
+  const { slug } = (await params) as { slug: string }
 
   const filePath = path.join(postsDirectory, `${slug}.md`)
   if (!fs.existsSync(filePath)) {
@@ -59,4 +53,4 @@ Provide an improved version of this prompt.`,
     original: heroPrompt,
     refined: response.data.refined,
   })
-}
+}, { role: 'admin' })

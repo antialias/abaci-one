@@ -2,10 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/teacher-flowcharts/[id]
@@ -13,9 +10,9 @@ interface RouteParams {
  *
  * Returns: { flowchart: TeacherFlowchart } or 404
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     const flowchart = await db.query.teacherFlowcharts.findFirst({
@@ -31,7 +28,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch teacher flowchart:', error)
     return NextResponse.json({ error: 'Failed to fetch flowchart' }, { status: 500 })
   }
-}
+})
 
 /**
  * PUT /api/teacher-flowcharts/[id]
@@ -51,11 +48,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  *
  * Returns: { flowchart: TeacherFlowchart }
  */
-export async function PUT(req: NextRequest, { params }: RouteParams) {
+export const PUT = withAuth(async (request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Find existing flowchart
     const existing = await db.query.teacherFlowcharts.findFirst({
@@ -129,7 +126,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to update teacher flowchart:', error)
     return NextResponse.json({ error: 'Failed to update flowchart' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/teacher-flowcharts/[id]
@@ -137,9 +134,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
  *
  * Returns: { success: true }
  */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     // Verify ownership
@@ -165,4 +162,4 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to delete teacher flowchart:', error)
     return NextResponse.json({ error: 'Failed to delete flowchart' }, { status: 500 })
   }
-}
+})

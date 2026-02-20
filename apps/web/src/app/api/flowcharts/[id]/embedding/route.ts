@@ -1,21 +1,18 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
 
 /**
  * POST /api/flowcharts/[id]/embedding
  *
  * Generate and store embeddings for a single published flowchart.
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
 
     const fc = await db.query.teacherFlowcharts.findFirst({
       where: eq(schema.teacherFlowcharts.id, id),
@@ -58,4 +55,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
+})

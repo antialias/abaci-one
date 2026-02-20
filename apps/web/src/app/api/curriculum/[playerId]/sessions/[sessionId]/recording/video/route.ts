@@ -14,19 +14,16 @@ import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans, visionRecordings } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; sessionId: string }>
-}
 
 /**
  * GET - Stream recording video with Range support
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId, sessionId } = await params
+    const { playerId, sessionId } = (await params) as { playerId: string; sessionId: string }
 
     if (!playerId || !sessionId) {
       return NextResponse.json({ error: 'Player ID and Session ID required' }, { status: 400 })
@@ -164,4 +161,4 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error streaming recording video:', error)
     return NextResponse.json({ error: 'Failed to stream video' }, { status: 500 })
   }
-}
+})

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayersWithSkillData } from '@/lib/curriculum/server'
 
 /**
@@ -6,7 +7,7 @@ import { getPlayersWithSkillData } from '@/lib/curriculum/server'
  * Returns all players for the current viewer with their skill data
  * (practicing skills, last practiced, skill category)
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const players = await getPlayersWithSkillData()
     return NextResponse.json({ players })
@@ -14,4 +15,4 @@ export async function GET() {
     console.error('Failed to fetch players with skill data:', error)
     return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })
   }
-}
+})

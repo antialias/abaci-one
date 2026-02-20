@@ -1,8 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import {
   searchSimilarFlowcharts,
   type FlowchartSearchResult,
 } from '@/lib/flowcharts/embedding-search'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST /api/flowcharts/suggest
@@ -14,9 +15,9 @@ import {
  * Request body: { query: string, limit?: number }
  * Response: { suggestions: FlowchartSearchResult[] }
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (request) => {
   try {
-    const body = await req.json()
+    const body = await request.json()
     const { query, limit } = body
 
     if (!query || typeof query !== 'string') {
@@ -40,4 +41,4 @@ export async function POST(req: NextRequest) {
     console.error('Failed to search flowcharts:', error)
     return NextResponse.json({ error: 'Failed to search flowcharts' }, { status: 500 })
   }
-}
+})

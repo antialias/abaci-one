@@ -4,10 +4,7 @@ import { db, schema } from '@/db'
 import { getDbUserId } from '@/lib/viewer'
 import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * POST /api/teacher-flowcharts/[id]/publish
@@ -19,9 +16,9 @@ interface RouteParams {
  *
  * Returns: { flowchart: TeacherFlowchart }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const userId = await getDbUserId()
 
     // Find the flowchart
@@ -128,4 +125,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to publish teacher flowchart:', error)
     return NextResponse.json({ error: 'Failed to publish flowchart' }, { status: 500 })
   }
-}
+})

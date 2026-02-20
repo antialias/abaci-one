@@ -1,5 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import type { SessionPlan, GameBreakSettings } from '@/db/schema/session-plans'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import {
   ActiveSessionExistsError,
@@ -11,10 +12,6 @@ import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { startSessionPlanGeneration } from '@/lib/tasks/session-plan'
 import { getDbUserId } from '@/lib/viewer'
-
-interface RouteParams {
-  params: Promise<{ playerId: string }>
-}
 
 /**
  * Serialize a SessionPlan for JSON response.
@@ -34,8 +31,8 @@ function serializePlan(plan: SessionPlan) {
  * GET /api/curriculum/[playerId]/sessions/plans
  * Get the active session plan for a player (if any)
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { playerId } = (await params) as { playerId: string }
 
   try {
     // Authorization check
@@ -51,7 +48,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error fetching active plan:', error)
     return NextResponse.json({ error: 'Failed to fetch active plan' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/curriculum/[playerId]/sessions/plans
@@ -72,8 +69,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  * - Part 2: Visualization (mental math, vertical format)
  * - Part 3: Linear (mental math, sentence format)
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { playerId } = await params
+export const POST = withAuth(async (request, { params }) => {
+  const { playerId } = (await params) as { playerId: string }
 
   try {
     // Authorization check - only parents/present teachers can create sessions
@@ -191,4 +188,4 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.error('Error creating session plan task:', error)
     return NextResponse.json({ error: 'Failed to create session plan task' }, { status: 500 })
   }
-}
+})

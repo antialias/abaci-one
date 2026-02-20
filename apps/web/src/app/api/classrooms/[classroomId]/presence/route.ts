@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import {
   enterClassroom,
@@ -8,6 +8,7 @@ import {
   isParent,
 } from '@/lib/classroom'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Get or create user record for a viewerId (guestId)
@@ -25,19 +26,15 @@ async function getOrCreateUser(viewerId: string) {
   return user
 }
 
-interface RouteParams {
-  params: Promise<{ classroomId: string }>
-}
-
 /**
  * GET /api/classrooms/[classroomId]/presence
  * Get all students currently present in classroom (teacher only)
  *
  * Returns: { students: Player[] }
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
 
@@ -61,7 +58,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error('Failed to fetch classroom presence:', error)
     return NextResponse.json({ error: 'Failed to fetch classroom presence' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST /api/classrooms/[classroomId]/presence
@@ -70,9 +67,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * Body: { playerId: string }
  * Returns: { success: true, presence } or { success: false, error }
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export const POST = withAuth(async (req, { params }) => {
   try {
-    const { classroomId } = await params
+    const { classroomId } = (await params) as { classroomId: string }
     const viewerId = await getViewerId()
     const user = await getOrCreateUser(viewerId)
     const body = await req.json()
@@ -114,4 +111,4 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
+})

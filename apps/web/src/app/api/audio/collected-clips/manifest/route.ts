@@ -1,6 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { existsSync, readdirSync } from 'fs'
 import { join } from 'path'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -14,7 +15,7 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  *
  * Response: { clipIdsByVoice: { onyx: ["abc123", ...], nova: [...] } }
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const voicesParam = request.nextUrl.searchParams.get('voices')
     if (!voicesParam) {
@@ -61,4 +62,4 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching collected clips manifest:', error)
     return NextResponse.json({ error: 'Failed to fetch manifest' }, { status: 500 })
   }
-}
+})

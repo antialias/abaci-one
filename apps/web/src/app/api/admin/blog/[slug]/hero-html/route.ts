@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/requireRole'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 
 const heroHtmlDirectory = path.join(process.cwd(), 'content', 'blog', 'hero-html')
 
@@ -10,14 +10,8 @@ const heroHtmlDirectory = path.join(process.cwd(), 'content', 'blog', 'hero-html
  *
  * Reads the hero HTML file for a blog post.
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { slug } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { slug } = (await params) as { slug: string }
   const filePath = path.join(heroHtmlDirectory, `${slug}.html`)
 
   if (fs.existsSync(filePath)) {
@@ -26,21 +20,15 @@ export async function GET(
   }
 
   return NextResponse.json({ html: null })
-}
+}, { role: 'admin' })
 
 /**
  * PUT /api/admin/blog/[slug]/hero-html
  *
  * Writes the hero HTML file for a blog post.
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const auth = await requireAdmin()
-  if (auth instanceof NextResponse) return auth
-
-  const { slug } = await params
+export const PUT = withAuth(async (request, { params }) => {
+  const { slug } = (await params) as { slug: string }
 
   let body: { html: string }
   try {
@@ -62,4 +50,4 @@ export async function PUT(
   fs.writeFileSync(filePath, body.html, 'utf8')
 
   return NextResponse.json({ success: true })
-}
+}, { role: 'admin' })

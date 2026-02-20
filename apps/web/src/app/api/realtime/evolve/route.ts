@@ -7,10 +7,11 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { evolveScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import type { GeneratedScenario, TranscriptEntry } from '@/components/toys/number-line/talkToNumber/generateScenario'
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
     const { number, scenario, recentTranscripts, conferenceNumbers } = body as {
@@ -46,4 +47,4 @@ export async function POST(request: Request) {
     console.error('[realtime/evolve] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+})

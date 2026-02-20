@@ -2,12 +2,13 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * GET /api/user-stats
  * Get user statistics for the current viewer
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const viewerId = await getViewerId()
 
@@ -51,16 +52,16 @@ export async function GET() {
     console.error('Failed to fetch user stats:', error)
     return NextResponse.json({ error: 'Failed to fetch user stats' }, { status: 500 })
   }
-}
+})
 
 /**
  * PATCH /api/user-stats
  * Update user statistics for the current viewer
  */
-export async function PATCH(req: NextRequest) {
+export const PATCH = withAuth(async (request) => {
   try {
     const viewerId = await getViewerId()
-    const body = await req.json()
+    const body = await request.json()
 
     // Get or create user record
     let user = await db.query.users.findFirst({
@@ -117,4 +118,4 @@ export async function PATCH(req: NextRequest) {
     console.error('Failed to update user stats:', error)
     return NextResponse.json({ error: 'Failed to update user stats' }, { status: 500 })
   }
-}
+})

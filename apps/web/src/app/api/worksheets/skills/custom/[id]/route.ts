@@ -3,16 +3,17 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { customSkills } from '@/db/schema'
 import { getViewerId } from '@/lib/viewer'
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * PUT /api/worksheets/skills/custom/[id]
  *
  * Update an existing custom skill
  */
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PUT = withAuth(async (request, { params }) => {
   try {
     const viewerId = await getViewerId()
-    const { id } = await params
+    const { id } = (await params) as { id: string }
     const body = await request.json()
 
     const { name, description, digitRange, regroupingConfig, displayRules } = body
@@ -64,20 +65,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     console.error('Failed to update custom skill:', error)
     return NextResponse.json({ error: 'Failed to update custom skill' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/worksheets/skills/custom/[id]
  *
  * Delete a custom skill
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const viewerId = await getViewerId()
-    const { id } = await params
+    const { id } = (await params) as { id: string }
 
     // Verify skill exists and belongs to user
     const existing = await db.query.customSkills.findFirst({
@@ -98,4 +96,4 @@ export async function DELETE(
     console.error('Failed to delete custom skill:', error)
     return NextResponse.json({ error: 'Failed to delete custom skill' }, { status: 500 })
   }
-}
+})

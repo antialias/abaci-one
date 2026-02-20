@@ -1,19 +1,16 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getRoomById, isRoomCreator } from '@/lib/arcade/room-manager'
 import { isMember, removeMember } from '@/lib/arcade/room-membership'
+import { withAuth } from '@/lib/auth/withAuth'
 import { getViewerId } from '@/lib/viewer'
-
-type RouteContext = {
-  params: Promise<{ roomId: string; userId: string }>
-}
 
 /**
  * DELETE /api/arcade/rooms/:roomId/members/:userId
  * Kick a member from room (creator only)
  */
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const { roomId, userId } = await context.params
+    const { roomId, userId } = (await params) as { roomId: string; userId: string }
     const viewerId = await getViewerId()
 
     // Get room
@@ -47,4 +44,4 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     console.error('Failed to kick member:', error)
     return NextResponse.json({ error: 'Failed to kick member' }, { status: 500 })
   }
-}
+})

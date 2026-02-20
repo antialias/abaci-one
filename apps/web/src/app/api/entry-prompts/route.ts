@@ -1,5 +1,6 @@
 import { and, eq, gt, inArray } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getLinkedChildren } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
@@ -10,7 +11,7 @@ import { getDbUserId } from '@/lib/viewer'
  *
  * Returns active (pending + not expired) prompts for all children linked to the viewer
  */
-export async function GET(_req: NextRequest) {
+export const GET = withAuth(async () => {
   try {
     const userId = await getDbUserId()
 
@@ -72,4 +73,4 @@ export async function GET(_req: NextRequest) {
     console.error('Failed to fetch entry prompts:', error)
     return NextResponse.json({ error: 'Failed to fetch entry prompts' }, { status: 500 })
   }
-}
+})

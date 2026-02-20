@@ -7,10 +7,7 @@ import {
 } from '@/db/schema/vision-training-sessions'
 import { promises as fs } from 'fs'
 import path from 'path'
-
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
+import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Serialize a VisionTrainingSession for JSON response.
@@ -27,8 +24,8 @@ function serializeSession(session: VisionTrainingSession) {
  * GET /api/vision/sessions/[id]
  * Get full details of a training session
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const { id } = await params
+export const GET = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
 
   try {
     const [session] = await db
@@ -45,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     console.error('Error fetching training session:', error)
     return NextResponse.json({ error: 'Failed to fetch training session' }, { status: 500 })
   }
-}
+})
 
 /**
  * PUT /api/vision/sessions/[id]
@@ -56,8 +53,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  * - notes?: string
  * - tags?: string[]
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params
+export const PUT = withAuth(async (request, { params }) => {
+  const { id } = (await params) as { id: string }
 
   try {
     const body = await request.json()
@@ -94,14 +91,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     console.error('Error updating training session:', error)
     return NextResponse.json({ error: 'Failed to update training session' }, { status: 500 })
   }
-}
+})
 
 /**
  * DELETE /api/vision/sessions/[id]
  * Delete a training session and its model files
  */
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  const { id } = await params
+export const DELETE = withAuth(async (_request, { params }) => {
+  const { id } = (await params) as { id: string }
 
   try {
     // Get session to find model path
@@ -143,4 +140,4 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     console.error('Error deleting training session:', error)
     return NextResponse.json({ error: 'Failed to delete training session' }, { status: 500 })
   }
-}
+})

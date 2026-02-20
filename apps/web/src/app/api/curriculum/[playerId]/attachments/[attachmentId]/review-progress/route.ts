@@ -16,6 +16,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getDbUserId } from '@/lib/viewer'
 import {
@@ -24,10 +25,6 @@ import {
   type ParsedProblem,
   createInitialReviewProgress,
 } from '@/lib/worksheet-parsing'
-
-interface RouteParams {
-  params: Promise<{ playerId: string; attachmentId: string }>
-}
 
 // Confidence threshold for auto-approval
 const AUTO_APPROVE_THRESHOLD = 0.85
@@ -78,9 +75,9 @@ function initializeReviewProgress(parsingResult: WorksheetParsingResult): {
 /**
  * GET - Get current review progress
  */
-export async function GET(_request: Request, { params }: RouteParams) {
+export const GET = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -126,14 +123,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
     console.error('Error getting review progress:', error)
     return NextResponse.json({ error: 'Failed to get review progress' }, { status: 500 })
   }
-}
+})
 
 /**
  * POST - Initialize review progress (start a new review)
  */
-export async function POST(_request: Request, { params }: RouteParams) {
+export const POST = withAuth(async (_request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -194,7 +191,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     console.error('Error initializing review progress:', error)
     return NextResponse.json({ error: 'Failed to initialize review progress' }, { status: 500 })
   }
-}
+})
 
 // Schema for PATCH request
 const UpdateReviewProgressSchema = z.object({
@@ -214,9 +211,9 @@ const UpdateReviewProgressSchema = z.object({
 /**
  * PATCH - Update review progress
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export const PATCH = withAuth(async (request, { params }) => {
   try {
-    const { playerId, attachmentId } = await params
+    const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
     if (!playerId || !attachmentId) {
       return NextResponse.json({ error: 'Player ID and Attachment ID required' }, { status: 400 })
@@ -378,4 +375,4 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     console.error('Error updating review progress:', error)
     return NextResponse.json({ error: 'Failed to update review progress' }, { status: 500 })
   }
-}
+})
