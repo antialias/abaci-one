@@ -1,0 +1,65 @@
+<div style="width:100%;padding:24px 16px;display:flex;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <svg viewBox="0 0 700 300" style="width:100%;max-width:680px;height:auto">
+    <!-- Title -->
+    <text x="350" y="24" text-anchor="middle" fill="#a5b4fc" font-size="13" font-weight="700">Confidence-Based Routing</text>
+
+    <!-- Confidence scale bar -->
+    <defs>
+      <linearGradient id="conf-scale" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#ef4444"/>
+        <stop offset="35%" stop-color="#f59e0b"/>
+        <stop offset="70%" stop-color="#22c55e"/>
+        <stop offset="100%" stop-color="#22c55e"/>
+      </linearGradient>
+    </defs>
+    <rect x="80" y="44" width="540" height="14" rx="7" fill="url(#conf-scale)" opacity="0.3"/>
+    <text x="80" y="72" fill="#ef4444" font-size="9">0.0</text>
+    <text x="350" y="72" text-anchor="middle" fill="#f59e0b" font-size="9">0.5</text>
+    <text x="458" y="72" text-anchor="middle" fill="#86efac" font-size="9" font-weight="700">0.7 threshold</text>
+    <text x="620" y="72" text-anchor="end" fill="#22c55e" font-size="9">1.0</text>
+    <!-- Threshold line -->
+    <line x1="458" y1="40" x2="458" y2="60" stroke="#fbbf24" stroke-width="2" stroke-dasharray="3,2"/>
+
+    <!-- Low confidence section -->
+    <rect x="30" y="90" width="310" height="200" rx="8" fill="#1c1117" stroke="#7f1d1d" stroke-width="1"/>
+    <text x="185" y="114" text-anchor="middle" fill="#fca5a5" font-size="12" font-weight="700">⚠ Flagged for Review</text>
+    <text x="185" y="130" text-anchor="middle" fill="#94a3b8" font-size="9">Confidence &lt; 0.7 — needs human verification</text>
+
+    <!-- Example problems (low confidence) -->
+    <rect x="48" y="144" width="274" height="40" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.7"/>
+    <text x="60" y="162" fill="#f59e0b" font-size="11">⚠</text>
+    <text x="78" y="162" fill="#94a3b8" font-size="10" font-family="monospace">5? + 23 = 8?</text>
+    <text x="78" y="178" fill="#64748b" font-size="8" font-style="italic">Smudged digits — could be 56+23=89 or 58+23=81</text>
+
+    <rect x="48" y="192" width="274" height="40" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.7"/>
+    <text x="60" y="210" fill="#f59e0b" font-size="11">⚠</text>
+    <text x="78" y="210" fill="#94a3b8" font-size="10" font-family="monospace">34 − 18 = ___</text>
+    <text x="78" y="226" fill="#64748b" font-size="8" font-style="italic">Answer box appears empty or very faint</text>
+
+    <rect x="48" y="240" width="274" height="40" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.7"/>
+    <text x="60" y="258" fill="#f59e0b" font-size="11">⚠</text>
+    <text x="78" y="258" fill="#94a3b8" font-size="10" font-family="monospace">72 + 1? = 89</text>
+    <text x="78" y="274" fill="#64748b" font-size="8" font-style="italic">Digit could be 7 or 1 — handwriting ambiguous</text>
+
+    <!-- High confidence section -->
+    <rect x="360" y="90" width="310" height="200" rx="8" fill="#0c1a0c" stroke="#166534" stroke-width="1"/>
+    <text x="515" y="114" text-anchor="middle" fill="#86efac" font-size="12" font-weight="700">✓ Auto-Approved</text>
+    <text x="515" y="130" text-anchor="middle" fill="#94a3b8" font-size="9">Confidence ≥ 0.7 — clear and unambiguous</text>
+
+    <!-- Example problems (high confidence) -->
+    <rect x="378" y="144" width="274" height="40" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.7"/>
+    <text x="390" y="162" fill="#22c55e" font-size="11">✓</text>
+    <text x="408" y="162" fill="#94a3b8" font-size="10" font-family="monospace">35 + 12 = 47</text>
+    <text x="408" y="178" fill="#64748b" font-size="8">termsConf: 0.95 · answerConf: 0.92</text>
+
+    <rect x="378" y="192" width="274" height="40" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.7"/>
+    <text x="390" y="210" fill="#22c55e" font-size="11">✓</text>
+    <text x="408" y="210" fill="#94a3b8" font-size="10" font-family="monospace">48 − 19 = 29</text>
+    <text x="408" y="226" fill="#64748b" font-size="8">termsConf: 0.98 · answerConf: 0.88</text>
+
+    <rect x="378" y="240" width="274" height="40" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.7"/>
+    <text x="390" y="258" fill="#22c55e" font-size="11">✓</text>
+    <text x="408" y="258" fill="#94a3b8" font-size="10" font-family="monospace">63 + 28 = 91</text>
+    <text x="408" y="274" fill="#64748b" font-size="8">termsConf: 0.97 · answerConf: 0.95</text>
+  </svg>
+</div>

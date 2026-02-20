@@ -1,0 +1,76 @@
+<div style="width:100%;padding:24px 16px;display:flex;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <svg viewBox="0 0 700 320" style="width:100%;max-width:680px;height:auto">
+    <text x="350" y="22" text-anchor="middle" fill="#a5b4fc" font-size="13" font-weight="700">Real-Time Streaming Progress</text>
+
+    <!-- Timeline bar -->
+    <rect x="40" y="44" width="620" height="6" rx="3" fill="#1e1b4b"/>
+    <rect x="40" y="44" width="480" height="6" rx="3" fill="#6366f1" opacity="0.7"/>
+    <circle cx="520" cy="47" r="5" fill="#6366f1"/>
+    <text x="524" y="42" fill="#a5b4fc" font-size="8">Now</text>
+
+    <!-- Event 1: Connecting -->
+    <line x1="60" y1="54" x2="60" y2="72" stroke="#475569" stroke-width="1"/>
+    <rect x="20" y="74" width="120" height="40" rx="5" fill="#1e293b" stroke="#334155" stroke-width="0.8"/>
+    <text x="80" y="90" text-anchor="middle" fill="#94a3b8" font-size="9">🔌 Connecting...</text>
+    <text x="80" y="104" text-anchor="middle" fill="#64748b" font-size="8">Sending image</text>
+
+    <!-- Event 2: Reasoning starts -->
+    <line x1="160" y1="54" x2="160" y2="72" stroke="#475569" stroke-width="1"/>
+    <rect x="110" y="74" width="140" height="56" rx="5" fill="#1e293b" stroke="#6366f1" stroke-width="0.8"/>
+    <text x="180" y="90" text-anchor="middle" fill="#c4b5fd" font-size="9">🧠 AI Reasoning</text>
+    <text x="125" y="106" fill="#94a3b8" font-size="8" font-style="italic">"I see a worksheet with</text>
+    <text x="125" y="118" fill="#94a3b8" font-size="8" font-style="italic"> vertical math problems..."</text>
+
+    <!-- Event 3: Problem 1 found -->
+    <line x1="290" y1="54" x2="290" y2="72" stroke="#475569" stroke-width="1"/>
+    <rect x="250" y="74" width="120" height="40" rx="5" fill="#0c1a0c" stroke="#166534" stroke-width="0.8"/>
+    <text x="310" y="90" text-anchor="middle" fill="#86efac" font-size="9">✓ Problem 1</text>
+    <text x="310" y="104" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="monospace">35+12=47</text>
+
+    <!-- Event 4: Problem 2 found -->
+    <line x1="390" y1="54" x2="390" y2="72" stroke="#475569" stroke-width="1"/>
+    <rect x="350" y="74" width="120" height="40" rx="5" fill="#0c1a0c" stroke="#166534" stroke-width="0.8"/>
+    <text x="410" y="90" text-anchor="middle" fill="#86efac" font-size="9">✓ Problem 2</text>
+    <text x="410" y="104" text-anchor="middle" fill="#94a3b8" font-size="8" font-family="monospace">48−19=29</text>
+
+    <!-- Event 5: Problem 3 (in progress) -->
+    <line x1="500" y1="54" x2="500" y2="72" stroke="#475569" stroke-width="1"/>
+    <rect x="460" y="74" width="120" height="56" rx="5" fill="#1e293b" stroke="#f59e0b" stroke-width="0.8"/>
+    <text x="520" y="90" text-anchor="middle" fill="#fbbf24" font-size="9">⏳ Problem 3</text>
+    <text x="475" y="106" fill="#94a3b8" font-size="8" font-style="italic">"This digit is smudged,</text>
+    <text x="475" y="118" fill="#94a3b8" font-size="8" font-style="italic"> likely a 6 or 8..."</text>
+
+    <!-- Remaining (dimmed) -->
+    <line x1="610" y1="54" x2="610" y2="72" stroke="#475569" stroke-width="0.5"/>
+    <rect x="580" y="74" width="70" height="30" rx="5" fill="#1e293b" stroke="#334155" stroke-width="0.5" opacity="0.5"/>
+    <text x="615" y="93" text-anchor="middle" fill="#475569" font-size="8">P4, P5...</text>
+
+    <!-- Bottom: What the user sees -->
+    <rect x="40" y="150" width="620" height="160" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+    <text x="60" y="174" fill="#a5b4fc" font-size="11" font-weight="700">What you see during parsing:</text>
+
+    <!-- Left: streaming reasoning -->
+    <rect x="56" y="188" width="290" height="108" rx="6" fill="#1e293b" stroke="#334155" stroke-width="0.7"/>
+    <text x="68" y="206" fill="#c4b5fd" font-size="9" font-weight="600">Reasoning (live)</text>
+    <text x="68" y="224" fill="#94a3b8" font-size="9">"I see 5 vertical arithmetic problems.</text>
+    <text x="68" y="238" fill="#94a3b8" font-size="9"> Problem 1: Two addends, 35 and 12.</text>
+    <text x="68" y="252" fill="#94a3b8" font-size="9"> The student wrote 47 — this is correct.</text>
+    <text x="68" y="266" fill="#94a3b8" font-size="9"> Problem 2: Subtraction, 48 minus 19.</text>
+    <text x="68" y="280" fill="#94a3b8" font-size="9"> The student wrote 29 — correct...</text>
+    <!-- Cursor blink -->
+    <rect x="240" y="272" width="6" height="12" rx="1" fill="#6366f1" opacity="0.8"/>
+
+    <!-- Right: problem list building up -->
+    <rect x="362" y="188" width="282" height="108" rx="6" fill="#1e293b" stroke="#334155" stroke-width="0.7"/>
+    <text x="374" y="206" fill="#86efac" font-size="9" font-weight="600">Detected Problems</text>
+    <text x="382" y="224" fill="#22c55e" font-size="9">●</text>
+    <text x="396" y="224" fill="#e2e8f0" font-size="9" font-family="monospace">35 + 12 = 47 ✓</text>
+    <text x="382" y="242" fill="#22c55e" font-size="9">●</text>
+    <text x="396" y="242" fill="#e2e8f0" font-size="9" font-family="monospace">48 − 19 = 29 ✓</text>
+    <text x="382" y="260" fill="#f59e0b" font-size="9">●</text>
+    <text x="396" y="260" fill="#fbbf24" font-size="9" font-family="monospace">5? + 23 = 8?</text>
+    <text x="396" y="274" fill="#64748b" font-size="8" font-style="italic">  parsing...</text>
+    <!-- Remaining dots -->
+    <text x="382" y="288" fill="#475569" font-size="9">○ ○</text>
+  </svg>
+</div>

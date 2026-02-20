@@ -1,0 +1,41 @@
+<div style="width:100%;padding:24px 16px;display:flex;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <svg viewBox="0 0 700 320" style="width:100%;max-width:680px;height:auto">
+    <!-- Left column: "Helpful" AI (wrong) -->
+    <rect x="10" y="40" width="320" height="270" rx="10" fill="#1c1117" stroke="#7f1d1d" stroke-width="1.5"/>
+    <text x="170" y="28" text-anchor="middle" fill="#fca5a5" font-size="13" font-weight="700">❌ "Helpful" AI</text>
+
+    <text x="30" y="70" fill="#94a3b8" font-size="10">Student writes:</text>
+    <text x="30" y="90" fill="#e2e8f0" font-size="14" font-weight="600" font-family="Georgia,serif" font-style="italic">42</text>
+
+    <text x="30" y="120" fill="#94a3b8" font-size="10">AI sees answer first, then reads problem as:</text>
+    <rect x="30" y="130" width="280" height="44" rx="6" fill="#0f172a" stroke="#7f1d1d" stroke-width="0.8"/>
+    <text x="44" y="149" fill="#fca5a5" font-size="12" font-family="monospace">terms: [30, 12]</text>
+    <text x="44" y="166" fill="#fca5a5" font-size="12" font-family="monospace">studentAnswer: 42  ✓ correct!</text>
+
+    <text x="30" y="200" fill="#94a3b8" font-size="10">What actually happened:</text>
+    <rect x="30" y="210" width="280" height="80" rx="6" fill="#0f172a" stroke="#475569" stroke-width="0.8"/>
+    <text x="44" y="230" fill="#e2e8f0" font-size="11">Printed problem: <tspan fill="#a5b4fc" font-family="monospace">35 + 12 = ___</tspan></text>
+    <text x="44" y="250" fill="#e2e8f0" font-size="11">Correct answer: <tspan fill="#86efac" font-family="monospace">47</tspan></text>
+    <text x="44" y="270" fill="#e2e8f0" font-size="11">Student wrote: <tspan fill="#fca5a5" font-family="monospace">42</tspan> (wrong!)</text>
+    <text x="44" y="286" fill="#f87171" font-size="10" font-style="italic">AI changed "35" to "30" to make answer "correct"</text>
+
+    <!-- Right column: Faithful AI (correct) -->
+    <rect x="370" y="40" width="320" height="270" rx="10" fill="#0c1a0c" stroke="#166534" stroke-width="1.5"/>
+    <text x="530" y="28" text-anchor="middle" fill="#86efac" font-size="13" font-weight="700">✓ Faithful Transcription</text>
+
+    <text x="390" y="70" fill="#94a3b8" font-size="10">AI reads printed problem first:</text>
+    <text x="390" y="90" fill="#e2e8f0" font-size="14" font-weight="600" font-family="monospace">35 + 12 = ___</text>
+
+    <text x="390" y="120" fill="#94a3b8" font-size="10">Then reads student's handwriting separately:</text>
+    <rect x="390" y="130" width="280" height="60" rx="6" fill="#0f172a" stroke="#166534" stroke-width="0.8"/>
+    <text x="404" y="149" fill="#86efac" font-size="12" font-family="monospace">terms: [35, 12]</text>
+    <text x="404" y="166" fill="#86efac" font-size="12" font-family="monospace">correctAnswer: 47</text>
+    <text x="404" y="183" fill="#fbbf24" font-size="12" font-family="monospace">studentAnswer: 42  ✗ wrong</text>
+
+    <text x="390" y="216" fill="#94a3b8" font-size="10">Why this matters:</text>
+    <rect x="390" y="226" width="280" height="64" rx="6" fill="#0f172a" stroke="#475569" stroke-width="0.8"/>
+    <text x="404" y="246" fill="#e2e8f0" font-size="11">The mistake is the <tspan fill="#fbbf24" font-weight="700">most valuable data.</tspan></text>
+    <text x="404" y="266" fill="#e2e8f0" font-size="11">It tells the skill model this student needs</text>
+    <text x="404" y="282" fill="#e2e8f0" font-size="11">more practice with <tspan fill="#a5b4fc">addition with carrying.</tspan></text>
+  </svg>
+</div>

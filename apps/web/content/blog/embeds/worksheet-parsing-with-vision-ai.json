@@ -1,0 +1,23 @@
+{
+  "pipeline-overview": {
+    "type": "html"
+  },
+  "anti-sycophancy": {
+    "type": "html"
+  },
+  "minus-sign-detail": {
+    "type": "html"
+  },
+  "confidence-thresholds": {
+    "type": "html"
+  },
+  "bounding-boxes": {
+    "type": "html"
+  },
+  "streaming-progress": {
+    "type": "html"
+  },
+  "skill-loop": {
+    "type": "html"
+  }
+}
