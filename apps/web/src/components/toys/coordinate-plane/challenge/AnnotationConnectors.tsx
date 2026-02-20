@@ -55,7 +55,9 @@ export function AnnotationConnectors({
     const lines: ConnectorLine[] = []
 
     // Get annotated spans that have geometric targets
-    const annotatedSpans = problem.spans.filter(s => s.tag && s.tag !== 'context' && s.tag !== 'question')
+    const annotatedSpans = problem.spans.filter(
+      (s) => s.tag && s.tag !== 'context' && s.tag !== 'question'
+    )
 
     annotatedSpans.forEach((span, index) => {
       if (index >= revealStep) return // Not yet revealed
@@ -132,13 +134,7 @@ function ConnectorLine({ connector: c, isDark }: { connector: ConnectorLine; isD
         }}
       />
       {/* Target dot */}
-      <circle
-        cx={c.toX}
-        cy={c.toY}
-        r={4}
-        fill={c.color}
-        opacity={0.8}
-      />
+      <circle cx={c.toX} cy={c.toY} r={4} fill={c.color} opacity={0.8} />
     </g>
   )
 }
@@ -152,7 +148,16 @@ function getGeometryTarget(
   canvasHeight: number
 ): { x: number; y: number } | null {
   const toScreen = (wx: number, wy: number) =>
-    worldToScreen2D(wx, wy, state.center.x, state.center.y, state.pixelsPerUnit.x, state.pixelsPerUnit.y, canvasWidth, canvasHeight)
+    worldToScreen2D(
+      wx,
+      wy,
+      state.center.x,
+      state.center.y,
+      state.pixelsPerUnit.x,
+      state.pixelsPerUnit.y,
+      canvasWidth,
+      canvasHeight
+    )
 
   const { slope, intercept } = problem.equation
   const m = slope.num / slope.den
@@ -179,7 +184,7 @@ function getGeometryTarget(
     }
     case 'point1': {
       // First given point (level 4)
-      const spans = problem.spans.find(s => s.tag === 'point1')
+      const spans = problem.spans.find((s) => s.tag === 'point1')
       if (spans?.value != null) {
         // Point value is encoded in the span — but for now use the answer
         return toScreen(0, b)

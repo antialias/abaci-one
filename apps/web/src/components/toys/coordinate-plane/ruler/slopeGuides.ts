@@ -4,21 +4,19 @@ import type { GuideSlope, SlopeGuideState } from './types'
 // Integers 1–11, their inverses 1/2–1/11, zero, and vertical.
 
 const FRAC_LABELS: Record<number, string> = {
-  2: '\u00BD',   // ½
-  3: '\u2153',   // ⅓
-  4: '\u00BC',   // ¼
-  5: '\u2155',   // ⅕
-  6: '\u2159',   // ⅙
-  7: '\u2150',   // ⅐
-  8: '\u215B',   // ⅛
-  9: '\u2151',   // ⅑
-  10: '\u2152',  // ⅒
+  2: '\u00BD', // ½
+  3: '\u2153', // ⅓
+  4: '\u00BC', // ¼
+  5: '\u2155', // ⅕
+  6: '\u2159', // ⅙
+  7: '\u2150', // ⅐
+  8: '\u215B', // ⅛
+  9: '\u2151', // ⅑
+  10: '\u2152', // ⅒
 }
 
 function buildGuideSlopes(): GuideSlope[] {
-  const slopes: GuideSlope[] = [
-    { num: 0, den: 1, label: '0' },
-  ]
+  const slopes: GuideSlope[] = [{ num: 0, den: 1, label: '0' }]
   for (let n = 1; n <= 11; n++) {
     // Integer slopes: n/1 and -n/1
     slopes.push({ num: n, den: 1, label: String(n) })
@@ -51,14 +49,14 @@ export function computeSlopeGuides(
   anchorX: number,
   anchorY: number,
   handleX: number,
-  handleY: number,
+  handleY: number
 ): SlopeGuideState {
   return {
     anchorX,
     anchorY,
     handleX,
     handleY,
-    guides: GUIDE_SLOPES.map(slope => ({ slope })),
+    guides: GUIDE_SLOPES.map((slope) => ({ slope })),
   }
 }
 
@@ -77,7 +75,7 @@ export function guideIntegerIntersections(
   minWorldX: number,
   maxWorldX: number,
   minWorldY: number,
-  maxWorldY: number,
+  maxWorldY: number
 ): { x: number; y: number }[] {
   const points: { x: number; y: number }[] = []
 
@@ -108,7 +106,7 @@ export function guideIntegerIntersections(
   const xHi = Math.floor(maxWorldX)
 
   // Find the first x >= xLo where (x - anchorX) % den === 0
-  const remainder = ((xLo - anchorX) % den + den) % den
+  const remainder = (((xLo - anchorX) % den) + den) % den
   const startX = remainder === 0 ? xLo : xLo + (den - remainder)
 
   for (let x = startX; x <= xHi; x += den) {

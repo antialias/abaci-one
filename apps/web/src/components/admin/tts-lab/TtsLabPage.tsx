@@ -36,9 +36,7 @@ function ManagerStateBar() {
     >
       <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
         <span className={css({ color: '#8b949e' })}>Enabled:</span>
-        <span style={{ color: isEnabled ? '#3fb950' : '#f85149' }}>
-          {isEnabled ? 'YES' : 'NO'}
-        </span>
+        <span style={{ color: isEnabled ? '#3fb950' : '#f85149' }}>{isEnabled ? 'YES' : 'NO'}</span>
         <button
           onClick={() => setEnabled(true)}
           className={css({
@@ -57,9 +55,7 @@ function ManagerStateBar() {
       </div>
       <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
         <span className={css({ color: '#8b949e' })}>Playing:</span>
-        <span style={{ color: isPlaying ? '#58a6ff' : '#484f58' }}>
-          {isPlaying ? 'YES' : 'NO'}
-        </span>
+        <span style={{ color: isPlaying ? '#58a6ff' : '#484f58' }}>{isPlaying ? 'YES' : 'NO'}</span>
       </div>
       <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
         <span className={css({ color: '#8b949e' })}>Volume:</span>
@@ -75,9 +71,7 @@ function ManagerStateBar() {
           {voiceChainAvail.length === 0
             ? '(none)'
             : voiceChainAvail
-                .map((a) =>
-                  a.source.type === 'pregenerated' ? a.source.name : 'browser-tts'
-                )
+                .map((a) => (a.source.type === 'pregenerated' ? a.source.name : 'browser-tts'))
                 .join(' → ')}
         </span>
       </div>
@@ -118,7 +112,14 @@ export function TtsLabPage() {
 
           <ManagerStateBar />
 
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' })}>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              marginTop: '16px',
+            })}
+          >
             <RouterChangeTest />
             <RapidFireTest />
             <StrictModeTest />

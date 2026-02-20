@@ -25,7 +25,11 @@ function getSegmentLength(state: ConstructionState, fromId: string, toId: string
   return Math.sqrt((from.x - to.x) ** 2 + (from.y - to.y) ** 2)
 }
 
-function getCircleRadius(state: ConstructionState, centerId: string, radiusPointId: string): number {
+function getCircleRadius(
+  state: ConstructionState,
+  centerId: string,
+  radiusPointId: string
+): number {
   return getSegmentLength(state, centerId, radiusPointId)
 }
 
@@ -50,8 +54,8 @@ function getMedianSegmentLength(state: ConstructionState): number {
   if (segments.length === 0) return 4
 
   const lengths = segments
-    .map(s => getSegmentLength(state, s.fromId, s.toId))
-    .filter(l => l > 0)
+    .map((s) => getSegmentLength(state, s.fromId, s.toId))
+    .filter((l) => l > 0)
     .sort((a, b) => a - b)
 
   if (lengths.length === 0) return 4
@@ -60,7 +64,7 @@ function getMedianSegmentLength(state: ConstructionState): number {
 
 function groupSegmentsByEquality(
   segments: Array<{ fromId: string; toId: string }>,
-  factStore: FactStore,
+  factStore: FactStore
 ): Array<{ fromId: string; toId: string }[]> {
   const groups: Array<{ fromId: string; toId: string }[]> = []
   const grouped = new Set<number>()
@@ -90,7 +94,7 @@ function groupSegmentsByEquality(
 export function geometryToPattern(
   state: ConstructionState,
   factStore: FactStore,
-  isComplete: boolean,
+  isComplete: boolean
 ): string {
   const layers: string[] = []
 
@@ -106,14 +110,12 @@ export function geometryToPattern(
   // Slow-cycling pad with gentle filter, anchors the whole mix
   const dronePad = isComplete ? 2 : 0
   layers.push(
-    `sound("swpad:${dronePad}").slow(16).lpf(${Math.round(lpfCeiling * 0.4)}).gain(0.055)`,
+    `sound("swpad:${dronePad}").slow(16).lpf(${Math.round(lpfCeiling * 0.4)}).gain(0.055)`
   )
 
   // ── Layer 2: Sub-bass — supersaw on D, very low, felt not heard ──
   // Detuned for warmth, heavily filtered so it's just sub presence
-  layers.push(
-    `note("d2").sound("supersaw").detune(0.3).lpf(180).gain(0.04).slow(16)`,
-  )
+  layers.push(`note("d2").sound("supersaw").detune(0.3).lpf(180).gain(0.04).slow(16)`)
 
   // ── Layer 3: Circle voices — supersaw arpeggios with delay shimmer ──
   const circles = getAllCircles(state)
@@ -131,7 +133,7 @@ export function geometryToPattern(
     // supersaw arpeggio: detuned for width, filter envelope for pluck,
     // delay for shimmer — panned by circle's geometric center
     layers.push(
-      `note("${arpNotes}").sound("supersaw").detune(0.12).lpf(${lpfCeiling}).lpenv(2).lpd(0.2).lps(0.1).gain(0.035).slow(${slowFactor.toFixed(1)}).pan(${pan.toFixed(2)}).delay(0.3).delayfeedback(0.4).delaytime(0.125)`,
+      `note("${arpNotes}").sound("supersaw").detune(0.12).lpf(${lpfCeiling}).lpenv(2).lpd(0.2).lps(0.1).gain(0.035).slow(${slowFactor.toFixed(1)}).pan(${pan.toFixed(2)}).delay(0.3).delayfeedback(0.4).delaytime(0.125)`
     )
   }
 
@@ -152,7 +154,7 @@ export function geometryToPattern(
 
       // Pitched pad sample — warm sustained tone
       layers.push(
-        `note("${note}").sound("swpad:${pv}").lpf(${Math.round(lpfCeiling * 0.6)}).gain(${gain.toFixed(3)}).slow(8)`,
+        `note("${note}").sound("swpad:${pv}").lpf(${Math.round(lpfCeiling * 0.6)}).gain(${gain.toFixed(3)}).slow(8)`
       )
     }
   }
@@ -168,7 +170,7 @@ export function intersectionChimePattern(
   x: number,
   _y: number,
   minX: number,
-  maxX: number,
+  maxX: number
 ): string {
   const pan = centerXToPan(x, minX, maxX)
   const SCALE = ['d', 'f', 'g', 'a', 'c']

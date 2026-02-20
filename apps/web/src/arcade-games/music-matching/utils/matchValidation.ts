@@ -88,10 +88,7 @@ export function validateTrebleToBassMatch(
 /**
  * Main validation function — determines which validation to use based on card types.
  */
-export function validateMatch(
-  card1: MusicCard,
-  card2: MusicCard
-): MusicMatchValidationResult {
+export function validateMatch(card1: MusicCard, card2: MusicCard): MusicMatchValidationResult {
   // Cannot match the same card with itself
   if (card1.id === card2.id) {
     return {

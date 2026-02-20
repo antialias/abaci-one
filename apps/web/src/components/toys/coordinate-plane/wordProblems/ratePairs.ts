@@ -33,7 +33,12 @@ export const RATE_PAIRS: RatePair[] = [
     category: 'distance',
     xNoun: { singular: 'hour', plural: 'hours' },
     yNoun: { singular: 'mile', plural: 'miles' },
-    rateVerb: { base: 'travel', thirdPerson: 'travels', pastTense: 'traveled', gerund: 'traveling' },
+    rateVerb: {
+      base: 'travel',
+      thirdPerson: 'travels',
+      pastTense: 'traveled',
+      gerund: 'traveling',
+    },
     xUnit: 'hours',
     yUnit: 'miles',
     xUnitPosition: 'suffix',
@@ -166,6 +171,4 @@ export const RATE_PAIRS: RatePair[] = [
 ]
 
 /** Registry: look up a rate pair by id */
-export const RATE_PAIR_REGISTRY = new Map<string, RatePair>(
-  RATE_PAIRS.map(p => [p.id, p])
-)
+export const RATE_PAIR_REGISTRY = new Map<string, RatePair>(RATE_PAIRS.map((p) => [p.id, p]))

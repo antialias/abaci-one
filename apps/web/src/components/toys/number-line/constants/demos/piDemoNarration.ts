@@ -33,8 +33,8 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'See that red stick on the number line? ' +
       'It goes from zero all the way to one. ' +
-      'That\'s exactly one unit long — like one cookie across!',
-    startProgress: 0.00,
+      "That's exactly one unit long — like one cookie across!",
+    startProgress: 0.0,
     endProgress: 0.06,
     animationDurationMs: 5000,
     scrubberLabel: 'The red stick',
@@ -42,7 +42,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 1: Pivot — stick swings up to become vertical diameter
     ttsText:
-      'Now watch! Let\'s tip that stick straight up — boing! ' +
+      "Now watch! Let's tip that stick straight up — boing! " +
       'That stick is going to be the width of a wheel.',
     startProgress: 0.06,
     endProgress: 0.15,
@@ -52,7 +52,7 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 2: Sweep — blue arc traces the full circle
     ttsText:
-      'Let\'s trace around it and make a circle — ' +
+      "Let's trace around it and make a circle — " +
       'like drawing around a cookie with a crayon! ' +
       'See? A perfect little wheel, one cookie wide.',
     startProgress: 0.15,
@@ -63,10 +63,10 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 3: Treads appear — transition naturally from circle to wheel
     ttsText:
-      'Now let\'s make it a real wheel! ' +
+      "Now let's make it a real wheel! " +
       'See those little bumps? Those are the tire treads — now it can grip the ground.',
     startProgress: 0.255,
-    endProgress: 0.30,
+    endProgress: 0.3,
     animationDurationMs: 3000,
     scrubberLabel: 'Tire treads',
   },
@@ -77,8 +77,8 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'Here it goes! The wheel is rolling along the number line. ' +
       'Watch the blue paint it leaves behind on the ground — ' +
-      'that\'s how far it\'s traveled!',
-    startProgress: 0.30,
+      "that's how far it's traveled!",
+    startProgress: 0.3,
     endProgress: 0.55,
     animationDurationMs: 6000,
     scrubberLabel: 'Rolling!',
@@ -103,22 +103,22 @@ export const PI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Whenever a wheel makes one full turn, it rolls exactly pi times its width. ' +
       'Every wheel in the whole world follows that rule!',
     startProgress: 0.82,
-    endProgress: 0.90,
+    endProgress: 0.9,
     animationDurationMs: 7000,
-    scrubberLabel: 'It\'s pi!',
+    scrubberLabel: "It's pi!",
   },
 
   // ── Irrationality zoom ────────────────────────────────────────
   {
     // Seg 7: Zoom in on the digits
     ttsText:
-      'But here\'s the really amazing thing. ' +
+      "But here's the really amazing thing. " +
       'If we zoom in close, pi is past three point one four. ' +
       'Even closer — past three point one four one five nine! ' +
       'The numbers keep going and never, ever stop. ' +
       'Pi is a truly special number that goes on forever!',
-    startProgress: 0.90,
-    endProgress: 1.00,
+    startProgress: 0.9,
+    endProgress: 1.0,
     animationDurationMs: 7000,
     scrubberLabel: 'Digits go forever',
   },

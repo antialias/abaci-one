@@ -65,7 +65,7 @@ const PROBLEMS: ProblemScenario[] = [
     skills: [
       { skillId: 'basic.directAddition', pKnown: 0.82 },
       { skillId: 'fiveComplements.4=5-1', pKnown: 0.55 },
-      { skillId: 'tenComplements.7=10-3', pKnown: 0.30 },
+      { skillId: 'tenComplements.7=10-3', pKnown: 0.3 },
     ],
   },
   {
@@ -77,7 +77,7 @@ const PROBLEMS: ProblemScenario[] = [
       { skillId: 'basic.directAddition', pKnown: 0.88 },
       { skillId: 'tenComplements.8=10-2', pKnown: 0.35 },
       { skillId: 'tenComplements.9=10-1', pKnown: 0.28 },
-      { skillId: 'fiveComplements.3=5-2', pKnown: 0.60 },
+      { skillId: 'fiveComplements.3=5-2', pKnown: 0.6 },
     ],
   },
   {
@@ -86,7 +86,7 @@ const PROBLEMS: ProblemScenario[] = [
     correctAnswer: 65,
     wrongAnswer: '55',
     skills: [
-      { skillId: 'fiveComplements.2=5-3', pKnown: 0.50 },
+      { skillId: 'fiveComplements.2=5-3', pKnown: 0.5 },
       { skillId: 'tenComplements.7=10-3', pKnown: 0.32 },
       { skillId: 'basic.directAddition', pKnown: 0.85 },
       { skillId: 'fiveComplements.4=5-1', pKnown: 0.48 },
@@ -98,7 +98,7 @@ const PROBLEMS: ProblemScenario[] = [
     correctAnswer: 93,
     wrongAnswer: '83',
     skills: [
-      { skillId: 'basic.directAddition', pKnown: 0.90 },
+      { skillId: 'basic.directAddition', pKnown: 0.9 },
       { skillId: 'tenComplements.8=10-2', pKnown: 0.38 },
       { skillId: 'fiveComplements.3=5-2', pKnown: 0.58 },
     ],
@@ -110,7 +110,7 @@ const PROBLEMS: ProblemScenario[] = [
     wrongAnswer: '68',
     skills: [
       { skillId: 'fiveComplements.1=5-4', pKnown: 0.45 },
-      { skillId: 'tenComplements.6=10-4', pKnown: 0.30 },
+      { skillId: 'tenComplements.6=10-4', pKnown: 0.3 },
       { skillId: 'tenComplements.7=10-3', pKnown: 0.33 },
       { skillId: 'basic.directAddition', pKnown: 0.87 },
     ],
@@ -386,9 +386,7 @@ export default function BlameDistributionHero() {
                       backgroundColor: BLAME_COLOR,
                       height: '100%',
                       borderRadius: '4px',
-                      transition: showBlame
-                        ? `width 600ms ease-out ${i * 200}ms`
-                        : 'none',
+                      transition: showBlame ? `width 600ms ease-out ${i * 200}ms` : 'none',
                     }}
                   />
                 </div>

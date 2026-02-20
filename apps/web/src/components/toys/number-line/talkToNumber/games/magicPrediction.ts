@@ -14,7 +14,7 @@ export const magicPredictionGame: GameDefinition = {
   category: 'trick',
   name: 'Magic Prediction',
   description:
-    'A prediction trick — the agent predicts the sum of 5 numbers before they\'re chosen!',
+    "A prediction trick — the agent predicts the sum of 5 numbers before they're chosen!",
 
   agentRules: '',
   needsProximityUpdates: false,
@@ -38,7 +38,7 @@ export const magicPredictionGame: GameDefinition = {
     '5. "Now you pick a number between 10 and 99. Any number you want!"\n' +
     '6. Child picks a number. Pretend to think, then say your complement (99 - their_number).\n' +
     '   "Hmm, let me think... I\'ll go with [complement]."\n' +
-    '   DON\'T pick too fast or they\'ll notice the pattern.\n' +
+    "   DON'T pick too fast or they'll notice the pattern.\n" +
     '7. "Pick another number between 10 and 99!"\n' +
     '8. Child picks again. You pick the second complement.\n' +
     '9. "Now add up all 5 numbers! Grab your paper — should I help?"\n' +
@@ -47,7 +47,7 @@ export const magicPredictionGame: GameDefinition = {
     '    Call look_at with center: prediction, range: 50 to show it on the number line.\n' +
     '    Call indicate with numbers: [prediction].\n\n' +
     'CRITICAL RULES:\n' +
-    '- Your complement MUST be exactly (99 - child\'s number). Do the math carefully!\n' +
+    "- Your complement MUST be exactly (99 - child's number). Do the math carefully!\n" +
     '  E.g. child picks 73 → you pick 26. Child picks 15 → you pick 84.\n' +
     '- NEVER reveal the complement trick until after the reveal.\n' +
     '- When picking your complement, NEVER say it too quickly — pretend to think for a moment. ' +

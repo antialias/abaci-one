@@ -32,10 +32,7 @@ export const DEFAULT_JOLT_CONFIG: JoltConfig = {
  * When jerk exceeds the threshold and cooldown has elapsed, writes a JoltEvent to the ref.
  * Consumer reads from the ref each animation frame and clears it.
  */
-export function useDeviceJolt(
-  active: boolean,
-  configOverrides?: Partial<JoltConfig>
-) {
+export function useDeviceJolt(active: boolean, configOverrides?: Partial<JoltConfig>) {
   const joltRef = useRef<JoltEvent | null>(null)
   const [supported, setSupported] = useState(false)
 

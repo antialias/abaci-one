@@ -55,9 +55,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
       {
         instruction: `${sweep} around`,
-        speech: isTouch
-          ? 'Sweep around to draw the circle!'
-          : 'Move around to draw the circle!',
+        speech: isTouch ? 'Sweep around to draw the circle!' : 'Move around to draw the circle!',
         hint: { type: 'sweep', centerId: 'pt-A', radiusPointId: 'pt-E' },
         advanceOn: null,
       },
@@ -101,9 +99,7 @@ export const PROP_3: PropositionDef = {
   id: 3,
   title: 'Cut off from the greater a line equal to the less',
   draggablePointIds: ['pt-A', 'pt-B', 'pt-C', 'pt-D'],
-  resultSegments: [
-    { fromId: 'pt-A', toId: 'pt-F' },
-  ],
+  resultSegments: [{ fromId: 'pt-A', toId: 'pt-F' }],
   givenElements: [
     {
       kind: 'point',
@@ -206,18 +202,15 @@ export const PROP_3: PropositionDef = {
       },
       {
         pointId: 'pt-B',
-        speech:
-          'Watch what happens as AB changes length. What if it gets really short?',
+        speech: 'Watch what happens as AB changes length. What if it gets really short?',
       },
       {
         pointId: 'pt-C',
-        speech:
-          'See the cut adjusting? It always matches the shorter line exactly.',
+        speech: 'See the cut adjusting? It always matches the shorter line exactly.',
       },
       {
         pointId: 'pt-D',
-        speech:
-          'Watch the circle adjust. The cut-off piece stays equal no matter what.',
+        speech: 'Watch the circle adjust. The cut-off piece stays equal no matter what.',
       },
     ],
     breakdownTip:

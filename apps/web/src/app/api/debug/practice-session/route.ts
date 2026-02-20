@@ -66,128 +66,131 @@ type PresetName = keyof typeof PRESETS
  * When `setupOnly: true`, skips session generation (steps 3-4) and returns
  * player info so the caller can open the StartPracticeModal instead.
  */
-export const POST = withAuth(async (req: NextRequest) => {
-  try {
-    const body = await req.json()
-    const preset = (body.preset as PresetName) || 'game-break'
-    const setupOnly = body.setupOnly === true
-    const overrideProblemTerms = body.overrideProblemTerms as number[] | undefined
+export const POST = withAuth(
+  async (req: NextRequest) => {
+    try {
+      const body = await req.json()
+      const preset = (body.preset as PresetName) || 'game-break'
+      const setupOnly = body.setupOnly === true
+      const overrideProblemTerms = body.overrideProblemTerms as number[] | undefined
 
-    if (!(preset in PRESETS)) {
-      return NextResponse.json(
-        { error: `Unknown preset: ${preset}. Available: ${Object.keys(PRESETS).join(', ')}` },
-        { status: 400 }
-      )
-    }
+      if (!(preset in PRESETS)) {
+        return NextResponse.json(
+          { error: `Unknown preset: ${preset}. Available: ${Object.keys(PRESETS).join(', ')}` },
+          { status: 400 }
+        )
+      }
 
-    const config = PRESETS[preset]
+      const config = PRESETS[preset]
 
-    // 1. Get current viewer's database user ID
-    const userId = await getDbUserId()
+      // 1. Get current viewer's database user ID
+      const userId = await getDbUserId()
 
-    // 2. Create debug player
-    const [player] = await db
-      .insert(schema.players)
-      .values({
-        userId,
-        name: `Debug-${Date.now()}`,
-        emoji: '🐛',
-        color: '#ff6b6b',
-        isActive: false,
-        familyCode: generateFamilyCode(),
+      // 2. Create debug player
+      const [player] = await db
+        .insert(schema.players)
+        .values({
+          userId,
+          name: `Debug-${Date.now()}`,
+          emoji: '🐛',
+          color: '#ff6b6b',
+          isActive: false,
+          familyCode: generateFamilyCode(),
+        })
+        .returning()
+
+      // 2b. Create parent-child relationship (required for access control)
+      await db.insert(parentChild).values({
+        parentUserId: userId,
+        childPlayerId: player.id,
       })
-      .returning()
 
-    // 2b. Create parent-child relationship (required for access control)
-    await db.insert(parentChild).values({
-      parentUserId: userId,
-      childPlayerId: player.id,
-    })
+      // 3. Initialize curriculum
+      await initializeStudent(player.id)
 
-    // 3. Initialize curriculum
-    await initializeStudent(player.id)
+      // 4. Enable basic skills
+      await setPracticingSkills(player.id, ['basic.+1', 'basic.+2', 'basic.+3'])
 
-    // 4. Enable basic skills
-    await setPracticingSkills(player.id, ['basic.+1', 'basic.+2', 'basic.+3'])
+      // If setupOnly, save preset config as player session preferences
+      // so the StartPracticeModal initializes with the preset's settings
+      if (setupOnly) {
+        await db.insert(playerSessionPreferences).values({
+          playerId: player.id,
+          config: JSON.stringify({
+            ...DEFAULT_SESSION_PREFERENCES,
+            durationMinutes: config.durationMinutes,
+            partWeights: {
+              abacus: config.enabledParts.abacus ? 1 : 0,
+              visualization: config.enabledParts.visualization ? 1 : 0,
+              linear: config.enabledParts.linear ? 1 : 0,
+            },
+            gameBreakEnabled: config.gameBreakSettings.enabled,
+            gameBreakMinutes: config.gameBreakSettings.maxDurationMinutes,
+            gameBreakSelectionMode: config.gameBreakSettings.selectionMode,
+            gameBreakSelectedGame: config.gameBreakSettings.selectedGame,
+            gameBreakEnabledGames: [...PRACTICE_APPROVED_GAMES],
+          }),
+          updatedAt: Date.now(),
+        })
 
-    // If setupOnly, save preset config as player session preferences
-    // so the StartPracticeModal initializes with the preset's settings
-    if (setupOnly) {
-      await db.insert(playerSessionPreferences).values({
+        return NextResponse.json({
+          playerId: player.id,
+          playerName: player.name,
+          preset,
+          setupOnly: true,
+        })
+      }
+
+      // 5. Generate session with preset config
+      const plan = await generateSessionPlan({
         playerId: player.id,
-        config: JSON.stringify({
-          ...DEFAULT_SESSION_PREFERENCES,
-          durationMinutes: config.durationMinutes,
-          partWeights: {
-            abacus: config.enabledParts.abacus ? 1 : 0,
-            visualization: config.enabledParts.visualization ? 1 : 0,
-            linear: config.enabledParts.linear ? 1 : 0,
-          },
-          gameBreakEnabled: config.gameBreakSettings.enabled,
-          gameBreakMinutes: config.gameBreakSettings.maxDurationMinutes,
-          gameBreakSelectionMode: config.gameBreakSettings.selectionMode,
-          gameBreakSelectedGame: config.gameBreakSettings.selectedGame,
-          gameBreakEnabledGames: [...PRACTICE_APPROVED_GAMES],
-        }),
-        updatedAt: Date.now(),
+        durationMinutes: config.durationMinutes,
+        enabledParts: config.enabledParts,
+        overrideProblemsPerPart: config.overrideProblemsPerPart,
+        gameBreakSettings: config.gameBreakSettings,
       })
 
+      // 5b. Override the first problem if custom terms were provided
+      if (overrideProblemTerms && overrideProblemTerms.length > 0) {
+        const customProblem: GeneratedProblem = {
+          terms: overrideProblemTerms,
+          answer: overrideProblemTerms.reduce((a, b) => a + b, 0),
+          skillsRequired: [],
+        }
+        const updatedParts = plan.parts.map((part, i) =>
+          i === 0
+            ? {
+                ...part,
+                slots: part.slots.map((slot, j) =>
+                  j === 0 ? { ...slot, problem: customProblem } : slot
+                ),
+              }
+            : part
+        )
+        await db
+          .update(schema.sessionPlans)
+          .set({ parts: updatedParts })
+          .where(eq(schema.sessionPlans.id, plan.id))
+      }
+
+      // 6. Approve and start
+      await approveSessionPlan(plan.id)
+      await startSessionPlan(plan.id)
+
+      // 7. Return redirect URL
       return NextResponse.json({
         playerId: player.id,
-        playerName: player.name,
+        sessionId: plan.id,
         preset,
-        setupOnly: true,
+        redirectUrl: `/practice/${player.id}?debug=1`,
       })
-    }
-
-    // 5. Generate session with preset config
-    const plan = await generateSessionPlan({
-      playerId: player.id,
-      durationMinutes: config.durationMinutes,
-      enabledParts: config.enabledParts,
-      overrideProblemsPerPart: config.overrideProblemsPerPart,
-      gameBreakSettings: config.gameBreakSettings,
-    })
-
-    // 5b. Override the first problem if custom terms were provided
-    if (overrideProblemTerms && overrideProblemTerms.length > 0) {
-      const customProblem: GeneratedProblem = {
-        terms: overrideProblemTerms,
-        answer: overrideProblemTerms.reduce((a, b) => a + b, 0),
-        skillsRequired: [],
-      }
-      const updatedParts = plan.parts.map((part, i) =>
-        i === 0
-          ? {
-              ...part,
-              slots: part.slots.map((slot, j) =>
-                j === 0 ? { ...slot, problem: customProblem } : slot
-              ),
-            }
-          : part
+    } catch (error) {
+      console.error('[debug/practice-session] Failed:', error)
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to create debug session' },
+        { status: 500 }
       )
-      await db
-        .update(schema.sessionPlans)
-        .set({ parts: updatedParts })
-        .where(eq(schema.sessionPlans.id, plan.id))
     }
-
-    // 6. Approve and start
-    await approveSessionPlan(plan.id)
-    await startSessionPlan(plan.id)
-
-    // 7. Return redirect URL
-    return NextResponse.json({
-      playerId: player.id,
-      sessionId: plan.id,
-      preset,
-      redirectUrl: `/practice/${player.id}?debug=1`,
-    })
-  } catch (error) {
-    console.error('[debug/practice-session] Failed:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create debug session' },
-      { status: 500 }
-    )
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)

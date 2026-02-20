@@ -51,7 +51,9 @@ export function ConstantInfoCard({
     console.log(`[ConstantInfoCard] 🟢 MOUNT effect — calling speak() for "${constant.id}"`)
     speak()
     return () => {
-      console.log(`[ConstantInfoCard] 🔴 CLEANUP — calling audioManager.stop() for "${constant.id}"`)
+      console.log(
+        `[ConstantInfoCard] 🔴 CLEANUP — calling audioManager.stop() for "${constant.id}"`
+      )
       // Cancel in-flight audio on unmount (prevents React strict mode
       // double-mount from producing two overlapping narrations)
       audioManager.stop()
@@ -76,7 +78,10 @@ export function ConstantInfoCard({
   }, [onDismiss])
 
   // Position: clamp horizontally, place above or below axis
-  const clampedX = Math.max(CARD_PAD, Math.min(containerWidth - CARD_WIDTH - CARD_PAD, screenX - CARD_WIDTH / 2))
+  const clampedX = Math.max(
+    CARD_PAD,
+    Math.min(containerWidth - CARD_WIDTH - CARD_PAD, screenX - CARD_WIDTH / 2)
+  )
   const spaceAbove = centerY
   const spaceBelow = containerHeight - centerY
   const placeAbove = spaceAbove > spaceBelow
@@ -108,9 +113,7 @@ export function ConstantInfoCard({
         borderRadius: 10,
         backgroundColor: bg,
         backdropFilter: 'blur(8px)',
-        boxShadow: isDark
-          ? '0 4px 20px rgba(0,0,0,0.5)'
-          : '0 4px 20px rgba(0,0,0,0.12)',
+        boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.12)',
         zIndex: 10,
         pointerEvents: 'auto',
         animation: 'fadeInUp 0.2s ease-out',
@@ -178,7 +181,7 @@ export function ConstantInfoCard({
                     fontWeight: active ? 600 : 400,
                     color: active ? (isDark ? '#1f2937' : '#fff') : subtextColor,
                     backgroundColor: active ? symbolColor : 'transparent',
-                    border: `1px solid ${active ? symbolColor : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)')}`,
+                    border: `1px solid ${active ? symbolColor : isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
                     borderRadius: 4,
                     cursor: 'pointer',
                   }}
@@ -295,9 +298,7 @@ function ThemedImage({
   }, [isDark])
 
   const theme = isDark ? 'dark' : 'light'
-  const themedSrc = !useFallback
-    ? baseSrc.replace('.png', `-${theme}.png`)
-    : baseSrc
+  const themedSrc = !useFallback ? baseSrc.replace('.png', `-${theme}.png`) : baseSrc
 
   return (
     /* eslint-disable-next-line @next/next/no-img-element */

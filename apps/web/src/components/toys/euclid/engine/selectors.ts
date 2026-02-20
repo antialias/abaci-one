@@ -14,18 +14,13 @@ import type {
  *
  * Returns null if no matching element exists in state.
  */
-export function resolveSelector(
-  sel: ElementSelector,
-  state: ConstructionState,
-): string | null {
+export function resolveSelector(sel: ElementSelector, state: ConstructionState): string | null {
   if (typeof sel === 'string') return sel
 
   if (sel.kind === 'circle') {
     const match = state.elements.find(
       (e): e is ConstructionCircle =>
-        e.kind === 'circle' &&
-        e.centerId === sel.centerId &&
-        e.radiusPointId === sel.radiusPointId,
+        e.kind === 'circle' && e.centerId === sel.centerId && e.radiusPointId === sel.radiusPointId
     )
     return match?.id ?? null
   }
@@ -35,7 +30,7 @@ export function resolveSelector(
       (e): e is ConstructionSegment =>
         e.kind === 'segment' &&
         ((e.fromId === sel.fromId && e.toId === sel.toId) ||
-         (e.fromId === sel.toId && e.toId === sel.fromId)),
+          (e.fromId === sel.toId && e.toId === sel.fromId))
     )
     return match?.id ?? null
   }

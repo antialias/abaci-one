@@ -1,4 +1,9 @@
-import type { ConstructionState, ConstructionPoint, EuclidViewportState, IntersectionCandidate } from '../types'
+import type {
+  ConstructionState,
+  ConstructionPoint,
+  EuclidViewportState,
+  IntersectionCandidate,
+} from '../types'
 import { getAllPoints } from '../engine/constructionState'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 import { STRAIGHTEDGE_MIN_LENGTH, STRAIGHTEDGE_OVERHANG } from '../render/renderToolOverlay'
@@ -16,13 +21,17 @@ function toScreen(
   wy: number,
   viewport: EuclidViewportState,
   canvasW: number,
-  canvasH: number,
+  canvasH: number
 ) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    canvasW, canvasH,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    canvasW,
+    canvasH
   )
 }
 
@@ -37,7 +46,7 @@ export function hitTestPoints(
   viewport: EuclidViewportState,
   canvasW: number,
   canvasH: number,
-  isTouch = false,
+  isTouch = false
 ): ConstructionPoint | null {
   const threshold = getHitRadius(isTouch)
   let best: ConstructionPoint | null = null
@@ -82,7 +91,7 @@ export function hitTestAlongRulerEdge(
   viewport: EuclidViewportState,
   canvasW: number,
   canvasH: number,
-  isTouch = false,
+  isTouch = false
 ): ConstructionPoint | null {
   const threshold = isTouch ? RULER_EDGE_THRESHOLD_TOUCH : RULER_EDGE_THRESHOLD_MOUSE
 
@@ -144,7 +153,7 @@ export function hitTestIntersectionCandidates(
   viewport: EuclidViewportState,
   canvasW: number,
   canvasH: number,
-  isTouch = false,
+  isTouch = false
 ): IntersectionCandidate | null {
   const threshold = getHitRadius(isTouch)
   let best: IntersectionCandidate | null = null

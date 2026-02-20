@@ -38,7 +38,9 @@ export function DiceTray() {
   const [wobbleThreshold, setWobbleThreshold] = useState(DEFAULT_JOLT_CONFIG.wobbleThreshold)
   const [cooldownMs, setCooldownMs] = useState(DEFAULT_JOLT_CONFIG.cooldownMs)
   const [tumbleThreshold, setTumbleThreshold] = useState(DEFAULT_JOLT_CONFIG.tumbleThreshold)
-  const [heavyTumbleThreshold, setHeavyTumbleThreshold] = useState(DEFAULT_JOLT_CONFIG.heavyTumbleThreshold)
+  const [heavyTumbleThreshold, setHeavyTumbleThreshold] = useState(
+    DEFAULT_JOLT_CONFIG.heavyTumbleThreshold
+  )
 
   const joltConfig = useMemo<Partial<JoltConfig>>(
     () => ({ joltThreshold, wobbleThreshold, cooldownMs, tumbleThreshold, heavyTumbleThreshold }),
@@ -47,26 +49,17 @@ export function DiceTray() {
 
   const { joltRef } = useDeviceJolt(tiltEnabled, joltConfig)
 
-  const sum = useMemo(
-    () => dice.reduce((acc, d) => acc + (d.value ?? 0), 0),
-    [dice]
-  )
+  const sum = useMemo(() => dice.reduce((acc, d) => acc + (d.value ?? 0), 0), [dice])
 
   const hasValues = dice.some((d) => d.value !== null)
 
-  const addDie = useCallback(
-    (colorKey: string) => {
-      setDice((prev) => [...prev, { id: makeId(), colorKey, value: null }])
-    },
-    []
-  )
+  const addDie = useCallback((colorKey: string) => {
+    setDice((prev) => [...prev, { id: makeId(), colorKey, value: null }])
+  }, [])
 
-  const removeDie = useCallback(
-    (id: string) => {
-      setDice((prev) => (prev.length <= 1 ? prev : prev.filter((d) => d.id !== id)))
-    },
-    []
-  )
+  const removeDie = useCallback((id: string) => {
+    setDice((prev) => (prev.length <= 1 ? prev : prev.filter((d) => d.id !== id)))
+  }, [])
 
   const handleRolledValue = useCallback((id: string, value: number) => {
     setDice((prev) => prev.map((d) => (d.id === id ? { ...d, value } : d)))
@@ -173,7 +166,12 @@ export function DiceTray() {
                 style={{
                   fontSize: '1.25rem',
                   fontWeight: 700,
-                  color: die.value !== null ? faceColor : (isDark ? 'rgba(107,114,128,0.5)' : 'rgba(156,163,175,0.5)'),
+                  color:
+                    die.value !== null
+                      ? faceColor
+                      : isDark
+                        ? 'rgba(107,114,128,0.5)'
+                        : 'rgba(156,163,175,0.5)',
                   minHeight: '1.5em',
                   userSelect: 'none',
                 }}
@@ -195,9 +193,7 @@ export function DiceTray() {
           flexWrap: 'wrap',
           gap: '12px',
           padding: '12px 16px',
-          borderTop: isDark
-            ? '1px solid rgba(75,85,99,0.5)'
-            : '1px solid rgba(209,213,219,0.8)',
+          borderTop: isDark ? '1px solid rgba(75,85,99,0.5)' : '1px solid rgba(209,213,219,0.8)',
           background: isDark ? 'rgba(17,24,39,0.6)' : 'rgba(255,255,255,0.6)',
         }}
       >
@@ -220,9 +216,7 @@ export function DiceTray() {
                   width: 28,
                   height: 28,
                   borderRadius: '50%',
-                  border: isDark
-                    ? '2px solid rgba(255,255,255,0.3)'
-                    : '2px solid rgba(0,0,0,0.15)',
+                  border: isDark ? '2px solid rgba(255,255,255,0.3)' : '2px solid rgba(0,0,0,0.15)',
                   background: bg,
                   cursor: 'pointer',
                   padding: 0,
@@ -310,12 +304,54 @@ export function DiceTray() {
       </div>
 
       <ToyDebugPanel title="Dice">
-        <DebugSlider label="Perspective" value={perspective} min={50} max={800} step={10} onChange={setPerspective} />
-        <DebugSlider label="Jolt Threshold" value={joltThreshold} min={5} max={80} step={1} onChange={setJoltThreshold} />
-        <DebugSlider label="Wobble Threshold" value={wobbleThreshold} min={2} max={40} step={1} onChange={setWobbleThreshold} />
-        <DebugSlider label="Cooldown (ms)" value={cooldownMs} min={50} max={500} step={10} onChange={setCooldownMs} />
-        <DebugSlider label="Tumble Threshold" value={tumbleThreshold} min={20} max={120} step={1} onChange={setTumbleThreshold} />
-        <DebugSlider label="Heavy Tumble" value={heavyTumbleThreshold} min={40} max={150} step={1} onChange={setHeavyTumbleThreshold} />
+        <DebugSlider
+          label="Perspective"
+          value={perspective}
+          min={50}
+          max={800}
+          step={10}
+          onChange={setPerspective}
+        />
+        <DebugSlider
+          label="Jolt Threshold"
+          value={joltThreshold}
+          min={5}
+          max={80}
+          step={1}
+          onChange={setJoltThreshold}
+        />
+        <DebugSlider
+          label="Wobble Threshold"
+          value={wobbleThreshold}
+          min={2}
+          max={40}
+          step={1}
+          onChange={setWobbleThreshold}
+        />
+        <DebugSlider
+          label="Cooldown (ms)"
+          value={cooldownMs}
+          min={50}
+          max={500}
+          step={10}
+          onChange={setCooldownMs}
+        />
+        <DebugSlider
+          label="Tumble Threshold"
+          value={tumbleThreshold}
+          min={20}
+          max={120}
+          step={1}
+          onChange={setTumbleThreshold}
+        />
+        <DebugSlider
+          label="Heavy Tumble"
+          value={heavyTumbleThreshold}
+          min={40}
+          max={150}
+          step={1}
+          onChange={setHeavyTumbleThreshold}
+        />
       </ToyDebugPanel>
     </div>
   )

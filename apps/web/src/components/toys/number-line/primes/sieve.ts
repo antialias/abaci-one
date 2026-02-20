@@ -133,10 +133,7 @@ const MAX_TRIAL_SCAN = 50_000
  * Independent of the tick system — works at any zoom level.
  * Returns an array of prime values, or empty if the range is too large.
  */
-export function computeVisiblePrimes(
-  leftValue: number,
-  rightValue: number
-): number[] {
+export function computeVisiblePrimes(leftValue: number, rightValue: number): number[] {
   const start = Math.max(2, Math.ceil(leftValue))
   const end = Math.floor(rightValue)
 

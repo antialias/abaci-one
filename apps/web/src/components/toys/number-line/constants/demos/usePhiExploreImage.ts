@@ -52,9 +52,7 @@ export function usePhiExploreImage(
       if (loadId !== loadIdRef.current) return
 
       // Filter to subjects that have alignment for this theme
-      const candidates = Object.entries(alignmentData).filter(
-        ([, entry]) => entry[theme] != null
-      )
+      const candidates = Object.entries(alignmentData).filter(([, entry]) => entry[theme] != null)
       if (candidates.length === 0) return
 
       // Pick a random subject

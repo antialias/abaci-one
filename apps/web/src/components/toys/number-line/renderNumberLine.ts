@@ -65,7 +65,7 @@ export function renderNumberLine(
   /** Multiplier for all label font sizes (0.5–3, default 1) */
   labelScale = 1,
   /** Minimum opacity floor for all labels (0–1, default 0) */
-  labelMinOpacity = 0,
+  labelMinOpacity = 0
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   const centerY = cssHeight / 2
@@ -79,10 +79,7 @@ export function renderNumberLine(
     const sat = 80
     const lum = isDark ? 30 : 70
     const focalPx = zoomFocalX * cssWidth
-    const gradient = ctx.createRadialGradient(
-      focalPx, centerY, 0,
-      focalPx, centerY, cssWidth * 0.7
-    )
+    const gradient = ctx.createRadialGradient(focalPx, centerY, 0, focalPx, centerY, cssWidth * 0.7)
     gradient.addColorStop(0, `hsla(${zoomHue}, ${sat}%, ${lum}%, ${intensity})`)
     gradient.addColorStop(1, `hsla(${zoomHue}, ${sat}%, ${lum}%, 0)`)
     ctx.fillStyle = gradient
@@ -107,7 +104,12 @@ export function renderNumberLine(
 
     // Range band
     if (indicator.range) {
-      const fromX = numberToScreenX(indicator.range.from, state.center, state.pixelsPerUnit, cssWidth)
+      const fromX = numberToScreenX(
+        indicator.range.from,
+        state.center,
+        state.pixelsPerUnit,
+        cssWidth
+      )
       const toX = numberToScreenX(indicator.range.to, state.center, state.pixelsPerUnit, cssWidth)
       const left = Math.min(fromX, toX)
       const right = Math.max(fromX, toX)
@@ -117,8 +119,10 @@ export function renderNumberLine(
       ctx.strokeStyle = `hsla(${accentHue}, ${accentSat}%, ${accentLumRange}%, ${a * 0.35})`
       ctx.lineWidth = 1.5
       ctx.beginPath()
-      ctx.moveTo(left, 0); ctx.lineTo(left, cssHeight)
-      ctx.moveTo(right, 0); ctx.lineTo(right, cssHeight)
+      ctx.moveTo(left, 0)
+      ctx.lineTo(left, cssHeight)
+      ctx.moveTo(right, 0)
+      ctx.lineTo(right, cssHeight)
       ctx.stroke()
     }
 
@@ -154,7 +158,7 @@ export function renderNumberLine(
     const halfRange = cssWidth / (2 * state.pixelsPerUnit)
     const minInt = Math.max(1, Math.floor(state.center - halfRange) - 1)
     const maxInt = Math.ceil(state.center + halfRange) + 1
-    const existingValues = new Set(ticks.map(t => t.value))
+    const existingValues = new Set(ticks.map((t) => t.value))
 
     // Inject missing integer ticks (fade in with uniformity blend)
     for (let n = minInt; n <= maxInt; n++) {
@@ -189,7 +193,7 @@ export function renderNumberLine(
   const powerSpacingPx = new Map<number, number>()
   for (const { tick } of ticksWithX) {
     if (!powerSpacingPx.has(tick.power)) {
-      const spacing = Math.pow(10, tick.power)
+      const spacing = 10 ** tick.power
       powerSpacingPx.set(tick.power, spacing * state.pixelsPerUnit)
     }
   }
@@ -223,7 +227,7 @@ export function renderNumberLine(
   // Each label occupies a horizontal extent on the x-axis; when a lower-prominence
   // label overlaps a higher-prominence one, the lower-prominence label is hidden.
   interface LabelInfo {
-    tick: typeof ticksWithX[number]['tick']
+    tick: (typeof ticksWithX)[number]['tick']
     x: number
     label: string
     fontSize: number
@@ -253,7 +257,7 @@ export function renderNumberLine(
     // The label is drawn at (x, labelY) then rotated by angle.
     // Its horizontal extent is approximately labelWidth·cos(angle) + fontSize·sin(angle).
     const t = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
-    const xOffset = -labelWidth / 2 * (1 - t)
+    const xOffset = (-labelWidth / 2) * (1 - t)
     const hFootprint = labelWidth * Math.cos(angle) + fontSize * Math.sin(angle)
     const xMin = x + xOffset * Math.cos(angle)
     const xMax = xMin + hFootprint
@@ -430,7 +434,7 @@ export function renderNumberLine(
 
     // t: 0 = fully horizontal/centered, 1 = fully rotated/left-aligned
     const tAngle = MAX_LABEL_ANGLE > 0 ? Math.min(angle / MAX_LABEL_ANGLE, 1) : 0
-    const xOffset = -labelWidth / 2 * (1 - tAngle)
+    const xOffset = (-labelWidth / 2) * (1 - tAngle)
 
     ctx.save()
     if (hasSieveXf) {
@@ -532,7 +536,8 @@ export function renderNumberLine(
 
   // Pass 2.3: prime pair arcs (twin / cousin / sexy) — for hovered or highlighted primes
   const hasExplicitArcs = highlightedArcs && highlightedArcs.size > 0
-  const showArcs = hoveredTick != null || (highlightedPrimes && highlightedPrimes.size > 0) || hasExplicitArcs
+  const showArcs =
+    hoveredTick != null || (highlightedPrimes && highlightedPrimes.size > 0) || hasExplicitArcs
   if (primePairArcs && primePairArcs.length > 0 && showArcs) {
     const arcOrder: Array<'sexy' | 'cousin' | 'twin'> = ['sexy', 'cousin', 'twin']
 

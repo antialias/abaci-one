@@ -51,15 +51,12 @@ export function BlogCropEditor({
 
   const cropValue = `${focal.x.toFixed(1)}% ${focal.y.toFixed(1)}%`
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect()
-      const x = ((e.clientX - rect.left) / rect.width) * 100
-      const y = ((e.clientY - rect.top) / rect.height) * 100
-      setFocal({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })
-    },
-    []
-  )
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setFocal({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })
+  }, [])
 
   // Debounced auto-save
   useEffect(() => {

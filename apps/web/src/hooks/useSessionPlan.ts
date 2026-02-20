@@ -45,6 +45,19 @@ export class NoSkillsEnabledClientError extends Error {
 }
 
 /**
+ * Error thrown when the weekly session limit is reached (free tier).
+ */
+export class SessionLimitReachedError extends Error {
+  constructor(
+    public readonly limit: number,
+    public readonly count: number
+  ) {
+    super(`Weekly session limit reached (${count}/${limit})`)
+    this.name = 'SessionLimitReachedError'
+  }
+}
+
+/**
  * Which session parts to include
  */
 interface EnabledParts {
@@ -106,6 +119,11 @@ async function createSessionPlanTask(params: GenerateSessionPlanParams): Promise
     // Handle 400 - no skills enabled
     if (res.status === 400 && errorData.code === 'NO_SKILLS_ENABLED') {
       throw new NoSkillsEnabledClientError(errorData.error)
+    }
+
+    // Handle 403 - session limit reached (free tier)
+    if (res.status === 403 && errorData.code === 'SESSION_LIMIT_REACHED') {
+      throw new SessionLimitReachedError(errorData.limit, errorData.count)
     }
 
     throw new Error(errorData.error || 'Failed to generate session plan')
@@ -276,7 +294,7 @@ export function useGenerateSessionPlan() {
     progress: task.state?.progress ?? 0,
     progressMessage: task.state?.progressMessage ?? null,
     /** The generated plan, available when task completes */
-    plan: task.state?.status === 'completed' ? task.state.output?.plan ?? null : null,
+    plan: task.state?.status === 'completed' ? (task.state.output?.plan ?? null) : null,
     /** Whether the background task is actively running */
     isGenerating: mutation.isPending || (!!taskId && task.state?.status === 'running'),
     /** Whether the plan generation is complete */

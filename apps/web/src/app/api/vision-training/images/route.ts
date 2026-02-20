@@ -117,29 +117,32 @@ async function collectMatchingImages(filters: FilterCriteria): Promise<TrainingI
  *   - playerId: Filter by player ID prefix
  *   - sessionId: Filter by session ID prefix
  */
-export const GET = withAuth(async (request) => {
-  try {
-    const url = new URL(request.url)
-    const filters: FilterCriteria = {
-      digit: url.searchParams.get('digit') ?? undefined,
-      playerId: url.searchParams.get('playerId') ?? undefined,
-      sessionId: url.searchParams.get('sessionId') ?? undefined,
+export const GET = withAuth(
+  async (request) => {
+    try {
+      const url = new URL(request.url)
+      const filters: FilterCriteria = {
+        digit: url.searchParams.get('digit') ?? undefined,
+        playerId: url.searchParams.get('playerId') ?? undefined,
+        sessionId: url.searchParams.get('sessionId') ?? undefined,
+      }
+
+      const images = await collectMatchingImages(filters)
+
+      // Sort by timestamp descending (newest first)
+      images.sort((a, b) => b.timestamp - a.timestamp)
+
+      return NextResponse.json({
+        images,
+        total: images.length,
+      })
+    } catch (error) {
+      console.error('[vision-training] Error listing images:', error)
+      return NextResponse.json({ error: 'Failed to list images' }, { status: 500 })
     }
-
-    const images = await collectMatchingImages(filters)
-
-    // Sort by timestamp descending (newest first)
-    images.sort((a, b) => b.timestamp - a.timestamp)
-
-    return NextResponse.json({
-      images,
-      total: images.length,
-    })
-  } catch (error) {
-    console.error('[vision-training] Error listing images:', error)
-    return NextResponse.json({ error: 'Failed to list images' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * DELETE /api/vision-training/images
@@ -152,87 +155,90 @@ export const GET = withAuth(async (request) => {
  * This endpoint ONLY deletes explicitly specified files. No bulk operations.
  * If you need bulk delete by filter, use a separate admin tool.
  */
-export const DELETE = withAuth(async (request) => {
-  try {
-    const body = await request.json()
+export const DELETE = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
 
-    const {
-      filenames,
-      confirm,
-    }: {
-      filenames?: { digit: number; filename: string }[]
-      confirm?: boolean
-    } = body
+      const {
+        filenames,
+        confirm,
+      }: {
+        filenames?: { digit: number; filename: string }[]
+        confirm?: boolean
+      } = body
 
-    // REQUIRE filenames array - no implicit bulk delete
-    if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
-      return NextResponse.json(
-        {
-          error:
-            'filenames array is required. Provide an array of { digit, filename } objects to delete.',
-        },
-        { status: 400 }
-      )
-    }
+      // REQUIRE filenames array - no implicit bulk delete
+      if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
+        return NextResponse.json(
+          {
+            error:
+              'filenames array is required. Provide an array of { digit, filename } objects to delete.',
+          },
+          { status: 400 }
+        )
+      }
 
-    // Safety limit - don't allow deleting too many at once
-    const MAX_DELETE_BATCH = 50
-    if (filenames.length > MAX_DELETE_BATCH) {
-      return NextResponse.json(
-        {
-          error: `Cannot delete more than ${MAX_DELETE_BATCH} files at once. You requested ${filenames.length}.`,
-        },
-        { status: 400 }
-      )
-    }
+      // Safety limit - don't allow deleting too many at once
+      const MAX_DELETE_BATCH = 50
+      if (filenames.length > MAX_DELETE_BATCH) {
+        return NextResponse.json(
+          {
+            error: `Cannot delete more than ${MAX_DELETE_BATCH} files at once. You requested ${filenames.length}.`,
+          },
+          { status: 400 }
+        )
+      }
 
-    // Preview mode if not confirmed
-    if (!confirm) {
+      // Preview mode if not confirmed
+      if (!confirm) {
+        return NextResponse.json({
+          preview: true,
+          count: filenames.length,
+          message: `Would delete ${filenames.length} specified images. Set confirm=true to proceed.`,
+        })
+      }
+
+      let deleted = 0
+      const errors: string[] = []
+      const warnings: string[] = []
+
+      for (const { digit: d, filename } of filenames) {
+        // Basic type validation (detailed validation happens in deleteColumnClassifierSample)
+        if (typeof d !== 'number' || typeof filename !== 'string') {
+          errors.push(`Invalid input for ${filename}`)
+          continue
+        }
+
+        const result = await deleteColumnClassifierSample(d, filename)
+
+        if (!result.success) {
+          errors.push(`${filename}: ${result.error}`)
+          continue
+        }
+
+        if (result.deleted) {
+          deleted++
+        }
+
+        if (!result.tombstoneRecorded) {
+          warnings.push(`${filename}: ${result.error}`)
+        }
+      }
+
       return NextResponse.json({
-        preview: true,
-        count: filenames.length,
-        message: `Would delete ${filenames.length} specified images. Set confirm=true to proceed.`,
+        success: true,
+        deleted,
+        errors: errors.length > 0 ? errors : undefined,
+        warnings: warnings.length > 0 ? warnings : undefined,
       })
+    } catch (error) {
+      console.error('[vision-training] Error deleting images:', error)
+      return NextResponse.json({ error: 'Failed to delete images' }, { status: 500 })
     }
-
-    let deleted = 0
-    const errors: string[] = []
-    const warnings: string[] = []
-
-    for (const { digit: d, filename } of filenames) {
-      // Basic type validation (detailed validation happens in deleteColumnClassifierSample)
-      if (typeof d !== 'number' || typeof filename !== 'string') {
-        errors.push(`Invalid input for ${filename}`)
-        continue
-      }
-
-      const result = await deleteColumnClassifierSample(d, filename)
-
-      if (!result.success) {
-        errors.push(`${filename}: ${result.error}`)
-        continue
-      }
-
-      if (result.deleted) {
-        deleted++
-      }
-
-      if (!result.tombstoneRecorded) {
-        warnings.push(`${filename}: ${result.error}`)
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      deleted,
-      errors: errors.length > 0 ? errors : undefined,
-      warnings: warnings.length > 0 ? warnings : undefined,
-    })
-  } catch (error) {
-    console.error('[vision-training] Error deleting images:', error)
-    return NextResponse.json({ error: 'Failed to delete images' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * PATCH /api/vision-training/images
@@ -242,84 +248,87 @@ export const DELETE = withAuth(async (request) => {
  *   - images: Array of { digit: number, filename: string } to reclassify
  *   - newDigit: Target digit (0-9)
  */
-export const PATCH = withAuth(async (request) => {
-  try {
-    const body = await request.json()
+export const PATCH = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
 
-    const {
-      images,
-      newDigit,
-    }: {
-      images: { digit: number; filename: string }[]
-      newDigit: number
-    } = body
+      const {
+        images,
+        newDigit,
+      }: {
+        images: { digit: number; filename: string }[]
+        newDigit: number
+      } = body
 
-    // Validate newDigit
-    if (
-      typeof newDigit !== 'number' ||
-      newDigit < 0 ||
-      newDigit > 9 ||
-      !Number.isInteger(newDigit)
-    ) {
-      return NextResponse.json({ error: 'Invalid new digit' }, { status: 400 })
-    }
-
-    // Validate images array
-    if (!Array.isArray(images) || images.length === 0) {
-      return NextResponse.json({ error: 'No images provided' }, { status: 400 })
-    }
-
-    // Ensure destination directory exists
-    const destDir = path.join(TRAINING_DATA_DIR, String(newDigit))
-    await fs.mkdir(destDir, { recursive: true })
-
-    let reclassified = 0
-    let skipped = 0
-    const errors: string[] = []
-
-    for (const { digit, filename } of images) {
-      // Validate digit
-      if (typeof digit !== 'number' || digit < 0 || digit > 9 || !Number.isInteger(digit)) {
-        errors.push(`Invalid digit for ${filename}`)
-        continue
+      // Validate newDigit
+      if (
+        typeof newDigit !== 'number' ||
+        newDigit < 0 ||
+        newDigit > 9 ||
+        !Number.isInteger(newDigit)
+      ) {
+        return NextResponse.json({ error: 'Invalid new digit' }, { status: 400 })
       }
 
-      // Validate filename
-      if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.png')) {
-        errors.push(`Invalid filename: ${filename}`)
-        continue
+      // Validate images array
+      if (!Array.isArray(images) || images.length === 0) {
+        return NextResponse.json({ error: 'No images provided' }, { status: 400 })
       }
 
-      // Skip if same digit
-      if (digit === newDigit) {
-        skipped++
-        continue
-      }
+      // Ensure destination directory exists
+      const destDir = path.join(TRAINING_DATA_DIR, String(newDigit))
+      await fs.mkdir(destDir, { recursive: true })
 
-      const srcPath = path.join(TRAINING_DATA_DIR, String(digit), filename)
-      const destPath = path.join(destDir, filename)
+      let reclassified = 0
+      let skipped = 0
+      const errors: string[] = []
 
-      try {
-        await fs.rename(srcPath, destPath)
-        reclassified++
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          errors.push(`Image not found: ${filename}`)
-        } else {
-          errors.push(`Failed to reclassify ${filename}: ${(error as Error).message}`)
+      for (const { digit, filename } of images) {
+        // Validate digit
+        if (typeof digit !== 'number' || digit < 0 || digit > 9 || !Number.isInteger(digit)) {
+          errors.push(`Invalid digit for ${filename}`)
+          continue
+        }
+
+        // Validate filename
+        if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.png')) {
+          errors.push(`Invalid filename: ${filename}`)
+          continue
+        }
+
+        // Skip if same digit
+        if (digit === newDigit) {
+          skipped++
+          continue
+        }
+
+        const srcPath = path.join(TRAINING_DATA_DIR, String(digit), filename)
+        const destPath = path.join(destDir, filename)
+
+        try {
+          await fs.rename(srcPath, destPath)
+          reclassified++
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            errors.push(`Image not found: ${filename}`)
+          } else {
+            errors.push(`Failed to reclassify ${filename}: ${(error as Error).message}`)
+          }
         }
       }
-    }
 
-    return NextResponse.json({
-      success: true,
-      reclassified,
-      skipped,
-      newDigit,
-      errors: errors.length > 0 ? errors : undefined,
-    })
-  } catch (error) {
-    console.error('[vision-training] Error reclassifying images:', error)
-    return NextResponse.json({ error: 'Failed to reclassify images' }, { status: 500 })
-  }
-}, { role: 'admin' })
+      return NextResponse.json({
+        success: true,
+        reclassified,
+        skipped,
+        newDigit,
+        errors: errors.length > 0 ? errors : undefined,
+      })
+    } catch (error) {
+      console.error('[vision-training] Error reclassifying images:', error)
+      return NextResponse.json({ error: 'Failed to reclassify images' }, { status: 500 })
+    }
+  },
+  { role: 'admin' }
+)

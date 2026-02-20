@@ -61,7 +61,10 @@ Interpret the magenta annotations as "look here" / "this area" markers in the co
 }
 
 function buildSystemPrompt(req: RefineRequest, screenshotPath?: string): string {
-  const display = CONSTANT_DISPLAY[req.constantId] ?? { name: req.constantId, symbol: req.constantId }
+  const display = CONSTANT_DISPLAY[req.constantId] ?? {
+    name: req.constantId,
+    symbol: req.constantId,
+  }
   const prefix = demoFilePrefix(req.constantId)
   const demosDir = 'apps/web/src/components/toys/number-line/constants/demos'
 
@@ -104,7 +107,9 @@ ${req.prompt}
 6. ttsText should be for a smart 5-year-old: clear, vivid, wonder-filled
 7. Run: cd apps/web && npx tsc --noEmit
 8. Do NOT change exported function signatures
-9. Do NOT modify useConstantDemoNarration.ts or useConstantDemo.ts${screenshotPath ? `
+9. Do NOT modify useConstantDemoNarration.ts or useConstantDemo.ts${
+    screenshotPath
+      ? `
 
 ## Annotated Screenshot
 The user captured a screenshot of the current animation frame and drew bright magenta (#ff00ff) annotations on it.
@@ -112,7 +117,9 @@ The magenta marks are NOT part of the animation — they are the user's hand-dra
 FIRST read the screenshot to see what the user is referring to:
   ${screenshotPath}
 
-Interpret the magenta annotations as "look here" / "this area" markers in the context of the user's request.` : ''}`
+Interpret the magenta annotations as "look here" / "this area" markers in the context of the user's request.`
+      : ''
+  }`
 }
 
 export const POST = withAuth(async (request) => {
@@ -159,10 +166,13 @@ export const POST = withAuth(async (request) => {
       const child = spawn(
         'claude',
         [
-          '-p', claudePrompt,
-          '--output-format', 'stream-json',
+          '-p',
+          claudePrompt,
+          '--output-format',
+          'stream-json',
           '--verbose',
-          '--allowedTools', 'Read,Write,Edit,Glob,Grep,Bash',
+          '--allowedTools',
+          'Read,Write,Edit,Glob,Grep,Bash',
           ...(isContinuation ? ['--resume', body.continueSessionId!] : []),
         ],
         {
@@ -210,10 +220,7 @@ export const POST = withAuth(async (request) => {
                     file: block.input?.file_path ?? block.input?.command,
                   })
                   // Estimate progress based on tool calls (rough heuristic)
-                  handle.setProgress(
-                    Math.min(90, toolCallCount * 8),
-                    `Tool: ${block.name}`
-                  )
+                  handle.setProgress(Math.min(90, toolCallCount * 8), `Tool: ${block.name}`)
                 }
               }
             }
@@ -260,7 +267,9 @@ export const POST = withAuth(async (request) => {
                 if (msg.type === 'result') {
                   sessionId = msg.session_id ?? sessionId
                 }
-              } catch { /* ignore */ }
+              } catch {
+                /* ignore */
+              }
             }
 
             if (handle.isCancelled()) {

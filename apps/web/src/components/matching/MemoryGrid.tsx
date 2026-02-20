@@ -118,9 +118,7 @@ export interface MemoryGridProps<TCard = any> {
  * Unified MemoryGrid component that works for both single-player and multiplayer modes.
  * Conditionally enables multiplayer presence features (hover avatars) when configured.
  */
-export function MemoryGrid<
-  TCard extends { id: string; matched: boolean },
->({
+export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
   state,
   gridConfig,
   flipCard,
@@ -216,12 +214,7 @@ export function MemoryGrid<
           let isValidForSelection = true
           let isDimmed = false
 
-          if (
-            shouldDimCard &&
-            state.flippedCards.length === 1 &&
-            !isFlipped &&
-            !isMatched
-          ) {
+          if (shouldDimCard && state.flippedCards.length === 1 && !isFlipped && !isMatched) {
             const firstFlippedCard = state.flippedCards[0]
             isDimmed = shouldDimCard(card, firstFlippedCard)
             isValidForSelection = !isDimmed

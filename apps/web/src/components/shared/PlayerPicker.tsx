@@ -14,18 +14,18 @@ export function PlayerPicker({ selectedPlayerId, onSelect, disabled, isDark }: P
   const { data: players } = useUserPlayers()
 
   // Show all non-archived players (isActive is an arcade-specific flag, not relevant here)
-  const visiblePlayers = players?.filter(p => !p.isArchived) ?? []
+  const visiblePlayers = players?.filter((p) => !p.isArchived) ?? []
 
   // If no players exist, render nothing — anonymous-only, no picker needed
   if (visiblePlayers.length === 0) return null
 
   const selectedPlayer = selectedPlayerId
-    ? visiblePlayers.find(p => p.id === selectedPlayerId)
+    ? visiblePlayers.find((p) => p.id === selectedPlayerId)
     : null
 
   const label = selectedPlayer
     ? `${selectedPlayer.emoji || '👤'} ${selectedPlayer.name}`
-    : '👤 Who\'s playing?'
+    : "👤 Who's playing?"
 
   const themeClass = isDark ? 'player-picker-dark' : 'player-picker-light'
 
@@ -55,9 +55,7 @@ export function PlayerPicker({ selectedPlayerId, onSelect, disabled, isDark }: P
           }}
         >
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
-          {!disabled && (
-            <span style={{ fontSize: '10px', opacity: 0.6 }}>▾</span>
-          )}
+          {!disabled && <span style={{ fontSize: '10px', opacity: 0.6 }}>▾</span>}
         </button>
       </DropdownMenu.Trigger>
 
@@ -70,7 +68,7 @@ export function PlayerPicker({ selectedPlayerId, onSelect, disabled, isDark }: P
           sideOffset={6}
           avoidCollisions
         >
-          {visiblePlayers.map(player => (
+          {visiblePlayers.map((player) => (
             <DropdownMenu.Item
               key={player.id}
               data-action="select-player"

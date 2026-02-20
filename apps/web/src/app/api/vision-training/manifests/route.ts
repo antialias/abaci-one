@@ -73,90 +73,93 @@ async function ensureManifestsDir(): Promise<void> {
  *   itemCount: number
  * }
  */
-export const POST = withAuth(async (request) => {
-  try {
-    const body = await request.json()
-    const { modelType, filters, items } = body
+export const POST = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
+      const { modelType, filters, items } = body
 
-    // Validate required fields
-    if (!modelType || !['column-classifier', 'boundary-detector'].includes(modelType)) {
-      return new Response(
-        JSON.stringify({
-          error: 'Invalid modelType. Must be "column-classifier" or "boundary-detector".',
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
+      // Validate required fields
+      if (!modelType || !['column-classifier', 'boundary-detector'].includes(modelType)) {
+        return new Response(
+          JSON.stringify({
+            error: 'Invalid modelType. Must be "column-classifier" or "boundary-detector".',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Items array is required and must not be empty.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
+      if (!Array.isArray(items) || items.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Items array is required and must not be empty.' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
 
-    // Validate items based on model type
-    for (const item of items) {
-      if (modelType === 'column-classifier') {
-        if (
-          item.type !== 'column' ||
-          typeof item.digit !== 'number' ||
-          typeof item.filename !== 'string'
-        ) {
-          return new Response(
-            JSON.stringify({
-              error: 'Invalid column manifest item. Required: type="column", digit, filename.',
-            }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
-          )
-        }
-      } else if (modelType === 'boundary-detector') {
-        if (
-          item.type !== 'boundary' ||
-          typeof item.deviceId !== 'string' ||
-          typeof item.baseName !== 'string'
-        ) {
-          return new Response(
-            JSON.stringify({
-              error:
-                'Invalid boundary manifest item. Required: type="boundary", deviceId, baseName.',
-            }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
-          )
+      // Validate items based on model type
+      for (const item of items) {
+        if (modelType === 'column-classifier') {
+          if (
+            item.type !== 'column' ||
+            typeof item.digit !== 'number' ||
+            typeof item.filename !== 'string'
+          ) {
+            return new Response(
+              JSON.stringify({
+                error: 'Invalid column manifest item. Required: type="column", digit, filename.',
+              }),
+              { status: 400, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
+        } else if (modelType === 'boundary-detector') {
+          if (
+            item.type !== 'boundary' ||
+            typeof item.deviceId !== 'string' ||
+            typeof item.baseName !== 'string'
+          ) {
+            return new Response(
+              JSON.stringify({
+                error:
+                  'Invalid boundary manifest item. Required: type="boundary", deviceId, baseName.',
+              }),
+              { status: 400, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
         }
       }
+
+      // Create manifest
+      const manifestId = createId()
+      const manifest: TrainingManifest = {
+        id: manifestId,
+        modelType,
+        createdAt: new Date().toISOString(),
+        filters: filters || {},
+        items,
+      }
+
+      // Ensure directory exists and write manifest
+      await ensureManifestsDir()
+      const manifestPath = path.join(MANIFESTS_DIR, `${manifestId}.json`)
+      await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
+
+      return new Response(
+        JSON.stringify({
+          manifestId,
+          itemCount: items.length,
+        }),
+        { status: 201, headers: { 'Content-Type': 'application/json' } }
+      )
+    } catch (error) {
+      console.error('[Manifests API] Error creating manifest:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to create manifest', details: String(error) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
-
-    // Create manifest
-    const manifestId = createId()
-    const manifest: TrainingManifest = {
-      id: manifestId,
-      modelType,
-      createdAt: new Date().toISOString(),
-      filters: filters || {},
-      items,
-    }
-
-    // Ensure directory exists and write manifest
-    await ensureManifestsDir()
-    const manifestPath = path.join(MANIFESTS_DIR, `${manifestId}.json`)
-    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
-
-    return new Response(
-      JSON.stringify({
-        manifestId,
-        itemCount: items.length,
-      }),
-      { status: 201, headers: { 'Content-Type': 'application/json' } }
-    )
-  } catch (error) {
-    console.error('[Manifests API] Error creating manifest:', error)
-    return new Response(
-      JSON.stringify({ error: 'Failed to create manifest', details: String(error) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * GET /api/vision-training/manifests
@@ -166,56 +169,59 @@ export const POST = withAuth(async (request) => {
  * Query params:
  * - modelType (optional): Filter by model type
  */
-export const GET = withAuth(async (request) => {
-  try {
-    const { searchParams } = new URL(request.url)
-    const modelTypeFilter = searchParams.get('modelType')
+export const GET = withAuth(
+  async (request) => {
+    try {
+      const { searchParams } = new URL(request.url)
+      const modelTypeFilter = searchParams.get('modelType')
 
-    await ensureManifestsDir()
+      await ensureManifestsDir()
 
-    // Read all manifest files
-    const files = await fs.readdir(MANIFESTS_DIR)
-    const manifests: TrainingManifest[] = []
+      // Read all manifest files
+      const files = await fs.readdir(MANIFESTS_DIR)
+      const manifests: TrainingManifest[] = []
 
-    for (const file of files) {
-      if (!file.endsWith('.json')) continue
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue
 
-      try {
-        const content = await fs.readFile(path.join(MANIFESTS_DIR, file), 'utf-8')
-        const manifest = JSON.parse(content) as TrainingManifest
+        try {
+          const content = await fs.readFile(path.join(MANIFESTS_DIR, file), 'utf-8')
+          const manifest = JSON.parse(content) as TrainingManifest
 
-        // Apply model type filter if specified
-        if (modelTypeFilter && manifest.modelType !== modelTypeFilter) {
-          continue
+          // Apply model type filter if specified
+          if (modelTypeFilter && manifest.modelType !== modelTypeFilter) {
+            continue
+          }
+
+          manifests.push(manifest)
+        } catch {
+          // Skip invalid files
+          console.warn(`[Manifests API] Skipping invalid manifest file: ${file}`)
         }
-
-        manifests.push(manifest)
-      } catch {
-        // Skip invalid files
-        console.warn(`[Manifests API] Skipping invalid manifest file: ${file}`)
       }
+
+      // Sort by creation date (newest first)
+      manifests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+      return new Response(
+        JSON.stringify({
+          manifests: manifests.map((m) => ({
+            id: m.id,
+            modelType: m.modelType,
+            createdAt: m.createdAt,
+            itemCount: m.items.length,
+            filters: m.filters,
+          })),
+        }),
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+    } catch (error) {
+      console.error('[Manifests API] Error listing manifests:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to list manifests', details: String(error) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
-
-    // Sort by creation date (newest first)
-    manifests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-    return new Response(
-      JSON.stringify({
-        manifests: manifests.map((m) => ({
-          id: m.id,
-          modelType: m.modelType,
-          createdAt: m.createdAt,
-          itemCount: m.items.length,
-          filters: m.filters,
-        })),
-      }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
-  } catch (error) {
-    console.error('[Manifests API] Error listing manifests:', error)
-    return new Response(
-      JSON.stringify({ error: 'Failed to list manifests', details: String(error) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)

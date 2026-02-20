@@ -13,8 +13,7 @@ export const kaprekarGame: GameDefinition = {
   id: 'kaprekar',
   category: 'trick',
   name: "Kaprekar's 6174",
-  description:
-    'A mysterious math routine — pick any 4-digit number and it always reaches 6174!',
+  description: 'A mysterious math routine — pick any 4-digit number and it always reaches 6174!',
 
   agentRules: '',
   needsProximityUpdates: false,
@@ -23,15 +22,15 @@ export const kaprekarGame: GameDefinition = {
   sessionTools: [],
 
   sessionInstructions:
-    'You are demonstrating KAPREKAR\'S ROUTINE with a child on the phone.\n\n' +
+    "You are demonstrating KAPREKAR'S ROUTINE with a child on the phone.\n\n" +
     'THE SECRET: Any 4-digit number (with at least two different digits) always reaches 6174 within 7 steps.\n\n' +
     'SETUP:\n' +
     '- "I want to show you something mysterious about numbers..."\n' +
     '- Ask the child to pick any 4-digit number. They should write it down on paper and tell you.\n' +
     '- If the number has fewer than 4 digits, pad with leading zeros (e.g. 3 → 0003, 82 → 0082).\n' +
-    '- Reject numbers with all identical digits (1111, 2222, etc.) — those don\'t work.\n\n' +
+    "- Reject numbers with all identical digits (1111, 2222, etc.) — those don't work.\n\n" +
     'FOR EACH STEP:\n' +
-    '1. Take the current number\'s digits.\n' +
+    "1. Take the current number's digits.\n" +
     '2. Arrange them largest → smallest = the BIG number.\n' +
     '3. Arrange them smallest → largest = the SMALL number.\n' +
     '4. Subtract: BIG - SMALL = result.\n' +
@@ -65,7 +64,7 @@ export const kaprekarGame: GameDefinition = {
   onStart(): GameStartResult {
     return {
       agentMessage:
-        'Kaprekar\'s Routine is ready! Ask the child to pick any 4-digit number ' +
+        "Kaprekar's Routine is ready! Ask the child to pick any 4-digit number " +
         '(not all the same digit). Suggest they write it down on paper. ' +
         'You do the rearranging and subtraction at each step, showing results on the number line. ' +
         'It ALWAYS reaches 6174!',

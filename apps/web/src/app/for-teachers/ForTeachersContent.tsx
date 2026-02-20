@@ -221,12 +221,7 @@ function SkillsSection() {
 function AdaptiveSection() {
   const t = useTranslations('forTeachers.adaptive')
 
-  const capabilities = [
-    t('skillLevel'),
-    t('sessionTime'),
-    t('structure'),
-    t('helpMode'),
-  ]
+  const capabilities = [t('skillLevel'), t('sessionTime'), t('structure'), t('helpMode')]
 
   return (
     <Section id="adaptive">

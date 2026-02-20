@@ -20,9 +20,7 @@ beforeAll(async () => {
   await ensureTestSchema()
   for (const table of ['worksheet_mastery', 'worksheet_attempts', 'problem_attempts']) {
     await db.run(
-      sql.raw(
-        `CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, user_id TEXT NOT NULL)`
-      )
+      sql.raw(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, user_id TEXT NOT NULL)`)
     )
   }
 })
@@ -51,8 +49,14 @@ describe('mergeGuestIntoUser', () => {
 
   afterEach(async () => {
     // Source may already be deleted by merge, so catch errors
-    await db.delete(schema.users).where(eq(schema.users.id, sourceUserId)).catch(() => {})
-    await db.delete(schema.users).where(eq(schema.users.id, targetUserId)).catch(() => {})
+    await db
+      .delete(schema.users)
+      .where(eq(schema.users.id, sourceUserId))
+      .catch(() => {})
+    await db
+      .delete(schema.users)
+      .where(eq(schema.users.id, targetUserId))
+      .catch(() => {})
   })
 
   it('no-ops when sourceUserId === targetUserId', async () => {

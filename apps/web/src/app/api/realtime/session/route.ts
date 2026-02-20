@@ -8,9 +8,19 @@
 
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getVoiceForNumber, getTraitSummary, getNeighborsSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
-import { generateScenario, type GeneratedScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
-import { AVAILABLE_EXPLORATIONS, EXPLORATION_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
+import {
+  getVoiceForNumber,
+  getTraitSummary,
+  getNeighborsSummary,
+} from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
+import {
+  generateScenario,
+  type GeneratedScenario,
+} from '@/components/toys/number-line/talkToNumber/generateScenario'
+import {
+  AVAILABLE_EXPLORATIONS,
+  EXPLORATION_IDS,
+} from '@/components/toys/number-line/talkToNumber/explorationRegistry'
 import type { ChildProfile } from '@/components/toys/number-line/talkToNumber/childProfile'
 import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber/assembleChildProfile'
 import { answeringMode } from '@/components/toys/number-line/talkToNumber/sessionModes/answeringMode'
@@ -19,30 +29,34 @@ import { getAnsweringTools } from '@/components/toys/number-line/talkToNumber/se
 export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
-    const { number, playerId, recommendedExplorations: rawRecommended, previousScenario, availablePlayers: rawAvailablePlayers } = body
+    const {
+      number,
+      playerId,
+      recommendedExplorations: rawRecommended,
+      previousScenario,
+      availablePlayers: rawAvailablePlayers,
+    } = body
 
     if (typeof number !== 'number' || !isFinite(number)) {
-      return NextResponse.json(
-        { error: 'number must be a finite number' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'number must be a finite number' }, { status: 400 })
     }
 
     const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
     }
 
     // Assemble child profile from player data when a playerId is provided
-    let childProfile: ChildProfile | undefined = undefined
+    let childProfile: ChildProfile | undefined 
     let profileFailed = false
     if (typeof playerId === 'string' && playerId) {
       const start = Date.now()
       const result = await assembleChildProfile(playerId)
-      console.log('[realtime/session] profile assembly for %s took %dms', playerId, Date.now() - start)
+      console.log(
+        '[realtime/session] profile assembly for %s took %dms',
+        playerId,
+        Date.now() - start
+      )
       if (result && 'failed' in result) {
         profileFailed = true
       } else {
@@ -51,10 +65,13 @@ export const POST = withAuth(async (request) => {
     }
 
     // Validate available players (for mid-call identification)
-    const validAvailablePlayers: Array<{ id: string; name: string; emoji: string }> = Array.isArray(rawAvailablePlayers)
+    const validAvailablePlayers: Array<{ id: string; name: string; emoji: string }> = Array.isArray(
+      rawAvailablePlayers
+    )
       ? rawAvailablePlayers.filter(
           (p: unknown): p is { id: string; name: string; emoji: string } =>
-            typeof p === 'object' && p !== null &&
+            typeof p === 'object' &&
+            p !== null &&
             typeof (p as Record<string, unknown>).id === 'string' &&
             typeof (p as Record<string, unknown>).name === 'string' &&
             typeof (p as Record<string, unknown>).emoji === 'string'
@@ -63,7 +80,9 @@ export const POST = withAuth(async (request) => {
 
     // Validate recommended explorations (filter to known IDs)
     const recommendedExplorations: string[] | undefined = Array.isArray(rawRecommended)
-      ? rawRecommended.filter((id: unknown) => typeof id === 'string' && EXPLORATION_IDS.has(id as string))
+      ? rawRecommended.filter(
+          (id: unknown) => typeof id === 'string' && EXPLORATION_IDS.has(id as string)
+        )
       : undefined
 
     // Reuse scenario from a prior call to the same number, or generate a new one
@@ -78,7 +97,7 @@ export const POST = withAuth(async (request) => {
         getNeighborsSummary(number),
         AVAILABLE_EXPLORATIONS,
         recommendedExplorations?.length ? recommendedExplorations : undefined,
-        childProfile,
+        childProfile
       )
     }
 
@@ -87,7 +106,10 @@ export const POST = withAuth(async (request) => {
     if (!scenario && !previousScenario) {
       console.warn('[realtime/session] scenario generation returned null for number %d', number)
       return NextResponse.json(
-        { error: 'Phone calls are taking a break right now. Try again later!', code: 'quota_exceeded' },
+        {
+          error: 'Phone calls are taking a break right now. Try again later!',
+          code: 'quota_exceeded',
+        },
         { status: 502 }
       )
     }
@@ -123,9 +145,9 @@ export const POST = withAuth(async (request) => {
         input_audio_transcription: { model: 'whisper-1' },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.8,             // Higher = less sensitive (default 0.5). Prevents echo/ambient triggering.
-          prefix_padding_ms: 300,     // Audio to include before detected speech start
-          silence_duration_ms: 700,   // How long silence before turn ends (default 500)
+          threshold: 0.8, // Higher = less sensitive (default 0.5). Prevents echo/ambient triggering.
+          prefix_padding_ms: 300, // Audio to include before detected speech start
+          silence_duration_ms: 700, // How long silence before turn ends (default 500)
         },
         tools,
       }),
@@ -156,10 +178,7 @@ export const POST = withAuth(async (request) => {
         }
       }
 
-      return NextResponse.json(
-        { error: friendlyMessage, code },
-        { status: 502 }
-      )
+      return NextResponse.json({ error: friendlyMessage, code }, { status: 502 })
     }
 
     const data = await response.json()
@@ -174,9 +193,6 @@ export const POST = withAuth(async (request) => {
     })
   } catch (error) {
     console.error('[realtime/session] Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 })

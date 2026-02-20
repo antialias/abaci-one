@@ -175,7 +175,14 @@ export function GenericSetupPhase<
               You have a paused game in progress. Changing any setting will end it and you won't be
               able to resume.
             </p>
-            <div className={css({ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+              })}
+            >
               <button
                 data-action="keep-game"
                 className={css({
@@ -327,7 +334,9 @@ export function GenericSetupPhase<
                       })}
                     >
                       <span className={css({ fontSize: '24px' })}>{timerInfo[timer].icon}</span>
-                      <span className={css({ fontSize: '18px', fontWeight: 'bold' })}>{timer}s</span>
+                      <span className={css({ fontSize: '18px', fontWeight: 'bold' })}>
+                        {timer}s
+                      </span>
                       <span className={css({ fontSize: '12px', opacity: 0.8 })}>
                         {timerInfo[timer].label}
                       </span>

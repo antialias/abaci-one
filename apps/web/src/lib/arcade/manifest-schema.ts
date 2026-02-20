@@ -58,9 +58,7 @@ export const PracticeBreakConfigSchema = z
         z.object({
           label: z.string(),
           type: z.enum(['number', 'boolean', 'select']),
-          options: z
-            .array(z.object({ value: z.unknown(), label: z.string() }))
-            .optional(),
+          options: z.array(z.object({ value: z.unknown(), label: z.string() })).optional(),
           min: z.number().optional(),
           max: z.number().optional(),
           step: z.number().optional(),

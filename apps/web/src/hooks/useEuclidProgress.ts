@@ -40,22 +40,25 @@ export function useMarkEuclidComplete(playerId: string | null) {
   const playerIdRef = useRef(playerId)
   playerIdRef.current = playerId
 
-  const mutationFn = useCallback(async (propositionId: number) => {
-    const pid = playerIdRef.current
-    if (!pid) {
-      // Anonymous mode: accumulate in the query cache (no server call)
-      const current = queryClient.getQueryData<number[]>(euclidKeys.all) ?? []
-      return current.includes(propositionId) ? current : [...current, propositionId]
-    }
-    const res = await api(`euclid/progress/${pid}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propositionId }),
-    })
-    if (!res.ok) throw new Error('Failed to mark proposition complete')
-    const data = await res.json()
-    return data.completed as number[]
-  }, [queryClient])
+  const mutationFn = useCallback(
+    async (propositionId: number) => {
+      const pid = playerIdRef.current
+      if (!pid) {
+        // Anonymous mode: accumulate in the query cache (no server call)
+        const current = queryClient.getQueryData<number[]>(euclidKeys.all) ?? []
+        return current.includes(propositionId) ? current : [...current, propositionId]
+      }
+      const res = await api(`euclid/progress/${pid}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propositionId }),
+      })
+      if (!res.ok) throw new Error('Failed to mark proposition complete')
+      const data = await res.json()
+      return data.completed as number[]
+    },
+    [queryClient]
+  )
 
   return useMutation({
     mutationFn,

@@ -163,7 +163,7 @@ export default function StudentsPage() {
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          paddingTop: 'calc(80px + 2rem)',
+          paddingTop: '2rem',
           paddingLeft: '2rem',
           paddingRight: '2rem',
           paddingBottom: '2rem',

@@ -31,10 +31,10 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 0: First arcs — the compass starts spinning
     ttsText:
-      'Watch this magic compass! It\'s drawing a spiral, ' +
+      "Watch this magic compass! It's drawing a spiral, " +
       'spinning round and round. ' +
       'See how it starts really tiny in the middle?',
-    startProgress: 0.00,
+    startProgress: 0.0,
     endProgress: 0.12,
     animationDurationMs: 5000,
     scrubberLabel: 'Spiral begins',
@@ -55,7 +55,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 2: Pattern becoming clear
     ttsText:
-      'It\'s building a special rectangle. ' +
+      "It's building a special rectangle. " +
       'This spiral follows a secret recipe — ' +
       'each new piece is the two before it added together! ' +
       'One, one, two, three, five, eight...',
@@ -68,10 +68,10 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     // Seg 3: Mid-spiral, shape settling
     ttsText:
       'Look at the shape of the box. ' +
-      'It\'s getting more and more... perfect. ' +
+      "It's getting more and more... perfect. " +
       'Not too long, not too wide — just right.',
     startProgress: 0.45,
-    endProgress: 0.60,
+    endProgress: 0.6,
     animationDurationMs: 5000,
     scrubberLabel: 'Perfect shape',
   },
@@ -83,7 +83,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'You know what? This spiral shows up everywhere in nature! ' +
       'Snail shells curl this way. Sunflower seeds swirl this way. ' +
       'Even hurricanes spin in this same special shape!',
-    startProgress: 0.60,
+    startProgress: 0.6,
     endProgress: 0.78,
     animationDurationMs: 6500,
     scrubberLabel: 'Found in nature',
@@ -91,7 +91,7 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 5: Final convergence — arcs fly by
     ttsText:
-      'Now it\'s going faster and faster — but the rectangle ' +
+      "Now it's going faster and faster — but the rectangle " +
       'has already found its perfect shape. ' +
       'No matter how many squares we add, it barely changes anymore.',
     startProgress: 0.78,
@@ -109,9 +109,9 @@ export const PHI_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Artists use it to make beautiful paintings, ' +
       'architects use it to build beautiful buildings, ' +
       'and nature uses it to grow beautiful shells and flowers. ' +
-      'It\'s the universe\'s favorite shape!',
+      "It's the universe's favorite shape!",
     startProgress: 0.92,
-    endProgress: 1.00,
+    endProgress: 1.0,
     animationDurationMs: 9000,
     scrubberLabel: 'The golden ratio',
   },

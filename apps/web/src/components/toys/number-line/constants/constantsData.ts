@@ -26,7 +26,7 @@ export const METAPHOR_PROMPT_PREFIX =
 
 /** Shared prompt prefix for math-style illustrations (classical geometric, Byrne's Euclid inspired) */
 export const MATH_PROMPT_PREFIX =
-  'Classical geometric diagram in the style of Oliver Byrne\'s illustrated Euclid. Clean precise constructions with bold flat primary colors (red, blue, gold, black) on warm cream parchment background. No text, no labels, no numbers, no letters. Square 1:1 composition. Mathematically accurate and instructional. Simple clean shapes, visible compass and straightedge construction marks where appropriate.'
+  "Classical geometric diagram in the style of Oliver Byrne's illustrated Euclid. Clean precise constructions with bold flat primary colors (red, blue, gold, black) on warm cream parchment background. No text, no labels, no numbers, no letters. Square 1:1 composition. Mathematically accurate and instructional. Simple clean shapes, visible compass and straightedge construction marks where appropriate."
 
 /** Theme-specific prompt modifiers appended during generation */
 export const THEME_MODIFIERS = {
@@ -58,9 +58,10 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Pi',
     value: Math.PI,
     revealPrecision: 2,
-    description: 'Every circle has a diameter — that\'s the distance all the way across, from one side to the other. If you walk straight across a round pond, that\'s one diameter. Walking all the way around the edge takes a little more than three of those. No matter how big the pond, the walk around is always exactly pi times the walk across. Pi ties every circle\'s trip around to its distance across.',
+    description:
+      "Every circle has a diameter — that's the distance all the way across, from one side to the other. If you walk straight across a round pond, that's one diameter. Walking all the way around the edge takes a little more than three of those. No matter how big the pond, the walk around is always exactly pi times the walk across. Pi ties every circle's trip around to its distance across.",
     ttsExplanation:
-      'This is pi! Every circle has a diameter — that\'s the distance all the way across, from one side to the other. If you wrap a string around any circle, the string will be exactly pi times as long as that distance across. Watch: this circle is one diameter wide, and when it rolls one full turn, it covers exactly pi on the number line. Pi starts with 3.14159 and goes on forever without repeating.',
+      "This is pi! Every circle has a diameter — that's the distance all the way across, from one side to the other. If you wrap a string around any circle, the string will be exactly pi times as long as that distance across. Watch: this circle is one diameter wide, and when it rolls one full turn, it covers exactly pi on the number line. Pi starts with 3.14159 and goes on forever without repeating.",
     category: 'math',
     mathml: '<math><mi>π</mi></math>',
     metaphorPrompt:
@@ -76,7 +77,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: "Euler's Number",
     value: Math.E,
     revealPrecision: 2,
-    description: 'Imagine a magic vine where every tiny new leaf immediately starts growing its own baby leaves the very moment it appears. Because every new speck of green adds to the growth instantly without waiting for a turn, the plant pushes to become almost three times as big as it started. This specific size is nature\'s limit for how much something can expand when every single part of it is growing continuously. It is the universe\'s secret number for perfectly smooth, non-stop change.',
+    description:
+      "Imagine a magic vine where every tiny new leaf immediately starts growing its own baby leaves the very moment it appears. Because every new speck of green adds to the growth instantly without waiting for a turn, the plant pushes to become almost three times as big as it started. This specific size is nature's limit for how much something can expand when every single part of it is growing continuously. It is the universe's secret number for perfectly smooth, non-stop change.",
     ttsExplanation:
       "This is e, Euler's number! It's about 2.718. If you put one dollar in a bank that doubles your money continuously, after one year you'd have e dollars. It shows up everywhere in nature — in spirals, in how things grow, and even in music.",
     category: 'math',
@@ -96,7 +98,7 @@ export const MATH_CONSTANTS: MathConstant[] = [
     revealPrecision: 2,
     description: 'The golden ratio, found in art, architecture, and nature.',
     ttsExplanation:
-      'This is phi, the golden ratio! It\'s about 1.618. Sunflower seeds spiral in patterns based on this number. Artists and architects have used it for thousands of years because shapes built with it look naturally beautiful.',
+      "This is phi, the golden ratio! It's about 1.618. Sunflower seeds spiral in patterns based on this number. Artists and architects have used it for thousands of years because shapes built with it look naturally beautiful.",
     category: 'math',
     mathml: '<math><mi>φ</mi></math>',
     metaphorPrompt:
@@ -112,7 +114,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Square Root of 2',
     value: Math.SQRT2,
     revealPrecision: 2,
-    description: 'If you have a square garden tile, walking straight through the middle is a secret shortcut compared to walking along the sides. This path is longer than one side but shorter than two, and it is a special distance that regular counting numbers can never measure perfectly. It teaches us that cutting diagonally across a shape creates a new kind of number that goes on forever. This number is the hidden key that turns a square into two perfect triangles.',
+    description:
+      'If you have a square garden tile, walking straight through the middle is a secret shortcut compared to walking along the sides. This path is longer than one side but shorter than two, and it is a special distance that regular counting numbers can never measure perfectly. It teaches us that cutting diagonally across a shape creates a new kind of number that goes on forever. This number is the hidden key that turns a square into two perfect triangles.',
     ttsExplanation:
       "This is the square root of 2! It's about 1.414. If you draw a perfect square where each side is 1, the diagonal corner-to-corner distance is exactly this number. Ancient Greeks discovered it can't be written as a simple fraction — that blew their minds!",
     category: 'math',
@@ -130,7 +133,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Square Root of 3',
     value: Math.sqrt(3),
     revealPrecision: 2,
-    description: 'Imagine you are inside a square box and you stretch a string from the bottom corner all the way through the air to the top opposite corner. This distance is longer than the floor and longer than the wall; it is the longest reach possible inside that space. It shows us exactly how much "deeper" the world is when you move from flat drawings to solid blocks. This number defines the structural shape of honeycomb cells and how bubbles stack together in a pile.',
+    description:
+      'Imagine you are inside a square box and you stretch a string from the bottom corner all the way through the air to the top opposite corner. This distance is longer than the floor and longer than the wall; it is the longest reach possible inside that space. It shows us exactly how much "deeper" the world is when you move from flat drawings to solid blocks. This number defines the structural shape of honeycomb cells and how bubbles stack together in a pile.',
     ttsExplanation:
       "This is the square root of 3! It's about 1.732. If you make a perfect triangle where all three sides are the same length of 2, the height from base to tip is exactly this number.",
     category: 'math',
@@ -148,7 +152,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Tau',
     value: 2 * Math.PI,
     revealPrecision: 2,
-    description: 'Every circle has a radius — that\'s the distance from the center to the edge, which is half the distance across. One full trip around any circle is exactly tau times the radius. Pi uses the whole distance across, but tau uses just the half, so tau is exactly 2 times pi. Tau is the number of one complete turn.',
+    description:
+      "Every circle has a radius — that's the distance from the center to the edge, which is half the distance across. One full trip around any circle is exactly tau times the radius. Pi uses the whole distance across, but tau uses just the half, so tau is exactly 2 times pi. Tau is the number of one complete turn.",
     ttsExplanation:
       "This is tau! Every circle has a radius — that's the distance from the center to the edge, which is half the distance across. If you wrap a string around any circle, the string will be exactly tau times as long as the radius. Watch: this circle has a radius of one, so it's two wide. When it rolls one full turn, it covers exactly tau on the number line. The pi circle was smaller because pi measures against the whole distance across. Tau measures against just the half, so tau is exactly 2 times pi!",
     category: 'math',
@@ -166,7 +171,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Natural Log of 2',
     value: Math.LN2,
     revealPrecision: 2,
-    description: 'If our magic vine grows smoothly, this number tells you the exact moment on the clock when the vine becomes double its size. It acts as a bridge, converting the smooth, continuous growth of nature into the simple idea of doubling. It marks the specific time when "one" leaf turns into "two" leaves in a world of perfect, non-stop growth. This number is the universal "waiting time" required for nature to reach the next level.',
+    description:
+      'If our magic vine grows smoothly, this number tells you the exact moment on the clock when the vine becomes double its size. It acts as a bridge, converting the smooth, continuous growth of nature into the simple idea of doubling. It marks the specific time when "one" leaf turns into "two" leaves in a world of perfect, non-stop growth. This number is the universal "waiting time" required for nature to reach the next level.',
     ttsExplanation:
       "This is the natural logarithm of 2! It's about 0.693. It tells you how long it takes for something to double when it's growing continuously. If bacteria double every hour, this number connects the doubling to the growth rate.",
     category: 'math',
@@ -184,7 +190,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Euler-Mascheroni Constant',
     value: EULER_MASCHERONI,
     revealPrecision: 2,
-    description: 'If you build a smooth slide out of square blocks, a tiny jagged edge will always stick out. This number is the size of that stubborn gap that refuses to disappear, no matter how small you make the blocks. It is the permanent "error code" nature gets when it tries to turn smooth flows into counting numbers.',
+    description:
+      'If you build a smooth slide out of square blocks, a tiny jagged edge will always stick out. This number is the size of that stubborn gap that refuses to disappear, no matter how small you make the blocks. It is the permanent "error code" nature gets when it tries to turn smooth flows into counting numbers.',
     ttsExplanation:
       "This is gamma, the Euler-Mascheroni constant! It's about 0.577. If you add up one half plus one third plus one quarter and keep going, it grows like a logarithm but always a little bit more. That little bit extra is gamma. Nobody knows if it's rational or irrational!",
     category: 'math',
@@ -202,7 +209,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Feigenbaum Constant',
     value: FEIGENBAUM_DELTA,
     revealPrecision: 2,
-    description: 'When a dripping tap speeds up, the rhythm splits into two beats, then four, rushing toward a crash. This number is the stopwatch that tells the drops exactly when to split again as they zoom into chaos. It is the universal speed limit for how fast simple order turns into a storm.',
+    description:
+      'When a dripping tap speeds up, the rhythm splits into two beats, then four, rushing toward a crash. This number is the stopwatch that tells the drops exactly when to split again as they zoom into chaos. It is the universal speed limit for how fast simple order turns into a storm.',
     ttsExplanation:
       "This is delta, the Feigenbaum constant! It's about 4.669. It appears in chaos theory — when simple rules create complex patterns, this number keeps showing up. It's the same whether you're looking at dripping faucets, animal populations, or electronic circuits.",
     category: 'math',
@@ -220,7 +228,8 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Fine-Structure Constant',
     value: FINE_STRUCTURE,
     revealPrecision: 4,
-    description: 'This number tells us how "sticky" light is, acting like the strength of the velcro holding atoms together. If this number were even a tiny bit different, the sun would not shine and the solid ground would crumble apart like dust. It is the specific strength setting of the universe that allows light to grab onto matter. It acts as the cosmic volume knob for electricity.',
+    description:
+      'This number tells us how "sticky" light is, acting like the strength of the velcro holding atoms together. If this number were even a tiny bit different, the sun would not shine and the solid ground would crumble apart like dust. It is the specific strength setting of the universe that allows light to grab onto matter. It acts as the cosmic volume knob for electricity.',
     ttsExplanation:
       "This is alpha, the fine-structure constant! It's roughly 1 divided by 137. It controls how strongly light interacts with matter. If this number were even slightly different, atoms wouldn't work, chemistry wouldn't exist, and neither would we! Physicist Richard Feynman called it one of the greatest mysteries in physics.",
     category: 'physics',
@@ -238,9 +247,10 @@ export const MATH_CONSTANTS: MathConstant[] = [
     name: 'Ramanujan Summation',
     value: -1 / 12,
     revealPrecision: 2,
-    description: 'If you trap infinite waves between two walls, they don\'t push them apart\u2014they suck them together. The math shows that adding up all that pushing creates a tiny, negative weight pulling backward. It is the secret suction holding empty space together.',
+    description:
+      "If you trap infinite waves between two walls, they don't push them apart\u2014they suck them together. The math shows that adding up all that pushing creates a tiny, negative weight pulling backward. It is the secret suction holding empty space together.",
     ttsExplanation:
-      "This is negative one twelfth! The brilliant mathematician Ramanujan showed that if you add up 1 plus 2 plus 3 plus 4 and keep going forever, in a special mathematical sense, you get negative one twelfth. It sounds impossible, but physicists actually use this result in string theory!",
+      'This is negative one twelfth! The brilliant mathematician Ramanujan showed that if you add up 1 plus 2 plus 3 plus 4 and keep going forever, in a special mathematical sense, you get negative one twelfth. It sounds impossible, but physicists actually use this result in string theory!',
     category: 'fun',
     mathml: '<math><mrow><mo>−</mo><mfrac><mn>1</mn><mn>12</mn></mfrac></mrow></math>',
     metaphorPrompt:

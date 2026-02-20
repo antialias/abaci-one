@@ -55,7 +55,16 @@ export function useCoordinatePlaneTouch({
 
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const s = stateRef.current
-      return screenToWorld2D(sx, sy, s.center.x, s.center.y, s.pixelsPerUnit.x, s.pixelsPerUnit.y, cw, ch)
+      return screenToWorld2D(
+        sx,
+        sy,
+        s.center.x,
+        s.center.y,
+        s.pixelsPerUnit.x,
+        s.pixelsPerUnit.y,
+        cw,
+        ch
+      )
     }
 
     // --- Touch handlers ---
@@ -250,7 +259,7 @@ export function useCoordinatePlaneTouch({
       // Anchor the world point under the cursor
       const anchor = toWorld(sx, sy, cw, ch)
 
-      const zoomFactor = Math.pow(1.001, -e.deltaY)
+      const zoomFactor = 1.001 ** -e.deltaY
       const oldPpuX = state.pixelsPerUnit.x
       const oldPpuY = state.pixelsPerUnit.y
 
@@ -307,5 +316,13 @@ export function useCoordinatePlaneTouch({
       window.removeEventListener('mouseup', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
     }
-  }, [canvasRef, stateRef, zoomModeRef, pointerCapturedRef, onStateChange, onZoomVelocity, getCanvasRect])
+  }, [
+    canvasRef,
+    stateRef,
+    zoomModeRef,
+    pointerCapturedRef,
+    onStateChange,
+    onZoomVelocity,
+    getCanvasRect,
+  ])
 }

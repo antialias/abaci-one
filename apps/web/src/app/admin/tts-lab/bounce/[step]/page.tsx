@@ -37,11 +37,7 @@ export default function BounceStepPage() {
     const snapshot = manager.getSnapshot()
     const collection = manager.getCollection()
 
-    let s = appendNavLog(
-      state,
-      'info',
-      `--- Step ${step + 1}/${state.totalSteps} ---`
-    )
+    let s = appendNavLog(state, 'info', `--- Step ${step + 1}/${state.totalSteps} ---`)
     s = appendNavLog(
       s,
       snapshot.isPlaying ? 'warn' : 'info',
@@ -52,15 +48,15 @@ export default function BounceStepPage() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const ss = window.speechSynthesis
       if (ss.speaking || ss.pending) {
-        s = appendNavLog(s, 'warn', `speechSynthesis leaked: speaking=${ss.speaking} pending=${ss.pending}`)
+        s = appendNavLog(
+          s,
+          'warn',
+          `speechSynthesis leaked: speaking=${ss.speaking} pending=${ss.pending}`
+        )
       }
     }
 
-    s = appendNavLog(
-      s,
-      'info',
-      `Speaking [${describeSegments(problem)}] (${problem.length} segs)`
-    )
+    s = appendNavLog(s, 'info', `Speaking [${describeSegments(problem)}] (${problem.length} segs)`)
     s = { ...s, currentStep: step }
     writeNavState(s)
 
@@ -115,7 +111,14 @@ export default function BounceStepPage() {
       <div className={css({ color: '#f0f6fc', fontSize: '16px' })}>
         Step {step + 1} / {state?.totalSteps ?? '?'}
       </div>
-      <div className={css({ fontSize: '11px', color: '#484f58', maxWidth: '400px', textAlign: 'center' })}>
+      <div
+        className={css({
+          fontSize: '11px',
+          color: '#484f58',
+          maxWidth: '400px',
+          textAlign: 'center',
+        })}
+      >
         Speaking {problem.length} segments + navigating in {state?.interruptDelayMs ?? '?'}ms...
       </div>
     </div>

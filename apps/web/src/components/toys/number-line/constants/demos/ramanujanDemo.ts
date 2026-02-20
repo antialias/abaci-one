@@ -63,7 +63,7 @@ function smoothstep(t: number): number {
 
 function easeInOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2
 }
 
 // ── Zeta function (Hasse/Knopp globally convergent series) ──────────
@@ -86,21 +86,24 @@ const BINOM: number[][] = []
 function zetaHasse(s: number): number {
   if (Math.abs(s - 1) < 0.02) return NaN
 
-  const prefactor = 1 / (1 - Math.pow(2, 1 - s))
+  const prefactor = 1 / (1 - 2 ** (1 - s))
   let sum = 0
   for (let n = 0; n <= 25; n++) {
     let inner = 0
     for (let k = 0; k <= n; k++) {
-      inner += (k % 2 === 0 ? 1 : -1) * BINOM[n][k] * Math.pow(k + 1, -s)
+      inner += (k % 2 === 0 ? 1 : -1) * BINOM[n][k] * (k + 1) ** -s
     }
-    sum += inner / Math.pow(2, n + 1)
+    sum += inner / 2 ** (n + 1)
   }
   return prefactor * sum
 }
 
 // ── Precomputed curve data ──────────────────────────────────────────
 
-interface CurvePoint { s: number; z: number }
+interface CurvePoint {
+  s: number
+  z: number
+}
 
 /** Right branch: s from 1.03 → 6 (ascending), ζ values positive & decreasing */
 const ZETA_RIGHT: CurvePoint[] = []
@@ -132,10 +135,10 @@ function ensureCurve() {
  * (seg 1: "the pile gets bigger faster and faster!").
  */
 const DIV_TERMS: { n: number; sum: number; prev: number; arrive: number }[] = [
-  { n: 1, sum: 1,  prev: 0,  arrive: 0.00 },
-  { n: 2, sum: 3,  prev: 1,  arrive: 0.14 },
-  { n: 3, sum: 6,  prev: 3,  arrive: 0.28 },
-  { n: 4, sum: 10, prev: 6,  arrive: 0.42 },
+  { n: 1, sum: 1, prev: 0, arrive: 0.0 },
+  { n: 2, sum: 3, prev: 1, arrive: 0.14 },
+  { n: 3, sum: 6, prev: 3, arrive: 0.28 },
+  { n: 4, sum: 10, prev: 6, arrive: 0.42 },
   { n: 5, sum: 15, prev: 10, arrive: 0.57 },
   { n: 6, sum: 21, prev: 15, arrive: 0.66 },
   { n: 7, sum: 28, prev: 21, arrive: 0.74 },
@@ -152,12 +155,15 @@ const PARTIAL_SUMS_2: number[] = []
 const PARTIAL_SUMS_3: number[] = []
 const PARTIAL_SUMS_4: number[] = []
 {
-  let h = 0, s2 = 0, s3 = 0, s4 = 0
+  let h = 0,
+    s2 = 0,
+    s3 = 0,
+    s4 = 0
   for (let n = 1; n <= 15; n++) {
     h += 1 / n
-    s2 += 1 / Math.pow(n, 2)
-    s3 += 1 / Math.pow(n, 3)
-    s4 += 1 / Math.pow(n, 4)
+    s2 += 1 / n ** 2
+    s3 += 1 / n ** 3
+    s4 += 1 / n ** 4
     HARMONIC_SUMS.push(h)
     PARTIAL_SUMS_2.push(s2)
     PARTIAL_SUMS_3.push(s3)
@@ -171,83 +177,127 @@ const SQUARE_LABELS = ['1', '\u00BC', '\u2079\u2044\u2081', '\u00B9\u2044\u2081\
 
 // ── Colors ───────────────────────────────────────────────────────────
 
-function sCol(isDark: boolean) { return isDark ? '#fbbf24' : '#d97706' }       // amber — S / divergence
-function curveCol(isDark: boolean) { return isDark ? '#60a5fa' : '#2563eb' }    // blue — ζ curve
-function dotCol(isDark: boolean) { return isDark ? '#c084fc' : '#7c3aed' }      // purple — key points
-function resultCol(isDark: boolean) { return isDark ? '#34d399' : '#059669' }   // green — result / −1/12
-function textColor(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }
-function subtextColor(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)' }
-function dangerCol(isDark: boolean) { return isDark ? '#f87171' : '#dc2626' }   // red — pole / danger
+function sCol(isDark: boolean) {
+  return isDark ? '#fbbf24' : '#d97706'
+} // amber — S / divergence
+function curveCol(isDark: boolean) {
+  return isDark ? '#60a5fa' : '#2563eb'
+} // blue — ζ curve
+function dotCol(isDark: boolean) {
+  return isDark ? '#c084fc' : '#7c3aed'
+} // purple — key points
+function resultCol(isDark: boolean) {
+  return isDark ? '#34d399' : '#059669'
+} // green — result / −1/12
+function textColor(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'
+}
+function subtextColor(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)'
+}
+function dangerCol(isDark: boolean) {
+  return isDark ? '#f87171' : '#dc2626'
+} // red — pole / danger
 
 // ── Phase timing ─────────────────────────────────────────────────────
 
 const PHASE = {
   // Act 1: Divergence + Hook
-  divergeStart: 0.000, divergeEnd: 0.070,
-  hookStart: 0.070, hookEnd: 0.100,
+  divergeStart: 0.0,
+  divergeEnd: 0.07,
+  hookStart: 0.07,
+  hookEnd: 0.1,
 
   // Act 2: Shrinking & Convergence
-  harmonicStart: 0.100, harmonicEnd: 0.150,
-  squareStart: 0.150, squareEnd: 0.260,
+  harmonicStart: 0.1,
+  harmonicEnd: 0.15,
+  squareStart: 0.15,
+  squareEnd: 0.26,
 
   // Act 3: The Curve
-  knobStart: 0.260, knobEnd: 0.320,
-  plotStart: 0.320, plotEnd: 0.370,
-  curveStart: 0.370, curveEnd: 0.420,
+  knobStart: 0.26,
+  knobEnd: 0.32,
+  plotStart: 0.32,
+  plotEnd: 0.37,
+  curveStart: 0.37,
+  curveEnd: 0.42,
 
   // Act 4: The Wall
-  approachStart: 0.420, approachEnd: 0.470,
-  wallStart: 0.470, wallEnd: 0.520,
+  approachStart: 0.42,
+  approachEnd: 0.47,
+  wallStart: 0.47,
+  wallEnd: 0.52,
 
   // Act 5: The Bridge
-  smoothStart: 0.520, smoothEnd: 0.555,
-  failedStart: 0.555, failedEnd: 0.600,
-  extendStart: 0.600, extendEnd: 0.650,
-  crossStart: 0.650, crossEnd: 0.700,
+  smoothStart: 0.52,
+  smoothEnd: 0.555,
+  failedStart: 0.555,
+  failedEnd: 0.6,
+  extendStart: 0.6,
+  extendEnd: 0.65,
+  crossStart: 0.65,
+  crossEnd: 0.7,
 
   // Act 6: The Flipper
-  flipperStart: 0.700, flipperEnd: 0.760,
-  connectStart: 0.760, connectEnd: 0.810,
+  flipperStart: 0.7,
+  flipperEnd: 0.76,
+  connectStart: 0.76,
+  connectEnd: 0.81,
 
   // Act 7: Volcano, Trust & Reveal
-  volcanoStart: 0.810, volcanoEnd: 0.850,
-  trustStart: 0.850, trustEnd: 0.895,
-  revealStart: 0.895, revealEnd: 0.940,
-  recapStart: 0.940, recapEnd: 0.970,
-  ghostStart: 0.970, ghostEnd: 1.000,
+  volcanoStart: 0.81,
+  volcanoEnd: 0.85,
+  trustStart: 0.85,
+  trustEnd: 0.895,
+  revealStart: 0.895,
+  revealEnd: 0.94,
+  recapStart: 0.94,
+  recapEnd: 0.97,
+  ghostStart: 0.97,
+  ghostEnd: 1.0,
 } as const
 
 // ── Vertical axis viewport ──────────────────────────────────────────
 
-interface VAxis { center: number; ppu: number }
+interface VAxis {
+  center: number
+  ppu: number
+}
 
 const V_KEYS: { p: number; center: number; range: number }[] = [
-  { p: 0.000, center: 0.8, range: 3 },     // Early (not visible yet)
-  { p: 0.150, center: 0.8, range: 3 },     // Square convergence (~1.645 visible)
-  { p: 0.370, center: 0.8, range: 4 },     // Curve phase (see multiple points)
-  { p: 0.470, center: 1.0, range: 6 },     // Wall (curve shoots up)
-  { p: 0.555, center: -0.2, range: 5 },    // Failed attempts (see curve context)
-  { p: 0.700, center: -0.15, range: 2 },   // Flipper / crossing
-  { p: 0.810, center: -0.08, range: 0.6 }, // Volcano (tight on s=−1)
-  { p: 0.850, center: 0.5, range: 3 },     // Trust: zoom out to see convergent points
+  { p: 0.0, center: 0.8, range: 3 }, // Early (not visible yet)
+  { p: 0.15, center: 0.8, range: 3 }, // Square convergence (~1.645 visible)
+  { p: 0.37, center: 0.8, range: 4 }, // Curve phase (see multiple points)
+  { p: 0.47, center: 1.0, range: 6 }, // Wall (curve shoots up)
+  { p: 0.555, center: -0.2, range: 5 }, // Failed attempts (see curve context)
+  { p: 0.7, center: -0.15, range: 2 }, // Flipper / crossing
+  { p: 0.81, center: -0.08, range: 0.6 }, // Volcano (tight on s=−1)
+  { p: 0.85, center: 0.5, range: 3 }, // Trust: zoom out to see convergent points
   { p: 0.895, center: -0.08, range: 0.6 }, // Reveal: zoom back tight for −1/12
-  { p: 0.940, center: -0.08, range: 1.5 }, // Recap: zoom out slightly
-  { p: 1.000, center: -0.08, range: 1.5 }, // Hold
+  { p: 0.94, center: -0.08, range: 1.5 }, // Recap: zoom out slightly
+  { p: 1.0, center: -0.08, range: 1.5 }, // Hold
 ]
 
 function getVAxis(progress: number, cssHeight: number): VAxis {
   const h = cssHeight * 0.4
-  let a = V_KEYS[0], b = V_KEYS[0]
+  let a = V_KEYS[0],
+    b = V_KEYS[0]
   for (let i = 0; i < V_KEYS.length - 1; i++) {
     if (progress >= V_KEYS[i].p && progress <= V_KEYS[i + 1].p) {
-      a = V_KEYS[i]; b = V_KEYS[i + 1]; break
+      a = V_KEYS[i]
+      b = V_KEYS[i + 1]
+      break
     }
-    if (i === V_KEYS.length - 2) { a = V_KEYS[i + 1]; b = V_KEYS[i + 1] }
+    if (i === V_KEYS.length - 2) {
+      a = V_KEYS[i + 1]
+      b = V_KEYS[i + 1]
+    }
   }
   const t = a.p === b.p ? 1 : smoothstep((progress - a.p) / (b.p - a.p))
   const center = a.center + (b.center - a.center) * t
   // Log-space interpolation for range (perceptually smooth zoom)
-  const logRa = Math.log(a.range), logRb = Math.log(b.range)
+  const logRa = Math.log(a.range),
+    logRb = Math.log(b.range)
   const range = Math.exp(logRa + (logRb - logRa) * t)
   return { center, ppu: h / range }
 }
@@ -260,7 +310,7 @@ function zToY(z: number, va: VAxis, axisY: number): number {
 
 export function ramanujanDemoViewport(cssWidth: number, _cssHeight: number) {
   const center = 7.5
-  const pixelsPerUnit = cssWidth * 0.85 / 15
+  const pixelsPerUnit = (cssWidth * 0.85) / 15
   return { center, pixelsPerUnit }
 }
 
@@ -280,11 +330,14 @@ function drawVerticalAxis(
 
   // Adaptive tick spacing: target ~50px between ticks
   const targetVal = 50 / va.ppu
-  const mag = Math.pow(10, Math.floor(Math.log10(targetVal)))
+  const mag = 10 ** Math.floor(Math.log10(targetVal))
   const candidates = [mag * 0.1, mag * 0.2, mag * 0.5, mag, mag * 2, mag * 5, mag * 10]
   let spacing = mag
   for (const c of candidates) {
-    if (c * va.ppu >= 30) { spacing = c; break }
+    if (c * va.ppu >= 30) {
+      spacing = c
+      break
+    }
   }
 
   const topVal = va.center + cssHeight / (2 * va.ppu)
@@ -370,8 +423,10 @@ function drawCurveBranch(
     const sy = zToY(points[i].z, va, axisY)
     // Clip to reasonable vertical range
     const clampedY = Math.max(-cssHeight, Math.min(cssHeight * 2, sy))
-    if (!started) { ctx.moveTo(sx, clampedY); started = true }
-    else ctx.lineTo(sx, clampedY)
+    if (!started) {
+      ctx.moveTo(sx, clampedY)
+      started = true
+    } else ctx.lineTo(sx, clampedY)
   }
   ctx.strokeStyle = color
   ctx.lineWidth = lineWidth
@@ -384,8 +439,12 @@ function drawCurveBranch(
 /** Draw a glowing dot */
 function drawDot(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number, r: number,
-  color: string, alpha: number, glow = true
+  x: number,
+  y: number,
+  r: number,
+  color: string,
+  alpha: number,
+  glow = true
 ) {
   if (alpha <= 0.01) return
   if (glow) {
@@ -405,8 +464,12 @@ function drawDot(
 /** Draw a starburst */
 function drawStarburst(
   ctx: CanvasRenderingContext2D,
-  cx: number, cy: number, r: number,
-  color: string, alpha: number, time: number
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+  alpha: number,
+  time: number
 ) {
   if (alpha <= 0.01) return
   const numRays = 12
@@ -438,9 +501,14 @@ function drawStarburst(
 /** Draw convergence bars — stacking terms at a horizontal position */
 function drawConvergenceBars(
   ctx: CanvasRenderingContext2D,
-  sx: number, va: VAxis, axisY: number,
-  partialSums: number[], numShown: number,
-  color: string, alpha: number, cssHeight: number
+  sx: number,
+  va: VAxis,
+  axisY: number,
+  partialSums: number[],
+  numShown: number,
+  color: string,
+  alpha: number,
+  cssHeight: number
 ) {
   if (alpha <= 0.01 || numShown <= 0) return
   const barW = 20
@@ -449,8 +517,11 @@ function drawConvergenceBars(
     const cur = partialSums[i]
     const y0 = zToY(prev, va, axisY)
     const y1 = zToY(cur, va, axisY)
-    if (y0 > cssHeight + 50 || y1 < -50) { prev = cur; continue }
-    const intensity = 0.3 + 0.7 * Math.pow(0.85, i)
+    if (y0 > cssHeight + 50 || y1 < -50) {
+      prev = cur
+      continue
+    }
+    const intensity = 0.3 + 0.7 * 0.85 ** i
     ctx.fillStyle = color
     ctx.globalAlpha = alpha * intensity * 0.5
     ctx.fillRect(sx - barW / 2, Math.min(y0, y1), barW, Math.abs(y1 - y0))
@@ -465,9 +536,14 @@ function drawConvergenceBars(
 /** Draw fraction labels next to convergence bars */
 function drawTermLabels(
   ctx: CanvasRenderingContext2D,
-  sx: number, va: VAxis, axisY: number,
-  partialSums: number[], labels: string[], numShown: number,
-  color: string, alpha: number
+  sx: number,
+  va: VAxis,
+  axisY: number,
+  partialSums: number[],
+  labels: string[],
+  numShown: number,
+  color: string,
+  alpha: number
 ) {
   if (alpha <= 0.01 || numShown <= 0) return
   const fs = Math.max(8, Math.min(11, va.ppu * 0.06 + 8))
@@ -523,14 +599,17 @@ export function renderRamanujanOverlay(
     // Find which terms have arrived and the current "active" term
     let activeIdx = -1
     for (let i = DIV_TERMS.length - 1; i >= 0; i--) {
-      if (p >= DIV_TERMS[i].arrive) { activeIdx = i; break }
+      if (p >= DIV_TERMS[i].arrive) {
+        activeIdx = i
+        break
+      }
     }
 
     if (activeIdx >= 0 && fadeOut > 0.01) {
       const baseA = opacity * fadeOut
 
       // Duration of each term's jump animation (fraction of p-space)
-      const jumpDur = 0.10
+      const jumpDur = 0.1
 
       // --- Jump arcs (trail of completed additions) ---
       for (let i = 0; i <= activeIdx; i++) {
@@ -576,9 +655,7 @@ export function renderRamanujanOverlay(
 
       // Bounce: dot briefly pops up then settles
       const bounceT = mapRange(jumpP, 0.5, 1)
-      const bounceY = bounceT > 0 && bounceT < 1
-        ? axisY - Math.sin(bounceT * Math.PI) * 6
-        : axisY
+      const bounceY = bounceT > 0 && bounceT < 1 ? axisY - Math.sin(bounceT * Math.PI) * 6 : axisY
       drawDot(ctx, dotSx, bounceY, dotR * 1.3, sCol(isDark), baseA)
 
       // --- Addend label dropping in ---
@@ -586,9 +663,10 @@ export function renderRamanujanOverlay(
         const labelDropP = mapRange(p, active.arrive, active.arrive + jumpDur * 0.5)
         if (labelDropP > 0 && labelDropP < 1.5) {
           const dropY = axisY - 40 + smoothstep(Math.min(1, labelDropP)) * 20
-          const addA = (labelDropP < 1
-            ? smoothstep(labelDropP * 2)
-            : Math.max(0, 1 - (labelDropP - 1) * 4)) * baseA * 0.8
+          const addA =
+            (labelDropP < 1 ? smoothstep(labelDropP * 2) : Math.max(0, 1 - (labelDropP - 1) * 4)) *
+            baseA *
+            0.8
           if (addA > 0.01) {
             const afs = Math.max(11, Math.min(16, ppu * 0.12))
             ctx.font = `bold ${afs}px system-ui, sans-serif`
@@ -649,7 +727,8 @@ export function renderRamanujanOverlay(
   // ── Phase: hook (0.07–0.10) — "secret number hiding" ──────────
   if (revealProgress >= PHASE.hookStart && revealProgress < PHASE.harmonicStart + 0.02) {
     const p = smoothstep(mapRange(revealProgress, PHASE.hookStart + 0.01, PHASE.hookEnd))
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.hookEnd, PHASE.harmonicStart + 0.02))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.hookEnd, PHASE.harmonicStart + 0.02))
     const a = p * fadeOut * opacity
     if (a > 0.01) {
       const fs = Math.max(13, Math.min(18, ppu * 0.14))
@@ -670,7 +749,8 @@ export function renderRamanujanOverlay(
   if (revealProgress >= PHASE.harmonicStart && revealProgress < PHASE.squareEnd) {
     const p = mapRange(revealProgress, PHASE.harmonicStart, PHASE.harmonicEnd)
     const fadeIn = smoothstep(mapRange(p, 0, 0.2))
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.squareStart, PHASE.squareStart + 0.02))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.squareStart, PHASE.squareStart + 0.02))
     const a = fadeIn * fadeOut * opacity
 
     if (a > 0.01) {
@@ -687,13 +767,33 @@ export function renderRamanujanOverlay(
       ctx.fillText('knob = 1', sx1, axisY + dotR + 6)
 
       // Bars stacking up (they diverge)
-      const numTerms = Math.min(HARMONIC_SUMS.length,
-        Math.floor(easeInOut(mapRange(p, 0.15, 0.85)) * (HARMONIC_SUMS.length + 1)))
+      const numTerms = Math.min(
+        HARMONIC_SUMS.length,
+        Math.floor(easeInOut(mapRange(p, 0.15, 0.85)) * (HARMONIC_SUMS.length + 1))
+      )
       if (numTerms > 0) {
-        drawConvergenceBars(ctx, sx1, va, axisY, HARMONIC_SUMS, numTerms,
-          sCol(isDark), a * 0.6, cssHeight)
-        drawTermLabels(ctx, sx1, va, axisY, HARMONIC_SUMS, HARMONIC_LABELS,
-          numTerms, sCol(isDark), a)
+        drawConvergenceBars(
+          ctx,
+          sx1,
+          va,
+          axisY,
+          HARMONIC_SUMS,
+          numTerms,
+          sCol(isDark),
+          a * 0.6,
+          cssHeight
+        )
+        drawTermLabels(
+          ctx,
+          sx1,
+          va,
+          axisY,
+          HARMONIC_SUMS,
+          HARMONIC_LABELS,
+          numTerms,
+          sCol(isDark),
+          a
+        )
 
         // "still → ∞!" label at top of stack
         if (numTerms >= 5) {
@@ -727,7 +827,8 @@ export function renderRamanujanOverlay(
     const p = mapRange(revealProgress, PHASE.squareStart, PHASE.squareEnd)
     const fadeIn = smoothstep(mapRange(p, 0, 0.1))
     // Fade out during curve phase
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.plotStart, PHASE.plotStart + 0.02))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.plotStart, PHASE.plotStart + 0.02))
     const a = fadeIn * fadeOut * opacity
 
     if (a > 0.01) {
@@ -744,20 +845,40 @@ export function renderRamanujanOverlay(
       ctx.fillText('knob = 2', sx2, axisY + dotR + 6)
 
       // Show individual terms getting tiny, then settling
-      const earlyP = mapRange(p, 0, 0.4)  // First half: show terms
+      const earlyP = mapRange(p, 0, 0.4) // First half: show terms
       const lateP = mapRange(p, 0.3, 0.8) // Second half: show convergence
-      const numTerms = Math.min(PARTIAL_SUMS_2.length,
-        Math.floor(easeInOut(Math.max(earlyP, lateP)) * (PARTIAL_SUMS_2.length + 1)))
+      const numTerms = Math.min(
+        PARTIAL_SUMS_2.length,
+        Math.floor(easeInOut(Math.max(earlyP, lateP)) * (PARTIAL_SUMS_2.length + 1))
+      )
 
       // Convergence bars
-      drawConvergenceBars(ctx, sx2, va, axisY, PARTIAL_SUMS_2, numTerms,
-        dotCol(isDark), a * 0.7, cssHeight)
+      drawConvergenceBars(
+        ctx,
+        sx2,
+        va,
+        axisY,
+        PARTIAL_SUMS_2,
+        numTerms,
+        dotCol(isDark),
+        a * 0.7,
+        cssHeight
+      )
 
       // Term labels (first few)
       if (earlyP > 0.1) {
         const labelA = smoothstep(mapRange(earlyP, 0.1, 0.4)) * a
-        drawTermLabels(ctx, sx2, va, axisY, PARTIAL_SUMS_2, SQUARE_LABELS,
-          numTerms, dotCol(isDark), labelA)
+        drawTermLabels(
+          ctx,
+          sx2,
+          va,
+          axisY,
+          PARTIAL_SUMS_2,
+          SQUARE_LABELS,
+          numTerms,
+          dotCol(isDark),
+          labelA
+        )
       }
 
       // Explanatory text: "1/1² + 1/2² + 1/3² + …"
@@ -769,12 +890,16 @@ export function renderRamanujanOverlay(
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         ctx.globalAlpha = ta
-        ctx.fillText('1 + \u00BC + \u2079\u2044\u2089 + \u00B9\u2044\u2081\u2086 + \u2026', sx2, axisY + dotR + 24)
+        ctx.fillText(
+          '1 + \u00BC + \u2079\u2044\u2089 + \u00B9\u2044\u2081\u2086 + \u2026',
+          sx2,
+          axisY + dotR + 24
+        )
       }
 
       // Final value dot on graph at ζ(2)
       if (lateP > 0.5) {
-        const zeta2 = Math.PI * Math.PI / 6
+        const zeta2 = (Math.PI * Math.PI) / 6
         const finalA = smoothstep(mapRange(lateP, 0.5, 0.85)) * a
         const fy = zToY(zeta2, va, axisY)
         drawDot(ctx, sx2, fy, dotR * 1.2, dotCol(isDark), finalA)
@@ -797,7 +922,7 @@ export function renderRamanujanOverlay(
         ctx.textAlign = 'center'
         ctx.textBaseline = 'bottom'
         ctx.globalAlpha = celA
-        const zeta2 = Math.PI * Math.PI / 6
+        const zeta2 = (Math.PI * Math.PI) / 6
         ctx.fillText('it settles!', sx2, zToY(zeta2, va, axisY) - dotR * 2 - 8)
       }
     }
@@ -805,7 +930,8 @@ export function renderRamanujanOverlay(
 
   // ── Vertical axis (appears from square phase onward) ───────────
   if (revealProgress >= PHASE.squareStart) {
-    const axisAlpha = smoothstep(mapRange(revealProgress, PHASE.squareStart, PHASE.squareStart + 0.04)) * opacity
+    const axisAlpha =
+      smoothstep(mapRange(revealProgress, PHASE.squareStart, PHASE.squareStart + 0.04)) * opacity
     drawVerticalAxis(ctx, va, toX, axisY, cssWidth, cssHeight, isDark, axisAlpha)
 
     // "ζ(s)" label near top of vertical axis
@@ -828,7 +954,8 @@ export function renderRamanujanOverlay(
   // ── Phase: knob (0.26–0.32) — s=3, s=4 convergence ────────────
   if (revealProgress >= PHASE.knobStart && revealProgress < PHASE.approachEnd) {
     const p = mapRange(revealProgress, PHASE.knobStart, PHASE.knobEnd)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.approachStart, PHASE.approachStart + 0.02))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.approachStart, PHASE.approachStart + 0.02))
     const a = smoothstep(mapRange(p, 0, 0.2)) * fadeOut * opacity
 
     if (a > 0.01) {
@@ -838,10 +965,21 @@ export function renderRamanujanOverlay(
         const sx3 = toX(3)
         const a3 = smoothstep(mapRange(p3, 0, 0.3)) * a
         drawDot(ctx, sx3, axisY, dotR * 0.7, dotCol(isDark), a3 * 0.7)
-        const numT3 = Math.min(PARTIAL_SUMS_3.length,
-          Math.floor(easeInOut(mapRange(p3, 0.1, 0.8)) * (PARTIAL_SUMS_3.length + 1)))
-        drawConvergenceBars(ctx, sx3, va, axisY, PARTIAL_SUMS_3, numT3,
-          dotCol(isDark), a3 * 0.4, cssHeight)
+        const numT3 = Math.min(
+          PARTIAL_SUMS_3.length,
+          Math.floor(easeInOut(mapRange(p3, 0.1, 0.8)) * (PARTIAL_SUMS_3.length + 1))
+        )
+        drawConvergenceBars(
+          ctx,
+          sx3,
+          va,
+          axisY,
+          PARTIAL_SUMS_3,
+          numT3,
+          dotCol(isDark),
+          a3 * 0.4,
+          cssHeight
+        )
 
         // s=3 dot on graph
         if (p3 > 0.5) {
@@ -865,14 +1003,25 @@ export function renderRamanujanOverlay(
         const sx4 = toX(4)
         const a4 = smoothstep(mapRange(p4, 0, 0.3)) * a
         drawDot(ctx, sx4, axisY, dotR * 0.7, dotCol(isDark), a4 * 0.7)
-        const numT4 = Math.min(PARTIAL_SUMS_4.length,
-          Math.floor(easeInOut(mapRange(p4, 0.1, 0.7)) * (PARTIAL_SUMS_4.length + 1)))
-        drawConvergenceBars(ctx, sx4, va, axisY, PARTIAL_SUMS_4, numT4,
-          dotCol(isDark), a4 * 0.3, cssHeight)
+        const numT4 = Math.min(
+          PARTIAL_SUMS_4.length,
+          Math.floor(easeInOut(mapRange(p4, 0.1, 0.7)) * (PARTIAL_SUMS_4.length + 1))
+        )
+        drawConvergenceBars(
+          ctx,
+          sx4,
+          va,
+          axisY,
+          PARTIAL_SUMS_4,
+          numT4,
+          dotCol(isDark),
+          a4 * 0.3,
+          cssHeight
+        )
 
         // s=4 dot on graph
         if (p4 > 0.5) {
-          const zeta4 = Math.pow(Math.PI, 4) / 90
+          const zeta4 = Math.PI ** 4 / 90
           const fa4 = smoothstep(mapRange(p4, 0.5, 0.9)) * a
           drawDot(ctx, sx4, zToY(zeta4, va, axisY), dotR, dotCol(isDark), fa4)
         }
@@ -892,14 +1041,16 @@ export function renderRamanujanOverlay(
   // Points persist from here onward (covered by the curve drawing)
   if (revealProgress >= PHASE.plotStart && revealProgress < PHASE.smoothEnd) {
     const p = smoothstep(mapRange(revealProgress, PHASE.plotStart, PHASE.plotEnd))
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.approachStart + 0.02, PHASE.approachStart + 0.05))
+    const fadeOut =
+      1 -
+      smoothstep(mapRange(revealProgress, PHASE.approachStart + 0.02, PHASE.approachStart + 0.05))
     const a = p * fadeOut * opacity
 
     if (a > 0.01) {
       // Highlight all three points
-      const zeta2 = Math.PI * Math.PI / 6
+      const zeta2 = (Math.PI * Math.PI) / 6
       const zeta3 = zetaHasse(3)
-      const zeta4 = Math.pow(Math.PI, 4) / 90
+      const zeta4 = Math.PI ** 4 / 90
 
       const pts: [number, number, string][] = [
         [2, zeta2, 's=2'],
@@ -927,11 +1078,21 @@ export function renderRamanujanOverlay(
 
   // ── Phase: curve (0.37–0.42) — right branch draws ─────────────
   if (revealProgress >= PHASE.curveStart && ZETA_RIGHT.length > 1) {
-    const curveAlpha = smoothstep(mapRange(revealProgress, PHASE.curveStart, PHASE.curveEnd)) * opacity
+    const curveAlpha =
+      smoothstep(mapRange(revealProgress, PHASE.curveStart, PHASE.curveEnd)) * opacity
     if (curveAlpha > 0.01) {
       drawCurveBranch(
-        ctx, ZETA_RIGHT, 0, ZETA_RIGHT.length,
-        toX, va, axisY, curveCol(isDark), curveAlpha * 0.8, 2.5, cssHeight
+        ctx,
+        ZETA_RIGHT,
+        0,
+        ZETA_RIGHT.length,
+        toX,
+        va,
+        axisY,
+        curveCol(isDark),
+        curveAlpha * 0.8,
+        2.5,
+        cssHeight
       )
     }
   }
@@ -1010,8 +1171,17 @@ export function renderRamanujanOverlay(
     if (a > 0.01 && ZETA_RIGHT.length > 1) {
       // Glow on right branch
       drawCurveBranch(
-        ctx, ZETA_RIGHT, 0, ZETA_RIGHT.length,
-        toX, va, axisY, curveCol(isDark), a * 0.3, 5, cssHeight
+        ctx,
+        ZETA_RIGHT,
+        0,
+        ZETA_RIGHT.length,
+        toX,
+        va,
+        axisY,
+        curveCol(isDark),
+        a * 0.3,
+        5,
+        cssHeight
       )
 
       // "smooth track" label
@@ -1058,9 +1228,9 @@ export function renderRamanujanOverlay(
         const kinkS = 0.5
         const startS = 0.97
         const endS = -0.5
-        const startZ = 4     // near-pole high value
-        const kinkZ = -0.8   // sharp angle down
-        const endZ = 0.5     // bounces back up
+        const startZ = 4 // near-pole high value
+        const kinkZ = -0.8 // sharp angle down
+        const endZ = 0.5 // bounces back up
 
         const sharpAlpha = a * (1 - fadeP) * drawP
         if (sharpAlpha > 0.01) {
@@ -1137,15 +1307,17 @@ export function renderRamanujanOverlay(
           for (let i = 0; i <= steps; i++) {
             const t = i / steps
             const s = pathStartS + (pathEndS - pathStartS) * t
-            const baseZ = 2 * (1 - t) + (-0.3) * t
+            const baseZ = 2 * (1 - t) + -0.3 * t
             const amp = 0.3 + t * 1.2 * (1 + wobbleP * 2)
             const freq = 8 + wobbleP * 12
             const z = baseZ + amp * Math.sin(freq * t + wobbleP * 10)
 
             const pathSx = toX(s)
             const pathSy = zToY(z, va, axisY)
-            if (!started) { ctx.moveTo(pathSx, pathSy); started = true }
-            else ctx.lineTo(pathSx, pathSy)
+            if (!started) {
+              ctx.moveTo(pathSx, pathSy)
+              started = true
+            } else ctx.lineTo(pathSx, pathSy)
           }
 
           const wColor = wobbleP > 0 ? dangerCol(isDark) : curveCol(isDark)
@@ -1176,12 +1348,22 @@ export function renderRamanujanOverlay(
     const extP = easeInOut(mapRange(revealProgress, PHASE.extendStart, PHASE.ghostEnd))
     const numPts = Math.max(1, Math.floor(extP * ZETA_LEFT.length))
     const startIdx = ZETA_LEFT.length - numPts
-    const a = smoothstep(mapRange(revealProgress, PHASE.extendStart, PHASE.extendStart + 0.02)) * opacity
+    const a =
+      smoothstep(mapRange(revealProgress, PHASE.extendStart, PHASE.extendStart + 0.02)) * opacity
 
     if (a > 0.01) {
       drawCurveBranch(
-        ctx, ZETA_LEFT, startIdx, ZETA_LEFT.length,
-        toX, va, axisY, resultCol(isDark), a * 0.9, 2.5, cssHeight
+        ctx,
+        ZETA_LEFT,
+        startIdx,
+        ZETA_LEFT.length,
+        toX,
+        va,
+        axisY,
+        resultCol(isDark),
+        a * 0.9,
+        2.5,
+        cssHeight
       )
 
       // Glowing tip at the drawing front
@@ -1195,7 +1377,9 @@ export function renderRamanujanOverlay(
 
     // Seesaw arrows at the pole — shows WHY path goes negative
     if (revealProgress < PHASE.crossEnd) {
-      const seesawIn = smoothstep(mapRange(revealProgress, PHASE.extendStart, PHASE.extendStart + 0.02))
+      const seesawIn = smoothstep(
+        mapRange(revealProgress, PHASE.extendStart, PHASE.extendStart + 0.02)
+      )
       const seesawOut = 1 - smoothstep(mapRange(revealProgress, PHASE.crossStart, PHASE.crossEnd))
       const seesawA = seesawIn * seesawOut * opacity
 
@@ -1259,7 +1443,9 @@ export function renderRamanujanOverlay(
         ctx.setLineDash([])
 
         // "seesaw!" label
-        const seesawLabelP = smoothstep(mapRange(revealProgress, PHASE.extendStart + 0.02, PHASE.extendEnd - 0.01))
+        const seesawLabelP = smoothstep(
+          mapRange(revealProgress, PHASE.extendStart + 0.02, PHASE.extendEnd - 0.01)
+        )
         if (seesawLabelP > 0.01) {
           const sfs = Math.max(11, Math.min(14, ppu * 0.11))
           ctx.font = `italic ${sfs}px system-ui, sans-serif`
@@ -1274,7 +1460,10 @@ export function renderRamanujanOverlay(
 
     // "the wall flips it" label during early extend
     if (revealProgress < PHASE.extendEnd) {
-      const labelA = smoothstep(mapRange(revealProgress, PHASE.extendStart + 0.02, PHASE.extendEnd - 0.01)) * opacity * 0.6
+      const labelA =
+        smoothstep(mapRange(revealProgress, PHASE.extendStart + 0.02, PHASE.extendEnd - 0.01)) *
+        opacity *
+        0.6
       if (labelA > 0.01) {
         const lfs = Math.max(11, Math.min(14, ppu * 0.11))
         ctx.font = `italic ${lfs}px system-ui, sans-serif`
@@ -1282,18 +1471,32 @@ export function renderRamanujanOverlay(
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         ctx.globalAlpha = labelA
-        ctx.fillText('one side up \u2192 the wall flips it \u2192 other side down!', cssWidth / 2, cssHeight * 0.12)
+        ctx.fillText(
+          'one side up \u2192 the wall flips it \u2192 other side down!',
+          cssWidth / 2,
+          cssHeight * 0.12
+        )
       }
     }
   }
 
   // Keep right branch visible through extension and beyond
   if (revealProgress >= PHASE.curveStart && ZETA_RIGHT.length > 1) {
-    const rAlpha = opacity * (1 - smoothstep(mapRange(revealProgress, PHASE.ghostStart, PHASE.ghostEnd - 0.02)))
+    const rAlpha =
+      opacity * (1 - smoothstep(mapRange(revealProgress, PHASE.ghostStart, PHASE.ghostEnd - 0.02)))
     if (rAlpha > 0.01) {
       drawCurveBranch(
-        ctx, ZETA_RIGHT, 0, ZETA_RIGHT.length,
-        toX, va, axisY, curveCol(isDark), rAlpha * 0.5, 2, cssHeight
+        ctx,
+        ZETA_RIGHT,
+        0,
+        ZETA_RIGHT.length,
+        toX,
+        va,
+        axisY,
+        curveCol(isDark),
+        rAlpha * 0.5,
+        2,
+        cssHeight
       )
     }
   }
@@ -1348,7 +1551,8 @@ export function renderRamanujanOverlay(
 
     // "the wall flipped it below zero!" text
     if (revealProgress < PHASE.flipperStart) {
-      const negA = smoothstep(mapRange(revealProgress, PHASE.crossStart + 0.02, PHASE.crossEnd)) * opacity
+      const negA =
+        smoothstep(mapRange(revealProgress, PHASE.crossStart + 0.02, PHASE.crossEnd)) * opacity
       if (negA > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.11))
         ctx.font = `italic ${fs}px system-ui, sans-serif`
@@ -1369,7 +1573,8 @@ export function renderRamanujanOverlay(
   // ── Phase: flipper (0.70–0.76) — negative exponent flips ──────
   if (revealProgress >= PHASE.flipperStart && revealProgress < PHASE.connectEnd) {
     const p = mapRange(revealProgress, PHASE.flipperStart, PHASE.flipperEnd)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.connectStart + 0.02, PHASE.connectEnd))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.connectStart + 0.02, PHASE.connectEnd))
     const a = smoothstep(mapRange(p, 0, 0.15)) * fadeOut * opacity
 
     if (a > 0.01) {
@@ -1445,7 +1650,8 @@ export function renderRamanujanOverlay(
   // ── Phase: connect (0.76–0.81) — "knob = −1 = our question" ──
   if (revealProgress >= PHASE.connectStart && revealProgress < PHASE.volcanoEnd) {
     const p = smoothstep(mapRange(revealProgress, PHASE.connectStart, PHASE.connectEnd))
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.volcanoStart + 0.02, PHASE.volcanoEnd))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.volcanoStart + 0.02, PHASE.volcanoEnd))
     const a = p * fadeOut * opacity
 
     if (a > 0.01) {
@@ -1494,7 +1700,8 @@ export function renderRamanujanOverlay(
   // ── Phase: volcano (0.81–0.85) — sum explodes at s=−1 ─────────
   if (revealProgress >= PHASE.volcanoStart && revealProgress < PHASE.trustEnd) {
     const volcP = smoothstep(mapRange(revealProgress, PHASE.volcanoStart, PHASE.volcanoEnd))
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.trustStart, PHASE.trustStart + 0.015))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.trustStart, PHASE.trustStart + 0.015))
     const sx = toX(-1)
 
     // Volcano particles flying upward at s=−1
@@ -1515,10 +1722,7 @@ export function renderRamanujanOverlay(
       }
 
       // "sum explodes!" label near the volcano
-      const chaosA = Math.min(
-        smoothstep(mapRange(volcP, 0.15, 0.4)),
-        fadeOut
-      ) * opacity * 0.6
+      const chaosA = Math.min(smoothstep(mapRange(volcP, 0.15, 0.4)), fadeOut) * opacity * 0.6
       if (chaosA > 0.01) {
         const cfs = Math.max(11, Math.min(14, ppu * 0.11))
         ctx.font = `bold ${cfs}px system-ui, sans-serif`
@@ -1534,16 +1738,17 @@ export function renderRamanujanOverlay(
   // ── Phase: trust (0.85–0.895) — convergent points prove bridge ─
   if (revealProgress >= PHASE.trustStart && revealProgress < PHASE.revealEnd) {
     const trustP = smoothstep(mapRange(revealProgress, PHASE.trustStart, PHASE.trustEnd))
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.revealStart, PHASE.revealStart + 0.015))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.revealStart, PHASE.revealStart + 0.015))
     const a = trustP * fadeOut * opacity
 
     if (a > 0.01) {
       // Convergent reference points: s=2, s=3, s=4
       // Each appears sequentially with a checkmark
       const checkpoints: { s: number; z: number; label: string; arriveP: number }[] = [
-        { s: 2, z: Math.PI * Math.PI / 6, label: 's=2: 1.645', arriveP: 0.1 },
-        { s: 3, z: zetaHasse(3),           label: 's=3: 1.202', arriveP: 0.35 },
-        { s: 4, z: zetaHasse(4),           label: 's=4: 1.082', arriveP: 0.6 },
+        { s: 2, z: (Math.PI * Math.PI) / 6, label: 's=2: 1.645', arriveP: 0.1 },
+        { s: 3, z: zetaHasse(3), label: 's=3: 1.202', arriveP: 0.35 },
+        { s: 4, z: zetaHasse(4), label: 's=4: 1.082', arriveP: 0.6 },
       ]
 
       for (const cp of checkpoints) {
@@ -1623,8 +1828,15 @@ export function renderRamanujanOverlay(
     // Starburst
     if (revP > 0.35) {
       const burstR = Math.max(14, Math.min(35, ppu * 0.25)) * smoothstep(mapRange(revP, 0.35, 0.8))
-      drawStarburst(ctx, sx, sy, burstR, resultCol(isDark), revP * opacity * 0.8,
-        revealProgress * Math.PI * 4)
+      drawStarburst(
+        ctx,
+        sx,
+        sy,
+        burstR,
+        resultCol(isDark),
+        revP * opacity * 0.8,
+        revealProgress * Math.PI * 4
+      )
     }
 
     // −1/12 label
@@ -1650,8 +1862,15 @@ export function renderRamanujanOverlay(
     // Keep the −1/12 dot and starburst visible
     drawDot(ctx, sx, sy, dotR * 1.5, resultCol(isDark), opacity)
     const burstR = Math.max(10, Math.min(20, ppu * 0.15))
-    drawStarburst(ctx, sx, sy, burstR, resultCol(isDark), opacity * 0.4,
-      revealProgress * Math.PI * 4)
+    drawStarburst(
+      ctx,
+      sx,
+      sy,
+      burstR,
+      resultCol(isDark),
+      opacity * 0.4,
+      revealProgress * Math.PI * 4
+    )
 
     // −1/12 label persists
     {
@@ -1687,8 +1906,15 @@ export function renderRamanujanOverlay(
     // Keep the −1/12 dot and starburst visible
     drawDot(ctx, sx, sy, dotR * 1.5, resultCol(isDark), opacity)
     const burstR = Math.max(10, Math.min(20, ppu * 0.15))
-    drawStarburst(ctx, sx, sy, burstR, resultCol(isDark), opacity * 0.4,
-      revealProgress * Math.PI * 4)
+    drawStarburst(
+      ctx,
+      sx,
+      sy,
+      burstR,
+      resultCol(isDark),
+      opacity * 0.4,
+      revealProgress * Math.PI * 4
+    )
 
     // −1/12 label persists
     {

@@ -72,7 +72,7 @@ function introducedPointIds(expected: ExpectedAction): string[] {
     return [`pt-${expected.label}`]
   }
   if (expected.type === 'macro' && expected.outputLabels) {
-    return Object.values(expected.outputLabels).map(label => `pt-${label}`)
+    return Object.values(expected.outputLabels).map((label) => `pt-${label}`)
   }
   return []
 }

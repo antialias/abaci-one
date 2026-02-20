@@ -5,7 +5,10 @@ import Link from 'next/link'
 import { css } from '../../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
-import { PROPOSITION_REFS, PROPOSITION_BLOCKS } from '@/components/toys/euclid/editor/propositionReference'
+import {
+  PROPOSITION_REFS,
+  PROPOSITION_BLOCKS,
+} from '@/components/toys/euclid/editor/propositionReference'
 
 interface SavedProof {
   id: number
@@ -19,8 +22,8 @@ export default function EuclidEditorListPage() {
 
   useEffect(() => {
     fetch('/api/admin/euclid')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         const map = new Map<number, SavedProof>()
         for (const proof of data.proofs ?? []) {
           map.set(proof.id, proof)
@@ -62,15 +65,14 @@ export default function EuclidEditorListPage() {
             marginBottom: '32px',
           })}
         >
-          Interactive proof authoring for all 48 Book I propositions. Click a proposition to open the editor.
+          Interactive proof authoring for all 48 Book I propositions. Click a proposition to open
+          the editor.
         </p>
 
         {loading ? (
-          <div style={{ color: '#8b949e', textAlign: 'center', padding: 40 }}>
-            Loading...
-          </div>
+          <div style={{ color: '#8b949e', textAlign: 'center', padding: 40 }}>Loading...</div>
         ) : (
-          PROPOSITION_BLOCKS.map(block => (
+          PROPOSITION_BLOCKS.map((block) => (
             <div key={block.name} style={{ marginBottom: 32 }}>
               <h2
                 className={css({
@@ -91,7 +93,7 @@ export default function EuclidEditorListPage() {
                   gap: 12,
                 }}
               >
-                {block.propIds.map(id => {
+                {block.propIds.map((id) => {
                   const ref = PROPOSITION_REFS[id]
                   if (!ref) return null
                   const saved = savedProofs.get(id)
@@ -114,7 +116,9 @@ export default function EuclidEditorListPage() {
                         },
                       })}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}
+                      >
                         <span
                           style={{
                             display: 'inline-flex',
@@ -125,7 +129,10 @@ export default function EuclidEditorListPage() {
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 700,
-                            background: ref.type === 'C' ? 'rgba(78, 121, 167, 0.2)' : 'rgba(225, 87, 89, 0.2)',
+                            background:
+                              ref.type === 'C'
+                                ? 'rgba(78, 121, 167, 0.2)'
+                                : 'rgba(225, 87, 89, 0.2)',
                             color: ref.type === 'C' ? '#4E79A7' : '#E15759',
                           }}
                         >

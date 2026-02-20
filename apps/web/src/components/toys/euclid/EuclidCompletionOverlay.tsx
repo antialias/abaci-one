@@ -76,11 +76,20 @@ export function EuclidCompletionOverlay({
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-        <span style={{ color: '#10b981', fontSize: 13, fontWeight: 700, fontFamily: 'Georgia, serif' }}>
+        <span
+          style={{ color: '#10b981', fontSize: 13, fontWeight: 700, fontFamily: 'Georgia, serif' }}
+        >
           ✓ I.{propositionId}
         </span>
         {prop && (
-          <span style={{ color: '#6b7280', fontSize: 11, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+          <span
+            style={{
+              color: '#6b7280',
+              fontSize: 11,
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+            }}
+          >
             {prop.title}
           </span>
         )}
@@ -88,7 +97,9 @@ export function EuclidCompletionOverlay({
 
       {/* Unlocked */}
       {unlocked.length > 0 && (
-        <div style={{ fontSize: 12, color: '#374151', fontFamily: 'Georgia, serif', marginBottom: 8 }}>
+        <div
+          style={{ fontSize: 12, color: '#374151', fontFamily: 'Georgia, serif', marginBottom: 8 }}
+        >
           <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
           {unlocked.map((id, i) => {
             const p = getProposition(id)

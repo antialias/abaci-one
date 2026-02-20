@@ -13,77 +13,83 @@ const MANIFESTS_DIR = path.join(process.cwd(), 'data/vision-training/manifests')
  *
  * Get a manifest by ID.
  */
-export const GET = withAuth(async (_request, { params }) => {
-  const { id } = (await params) as { id: string }
+export const GET = withAuth(
+  async (_request, { params }) => {
+    const { id } = (await params) as { id: string }
 
-  if (!id) {
-    return new Response(JSON.stringify({ error: 'Manifest ID is required' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const manifestPath = path.join(MANIFESTS_DIR, `${id}.json`)
-
-  try {
-    const content = await fs.readFile(manifestPath, 'utf-8')
-    const manifest = JSON.parse(content)
-
-    return new Response(JSON.stringify(manifest), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return new Response(JSON.stringify({ error: 'Manifest not found' }), {
-        status: 404,
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'Manifest ID is required' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    console.error(`[Manifests API] Error reading manifest ${id}:`, error)
-    return new Response(
-      JSON.stringify({ error: 'Failed to read manifest', details: String(error) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-}, { role: 'admin' })
+    const manifestPath = path.join(MANIFESTS_DIR, `${id}.json`)
+
+    try {
+      const content = await fs.readFile(manifestPath, 'utf-8')
+      const manifest = JSON.parse(content)
+
+      return new Response(JSON.stringify(manifest), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return new Response(JSON.stringify({ error: 'Manifest not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      console.error(`[Manifests API] Error reading manifest ${id}:`, error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to read manifest', details: String(error) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  },
+  { role: 'admin' }
+)
 
 /**
  * DELETE /api/vision-training/manifests/[id]
  *
  * Delete a manifest by ID.
  */
-export const DELETE = withAuth(async (_request, { params }) => {
-  const { id } = (await params) as { id: string }
+export const DELETE = withAuth(
+  async (_request, { params }) => {
+    const { id } = (await params) as { id: string }
 
-  if (!id) {
-    return new Response(JSON.stringify({ error: 'Manifest ID is required' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const manifestPath = path.join(MANIFESTS_DIR, `${id}.json`)
-
-  try {
-    await fs.unlink(manifestPath)
-
-    return new Response(JSON.stringify({ success: true, message: 'Manifest deleted' }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      // Already deleted - return success
-      return new Response(
-        JSON.stringify({ success: true, message: 'Manifest already deleted or does not exist' }),
-        { headers: { 'Content-Type': 'application/json' } }
-      )
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'Manifest ID is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    console.error(`[Manifests API] Error deleting manifest ${id}:`, error)
-    return new Response(
-      JSON.stringify({ error: 'Failed to delete manifest', details: String(error) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-}, { role: 'admin' })
+    const manifestPath = path.join(MANIFESTS_DIR, `${id}.json`)
+
+    try {
+      await fs.unlink(manifestPath)
+
+      return new Response(JSON.stringify({ success: true, message: 'Manifest deleted' }), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Already deleted - return success
+        return new Response(
+          JSON.stringify({ success: true, message: 'Manifest already deleted or does not exist' }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      console.error(`[Manifests API] Error deleting manifest ${id}:`, error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete manifest', details: String(error) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+  },
+  { role: 'admin' }
+)

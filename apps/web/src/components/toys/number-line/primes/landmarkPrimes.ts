@@ -160,7 +160,9 @@ for (const entry of LANDMARK_PRIMES) {
   }
 }
 
-const DEDUPLICATED_LANDMARKS: LandmarkPrime[] = [...deduped.values()].sort((a, b) => a.value - b.value)
+const DEDUPLICATED_LANDMARKS: LandmarkPrime[] = [...deduped.values()].sort(
+  (a, b) => a.value - b.value
+)
 
 /**
  * Binary search for landmark primes in [left, right].

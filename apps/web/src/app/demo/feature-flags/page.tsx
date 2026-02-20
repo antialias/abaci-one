@@ -16,7 +16,9 @@ function SingleFlagDemo({ flagKey }: { flagKey: string }) {
         borderRadius: '8px',
       })}
     >
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' })}>
+      <div
+        className={css({ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' })}
+      >
         <code className={css({ color: '#58a6ff', fontSize: '14px' })}>{flagKey}</code>
         {isLoading ? (
           <span className={css({ color: '#8b949e', fontSize: '13px' })}>loading...</span>
@@ -87,7 +89,14 @@ function BillingGateDemo() {
         >
           Billing is enabled. Paywall and subscription UI would render here.
           {config !== null && (
-            <pre className={css({ fontSize: '12px', marginTop: '8px', color: '#8b949e', fontFamily: 'monospace' })}>
+            <pre
+              className={css({
+                fontSize: '12px',
+                marginTop: '8px',
+                color: '#8b949e',
+                fontFamily: 'monospace',
+              })}
+            >
               billing config: {JSON.stringify(config, null, 2)}
             </pre>
           )}
@@ -169,14 +178,15 @@ export default function FeatureFlagsDemoPage() {
         </h1>
         <p className={css({ color: '#8b949e', fontSize: '14px', marginBottom: '32px' })}>
           Flag values are prefetched server-side and hydrated — no client fetch, no loading flash.
-          Toggle flags in <a href="/admin/feature-flags" className={css({ color: '#58a6ff' })}>/admin/feature-flags</a> and
-          refresh to see changes.
+          Toggle flags in{' '}
+          <a href="/admin/feature-flags" className={css({ color: '#58a6ff' })}>
+            /admin/feature-flags
+          </a>{' '}
+          and refresh to see changes.
         </p>
 
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
-          <h2 className={css({ fontSize: '18px', fontWeight: '600' })}>
-            useFeatureFlag(key)
-          </h2>
+          <h2 className={css({ fontSize: '18px', fontWeight: '600' })}>useFeatureFlag(key)</h2>
           <SingleFlagDemo flagKey="billing.enabled" />
           <SingleFlagDemo flagKey="billing.free_tier_limits" />
           <SingleFlagDemo flagKey="nonexistent.flag" />

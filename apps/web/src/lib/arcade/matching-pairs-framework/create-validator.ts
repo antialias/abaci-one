@@ -5,11 +5,7 @@
  * Ported from arcade-games/matching/Validator.ts with variant hooks.
  */
 
-import type {
-  GameValidator,
-  PracticeBreakOptions,
-  ValidationResult,
-} from '../validation/types'
+import type { GameValidator, PracticeBreakOptions, ValidationResult } from '../validation/types'
 import type { GameResultsReport, PlayerResult } from '../game-sdk/types'
 import type {
   BaseMatchingCard,
@@ -415,11 +411,7 @@ export function createMatchingPairsValidator<
     }
   }
 
-  function validateSetConfig(
-    state: State,
-    field: string,
-    value: any
-  ): ValidationResult {
+  function validateSetConfig(state: State, field: string, value: any): ValidationResult {
     if (state.gamePhase !== 'setup') {
       return { valid: false, error: 'Cannot change configuration outside of setup phase' }
     }
@@ -611,10 +603,7 @@ export function createMatchingPairsValidator<
       return buildInitialState(typedConfig)
     },
 
-    getInitialStateForPracticeBreak(
-      config: unknown,
-      options: PracticeBreakOptions
-    ): State {
+    getInitialStateForPracticeBreak(config: unknown, options: PracticeBreakOptions): State {
       const defaults = variant.practiceBreakDefaults ?? variant.defaultConfig
       let fullConfig: TConfig = { ...defaults, ...(config as Partial<TConfig>) }
 

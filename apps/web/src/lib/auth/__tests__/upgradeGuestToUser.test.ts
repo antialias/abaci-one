@@ -36,7 +36,10 @@ describe('upgradeGuestToUser', () => {
   })
 
   afterEach(async () => {
-    await db.delete(schema.users).where(eq(schema.users.id, testUserId)).catch(() => {})
+    await db
+      .delete(schema.users)
+      .where(eq(schema.users.id, testUserId))
+      .catch(() => {})
   })
 
   it('updates guest user row with email, name, image', async () => {

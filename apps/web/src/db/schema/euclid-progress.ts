@@ -35,9 +35,9 @@ export const euclidProgress = sqliteTable(
     /** Unique constraint: one record per player per proposition */
     playerPropUnique: uniqueIndex('euclid_progress_player_prop_unique').on(
       table.playerId,
-      table.propositionId,
+      table.propositionId
     ),
-  }),
+  })
 )
 
 export type EuclidProgress = typeof euclidProgress.$inferSelect

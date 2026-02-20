@@ -33,16 +33,12 @@ export function useEuclidAudioHelp({
   const { isEnabled, stop } = useAudioManager()
 
   const sayInstruction = useTTS(instruction, { tone: INSTRUCTION_TONE })
-  const sayCelebration = useTTS(
-    isComplete ? celebrationText : '',
-    { tone: CELEBRATION_TONE },
-  )
+  const sayCelebration = useTTS(isComplete ? celebrationText : '', { tone: CELEBRATION_TONE })
 
   // Register exploration intro for pre-caching (only when narration exists)
-  const sayExplorationIntro = useTTS(
-    explorationNarration?.introSpeech ?? '',
-    { tone: EXPLORATION_TONE },
-  )
+  const sayExplorationIntro = useTTS(explorationNarration?.introSpeech ?? '', {
+    tone: EXPLORATION_TONE,
+  })
 
   // Speaker for dynamic per-point tips (tone set via config, text provided at call time)
   const sayPointTip = useTTS('', { tone: EXPLORATION_TONE })
@@ -89,28 +85,25 @@ export function useEuclidAudioHelp({
       if (!isEnabled || !explorationNarration) return
       if (narratedPointsRef.current.has(pointId)) return
 
-      const tip = explorationNarration.pointTips.find(t => t.pointId === pointId)
+      const tip = explorationNarration.pointTips.find((t) => t.pointId === pointId)
       if (!tip) return
 
       narratedPointsRef.current.add(pointId)
       sayPointTip({ say: { en: tip.speech } })
     },
-    [isEnabled, explorationNarration, sayPointTip],
+    [isEnabled, explorationNarration, sayPointTip]
   )
 
   // One-shot breakdown narration when the construction falls apart during drag
   const playedBreakdownRef = useRef(false)
 
-  const handleConstructionBreakdown = useCallback(
-    () => {
-      if (!isEnabled || !explorationNarration?.breakdownTip) return
-      if (playedBreakdownRef.current) return
+  const handleConstructionBreakdown = useCallback(() => {
+    if (!isEnabled || !explorationNarration?.breakdownTip) return
+    if (playedBreakdownRef.current) return
 
-      playedBreakdownRef.current = true
-      sayPointTip({ say: { en: explorationNarration.breakdownTip } })
-    },
-    [isEnabled, explorationNarration, sayPointTip],
-  )
+    playedBreakdownRef.current = true
+    sayPointTip({ say: { en: explorationNarration.breakdownTip } })
+  }, [isEnabled, explorationNarration, sayPointTip])
 
   // Stop audio on unmount
   useEffect(() => {

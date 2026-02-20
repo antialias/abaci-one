@@ -14,7 +14,13 @@ import type {
   SerializedAction,
 } from '../types'
 import { BYRNE_CYCLE } from '../types'
-import { initializeGiven, addPoint, addCircle, addSegment, getPoint } from '../engine/constructionState'
+import {
+  initializeGiven,
+  addPoint,
+  addCircle,
+  addSegment,
+  getPoint,
+} from '../engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from '../engine/intersections'
 import { renderConstruction } from '../render/renderConstruction'
 import { renderToolOverlay, getFriction } from '../render/renderToolOverlay'
@@ -84,7 +90,11 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
   // Core refs (same pattern as EuclidCanvas)
   const viewportRef = useRef<EuclidViewportState>({ center: { x: 0, y: 0 }, pixelsPerUnit: 50 })
-  const constructionRef = useRef<ConstructionState>({ elements: [], nextLabelIndex: 0, nextColorIndex: 0 })
+  const constructionRef = useRef<ConstructionState>({
+    elements: [],
+    nextLabelIndex: 0,
+    nextColorIndex: 0,
+  })
   const compassPhaseRef = useRef<CompassPhase>({ tag: 'idle' })
   const straightedgePhaseRef = useRef<StraightedgePhase>({ tag: 'idle' })
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null)
@@ -134,7 +144,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
   // Load saved proof on mount
   useEffect(() => {
-    editor.load().then(data => {
+    editor.load().then((data) => {
       if (data && data.givenElements.length > 0 && data.steps.length > 0) {
         // Replay steps will be done in Phase 4 (for now, just initialize given)
         editor.initializeConstruction()
@@ -145,36 +155,39 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
   // ── Citation-to-tool mapping ──
 
-  const handleCitationSelect = useCallback((citation: string) => {
-    editor.setActiveCitation(citation)
+  const handleCitationSelect = useCallback(
+    (citation: string) => {
+      editor.setActiveCitation(citation)
 
-    // Map citation to tool
-    if (citation === 'Post.1' || citation === 'Post.2') {
-      setActiveTool('straightedge')
-      activeToolRef.current = 'straightedge'
-      expectedActionRef.current = null
-    } else if (citation === 'Post.3') {
-      setActiveTool('compass')
-      activeToolRef.current = 'compass'
-      expectedActionRef.current = null
-    } else if (citation.startsWith('I.')) {
-      const propId = parseInt(citation.slice(2), 10)
-      if (MACRO_REGISTRY[propId]) {
-        setActiveTool('macro')
-        activeToolRef.current = 'macro'
+      // Map citation to tool
+      if (citation === 'Post.1' || citation === 'Post.2') {
+        setActiveTool('straightedge')
+        activeToolRef.current = 'straightedge'
         expectedActionRef.current = null
-        const macroDef = MACRO_REGISTRY[propId]
-        macroPhaseRef.current = {
-          tag: 'selecting',
-          propId,
-          inputLabels: macroDef.inputLabels,
-          selectedPointIds: [],
+      } else if (citation === 'Post.3') {
+        setActiveTool('compass')
+        activeToolRef.current = 'compass'
+        expectedActionRef.current = null
+      } else if (citation.startsWith('I.')) {
+        const propId = parseInt(citation.slice(2), 10)
+        if (MACRO_REGISTRY[propId]) {
+          setActiveTool('macro')
+          activeToolRef.current = 'macro'
+          expectedActionRef.current = null
+          const macroDef = MACRO_REGISTRY[propId]
+          macroPhaseRef.current = {
+            tag: 'selecting',
+            propId,
+            inputLabels: macroDef.inputLabels,
+            selectedPointIds: [],
+          }
         }
       }
-    }
-    // Def.*, C.N.*, Given → fact-only, no tool change needed
-    requestDraw()
-  }, [editor, requestDraw])
+      // Def.*, C.N.*, Given → fact-only, no tool change needed
+      requestDraw()
+    },
+    [editor, requestDraw]
+  )
 
   // ── Commit handlers (editor versions) ──
 
@@ -187,7 +200,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         result.state,
         result.circle,
         candidatesRef.current,
-        false,
+        false
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
@@ -204,7 +217,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
       requestDraw()
     },
-    [editor, requestDraw],
+    [editor, requestDraw]
   )
 
   const handleCommitSegment = useCallback(
@@ -216,7 +229,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         result.state,
         result.segment,
         candidatesRef.current,
-        false,
+        false
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
@@ -233,22 +246,17 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
       requestDraw()
     },
-    [editor, requestDraw],
+    [editor, requestDraw]
   )
 
   const handleMarkIntersection = useCallback(
     (candidate: IntersectionCandidate) => {
       const currentStep = editor.steps.length
-      const result = addPoint(
-        constructionRef.current,
-        candidate.x,
-        candidate.y,
-        'intersection',
-      )
+      const result = addPoint(constructionRef.current, candidate.x, candidate.y, 'intersection')
       constructionRef.current = result.state
 
       candidatesRef.current = candidatesRef.current.filter(
-        c => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001),
+        (c) => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001)
       )
 
       // Derive Def.15 facts
@@ -257,7 +265,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         result.point.id,
         constructionRef.current,
         factStoreRef.current,
-        currentStep,
+        currentStep
       )
       if (newFacts.length > 0) {
         editor.updateProofFacts(newFacts)
@@ -281,7 +289,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
       requestDraw()
     },
-    [editor, requestDraw],
+    [editor, requestDraw]
   )
 
   const handleCommitMacro = useCallback(
@@ -296,7 +304,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         candidatesRef.current,
         factStoreRef.current,
         currentStep,
-        false,
+        false
       )
 
       constructionRef.current = result.state
@@ -305,7 +313,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         editor.updateProofFacts(result.newFacts)
       }
 
-      const macroGhosts = result.ghostLayers.map(gl => ({ ...gl, atStep: currentStep }))
+      const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: currentStep }))
       if (macroGhosts.length > 0) {
         ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
       }
@@ -323,18 +331,21 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
       requestDraw()
     },
-    [editor, requestDraw],
+    [editor, requestDraw]
   )
 
   // ── Fact-only step submission ──
 
-  const handleAddFactStep = useCallback((citation: string, instruction: string) => {
-    editor.addStep({
-      citation,
-      instruction,
-      action: { type: 'fact-only' },
-    })
-  }, [editor])
+  const handleAddFactStep = useCallback(
+    (citation: string, instruction: string) => {
+      editor.addStep({
+        citation,
+        instruction,
+        action: { type: 'fact-only' },
+      })
+    },
+    [editor]
+  )
 
   // ── Hook up pan/zoom ──
   useEuclidTouch({
@@ -434,10 +445,10 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             snappedPointIdRef.current,
             candidatesRef.current,
             constructionRef.current.nextColorIndex,
-            null,  // no candidate filter in editor
+            null, // no candidate filter in editor
             false, // not complete
             undefined, // no result segments
-            undefined, // no hidden IDs
+            undefined // no hidden IDs
           )
 
           // Render ghost geometry
@@ -449,7 +460,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
               cssWidth,
               cssHeight,
               hoveredMacroStepRef.current,
-              ghostOpacitiesRef.current,
+              ghostOpacitiesRef.current
             )
           }
 
@@ -461,7 +472,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
               viewportRef.current,
               cssWidth,
               cssHeight,
-              factStoreRef.current,
+              factStoreRef.current
             )
           }
 
@@ -479,7 +490,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             cssHeight,
             nextColor,
             false, // not complete
-            null,  // no straightedge draw animation
+            null // no straightedge draw animation
           )
 
           ctx.restore()
@@ -497,17 +508,20 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
   }, [])
 
   // ── Tool change handler ──
-  const handleToolChange = useCallback((tool: ActiveTool) => {
-    setActiveTool(tool)
-    activeToolRef.current = tool
-    // Reset phases on tool change
-    compassPhaseRef.current = { tag: 'idle' }
-    straightedgePhaseRef.current = { tag: 'idle' }
-    if (tool !== 'macro') {
-      macroPhaseRef.current = { tag: 'idle' }
-    }
-    requestDraw()
-  }, [requestDraw])
+  const handleToolChange = useCallback(
+    (tool: ActiveTool) => {
+      setActiveTool(tool)
+      activeToolRef.current = tool
+      // Reset phases on tool change
+      compassPhaseRef.current = { tag: 'idle' }
+      straightedgePhaseRef.current = { tag: 'idle' }
+      if (tool !== 'macro') {
+        macroPhaseRef.current = { tag: 'idle' }
+      }
+      requestDraw()
+    },
+    [requestDraw]
+  )
 
   return (
     <div
@@ -599,7 +613,16 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             <ToolButton
               label="Compass"
               icon={
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="5" r="1" />
                   <path d="M12 6l-4 14" />
                   <path d="M12 6l4 14" />
@@ -612,7 +635,16 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             <ToolButton
               label="Straightedge"
               icon={
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="4" y1="20" x2="20" y2="4" />
                 </svg>
               }
@@ -660,7 +692,15 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         />
 
         {/* Mode-specific content */}
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
           {editor.mode === 'authoring' && (
             <>
               {/* Citation palette */}
@@ -668,7 +708,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
                 propositionId={propositionId}
                 activeCitation={editor.activeCitation}
                 onSelect={handleCitationSelect}
-                usedCitations={editor.steps.map(s => s.citation)}
+                usedCitations={editor.steps.map((s) => s.citation)}
                 onAddFactStep={handleAddFactStep}
               />
 
@@ -685,9 +725,16 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
           )}
 
           {editor.mode === 'given-setup' && (
-            <div style={{ padding: '16px 20px', fontSize: 13, color: '#475569', fontFamily: 'Georgia, serif' }}>
-              Click on the canvas to place given points. Click two existing points to create a segment between them.
-              When ready, click &ldquo;Start Proof&rdquo; to begin authoring.
+            <div
+              style={{
+                padding: '16px 20px',
+                fontSize: 13,
+                color: '#475569',
+                fontFamily: 'Georgia, serif',
+              }}
+            >
+              Click on the canvas to place given points. Click two existing points to create a
+              segment between them. When ready, click &ldquo;Start Proof&rdquo; to begin authoring.
             </div>
           )}
         </div>

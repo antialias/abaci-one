@@ -7,9 +7,7 @@ import { defaultLocale, LOCALE_COOKIE_NAME, locales, type Locale } from './i18n/
  * v5 uses 'authjs.session-token' in dev and '__Secure-authjs.session-token' in prod
  */
 const NEXTAUTH_SESSION_COOKIE =
-  process.env.NODE_ENV === 'production'
-    ? '__Secure-authjs.session-token'
-    : 'authjs.session-token'
+  process.env.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token'
 
 /**
  * Middleware to:

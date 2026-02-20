@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useTier } from '@/hooks/useTier'
 import { estimateSessionProblemCount } from '@/lib/curriculum/time-estimation'
@@ -10,8 +11,9 @@ import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
 export function DurationSelector() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { limits } = useTier()
+  const { tier, limits } = useTier()
   const availableOptions = DURATION_OPTIONS.filter((d) => d <= limits.maxSessionMinutes)
+  const hasLockedOptions = availableOptions.length < DURATION_OPTIONS.length
   const { durationMinutes, setDurationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm } =
     useStartPracticeModal()
 
@@ -44,6 +46,22 @@ export function DurationSelector() {
           },
         })}
       >
+        {hasLockedOptions && tier !== 'guest' && (
+          <Link
+            href="/pricing"
+            data-action="unlock-durations"
+            className={css({
+              fontSize: '0.625rem',
+              color: isDark ? 'purple.400' : 'purple.500',
+              textDecoration: 'none',
+              alignSelf: 'flex-end',
+              marginBottom: '0.25rem',
+              _hover: { textDecoration: 'underline' },
+            })}
+          >
+            Unlock 15 & 20 min
+          </Link>
+        )}
         {availableOptions.map((min) => {
           // Estimate problems for this duration using weight-based time allocation
           const totalWeight = PART_TYPES.reduce((sum, p) => sum + partWeights[p.type], 0)

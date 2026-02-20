@@ -7,7 +7,13 @@
  */
 
 import { graphStratify, sugiyama, decrossOpt, coordSimplex, layeringSimplex } from 'd3-dag'
-import { propositions, getPrerequisites, getDependents, getProposition, getAllPrerequisites } from './book1'
+import {
+  propositions,
+  getPrerequisites,
+  getDependents,
+  getProposition,
+  getAllPrerequisites,
+} from './book1'
 import { PRECOMPUTED_NODES, PRECOMPUTED_EDGES } from './book1Layout'
 import { PROP_REGISTRY } from '../propositions/registry'
 
@@ -36,7 +42,7 @@ export function getNodeStatus(propId: number, completed: Set<number>): NodeStatu
   if (!IMPLEMENTED_PROPS.has(propId)) return 'coming-soon'
 
   const deps = getPrerequisites(propId)
-  const allDepsMet = deps.every(d => completed.has(d))
+  const allDepsMet = deps.every((d) => completed.has(d))
   return allDepsMet ? 'available' : 'locked'
 }
 
@@ -49,7 +55,7 @@ export function getNodeStatus(propId: number, completed: Set<number>): NodeStatu
  * Full view: all 48 nodes.
  */
 export function getVisibleNodes(completed: Set<number>, showAll: boolean): number[] {
-  if (showAll) return propositions.map(p => p.id)
+  if (showAll) return propositions.map((p) => p.id)
 
   const visible = new Set<number>()
 
@@ -65,7 +71,7 @@ export function getVisibleNodes(completed: Set<number>, showAll: boolean): numbe
     for (const depId of getDependents(id)) {
       if (visible.has(depId)) continue
       const deps = getPrerequisites(depId)
-      if (deps.every(d => visible.has(d) || IMPLEMENTED_PROPS.has(d))) {
+      if (deps.every((d) => visible.has(d) || IMPLEMENTED_PROPS.has(d))) {
         visible.add(depId)
       }
     }
@@ -83,11 +89,11 @@ export function getUnlockedBy(propId: number, completed: Set<number>): number[] 
   afterCompletion.add(propId)
 
   const dependents = getDependents(propId)
-  return dependents.filter(depId => {
+  return dependents.filter((depId) => {
     if (!IMPLEMENTED_PROPS.has(depId)) return false
     if (completed.has(depId)) return false
     const deps = getPrerequisites(depId)
-    return deps.every(d => afterCompletion.has(d))
+    return deps.every((d) => afterCompletion.has(d))
   })
 }
 
@@ -100,7 +106,7 @@ export function getNextProp(completed: Set<number>): number | null {
     if (!IMPLEMENTED_PROPS.has(p.id)) continue
     if (completed.has(p.id)) continue
     const deps = getPrerequisites(p.id)
-    if (deps.every(d => completed.has(d))) return p.id
+    if (deps.every((d) => completed.has(d))) return p.id
   }
   return null
 }
@@ -119,14 +125,12 @@ export function getNextProp(completed: Set<number>): number | null {
  *   Edge (u→v) is redundant if u is a transitive ancestor of any other
  *   parent w ∈ P (meaning u→...→w→v already exists).
  */
-function transitiveReduction(
-  visibleIds: number[],
-): Array<{ from: number; to: number }> {
+function transitiveReduction(visibleIds: number[]): Array<{ from: number; to: number }> {
   const visibleSet = new Set(visibleIds)
   const edges: Array<{ from: number; to: number }> = []
 
   for (const v of visibleIds) {
-    const directParents = getPrerequisites(v).filter(d => visibleSet.has(d))
+    const directParents = getPrerequisites(v).filter((d) => visibleSet.has(d))
     if (directParents.length <= 1) {
       // 0 or 1 parents → no redundancy possible
       for (const u of directParents) {
@@ -223,9 +227,8 @@ export function computeLayout(visibleIds: number[]): {
 
   // For the full 48-node view, use pre-computed optimal layout
   // (decrossOpt ILP takes ~4 min — too slow for runtime)
-  const allIds = propositions.map(p => p.id)
-  if (visibleIds.length === allIds.length &&
-      visibleIds.every((id, i) => id === allIds[i])) {
+  const allIds = propositions.map((p) => p.id)
+  if (visibleIds.length === allIds.length && visibleIds.every((id, i) => id === allIds[i])) {
     for (const id of visibleIds) {
       const pos = PRECOMPUTED_NODES[id]
       if (pos) nodes.set(id, pos)
@@ -248,7 +251,7 @@ export function computeLayout(visibleIds: number[]): {
     }
   }
 
-  const stratData = visibleIds.map(id => ({
+  const stratData = visibleIds.map((id) => ({
     id: String(id),
     parentIds: parentMap.get(String(id))!,
   }))

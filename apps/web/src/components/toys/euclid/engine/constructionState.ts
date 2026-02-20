@@ -29,7 +29,7 @@ export function createInitialState(): ConstructionState {
 /** Add a fully-formed set of given elements (for proposition setup) */
 export function initializeGiven(givenElements: ConstructionElement[]): ConstructionState {
   let nextLabel = 0
-  let nextColor = 0
+  const nextColor = 0
   for (const el of givenElements) {
     if (el.kind === 'point') {
       nextLabel = Math.max(nextLabel, LABELS.indexOf(el.label) + 1)
@@ -43,10 +43,11 @@ export function addPoint(
   x: number,
   y: number,
   origin: ElementOrigin,
-  explicitLabel?: string,
+  explicitLabel?: string
 ): { state: ConstructionState; point: ConstructionPoint } {
   const label = explicitLabel ?? labelAt(state.nextLabelIndex)
-  const color = origin === 'given' ? BYRNE.given : BYRNE_CYCLE[state.nextColorIndex % BYRNE_CYCLE.length]
+  const color =
+    origin === 'given' ? BYRNE.given : BYRNE_CYCLE[state.nextColorIndex % BYRNE_CYCLE.length]
   const point: ConstructionPoint = {
     kind: 'point',
     id: `pt-${label}`,
@@ -75,12 +76,12 @@ export function addPoint(
 export function addCircle(
   state: ConstructionState,
   centerId: string,
-  radiusPointId: string,
+  radiusPointId: string
 ): { state: ConstructionState; circle: ConstructionCircle } {
   const color = BYRNE_CYCLE[state.nextColorIndex % BYRNE_CYCLE.length]
   const circle: ConstructionCircle = {
     kind: 'circle',
-    id: `cir-${state.elements.filter(e => e.kind === 'circle').length + 1}`,
+    id: `cir-${state.elements.filter((e) => e.kind === 'circle').length + 1}`,
     centerId,
     radiusPointId,
     color,
@@ -99,12 +100,12 @@ export function addCircle(
 export function addSegment(
   state: ConstructionState,
   fromId: string,
-  toId: string,
+  toId: string
 ): { state: ConstructionState; segment: ConstructionSegment } {
   const color = BYRNE_CYCLE[state.nextColorIndex % BYRNE_CYCLE.length]
   const segment: ConstructionSegment = {
     kind: 'segment',
-    id: `seg-${state.elements.filter(e => e.kind === 'segment').length + 1}`,
+    id: `seg-${state.elements.filter((e) => e.kind === 'segment').length + 1}`,
     fromId,
     toId,
     color,
@@ -123,7 +124,10 @@ export function addSegment(
 /** Advance label/color indices as if a point had been created, without actually creating one.
  *  Used when an intersection step must be skipped (geometry no longer intersects)
  *  to keep subsequent point labels stable during drag replay. */
-export function skipPointLabel(state: ConstructionState, explicitLabel?: string): ConstructionState {
+export function skipPointLabel(
+  state: ConstructionState,
+  explicitLabel?: string
+): ConstructionState {
   const labelIndex = explicitLabel ? LABELS.indexOf(explicitLabel) : -1
   return {
     ...state,

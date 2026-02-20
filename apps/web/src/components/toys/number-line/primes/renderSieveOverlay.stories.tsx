@@ -1,6 +1,13 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
-import { renderSieveOverlay, computeSieveViewports, getSieveViewportState, computeSieveTickTransforms, SWEEP_MAX_N, COMPOSITION_START_MS } from './renderSieveOverlay'
+import {
+  renderSieveOverlay,
+  computeSieveViewports,
+  getSieveViewportState,
+  computeSieveTickTransforms,
+  SWEEP_MAX_N,
+  COMPOSITION_START_MS,
+} from './renderSieveOverlay'
 import { renderNumberLine } from '../renderNumberLine'
 import { computeTickMarks } from '../numberLineTicks'
 import { computePrimeInfos } from './sieve'
@@ -82,7 +89,12 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
 
     // Compute sieve tick transforms + prime infos for the real number line
     const storyViewportRight = state.center + width / (2 * state.pixelsPerUnit)
-    const sieveTransforms = computeSieveTickTransforms(SWEEP_MAX_N, elapsedMs, height, storyViewportRight)
+    const sieveTransforms = computeSieveTickTransforms(
+      SWEEP_MAX_N,
+      elapsedMs,
+      height,
+      storyViewportRight
+    )
     const ticks = computeTickMarks(state, width, DEFAULT_TICK_THRESHOLDS)
     const primeInfos = computePrimeInfos(ticks)
     // Smooth ramp: ease-out quad over first 2s
@@ -91,11 +103,26 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
 
     // Render the real number line with sieve transforms applied
     renderNumberLine(
-      ctx, state, width, height, dark, DEFAULT_TICK_THRESHOLDS,
-      0, 0, 0.5,
-      undefined, undefined, undefined,
-      primeInfos, undefined, undefined, undefined,
-      undefined, undefined, sieveTransforms, sieveUniformity
+      ctx,
+      state,
+      width,
+      height,
+      dark,
+      DEFAULT_TICK_THRESHOLDS,
+      0,
+      0,
+      0.5,
+      undefined,
+      undefined,
+      undefined,
+      primeInfos,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      sieveTransforms,
+      sieveUniformity
     )
     renderSieveOverlay(ctx, state, width, height, dark, elapsedMs, 1)
   }, [width, height, dark, elapsedMs])
@@ -184,9 +211,7 @@ function SieveHarness({ width, height, dark, speed, autoPlay }: HarnessProps) {
             data-element="scrubber"
             style={{ flex: 1 }}
           />
-          <span style={{ minWidth: 60, textAlign: 'right' }}>
-            {(elapsedMs / 1000).toFixed(1)}s
-          </span>
+          <span style={{ minWidth: 60, textAlign: 'right' }}>{(elapsedMs / 1000).toFixed(1)}s</span>
         </div>
         <div data-element="phase-label" style={{ opacity: 0.7 }}>
           Phase: <strong>{phase}</strong>

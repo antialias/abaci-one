@@ -135,13 +135,20 @@ export function PageWithNav({
     )
   }
 
-  // For non-game pages, render just the AppNavBar without game features
-  // This avoids loading GameModeContext, useRoomData, etc.
-  // Pass navSlot if provided (e.g., VisionTrainingNavSlot for vision-training pages)
+  // Standard path (no navTitle): AppNavBar + children with automatic nav offset.
+  //
+  // The wrapper div applies paddingTop to compensate for the fixed-position AppNavBar.
+  // Pages should NOT add their own nav-height padding — it's handled here.
+  //
+  // The navTitle path above does NOT get this wrapper because those pages use
+  // StandardGameLayout (which dynamically measures the nav height) or the
+  // `with-fixed-nav` CSS class to handle the offset themselves.
   return (
     <>
       <AppNavBar navSlot={navSlot ?? null} />
-      {children}
+      <div style={{ paddingTop: 'var(--app-nav-height)' }}>
+        {children}
+      </div>
     </>
   )
 }

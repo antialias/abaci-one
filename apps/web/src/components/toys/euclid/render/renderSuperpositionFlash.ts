@@ -19,9 +19,11 @@ export interface SuperpositionFlash {
 
 /** Convert world coordinates to screen coordinates */
 function toScreen(
-  wx: number, wy: number,
+  wx: number,
+  wy: number,
   viewport: EuclidViewportState,
-  w: number, h: number,
+  w: number,
+  h: number
 ): { sx: number; sy: number } {
   const sx = w / 2 + (wx - viewport.center.x) * viewport.pixelsPerUnit
   const sy = h / 2 - (wy - viewport.center.y) * viewport.pixelsPerUnit
@@ -42,8 +44,9 @@ export function renderSuperpositionFlash(
   flash: SuperpositionFlash,
   state: ConstructionState,
   viewport: EuclidViewportState,
-  w: number, h: number,
-  now: number,
+  w: number,
+  h: number,
+  now: number
 ): boolean {
   const elapsed = now - flash.startTime
   if (elapsed >= FLASH_DURATION) return false
@@ -54,12 +57,12 @@ export function renderSuperpositionFlash(
   // ── Triangle fills ──
   const triVerts = [flash.triA, flash.triB]
   for (const tri of triVerts) {
-    const pts = tri.map(id => {
+    const pts = tri.map((id) => {
       const p = getPoint(state, id)
       if (!p) return null
       return toScreen(p.x, p.y, viewport, w, h)
     })
-    if (pts.some(p => p === null)) continue
+    if (pts.some((p) => p === null)) continue
 
     ctx.beginPath()
     ctx.moveTo(pts[0]!.sx, pts[0]!.sy)

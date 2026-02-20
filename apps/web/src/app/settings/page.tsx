@@ -2,7 +2,14 @@
 
 import { useAbacusDisplay } from '@soroban/abacus-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CreditCard, Key, Languages, Palette, Settings as SettingsIcon, Volume2 } from 'lucide-react'
+import {
+  CreditCard,
+  Key,
+  Languages,
+  Palette,
+  Settings as SettingsIcon,
+  Volume2,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -552,22 +559,30 @@ function BillingTab({ isDark }: { isDark: boolean }) {
         <SectionCard isDark={isDark}>
           <SectionHeader icon={<SettingsIcon size={18} />} title="Current Limits" isDark={isDark} />
           <SettingRow label="Students" isDark={isDark}>
-            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+            <span
+              className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}
+            >
               {limits.maxPracticeStudents === null ? 'Unlimited' : limits.maxPracticeStudents}
             </span>
           </SettingRow>
           <SettingRow label="Session duration" isDark={isDark}>
-            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+            <span
+              className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}
+            >
               Up to {limits.maxSessionMinutes} min
             </span>
           </SettingRow>
           <SettingRow label="Sessions per week" isDark={isDark}>
-            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+            <span
+              className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}
+            >
               {limits.maxSessionsPerWeek === null ? 'Unlimited' : limits.maxSessionsPerWeek}
             </span>
           </SettingRow>
           <SettingRow label="Worksheet parsing" isDark={isDark} noBorder>
-            <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}>
+            <span
+              className={css({ fontSize: '0.875rem', color: isDark ? 'gray.300' : 'gray.700' })}
+            >
               {limits.maxOfflineParsingPerMonth}/month
             </span>
           </SettingRow>

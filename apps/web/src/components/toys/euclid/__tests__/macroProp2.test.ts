@@ -51,8 +51,8 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const factStore = createFactStore()
     const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false)
 
-    const points = result.addedElements.filter(e => e.kind === 'point')
-    const segments = result.addedElements.filter(e => e.kind === 'segment')
+    const points = result.addedElements.filter((e) => e.kind === 'point')
+    const segments = result.addedElements.filter((e) => e.kind === 'segment')
     expect(points).toHaveLength(1)
     expect(segments).toHaveLength(1)
   })
@@ -60,12 +60,11 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('uses explicit "result" label from outputLabels', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(
-      state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
-    const pt = result.addedElements.find(e => e.kind === 'point')
+    const pt = result.addedElements.find((e) => e.kind === 'point')
     expect(pt).toBeDefined()
     expect(pt!.id).toBe('pt-E')
     expect((pt as { label: string }).label).toBe('E')
@@ -76,7 +75,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const factStore = createFactStore()
     const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false)
 
-    const pt = result.addedElements.find(e => e.kind === 'point')
+    const pt = result.addedElements.find((e) => e.kind === 'point')
     expect(pt).toBeDefined()
     // A=0, C=2, D=3 → nextLabelIndex=4 → label 'E'
     expect(pt!.id).toBe('pt-E')
@@ -85,10 +84,9 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('places output at correct distance from target', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(
-      state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
     const ptA = getPoint(result.state, 'pt-A')!
     const ptC = getPoint(result.state, 'pt-C')!
@@ -103,10 +101,9 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('places output in direction target → segFrom', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(
-      state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
     const ptA = getPoint(result.state, 'pt-A')!
     const ptC = getPoint(result.state, 'pt-C')!
@@ -120,27 +117,27 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('adds equality fact: dist(target, output) = dist(segFrom, segTo)', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(
-      state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
     expect(result.newFacts).toHaveLength(1)
     const fact = result.newFacts[0]
     expect(fact.citation).toEqual({ type: 'prop', propId: 2 })
     expect(fact.statement).toBe('AE = CD')
-    expect(queryEquality(factStore, distancePair('pt-A', 'pt-E'), distancePair('pt-C', 'pt-D'))).toBe(true)
+    expect(
+      queryEquality(factStore, distancePair('pt-A', 'pt-E'), distancePair('pt-C', 'pt-D'))
+    ).toBe(true)
   })
 
   it('segment connects target to output point', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(
-      state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
-    const seg = result.addedElements.find(e => e.kind === 'segment')
+    const seg = result.addedElements.find((e) => e.kind === 'segment')
     expect(seg).toBeDefined()
     if (seg?.kind === 'segment') {
       const endpoints = [seg.fromId, seg.toId].sort()
@@ -162,10 +159,9 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const state = givenCollinear()
     const factStore = createFactStore()
     // Copy length |BC| = 2 to point A, in direction A→B (along x-axis)
-    const result = macro.execute(
-      state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
     const ptE = getPoint(result.state, 'pt-E')!
     expect(ptE).toBeDefined()
@@ -179,10 +175,9 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const factStore = createFactStore()
     // target=A(1,2), segFrom=B(1,2) — same position
     // |BC| = 3, fallback direction = (0,1), so output = (1, 5)
-    const result = macro.execute(
-      state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
     const ptE = getPoint(result.state, 'pt-E')!
     expect(ptE).toBeDefined()
@@ -198,9 +193,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('returns empty result when input points are missing', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(
-      state, ['pt-A', 'pt-C', 'pt-MISSING'], [], factStore, 0, false,
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-MISSING'], [], factStore, 0, false)
 
     expect(result.newFacts).toHaveLength(0)
     expect(result.addedElements).toHaveLength(0)
@@ -228,10 +221,9 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const factStore = createFactStore()
 
     // |BC| = 0, so output should be at target
-    const result = macro.execute(
-      state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false,
-      { result: 'E' },
-    )
+    const result = macro.execute(state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false, {
+      result: 'E',
+    })
 
     const ptA = getPoint(result.state, 'pt-A')!
     const ptE = getPoint(result.state, 'pt-E')!

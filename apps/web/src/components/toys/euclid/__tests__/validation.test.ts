@@ -38,7 +38,8 @@ describe('validateStep with ElementSelectors', () => {
       }
 
       const candidate: IntersectionCandidate = {
-        x: 1, y: 1,
+        x: 1,
+        y: 1,
         ofA: cir.circle.id,
         ofB: seg.segment.id,
         which: 0,
@@ -65,7 +66,8 @@ describe('validateStep with ElementSelectors', () => {
 
       // Candidate has them swapped — should still match
       const candidate: IntersectionCandidate = {
-        x: 1, y: 1,
+        x: 1,
+        y: 1,
         ofA: seg.segment.id,
         ofB: cir.circle.id,
         which: 0,
@@ -94,7 +96,8 @@ describe('validateStep with ElementSelectors', () => {
 
       // Candidate is from circle 2 (wrong)
       const candidate: IntersectionCandidate = {
-        x: 1, y: 1,
+        x: 1,
+        y: 1,
         ofA: cir2.circle.id,
         ofB: seg.segment.id,
         which: 0,
@@ -130,7 +133,11 @@ describe('validateStep with ElementSelectors', () => {
       }
 
       const candidate: IntersectionCandidate = {
-        x: 1, y: 1, ofA: 'cir-1', ofB: 'seg-1', which: 0,
+        x: 1,
+        y: 1,
+        ofA: 'cir-1',
+        ofB: 'seg-1',
+        which: 0,
       }
 
       expect(validateStep(expected, state, pt.point, candidate)).toBe(false)
@@ -158,9 +165,9 @@ describe('validateStep with ElementSelectors', () => {
     })
 
     it('rejects non-intersection point for intersection expected', () => {
-      let state = givenABC()
+      const state = givenABC()
       // A point with origin 'given', not 'intersection'
-      const given = state.elements.find(e => e.kind === 'point' && e.id === 'pt-A')!
+      const given = state.elements.find((e) => e.kind === 'point' && e.id === 'pt-A')!
 
       const expected: ExpectedAction = { type: 'intersection' }
       expect(validateStep(expected, state, given)).toBe(false)
@@ -192,7 +199,8 @@ describe('validateStep with ElementSelectors', () => {
       }
 
       const candidate: IntersectionCandidate = {
-        x: 1, y: 1,
+        x: 1,
+        y: 1,
         ofA: cir.circle.id,
         ofB: seg.segment.id,
         which: 0,
@@ -209,7 +217,9 @@ describe('validateStep with ElementSelectors', () => {
       state = cir.state
 
       const expected: ExpectedAction = {
-        type: 'straightedge', fromId: 'pt-A', toId: 'pt-B',
+        type: 'straightedge',
+        fromId: 'pt-A',
+        toId: 'pt-B',
       }
 
       expect(validateStep(expected, state, cir.circle)).toBe(false)
@@ -221,7 +231,9 @@ describe('validateStep with ElementSelectors', () => {
       state = seg.state
 
       const expected: ExpectedAction = {
-        type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B',
+        type: 'compass',
+        centerId: 'pt-A',
+        radiusPointId: 'pt-B',
       }
 
       expect(validateStep(expected, state, seg.segment)).toBe(false)
@@ -233,7 +245,9 @@ describe('validateStep with ElementSelectors', () => {
       state = seg.state
 
       const expected: ExpectedAction = {
-        type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-B'],
+        type: 'macro',
+        propId: 1,
+        inputPointIds: ['pt-A', 'pt-B'],
       }
 
       expect(validateStep(expected, state, seg.segment)).toBe(false)
@@ -245,7 +259,9 @@ describe('validateStep with ElementSelectors', () => {
       state = cir.state
 
       const expected: ExpectedAction = {
-        type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-A',
+        type: 'compass',
+        centerId: 'pt-B',
+        radiusPointId: 'pt-A',
       }
 
       expect(validateStep(expected, state, cir.circle)).toBe(false)
@@ -259,7 +275,9 @@ describe('validateStep with ElementSelectors', () => {
       state = cir.state
 
       const expected: ExpectedAction = {
-        type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B',
+        type: 'compass',
+        centerId: 'pt-A',
+        radiusPointId: 'pt-B',
       }
 
       expect(validateStep(expected, state, cir.circle)).toBe(true)
@@ -271,7 +289,9 @@ describe('validateStep with ElementSelectors', () => {
       state = seg.state
 
       const expected: ExpectedAction = {
-        type: 'straightedge', fromId: 'pt-A', toId: 'pt-B',
+        type: 'straightedge',
+        fromId: 'pt-A',
+        toId: 'pt-B',
       }
 
       expect(validateStep(expected, state, seg.segment)).toBe(true)
@@ -283,7 +303,9 @@ describe('validateStep with ElementSelectors', () => {
       state = seg.state
 
       const expected: ExpectedAction = {
-        type: 'straightedge', fromId: 'pt-A', toId: 'pt-B',
+        type: 'straightedge',
+        fromId: 'pt-A',
+        toId: 'pt-B',
       }
 
       expect(validateStep(expected, state, seg.segment)).toBe(true)

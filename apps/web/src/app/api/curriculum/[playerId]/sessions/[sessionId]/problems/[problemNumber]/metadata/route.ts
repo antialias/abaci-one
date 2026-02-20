@@ -29,7 +29,11 @@ import type { ProblemMetadata } from '@/lib/vision/recording'
  */
 export const GET = withAuth(async (request, { params }) => {
   try {
-    const { playerId, sessionId, problemNumber: problemNumberStr } = (await params) as { playerId: string; sessionId: string; problemNumber: string }
+    const {
+      playerId,
+      sessionId,
+      problemNumber: problemNumberStr,
+    } = (await params) as { playerId: string; sessionId: string; problemNumber: string }
     const { searchParams } = new URL(request.url)
 
     if (!playerId || !sessionId || !problemNumberStr) {

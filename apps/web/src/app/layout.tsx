@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: '%s | Abaci One',
   },
   description:
-    'Screen time that builds real math skills. Adaptive daily practice, printable materials, and multiplayer math games — all built around the world\'s most effective mental math tool.',
+    "Screen time that builds real math skills. Adaptive daily practice, printable materials, and multiplayer math games — all built around the world's most effective mental math tool.",
   keywords: [
     'soroban',
     'abacus',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     url: 'https://abaci.one',
     title: 'Abaci One — Adaptive Abacus Math Practice for Kids',
     description:
-      'Screen time that builds real math skills. Adaptive daily practice, printable materials, and multiplayer math games — all built around the world\'s most effective mental math tool.',
+      "Screen time that builds real math skills. Adaptive daily practice, printable materials, and multiplayer math games — all built around the world's most effective mental math tool.",
     siteName: 'Abaci One',
   },
 
@@ -103,7 +103,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Session-aware: logged-in users get their per-user overrides merged in.
   const session = await auth()
   const userRole = session?.user?.id
-    ? isAdminEmail(session.user.email) ? 'admin' : 'user'
+    ? isAdminEmail(session.user.email)
+      ? 'admin'
+      : 'user'
     : 'guest'
   const queryClient = getQueryClient()
   await Promise.all([
@@ -115,14 +117,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     queryClient.prefetchQuery({
       queryKey: billingKeys.tier(),
       queryFn: async () => {
-        const tier = userRole === 'guest' ? 'guest' as const : await getTierForUser(session?.user?.id)
+        const tier =
+          userRole === 'guest' ? ('guest' as const) : await getTierForUser(session?.user?.id)
         const limits = TIER_LIMITS[tier]
         return {
           tier,
           limits: {
-            maxPracticeStudents: limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
+            maxPracticeStudents:
+              limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
             maxSessionMinutes: limits.maxSessionMinutes,
-            maxSessionsPerWeek: limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
+            maxSessionsPerWeek:
+              limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
             maxOfflineParsingPerMonth: limits.maxOfflineParsingPerMonth,
           },
         }

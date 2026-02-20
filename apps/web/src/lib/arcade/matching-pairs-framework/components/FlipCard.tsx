@@ -121,8 +121,7 @@ export function FlipCard({
 
   const getPlayerHaloGradient = () => {
     const playerIndex = getPlayerIndex(card.matchedBy)
-    if (playerIndex === 0)
-      return 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
+    if (playerIndex === 0) return 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
     return 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)'
   }
 

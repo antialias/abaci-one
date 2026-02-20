@@ -58,7 +58,9 @@ function MiniWaveform({ isDark, active }: { isDark: boolean; active: boolean }) 
             width: 3,
             borderRadius: 1.5,
             backgroundColor: active ? barColor : dimColor,
-            animation: active ? `waveBarMini 0.6s ease-in-out ${i * 0.12}s infinite alternate` : 'none',
+            animation: active
+              ? `waveBarMini 0.6s ease-in-out ${i * 0.12}s infinite alternate`
+              : 'none',
             height: active ? undefined : 4,
             transition: 'background-color 0.2s',
           }}
@@ -220,7 +222,7 @@ export function updateCallBoxPositions(
   center: number,
   pixelsPerUnit: number,
   canvasWidth: number,
-  canvasHeight: number,
+  canvasHeight: number
 ) {
   const children = container.children
   const topY = canvasHeight / 2 - 80
@@ -327,7 +329,8 @@ export function PhoneCallOverlay({
   const accentColor = isDark ? '#a855f7' : '#7c3aed'
   const dangerColor = '#ef4444'
 
-  const isTransient = state === 'ringing' || state === 'ending' || state === 'transferring' || state === 'error'
+  const isTransient =
+    state === 'ringing' || state === 'ending' || state === 'transferring' || state === 'error'
   const overlayWidth = Math.min(280, containerWidth - 32)
   const overlayLeft = (containerWidth - overlayWidth) / 2
   const overlayTop = Math.max(40, (containerHeight - 300) / 2)
@@ -353,9 +356,7 @@ export function PhoneCallOverlay({
               backgroundColor: bg,
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
-              boxShadow: isDark
-                ? '0 4px 16px rgba(0, 0, 0, 0.4)'
-                : '0 4px 16px rgba(0, 0, 0, 0.1)',
+              boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.4)' : '0 4px 16px rgba(0, 0, 0, 0.1)',
               zIndex: 13,
               pointerEvents: 'auto',
               animation: 'fadeInUp 0.2s ease-out',
@@ -405,7 +406,7 @@ export function PhoneCallOverlay({
               zIndex: 12,
             }}
           >
-            {conferenceNumbers.map(num => (
+            {conferenceNumbers.map((num) => (
               <CallBox
                 key={num}
                 num={num}
@@ -434,9 +435,7 @@ export function PhoneCallOverlay({
             borderRadius: 16,
             backgroundColor: bg,
             backdropFilter: 'blur(12px)',
-            boxShadow: isDark
-              ? '0 8px 32px rgba(0, 0, 0, 0.6)'
-              : '0 8px 32px rgba(0, 0, 0, 0.15)',
+            boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.6)' : '0 8px 32px rgba(0, 0, 0, 0.15)',
             zIndex: 15,
             pointerEvents: 'auto',
             animation: 'fadeInUp 0.25s ease-out',
@@ -491,15 +490,11 @@ export function PhoneCallOverlay({
 
           {state === 'ending' && (
             <div data-element="ending-message" style={{ padding: '20px 0' }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>
-                👋
-              </div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>👋</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: textColor }}>
                 {formatNumber(number)} hung up
               </div>
-              <div style={{ fontSize: 13, color: subtextColor, marginTop: 4 }}>
-                Great chat!
-              </div>
+              <div style={{ fontSize: 13, color: subtextColor, marginTop: 4 }}>Great chat!</div>
             </div>
           )}
 
@@ -523,75 +518,76 @@ export function PhoneCallOverlay({
             </div>
           )}
 
-          {state === 'error' && (() => {
-            const isRetryable = errorCode !== 'quota_exceeded'
-            return (
-              <>
-                <div
-                  data-element="error-title"
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: textColor,
-                    marginBottom: 8,
-                  }}
-                >
-                  Couldn&apos;t reach {formatNumber(number)}
-                </div>
-                <div
-                  data-element="error-message"
-                  style={{
-                    fontSize: 13,
-                    color: subtextColor,
-                    marginBottom: 16,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {error || 'Something went wrong'}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {isRetryable && (
+          {state === 'error' &&
+            (() => {
+              const isRetryable = errorCode !== 'quota_exceeded'
+              return (
+                <>
+                  <div
+                    data-element="error-title"
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: textColor,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Couldn&apos;t reach {formatNumber(number)}
+                  </div>
+                  <div
+                    data-element="error-message"
+                    style={{
+                      fontSize: 13,
+                      color: subtextColor,
+                      marginBottom: 16,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {error || 'Something went wrong'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {isRetryable && (
+                      <button
+                        data-action="retry-call"
+                        onClick={onRetry}
+                        style={{
+                          flex: 1,
+                          padding: '12px 16px',
+                          minHeight: 44,
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: '#fff',
+                          backgroundColor: accentColor,
+                          border: 'none',
+                          borderRadius: 22,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Try Again
+                      </button>
+                    )}
                     <button
-                      data-action="retry-call"
-                      onClick={onRetry}
+                      data-action="dismiss-error"
+                      onClick={onDismiss}
                       style={{
                         flex: 1,
                         padding: '12px 16px',
                         minHeight: 44,
                         fontSize: 14,
                         fontWeight: 600,
-                        color: '#fff',
-                        backgroundColor: accentColor,
+                        color: textColor,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
                         border: 'none',
                         borderRadius: 22,
                         cursor: 'pointer',
                       }}
                     >
-                      Try Again
+                      Close
                     </button>
-                  )}
-                  <button
-                    data-action="dismiss-error"
-                    onClick={onDismiss}
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      minHeight: 44,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: textColor,
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                      border: 'none',
-                      borderRadius: 22,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            )
-          })()}
+                  </div>
+                </>
+              )
+            })()}
         </div>
       )}
 

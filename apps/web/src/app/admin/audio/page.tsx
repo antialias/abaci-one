@@ -173,9 +173,7 @@ export default function AdminAudioPage() {
   const isCcGenerating = ccTaskState?.status === 'pending' || ccTaskState?.status === 'running'
 
   // Determine if selected voice is custom
-  const isCustomVoice = voiceChain.some(
-    (s) => s.type === 'custom' && s.name === ccGenVoice
-  )
+  const isCustomVoice = voiceChain.some((s) => s.type === 'custom' && s.name === ccGenVoice)
 
   // Request mic permission, acquire stream, and enumerate devices when custom voice is selected.
   // getUserMedia must be called BEFORE enumerateDevices — browsers withhold real
@@ -699,7 +697,9 @@ export default function AdminAudioPage() {
                               })}
                               title={`Hear ${source.name} introduce itself`}
                             >
-                              {reportingVoice === source.name ? '\u25B6 ...' : '\u{1F399} Report in'}
+                              {reportingVoice === source.name
+                                ? '\u25B6 ...'
+                                : '\u{1F399} Report in'}
                             </button>
                           )}
                           <button
@@ -833,7 +833,8 @@ export default function AdminAudioPage() {
                                 return { provider, modelGroups }
                               }).filter((g) => g.modelGroups.length > 0)
 
-                              const hasAnyAvailable = providerGroups.length > 0 || !hasBrowser || !hasGenerate
+                              const hasAnyAvailable =
+                                providerGroups.length > 0 || !hasBrowser || !hasGenerate
                               if (!hasAnyAvailable) {
                                 return (
                                   <DropdownMenu.Label
@@ -1199,9 +1200,7 @@ export default function AdminAudioPage() {
                       {newCustomVoiceName === null ? (
                         <button
                           data-action="new-custom-voice"
-                          onClick={() =>
-                            setNewCustomVoiceName(session?.user?.name ?? 'custom')
-                          }
+                          onClick={() => setNewCustomVoiceName(session?.user?.name ?? 'custom')}
                           className={css({
                             backgroundColor: '#0d1117',
                             color: '#a371f7',
@@ -1573,7 +1572,9 @@ export default function AdminAudioPage() {
                         })}
                       >
                         <MicLevelMeter stream={micStream} />
-                        <label className={css({ color: '#8b949e', fontSize: '13px', flexShrink: 0 })}>
+                        <label
+                          className={css({ color: '#8b949e', fontSize: '13px', flexShrink: 0 })}
+                        >
                           Microphone:
                         </label>
                         <select
@@ -1861,7 +1862,7 @@ export default function AdminAudioPage() {
 
                         // Group clips by their text content
                         const getClipText = (clip: (typeof collectedClips)[0]) =>
-                          clip.say ? Object.values(clip.say)[0] ?? null : null
+                          clip.say ? (Object.values(clip.say)[0] ?? null) : null
                         const groups: {
                           text: string | null
                           clips: typeof collectedClips
@@ -1951,8 +1952,7 @@ export default function AdminAudioPage() {
                                       <th
                                         key={header}
                                         className={css({
-                                          textAlign:
-                                            idx === 1 || idx === 2 ? 'left' : 'center',
+                                          textAlign: idx === 1 || idx === 2 ? 'left' : 'center',
                                           padding: '6px 8px',
                                           color: '#8b949e',
                                           borderBottom: '1px solid #30363d',
@@ -2067,330 +2067,328 @@ export default function AdminAudioPage() {
                                         const isDeactivated = !!ccDeactivatedFor[clip.id]
                                         return (
                                           <React.Fragment key={clip.id}>
-                                          <tr data-element="cc-clip-row">
-                                            <td
-                                              className={css({
-                                                padding: '6px 8px',
-                                                borderBottom: '1px solid #21262d',
-                                                textAlign: 'center',
-                                              })}
-                                            >
-                                              <span
-                                                title={
-                                                  isDeactivated
-                                                    ? 'Deactivated'
-                                                    : isGenerated
-                                                      ? `Generated for ${ccGenVoice}`
-                                                      : 'Not generated'
-                                                }
-                                                className={css({
-                                                  display: 'inline-block',
-                                                  width: '8px',
-                                                  height: '8px',
-                                                  borderRadius: '50%',
-                                                  backgroundColor: isDeactivated
-                                                    ? '#d29922'
-                                                    : isGenerated
-                                                      ? '#3fb950'
-                                                      : '#484f58',
-                                                })}
-                                              />
-                                            </td>
-                                            <td
-                                              className={css({
-                                                padding: '6px 8px',
-                                                borderBottom: '1px solid #21262d',
-                                                fontSize: '12px',
-                                                color: '#c9d1d9',
-                                                maxWidth: '200px',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                              })}
-                                              title={clip.tone}
-                                            >
-                                              {clip.tone}
-                                            </td>
-                                            <td
-                                              className={css({
-                                                padding: '6px 8px',
-                                                borderBottom: '1px solid #21262d',
-                                                color: '#8b949e',
-                                                fontFamily: 'monospace',
-                                                fontSize: '11px',
-                                              })}
-                                            >
-                                              {clip.id}
-                                              {isHashClipId(clip.id) && (
-                                                <span
-                                                  data-element="hash-badge"
-                                                  title="Content-addressed clip ID (auto-generated from text + tone)"
-                                                  className={css({
-                                                    marginLeft: '6px',
-                                                    fontSize: '10px',
-                                                    padding: '1px 5px',
-                                                    borderRadius: '8px',
-                                                    backgroundColor: '#8b949e22',
-                                                    color: '#8b949e',
-                                                  })}
-                                                >
-                                                  hash
-                                                </span>
-                                              )}
-                                            </td>
-                                            <td
-                                              className={css({
-                                                padding: '6px 8px',
-                                                borderBottom: '1px solid #21262d',
-                                                textAlign: 'center',
-                                                fontFamily: 'monospace',
-                                                color:
-                                                  clip.playCount > 0 ? '#3fb950' : '#8b949e',
-                                              })}
-                                            >
-                                              {clip.playCount}
-                                            </td>
-                                            <td
-                                              className={css({
-                                                padding: '6px 8px',
-                                                borderBottom: '1px solid #21262d',
-                                                textAlign: 'center',
-                                              })}
-                                            >
-                                              <button
-                                                data-action="play-cc-clip"
-                                                onClick={() => handleCcPlayClip(clip.id)}
-                                                disabled={!isGenerated}
-                                                className={css({
-                                                  background: 'none',
-                                                  border: 'none',
-                                                  color:
-                                                    ccPlayingClipId === clip.id
-                                                      ? '#58a6ff'
-                                                      : '#c9d1d9',
-                                                  cursor: isGenerated
-                                                    ? 'pointer'
-                                                    : 'not-allowed',
-                                                  fontSize: '16px',
-                                                  opacity: isGenerated ? 1 : 0.3,
-                                                })}
-                                                title={
-                                                  isGenerated ? 'Play clip' : 'Not generated yet'
-                                                }
-                                              >
-                                                {ccPlayingClipId === clip.id
-                                                  ? '\u23F8'
-                                                  : '\u25B6'}
-                                              </button>
-                                            </td>
-                                            <td
-                                              className={css({
-                                                padding: '6px 8px',
-                                                borderBottom: '1px solid #21262d',
-                                                textAlign: 'center',
-                                              })}
-                                            >
-                                              {isCustomVoice ? (
-                                                <div
-                                                  className={css({
-                                                    display: 'flex',
-                                                    gap: '4px',
-                                                    justifyContent: 'center',
-                                                    flexWrap: 'wrap',
-                                                  })}
-                                                >
-                                                  {!isGenerated && !isDeactivated && (
-                                                    <button
-                                                      data-action="record-clip"
-                                                      onClick={() =>
-                                                        setRecordingClipId(
-                                                          recordingClipId === clip.id
-                                                            ? null
-                                                            : clip.id
-                                                        )
-                                                      }
-                                                      className={css({
-                                                        fontSize: '11px',
-                                                        backgroundColor: '#238636',
-                                                        color: '#fff',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        padding: '2px 8px',
-                                                        cursor: 'pointer',
-                                                        '&:hover': {
-                                                          backgroundColor: '#2ea043',
-                                                        },
-                                                      })}
-                                                    >
-                                                      Record
-                                                    </button>
-                                                  )}
-                                                  {isGenerated && !isDeactivated && (
-                                                    <>
-                                                      <button
-                                                        data-action="re-record-clip"
-                                                        onClick={() =>
-                                                          setRecordingClipId(
-                                                            recordingClipId === clip.id
-                                                              ? null
-                                                              : clip.id
-                                                          )
-                                                        }
-                                                        className={css({
-                                                          fontSize: '11px',
-                                                          backgroundColor: 'transparent',
-                                                          color: '#d29922',
-                                                          border: '1px solid #d29922',
-                                                          borderRadius: '6px',
-                                                          padding: '2px 6px',
-                                                          cursor: 'pointer',
-                                                        })}
-                                                      >
-                                                        Re-record
-                                                      </button>
-                                                      <button
-                                                        data-action="deactivate-clip"
-                                                        onClick={() =>
-                                                          handleDeactivateClip(clip.id)
-                                                        }
-                                                        className={css({
-                                                          fontSize: '11px',
-                                                          background: 'none',
-                                                          border: 'none',
-                                                          color: '#8b949e',
-                                                          cursor: 'pointer',
-                                                          '&:hover': { color: '#d29922' },
-                                                        })}
-                                                        title="Deactivate"
-                                                      >
-                                                        Deact.
-                                                      </button>
-                                                    </>
-                                                  )}
-                                                  {isDeactivated && (
-                                                    <>
-                                                      <button
-                                                        data-action="re-record-clip"
-                                                        onClick={() =>
-                                                          setRecordingClipId(
-                                                            recordingClipId === clip.id
-                                                              ? null
-                                                              : clip.id
-                                                          )
-                                                        }
-                                                        className={css({
-                                                          fontSize: '11px',
-                                                          backgroundColor: 'transparent',
-                                                          color: '#d29922',
-                                                          border: '1px solid #d29922',
-                                                          borderRadius: '6px',
-                                                          padding: '2px 6px',
-                                                          cursor: 'pointer',
-                                                        })}
-                                                      >
-                                                        Re-record
-                                                      </button>
-                                                      <button
-                                                        data-action="reactivate-clip"
-                                                        onClick={() =>
-                                                          handleReactivateClip(clip.id)
-                                                        }
-                                                        className={css({
-                                                          fontSize: '11px',
-                                                          background: 'none',
-                                                          border: 'none',
-                                                          color: '#3fb950',
-                                                          cursor: 'pointer',
-                                                        })}
-                                                      >
-                                                        Reactivate
-                                                      </button>
-                                                    </>
-                                                  )}
-                                                  {(isGenerated || isDeactivated) && (
-                                                    <button
-                                                      data-action="delete-clip"
-                                                      onClick={() =>
-                                                        handleDeleteCustomClip(clip.id)
-                                                      }
-                                                      className={css({
-                                                        fontSize: '11px',
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: '#f85149',
-                                                        cursor: 'pointer',
-                                                        '&:hover': {
-                                                          textDecoration: 'underline',
-                                                        },
-                                                      })}
-                                                      title="Delete recording"
-                                                    >
-                                                      Del
-                                                    </button>
-                                                  )}
-                                                </div>
-                                              ) : (
-                                                <button
-                                                  data-action="generate-cc-clip"
-                                                  onClick={() => handleCcGenerate([clip.id])}
-                                                  disabled={isCcGenerating}
-                                                  className={css({
-                                                    fontSize: '11px',
-                                                    backgroundColor: isGenerated
-                                                      ? 'transparent'
-                                                      : '#238636',
-                                                    color: isGenerated ? '#d29922' : '#fff',
-                                                    border: isGenerated
-                                                      ? '1px solid #d29922'
-                                                      : 'none',
-                                                    borderRadius: '6px',
-                                                    padding: '2px 8px',
-                                                    cursor: 'pointer',
-                                                    '&:disabled': {
-                                                      opacity: 0.5,
-                                                      cursor: 'not-allowed',
-                                                    },
-                                                  })}
-                                                >
-                                                  {isGenerated ? 'Regen' : 'Generate'}
-                                                </button>
-                                              )}
-                                            </td>
-                                          </tr>
-                                          {/* ClipRecorder inline row */}
-                                          {isCustomVoice && recordingClipId === clip.id && (
-                                            <tr data-element="clip-recorder-row">
+                                            <tr data-element="cc-clip-row">
                                               <td
-                                                colSpan={6}
                                                 className={css({
-                                                  padding: '8px',
+                                                  padding: '6px 8px',
                                                   borderBottom: '1px solid #21262d',
+                                                  textAlign: 'center',
                                                 })}
                                               >
-                                                <ClipRecorder
-                                                  voice={ccGenVoice}
-                                                  clipId={clip.id}
-                                                  promptText={
-                                                    clip.say
-                                                      ? Object.values(clip.say)[0] ?? clip.id
-                                                      : clip.id
+                                                <span
+                                                  title={
+                                                    isDeactivated
+                                                      ? 'Deactivated'
+                                                      : isGenerated
+                                                        ? `Generated for ${ccGenVoice}`
+                                                        : 'Not generated'
                                                   }
-                                                  tone={clip.tone}
-                                                  hasExistingClip={isGenerated || isDeactivated}
-                                                  isDeactivated={isDeactivated}
-                                                  stream={micStream}
-                                                  onSaved={() => {
-                                                    setRecordingClipId(null)
-                                                    queryClient.invalidateQueries({
-                                                      queryKey: collectedClipKeys.list(ccGenVoice),
-                                                    })
-                                                    fetchStatus()
-                                                  }}
-                                                  onCancel={() => setRecordingClipId(null)}
+                                                  className={css({
+                                                    display: 'inline-block',
+                                                    width: '8px',
+                                                    height: '8px',
+                                                    borderRadius: '50%',
+                                                    backgroundColor: isDeactivated
+                                                      ? '#d29922'
+                                                      : isGenerated
+                                                        ? '#3fb950'
+                                                        : '#484f58',
+                                                  })}
                                                 />
                                               </td>
+                                              <td
+                                                className={css({
+                                                  padding: '6px 8px',
+                                                  borderBottom: '1px solid #21262d',
+                                                  fontSize: '12px',
+                                                  color: '#c9d1d9',
+                                                  maxWidth: '200px',
+                                                  overflow: 'hidden',
+                                                  textOverflow: 'ellipsis',
+                                                  whiteSpace: 'nowrap',
+                                                })}
+                                                title={clip.tone}
+                                              >
+                                                {clip.tone}
+                                              </td>
+                                              <td
+                                                className={css({
+                                                  padding: '6px 8px',
+                                                  borderBottom: '1px solid #21262d',
+                                                  color: '#8b949e',
+                                                  fontFamily: 'monospace',
+                                                  fontSize: '11px',
+                                                })}
+                                              >
+                                                {clip.id}
+                                                {isHashClipId(clip.id) && (
+                                                  <span
+                                                    data-element="hash-badge"
+                                                    title="Content-addressed clip ID (auto-generated from text + tone)"
+                                                    className={css({
+                                                      marginLeft: '6px',
+                                                      fontSize: '10px',
+                                                      padding: '1px 5px',
+                                                      borderRadius: '8px',
+                                                      backgroundColor: '#8b949e22',
+                                                      color: '#8b949e',
+                                                    })}
+                                                  >
+                                                    hash
+                                                  </span>
+                                                )}
+                                              </td>
+                                              <td
+                                                className={css({
+                                                  padding: '6px 8px',
+                                                  borderBottom: '1px solid #21262d',
+                                                  textAlign: 'center',
+                                                  fontFamily: 'monospace',
+                                                  color: clip.playCount > 0 ? '#3fb950' : '#8b949e',
+                                                })}
+                                              >
+                                                {clip.playCount}
+                                              </td>
+                                              <td
+                                                className={css({
+                                                  padding: '6px 8px',
+                                                  borderBottom: '1px solid #21262d',
+                                                  textAlign: 'center',
+                                                })}
+                                              >
+                                                <button
+                                                  data-action="play-cc-clip"
+                                                  onClick={() => handleCcPlayClip(clip.id)}
+                                                  disabled={!isGenerated}
+                                                  className={css({
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color:
+                                                      ccPlayingClipId === clip.id
+                                                        ? '#58a6ff'
+                                                        : '#c9d1d9',
+                                                    cursor: isGenerated ? 'pointer' : 'not-allowed',
+                                                    fontSize: '16px',
+                                                    opacity: isGenerated ? 1 : 0.3,
+                                                  })}
+                                                  title={
+                                                    isGenerated ? 'Play clip' : 'Not generated yet'
+                                                  }
+                                                >
+                                                  {ccPlayingClipId === clip.id
+                                                    ? '\u23F8'
+                                                    : '\u25B6'}
+                                                </button>
+                                              </td>
+                                              <td
+                                                className={css({
+                                                  padding: '6px 8px',
+                                                  borderBottom: '1px solid #21262d',
+                                                  textAlign: 'center',
+                                                })}
+                                              >
+                                                {isCustomVoice ? (
+                                                  <div
+                                                    className={css({
+                                                      display: 'flex',
+                                                      gap: '4px',
+                                                      justifyContent: 'center',
+                                                      flexWrap: 'wrap',
+                                                    })}
+                                                  >
+                                                    {!isGenerated && !isDeactivated && (
+                                                      <button
+                                                        data-action="record-clip"
+                                                        onClick={() =>
+                                                          setRecordingClipId(
+                                                            recordingClipId === clip.id
+                                                              ? null
+                                                              : clip.id
+                                                          )
+                                                        }
+                                                        className={css({
+                                                          fontSize: '11px',
+                                                          backgroundColor: '#238636',
+                                                          color: '#fff',
+                                                          border: 'none',
+                                                          borderRadius: '6px',
+                                                          padding: '2px 8px',
+                                                          cursor: 'pointer',
+                                                          '&:hover': {
+                                                            backgroundColor: '#2ea043',
+                                                          },
+                                                        })}
+                                                      >
+                                                        Record
+                                                      </button>
+                                                    )}
+                                                    {isGenerated && !isDeactivated && (
+                                                      <>
+                                                        <button
+                                                          data-action="re-record-clip"
+                                                          onClick={() =>
+                                                            setRecordingClipId(
+                                                              recordingClipId === clip.id
+                                                                ? null
+                                                                : clip.id
+                                                            )
+                                                          }
+                                                          className={css({
+                                                            fontSize: '11px',
+                                                            backgroundColor: 'transparent',
+                                                            color: '#d29922',
+                                                            border: '1px solid #d29922',
+                                                            borderRadius: '6px',
+                                                            padding: '2px 6px',
+                                                            cursor: 'pointer',
+                                                          })}
+                                                        >
+                                                          Re-record
+                                                        </button>
+                                                        <button
+                                                          data-action="deactivate-clip"
+                                                          onClick={() =>
+                                                            handleDeactivateClip(clip.id)
+                                                          }
+                                                          className={css({
+                                                            fontSize: '11px',
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#8b949e',
+                                                            cursor: 'pointer',
+                                                            '&:hover': { color: '#d29922' },
+                                                          })}
+                                                          title="Deactivate"
+                                                        >
+                                                          Deact.
+                                                        </button>
+                                                      </>
+                                                    )}
+                                                    {isDeactivated && (
+                                                      <>
+                                                        <button
+                                                          data-action="re-record-clip"
+                                                          onClick={() =>
+                                                            setRecordingClipId(
+                                                              recordingClipId === clip.id
+                                                                ? null
+                                                                : clip.id
+                                                            )
+                                                          }
+                                                          className={css({
+                                                            fontSize: '11px',
+                                                            backgroundColor: 'transparent',
+                                                            color: '#d29922',
+                                                            border: '1px solid #d29922',
+                                                            borderRadius: '6px',
+                                                            padding: '2px 6px',
+                                                            cursor: 'pointer',
+                                                          })}
+                                                        >
+                                                          Re-record
+                                                        </button>
+                                                        <button
+                                                          data-action="reactivate-clip"
+                                                          onClick={() =>
+                                                            handleReactivateClip(clip.id)
+                                                          }
+                                                          className={css({
+                                                            fontSize: '11px',
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#3fb950',
+                                                            cursor: 'pointer',
+                                                          })}
+                                                        >
+                                                          Reactivate
+                                                        </button>
+                                                      </>
+                                                    )}
+                                                    {(isGenerated || isDeactivated) && (
+                                                      <button
+                                                        data-action="delete-clip"
+                                                        onClick={() =>
+                                                          handleDeleteCustomClip(clip.id)
+                                                        }
+                                                        className={css({
+                                                          fontSize: '11px',
+                                                          background: 'none',
+                                                          border: 'none',
+                                                          color: '#f85149',
+                                                          cursor: 'pointer',
+                                                          '&:hover': {
+                                                            textDecoration: 'underline',
+                                                          },
+                                                        })}
+                                                        title="Delete recording"
+                                                      >
+                                                        Del
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  <button
+                                                    data-action="generate-cc-clip"
+                                                    onClick={() => handleCcGenerate([clip.id])}
+                                                    disabled={isCcGenerating}
+                                                    className={css({
+                                                      fontSize: '11px',
+                                                      backgroundColor: isGenerated
+                                                        ? 'transparent'
+                                                        : '#238636',
+                                                      color: isGenerated ? '#d29922' : '#fff',
+                                                      border: isGenerated
+                                                        ? '1px solid #d29922'
+                                                        : 'none',
+                                                      borderRadius: '6px',
+                                                      padding: '2px 8px',
+                                                      cursor: 'pointer',
+                                                      '&:disabled': {
+                                                        opacity: 0.5,
+                                                        cursor: 'not-allowed',
+                                                      },
+                                                    })}
+                                                  >
+                                                    {isGenerated ? 'Regen' : 'Generate'}
+                                                  </button>
+                                                )}
+                                              </td>
                                             </tr>
-                                          )}
+                                            {/* ClipRecorder inline row */}
+                                            {isCustomVoice && recordingClipId === clip.id && (
+                                              <tr data-element="clip-recorder-row">
+                                                <td
+                                                  colSpan={6}
+                                                  className={css({
+                                                    padding: '8px',
+                                                    borderBottom: '1px solid #21262d',
+                                                  })}
+                                                >
+                                                  <ClipRecorder
+                                                    voice={ccGenVoice}
+                                                    clipId={clip.id}
+                                                    promptText={
+                                                      clip.say
+                                                        ? (Object.values(clip.say)[0] ?? clip.id)
+                                                        : clip.id
+                                                    }
+                                                    tone={clip.tone}
+                                                    hasExistingClip={isGenerated || isDeactivated}
+                                                    isDeactivated={isDeactivated}
+                                                    stream={micStream}
+                                                    onSaved={() => {
+                                                      setRecordingClipId(null)
+                                                      queryClient.invalidateQueries({
+                                                        queryKey:
+                                                          collectedClipKeys.list(ccGenVoice),
+                                                      })
+                                                      fetchStatus()
+                                                    }}
+                                                    onCancel={() => setRecordingClipId(null)}
+                                                  />
+                                                </td>
+                                              </tr>
+                                            )}
                                           </React.Fragment>
                                         )
                                       })}

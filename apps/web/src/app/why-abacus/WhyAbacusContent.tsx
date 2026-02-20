@@ -263,9 +263,7 @@ function FriendsSection() {
             })}
             data-element="friends-of-5"
           >
-            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-              {t('friendsOf5')}
-            </h3>
+            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>{t('friendsOf5')}</h3>
             <AbacusReact
               value={friends5Value}
               columns={1}
@@ -311,9 +309,7 @@ function FriendsSection() {
             })}
             data-element="friends-of-10"
           >
-            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-              {t('friendsOf10')}
-            </h3>
+            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>{t('friendsOf10')}</h3>
             <AbacusReact
               value={friends10Value}
               columns={2}
@@ -397,9 +393,7 @@ function ProgressionSection() {
             })}
             data-element="stage-physical"
           >
-            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-              {t('physical')}
-            </h3>
+            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>{t('physical')}</h3>
             <AbacusReact
               value={7}
               columns={1}
@@ -409,9 +403,7 @@ function ProgressionSection() {
               animated={false}
               customStyles={structuralStyles}
             />
-            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-              {t('physicalDesc')}
-            </p>
+            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>{t('physicalDesc')}</p>
           </div>
 
           {/* Visualization */}
@@ -444,9 +436,7 @@ function ProgressionSection() {
                 customStyles={structuralStyles}
               />
             </div>
-            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-              {t('visualizationDesc')}
-            </p>
+            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>{t('visualizationDesc')}</p>
           </div>
 
           {/* Anzan */}
@@ -466,9 +456,7 @@ function ProgressionSection() {
             })}
             data-element="stage-anzan"
           >
-            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>
-              {t('anzan')}
-            </h3>
+            <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>{t('anzan')}</h3>
             <p
               className={css({
                 fontSize: '5xl',
@@ -479,9 +467,7 @@ function ProgressionSection() {
             >
               7
             </p>
-            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-              {t('anzanDesc')}
-            </p>
+            <p className={css({ fontSize: 'sm', color: 'gray.400' })}>{t('anzanDesc')}</p>
           </div>
         </div>
       </div>

@@ -104,9 +104,7 @@ export default function VisionShowcase() {
               >
                 42
               </span>
-              <span className={css({ fontSize: '9px', color: '#9ca3af' })}>
-                94%
-              </span>
+              <span className={css({ fontSize: '9px', color: '#9ca3af' })}>94%</span>
             </div>
             <div className={css({ display: 'flex', alignItems: 'center', gap: '4px' })}>
               <div
@@ -213,7 +211,9 @@ export default function VisionShowcase() {
                 bg: '#22c55e',
               })}
             />
-            <span className={css({ fontSize: '9px', color: '#4ade80', fontWeight: 600 })}>Stable</span>
+            <span className={css({ fontSize: '9px', color: '#4ade80', fontWeight: 600 })}>
+              Stable
+            </span>
           </div>
         </div>
       </div>
@@ -287,8 +287,14 @@ export default function VisionShowcase() {
 
             {/* Cyan beam line */}
             <line
-              x1="7" y1="28" x2="194" y2="26"
-              stroke="#22d3ee" strokeWidth="1" strokeDasharray="3,3" opacity="0.7"
+              x1="7"
+              y1="28"
+              x2="194"
+              y2="26"
+              stroke="#22d3ee"
+              strokeWidth="1"
+              strokeDasharray="3,3"
+              opacity="0.7"
             />
           </svg>
 

@@ -16,21 +16,24 @@ import type { NodeStatus, LayoutEdge } from './data/propositionGraph'
 // ---------------------------------------------------------------------------
 
 const NODE_W = 130
-const NODE_H = 48   // layout computation height (matches pre-computed layout)
+const NODE_H = 48 // layout computation height (matches pre-computed layout)
 const RENDER_H = 120 // rendered height (room for diagram + text)
-const Y_SCALE = 1.5  // stretch Y to add vertical breathing room between taller nodes
+const Y_SCALE = 1.5 // stretch Y to add vertical breathing room between taller nodes
 const NODE_RX = 8
 const ICON_SIZE = 44 // geometric thumbnail area
 const PREVIEW_THUMB_W = 100 // real construction preview width (wider to match canvas aspect ratio)
-const PREVIEW_THUMB_H = 56  // real construction preview height
+const PREVIEW_THUMB_H = 56 // real construction preview height
 
-const STATUS_STYLES: Record<NodeStatus, {
-  fill: string
-  stroke: string
-  textColor: string
-  strokeDash?: string
-  opacity: number
-}> = {
+const STATUS_STYLES: Record<
+  NodeStatus,
+  {
+    fill: string
+    stroke: string
+    textColor: string
+    strokeDash?: string
+    opacity: number
+  }
+> = {
   completed: {
     fill: 'rgba(16, 185, 129, 0.12)',
     stroke: '#10b981',
@@ -69,34 +72,38 @@ import type { ThematicBlock } from './data/book1'
 
 /** Subtle accent colors per thematic block — muted but distinctive. */
 const BLOCK_ACCENTS: Record<ThematicBlock, string> = {
-  'basic-constructions':                '#3b82f6', // blue
-  'triangle-congruence':                '#8b5cf6', // violet
-  'fundamental-constructions':          '#0ea5e9', // sky
-  'angle-arithmetic':                   '#f59e0b', // amber
-  'triangle-inequalities':             '#ef4444', // red
-  'construction-from-parts':           '#10b981', // emerald
-  'more-congruence':                   '#a855f7', // purple
-  'parallel-lines':                    '#06b6d4', // cyan
-  'parallelogram-basics':             '#f97316', // orange
-  'area-theory':                       '#ec4899', // pink
-  'application-of-areas':             '#d946ef', // fuchsia
-  'the-finale':                        '#eab308', // yellow
+  'basic-constructions': '#3b82f6', // blue
+  'triangle-congruence': '#8b5cf6', // violet
+  'fundamental-constructions': '#0ea5e9', // sky
+  'angle-arithmetic': '#f59e0b', // amber
+  'triangle-inequalities': '#ef4444', // red
+  'construction-from-parts': '#10b981', // emerald
+  'more-congruence': '#a855f7', // purple
+  'parallel-lines': '#06b6d4', // cyan
+  'parallelogram-basics': '#f97316', // orange
+  'area-theory': '#ec4899', // pink
+  'application-of-areas': '#d946ef', // fuchsia
+  'the-finale': '#eab308', // yellow
 }
 
 /**
  * Small SVG geometric diagram for a proposition node.
  * Specific icons for implemented props; block-based for the rest.
  */
-function PropThumbnail({ propId, block, color }: {
+function PropThumbnail({
+  propId,
+  block,
+  color,
+}: {
   propId: number
   block: ThematicBlock
   color: string
 }) {
   const s = ICON_SIZE
   const c = s / 2 // center
-  const o = 0.65  // opacity
+  const o = 0.65 // opacity
   const accent = BLOCK_ACCENTS[block] ?? color
-  const sw = 1.5  // base stroke width
+  const sw = 1.5 // base stroke width
 
   // Specific diagrams for implemented propositions
   switch (propId) {
@@ -104,13 +111,28 @@ function PropThumbnail({ propId, block, color }: {
       return (
         <g opacity={o}>
           <line x1={3} y1={s - 3} x2={s - 3} y2={s - 3} stroke={accent} strokeWidth={sw} />
-          <polygon points={`${c},3 ${3},${s - 3} ${s - 3},${s - 3}`}
-            fill={accent} fillOpacity={0.12} stroke={accent} strokeWidth={sw * 0.9} />
+          <polygon
+            points={`${c},3 ${3},${s - 3} ${s - 3},${s - 3}`}
+            fill={accent}
+            fillOpacity={0.12}
+            stroke={accent}
+            strokeWidth={sw * 0.9}
+          />
           {/* Two construction arcs */}
-          <path d={`M ${s * 0.15} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 1 ${c} ${3}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
-          <path d={`M ${s * 0.85} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 0 ${c} ${3}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.5} strokeDasharray="3 2" />
+          <path
+            d={`M ${s * 0.15} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 1 ${c} ${3}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.5}
+            strokeDasharray="3 2"
+          />
+          <path
+            d={`M ${s * 0.85} ${s * 0.55} A ${s * 0.45} ${s * 0.45} 0 0 0 ${c} ${3}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.5}
+            strokeDasharray="3 2"
+          />
         </g>
       )
     case 2: // Transfer a segment to a point
@@ -119,8 +141,15 @@ function PropThumbnail({ propId, block, color }: {
           <circle cx={5} cy={c} r={2.5} fill={accent} />
           <line x1={8} y1={c} x2={s - 4} y2={c} stroke={accent} strokeWidth={sw} />
           <circle cx={s - 4} cy={c} r={2.5} fill={accent} />
-          <line x1={5} y1={c + 10} x2={5 + (s * 0.55)} y2={c + 10}
-            stroke={accent} strokeWidth={sw} strokeDasharray="3 2" />
+          <line
+            x1={5}
+            y1={c + 10}
+            x2={5 + s * 0.55}
+            y2={c + 10}
+            stroke={accent}
+            strokeWidth={sw}
+            strokeDasharray="3 2"
+          />
           <circle cx={5} cy={c + 10} r={2} fill={accent} fillOpacity={0.5} />
         </g>
       )
@@ -129,8 +158,15 @@ function PropThumbnail({ propId, block, color }: {
         <g opacity={o}>
           <line x1={4} y1={c - 5} x2={s - 4} y2={c - 5} stroke={accent} strokeWidth={sw * 1.2} />
           <line x1={4} y1={c + 5} x2={c + 4} y2={c + 5} stroke={accent} strokeWidth={sw * 1.2} />
-          <line x1={c + 4} y1={c - 9} x2={c + 4} y2={c + 9}
-            stroke={accent} strokeWidth={sw * 0.7} strokeDasharray="2.5 1.5" />
+          <line
+            x1={c + 4}
+            y1={c - 9}
+            x2={c + 4}
+            y2={c + 9}
+            stroke={accent}
+            strokeWidth={sw * 0.7}
+            strokeDasharray="2.5 1.5"
+          />
         </g>
       )
   }
@@ -144,18 +180,32 @@ function PropThumbnail({ propId, block, color }: {
           <circle cx={c} cy={c - 2} r={2} fill={accent} />
           <line x1={c} y1={c - 2} x2={c - 10} y2={s - 3} stroke={color} strokeWidth={sw * 0.8} />
           <line x1={c} y1={c - 2} x2={c + 10} y2={s - 3} stroke={color} strokeWidth={sw * 0.8} />
-          <path d={`M ${c - 12} ${s - 2} Q ${c} ${s - 10} ${c + 12} ${s - 2}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.8} />
+          <path
+            d={`M ${c - 12} ${s - 2} Q ${c} ${s - 10} ${c + 12} ${s - 2}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.8}
+          />
         </g>
       )
     case 'triangle-congruence':
       // Two overlapping triangles (≅)
       return (
         <g opacity={o}>
-          <polygon points={`${c - 3},4 ${4},${s - 4} ${s - 8},${s - 4}`}
-            fill={accent} fillOpacity={0.1} stroke={accent} strokeWidth={sw} />
-          <polygon points={`${c + 3},4 ${8},${s - 4} ${s - 4},${s - 4}`}
-            fill="none" stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+          <polygon
+            points={`${c - 3},4 ${4},${s - 4} ${s - 8},${s - 4}`}
+            fill={accent}
+            fillOpacity={0.1}
+            stroke={accent}
+            strokeWidth={sw}
+          />
+          <polygon
+            points={`${c + 3},4 ${8},${s - 4} ${s - 4},${s - 4}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={sw * 0.8}
+            strokeDasharray="3 2"
+          />
         </g>
       )
     case 'fundamental-constructions':
@@ -164,11 +214,22 @@ function PropThumbnail({ propId, block, color }: {
         <g opacity={o}>
           <line x1={5} y1={s - 4} x2={5} y2={4} stroke={color} strokeWidth={sw} />
           <line x1={5} y1={s - 4} x2={s - 4} y2={s - 4} stroke={color} strokeWidth={sw} />
-          <line x1={5} y1={s - 4} x2={s - 6} y2={6}
-            stroke={accent} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+          <line
+            x1={5}
+            y1={s - 4}
+            x2={s - 6}
+            y2={6}
+            stroke={accent}
+            strokeWidth={sw * 0.8}
+            strokeDasharray="3 2"
+          />
           {/* Right angle mark */}
-          <polyline points={`${5},${s - 10} ${11},${s - 10} ${11},${s - 4}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.6} />
+          <polyline
+            points={`${5},${s - 10} ${11},${s - 10} ${11},${s - 4}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.6}
+          />
         </g>
       )
     case 'angle-arithmetic':
@@ -179,16 +240,25 @@ function PropThumbnail({ propId, block, color }: {
           <line x1={c} y1={s - 4} x2={s - 3} y2={4} stroke={color} strokeWidth={sw} />
           <line x1={3} y1={s - 4} x2={s - 3} y2={s - 4} stroke={accent} strokeWidth={sw} />
           {/* Angle arc highlight */}
-          <path d={`M ${c - 6} ${s - 4} A 8 8 0 0 1 ${c - 3} ${s - 9}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
+          <path
+            d={`M ${c - 6} ${s - 4} A 8 8 0 0 1 ${c - 3} ${s - 9}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.7}
+          />
         </g>
       )
     case 'triangle-inequalities':
       // Triangle with one highlighted side
       return (
         <g opacity={o}>
-          <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
-            fill={accent} fillOpacity={0.08} stroke={color} strokeWidth={sw * 0.8} />
+          <polygon
+            points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
+            fill={accent}
+            fillOpacity={0.08}
+            stroke={color}
+            strokeWidth={sw * 0.8}
+          />
           <line x1={4} y1={s - 4} x2={s - 4} y2={s - 4} stroke={accent} strokeWidth={sw * 1.8} />
         </g>
       )
@@ -198,77 +268,178 @@ function PropThumbnail({ propId, block, color }: {
         <g opacity={o}>
           <line x1={3} y1={12} x2={s - 3} y2={12} stroke={accent} strokeWidth={sw} />
           <line x1={3} y1={s - 12} x2={s - 3} y2={s - 12} stroke={accent} strokeWidth={sw} />
-          <line x1={s - 10} y1={3} x2={10} y2={s - 3}
-            stroke={color} strokeWidth={sw * 0.8} strokeDasharray="3 2" />
+          <line
+            x1={s - 10}
+            y1={3}
+            x2={10}
+            y2={s - 3}
+            stroke={color}
+            strokeWidth={sw * 0.8}
+            strokeDasharray="3 2"
+          />
         </g>
       )
     case 'construction-from-parts':
       // Triangle constructed from given parts
       return (
         <g opacity={o}>
-          <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
-            fill={accent} fillOpacity={0.1} stroke={color} strokeWidth={sw} />
-          <path d={`M ${9} ${s - 8} A 6 6 0 0 1 ${10} ${s - 4}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
-          <path d={`M ${s - 9} ${s - 8} A 6 6 0 0 0 ${s - 10} ${s - 4}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
+          <polygon
+            points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
+            fill={accent}
+            fillOpacity={0.1}
+            stroke={color}
+            strokeWidth={sw}
+          />
+          <path
+            d={`M ${9} ${s - 8} A 6 6 0 0 1 ${10} ${s - 4}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.7}
+          />
+          <path
+            d={`M ${s - 9} ${s - 8} A 6 6 0 0 0 ${s - 10} ${s - 4}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.7}
+          />
         </g>
       )
     case 'parallelogram-basics':
       // Parallelogram with diagonal
       return (
         <g opacity={o}>
-          <polygon points={`${10},${5} ${s - 3},${5} ${s - 10},${s - 5} ${3},${s - 5}`}
-            fill={accent} fillOpacity={0.1} stroke={accent} strokeWidth={sw} />
-          <line x1={10} y1={5} x2={s - 10} y2={s - 5}
-            stroke={color} strokeWidth={sw * 0.7} strokeDasharray="3 2" />
+          <polygon
+            points={`${10},${5} ${s - 3},${5} ${s - 10},${s - 5} ${3},${s - 5}`}
+            fill={accent}
+            fillOpacity={0.1}
+            stroke={accent}
+            strokeWidth={sw}
+          />
+          <line
+            x1={10}
+            y1={5}
+            x2={s - 10}
+            y2={s - 5}
+            stroke={color}
+            strokeWidth={sw * 0.7}
+            strokeDasharray="3 2"
+          />
         </g>
       )
     case 'the-finale':
       // Right triangle with squares on sides (Pythagorean)
       return (
         <g opacity={o}>
-          <polygon points={`${5},${s - 5} ${5},${10} ${s - 8},${s - 5}`}
-            fill={accent} fillOpacity={0.1} stroke={color} strokeWidth={sw} />
+          <polygon
+            points={`${5},${s - 5} ${5},${10} ${s - 8},${s - 5}`}
+            fill={accent}
+            fillOpacity={0.1}
+            stroke={color}
+            strokeWidth={sw}
+          />
           {/* Right angle mark */}
-          <polyline points={`${5},${s - 10} ${10},${s - 10} ${10},${s - 5}`}
-            fill="none" stroke={accent} strokeWidth={sw * 0.7} />
+          <polyline
+            points={`${5},${s - 10} ${10},${s - 10} ${10},${s - 5}`}
+            fill="none"
+            stroke={accent}
+            strokeWidth={sw * 0.7}
+          />
           {/* Small square on hypotenuse hint */}
-          <rect x={s - 15} y={6} width={8} height={8}
-            fill={accent} fillOpacity={0.15} stroke={accent} strokeWidth={sw * 0.5} />
+          <rect
+            x={s - 15}
+            y={6}
+            width={8}
+            height={8}
+            fill={accent}
+            fillOpacity={0.15}
+            stroke={accent}
+            strokeWidth={sw * 0.5}
+          />
         </g>
       )
     case 'more-congruence':
       // Two triangles with matching marks (SAS/ASA)
       return (
         <g opacity={o}>
-          <polygon points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
-            fill={accent} fillOpacity={0.08} stroke={color} strokeWidth={sw} />
+          <polygon
+            points={`${c},4 ${4},${s - 4} ${s - 4},${s - 4}`}
+            fill={accent}
+            fillOpacity={0.08}
+            stroke={color}
+            strokeWidth={sw}
+          />
           {/* Tick marks on two sides */}
-          <line x1={c - 5} y1={c - 2} x2={c - 3} y2={c + 1} stroke={accent} strokeWidth={sw * 0.9} />
-          <line x1={c + 5} y1={c - 2} x2={c + 3} y2={c + 1} stroke={accent} strokeWidth={sw * 0.9} />
+          <line
+            x1={c - 5}
+            y1={c - 2}
+            x2={c - 3}
+            y2={c + 1}
+            stroke={accent}
+            strokeWidth={sw * 0.9}
+          />
+          <line
+            x1={c + 5}
+            y1={c - 2}
+            x2={c + 3}
+            y2={c + 1}
+            stroke={accent}
+            strokeWidth={sw * 0.9}
+          />
         </g>
       )
     case 'area-theory':
       // Triangle inscribed in rectangle (area)
       return (
         <g opacity={o}>
-          <rect x={4} y={4} width={s - 8} height={s - 8}
-            fill="none" stroke={color} strokeWidth={sw * 0.7} />
-          <polygon points={`${4},${s - 4} ${c},${4} ${s - 4},${s - 4}`}
-            fill={accent} fillOpacity={0.15} stroke={accent} strokeWidth={sw} />
+          <rect
+            x={4}
+            y={4}
+            width={s - 8}
+            height={s - 8}
+            fill="none"
+            stroke={color}
+            strokeWidth={sw * 0.7}
+          />
+          <polygon
+            points={`${4},${s - 4} ${c},${4} ${s - 4},${s - 4}`}
+            fill={accent}
+            fillOpacity={0.15}
+            stroke={accent}
+            strokeWidth={sw}
+          />
         </g>
       )
     case 'application-of-areas':
       // Rectangle with shaded region
       return (
         <g opacity={o}>
-          <rect x={4} y={6} width={s - 8} height={s - 12}
-            fill="none" stroke={color} strokeWidth={sw} />
-          <line x1={4} y1={6} x2={s - 4} y2={s - 6}
-            stroke={color} strokeWidth={sw * 0.7} strokeDasharray="3 2" />
-          <rect x={4} y={6} width={(s - 8) / 2} height={(s - 12) / 2}
-            fill={accent} fillOpacity={0.2} stroke="none" />
+          <rect
+            x={4}
+            y={6}
+            width={s - 8}
+            height={s - 12}
+            fill="none"
+            stroke={color}
+            strokeWidth={sw}
+          />
+          <line
+            x1={4}
+            y1={6}
+            x2={s - 4}
+            y2={s - 6}
+            stroke={color}
+            strokeWidth={sw * 0.7}
+            strokeDasharray="3 2"
+          />
+          <rect
+            x={4}
+            y={6}
+            width={(s - 8) / 2}
+            height={(s - 12) / 2}
+            fill={accent}
+            fillOpacity={0.2}
+            stroke="none"
+          />
         </g>
       )
     default:
@@ -310,11 +481,7 @@ function simplifyPoints(pts: Pt[], epsilon: number): Pt[] {
  * Find where a ray from a rect's center toward an external point
  * intersects the rect border. Handles all 4 sides.
  */
-function rectBorderPoint(
-  cx: number, cy: number,
-  w: number, h: number,
-  px: number, py: number,
-): Pt {
+function rectBorderPoint(cx: number, cy: number, w: number, h: number, px: number, py: number): Pt {
   const dx = px - cx
   const dy = py - cy
   if (dx === 0 && dy === 0) return { x: cx, y: cy + h / 2 }
@@ -341,20 +508,23 @@ function rectBorderPoint(
  * Trim edge endpoints to node borders using ray-rect intersection.
  * Handles edges exiting/entering from any side of the node.
  */
-function trimToBorders(
-  pts: Pt[],
-  srcX: number, srcY: number,
-  tgtX: number, tgtY: number,
-): Pt[] {
+function trimToBorders(pts: Pt[], srcX: number, srcY: number, tgtX: number, tgtY: number): Pt[] {
   if (pts.length < 2) return pts
-  const result = pts.map(p => ({ ...p }))
+  const result = pts.map((p) => ({ ...p }))
 
   // Trim start → source border (ray from center toward next point)
   result[0] = rectBorderPoint(srcX, srcY, NODE_W, RENDER_H, result[1].x, result[1].y)
 
   // Trim end → target border (ray from center toward prev point)
   const last = result.length - 1
-  result[last] = rectBorderPoint(tgtX, tgtY, NODE_W, RENDER_H, result[last - 1].x, result[last - 1].y)
+  result[last] = rectBorderPoint(
+    tgtX,
+    tgtY,
+    NODE_W,
+    RENDER_H,
+    result[last - 1].x,
+    result[last - 1].y
+  )
 
   return result
 }
@@ -407,10 +577,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
   const totalImplemented = IMPLEMENTED_PROPS.size
 
   // Compute visible nodes + layout (dagre-powered)
-  const visibleIds = useMemo(
-    () => getVisibleNodes(completed, showAll),
-    [completed, showAll],
-  )
+  const visibleIds = useMemo(() => getVisibleNodes(completed, showAll), [completed, showAll])
 
   const { nodes: layout, edges } = useMemo(() => {
     const raw = computeLayout(visibleIds)
@@ -419,9 +586,9 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
     for (const [id, pos] of raw.nodes) {
       scaledNodes.set(id, { x: pos.x, y: pos.y * Y_SCALE, level: pos.level })
     }
-    const scaledEdges = raw.edges.map(e => ({
+    const scaledEdges = raw.edges.map((e) => ({
       ...e,
-      points: e.points.map(p => ({ x: p.x, y: p.y * Y_SCALE })),
+      points: e.points.map((p) => ({ x: p.x, y: p.y * Y_SCALE })),
     }))
     return { nodes: scaledNodes, edges: scaledEdges }
   }, [visibleIds])
@@ -429,7 +596,10 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
   // Compute SVG viewBox
   const viewBox = useMemo(() => {
     if (layout.size === 0) return '0 0 400 300'
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity
     for (const pos of layout.values()) {
       minX = Math.min(minX, pos.x - NODE_W / 2)
       maxX = Math.max(maxX, pos.x + NODE_W / 2)
@@ -460,7 +630,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
     const status = getNodeStatus(hoveredNode, completed)
     if (status !== 'locked') return null
     const deps = getPrerequisites(hoveredNode)
-    const missing = deps.filter(d => !completed.has(d))
+    const missing = deps.filter((d) => !completed.has(d))
     return { propId: hoveredNode, missing }
   }, [hoveredNode, completed])
 
@@ -534,7 +704,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
           <button
             type="button"
             data-action="toggle-show-all"
-            onClick={() => setShowAll(prev => !prev)}
+            onClick={() => setShowAll((prev) => !prev)}
             style={{
               padding: '6px 14px',
               fontSize: 13,
@@ -613,7 +783,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
           })}
 
           {/* Nodes */}
-          {visibleIds.map(id => {
+          {visibleIds.map((id) => {
             const pos = layout.get(id)
             if (!pos) return null
             const status = getNodeStatus(id, completed)
@@ -665,20 +835,21 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
                 />
 
                 {/* Geometric thumbnail — real construction preview or generic icon */}
-                {prop && (previews.get(id) ? (
-                  <image
-                    href={previews.get(id)}
-                    x={pos.x - PREVIEW_THUMB_W / 2}
-                    y={thumbCenterY}
-                    width={PREVIEW_THUMB_W}
-                    height={PREVIEW_THUMB_H}
-                    preserveAspectRatio="xMidYMid meet"
-                  />
-                ) : (
-                  <g transform={`translate(${pos.x - ICON_SIZE / 2}, ${thumbCenterY})`}>
-                    <PropThumbnail propId={id} block={prop.block} color={style.textColor} />
-                  </g>
-                ))}
+                {prop &&
+                  (previews.get(id) ? (
+                    <image
+                      href={previews.get(id)}
+                      x={pos.x - PREVIEW_THUMB_W / 2}
+                      y={thumbCenterY}
+                      width={PREVIEW_THUMB_W}
+                      height={PREVIEW_THUMB_H}
+                      preserveAspectRatio="xMidYMid meet"
+                    />
+                  ) : (
+                    <g transform={`translate(${pos.x - ICON_SIZE / 2}, ${thumbCenterY})`}>
+                      <PropThumbnail propId={id} block={prop.block} color={style.textColor} />
+                    </g>
+                  ))}
 
                 {/* Checkmark for completed */}
                 {status === 'completed' && (
@@ -751,7 +922,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
             zIndex: 10,
           }}
         >
-          Requires: {hoveredInfo.missing.map(d => `I.${d}`).join(', ')}
+          Requires: {hoveredInfo.missing.map((d) => `I.${d}`).join(', ')}
         </div>
       )}
 
@@ -763,7 +934,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
           max={1}
           step={0.05}
           onChange={setComingSoonOpacity}
-          formatValue={v => v.toFixed(2)}
+          formatValue={(v) => v.toFixed(2)}
         />
       </ToyDebugPanel>
     </div>

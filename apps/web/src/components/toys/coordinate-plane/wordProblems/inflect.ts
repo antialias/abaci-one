@@ -25,11 +25,7 @@ export function conjugateFor(verb: VerbEntry, subject: SubjectEntry): string {
  * Examples: formatWithUnit(3, "$", "prefix") → "$3"
  *           formatWithUnit(5, "inches", "suffix") → "5 inches"
  */
-export function formatWithUnit(
-  value: number,
-  unit: string,
-  position: 'prefix' | 'suffix'
-): string {
+export function formatWithUnit(value: number, unit: string, position: 'prefix' | 'suffix'): string {
   if (position === 'prefix') {
     return `${unit}${value}`
   }
@@ -46,8 +42,19 @@ export function capitalize(s: string): string {
 
 /** Words that should be lowercased when a subject appears mid-sentence */
 const MID_SENTENCE_LOWERCASE = new Set([
-  'the', 'a', 'an', 'each', 'every', 'some', 'this', 'that',
-  'she', 'he', 'it', 'they', 'we',
+  'the',
+  'a',
+  'an',
+  'each',
+  'every',
+  'some',
+  'this',
+  'that',
+  'she',
+  'he',
+  'it',
+  'they',
+  'we',
 ])
 
 /**

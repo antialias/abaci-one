@@ -93,12 +93,18 @@ async function generateImage(job: GenerationJob): Promise<void> {
   // Extract base64 image from response
   const parts = data.candidates?.[0]?.content?.parts
   if (!parts) {
-    throw new Error(`No parts in response for ${job.constantId}-${job.style}: ${JSON.stringify(data).slice(0, 200)}`)
+    throw new Error(
+      `No parts in response for ${job.constantId}-${job.style}: ${JSON.stringify(data).slice(0, 200)}`
+    )
   }
 
-  const imagePart = parts.find((p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData?.mimeType?.startsWith('image/'))
+  const imagePart = parts.find((p: { inlineData?: { mimeType: string; data: string } }) =>
+    p.inlineData?.mimeType?.startsWith('image/')
+  )
   if (!imagePart) {
-    throw new Error(`No image part in response for ${job.constantId}-${job.style}: ${JSON.stringify(parts.map((p: Record<string, unknown>) => Object.keys(p))).slice(0, 200)}`)
+    throw new Error(
+      `No image part in response for ${job.constantId}-${job.style}: ${JSON.stringify(parts.map((p: Record<string, unknown>) => Object.keys(p))).slice(0, 200)}`
+    )
   }
 
   const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64')

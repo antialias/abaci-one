@@ -32,7 +32,10 @@ const TOOLTIP_PAD = 8
  */
 function superscript(n: number): string {
   const superDigits = '\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079'
-  return String(n).split('').map(d => superDigits[parseInt(d)]).join('')
+  return String(n)
+    .split('')
+    .map((d) => superDigits[parseInt(d)])
+    .join('')
 }
 
 function SpecialLabel({ label, isDark }: { label: SpecialPrimeLabel; isDark: boolean }) {
@@ -74,10 +77,13 @@ export function PrimeTooltip({
   const showTourLink = primeInfo.isPrime && onStartTour
 
   // Wider tooltip when there are special properties or landmark notes
-  const tooltipWidth = (specialLabels.length > 0 || landmarkNote || showTourLink) ? 220 : 180
+  const tooltipWidth = specialLabels.length > 0 || landmarkNote || showTourLink ? 220 : 180
 
   // Clamp horizontal position
-  const clampedX = Math.max(TOOLTIP_PAD, Math.min(containerWidth - tooltipWidth - TOOLTIP_PAD, screenX - tooltipWidth / 2))
+  const clampedX = Math.max(
+    TOOLTIP_PAD,
+    Math.min(containerWidth - tooltipWidth - TOOLTIP_PAD, screenX - tooltipWidth / 2)
+  )
 
   let mainContent: React.ReactNode
 
@@ -140,9 +146,7 @@ export function PrimeTooltip({
         borderRadius: 8,
         backgroundColor: bg,
         backdropFilter: 'blur(8px)',
-        boxShadow: isDark
-          ? '0 2px 12px rgba(0,0,0,0.5)'
-          : '0 2px 12px rgba(0,0,0,0.1)',
+        boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.1)',
         zIndex: 10,
         pointerEvents: showTourLink ? 'auto' : 'none',
         whiteSpace: 'nowrap',
@@ -150,7 +154,14 @@ export function PrimeTooltip({
     >
       {mainContent}
       {specialLabels.length > 0 && (
-        <div data-element="special-labels" style={{ marginTop: 3, paddingTop: 3, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}` }}>
+        <div
+          data-element="special-labels"
+          style={{
+            marginTop: 3,
+            paddingTop: 3,
+            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+          }}
+        >
           {specialLabels.map((label, i) => (
             <SpecialLabel key={i} label={label} isDark={isDark} />
           ))}
@@ -164,7 +175,10 @@ export function PrimeTooltip({
             color: isDark ? '#ffa070' : '#a04020',
             marginTop: 3,
             paddingTop: specialLabels.length > 0 ? 0 : 3,
-            borderTop: specialLabels.length > 0 ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            borderTop:
+              specialLabels.length > 0
+                ? 'none'
+                : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
             lineHeight: 1.3,
             fontStyle: 'italic',
           }}

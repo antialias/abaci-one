@@ -46,20 +46,23 @@ type SamplesResponse = ColumnClassifierSamplesResponse | BoundaryDetectorSamples
  * - column-classifier: Returns digit images (0-9) with counts
  * - boundary-detector: Returns frame images with corner annotations
  */
-export const GET = withAuth(async (request) => {
-  const searchParams = request.nextUrl.searchParams
-  const modelType = searchParams.get('type') || 'column-classifier'
+export const GET = withAuth(
+  async (request) => {
+    const searchParams = request.nextUrl.searchParams
+    const modelType = searchParams.get('type') || 'column-classifier'
 
-  try {
-    if (modelType === 'boundary-detector') {
-      return getBoundaryDetectorSamples()
+    try {
+      if (modelType === 'boundary-detector') {
+        return getBoundaryDetectorSamples()
+      }
+      return getColumnClassifierSamples()
+    } catch (error) {
+      console.error('[vision-training/samples] Error:', error)
+      return Response.json({ error: 'Failed to read training samples' }, { status: 500 })
     }
-    return getColumnClassifierSamples()
-  } catch (error) {
-    console.error('[vision-training/samples] Error:', error)
-    return Response.json({ error: 'Failed to read training samples' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * Get column classifier samples (digit images)

@@ -16,7 +16,7 @@ export function PracticePageSkeleton() {
         className={css({
           minHeight: '100vh',
           backgroundColor: 'gray.50',
-          paddingTop: 'calc(80px + 2rem)',
+          paddingTop: '2rem',
           paddingLeft: '2rem',
           paddingRight: '2rem',
           paddingBottom: '2rem',

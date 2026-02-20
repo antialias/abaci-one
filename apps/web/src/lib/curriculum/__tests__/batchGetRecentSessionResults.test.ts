@@ -36,7 +36,9 @@ vi.mock('@/db', () => ({
 // ============================================================================
 
 /** Create a minimal SlotResult for testing */
-function makeSlotResult(overrides: Partial<SlotResult> & { partNumber: SlotResult['partNumber'] }): SlotResult {
+function makeSlotResult(
+  overrides: Partial<SlotResult> & { partNumber: SlotResult['partNumber'] }
+): SlotResult {
   return {
     slotIndex: 0,
     problem: { terms: [1, 2], skillIds: ['basic.directAddition'], id: 'p1' } as any,
@@ -168,8 +170,16 @@ describe('batchGetRecentSessionResults', () => {
       playerId: player1,
       parts,
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
-        makeSlotResult({ partNumber: 1, slotIndex: 1, timestamp: new Date('2025-01-01T10:01:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-01T10:00:00Z'),
+        }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 1,
+          timestamp: new Date('2025-01-01T10:01:00Z'),
+        }),
       ],
       completedAt: new Date('2025-01-01T10:10:00Z'),
     })
@@ -178,7 +188,11 @@ describe('batchGetRecentSessionResults', () => {
       playerId: player2,
       parts,
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-02T10:00:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-02T10:00:00Z'),
+        }),
       ],
       completedAt: new Date('2025-01-02T10:10:00Z'),
     })
@@ -231,7 +245,11 @@ describe('batchGetRecentSessionResults', () => {
       playerId,
       parts,
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-01T10:00:00Z'),
+        }),
       ],
       completedAt: null,
     })
@@ -269,7 +287,11 @@ describe('batchGetRecentSessionResults', () => {
     const { playerId } = await createTestStudent(ephemeralDb.db, 'status-filter')
 
     const parts = [makeSessionPart(1, 'linear')]
-    const result = makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') })
+    const result = makeSlotResult({
+      partNumber: 1,
+      slotIndex: 0,
+      timestamp: new Date('2025-01-01T10:00:00Z'),
+    })
 
     // Insert sessions with various statuses
     for (const status of ['draft', 'approved', 'in_progress', 'abandoned']) {
@@ -319,8 +341,16 @@ describe('batchGetRecentSessionResults', () => {
       playerId,
       parts,
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T09:00:00Z') }),
-        makeSlotResult({ partNumber: 1, slotIndex: 1, timestamp: new Date('2025-01-01T09:05:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-01T09:00:00Z'),
+        }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 1,
+          timestamp: new Date('2025-01-01T09:05:00Z'),
+        }),
       ],
       completedAt: new Date('2025-01-01T09:10:00Z'),
     })
@@ -329,7 +359,11 @@ describe('batchGetRecentSessionResults', () => {
       playerId,
       parts,
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-02T10:00:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-02T10:00:00Z'),
+        }),
       ],
       completedAt: new Date('2025-01-02T10:10:00Z'),
     })
@@ -409,7 +443,11 @@ describe('batchGetRecentSessionResults', () => {
       playerId,
       parts: [],
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-01T10:00:00Z'),
+        }),
       ],
       completedAt: new Date('2025-01-01T10:10:00Z'),
     })
@@ -433,7 +471,11 @@ describe('batchGetRecentSessionResults', () => {
       playerId,
       parts,
       results: [
-        makeSlotResult({ partNumber: 1, slotIndex: 0, timestamp: new Date('2025-01-01T10:00:00Z') }),
+        makeSlotResult({
+          partNumber: 1,
+          slotIndex: 0,
+          timestamp: new Date('2025-01-01T10:00:00Z'),
+        }),
       ],
       completedAt: new Date('2025-01-01T10:10:00Z'),
     })

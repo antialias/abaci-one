@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal } from '../StartPracticeModalContext'
@@ -7,23 +8,28 @@ import { useStartPracticeModal } from '../StartPracticeModalContext'
 export function ErrorDisplay() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { displayError, isNoSkillsError, setShowSkillSelector } = useStartPracticeModal()
+  const { displayError, isNoSkillsError, isSessionLimitError, setShowSkillSelector } =
+    useStartPracticeModal()
 
   if (!displayError) {
     return null
   }
 
+  const isWarning = isNoSkillsError || isSessionLimitError
+
   return (
     <div
       data-element="error-display"
-      data-error-type={isNoSkillsError ? 'no-skills' : 'generic'}
+      data-error-type={
+        isNoSkillsError ? 'no-skills' : isSessionLimitError ? 'session-limit' : 'generic'
+      }
       className={css({
         padding: '0.75rem',
         borderRadius: '8px',
         textAlign: 'center',
       })}
       style={{
-        background: isNoSkillsError
+        background: isWarning
           ? isDark
             ? 'rgba(251, 191, 36, 0.12)'
             : 'rgba(251, 191, 36, 0.08)'
@@ -31,7 +37,7 @@ export function ErrorDisplay() {
             ? 'rgba(239, 68, 68, 0.12)'
             : 'rgba(239, 68, 68, 0.08)',
         border: `1px solid ${
-          isNoSkillsError
+          isWarning
             ? isDark
               ? 'rgba(251, 191, 36, 0.25)'
               : 'rgba(251, 191, 36, 0.15)'
@@ -41,7 +47,7 @@ export function ErrorDisplay() {
         }`,
       }}
     >
-      {isNoSkillsError ? (
+      {isSessionLimitError ? (
         <>
           <p
             className={css({
@@ -50,7 +56,46 @@ export function ErrorDisplay() {
             })}
             style={{ color: isDark ? '#fcd34d' : '#b45309' }}
           >
-            ⚠️ No skills enabled
+            Weekly session limit reached
+          </p>
+          <p
+            className={css({ fontSize: '0.75rem', marginBottom: '0.75rem' })}
+            style={{ color: isDark ? '#d4d4d4' : '#525252' }}
+          >
+            You&apos;ve used all 5 sessions this week.
+          </p>
+          <Link
+            href="/pricing"
+            data-action="upgrade-for-sessions"
+            className={css({
+              display: 'inline-block',
+              padding: '0.5rem 1rem',
+              fontSize: '0.8125rem',
+              fontWeight: '600',
+              color: 'white',
+              backgroundColor: isDark ? '#7c3aed' : '#8b5cf6',
+              border: 'none',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              transition: 'all 0.15s ease',
+              _hover: {
+                backgroundColor: isDark ? '#6d28d9' : '#7c3aed',
+              },
+            })}
+          >
+            Upgrade for unlimited sessions
+          </Link>
+        </>
+      ) : isNoSkillsError ? (
+        <>
+          <p
+            className={css({
+              fontSize: '0.875rem',
+              marginBottom: '0.5rem',
+            })}
+            style={{ color: isDark ? '#fcd34d' : '#b45309' }}
+          >
+            No skills enabled
           </p>
           <p
             className={css({ fontSize: '0.75rem', marginBottom: '0.75rem' })}

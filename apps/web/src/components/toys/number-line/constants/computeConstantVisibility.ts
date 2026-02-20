@@ -24,12 +24,7 @@ export function computeConstantVisibility(
   state: NumberLineState,
   canvasWidth: number
 ): ConstantVisibility {
-  const screenX = numberToScreenX(
-    constant.value,
-    state.center,
-    state.pixelsPerUnit,
-    canvasWidth
-  )
+  const screenX = numberToScreenX(constant.value, state.center, state.pixelsPerUnit, canvasWidth)
 
   // Margin so constants don't pop in right at the edge
   const margin = 40
@@ -40,7 +35,7 @@ export function computeConstantVisibility(
   }
 
   // Zoom adequacy: one unit at the constant's precision should be >= 20px
-  const unitAtPrecision = Math.pow(10, -constant.revealPrecision)
+  const unitAtPrecision = 10 ** -constant.revealPrecision
   const pxPerPrecisionUnit = unitAtPrecision * state.pixelsPerUnit
   const opacity = Math.min(1, pxPerPrecisionUnit / 20)
 

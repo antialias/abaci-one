@@ -24,9 +24,7 @@ beforeAll(async () => {
   await ensureTestSchema()
   for (const table of ['worksheet_mastery', 'worksheet_attempts', 'problem_attempts']) {
     await db.run(
-      sql.raw(
-        `CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, user_id TEXT NOT NULL)`
-      )
+      sql.raw(`CREATE TABLE IF NOT EXISTS ${table} (id TEXT PRIMARY KEY, user_id TEXT NOT NULL)`)
     )
   }
 })
@@ -83,7 +81,10 @@ describe('identity stability across auth transitions', () => {
     })
 
     afterEach(async () => {
-      await db.delete(schema.users).where(eq(schema.users.id, userId)).catch(() => {})
+      await db
+        .delete(schema.users)
+        .where(eq(schema.users.id, userId))
+        .catch(() => {})
     })
 
     it('player created as guest is found via getDbUserId after upgrade', async () => {
@@ -200,8 +201,14 @@ describe('identity stability across auth transitions', () => {
     })
 
     afterEach(async () => {
-      await db.delete(schema.users).where(eq(schema.users.id, sourceUserId)).catch(() => {})
-      await db.delete(schema.users).where(eq(schema.users.id, targetUserId)).catch(() => {})
+      await db
+        .delete(schema.users)
+        .where(eq(schema.users.id, sourceUserId))
+        .catch(() => {})
+      await db
+        .delete(schema.users)
+        .where(eq(schema.users.id, targetUserId))
+        .catch(() => {})
     })
 
     it('player created as guest is found via getDbUserId after merge', async () => {

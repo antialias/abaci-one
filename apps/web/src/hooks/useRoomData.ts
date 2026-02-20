@@ -828,7 +828,6 @@ async function deactivatePlayerInRoomApi(params: {
     console.error('[useRoomData] Error response:', errorData)
     throw new Error(errorData.error || 'Failed to deactivate player')
   }
-
 }
 
 /**

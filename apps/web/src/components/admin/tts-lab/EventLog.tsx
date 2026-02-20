@@ -85,9 +85,7 @@ export function EventLog({ entries, onClear }: EventLogProps) {
                 [{entry.level.toUpperCase().padEnd(7)}]
               </span>{' '}
               <span className={css({ color: '#c9d1d9' })}>{entry.message}</span>
-              {entry.detail && (
-                <span className={css({ color: '#6e7681' })}> {entry.detail}</span>
-              )}
+              {entry.detail && <span className={css({ color: '#6e7681' })}> {entry.detail}</span>}
             </div>
           ))
         )}

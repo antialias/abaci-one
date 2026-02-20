@@ -108,7 +108,7 @@ export function useEuclidMusic({
     const pattern = geometryToPattern(
       constructionRef.current,
       factStoreRef.current,
-      isCompleteRef.current,
+      isCompleteRef.current
     )
     currentPatternRef.current = pattern
 
@@ -125,7 +125,9 @@ export function useEuclidMusic({
       // Stop
       try {
         if (typeof hush === 'function') hush()
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       isPlayingRef.current = false
       if (mountedRef.current) setIsPlaying(false)
     } else {
@@ -153,7 +155,9 @@ export function useEuclidMusic({
       // but leave Strudel initialized for the next mount
       try {
         if (typeof hush === 'function') hush()
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }, [])
 
@@ -184,45 +188,40 @@ export function useEuclidMusic({
   }, [evaluateCurrentPattern])
 
   // One-shot intersection chime
-  const notifyIntersection = useCallback((x: number, y: number) => {
-    if (!isPlayingRef.current || !strudelInitialized) return
+  const notifyIntersection = useCallback(
+    (x: number, y: number) => {
+      if (!isPlayingRef.current || !strudelInitialized) return
 
-    const { minX, maxX } = getPointBounds(constructionRef.current)
+      const { minX, maxX } = getPointBounds(constructionRef.current)
 
-    const chime = intersectionChimePattern(x, y, minX, maxX)
-    const main = currentPatternRef.current
-    const stacked = main
-      ? `stack(\n  ${main},\n  ${chime}\n)`
-      : chime
+      const chime = intersectionChimePattern(x, y, minX, maxX)
+      const main = currentPatternRef.current
+      const stacked = main ? `stack(\n  ${main},\n  ${chime}\n)` : chime
 
-    // Clear any existing one-shot timer
-    if (oneShotTimerRef.current) {
-      clearTimeout(oneShotTimerRef.current)
-    }
-
-    evaluate(stacked).catch(err =>
-      console.error('[EuclidMusic] Chime evaluation failed:', err),
-    )
-
-    // Remove chime after decay
-    oneShotTimerRef.current = setTimeout(() => {
-      oneShotTimerRef.current = null
-      if (isPlayingRef.current) {
-        evaluateCurrentPattern()
+      // Clear any existing one-shot timer
+      if (oneShotTimerRef.current) {
+        clearTimeout(oneShotTimerRef.current)
       }
-    }, CHIME_DURATION)
-  }, [constructionRef, evaluateCurrentPattern])
+
+      evaluate(stacked).catch((err) => console.error('[EuclidMusic] Chime evaluation failed:', err))
+
+      // Remove chime after decay
+      oneShotTimerRef.current = setTimeout(() => {
+        oneShotTimerRef.current = null
+        if (isPlayingRef.current) {
+          evaluateCurrentPattern()
+        }
+      }, CHIME_DURATION)
+    },
+    [constructionRef, evaluateCurrentPattern]
+  )
 
   // Completion flourish
   const notifyCompletion = useCallback(() => {
     if (!isPlayingRef.current || !strudelInitialized) return
 
     // Update the main pattern with isComplete=true
-    const main = geometryToPattern(
-      constructionRef.current,
-      factStoreRef.current,
-      true,
-    )
+    const main = geometryToPattern(constructionRef.current, factStoreRef.current, true)
     currentPatternRef.current = main
 
     const flourish = completionFlourishPattern()
@@ -232,8 +231,8 @@ export function useEuclidMusic({
       clearTimeout(oneShotTimerRef.current)
     }
 
-    evaluate(stacked).catch(err =>
-      console.error('[EuclidMusic] Flourish evaluation failed:', err),
+    evaluate(stacked).catch((err) =>
+      console.error('[EuclidMusic] Flourish evaluation failed:', err)
     )
 
     oneShotTimerRef.current = setTimeout(() => {
@@ -244,11 +243,14 @@ export function useEuclidMusic({
     }, FLOURISH_DURATION)
   }, [constructionRef, factStoreRef, evaluateCurrentPattern])
 
-  return useMemo(() => ({
-    isPlaying,
-    toggle,
-    notifyChange,
-    notifyIntersection,
-    notifyCompletion,
-  }), [isPlaying, toggle, notifyChange, notifyIntersection, notifyCompletion])
+  return useMemo(
+    () => ({
+      isPlaying,
+      toggle,
+      notifyChange,
+      notifyIntersection,
+      notifyCompletion,
+    }),
+    [isPlaying, toggle, notifyChange, notifyIntersection, notifyCompletion]
+  )
 }

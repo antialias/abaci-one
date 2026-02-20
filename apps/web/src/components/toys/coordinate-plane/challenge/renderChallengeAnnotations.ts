@@ -20,7 +20,7 @@ function fmtUnit(value: number, unit: string, position: 'prefix' | 'suffix'): st
 
 /** Extract the text of a tagged span from the problem */
 function spanText(problem: WordProblem, tag: AnnotationTag): string | undefined {
-  return problem.spans.find(s => s.tag === tag)?.text
+  return problem.spans.find((s) => s.tag === tag)?.text
 }
 
 /**
@@ -37,16 +37,20 @@ export function renderChallengeAnnotations(
   state: CoordinatePlaneState,
   cssWidth: number,
   cssHeight: number,
-  isDark: boolean,
+  isDark: boolean
 ) {
   const { phase, revealStep } = challenge
 
   const toScreen = (wx: number, wy: number) =>
     worldToScreen2D(
-      wx, wy,
-      state.center.x, state.center.y,
-      state.pixelsPerUnit.x, state.pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      wx,
+      wy,
+      state.center.x,
+      state.center.y,
+      state.pixelsPerUnit.x,
+      state.pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     )
 
   const m = problem.equation.slope.num / problem.equation.slope.den
@@ -54,8 +58,13 @@ export function renderChallengeAnnotations(
   const { unitFormat } = problem
 
   // ── Constraint line: dashed horizontal at y = target ──
-  const showConstraint = phase === 'solving' || phase === 'checking'
-    || phase === 'answering' || phase === 'celebrating' || phase === 'revealing' || phase === 'revealed'
+  const showConstraint =
+    phase === 'solving' ||
+    phase === 'checking' ||
+    phase === 'answering' ||
+    phase === 'celebrating' ||
+    phase === 'revealing' ||
+    phase === 'revealed'
 
   if (showConstraint && problem.answer.solveFor !== 'equation') {
     const yTarget = problem.answer.y
@@ -113,8 +122,12 @@ export function renderChallengeAnnotations(
   if (phase !== 'revealing' && phase !== 'revealed') return
 
   const annotatedSpans = problem.spans.filter(
-    s => s.tag && s.tag !== 'context' && s.tag !== 'question'
-      && s.tag !== 'x_unit' && s.tag !== 'y_unit'
+    (s) =>
+      s.tag &&
+      s.tag !== 'context' &&
+      s.tag !== 'question' &&
+      s.tag !== 'x_unit' &&
+      s.tag !== 'y_unit'
   )
 
   annotatedSpans.forEach((span, index) => {
@@ -144,7 +157,7 @@ function renderInterceptMarker(
   b: number,
   problem: WordProblem,
   toScreen: (wx: number, wy: number) => { x: number; y: number },
-  isDark: boolean,
+  isDark: boolean
 ) {
   const color = TAG_COLORS.intercept!
   const pos = toScreen(0, b)
@@ -211,7 +224,7 @@ function renderSlopeStaircase(
   b: number,
   problem: WordProblem,
   toScreen: (wx: number, wy: number) => { x: number; y: number },
-  isDark: boolean,
+  isDark: boolean
 ) {
   if (m === 0) return
 
@@ -232,8 +245,8 @@ function renderSlopeStaircase(
     const x0 = i * stepDir
     const y0 = b + m * x0
     const x1 = (i + 1) * stepDir
-    const y1 = b + m * x0     // horizontal run stays at same y
-    const y2 = b + m * x1     // rise to next y
+    const y1 = b + m * x0 // horizontal run stays at same y
+    const y2 = b + m * x1 // rise to next y
 
     const p0 = toScreen(x0, y0)
     const pRun = toScreen(x1, y1)
@@ -318,10 +331,19 @@ function renderSlopeStaircase(
 
   // Rise label: "$20" along the vertical edge
   const riseMidY = (firstRun.y + firstRise.y) / 2
-  const slopeText = spanText(problem, 'slope') ?? fmtUnit(Math.abs(rise), unitFormat.y.unit, unitFormat.y.position)
+  const slopeText =
+    spanText(problem, 'slope') ?? fmtUnit(Math.abs(rise), unitFormat.y.unit, unitFormat.y.position)
   const riseLabelX = firstRun.x + 12 * stepDir
-  drawPillLabel(ctx, slopeText, riseLabelX, riseMidY, color, isDark,
-    stepDir > 0 ? 'left' : 'right', 'middle')
+  drawPillLabel(
+    ctx,
+    slopeText,
+    riseLabelX,
+    riseMidY,
+    color,
+    isDark,
+    stepDir > 0 ? 'left' : 'right',
+    'middle'
+  )
 
   // ── "× N" count badge on the last step ──
   if (steps > 1) {
@@ -330,8 +352,16 @@ function renderSlopeStaircase(
     ctx.font = `700 12px ${SYSTEM_FONT}`
     const countX = lastRise.x + 8 * stepDir
     const countY = lastRise.y - 4
-    drawPillLabel(ctx, countLabel, countX, countY, color, isDark,
-      stepDir > 0 ? 'left' : 'right', 'middle')
+    drawPillLabel(
+      ctx,
+      countLabel,
+      countX,
+      countY,
+      color,
+      isDark,
+      stepDir > 0 ? 'left' : 'right',
+      'middle'
+    )
   }
 
   ctx.restore()
@@ -343,7 +373,7 @@ function renderTargetHighlight(
   yTarget: number,
   toScreen: (wx: number, wy: number) => { x: number; y: number },
   cssWidth: number,
-  cssHeight: number,
+  cssHeight: number
 ) {
   const color = TAG_COLORS.target!
   const screenY = toScreen(0, yTarget).y
@@ -370,7 +400,7 @@ function renderAnswerMarker(
   y: number,
   problem: WordProblem,
   toScreen: (wx: number, wy: number) => { x: number; y: number },
-  isDark: boolean,
+  isDark: boolean
 ) {
   const color = TAG_COLORS.answer!
   const pos = toScreen(x, y)
@@ -427,7 +457,7 @@ function drawPillLabel(
   color: string,
   isDark: boolean,
   align: 'left' | 'center' | 'right',
-  baseline: 'top' | 'middle',
+  baseline: 'top' | 'middle'
 ) {
   const textWidth = ctx.measureText(text).width
   const pillPad = 5
@@ -455,14 +485,22 @@ function drawPillLabel(
   ctx.fillStyle = color
   ctx.textAlign = align
   ctx.textBaseline = baseline
-  ctx.fillText(text, align === 'center' ? x : align === 'right' ? x : x + pillPad, baseline === 'middle' ? y : y)
+  ctx.fillText(
+    text,
+    align === 'center' ? x : align === 'right' ? x : x + pillPad,
+    baseline === 'middle' ? y : y
+  )
   ctx.restore()
 }
 
 /** Canvas roundRect helper */
 function roundRect(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
 ) {
   ctx.moveTo(x + r, y)
   ctx.lineTo(x + w - r, y)

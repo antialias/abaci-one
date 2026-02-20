@@ -19,7 +19,7 @@ const INACTIVITY_MS = 8_000
 export function useFindTheNumberAudio(
   zone: ProximityZone | null,
   proximityRef: RefObject<ProximityResult | null>,
-  muted = false,
+  muted = false
 ): void {
   const { isEnabled } = useAudioManager()
   const shouldPlay = isEnabled && !muted
@@ -165,7 +165,16 @@ export function useFindTheNumberAudio(
         hintTimerRef.current = null
       }
     }
-  }, [zone, shouldPlay, proximityRef, speakZoomIn, speakZoomOut, speakScrollLeft, speakScrollRight, speakClose])
+  }, [
+    zone,
+    shouldPlay,
+    proximityRef,
+    speakZoomIn,
+    speakZoomOut,
+    speakScrollLeft,
+    speakScrollRight,
+    speakClose,
+  ])
 
   // Reset on game end
   useEffect(() => {

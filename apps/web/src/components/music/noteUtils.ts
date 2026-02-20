@@ -71,11 +71,7 @@ export function staffPositionToPitch(
 /**
  * Convert a pitch class and octave to a staff position for a given clef.
  */
-export function pitchToStaffPosition(
-  pitchClass: PitchClass,
-  octave: number,
-  clef: Clef
-): number {
+export function pitchToStaffPosition(pitchClass: PitchClass, octave: number, clef: Clef): number {
   const notes = clef === 'treble' ? TREBLE_NOTES : BASS_NOTES
   const baseOctave = clef === 'treble' ? TREBLE_BASE_OCTAVE : BASS_BASE_OCTAVE
 
@@ -119,18 +115,14 @@ export function formatNoteName(
   octave: number,
   accidental?: Accidental
 ): string {
-  const accidentalSymbol =
-    accidental === 'sharp' ? '#' : accidental === 'flat' ? 'b' : ''
+  const accidentalSymbol = accidental === 'sharp' ? '#' : accidental === 'flat' ? 'b' : ''
   return `${pitchClass}${accidentalSymbol}${octave}`
 }
 
 /**
  * Get a friendly name for well-known notes.
  */
-export function getFriendlyName(
-  pitchClass: PitchClass,
-  octave: number
-): string | undefined {
+export function getFriendlyName(pitchClass: PitchClass, octave: number): string | undefined {
   if (pitchClass === 'C' && octave === 4) return 'Middle C'
   return undefined
 }

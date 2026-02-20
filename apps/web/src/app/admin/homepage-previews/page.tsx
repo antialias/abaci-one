@@ -107,9 +107,7 @@ export default function HomepagePreviewsAdmin() {
       ctx.scale(dpr, dpr)
       canvasTarget.render(ctx, canvasTarget.width, canvasTarget.height)
 
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png')
-      )
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!blob) throw new Error('Failed to create PNG blob')
 
       // Convert to base64 data URL
@@ -287,11 +285,7 @@ export default function HomepagePreviewsAdmin() {
             <option value="">AI Provider...</option>
             {status?.providers.map((p) =>
               p.models.map((m) => (
-                <option
-                  key={`${p.id}:${m.id}`}
-                  value={`${p.id}:${m.id}`}
-                  disabled={!p.available}
-                >
+                <option key={`${p.id}:${m.id}`} value={`${p.id}:${m.id}`} disabled={!p.available}>
                   {p.name} / {m.name}
                   {!p.available ? ' (no key)' : ''}
                 </option>
@@ -492,9 +486,7 @@ function TargetCard({
         </div>
         <div className={css({ fontSize: '12px', color: '#8b949e' })}>
           {target.id} &middot; {target.type} &middot; {target.width}&times;{target.height}
-          {target.imageExists && target.sizeBytes && (
-            <> &middot; {formatBytes(target.sizeBytes)}</>
-          )}
+          {target.imageExists && target.sizeBytes && <> &middot; {formatBytes(target.sizeBytes)}</>}
         </div>
         {target.prompt && (
           <div

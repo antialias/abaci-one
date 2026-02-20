@@ -82,12 +82,7 @@ export function MicLevelMeter({ stream }: MicLevelMeterProps) {
       const level = Math.min(1, rms * 3.5)
       const litBars = Math.round(level * BAR_COUNT)
 
-      ctx.clearRect(
-        0,
-        0,
-        BAR_COUNT * (BAR_WIDTH + BAR_GAP),
-        BAR_HEIGHT
-      )
+      ctx.clearRect(0, 0, BAR_COUNT * (BAR_WIDTH + BAR_GAP), BAR_HEIGHT)
 
       for (let i = 0; i < BAR_COUNT; i++) {
         const x = i * (BAR_WIDTH + BAR_GAP)

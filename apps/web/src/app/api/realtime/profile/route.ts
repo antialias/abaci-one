@@ -16,10 +16,7 @@ export const POST = withAuth(async (request) => {
     const { playerId } = body
 
     if (typeof playerId !== 'string' || !playerId) {
-      return NextResponse.json(
-        { error: 'playerId must be a non-empty string' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'playerId must be a non-empty string' }, { status: 400 })
     }
 
     const result = await assembleChildProfile(playerId)
@@ -31,9 +28,6 @@ export const POST = withAuth(async (request) => {
     return NextResponse.json({ profile: result })
   } catch (error) {
     console.error('[realtime/profile] Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 })

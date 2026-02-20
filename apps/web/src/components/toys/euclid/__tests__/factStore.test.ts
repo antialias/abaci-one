@@ -23,8 +23,15 @@ describe('factStore', () => {
     it('creates independent stores', () => {
       const store1 = createFactStore()
       const store2 = createFactStore()
-      addFact(store1, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(
+        store1,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
       expect(store1.facts).toHaveLength(1)
       expect(store2.facts).toHaveLength(0)
     })
@@ -35,8 +42,15 @@ describe('factStore', () => {
       const store = createFactStore()
       const left = distancePair('pt-A', 'pt-B')
       const right = distancePair('pt-C', 'pt-D')
-      const newFacts = addFact(store, left, right,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test justification', 0)
+      const newFacts = addFact(
+        store,
+        left,
+        right,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test justification',
+        0
+      )
 
       expect(newFacts).toHaveLength(1)
       expect(newFacts[0].statement).toBe('AB = CD')
@@ -48,8 +62,15 @@ describe('factStore', () => {
     it('mutates the store in place', () => {
       const store = createFactStore()
       const factsBefore = store.facts
-      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
 
       // Same array reference — mutated in place
       expect(store.facts).toBe(factsBefore)
@@ -59,10 +80,24 @@ describe('factStore', () => {
 
     it('increments fact IDs', () => {
       const store = createFactStore()
-      const f1 = addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      const f2 = addFact(store, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
-        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 1)
+      const f1 = addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
+      const f2 = addFact(
+        store,
+        distancePair('pt-E', 'pt-F'),
+        distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' },
+        'EF = GH',
+        'test',
+        1
+      )
 
       expect(f1[0].id).toBe(1)
       expect(f2[0].id).toBe(2)
@@ -74,13 +109,27 @@ describe('factStore', () => {
       const left = distancePair('pt-A', 'pt-B')
       const right = distancePair('pt-C', 'pt-D')
 
-      const first = addFact(store, left, right,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      const first = addFact(
+        store,
+        left,
+        right,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
       expect(first).toHaveLength(1)
 
       // Same fact again — should be rejected
-      const second = addFact(store, left, right,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      const second = addFact(
+        store,
+        left,
+        right,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
       expect(second).toHaveLength(0)
       expect(store.facts).toHaveLength(1)
     })
@@ -92,15 +141,12 @@ describe('factStore', () => {
       const dpEF = distancePair('pt-E', 'pt-F')
 
       // AB = CD
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
       // CD = EF
-      addFact(store, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(store, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       // AB = EF is already known via transitivity — should be rejected
-      const redundant = addFact(store, dpAB, dpEF,
-        { type: 'cn1', via: dpCD }, 'AB = EF', 'test', 2)
+      const redundant = addFact(store, dpAB, dpEF, { type: 'cn1', via: dpCD }, 'AB = EF', 'test', 2)
       expect(redundant).toHaveLength(0)
     })
   })
@@ -116,8 +162,7 @@ describe('factStore', () => {
       const store = createFactStore()
       const left = distancePair('pt-A', 'pt-B')
       const right = distancePair('pt-C', 'pt-D')
-      addFact(store, left, right,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, left, right, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
 
       expect(queryEquality(store, left, right)).toBe(true)
       // Symmetric
@@ -130,10 +175,8 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(store, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       expect(queryEquality(store, dpAB, dpEF)).toBe(true)
     })
@@ -144,8 +187,7 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
 
       expect(queryEquality(store, dpAB, dpEF)).toBe(false)
     })
@@ -164,8 +206,7 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
 
       // EF was never registered
       expect(queryEquality(store, dpAB, dpEF)).toBe(false)
@@ -188,10 +229,8 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(store, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       const eqClass = getEqualDistances(store, dpAB)
       const keys = new Set(eqClass.map(distancePairKey))
@@ -208,10 +247,8 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(store, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       const fromAB = new Set(getEqualDistances(store, dpAB).map(distancePairKey))
       const fromEF = new Set(getEqualDistances(store, dpEF).map(distancePairKey))
@@ -227,11 +264,9 @@ describe('factStore', () => {
       const dpGH = distancePair('pt-G', 'pt-H')
 
       // Class 1: AB = CD
-      addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(store, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
       // Class 2: EF = GH
-      addFact(store, dpEF, dpGH,
-        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 1)
+      addFact(store, dpEF, dpGH, { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 1)
 
       const class1 = getEqualDistances(store, dpAB)
       const class2 = getEqualDistances(store, dpEF)
@@ -251,10 +286,8 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(original, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       const rebuilt = rebuildFactStore(original.facts)
 
@@ -276,8 +309,7 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
 
       const rebuilt = rebuildFactStore(original.facts)
       expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
@@ -288,15 +320,13 @@ describe('factStore', () => {
       const dpAB = distancePair('pt-A', 'pt-B')
       const dpCD = distancePair('pt-C', 'pt-D')
 
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
 
       const rebuilt = rebuildFactStore(original.facts)
 
       // Adding to original shouldn't affect rebuilt
       const dpEF = distancePair('pt-E', 'pt-F')
-      addFact(original, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(original, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       expect(queryEquality(original, dpAB, dpEF)).toBe(true)
       expect(queryEquality(rebuilt, dpAB, dpEF)).toBe(false)
@@ -304,10 +334,24 @@ describe('factStore', () => {
 
     it('preserves fact atStep values', () => {
       const original = createFactStore()
-      addFact(original, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(original, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
-        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 3)
+      addFact(
+        original,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
+      addFact(
+        original,
+        distancePair('pt-E', 'pt-F'),
+        distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' },
+        'EF = GH',
+        'test',
+        3
+      )
 
       const rebuilt = rebuildFactStore(original.facts)
       expect(rebuilt.facts[0].atStep).toBe(0)
@@ -316,17 +360,36 @@ describe('factStore', () => {
 
     it('preserves fact ordering', () => {
       const original = createFactStore()
-      addFact(original, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'j1', 0)
-      addFact(original, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
-        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'j2', 1)
-      addFact(original, distancePair('pt-C', 'pt-D'), distancePair('pt-E', 'pt-F'),
-        { type: 'def15', circleId: 'cir-3' }, 'CD = EF', 'j3', 2)
+      addFact(
+        original,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'j1',
+        0
+      )
+      addFact(
+        original,
+        distancePair('pt-E', 'pt-F'),
+        distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' },
+        'EF = GH',
+        'j2',
+        1
+      )
+      addFact(
+        original,
+        distancePair('pt-C', 'pt-D'),
+        distancePair('pt-E', 'pt-F'),
+        { type: 'def15', circleId: 'cir-3' },
+        'CD = EF',
+        'j3',
+        2
+      )
 
       const rebuilt = rebuildFactStore(original.facts)
-      expect(rebuilt.facts.map(f => f.statement)).toEqual([
-        'AB = CD', 'EF = GH', 'CD = EF',
-      ])
+      expect(rebuilt.facts.map((f) => f.statement)).toEqual(['AB = CD', 'EF = GH', 'CD = EF'])
     })
 
     it('handles different citation types', () => {
@@ -335,10 +398,8 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(original, dpCD, dpEF,
-        { type: 'prop', propId: 1 }, 'CD = EF', 'test', 1)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpCD, dpEF, { type: 'prop', propId: 1 }, 'CD = EF', 'test', 1)
 
       const rebuilt = rebuildFactStore(original.facts)
       expect(rebuilt.facts[0].citation).toEqual({ type: 'def15', circleId: 'cir-1' })
@@ -348,12 +409,17 @@ describe('factStore', () => {
 
     it('rebuilds long transitive chains (A=B=C=D=E)', () => {
       const original = createFactStore()
-      const dps = ['A', 'B', 'C', 'D', 'E'].map((l, i) =>
-        distancePair(`pt-${l}1`, `pt-${l}2`),
-      )
+      const dps = ['A', 'B', 'C', 'D', 'E'].map((l, i) => distancePair(`pt-${l}1`, `pt-${l}2`))
       for (let i = 0; i < dps.length - 1; i++) {
-        addFact(original, dps[i], dps[i + 1],
-          { type: 'def15', circleId: `cir-${i}` }, `s${i}`, `j${i}`, i)
+        addFact(
+          original,
+          dps[i],
+          dps[i + 1],
+          { type: 'def15', circleId: `cir-${i}` },
+          `s${i}`,
+          `j${i}`,
+          i
+        )
       }
 
       const rebuilt = rebuildFactStore(original.facts)
@@ -372,11 +438,9 @@ describe('factStore', () => {
       const dpGH = distancePair('pt-G', 'pt-H')
 
       // Class 1: AB = CD
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
       // Class 2: EF = GH (separate)
-      addFact(original, dpEF, dpGH,
-        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 1)
+      addFact(original, dpEF, dpGH, { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 1)
 
       const rebuilt = rebuildFactStore(original.facts)
       expect(queryEquality(rebuilt, dpAB, dpCD)).toBe(true)
@@ -391,10 +455,8 @@ describe('factStore', () => {
       const dpCD = distancePair('pt-C', 'pt-D')
       const dpEF = distancePair('pt-E', 'pt-F')
 
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addFact(original, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(original, dpCD, dpEF, { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
 
       // Rebuild from only the first fact (simulating rewind to step 1)
       const rebuilt = rebuildFactStore(original.facts.slice(0, 1))
@@ -414,18 +476,38 @@ describe('factStore', () => {
       const store = createFactStore()
 
       // Chain: AB = CD = EF = GH
-      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'c1' }, 's1', 'j1', 0)
-      addFact(store, distancePair('pt-C', 'pt-D'), distancePair('pt-E', 'pt-F'),
-        { type: 'def15', circleId: 'c2' }, 's2', 'j2', 1)
-      addFact(store, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
-        { type: 'def15', circleId: 'c3' }, 's3', 'j3', 2)
+      addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'c1' },
+        's1',
+        'j1',
+        0
+      )
+      addFact(
+        store,
+        distancePair('pt-C', 'pt-D'),
+        distancePair('pt-E', 'pt-F'),
+        { type: 'def15', circleId: 'c2' },
+        's2',
+        'j2',
+        1
+      )
+      addFact(
+        store,
+        distancePair('pt-E', 'pt-F'),
+        distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'c3' },
+        's3',
+        'j3',
+        2
+      )
 
       // All should be transitively equal
-      expect(queryEquality(store,
-        distancePair('pt-A', 'pt-B'),
-        distancePair('pt-G', 'pt-H'),
-      )).toBe(true)
+      expect(queryEquality(store, distancePair('pt-A', 'pt-B'), distancePair('pt-G', 'pt-H'))).toBe(
+        true
+      )
 
       expect(store.facts).toHaveLength(3)
     })
@@ -436,8 +518,15 @@ describe('factStore', () => {
       const store = createFactStore()
       const left = angleMeasure('pt-B', 'pt-A', 'pt-C')
       const right = angleMeasure('pt-E', 'pt-D', 'pt-F')
-      const newFacts = addAngleFact(store, left, right,
-        { type: 'cn4' }, '∠ABC = ∠DEF', 'test justification', 0)
+      const newFacts = addAngleFact(
+        store,
+        left,
+        right,
+        { type: 'cn4' },
+        '∠ABC = ∠DEF',
+        'test justification',
+        0
+      )
 
       expect(newFacts).toHaveLength(1)
       expect(newFacts[0].statement).toBe('∠ABC = ∠DEF')
@@ -451,22 +540,34 @@ describe('factStore', () => {
       const left = angleMeasure('pt-B', 'pt-A', 'pt-C')
       const right = angleMeasure('pt-E', 'pt-D', 'pt-F')
 
-      const first = addAngleFact(store, left, right,
-        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
+      const first = addAngleFact(store, left, right, { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
       expect(first).toHaveLength(1)
 
-      const second = addAngleFact(store, left, right,
-        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
+      const second = addAngleFact(store, left, right, { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
       expect(second).toHaveLength(0)
       expect(store.angleFacts).toHaveLength(1)
     })
 
     it('stores angle facts separately from distance facts', () => {
       const store = createFactStore()
-      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addAngleFact(store, angleMeasure('pt-B', 'pt-A', 'pt-C'), angleMeasure('pt-E', 'pt-D', 'pt-F'),
-        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 0)
+      addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
+      addAngleFact(
+        store,
+        angleMeasure('pt-B', 'pt-A', 'pt-C'),
+        angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' },
+        '∠ABC = ∠DEF',
+        'test',
+        0
+      )
 
       expect(store.facts).toHaveLength(1)
       expect(store.angleFacts).toHaveLength(1)
@@ -474,10 +575,24 @@ describe('factStore', () => {
 
     it('shares ID counter with distance facts', () => {
       const store = createFactStore()
-      const f1 = addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      const f2 = addAngleFact(store, angleMeasure('pt-B', 'pt-A', 'pt-C'), angleMeasure('pt-E', 'pt-D', 'pt-F'),
-        { type: 'cn4' }, '∠ABC = ∠DEF', 'test', 1)
+      const f1 = addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
+      const f2 = addAngleFact(
+        store,
+        angleMeasure('pt-B', 'pt-A', 'pt-C'),
+        angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' },
+        '∠ABC = ∠DEF',
+        'test',
+        1
+      )
 
       expect(f1[0].id).toBe(1)
       expect(f2[0].id).toBe(2)
@@ -515,8 +630,15 @@ describe('factStore', () => {
     it('angle and distance key spaces are separate', () => {
       const store = createFactStore()
       // Add a distance fact for pt-A|pt-B
-      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
 
       // Angle with same vertex/ray point IDs should not be connected
       const am1 = angleMeasure('pt-A', 'pt-B', 'pt-C')
@@ -554,11 +676,25 @@ describe('factStore', () => {
 
     it('does not include distance keys in angle equivalence class', () => {
       const store = createFactStore()
-      addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
       const am = angleMeasure('pt-B', 'pt-A', 'pt-C')
-      addAngleFact(store, am, angleMeasure('pt-E', 'pt-D', 'pt-F'),
-        { type: 'cn4' }, 'test', 'test', 1)
+      addAngleFact(
+        store,
+        am,
+        angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' },
+        'test',
+        'test',
+        1
+      )
 
       const result = getEqualAngles(store, am)
       // Should only have angle entries, not distance entries
@@ -577,10 +713,8 @@ describe('factStore', () => {
       const am1 = angleMeasure('pt-B', 'pt-A', 'pt-C')
       const am2 = angleMeasure('pt-E', 'pt-D', 'pt-F')
 
-      addFact(original, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addAngleFact(original, am1, am2,
-        { type: 'cn4' }, '∠BAC = ∠EDF', 'test', 1)
+      addFact(original, dpAB, dpCD, { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      addAngleFact(original, am1, am2, { type: 'cn4' }, '∠BAC = ∠EDF', 'test', 1)
 
       const allFacts = [...original.facts, ...original.angleFacts]
       const rebuilt = rebuildFactStore(allFacts)
@@ -593,12 +727,33 @@ describe('factStore', () => {
 
     it('rebuilt store preserves ID ordering with mixed facts', () => {
       const original = createFactStore()
-      addFact(original, distancePair('pt-A', 'pt-B'), distancePair('pt-C', 'pt-D'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
-      addAngleFact(original, angleMeasure('pt-B', 'pt-A', 'pt-C'), angleMeasure('pt-E', 'pt-D', 'pt-F'),
-        { type: 'cn4' }, '∠BAC = ∠EDF', 'test', 1)
-      addFact(original, distancePair('pt-E', 'pt-F'), distancePair('pt-G', 'pt-H'),
-        { type: 'def15', circleId: 'cir-2' }, 'EF = GH', 'test', 2)
+      addFact(
+        original,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-C', 'pt-D'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
+      addAngleFact(
+        original,
+        angleMeasure('pt-B', 'pt-A', 'pt-C'),
+        angleMeasure('pt-E', 'pt-D', 'pt-F'),
+        { type: 'cn4' },
+        '∠BAC = ∠EDF',
+        'test',
+        1
+      )
+      addFact(
+        original,
+        distancePair('pt-E', 'pt-F'),
+        distancePair('pt-G', 'pt-H'),
+        { type: 'def15', circleId: 'cir-2' },
+        'EF = GH',
+        'test',
+        2
+      )
 
       const allFacts = [...original.facts, ...original.angleFacts]
       const rebuilt = rebuildFactStore(allFacts)

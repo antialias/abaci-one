@@ -74,9 +74,7 @@ export function useUpdatePracticeConfig() {
     onMutate: async (newConfig) => {
       await queryClient.cancelQueries({ queryKey: practiceConfigKeys.config() })
 
-      const previous = queryClient.getQueryData<PracticeConfigResponse>(
-        practiceConfigKeys.config()
-      )
+      const previous = queryClient.getQueryData<PracticeConfigResponse>(practiceConfigKeys.config())
 
       queryClient.setQueryData<PracticeConfigResponse>(practiceConfigKeys.config(), {
         config: newConfig,

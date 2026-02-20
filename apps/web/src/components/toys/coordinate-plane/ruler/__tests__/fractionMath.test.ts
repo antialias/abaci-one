@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { gcd, fraction, toMixedNumber, isInteger, solveForY, solveForX, equationFromPoints, toStandardForm } from '../fractionMath'
+import {
+  gcd,
+  fraction,
+  toMixedNumber,
+  isInteger,
+  solveForY,
+  solveForX,
+  equationFromPoints,
+  toStandardForm,
+} from '../fractionMath'
 
 describe('fractionMath', () => {
   // ── gcd ──────────────────────────────────────────────────────────
@@ -67,31 +76,46 @@ describe('fractionMath', () => {
   describe('toMixedNumber', () => {
     it('converts proper fraction', () => {
       expect(toMixedNumber({ num: 2, den: 3 })).toEqual({
-        negative: false, whole: 0, fracNum: 2, fracDen: 3,
+        negative: false,
+        whole: 0,
+        fracNum: 2,
+        fracDen: 3,
       })
     })
 
     it('converts improper fraction', () => {
       expect(toMixedNumber({ num: 7, den: 3 })).toEqual({
-        negative: false, whole: 2, fracNum: 1, fracDen: 3,
+        negative: false,
+        whole: 2,
+        fracNum: 1,
+        fracDen: 3,
       })
     })
 
     it('converts integer', () => {
       expect(toMixedNumber({ num: 6, den: 3 })).toEqual({
-        negative: false, whole: 2, fracNum: 0, fracDen: 3,
+        negative: false,
+        whole: 2,
+        fracNum: 0,
+        fracDen: 3,
       })
     })
 
     it('converts negative fraction', () => {
       expect(toMixedNumber({ num: -7, den: 3 })).toEqual({
-        negative: true, whole: 2, fracNum: 1, fracDen: 3,
+        negative: true,
+        whole: 2,
+        fracNum: 1,
+        fracDen: 3,
       })
     })
 
     it('converts zero', () => {
       expect(toMixedNumber({ num: 0, den: 1 })).toEqual({
-        negative: false, whole: 0, fracNum: 0, fracDen: 1,
+        negative: false,
+        whole: 0,
+        fracNum: 0,
+        fracDen: 1,
       })
     })
   })
@@ -172,42 +196,36 @@ describe('fractionMath', () => {
   describe('toStandardForm', () => {
     it('converts y = 2x + 1 to 2x − y = −1', () => {
       // y = 2x + 1 → 2x − 1y = −1
-      expect(toStandardForm({ num: 2, den: 1 }, { num: 1, den: 1 }))
-        .toEqual({ a: 2, b: -1, c: -1 })
+      expect(toStandardForm({ num: 2, den: 1 }, { num: 1, den: 1 })).toEqual({ a: 2, b: -1, c: -1 })
     })
 
     it('converts y = x + 0 to x − y = 0', () => {
-      expect(toStandardForm({ num: 1, den: 1 }, { num: 0, den: 1 }))
-        .toEqual({ a: 1, b: -1, c: 0 })
+      expect(toStandardForm({ num: 1, den: 1 }, { num: 0, den: 1 })).toEqual({ a: 1, b: -1, c: 0 })
     })
 
     it('converts y = (1/2)x + 3 to x − 2y = −6', () => {
-      expect(toStandardForm({ num: 1, den: 2 }, { num: 3, den: 1 }))
-        .toEqual({ a: 1, b: -2, c: -6 })
+      expect(toStandardForm({ num: 1, den: 2 }, { num: 3, den: 1 })).toEqual({ a: 1, b: -2, c: -6 })
     })
 
     it('converts y = −(2/3)x + 4 to 2x + 3y = 12', () => {
       // slope = -2/3, intercept = 4
       // a = -2*1 = -2, b = -(3*1) = -3, c = -(4*3) = -12
       // GCD(2,3,12) = 1 → −2x − 3y = −12 → negate → 2x + 3y = 12
-      expect(toStandardForm({ num: -2, den: 3 }, { num: 4, den: 1 }))
-        .toEqual({ a: 2, b: 3, c: 12 })
+      expect(toStandardForm({ num: -2, den: 3 }, { num: 4, den: 1 })).toEqual({ a: 2, b: 3, c: 12 })
     })
 
     it('converts y = (3/4)x − (1/2) to 3x − 4y = 2', () => {
       // slope = 3/4, intercept = -1/2
       // a = 3*2 = 6, b = -(4*2) = -8, c = -(-1*4) = 4
       // GCD(6,8,4) = 2 → 3x − 4y = 2
-      expect(toStandardForm({ num: 3, den: 4 }, { num: -1, den: 2 }))
-        .toEqual({ a: 3, b: -4, c: 2 })
+      expect(toStandardForm({ num: 3, den: 4 }, { num: -1, den: 2 })).toEqual({ a: 3, b: -4, c: 2 })
     })
 
     it('converts y = −x + 0 to x + y = 0', () => {
       // slope = -1, intercept = 0
       // a = -1*1 = -1, b = -(1*1) = -1, c = -(0*1) = 0
       // negate: 1x + 1y = 0
-      expect(toStandardForm({ num: -1, den: 1 }, { num: 0, den: 1 }))
-        .toEqual({ a: 1, b: 1, c: 0 })
+      expect(toStandardForm({ num: -1, den: 1 }, { num: 0, den: 1 })).toEqual({ a: 1, b: 1, c: 0 })
     })
 
     it('reduces coefficients by GCD', () => {
@@ -216,8 +234,7 @@ describe('fractionMath', () => {
       // y = (2/3)x + (2/3)
       // a = 2*3 = 6, b = -(3*3) = -9, c = -(2*3) = -6
       // GCD(6,9,6) = 3 → 2x − 3y = −2
-      expect(toStandardForm({ num: 2, den: 3 }, { num: 2, den: 3 }))
-        .toEqual({ a: 2, b: -3, c: -2 })
+      expect(toStandardForm({ num: 2, den: 3 }, { num: 2, den: 3 })).toEqual({ a: 2, b: -3, c: -2 })
     })
   })
 

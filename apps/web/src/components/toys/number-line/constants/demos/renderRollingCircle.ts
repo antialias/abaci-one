@@ -14,17 +14,17 @@ export interface RollingCircleConfig {
   circumColor: string
   spokeColor: string
   refColor: string
-  accentColor: string   // cycloid marker dot
-  trailColor: string    // cycloid trail
-  spokeLabel: string    // e.g. "d = 1"
+  accentColor: string // cycloid marker dot
+  trailColor: string // cycloid trail
+  spokeLabel: string // e.g. "d = 1"
 }
 
 /** Screen coordinates of the rolling circle, returned for label positioning. */
 export interface RollingCirclePos {
-  ccx: number     // circle center screen x
-  ccy: number     // circle center screen y
+  ccx: number // circle center screen x
+  ccy: number // circle center screen y
   screenR: number // circle radius in pixels
-  axisY: number   // axis screen y
+  axisY: number // axis screen y
 }
 
 /**
@@ -54,7 +54,15 @@ export function renderRollingCircle(
   const toX = (nlx: number) => numberToScreenX(nlx, state.center, ppu, cssWidth)
   const toY = (nly: number) => centerY + nly * ppu
 
-  const { radius: r, circumColor, spokeColor, refColor, accentColor, trailColor, spokeLabel } = config
+  const {
+    radius: r,
+    circumColor,
+    spokeColor,
+    refColor,
+    accentColor,
+    trailColor,
+    spokeLabel,
+  } = config
   const revolutions = config.revolutions ?? 1
   const radiusSpoke = config.radiusSpoke ?? false
   const circumference = 2 * Math.PI * r

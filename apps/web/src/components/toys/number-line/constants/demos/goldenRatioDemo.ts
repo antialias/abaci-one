@@ -68,30 +68,40 @@ function computeSubdivisions(): Subdivision[] {
 
     switch (dir) {
       case 0: // Cut from LEFT
-        sx = rx; sy = ry
-        rx += side; rw -= side
-        arcCx = sx + side; arcCy = sy
+        sx = rx
+        sy = ry
+        rx += side
+        rw -= side
+        arcCx = sx + side
+        arcCy = sy
         arcStart = Math.PI
         break
 
       case 1: // Cut from BOTTOM
-        sx = rx; sy = ry + rh - side
+        sx = rx
+        sy = ry + rh - side
         rh -= side
-        arcCx = sx; arcCy = sy
+        arcCx = sx
+        arcCy = sy
         arcStart = Math.PI / 2
         break
 
       case 2: // Cut from RIGHT
-        sx = rx + rw - side; sy = ry
+        sx = rx + rw - side
+        sy = ry
         rw -= side
-        arcCx = sx; arcCy = sy + side
+        arcCx = sx
+        arcCy = sy + side
         arcStart = 0
         break
 
       case 3: // Cut from TOP
-        sx = rx; sy = ry
-        ry += side; rh -= side
-        arcCx = sx + side; arcCy = sy + side
+        sx = rx
+        sy = ry
+        ry += side
+        rh -= side
+        arcCx = sx + side
+        arcCy = sy + side
         arcStart = Math.PI * 1.5
         break
 
@@ -228,10 +238,13 @@ export function computeSweepTransform(revealProgress: number): SweepTransform {
   for (let i = 0; i < NUM_LEVELS; i++) {
     if (sweepProgress < STEP_TIMINGS[i].end) {
       animStep = i
-      stepT = Math.max(0, Math.min(1,
-        (sweepProgress - STEP_TIMINGS[i].start) /
-        (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
-      ))
+      stepT = Math.max(
+        0,
+        Math.min(
+          1,
+          (sweepProgress - STEP_TIMINGS[i].start) / (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
+        )
+      )
       break
     }
   }
@@ -240,9 +253,7 @@ export function computeSweepTransform(revealProgress: number): SweepTransform {
 
   if (animStep < NUM_LEVELS) {
     const currSub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
-    const prevSub = animStep > 0
-      ? SUBDIVISIONS[NUM_LEVELS - animStep]
-      : currSub
+    const prevSub = animStep > 0 ? SUBDIVISIONS[NUM_LEVELS - animStep] : currSub
 
     armPivotX = lerp(prevSub.arcCx, currSub.arcCx, stepT)
     armPivotY = lerp(prevSub.arcCy, currSub.arcCy, stepT)
@@ -290,7 +301,7 @@ function computeStepTimings(count: number, decay: number): Array<{ start: number
   const total = durations.reduce((a, b) => a + b, 0)
   let cumulative = 0
 
-  return durations.map(dur => {
+  return durations.map((dur) => {
     const start = cumulative / total
     cumulative += dur
     return { start, end: cumulative / total }
@@ -341,7 +352,7 @@ const CONVERGENCE_GAPS: number[] = (() => {
     gaps.push(Math.abs(ratio - PHI))
   }
   const maxGap = gaps[0] || 1
-  return gaps.map(g => g / maxGap)
+  return gaps.map((g) => g / maxGap)
 })()
 
 /**
@@ -358,10 +369,13 @@ export function convergenceGapAtProgress(revealProgress: number): number {
   // Find which step we're in
   for (let i = 0; i < NUM_LEVELS; i++) {
     if (sweepProgress < STEP_TIMINGS[i].end) {
-      const stepT = Math.max(0, Math.min(1,
-        (sweepProgress - STEP_TIMINGS[i].start) /
-        (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
-      ))
+      const stepT = Math.max(
+        0,
+        Math.min(
+          1,
+          (sweepProgress - STEP_TIMINGS[i].start) / (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
+        )
+      )
       const currGap = CONVERGENCE_GAPS[i] ?? 0
       const prevGap = i > 0 ? CONVERGENCE_GAPS[i - 1] : 1
       return lerp(prevGap, currGap, stepT)
@@ -443,15 +457,18 @@ export function renderGoldenRatioOverlay(
   // Pivot, scale, and arc sweep all happen simultaneously.
 
   let animStep = NUM_LEVELS // all done
-  let stepT = 0   // 0→1 progress within current step
+  let stepT = 0 // 0→1 progress within current step
 
   for (let i = 0; i < NUM_LEVELS; i++) {
     if (sweepProgress < STEP_TIMINGS[i].end) {
       animStep = i
-      stepT = Math.max(0, Math.min(1,
-        (sweepProgress - STEP_TIMINGS[i].start) /
-        (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
-      ))
+      stepT = Math.max(
+        0,
+        Math.min(
+          1,
+          (sweepProgress - STEP_TIMINGS[i].start) / (STEP_TIMINGS[i].end - STEP_TIMINGS[i].start)
+        )
+      )
       break
     }
   }
@@ -464,9 +481,7 @@ export function renderGoldenRatioOverlay(
 
   if (animStep < NUM_LEVELS) {
     const currSub = SUBDIVISIONS[NUM_LEVELS - 1 - animStep]
-    const prevSub = animStep > 0
-      ? SUBDIVISIONS[NUM_LEVELS - animStep]
-      : currSub
+    const prevSub = animStep > 0 ? SUBDIVISIONS[NUM_LEVELS - animStep] : currSub
 
     // Everything transitions simultaneously
     armPivotX = lerp(prevSub.arcCx, currSub.arcCx, stepT)
@@ -591,7 +606,7 @@ export function renderGoldenRatioOverlay(
   const flashColor = isDark ? FLASH_COLOR_DARK : FLASH_COLOR_LIGHT
 
   for (let i = 0; i < animStep && i < NUM_LEVELS; i++) {
-    const age = (animStep - 1) - i // 0 = most recent, 1 = one back, ...
+    const age = animStep - 1 - i // 0 = most recent, 1 = one back, ...
     if (age >= FRAME_FADE_STEPS) continue
 
     const frameColor = framePalette[i % framePalette.length]
@@ -607,15 +622,28 @@ export function renderGoldenRatioOverlay(
     // Identify the RIGHT edge (primary, convergence) and TOP edge (secondary)
     // by scoring all 4 edges in NL space independently.
     // Right edge = highest average x; Top edge = lowest average y (highest on screen).
-    const edgeIndices: [number, number][] = [[0,1],[1,2],[2,3],[3,0]]
-    let rightEdge = 0, topEdge = 0
-    let maxAvgX = -Infinity, minAvgY = Infinity
+    const edgeIndices: [number, number][] = [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+    ]
+    let rightEdge = 0,
+      topEdge = 0
+    let maxAvgX = -Infinity,
+      minAvgY = Infinity
     for (let j = 0; j < 4; j++) {
       const [a, b] = edgeIndices[j]
       const avgX = (corners[a][0] + corners[b][0]) / 2
       const avgY = (corners[a][1] + corners[b][1]) / 2
-      if (avgX > maxAvgX) { maxAvgX = avgX; rightEdge = j }
-      if (avgY < minAvgY) { minAvgY = avgY; topEdge = j }
+      if (avgX > maxAvgX) {
+        maxAvgX = avgX
+        rightEdge = j
+      }
+      if (avgY < minAvgY) {
+        minAvgY = avgY
+        topEdge = j
+      }
     }
     const [rFrom, rTo] = edgeIndices[rightEdge]
     const [tFrom, tTo] = edgeIndices[topEdge]

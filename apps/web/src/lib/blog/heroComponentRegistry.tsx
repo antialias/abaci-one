@@ -18,10 +18,7 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
   'difficulty-plot-mastery': {
     label: 'Difficulty Plot (Mastery)',
     description: 'DifficultyPlot2D showing mastery progression custom points',
-    component: dynamic(
-      () => import('@/components/blog/heroes/DifficultyPlotHero'),
-      { ssr: false }
-    ),
+    component: dynamic(() => import('@/components/blog/heroes/DifficultyPlotHero'), { ssr: false }),
   },
   'readiness-all-variants': {
     label: 'Readiness Report (All States)',
@@ -62,7 +59,12 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
                         dimensions: {
                           volume: { met: false, opportunities: 3, sessionCount: 1 },
                           speed: { met: false, medianSecondsPerTerm: 8.2 },
-                          consistency: { met: false, recentAccuracy: 0.45, lastFiveAllCorrect: false, recentHelpCount: 3 },
+                          consistency: {
+                            met: false,
+                            recentAccuracy: 0.45,
+                            lastFiveAllCorrect: false,
+                            recentHelpCount: 3,
+                          },
                           mastery: { met: false, pKnown: 0.3, confidence: 0.4 },
                         },
                       },
@@ -89,7 +91,12 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
                         dimensions: {
                           volume: { met: true, opportunities: 15, sessionCount: 4 },
                           speed: { met: true, medianSecondsPerTerm: 3.1 },
-                          consistency: { met: true, recentAccuracy: 0.88, lastFiveAllCorrect: true, recentHelpCount: 0 },
+                          consistency: {
+                            met: true,
+                            recentAccuracy: 0.88,
+                            lastFiveAllCorrect: true,
+                            recentHelpCount: 0,
+                          },
                           mastery: { met: false, pKnown: 0.62, confidence: 0.7 },
                         },
                       },
@@ -116,7 +123,12 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
                         dimensions: {
                           volume: { met: true, opportunities: 25, sessionCount: 8 },
                           speed: { met: true, medianSecondsPerTerm: 2.5 },
-                          consistency: { met: true, recentAccuracy: 0.95, lastFiveAllCorrect: true, recentHelpCount: 0 },
+                          consistency: {
+                            met: true,
+                            recentAccuracy: 0.95,
+                            lastFiveAllCorrect: true,
+                            recentHelpCount: 0,
+                          },
                           mastery: { met: true, pKnown: 0.85, confidence: 0.9 },
                         },
                       },
@@ -134,54 +146,38 @@ export const HERO_COMPONENTS: Record<string, HeroComponentEntry> = {
   'vision-before-after': {
     label: 'Vision Before/After',
     description: 'Side-by-side comparison of problems with and without vision detection',
-    component: dynamic(
-      () => import('@/components/blog/heroes/VisionBeforeAfter'),
-      { ssr: false }
-    ),
+    component: dynamic(() => import('@/components/blog/heroes/VisionBeforeAfter'), { ssr: false }),
   },
   'vision-showcase': {
     label: 'Vision Showcase (3 Features)',
     description: 'Triptych showing observation mode, mirror mode, and ArUco auto-crop calibration',
-    component: dynamic(
-      () => import('@/components/blog/heroes/VisionShowcase'),
-      { ssr: false }
-    ),
+    component: dynamic(() => import('@/components/blog/heroes/VisionShowcase'), { ssr: false }),
   },
   'blame-distribution': {
     label: 'Blame Distribution',
     description:
       'Animated blame attribution for conjunctive BKT — shows how an incorrect answer distributes blame across skills',
-    component: dynamic(
-      () => import('@/components/blog/heroes/BlameDistributionHero'),
-      { ssr: false }
-    ),
+    component: dynamic(() => import('@/components/blog/heroes/BlameDistributionHero'), {
+      ssr: false,
+    }),
   },
   'subtraction-scaffolding': {
     label: 'Subtraction Scaffolding',
-    description:
-      'Triptych showing subtraction problem (352 − 117) at three scaffolding levels',
-    component: dynamic(
-      () => import('@/components/blog/heroes/SubtractionScaffoldingHero'),
-      { ssr: false }
-    ),
+    description: 'Triptych showing subtraction problem (352 − 117) at three scaffolding levels',
+    component: dynamic(() => import('@/components/blog/heroes/SubtractionScaffoldingHero'), {
+      ssr: false,
+    }),
   },
   'ten-frames': {
     label: 'Ten-Frames',
-    description:
-      'Triptych showing addition problem (27 + 14) progressing from plain to ten-frames',
-    component: dynamic(
-      () => import('@/components/blog/heroes/TenFramesHero'),
-      { ssr: false }
-    ),
+    description: 'Triptych showing addition problem (27 + 14) progressing from plain to ten-frames',
+    component: dynamic(() => import('@/components/blog/heroes/TenFramesHero'), { ssr: false }),
   },
   'multi-digit': {
     label: 'Multi-Digit',
     description:
       'Triptych showing 4-digit addition (1027 + 2034) with progressive place value scaffolding',
-    component: dynamic(
-      () => import('@/components/blog/heroes/MultiDigitHero'),
-      { ssr: false }
-    ),
+    component: dynamic(() => import('@/components/blog/heroes/MultiDigitHero'), { ssr: false }),
   },
 }
 

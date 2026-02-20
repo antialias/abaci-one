@@ -42,9 +42,7 @@ export function PrimeTourOverlay({
         borderRadius: 12,
         backgroundColor: bg,
         backdropFilter: 'blur(8px)',
-        boxShadow: isDark
-          ? '0 4px 24px rgba(0,0,0,0.5)'
-          : '0 4px 24px rgba(0,0,0,0.12)',
+        boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.5)' : '0 4px 24px rgba(0,0,0,0.12)',
         zIndex: 10,
         pointerEvents: 'auto',
         animation: 'fadeInUp 0.2s ease-out',
@@ -142,11 +140,16 @@ export function PrimeTourOverlay({
                 width: i === stopIndex ? 8 : 6,
                 height: i === stopIndex ? 8 : 6,
                 borderRadius: '50%',
-                backgroundColor: i === stopIndex
-                  ? accentColor
-                  : i < stopIndex
-                    ? (isDark ? 'rgba(167, 139, 250, 0.5)' : 'rgba(124, 58, 237, 0.4)')
-                    : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'),
+                backgroundColor:
+                  i === stopIndex
+                    ? accentColor
+                    : i < stopIndex
+                      ? isDark
+                        ? 'rgba(167, 139, 250, 0.5)'
+                        : 'rgba(124, 58, 237, 0.4)'
+                      : isDark
+                        ? 'rgba(255,255,255,0.2)'
+                        : 'rgba(0,0,0,0.15)',
                 transition: 'all 0.2s ease',
               }}
             />

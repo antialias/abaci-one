@@ -82,8 +82,8 @@ describe('coordinateConversions', () => {
 
     it('handles independent X/Y scale', () => {
       const p = worldToScreen2D(2, 3, 0, 0, 50, 100, 800, 600)
-      expect(p.x).toBe(500)  // 400 + 2*50
-      expect(p.y).toBe(0)    // 300 - 3*100
+      expect(p.x).toBe(500) // 400 + 2*50
+      expect(p.y).toBe(0) // 300 - 3*100
     })
 
     it('accounts for non-zero center', () => {

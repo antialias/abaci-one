@@ -7,9 +7,13 @@ import type { SievePhaseViewports } from './renderSieveOverlay'
 import { useTTS } from '@/hooks/useTTS'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import {
-  lerpViewport, snapViewport, computeViewportDeviation,
-  FADE_IN_MS, FADE_OUT_MS,
-  SUBTITLE_TOP_OFFSET, SUBTITLE_BOTTOM_OFFSET,
+  lerpViewport,
+  snapViewport,
+  computeViewportDeviation,
+  FADE_IN_MS,
+  FADE_OUT_MS,
+  SUBTITLE_TOP_OFFSET,
+  SUBTITLE_BOTTOM_OFFSET,
 } from '../viewportAnimation'
 import { useNarrationSequencer } from '../useNarrationSequencer'
 
@@ -43,8 +47,12 @@ const DEVIATION_THRESHOLD = 0.5
 
 // --- Sieve speed debug tuning (module-level mutable) ---
 let sieveSpeed = 0.25
-export function getSieveSpeed(): number { return sieveSpeed }
-export function setSieveSpeed(v: number): void { sieveSpeed = Math.max(0.1, v) }
+export function getSieveSpeed(): number {
+  return sieveSpeed
+}
+export function setSieveSpeed(v: number): void {
+  sieveSpeed = Math.max(0.1, v)
+}
 
 /**
  * Multi-stop guided tour through prime number visualizations.
@@ -100,29 +108,32 @@ export function usePrimeTour(
   }, [onRedraw])
 
   /** Begin flying to a specific stop index. */
-  const flyToStop = useCallback((index: number) => {
-    const stop = PRIME_TOUR_STOPS[index]
-    if (!stop) return
+  const flyToStop = useCallback(
+    (index: number) => {
+      const stop = PRIME_TOUR_STOPS[index]
+      if (!stop) return
 
-    sourceViewportRef.current = {
-      center: stateRef.current.center,
-      pixelsPerUnit: stateRef.current.pixelsPerUnit,
-    }
-    targetViewportRef.current = { ...stop.viewport }
+      sourceViewportRef.current = {
+        center: stateRef.current.center,
+        pixelsPerUnit: stateRef.current.pixelsPerUnit,
+      }
+      targetViewportRef.current = { ...stop.viewport }
 
-    tourStateRef.current = {
-      phase: 'flying',
-      stopIndex: index,
-      flightProgress: 0,
-      opacity: tourStateRef.current.opacity, // preserve during mid-tour transitions
-      dwellStartMs: 0,
-      virtualDwellMs: 0,
-    }
-    animStartRef.current = performance.now()
-    ttsFinishedRef.current = false
-    setCurrentStopIndex(index)
-    startLoop()
-  }, [stateRef, startLoop])
+      tourStateRef.current = {
+        phase: 'flying',
+        stopIndex: index,
+        flightProgress: 0,
+        opacity: tourStateRef.current.opacity, // preserve during mid-tour transitions
+        dwellStartMs: 0,
+        virtualDwellMs: 0,
+      }
+      animStartRef.current = performance.now()
+      ttsFinishedRef.current = false
+      setCurrentStopIndex(index)
+      startLoop()
+    },
+    [stateRef, startLoop]
+  )
 
   /** Start the tour from stop 0. */
   const startTour = useCallback(() => {
@@ -169,17 +180,20 @@ export function usePrimeTour(
   }, [seqStop, audioManager])
 
   /** Start TTS narration for the current stop (non-segmented, legacy). */
-  const speakCurrentStop = useCallback((stop: PrimeTourStop) => {
-    ttsFinishedRef.current = false
-    speak(
-      { say: { en: stop.ttsText }, tone: stop.ttsTone },
-    ).then(() => {
-      ttsFinishedRef.current = true
-    }).catch(() => {
-      // TTS failed or was cancelled — still allow auto-advance
-      ttsFinishedRef.current = true
-    })
-  }, [speak])
+  const speakCurrentStop = useCallback(
+    (stop: PrimeTourStop) => {
+      ttsFinishedRef.current = false
+      speak({ say: { en: stop.ttsText }, tone: stop.ttsTone })
+        .then(() => {
+          ttsFinishedRef.current = true
+        })
+        .catch(() => {
+          // TTS failed or was cancelled — still allow auto-advance
+          ttsFinishedRef.current = true
+        })
+    },
+    [speak]
+  )
 
   /**
    * Called every frame from draw() to update animation and detect deviation.
@@ -198,8 +212,11 @@ export function usePrimeTour(
 
       // Viewport interpolation
       const vpT = lerpViewport(
-        sourceViewportRef.current, targetViewportRef.current,
-        elapsed, FLIGHT_MS, stateRef.current
+        sourceViewportRef.current,
+        targetViewportRef.current,
+        elapsed,
+        FLIGHT_MS,
+        stateRef.current
       )
 
       ts.flightProgress = vpT
@@ -238,9 +255,7 @@ export function usePrimeTour(
       if (!stop) return
 
       // Detect user deviation from target viewport
-      const deviation = computeViewportDeviation(
-        stateRef.current, targetViewportRef.current
-      )
+      const deviation = computeViewportDeviation(stateRef.current, targetViewportRef.current)
 
       if (deviation > DEVIATION_THRESHOLD) {
         exitTour()
@@ -291,7 +306,10 @@ export function usePrimeTour(
       if (ts.opacity <= 0) {
         tourStateRef.current = { ...INITIAL_STATE }
         setCurrentStopIndex(null)
-        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET })
+        audioManager.configure({
+          subtitleAnchor: 'bottom',
+          subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET,
+        })
         stopLoop()
         return
       }
@@ -311,7 +329,10 @@ export function usePrimeTour(
   useEffect(() => {
     return () => {
       if (tourStateRef.current.phase !== 'idle') {
-        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET })
+        audioManager.configure({
+          subtitleAnchor: 'bottom',
+          subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET,
+        })
       }
     }
   }, [audioManager])

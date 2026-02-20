@@ -1,10 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { pluralize, conjugate3p, conjugateBase, conjugateFor, formatWithUnit, capitalize, midSentence } from '../inflect'
+import {
+  pluralize,
+  conjugate3p,
+  conjugateBase,
+  conjugateFor,
+  formatWithUnit,
+  capitalize,
+  midSentence,
+} from '../inflect'
 import type { NounEntry, VerbEntry, SubjectEntry } from '../types'
 
 describe('inflect', () => {
   const slice: NounEntry = { singular: 'slice', plural: 'slices' }
-  const cost: VerbEntry = { base: 'cost', thirdPerson: 'costs', pastTense: 'cost', gerund: 'costing' }
+  const cost: VerbEntry = {
+    base: 'cost',
+    thirdPerson: 'costs',
+    pastTense: 'cost',
+    gerund: 'costing',
+  }
 
   describe('pluralize', () => {
     it('returns singular for count 1', () => {
@@ -31,7 +44,12 @@ describe('inflect', () => {
   })
 
   describe('conjugateFor', () => {
-    const travel: VerbEntry = { base: 'travel', thirdPerson: 'travels', pastTense: 'traveled', gerund: 'traveling' }
+    const travel: VerbEntry = {
+      base: 'travel',
+      thirdPerson: 'travels',
+      pastTense: 'traveled',
+      gerund: 'traveling',
+    }
 
     it('returns thirdPerson for thirdPerson subjects', () => {
       const subject: SubjectEntry = { phrase: 'The car', conjugation: 'thirdPerson' }

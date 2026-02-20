@@ -67,10 +67,7 @@ describe('mergeGuestIntoUser coverage', () => {
     expect(userFkColumns.length).toBeGreaterThan(0)
 
     // 3. Parse mergeGuestIntoUser.ts to extract handled (table, column) pairs
-    const mergeSource = readFileSync(
-      resolve(__dirname, '../mergeGuestIntoUser.ts'),
-      'utf-8'
-    )
+    const mergeSource = readFileSync(resolve(__dirname, '../mergeGuestIntoUser.ts'), 'utf-8')
 
     // Match reparent('table', 'column') and reparentOrDrop('table', 'column')
     const handledPattern = /(?:reparent|reparentOrDrop)\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)/g
@@ -101,10 +98,7 @@ describe('mergeGuestIntoUser coverage', () => {
 
   it('does not reference tables/columns that no longer exist in the schema', () => {
     // Parse the merge function for all referenced (table, column) pairs
-    const mergeSource = readFileSync(
-      resolve(__dirname, '../mergeGuestIntoUser.ts'),
-      'utf-8'
-    )
+    const mergeSource = readFileSync(resolve(__dirname, '../mergeGuestIntoUser.ts'), 'utf-8')
 
     const handledPattern = /(?:reparent|reparentOrDrop)\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)/g
     const handledPairs: Array<{ table: string; column: string }> = []
@@ -119,10 +113,7 @@ describe('mergeGuestIntoUser coverage', () => {
     const schemaColumns = new Map<string, Set<string>>()
     for (const table of tables) {
       const config = getTableConfig(table)
-      schemaColumns.set(
-        config.name,
-        new Set(config.columns.map((c) => c.name))
-      )
+      schemaColumns.set(config.name, new Set(config.columns.map((c) => c.name)))
     }
 
     const stale: string[] = []

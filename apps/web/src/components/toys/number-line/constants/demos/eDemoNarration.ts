@@ -34,7 +34,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Look! A tiny vine is growing on the number line. ' +
       'It starts at zero and stretches all the way to one. ' +
       'On Day One, the vine takes one big leap and doubles in size!',
-    startProgress: 0.00,
+    startProgress: 0.0,
     endProgress: 0.14,
     animationDurationMs: 7000,
     scrubberLabel: 'Vine sprouts',
@@ -44,7 +44,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 1: Day 2 retract + intro — vine shrinks back to 1
     ttsText:
-      'Now let\'s try something different. ' +
+      "Now let's try something different. " +
       'On Day Two, instead of one big hop, ' +
       'we split the vine into two equal pieces.',
     startProgress: 0.14,
@@ -54,9 +54,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   },
   {
     // Seg 2: Day 2 hop 1 — first piece grows
-    ttsText:
-      'Each piece grows by half its size. ' +
-      'Watch the first piece make a hop!',
+    ttsText: 'Each piece grows by half its size. ' + 'Watch the first piece make a hop!',
     startProgress: 0.21,
     endProgress: 0.27,
     animationDurationMs: 4000,
@@ -65,7 +63,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 3: Day 2 rest — explain compound growth insight
     ttsText:
-      'Now here\'s the magic part. The vine is bigger now! ' +
+      "Now here's the magic part. The vine is bigger now! " +
       'So when we split it into pieces again, each piece is bigger too.',
     startProgress: 0.27,
     endProgress: 0.32,
@@ -88,7 +86,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Two hops, and the vine grew more than it did with just one big leap. ' +
       'Sharing the work made the vine bigger!',
     startProgress: 0.37,
-    endProgress: 0.40,
+    endProgress: 0.4,
     animationDurationMs: 4500,
     scrubberLabel: 'Two beats one',
   },
@@ -99,7 +97,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'Day Three — three helpers this time! ' +
       'More helpers means more chances to grow. The vine keeps getting bigger.',
-    startProgress: 0.40,
+    startProgress: 0.4,
     endProgress: 0.47,
     animationDurationMs: 5000,
     scrubberLabel: 'Three helpers',
@@ -107,8 +105,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 7: Day 4 (n=4)
     ttsText:
-      'Day Four — four helpers! ' +
-      'See how each day, the vine gets just a little bit longer?',
+      'Day Four — four helpers! ' + 'See how each day, the vine gets just a little bit longer?',
     startProgress: 0.47,
     endProgress: 0.53,
     animationDurationMs: 4500,
@@ -131,7 +128,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 9: Days 7–10 (n=12, 20, 50, 100)
     ttsText:
-      'Now it\'s getting fast! Twelve helpers, twenty, fifty, a hundred! ' +
+      "Now it's getting fast! Twelve helpers, twenty, fifty, a hundred! " +
       'With so many tiny helpers, the vine barely has to slow down between hops.',
     startProgress: 0.61,
     endProgress: 0.73,
@@ -144,7 +141,7 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     // Seg 10: Continuous growth — all pieces grow together
     ttsText:
       'And now — imagine infinite helpers, all growing together at the same time. ' +
-      'The vine doesn\'t hop anymore. It just flows, smooth and steady.',
+      "The vine doesn't hop anymore. It just flows, smooth and steady.",
     startProgress: 0.73,
     endProgress: 0.83,
     animationDurationMs: 6000,
@@ -170,10 +167,10 @@ export const E_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'That spot, right there, is the perfect growth number. ' +
       'Mathematicians call it "e." ' +
-      'It\'s about two point seven one eight, and it shows up everywhere in nature — ' +
+      "It's about two point seven one eight, and it shows up everywhere in nature — " +
       'in how plants grow, how populations spread, even how your savings account works!',
     startProgress: 0.92,
-    endProgress: 1.00,
+    endProgress: 1.0,
     animationDurationMs: 8000,
     scrubberLabel: "It's e!",
   },

@@ -34,11 +34,9 @@ export interface ScenarioEvolution {
 function buildScenarioPrompt(
   explorations: ExplorationDescriptor[],
   recommendedExplorations?: string[],
-  childProfile?: ChildProfile,
+  childProfile?: ChildProfile
 ): string {
-  const explorationList = explorations
-    .map(e => `${e.id} (${e.name} — ${e.shortDesc})`)
-    .join(', ')
+  const explorationList = explorations.map((e) => `${e.id} (${e.name} — ${e.shortDesc})`).join(', ')
 
   const recommendedNote = recommendedExplorations?.length
     ? `\nThe user currently sees recommendations for these explorations on screen: ${recommendedExplorations.join(', ')}. You may loosely reference one if it fits, but it should NOT be the main plot.`
@@ -124,7 +122,7 @@ export async function generateScenario(
   neighborsSummary: string,
   availableExplorations: ExplorationDescriptor[],
   recommendedExplorations?: string[],
-  childProfile?: ChildProfile,
+  childProfile?: ChildProfile
 ): Promise<GeneratedScenario | null> {
   try {
     const controller = new AbortController()
@@ -196,7 +194,7 @@ export async function evolveScenario(
   number: number,
   currentScenario: GeneratedScenario,
   recentTranscripts: TranscriptEntry[],
-  conferenceNumbers: number[],
+  conferenceNumbers: number[]
 ): Promise<ScenarioEvolution | null> {
   try {
     const controller = new AbortController()

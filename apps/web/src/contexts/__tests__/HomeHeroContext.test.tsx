@@ -59,9 +59,7 @@ describe('HomeHeroContext', () => {
 
   it('starts subtitle rotation from index 0', () => {
     const { result } = renderHook(() => useHomeHero(), { wrapper })
-    expect(result.current.subtitle).toEqual(
-      expect.objectContaining({ text: expect.any(String) })
-    )
+    expect(result.current.subtitle).toEqual(expect.objectContaining({ text: expect.any(String) }))
   })
 
   it('persists abacus value to sessionStorage', async () => {

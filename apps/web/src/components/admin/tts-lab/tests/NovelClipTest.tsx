@@ -15,7 +15,15 @@ const TONE_PRESETS = [
   'encouragement',
 ]
 
-function LabButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function LabButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
@@ -69,9 +77,7 @@ export function NovelClipTest() {
       }
     }
 
-    const pregenSources = avail.filter(
-      (a) => a.source.type === 'pregenerated' && a.hasClip
-    )
+    const pregenSources = avail.filter((a) => a.source.type === 'pregenerated' && a.hasClip)
     if (pregenSources.length === 0) {
       log('info', 'No pregenerated source has this clip — expecting browser TTS fallback')
     }

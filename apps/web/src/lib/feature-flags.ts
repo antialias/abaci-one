@@ -154,7 +154,7 @@ export async function isEnabled(
   opts?: boolean | { userId?: string; userRole?: string; defaultValue?: boolean }
 ): Promise<boolean> {
   // Support legacy signature: isEnabled(key, defaultValue)
-  const defaultValue = typeof opts === 'boolean' ? opts : opts?.defaultValue ?? false
+  const defaultValue = typeof opts === 'boolean' ? opts : (opts?.defaultValue ?? false)
   const userId = typeof opts === 'object' ? opts?.userId : undefined
   const userRole = typeof opts === 'object' ? opts?.userRole : undefined
 
@@ -332,9 +332,7 @@ export async function updateFlag(
  * Delete a feature flag.
  */
 export async function deleteFlag(key: string): Promise<boolean> {
-  const result = await db
-    .delete(schema.featureFlags)
-    .where(eq(schema.featureFlags.key, key))
+  const result = await db.delete(schema.featureFlags).where(eq(schema.featureFlags.key, key))
 
   if (result.rowsAffected === 0) return false
 

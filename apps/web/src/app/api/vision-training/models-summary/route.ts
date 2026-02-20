@@ -52,72 +52,75 @@ function calculateBoundaryDetectorQuality(totalFrames: number): DataQuality {
  * Returns a summary of available training data for all model types.
  * Used by the model selection card in the training wizard.
  */
-export const GET = withAuth(async () => {
-  try {
-    // --- Column Classifier Summary ---
-    let columnTotalImages = 0
-    const digitCounts: number[] = []
+export const GET = withAuth(
+  async () => {
+    try {
+      // --- Column Classifier Summary ---
+      let columnTotalImages = 0
+      const digitCounts: number[] = []
 
-    if (fs.existsSync(COLUMN_CLASSIFIER_DIR)) {
-      for (let d = 0; d <= 9; d++) {
-        const digitDir = path.join(COLUMN_CLASSIFIER_DIR, String(d))
-        let count = 0
+      if (fs.existsSync(COLUMN_CLASSIFIER_DIR)) {
+        for (let d = 0; d <= 9; d++) {
+          const digitDir = path.join(COLUMN_CLASSIFIER_DIR, String(d))
+          let count = 0
 
-        if (fs.existsSync(digitDir)) {
-          const files = fs.readdirSync(digitDir).filter((f) => /\.(png|jpg|jpeg|webp)$/i.test(f))
-          count = files.length
+          if (fs.existsSync(digitDir)) {
+            const files = fs.readdirSync(digitDir).filter((f) => /\.(png|jpg|jpeg|webp)$/i.test(f))
+            count = files.length
+          }
+
+          digitCounts.push(count)
+          columnTotalImages += count
         }
-
-        digitCounts.push(count)
-        columnTotalImages += count
-      }
-    } else {
-      // Initialize with zeros for all digits
-      for (let i = 0; i < 10; i++) {
-        digitCounts.push(0)
-      }
-    }
-
-    const columnClassifier: ModelsSummaryResponse['columnClassifier'] = {
-      totalImages: columnTotalImages,
-      hasData: columnTotalImages > 0,
-      dataQuality: calculateColumnClassifierQuality(columnTotalImages, digitCounts),
-    }
-
-    // --- Boundary Detector Summary ---
-    let boundaryTotalFrames = 0
-
-    if (fs.existsSync(BOUNDARY_DETECTOR_DIR)) {
-      // Count all frame images (organized by device subdirectories)
-      const entries = fs.readdirSync(BOUNDARY_DETECTOR_DIR, {
-        withFileTypes: true,
-      })
-
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          // Device subdirectory
-          const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, entry.name)
-          const files = fs.readdirSync(deviceDir).filter((f) => /\.(png|jpg|jpeg|webp)$/i.test(f))
-          boundaryTotalFrames += files.length
-        } else if (/\.(png|jpg|jpeg|webp)$/i.test(entry.name)) {
-          // Direct file in boundary-frames directory
-          boundaryTotalFrames++
+      } else {
+        // Initialize with zeros for all digits
+        for (let i = 0; i < 10; i++) {
+          digitCounts.push(0)
         }
       }
-    }
 
-    const boundaryDetector: ModelsSummaryResponse['boundaryDetector'] = {
-      totalFrames: boundaryTotalFrames,
-      hasData: boundaryTotalFrames > 0,
-      dataQuality: calculateBoundaryDetectorQuality(boundaryTotalFrames),
-    }
+      const columnClassifier: ModelsSummaryResponse['columnClassifier'] = {
+        totalImages: columnTotalImages,
+        hasData: columnTotalImages > 0,
+        dataQuality: calculateColumnClassifierQuality(columnTotalImages, digitCounts),
+      }
 
-    return Response.json({
-      columnClassifier,
-      boundaryDetector,
-    } satisfies ModelsSummaryResponse)
-  } catch (error) {
-    console.error('[vision-training/models-summary] Error:', error)
-    return Response.json({ error: 'Failed to read model summaries' }, { status: 500 })
-  }
-}, { role: 'admin' })
+      // --- Boundary Detector Summary ---
+      let boundaryTotalFrames = 0
+
+      if (fs.existsSync(BOUNDARY_DETECTOR_DIR)) {
+        // Count all frame images (organized by device subdirectories)
+        const entries = fs.readdirSync(BOUNDARY_DETECTOR_DIR, {
+          withFileTypes: true,
+        })
+
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            // Device subdirectory
+            const deviceDir = path.join(BOUNDARY_DETECTOR_DIR, entry.name)
+            const files = fs.readdirSync(deviceDir).filter((f) => /\.(png|jpg|jpeg|webp)$/i.test(f))
+            boundaryTotalFrames += files.length
+          } else if (/\.(png|jpg|jpeg|webp)$/i.test(entry.name)) {
+            // Direct file in boundary-frames directory
+            boundaryTotalFrames++
+          }
+        }
+      }
+
+      const boundaryDetector: ModelsSummaryResponse['boundaryDetector'] = {
+        totalFrames: boundaryTotalFrames,
+        hasData: boundaryTotalFrames > 0,
+        dataQuality: calculateBoundaryDetectorQuality(boundaryTotalFrames),
+      }
+
+      return Response.json({
+        columnClassifier,
+        boundaryDetector,
+      } satisfies ModelsSummaryResponse)
+    } catch (error) {
+      console.error('[vision-training/models-summary] Error:', error)
+      return Response.json({ error: 'Failed to read model summaries' }, { status: 500 })
+    }
+  },
+  { role: 'admin' }
+)

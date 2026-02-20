@@ -30,7 +30,15 @@ const PRESETS: Record<string, { label: string; segments: TtsSegment[] }> = {
   },
 }
 
-function LabButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function LabButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
@@ -109,15 +117,11 @@ export function MixedSourceTest() {
     for (const seg of preset.segments) {
       const clipId = getSegmentClipId(seg)
       const avail = manager.getClipAvailability(clipId)
-      const pregenHits = avail.filter(
-        (a) => a.source.type === 'pregenerated' && a.hasClip
-      )
-      const hasBrowserTts = avail.some(
-        (a) => a.source.type === 'browser-tts'
-      )
+      const pregenHits = avail.filter((a) => a.source.type === 'pregenerated' && a.hasClip)
+      const hasBrowserTts = avail.some((a) => a.source.type === 'browser-tts')
       const expected =
         pregenHits.length > 0
-          ? `pregenerated (${pregenHits.map((a) => a.source.type === 'pregenerated' ? (a.source as { name: string }).name : '').join(', ')})`
+          ? `pregenerated (${pregenHits.map((a) => (a.source.type === 'pregenerated' ? (a.source as { name: string }).name : '')).join(', ')})`
           : hasBrowserTts
             ? 'browser-tts fallback'
             : 'NO SOURCE'

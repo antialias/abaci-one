@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import Link from 'next/link'
 import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../styled-system/css'
 
@@ -186,6 +187,30 @@ export function ParsingProgressModal({
                 >
                   {errorMessage || 'An error occurred while parsing the worksheet.'}
                 </p>
+                {errorMessage?.includes('parsing limit') && (
+                  <Link
+                    href="/pricing"
+                    data-action="upgrade-for-parsing"
+                    className={css({
+                      display: 'inline-block',
+                      marginTop: '0.75rem',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: '600',
+                      color: 'white',
+                      backgroundColor: 'purple.500',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      _hover: { backgroundColor: 'purple.600' },
+                      _dark: {
+                        backgroundColor: 'purple.600',
+                        _hover: { backgroundColor: 'purple.500' },
+                      },
+                    })}
+                  >
+                    Upgrade for 30 parsings/month
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={onClose}

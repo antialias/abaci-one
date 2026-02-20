@@ -30,17 +30,15 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     // Seg 0: Highlight — the red "1 to edge" stick appears
     ttsText:
       'See that red stick? It goes from the very center of a wheel all the way to the edge. ' +
-      'That\'s called the radius — one unit from center to edge.',
-    startProgress: 0.00,
+      "That's called the radius — one unit from center to edge.",
+    startProgress: 0.0,
     endProgress: 0.06,
     animationDurationMs: 5000,
     scrubberLabel: 'The radius',
   },
   {
     // Seg 1: Pivot — stick swings up to vertical
-    ttsText:
-      'Let\'s stand it up — whoosh! ' +
-      'Now let\'s build a circle around it.',
+    ttsText: "Let's stand it up — whoosh! " + "Now let's build a circle around it.",
     startProgress: 0.06,
     endProgress: 0.15,
     animationDurationMs: 3500,
@@ -50,7 +48,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     // Seg 2: Sweep — teal arc traces with compass arm
     ttsText:
       'See the compass spinning around? ' +
-      'It\'s drawing a big circle — like tracing around a hula hoop! ' +
+      "It's drawing a big circle — like tracing around a hula hoop! " +
       'The radius is the whole stick, so this is going to be a nice big wheel.',
     startProgress: 0.15,
     endProgress: 0.255,
@@ -60,10 +58,10 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 3: Treads appear — transition naturally from circle to wheel
     ttsText:
-      'Now let\'s turn it into a real wheel! ' +
+      "Now let's turn it into a real wheel! " +
       'See those little bumps popping up? Those are the tire treads.',
     startProgress: 0.255,
-    endProgress: 0.30,
+    endProgress: 0.3,
     animationDurationMs: 3000,
     scrubberLabel: 'Tire treads',
   },
@@ -73,8 +71,8 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     // Seg 4: First stretch of rolling, before pi mark
     ttsText:
       'And off it goes! Our big wheel is rolling along the number line. ' +
-      'Let\'s see how far one full turn takes it!',
-    startProgress: 0.30,
+      "Let's see how far one full turn takes it!",
+    startProgress: 0.3,
     endProgress: 0.55,
     animationDurationMs: 5500,
     scrubberLabel: 'Rolling!',
@@ -82,7 +80,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 5: Passing the pi halfway mark
     ttsText:
-      'Look! We just passed pi — but we\'re only halfway around! ' +
+      "Look! We just passed pi — but we're only halfway around! " +
       'The wheel has so much more spinning to do.',
     startProgress: 0.55,
     endProgress: 0.72,
@@ -92,8 +90,7 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     // Seg 6: Final stretch of rolling
     ttsText:
-      'Keep going, keep going... almost one full turn... ' +
-      'past four, past five, past six...',
+      'Keep going, keep going... almost one full turn... ' + 'past four, past five, past six...',
     startProgress: 0.72,
     endProgress: 0.92,
     animationDurationMs: 5000,
@@ -105,12 +102,12 @@ export const TAU_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     // Seg 7: Final reveal
     ttsText:
       'There it is! That number is called tau. ' +
-      'It\'s about six point two eight — exactly twice pi! ' +
+      "It's about six point two eight — exactly twice pi! " +
       'Tau is the distance a wheel rolls in one full turn, ' +
       'measured from its center to its edge. ' +
       'One full spin, one tau — easy to remember!',
     startProgress: 0.92,
-    endProgress: 1.00,
+    endProgress: 1.0,
     animationDurationMs: 8000,
     scrubberLabel: "It's tau!",
   },

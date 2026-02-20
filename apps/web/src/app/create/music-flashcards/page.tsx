@@ -12,7 +12,7 @@ type Layout = '1-up' | '4-up' | '6-up'
 interface MusicFlashcardConfig {
   clef: Clef
   noteRange: NoteRange
-  customLowNote?: number  // position relative to bottom line
+  customLowNote?: number // position relative to bottom line
   customHighNote?: number
   layout: Layout
   showNoteNames: boolean
@@ -112,21 +112,40 @@ export default function MusicFlashcardsPage() {
             {/* Configuration Panel */}
             <div className={css({ bg: 'bg.default', rounded: '2xl', shadow: 'card', p: '6' })}>
               <div className={stack({ gap: '6' })}>
-                <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'text.primary' })}>
+                <h2
+                  className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'text.primary' })}
+                >
                   Configuration
                 </h2>
 
                 {/* Instrument Preset */}
                 <div className={stack({ gap: '2' })}>
-                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'text.secondary' })}>
+                  <label
+                    className={css({
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      color: 'text.secondary',
+                    })}
+                  >
                     Instrument
                   </label>
                   <select
                     value={config.instrument}
-                    onChange={(e) => setConfig({ ...config, instrument: e.target.value as MusicFlashcardConfig['instrument'] })}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        instrument: e.target.value as MusicFlashcardConfig['instrument'],
+                      })
+                    }
                     className={css({
-                      w: 'full', p: '3', bg: 'bg.subtle', border: '1px solid', borderColor: 'border.default',
-                      rounded: 'lg', fontSize: 'md', color: 'text.primary',
+                      w: 'full',
+                      p: '3',
+                      bg: 'bg.subtle',
+                      border: '1px solid',
+                      borderColor: 'border.default',
+                      rounded: 'lg',
+                      fontSize: 'md',
+                      color: 'text.primary',
                     })}
                   >
                     <option value="violin">🎻 Violin (First Position)</option>
@@ -137,7 +156,13 @@ export default function MusicFlashcardsPage() {
 
                 {/* Clef Selection */}
                 <div className={stack({ gap: '2' })}>
-                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'text.secondary' })}>
+                  <label
+                    className={css({
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      color: 'text.secondary',
+                    })}
+                  >
                     Clef
                   </label>
                   <div className={hstack({ gap: '2' })}>
@@ -146,7 +171,11 @@ export default function MusicFlashcardsPage() {
                         key={clef}
                         onClick={() => setConfig({ ...config, clef })}
                         className={css({
-                          flex: 1, py: '3', px: '4', rounded: 'lg', fontWeight: 'medium',
+                          flex: 1,
+                          py: '3',
+                          px: '4',
+                          rounded: 'lg',
+                          fontWeight: 'medium',
                           transition: 'all 0.2s',
                           bg: config.clef === clef ? 'accent.default' : 'bg.subtle',
                           color: config.clef === clef ? 'accent.fg' : 'text.primary',
@@ -164,27 +193,53 @@ export default function MusicFlashcardsPage() {
                 {/* Note Range (only for non-violin) */}
                 {config.instrument !== 'violin' && (
                   <div className={stack({ gap: '2' })}>
-                    <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'text.secondary' })}>
+                    <label
+                      className={css({
+                        fontSize: 'sm',
+                        fontWeight: 'medium',
+                        color: 'text.secondary',
+                      })}
+                    >
                       Note Range
                     </label>
                     <select
                       value={config.noteRange}
-                      onChange={(e) => setConfig({ ...config, noteRange: e.target.value as NoteRange })}
+                      onChange={(e) =>
+                        setConfig({ ...config, noteRange: e.target.value as NoteRange })
+                      }
                       className={css({
-                        w: 'full', p: '3', bg: 'bg.subtle', border: '1px solid', borderColor: 'border.default',
-                        rounded: 'lg', fontSize: 'md', color: 'text.primary',
+                        w: 'full',
+                        p: '3',
+                        bg: 'bg.subtle',
+                        border: '1px solid',
+                        borderColor: 'border.default',
+                        rounded: 'lg',
+                        fontSize: 'md',
+                        color: 'text.primary',
                       })}
                     >
-                      <option value="beginner">Beginner — {NOTE_RANGES.beginner.description}</option>
-                      <option value="intermediate">Intermediate — {NOTE_RANGES.intermediate.description}</option>
-                      <option value="advanced">Advanced — {NOTE_RANGES.advanced.description}</option>
+                      <option value="beginner">
+                        Beginner — {NOTE_RANGES.beginner.description}
+                      </option>
+                      <option value="intermediate">
+                        Intermediate — {NOTE_RANGES.intermediate.description}
+                      </option>
+                      <option value="advanced">
+                        Advanced — {NOTE_RANGES.advanced.description}
+                      </option>
                     </select>
                   </div>
                 )}
 
                 {/* Layout */}
                 <div className={stack({ gap: '2' })}>
-                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'text.secondary' })}>
+                  <label
+                    className={css({
+                      fontSize: 'sm',
+                      fontWeight: 'medium',
+                      color: 'text.secondary',
+                    })}
+                  >
                     Cards per Page
                   </label>
                   <div className={hstack({ gap: '2' })}>
@@ -193,12 +248,18 @@ export default function MusicFlashcardsPage() {
                         key={layout}
                         onClick={() => setConfig({ ...config, layout })}
                         className={css({
-                          flex: 1, py: '2', px: '3', rounded: 'lg', fontSize: 'sm', fontWeight: 'medium',
+                          flex: 1,
+                          py: '2',
+                          px: '3',
+                          rounded: 'lg',
+                          fontSize: 'sm',
+                          fontWeight: 'medium',
                           transition: 'all 0.2s',
                           bg: config.layout === layout ? 'accent.default' : 'bg.subtle',
                           color: config.layout === layout ? 'accent.fg' : 'text.primary',
                           border: '1px solid',
-                          borderColor: config.layout === layout ? 'accent.default' : 'border.default',
+                          borderColor:
+                            config.layout === layout ? 'accent.default' : 'border.default',
                         })}
                       >
                         {layout === '1-up' ? '1' : layout === '4-up' ? '4' : '6'}
@@ -216,7 +277,10 @@ export default function MusicFlashcardsPage() {
                     onChange={(e) => setConfig({ ...config, showNoteNames: e.target.checked })}
                     className={css({ w: '5', h: '5', accentColor: 'accent.default' })}
                   />
-                  <label htmlFor="showNames" className={css({ fontSize: 'sm', color: 'text.primary' })}>
+                  <label
+                    htmlFor="showNames"
+                    className={css({ fontSize: 'sm', color: 'text.primary' })}
+                  >
                     Show note name (small, in corner)
                   </label>
                 </div>
@@ -226,20 +290,36 @@ export default function MusicFlashcardsPage() {
                   onClick={handleGenerate}
                   disabled={generating}
                   className={css({
-                    w: 'full', py: '4', px: '6', mt: '4',
-                    bg: 'accent.default', color: 'accent.fg',
-                    fontSize: 'lg', fontWeight: 'semibold', rounded: 'xl',
+                    w: 'full',
+                    py: '4',
+                    px: '6',
+                    mt: '4',
+                    bg: 'accent.default',
+                    color: 'accent.fg',
+                    fontSize: 'lg',
+                    fontWeight: 'semibold',
+                    rounded: 'xl',
                     transition: 'all 0.2s',
                     cursor: generating ? 'not-allowed' : 'pointer',
                     opacity: generating ? 0.7 : 1,
-                    _hover: generating ? {} : { bg: 'accent.emphasis', transform: 'translateY(-1px)' },
+                    _hover: generating
+                      ? {}
+                      : { bg: 'accent.emphasis', transform: 'translateY(-1px)' },
                   })}
                 >
                   {generating ? '⏳ Generating...' : '✨ Generate Flashcards'}
                 </button>
 
                 {error && (
-                  <div className={css({ p: '4', bg: 'red.50', rounded: 'lg', color: 'red.700', fontSize: 'sm' })}>
+                  <div
+                    className={css({
+                      p: '4',
+                      bg: 'red.50',
+                      rounded: 'lg',
+                      color: 'red.700',
+                      fontSize: 'sm',
+                    })}
+                  >
                     {error}
                   </div>
                 )}
@@ -249,15 +329,25 @@ export default function MusicFlashcardsPage() {
             {/* Preview Panel */}
             <div className={css({ bg: 'bg.default', rounded: '2xl', shadow: 'card', p: '6' })}>
               <div className={stack({ gap: '4' })}>
-                <h2 className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'text.primary' })}>
+                <h2
+                  className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'text.primary' })}
+                >
                   Preview
                 </h2>
 
-                <div className={css({
-                  bg: 'bg.subtle', rounded: 'xl', p: '6', minH: '300px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px dashed', borderColor: 'border.default',
-                })}>
+                <div
+                  className={css({
+                    bg: 'bg.subtle',
+                    rounded: 'xl',
+                    p: '6',
+                    minH: '300px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px dashed',
+                    borderColor: 'border.default',
+                  })}
+                >
                   {/* Simple preview representation */}
                   <div className={stack({ gap: '4', textAlign: 'center' })}>
                     <div className={css({ fontSize: '4xl' })}>
@@ -265,10 +355,15 @@ export default function MusicFlashcardsPage() {
                     </div>
                     <div className={css({ color: 'text.secondary', fontSize: 'sm' })}>
                       {config.instrument === 'violin' ? (
-                        <>Violin first position: G₃ to A₅<br />16 cards</>
+                        <>
+                          Violin first position: G₃ to A₅
+                          <br />
+                          16 cards
+                        </>
                       ) : (
                         <>
-                          {NOTE_RANGES[config.noteRange as keyof typeof NOTE_RANGES]?.description || 'Custom range'}
+                          {NOTE_RANGES[config.noteRange as keyof typeof NOTE_RANGES]?.description ||
+                            'Custom range'}
                           <br />
                           Layout: {config.layout}
                         </>
@@ -281,7 +376,13 @@ export default function MusicFlashcardsPage() {
                 </div>
 
                 {/* Info */}
-                <div className={css({ fontSize: 'sm', color: 'text.secondary', lineHeight: 'relaxed' })}>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'text.secondary',
+                    lineHeight: 'relaxed',
+                  })}
+                >
                   <strong>What you&apos;ll get:</strong>
                   <ul className={css({ listStyle: 'disc', pl: '5', mt: '2' })}>
                     <li>Professional music staff with {config.clef} clef</li>

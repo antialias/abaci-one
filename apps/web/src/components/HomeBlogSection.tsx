@@ -42,8 +42,8 @@ function PostCard({ post }: { post: BlogPostMetadata }) {
         },
       })}
     >
-      {hasBanner && (
-        hasComponent ? (
+      {hasBanner &&
+        (hasComponent ? (
           <HeroComponentBanner componentId={post.heroComponentId!} />
         ) : hasHtml ? (
           <div
@@ -80,8 +80,7 @@ function PostCard({ post }: { post: BlogPostMetadata }) {
               })}
             />
           </div>
-        )
-      )}
+        ))}
       <div className={css({ p: '4' })}>
         <h3
           className={css({

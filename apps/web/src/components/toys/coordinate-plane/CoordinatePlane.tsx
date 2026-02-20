@@ -11,7 +11,12 @@ import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { screenToWorld2D, worldToScreen2D } from '../shared/coordinateConversions'
-import type { RulerState, VisualRulerState, EquationProbeState, SlopeGuideState } from './ruler/types'
+import type {
+  RulerState,
+  VisualRulerState,
+  EquationProbeState,
+  SlopeGuideState,
+} from './ruler/types'
 import { renderRuler, rulerToScreen } from './ruler/renderRuler'
 import { useRulerInteraction } from './ruler/useRulerInteraction'
 import { equationFromPoints } from './ruler/fractionMath'
@@ -41,7 +46,11 @@ const SHORTCUTS: ShortcutEntry[] = [
 
 interface CoordinatePlaneProps {
   overlays?: CoordinatePlaneOverlay[]
-  challenge?: { enabled: boolean; difficulty?: DifficultyLevel; onComplete?: (problem: import('./wordProblems/types').WordProblem, attempts: number) => void }
+  challenge?: {
+    enabled: boolean
+    difficulty?: DifficultyLevel
+    onComplete?: (problem: import('./wordProblems/types').WordProblem, attempts: number) => void
+  }
 }
 
 export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
@@ -81,8 +90,6 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
   const [hideCursor, setHideCursor] = useState(false)
   const equationLabelRef = useRef<HTMLDivElement | null>(null)
 
-
-
   // Zoom velocity state (smoothed for visual wash)
   const zoomVelocityRef = useRef(0)
   const zoomHueRef = useRef(0)
@@ -117,27 +124,33 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
     needsDrawRef.current = true
   }, [])
 
-  const handleZoomVelocity = useCallback((velocity: number, focalX: number, focalY: number) => {
-    zoomVelocityRef.current = velocity
-    zoomHueRef.current = (zoomHueRef.current + velocity * 200 + 360) % 360
-    zoomFocalRef.current = { x: focalX, y: focalY }
-    requestDraw()
-  }, [requestDraw])
+  const handleZoomVelocity = useCallback(
+    (velocity: number, focalX: number, focalY: number) => {
+      zoomVelocityRef.current = velocity
+      zoomHueRef.current = (zoomHueRef.current + velocity * 200 + 360) % 360
+      zoomFocalRef.current = { x: focalX, y: focalY }
+      requestDraw()
+    },
+    [requestDraw]
+  )
 
   // Ruler interaction (must be called before pan/zoom so it can capture the pointer)
   const handleRulerChange = useCallback(() => {
-    setRulerVersion(v => v + 1)
+    setRulerVersion((v) => v + 1)
     requestDraw()
   }, [requestDraw])
 
   const toggleEquationForm = useCallback(() => {
-    setEquationForm(f => f === 'slope-intercept' ? 'standard' : 'slope-intercept')
+    setEquationForm((f) => (f === 'slope-intercept' ? 'standard' : 'slope-intercept'))
   }, [])
 
-  const handleActiveHandleChange = useCallback((zone: 'handleA' | 'handleB' | 'body' | null) => {
-    setActiveHandle(zone)
-    requestDraw()
-  }, [requestDraw])
+  const handleActiveHandleChange = useCallback(
+    (zone: 'handleA' | 'handleB' | 'body' | null) => {
+      setActiveHandle(zone)
+      requestDraw()
+    },
+    [requestDraw]
+  )
 
   useRulerInteraction({
     rulerRef,
@@ -162,36 +175,39 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
   // Challenge system
   const challengeEnabled = challenge?.enabled ?? false
 
-  const handleChallengeSummon = useCallback((problem: import('./wordProblems/types').WordProblem) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const dpr = window.devicePixelRatio || 1
-    const cw = canvas.width / dpr
-    const ch = canvas.height / dpr
-    const target = computeViewportTarget(problem, cw, ch, stateRef.current)
+  const handleChallengeSummon = useCallback(
+    (problem: import('./wordProblems/types').WordProblem) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const dpr = window.devicePixelRatio || 1
+      const cw = canvas.width / dpr
+      const ch = canvas.height / dpr
+      const target = computeViewportTarget(problem, cw, ch, stateRef.current)
 
-    // Switch to independent zoom so the different axis scales are preserved
-    // during subsequent user interactions (scroll, pinch)
-    zoomModeRef.current = 'independent'
-    setZoomMode('independent')
+      // Switch to independent zoom so the different axis scales are preserved
+      // during subsequent user interactions (scroll, pinch)
+      zoomModeRef.current = 'independent'
+      setZoomMode('independent')
 
-    // Ensure ruler is visible (needed to solve the problem)
-    setShowRuler(true)
+      // Ensure ruler is visible (needed to solve the problem)
+      setShowRuler(true)
 
-    viewportAnimRef.current = {
-      active: true,
-      from: {
-        cx: stateRef.current.center.x,
-        cy: stateRef.current.center.y,
-        ppuX: stateRef.current.pixelsPerUnit.x,
-        ppuY: stateRef.current.pixelsPerUnit.y,
-      },
-      to: target,
-      startTime: performance.now(),
-      duration: 600,
-    }
-    needsDrawRef.current = true
-  }, [])
+      viewportAnimRef.current = {
+        active: true,
+        from: {
+          cx: stateRef.current.center.x,
+          cy: stateRef.current.center.y,
+          ppuX: stateRef.current.pixelsPerUnit.x,
+          ppuY: stateRef.current.pixelsPerUnit.y,
+        },
+        to: target,
+        startTime: performance.now(),
+        duration: 600,
+      }
+      needsDrawRef.current = true
+    },
+    []
+  )
 
   const {
     challengeRef: challengeStateRef,
@@ -237,7 +253,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
 
       if (e.key === '?') {
         e.preventDefault()
-        setShowShortcuts(prev => !prev)
+        setShowShortcuts((prev) => !prev)
       } else if (e.key === 'z' || e.key === 'Z') {
         if (!e.metaKey && !e.ctrlKey) {
           e.preventDefault()
@@ -246,7 +262,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
       } else if (e.key === 'r' || e.key === 'R') {
         if (!e.metaKey && !e.ctrlKey) {
           e.preventDefault()
-          setShowRuler(prev => {
+          setShowRuler((prev) => {
             const next = !prev
             const label = next ? 'Ruler On' : 'Ruler Off'
             setZoomToast(label)
@@ -278,21 +294,23 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
       // Only forward events that didn't originate from the canvas itself
       if (!canvas!.contains(e.target as Node)) {
         e.preventDefault()
-        canvas!.dispatchEvent(new WheelEvent('wheel', {
-          deltaX: e.deltaX,
-          deltaY: e.deltaY,
-          deltaZ: e.deltaZ,
-          deltaMode: e.deltaMode,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          screenX: e.screenX,
-          screenY: e.screenY,
-          ctrlKey: e.ctrlKey,
-          shiftKey: e.shiftKey,
-          altKey: e.altKey,
-          metaKey: e.metaKey,
-          bubbles: false,
-        }))
+        canvas!.dispatchEvent(
+          new WheelEvent('wheel', {
+            deltaX: e.deltaX,
+            deltaY: e.deltaY,
+            deltaZ: e.deltaZ,
+            deltaMode: e.deltaMode,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            screenX: e.screenX,
+            screenY: e.screenY,
+            ctrlKey: e.ctrlKey,
+            shiftKey: e.shiftKey,
+            altKey: e.altKey,
+            metaKey: e.metaKey,
+            bubbles: false,
+          })
+        )
       }
     }
 
@@ -330,7 +348,16 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
       const sx = e.clientX - rect.left
       const sy = e.clientY - rect.top
       const s = stateRef.current
-      const w = screenToWorld2D(sx, sy, s.center.x, s.center.y, s.pixelsPerUnit.x, s.pixelsPerUnit.y, rect.width, rect.height)
+      const w = screenToWorld2D(
+        sx,
+        sy,
+        s.center.x,
+        s.center.y,
+        s.pixelsPerUnit.x,
+        s.pixelsPerUnit.y,
+        rect.width,
+        rect.height
+      )
       setDebugInfo({
         centerX: s.center.x,
         centerY: s.center.y,
@@ -388,10 +415,12 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
         stateRef.current.center.y = viewAnim.from.cy + (viewAnim.to.cy - viewAnim.from.cy) * t
         // Interpolate PPU in log-space for perceptually smooth zoom
         stateRef.current.pixelsPerUnit.x = Math.exp(
-          Math.log(viewAnim.from.ppuX) + (Math.log(viewAnim.to.ppuX) - Math.log(viewAnim.from.ppuX)) * t
+          Math.log(viewAnim.from.ppuX) +
+            (Math.log(viewAnim.to.ppuX) - Math.log(viewAnim.from.ppuX)) * t
         )
         stateRef.current.pixelsPerUnit.y = Math.exp(
-          Math.log(viewAnim.from.ppuY) + (Math.log(viewAnim.to.ppuY) - Math.log(viewAnim.from.ppuY)) * t
+          Math.log(viewAnim.from.ppuY) +
+            (Math.log(viewAnim.to.ppuY) - Math.log(viewAnim.from.ppuY)) * t
         )
         needsDrawRef.current = true
         if (t >= 1) {
@@ -420,8 +449,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
 
               // Avoid placing on the challenge answer point
               const ans = challengeStateRef.current.problem?.answer
-              const isAnswer = (x: number, y: number) =>
-                ans != null && x === ans.x && y === ans.y
+              const isAnswer = (x: number, y: number) => ans != null && x === ans.x && y === ans.y
 
               // Search outward from center for a visible, non-answer integer point
               const findVisible = (avoidX: number, avoidY: number) => {
@@ -429,7 +457,8 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
                   for (let dx = -radius; dx <= radius; dx++) {
                     for (let dy = -radius; dy <= radius; dy++) {
                       if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue
-                      const px = cx + dx, py = cy + dy
+                      const px = cx + dx,
+                        py = cy + dy
                       if (px === avoidX && py === avoidY) continue
                       if (isAnswer(px, py)) continue
                       if (isOnScreen(px, py)) return { x: px, y: py }
@@ -440,8 +469,16 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
               }
 
               let { ax, ay, bx, by } = r
-              if (!aOk) { const p = findVisible(bx, by); ax = p.x; ay = p.y }
-              if (!bOk) { const p = findVisible(ax, ay); bx = p.x; by = p.y }
+              if (!aOk) {
+                const p = findVisible(bx, by)
+                ax = p.x
+                ay = p.y
+              }
+              if (!bOk) {
+                const p = findVisible(ax, ay)
+                bx = p.x
+                by = p.y
+              }
               rulerRef.current = { ax, ay, bx, by }
             }
           }
@@ -473,7 +510,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
             xCollisionFadeMapRef.current,
             yCollisionFadeMapRef.current,
             overlays,
-            showRuler ? equationProbeRef.current : undefined,
+            showRuler ? equationProbeRef.current : undefined
           )
 
           // Render ruler on top of everything (when visible)
@@ -488,7 +525,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
               isDark,
               activeHandle,
               equationProbeRef.current,
-              slopeGuideRef.current,
+              slopeGuideRef.current
             )
           }
 
@@ -502,7 +539,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
               stateRef.current,
               cssWidth,
               cssHeight,
-              isDark,
+              isDark
             )
           }
 
@@ -511,7 +548,12 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
           // ── Sync equation label DOM position with viewport ──
           const labelEl = equationLabelRef.current
           if (labelEl) {
-            const labelInfo = rulerToScreen(visualRulerRef.current, stateRef.current, cssWidth, cssHeight)
+            const labelInfo = rulerToScreen(
+              visualRulerRef.current,
+              stateRef.current,
+              cssWidth,
+              cssHeight
+            )
             if (labelInfo.length >= 1) {
               const t = equationProbeRef.current.t
               const posX = labelInfo.ax + (labelInfo.bx - labelInfo.ax) * t
@@ -610,7 +652,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
             challengeProblem.answer.y,
             stateRef.current,
             canvasRef.current ? canvasRef.current.width / (window.devicePixelRatio || 1) : 800,
-            canvasRef.current ? canvasRef.current.height / (window.devicePixelRatio || 1) : 600,
+            canvasRef.current ? canvasRef.current.height / (window.devicePixelRatio || 1) : 600
           )}
           revealStep={challengeStateRef.current.revealStep}
           isDark={isDark}
@@ -650,9 +692,7 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
             transform: 'translateX(-50%)',
             padding: '6px 16px',
             borderRadius: 8,
-            background: isDark
-              ? 'rgba(30, 41, 59, 0.9)'
-              : 'rgba(255, 255, 255, 0.92)',
+            background: isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.92)',
             backdropFilter: 'blur(8px)',
             border: isDark
               ? '1px solid rgba(71, 85, 105, 0.5)'
@@ -683,9 +723,15 @@ export function CoordinatePlane({ overlays, challenge }: CoordinatePlaneProps) {
       {isVisualDebugEnabled && (
         <ToyDebugPanel title="Coordinate Plane">
           <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6 }}>
-            <div>center: ({debugInfo.centerX.toFixed(2)}, {debugInfo.centerY.toFixed(2)})</div>
-            <div>ppu: ({debugInfo.ppuX.toFixed(1)}, {debugInfo.ppuY.toFixed(1)})</div>
-            <div>cursor: ({debugInfo.cursorWX.toFixed(4)}, {debugInfo.cursorWY.toFixed(4)})</div>
+            <div>
+              center: ({debugInfo.centerX.toFixed(2)}, {debugInfo.centerY.toFixed(2)})
+            </div>
+            <div>
+              ppu: ({debugInfo.ppuX.toFixed(1)}, {debugInfo.ppuY.toFixed(1)})
+            </div>
+            <div>
+              cursor: ({debugInfo.cursorWX.toFixed(4)}, {debugInfo.cursorWY.toFixed(4)})
+            </div>
             <div>mode: {zoomMode}</div>
           </div>
         </ToyDebugPanel>
@@ -730,11 +776,7 @@ function RulerEquationOverlay({
   equationForm,
   onClickLabel,
 }: RulerEquationOverlayProps) {
-  const {
-    sliderT,
-    isDragging,
-    handlePointerDown,
-  } = useEquationSlider({
+  const { sliderT, isDragging, handlePointerDown } = useEquationSlider({
     rulerRef,
     stateRef,
     canvasRef,
@@ -788,4 +830,3 @@ function RulerEquationOverlay({
     />
   )
 }
-

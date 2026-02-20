@@ -245,8 +245,8 @@ export function GenericResultsPhase<
                   })}
                 >
                   🏆{' '}
-                  {activePlayerData.find((p) => p.id === multiplayerResult.winners[0])?.displayName ||
-                    `Player ${multiplayerResult.winners[0]}`}{' '}
+                  {activePlayerData.find((p) => p.id === multiplayerResult.winners[0])
+                    ?.displayName || `Player ${multiplayerResult.winners[0]}`}{' '}
                   Wins!
                 </p>
               ) : (
@@ -265,7 +265,12 @@ export function GenericResultsPhase<
         )}
 
         {/* Star Rating */}
-        <div className={css({ fontSize: { base: '24px', md: '32px' }, marginBottom: { base: '8px', md: '12px' } })}>
+        <div
+          className={css({
+            fontSize: { base: '24px', md: '32px' },
+            marginBottom: { base: '8px', md: '12px' },
+          })}
+        >
           {'⭐'.repeat(analysis.starRating)}
           {'☆'.repeat(5 - analysis.starRating)}
         </div>
@@ -293,10 +298,26 @@ export function GenericResultsPhase<
         })}
       >
         {[
-          { value: state.matchedPairs, label: 'Pairs', gradient: 'linear-gradient(135deg, #667eea, #764ba2)' },
-          { value: state.moves, label: 'Moves', gradient: 'linear-gradient(135deg, #a78bfa, #8b5cf6)' },
-          { value: formatGameTime(gameTime), label: 'Time', gradient: 'linear-gradient(135deg, #ff6b6b, #ee5a24)' },
-          { value: `${Math.round(analysis.statistics.accuracy)}%`, label: 'Accuracy', gradient: 'linear-gradient(135deg, #55a3ff, #003d82)' },
+          {
+            value: state.matchedPairs,
+            label: 'Pairs',
+            gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
+          },
+          {
+            value: state.moves,
+            label: 'Moves',
+            gradient: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+          },
+          {
+            value: formatGameTime(gameTime),
+            label: 'Time',
+            gradient: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
+          },
+          {
+            value: `${Math.round(analysis.statistics.accuracy)}%`,
+            label: 'Accuracy',
+            gradient: 'linear-gradient(135deg, #55a3ff, #003d82)',
+          },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -349,16 +370,28 @@ export function GenericResultsPhase<
                     : 'linear-gradient(135deg, #c0c0c0, #808080)',
                 }}
               >
-                <div className={css({ fontSize: { base: '32px', md: '40px' }, marginBottom: '4px' })}>
+                <div
+                  className={css({ fontSize: { base: '32px', md: '40px' }, marginBottom: '4px' })}
+                >
                   {player.displayEmoji}
                 </div>
-                <div className={css({ fontSize: { base: '11px', md: '12px' }, marginBottom: '2px', opacity: 0.9 })}>
+                <div
+                  className={css({
+                    fontSize: { base: '11px', md: '12px' },
+                    marginBottom: '2px',
+                    opacity: 0.9,
+                  })}
+                >
                   {player.displayName}
                 </div>
-                <div className={css({ fontSize: { base: '24px', md: '32px' }, fontWeight: 'bold' })}>
+                <div
+                  className={css({ fontSize: { base: '24px', md: '32px' }, fontWeight: 'bold' })}
+                >
                   {score}
                 </div>
-                {isWinner && <div className={css({ fontSize: { base: '18px', md: '20px' } })}>👑</div>}
+                {isWinner && (
+                  <div className={css({ fontSize: { base: '18px', md: '20px' } })}>👑</div>
+                )}
               </div>
             )
           })}

@@ -22,7 +22,9 @@ const mockDeletePlayer = vi.fn()
 const mockNotifyRoomOfPlayerUpdate = vi.fn()
 
 /** Build a minimal valid DBPlayer for tests */
-function makePlayer(overrides: Partial<DBPlayer> & { id: string; name: string; userId: string }): DBPlayer {
+function makePlayer(
+  overrides: Partial<DBPlayer> & { id: string; name: string; userId: string }
+): DBPlayer {
   return {
     emoji: '😀',
     color: '#3b82f6',
@@ -95,7 +97,14 @@ describe('GameModeContext', () => {
       wrapper: createWrapper({
         dbPlayers: [
           makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true }),
-          makePlayer({ id: 'p2', name: 'Bob', userId: 'u1', emoji: '😎', color: '#8b5cf6', isActive: true }),
+          makePlayer({
+            id: 'p2',
+            name: 'Bob',
+            userId: 'u1',
+            emoji: '😎',
+            color: '#8b5cf6',
+            isActive: true,
+          }),
         ],
       }),
     })
@@ -108,8 +117,22 @@ describe('GameModeContext', () => {
       wrapper: createWrapper({
         dbPlayers: [
           makePlayer({ id: 'p1', name: 'Alice', userId: 'u1', isActive: true }),
-          makePlayer({ id: 'p2', name: 'Bob', userId: 'u1', emoji: '😎', color: '#8b5cf6', isActive: true }),
-          makePlayer({ id: 'p3', name: 'Charlie', userId: 'u1', emoji: '🤠', color: '#10b981', isActive: true }),
+          makePlayer({
+            id: 'p2',
+            name: 'Bob',
+            userId: 'u1',
+            emoji: '😎',
+            color: '#8b5cf6',
+            isActive: true,
+          }),
+          makePlayer({
+            id: 'p3',
+            name: 'Charlie',
+            userId: 'u1',
+            emoji: '🤠',
+            color: '#10b981',
+            isActive: true,
+          }),
         ],
       }),
     })

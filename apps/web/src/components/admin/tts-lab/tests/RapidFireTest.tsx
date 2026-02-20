@@ -8,7 +8,15 @@ import { css } from '../../../../../styled-system/css'
 
 const WORDS = ['One', 'Two', 'Three', 'Four', 'Five']
 
-function LabButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function LabButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}

@@ -1,10 +1,6 @@
 'use client'
 
-import {
-  pitchToStaffPosition,
-  getStemDirection,
-  getLedgerLinePositions,
-} from './noteUtils'
+import { pitchToStaffPosition, getStemDirection, getLedgerLinePositions } from './noteUtils'
 import type { PitchClass, Clef, Accidental } from './noteUtils'
 
 export interface MusicStaffProps {
@@ -73,7 +69,13 @@ export function MusicStaff({
 
   // Accidental positioning
   const accidentalSymbol =
-    accidental === 'sharp' ? '\u266F' : accidental === 'flat' ? '\u266D' : accidental === 'natural' ? '\u266E' : null
+    accidental === 'sharp'
+      ? '\u266F'
+      : accidental === 'flat'
+        ? '\u266D'
+        : accidental === 'natural'
+          ? '\u266E'
+          : null
   const accidentalX = noteX - noteRx - 8
   const accidentalY = noteY + 3
 
@@ -159,14 +161,7 @@ export function MusicStaff({
       />
 
       {/* Stem */}
-      <line
-        x1={stemX}
-        y1={stemY1}
-        x2={stemX}
-        y2={stemY2}
-        stroke="#333"
-        strokeWidth={1.2}
-      />
+      <line x1={stemX} y1={stemY1} x2={stemX} y2={stemY2} stroke="#333" strokeWidth={1.2} />
     </svg>
   )
 }

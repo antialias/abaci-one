@@ -148,7 +148,10 @@ export function validateTermCountScaling(config: unknown): string | null {
       if (r.min > r.max) return `${mode}.${level}.min must be <= ${mode}.${level}.max`
     }
 
-    const mc = modeConfig as { floor: { min: number; max: number }; ceiling: { min: number; max: number } }
+    const mc = modeConfig as {
+      floor: { min: number; max: number }
+      ceiling: { min: number; max: number }
+    }
     if (mc.floor.min > mc.ceiling.min) return `${mode}: floor.min must be <= ceiling.min`
     if (mc.floor.max > mc.ceiling.max) return `${mode}: floor.max must be <= ceiling.max`
   }

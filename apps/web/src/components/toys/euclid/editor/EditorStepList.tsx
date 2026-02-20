@@ -74,20 +74,24 @@ export function EditorStepList({
       }}
     >
       {/* Header with delete button */}
-      <div style={{
-        padding: '8px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <span style={{
-          fontSize: 11,
-          fontWeight: 600,
-          color: '#94a3b8',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          fontFamily: 'system-ui, sans-serif',
-        }}>
+      <div
+        style={{
+          padding: '8px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#94a3b8',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontFamily: 'system-ui, sans-serif',
+          }}
+        >
           Steps ({steps.length})
         </span>
         <button
@@ -141,22 +145,24 @@ export function EditorStepList({
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 {/* Step indicator */}
-                <div style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: '50%',
-                  flexShrink: 0,
-                  marginTop: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: 'system-ui, sans-serif',
-                  background: isHovered ? '#0d9668' : '#10b981',
-                  color: '#fff',
-                  transition: 'all 0.15s ease',
-                }}>
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    marginTop: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: 'system-ui, sans-serif',
+                    background: isHovered ? '#0d9668' : '#10b981',
+                    color: '#fff',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
                   {isHovered ? '\u21BA' : '\u2713'}
                 </div>
 
@@ -166,18 +172,18 @@ export function EditorStepList({
                     <input
                       data-element="edit-instruction"
                       defaultValue={step.instruction}
-                      onBlur={e => {
+                      onBlur={(e) => {
                         onUpdateInstruction(i, e.target.value)
                         setEditingIndex(null)
                       }}
-                      onKeyDown={e => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           onUpdateInstruction(i, (e.target as HTMLInputElement).value)
                           setEditingIndex(null)
                         }
                         if (e.key === 'Escape') setEditingIndex(null)
                       }}
-                      onClick={e => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                       autoFocus
                       style={{
                         width: '100%',
@@ -191,7 +197,7 @@ export function EditorStepList({
                     />
                   ) : (
                     <div
-                      onDoubleClick={e => {
+                      onDoubleClick={(e) => {
                         e.stopPropagation()
                         setEditingIndex(i)
                       }}
@@ -208,45 +214,55 @@ export function EditorStepList({
                   )}
 
                   {/* Citation badge */}
-                  <div style={{
-                    marginTop: 3,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: '#6b9b6b',
-                    fontFamily: 'system-ui, sans-serif',
-                  }}>
+                  <div
+                    style={{
+                      marginTop: 3,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: '#6b9b6b',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}
+                  >
                     [{step.citation}]
                     {citDef && (
-                      <span style={{
-                        fontWeight: 400,
-                        fontStyle: 'italic',
-                        fontFamily: 'Georgia, serif',
-                        color: '#94a3b8',
-                        marginLeft: 4,
-                      }}>
+                      <span
+                        style={{
+                          fontWeight: 400,
+                          fontStyle: 'italic',
+                          fontFamily: 'Georgia, serif',
+                          color: '#94a3b8',
+                          marginLeft: 4,
+                        }}
+                      >
                         {citDef.text}
                       </span>
                     )}
                   </div>
 
                   {/* Action type indicator */}
-                  <div style={{
-                    marginTop: 2,
-                    fontSize: 10,
-                    color: '#94a3b8',
-                    fontFamily: 'system-ui, sans-serif',
-                  }}>
-                    {step.action.type === 'compass' && `Compass: ${step.action.centerId} → ${step.action.radiusPointId}`}
-                    {step.action.type === 'straightedge' && `Straightedge: ${step.action.fromId} → ${step.action.toId}`}
-                    {step.action.type === 'intersection' && `Intersection: ${step.action.label} (${step.action.ofA} ∩ ${step.action.ofB})`}
-                    {step.action.type === 'macro' && `Macro: I.${step.action.propId}(${step.action.inputPointIds.join(', ')})`}
+                  <div
+                    style={{
+                      marginTop: 2,
+                      fontSize: 10,
+                      color: '#94a3b8',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}
+                  >
+                    {step.action.type === 'compass' &&
+                      `Compass: ${step.action.centerId} → ${step.action.radiusPointId}`}
+                    {step.action.type === 'straightedge' &&
+                      `Straightedge: ${step.action.fromId} → ${step.action.toId}`}
+                    {step.action.type === 'intersection' &&
+                      `Intersection: ${step.action.label} (${step.action.ofA} ∩ ${step.action.ofB})`}
+                    {step.action.type === 'macro' &&
+                      `Macro: I.${step.action.propId}(${step.action.inputPointIds.join(', ')})`}
                     {step.action.type === 'fact-only' && 'Fact annotation'}
                   </div>
 
                   {/* Step facts */}
                   {stepFacts.length > 0 && (
                     <div style={{ marginTop: 4 }}>
-                      {stepFacts.map(fact => (
+                      {stepFacts.map((fact) => (
                         <div
                           key={fact.id}
                           style={{
@@ -256,7 +272,13 @@ export function EditorStepList({
                             borderLeft: '2px solid rgba(78, 121, 167, 0.2)',
                           }}
                         >
-                          <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
+                          <span
+                            style={{
+                              color: '#4E79A7',
+                              fontWeight: 600,
+                              fontFamily: 'Georgia, serif',
+                            }}
+                          >
                             {fact.statement}
                           </span>
                         </div>
@@ -269,11 +291,11 @@ export function EditorStepList({
                     <textarea
                       data-element="edit-notes"
                       defaultValue={step.notes ?? ''}
-                      onBlur={e => {
+                      onBlur={(e) => {
                         onUpdateNotes(i, e.target.value)
                         setEditingNotesIndex(null)
                       }}
-                      onClick={e => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                       autoFocus
                       placeholder="Handoff notes for Claude..."
                       style={{
@@ -291,7 +313,7 @@ export function EditorStepList({
                     />
                   ) : (
                     <div
-                      onDoubleClick={e => {
+                      onDoubleClick={(e) => {
                         e.stopPropagation()
                         setEditingNotesIndex(i)
                       }}

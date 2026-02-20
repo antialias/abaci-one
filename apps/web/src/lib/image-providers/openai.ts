@@ -48,9 +48,7 @@ export const openaiProvider: ImageProvider = {
     name: 'OpenAI',
     envKey: 'LLM_OPENAI_API_KEY',
     envKeyAlt: 'OPENAI_API_KEY',
-    models: [
-      { id: 'gpt-image-1', name: 'GPT Image 1' },
-    ],
+    models: [{ id: 'gpt-image-1', name: 'GPT Image 1' }],
   },
 
   isAvailable(): boolean {

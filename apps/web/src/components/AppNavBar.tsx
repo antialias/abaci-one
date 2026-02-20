@@ -177,354 +177,217 @@ function MenuContent({
     <div style={containerStyle}>
       {isMobile ? (
         <>
-        {/* Top bar — abacus (left corner), account (center), theme (right corner) */}
-        <div
-          data-element="top-bar"
-          style={{
-            display: 'flex',
-            alignItems: 'stretch',
-            margin: '0 -16px 4px -16px',
-          }}
-        >
-          <AbacusDisplayDropdown
-            triggerStyle={{
-              borderRadius: '0 0 8px 0',
-              borderTop: 'none',
-              borderLeft: 'none',
-              boxShadow: 'none',
-              flexShrink: 0,
-            }}
-          />
+          {/* Top bar — abacus (left corner), account (center), theme (right corner) */}
           <div
-            data-element="account-section"
+            data-element="top-bar"
             style={{
-              flex: 1,
-              minWidth: 0,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 8px',
+              alignItems: 'stretch',
+              margin: '0 -16px 4px -16px',
             }}
           >
-            {sessionStatus === 'authenticated' && session?.user ? (
-              <Link
-                href="/settings"
-                data-action="preferences"
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleLinkClick('/settings')
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  textDecoration: 'none',
-                  borderRadius: '8px',
-                  padding: '4px 8px',
-                  transition: 'background 0.2s ease',
-                  minWidth: 0,
-                  maxWidth: '100%',
-                }}
-                title="Preferences"
-              >
-                {session.user.image ? (
-                  <img
-                    src={session.user.image}
-                    alt={session.user.name ?? 'User'}
-                    referrerPolicy="no-referrer"
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: 'rgba(139, 92, 246, 0.8)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: isDark ? 'white' : 'rgba(17, 24, 39, 1)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                  }}
-                >
-                  {session.user.name || session.user.email}
-                </div>
-              </Link>
-            ) : sessionStatus !== 'loading' ? (
-              <Link
-                href="/auth/signin"
-                data-action="sign-in"
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleLinkClick('/auth/signin')
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
-                  color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  textDecoration: 'none',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                Sign In
-              </Link>
-            ) : null}
-          </div>
-          <ThemeToggle
-            style={{
-              borderRadius: '0 0 0 8px',
-              borderTop: 'none',
-              borderRight: 'none',
-              boxShadow: 'none',
-              flexShrink: 0,
-            }}
-          />
-        </div>
-        <div style={separatorStyle} />
-
-        <div
-          className={css({
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            gap: '16px',
-            minHeight: 0, // Allow grid to shrink
-            flex: '1 1 auto',
-            alignContent: 'start',
-            overflowY: 'auto',
-            '@media (min-width: 480px) and (orientation: landscape)': {
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '20px',
-              gridTemplateRows: 'min-content',
-            },
-            '@media (max-height: 600px)': {
-              gap: '8px',
-            },
-          })}
-        >
-          {/* Column 1: Navigation + Controls */}
-          <div>
-            {/* Site Navigation Section */}
-            <div style={sectionHeaderStyle}>Navigation</div>
-
-            {renderNavLink('/', '🧮', 'Home')}
-            {renderNavLink('/create', '✏️', 'Create')}
-            {renderNavLink('/practice', '📚', 'Practice')}
-            {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
-            {renderNavLink('/games', '🎮', 'Games')}
-            {renderNavLink('/toys', '🧸', 'Toys')}
-            {renderNavLink('/guide', '📖', 'Guide')}
-            {renderNavLink('/blog', '📝', 'Blog')}
-
-            <div style={separatorStyle} />
-
-            {/* Controls Section */}
-            <div style={sectionHeaderStyle}>Controls</div>
-
+            <AbacusDisplayDropdown
+              triggerStyle={{
+                borderRadius: '0 0 8px 0',
+                borderTop: 'none',
+                borderLeft: 'none',
+                boxShadow: 'none',
+                flexShrink: 0,
+              }}
+            />
             <div
-              onClick={() => {
-                toggleFullscreen()
-                onNavigate?.()
-              }}
-              style={controlButtonStyle}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                  ? 'rgba(59, 130, 246, 0.2)'
-                  : 'rgba(59, 130, 246, 0.1)'
-                e.currentTarget.style.color = isDark
-                  ? 'rgba(147, 197, 253, 1)'
-                  : 'rgba(29, 78, 216, 1)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = isDark
-                  ? 'rgba(209, 213, 219, 1)'
-                  : 'rgba(55, 65, 81, 1)'
+              data-element="account-section"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 8px',
               }}
             >
-              <span style={{ fontSize: '18px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
-              <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+              {sessionStatus === 'authenticated' && session?.user ? (
+                <Link
+                  href="/settings"
+                  data-action="preferences"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleLinkClick('/settings')
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    textDecoration: 'none',
+                    borderRadius: '8px',
+                    padding: '4px 8px',
+                    transition: 'background 0.2s ease',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                  }}
+                  title="Preferences"
+                >
+                  {session.user.image ? (
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name ?? 'User'}
+                      referrerPolicy="no-referrer"
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: 'rgba(139, 92, 246, 0.8)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {(session.user.name ?? session.user.email ?? '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: isDark ? 'white' : 'rgba(17, 24, 39, 1)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      minWidth: 0,
+                    }}
+                  >
+                    {session.user.name || session.user.email}
+                  </div>
+                </Link>
+              ) : sessionStatus !== 'loading' ? (
+                <Link
+                  href="/auth/signin"
+                  data-action="sign-in"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleLinkClick('/auth/signin')
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
+                    color: isDark ? 'rgba(196, 181, 253, 1)' : 'rgba(109, 40, 217, 1)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Sign In
+                </Link>
+              ) : null}
             </div>
-
-            {isArcadePage && (
-              <div
-                onClick={() => {
-                  router.push('/games')
-                  onNavigate?.()
-                }}
-                style={controlButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDark
-                    ? 'rgba(239, 68, 68, 0.2)'
-                    : 'rgba(239, 68, 68, 0.1)'
-                  e.currentTarget.style.color = isDark
-                    ? 'rgba(252, 165, 165, 1)'
-                    : 'rgba(185, 28, 28, 1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = isDark
-                    ? 'rgba(209, 213, 219, 1)'
-                    : 'rgba(55, 65, 81, 1)'
-                }}
-              >
-                <span style={{ fontSize: '18px' }}>🚪</span>
-                <span>Exit Arcade</span>
-              </div>
-            )}
-
-            {openDeploymentInfo && (
-              <div
-                onClick={() => {
-                  openDeploymentInfo()
-                  onNavigate?.()
-                }}
-                style={controlButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDark
-                    ? 'rgba(34, 197, 94, 0.2)'
-                    : 'rgba(34, 197, 94, 0.1)'
-                  e.currentTarget.style.color = isDark
-                    ? 'rgba(134, 239, 172, 1)'
-                    : 'rgba(21, 128, 61, 1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = isDark
-                    ? 'rgba(209, 213, 219, 1)'
-                    : 'rgba(55, 65, 81, 1)'
-                }}
-              >
-                <span style={{ fontSize: '18px' }}>ℹ️</span>
-                <span>Deployment Info</span>
-              </div>
-            )}
+            <ThemeToggle
+              style={{
+                borderRadius: '0 0 0 8px',
+                borderTop: 'none',
+                borderRight: 'none',
+                boxShadow: 'none',
+                flexShrink: 0,
+              }}
+            />
           </div>
+          <div style={separatorStyle} />
 
-          {/* Column 2: Developer (if allowed) */}
-          <div>
-            {isDebugAllowed && (
-              <>
-                <div style={sectionHeaderStyle}>Developer</div>
-                <Link
-                  href="/debug"
-                  data-action="debug-hub-link"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleLinkClick('/debug')
-                  }}
-                  style={linkStyle}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? 'rgba(234, 179, 8, 0.2)'
-                      : 'rgba(234, 179, 8, 0.1)'
-                    e.currentTarget.style.color = isDark
-                      ? 'rgba(253, 224, 71, 1)'
-                      : 'rgba(161, 98, 7, 1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = isDark
-                      ? 'rgba(209, 213, 219, 1)'
-                      : 'rgba(55, 65, 81, 1)'
-                  }}
-                >
-                  <span style={{ fontSize: '18px' }}>🛠️</span>
-                  <span>Debug Hub</span>
-                </Link>
-                <Link
-                  href="/vision-training"
-                  data-action="vision-training-link"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleLinkClick('/vision-training')
-                  }}
-                  style={linkStyle}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? 'rgba(234, 179, 8, 0.2)'
-                      : 'rgba(234, 179, 8, 0.1)'
-                    e.currentTarget.style.color = isDark
-                      ? 'rgba(253, 224, 71, 1)'
-                      : 'rgba(161, 98, 7, 1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = isDark
-                      ? 'rgba(209, 213, 219, 1)'
-                      : 'rgba(55, 65, 81, 1)'
-                  }}
-                >
-                  <span style={{ fontSize: '18px' }}>👁️</span>
-                  <span>Vision Training</span>
-                </Link>
-                <Link
-                  href="/admin"
-                  data-action="admin-link"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleLinkClick('/admin')
-                  }}
-                  style={linkStyle}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? 'rgba(234, 179, 8, 0.2)'
-                      : 'rgba(234, 179, 8, 0.1)'
-                    e.currentTarget.style.color = isDark
-                      ? 'rgba(253, 224, 71, 1)'
-                      : 'rgba(161, 98, 7, 1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = isDark
-                      ? 'rgba(209, 213, 219, 1)'
-                      : 'rgba(55, 65, 81, 1)'
-                  }}
-                >
-                  <span style={{ fontSize: '18px' }}>⚙️</span>
-                  <span>Admin</span>
-                </Link>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              gap: '16px',
+              minHeight: 0, // Allow grid to shrink
+              flex: '1 1 auto',
+              alignContent: 'start',
+              overflowY: 'auto',
+              '@media (min-width: 480px) and (orientation: landscape)': {
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '20px',
+                gridTemplateRows: 'min-content',
+              },
+              '@media (max-height: 600px)': {
+                gap: '8px',
+              },
+            })}
+          >
+            {/* Column 1: Navigation + Controls */}
+            <div>
+              {/* Site Navigation Section */}
+              <div style={sectionHeaderStyle}>Navigation</div>
+
+              {renderNavLink('/', '🧮', 'Home')}
+              {renderNavLink('/create', '✏️', 'Create')}
+              {renderNavLink('/practice', '📚', 'Practice')}
+              {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
+              {renderNavLink('/games', '🎮', 'Games')}
+              {renderNavLink('/toys', '🧸', 'Toys')}
+              {renderNavLink('/guide', '📖', 'Guide')}
+              {renderNavLink('/blog', '📝', 'Blog')}
+
+              <div style={separatorStyle} />
+
+              {/* Controls Section */}
+              <div style={sectionHeaderStyle}>Controls</div>
+
+              <div
+                onClick={() => {
+                  toggleFullscreen()
+                  onNavigate?.()
+                }}
+                style={controlButtonStyle}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark
+                    ? 'rgba(59, 130, 246, 0.2)'
+                    : 'rgba(59, 130, 246, 0.1)'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(147, 197, 253, 1)'
+                    : 'rgba(29, 78, 216, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = isDark
+                    ? 'rgba(209, 213, 219, 1)'
+                    : 'rgba(55, 65, 81, 1)'
+                }}
+              >
+                <span style={{ fontSize: '18px' }}>{isFullscreen ? '🪟' : '⛶'}</span>
+                <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+              </div>
+
+              {isArcadePage && (
                 <div
-                  data-setting="visual-debug"
                   onClick={() => {
-                    toggleVisualDebug()
+                    router.push('/games')
+                    onNavigate?.()
                   }}
                   style={controlButtonStyle}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = isDark
-                      ? 'rgba(234, 179, 8, 0.2)'
-                      : 'rgba(234, 179, 8, 0.1)'
+                      ? 'rgba(239, 68, 68, 0.2)'
+                      : 'rgba(239, 68, 68, 0.1)'
                     e.currentTarget.style.color = isDark
-                      ? 'rgba(253, 224, 71, 1)'
-                      : 'rgba(161, 98, 7, 1)'
+                      ? 'rgba(252, 165, 165, 1)'
+                      : 'rgba(185, 28, 28, 1)'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent'
@@ -533,44 +396,181 @@ function MenuContent({
                       : 'rgba(55, 65, 81, 1)'
                   }}
                 >
-                  <span style={{ fontSize: '18px' }}>{isVisualDebugEnabled ? '🔍' : '🐞'}</span>
-                  <span>Visual Debug {isVisualDebugEnabled ? 'ON' : 'OFF'}</span>
+                  <span style={{ fontSize: '18px' }}>🚪</span>
+                  <span>Exit Arcade</span>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
+              )}
 
-        {/* Sign out — pinned to bottom */}
-        {sessionStatus === 'authenticated' && (
-          <>
-            <div style={{ flex: 1 }} />
-            <div style={separatorStyle} />
-            <div
-              data-action="sign-out"
-              onClick={() => {
-                signOut({ callbackUrl: '/' })
-                onNavigate?.()
-              }}
-              style={{
-                ...controlButtonStyle,
-                color: isDark ? 'rgba(252, 165, 165, 1)' : 'rgba(185, 28, 28, 1)',
-                justifyContent: 'center',
-                padding: '10px 12px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                  ? 'rgba(239, 68, 68, 0.2)'
-                  : 'rgba(239, 68, 68, 0.1)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-              }}
-            >
-              <span>Sign out</span>
+              {openDeploymentInfo && (
+                <div
+                  onClick={() => {
+                    openDeploymentInfo()
+                    onNavigate?.()
+                  }}
+                  style={controlButtonStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark
+                      ? 'rgba(34, 197, 94, 0.2)'
+                      : 'rgba(34, 197, 94, 0.1)'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(134, 239, 172, 1)'
+                      : 'rgba(21, 128, 61, 1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = isDark
+                      ? 'rgba(209, 213, 219, 1)'
+                      : 'rgba(55, 65, 81, 1)'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>ℹ️</span>
+                  <span>Deployment Info</span>
+                </div>
+              )}
             </div>
-          </>
-        )}
+
+            {/* Column 2: Developer (if allowed) */}
+            <div>
+              {isDebugAllowed && (
+                <>
+                  <div style={sectionHeaderStyle}>Developer</div>
+                  <Link
+                    href="/debug"
+                    data-action="debug-hub-link"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleLinkClick('/debug')
+                    }}
+                    style={linkStyle}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDark
+                        ? 'rgba(234, 179, 8, 0.2)'
+                        : 'rgba(234, 179, 8, 0.1)'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(253, 224, 71, 1)'
+                        : 'rgba(161, 98, 7, 1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(209, 213, 219, 1)'
+                        : 'rgba(55, 65, 81, 1)'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>🛠️</span>
+                    <span>Debug Hub</span>
+                  </Link>
+                  <Link
+                    href="/vision-training"
+                    data-action="vision-training-link"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleLinkClick('/vision-training')
+                    }}
+                    style={linkStyle}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDark
+                        ? 'rgba(234, 179, 8, 0.2)'
+                        : 'rgba(234, 179, 8, 0.1)'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(253, 224, 71, 1)'
+                        : 'rgba(161, 98, 7, 1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(209, 213, 219, 1)'
+                        : 'rgba(55, 65, 81, 1)'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>👁️</span>
+                    <span>Vision Training</span>
+                  </Link>
+                  <Link
+                    href="/admin"
+                    data-action="admin-link"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleLinkClick('/admin')
+                    }}
+                    style={linkStyle}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDark
+                        ? 'rgba(234, 179, 8, 0.2)'
+                        : 'rgba(234, 179, 8, 0.1)'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(253, 224, 71, 1)'
+                        : 'rgba(161, 98, 7, 1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(209, 213, 219, 1)'
+                        : 'rgba(55, 65, 81, 1)'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>⚙️</span>
+                    <span>Admin</span>
+                  </Link>
+                  <div
+                    data-setting="visual-debug"
+                    onClick={() => {
+                      toggleVisualDebug()
+                    }}
+                    style={controlButtonStyle}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = isDark
+                        ? 'rgba(234, 179, 8, 0.2)'
+                        : 'rgba(234, 179, 8, 0.1)'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(253, 224, 71, 1)'
+                        : 'rgba(161, 98, 7, 1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = isDark
+                        ? 'rgba(209, 213, 219, 1)'
+                        : 'rgba(55, 65, 81, 1)'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>{isVisualDebugEnabled ? '🔍' : '🐞'}</span>
+                    <span>Visual Debug {isVisualDebugEnabled ? 'ON' : 'OFF'}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Sign out — pinned to bottom */}
+          {sessionStatus === 'authenticated' && (
+            <>
+              <div style={{ flex: 1 }} />
+              <div style={separatorStyle} />
+              <div
+                data-action="sign-out"
+                onClick={() => {
+                  signOut({ callbackUrl: '/' })
+                  onNavigate?.()
+                }}
+                style={{
+                  ...controlButtonStyle,
+                  color: isDark ? 'rgba(252, 165, 165, 1)' : 'rgba(185, 28, 28, 1)',
+                  justifyContent: 'center',
+                  padding: '10px 12px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark
+                    ? 'rgba(239, 68, 68, 0.2)'
+                    : 'rgba(239, 68, 68, 0.1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                <span>Sign out</span>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>

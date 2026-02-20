@@ -35,9 +35,7 @@ export interface BlogImageGenerateOutput {
  * If a fallback provider is configured, automatically retries failed images
  * with the fallback before counting them as failures.
  */
-export async function startBlogImageGeneration(
-  input: BlogImageGenerateInput
-): Promise<string> {
+export async function startBlogImageGeneration(input: BlogImageGenerateInput): Promise<string> {
   return createTask<BlogImageGenerateInput, BlogImageGenerateOutput, BlogImageGenerateEvent>(
     'blog-image-generate',
     input,

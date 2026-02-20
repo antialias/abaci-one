@@ -31,7 +31,7 @@ export const MODE_MAP: Record<ModeId, AgentMode> = {
 /** Resolve a mode's instructions and tools for the given context. */
 export function resolveMode(
   modeId: ModeId,
-  ctx: ModeContext,
+  ctx: ModeContext
 ): { instructions: string; tools: RealtimeTool[] } {
   const mode = MODE_MAP[modeId]
   return {

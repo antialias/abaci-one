@@ -1,18 +1,16 @@
 import type { EuclidViewportState, GhostLayer } from '../types'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 
-function toScreen(
-  wx: number,
-  wy: number,
-  viewport: EuclidViewportState,
-  w: number,
-  h: number,
-) {
+function toScreen(wx: number, wy: number, viewport: EuclidViewportState, w: number, h: number) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    w, h,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    w,
+    h
   )
 }
 
@@ -23,15 +21,27 @@ const LERP_SPEED = 0.15
 
 // Base opacity at rest for depth 1. Hover brightens to ~4x this value.
 let ghostBaseOpacity = 0.2
-export function getGhostBaseOpacity() { return ghostBaseOpacity }
-export function setGhostBaseOpacity(v: number) { ghostBaseOpacity = Math.max(0, Math.min(1, v)) }
-export function getGhostBaseOpacityRange() { return { min: 0, max: 0.5 } }
+export function getGhostBaseOpacity() {
+  return ghostBaseOpacity
+}
+export function setGhostBaseOpacity(v: number) {
+  ghostBaseOpacity = Math.max(0, Math.min(1, v))
+}
+export function getGhostBaseOpacityRange() {
+  return { min: 0, max: 0.5 }
+}
 
 // Depth falloff: 0 = no backoff, 1 = immediate backoff (depth > 1 invisible)
 let ghostFalloff = 0.75
-export function getGhostFalloff() { return ghostFalloff }
-export function setGhostFalloff(v: number) { ghostFalloff = Math.max(0, Math.min(1, v)) }
-export function getGhostFalloffRange() { return { min: 0, max: 1 } }
+export function getGhostFalloff() {
+  return ghostFalloff
+}
+export function setGhostFalloff(v: number) {
+  ghostFalloff = Math.max(0, Math.min(1, v))
+}
+export function getGhostFalloffRange() {
+  return { min: 0, max: 1 }
+}
 
 /**
  * Compute depth-based opacity multiplier.
@@ -59,7 +69,7 @@ export function renderGhostGeometry(
   w: number,
   h: number,
   hoveredMacroStep: number | null,
-  opacities: Map<string, number>,
+  opacities: Map<string, number>
 ): boolean {
   if (ghostLayers.length === 0) return false
 

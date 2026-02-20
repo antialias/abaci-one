@@ -50,7 +50,9 @@ export default function NumberLinePage() {
         <NumberLine
           playerId={selectedPlayerId ?? undefined}
           onPlayerIdentified={(id) => setSelectedPlayerId(id)}
-          onCallStateChange={(state: CallState) => setCallActive(state !== 'idle' && state !== 'error')}
+          onCallStateChange={(state: CallState) =>
+            setCallActive(state !== 'idle' && state !== 'error')
+          }
         />
       </div>
     </div>

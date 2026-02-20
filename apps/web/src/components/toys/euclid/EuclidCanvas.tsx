@@ -16,10 +16,22 @@ import type {
   GhostLayer,
 } from './types'
 import { needsExtendedSegments, BYRNE_CYCLE } from './types'
-import { initializeGiven, addPoint, addCircle, addSegment, getPoint, getAllSegments } from './engine/constructionState'
+import {
+  initializeGiven,
+  addPoint,
+  addCircle,
+  addSegment,
+  getPoint,
+  getAllSegments,
+} from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction, renderDragInvitation } from './render/renderConstruction'
-import { renderToolOverlay, getFriction, setFriction, getFrictionRange } from './render/renderToolOverlay'
+import {
+  renderToolOverlay,
+  getFriction,
+  setFriction,
+  getFrictionRange,
+} from './render/renderToolOverlay'
 import type { StraightedgeDrawAnim } from './render/renderToolOverlay'
 import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
@@ -32,19 +44,45 @@ import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
-import { createFactStore, addFact, addAngleFact, queryEquality, getEqualDistances, getEqualAngles, rebuildFactStore } from './engine/factStore'
+import {
+  createFactStore,
+  addFact,
+  addAngleFact,
+  queryEquality,
+  getEqualDistances,
+  getEqualAngles,
+  rebuildFactStore,
+} from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { ProofFact } from './engine/facts'
-import { distancePair, distancePairKey, angleMeasure, angleMeasureKey, isAngleFact } from './engine/facts'
+import {
+  distancePair,
+  distancePairKey,
+  angleMeasure,
+  angleMeasureKey,
+  isAngleFact,
+} from './engine/facts'
 import type { AngleMeasure } from './engine/facts'
 import type { DistancePair } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
 import { resolveSelector } from './engine/selectors'
 import type { MacroAnimation } from './engine/macroExecution'
-import { createMacroAnimation, tickMacroAnimation, getHiddenElementIds } from './engine/macroExecution'
+import {
+  createMacroAnimation,
+  tickMacroAnimation,
+  getHiddenElementIds,
+} from './engine/macroExecution'
 import { CITATIONS, citationDefFromFact } from './engine/citations'
-import { renderGhostGeometry, getGhostFalloff, setGhostFalloff, getGhostFalloffRange, getGhostBaseOpacity, setGhostBaseOpacity, getGhostBaseOpacityRange } from './render/renderGhostGeometry'
+import {
+  renderGhostGeometry,
+  getGhostFalloff,
+  setGhostFalloff,
+  getGhostFalloffRange,
+  getGhostBaseOpacity,
+  setGhostBaseOpacity,
+  getGhostBaseOpacityRange,
+} from './render/renderGhostGeometry'
 import { renderProductionSegments } from './render/renderProductionSegments'
 import { renderAngleArcs } from './render/renderAngleArcs'
 import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
@@ -65,14 +103,18 @@ const SHORTCUTS: ShortcutEntry[] = [
 // ── Viewport centering ──
 
 /** Compute a good initial viewport center for a proposition's given elements. */
-function computeInitialViewport(givenElements: readonly { kind: string; x?: number; y?: number }[]): EuclidViewportState {
-  const points = givenElements.filter(e => e.kind === 'point' && e.x !== undefined && e.y !== undefined) as { x: number; y: number }[]
+function computeInitialViewport(
+  givenElements: readonly { kind: string; x?: number; y?: number }[]
+): EuclidViewportState {
+  const points = givenElements.filter(
+    (e) => e.kind === 'point' && e.x !== undefined && e.y !== undefined
+  ) as { x: number; y: number }[]
   if (points.length === 0) return { center: { x: 0, y: 0 }, pixelsPerUnit: 60 }
 
-  const minX = Math.min(...points.map(p => p.x))
-  const maxX = Math.max(...points.map(p => p.x))
-  const minY = Math.min(...points.map(p => p.y))
-  const maxY = Math.max(...points.map(p => p.y))
+  const minX = Math.min(...points.map((p) => p.x))
+  const maxX = Math.max(...points.map((p) => p.x))
+  const minY = Math.min(...points.map((p) => p.y))
+  const maxY = Math.max(...points.map((p) => p.y))
 
   // Center on given points, shifted up a bit to leave room for construction above
   const cx = (minX + maxX) / 2
@@ -106,7 +148,7 @@ function captureSnapshot(
   construction: ConstructionState,
   candidates: IntersectionCandidate[],
   proofFacts: ProofFact[],
-  ghostLayers: GhostLayer[],
+  ghostLayers: GhostLayer[]
 ): ProofSnapshot {
   // ConstructionState is replaced on each mutation (spread), so storing the reference is safe.
   // Same for candidates array (replaced via [...old, ...new]).
@@ -137,7 +179,7 @@ interface CompletionResult {
 function deriveCompletionResult(
   factStore: FactStore,
   resultSegments: Array<{ fromId: string; toId: string }> | undefined,
-  state: ConstructionState,
+  state: ConstructionState
 ): CompletionResult {
   if (!resultSegments || resultSegments.length === 0) {
     return { status: 'proven', statement: null, segments: [] }
@@ -147,7 +189,7 @@ function deriveCompletionResult(
   const segLabel = (fromId: string, toId: string) => `${label(fromId)}${label(toId)}`
 
   // Collect all result segment distance pairs
-  const resultDps = resultSegments.map(rs => distancePair(rs.fromId, rs.toId))
+  const resultDps = resultSegments.map((rs) => distancePair(rs.fromId, rs.toId))
 
   // Build an ordered list of equal segments, starting with result segments
   // then adding any construction segment that's in the same equality class
@@ -180,7 +222,7 @@ function deriveCompletionResult(
   if (equalSegs.length >= 2) {
     return {
       status: 'proven',
-      statement: equalSegs.map(s => s.label).join(' = '),
+      statement: equalSegs.map((s) => s.label).join(' = '),
       segments: equalSegs,
     }
   }
@@ -189,8 +231,8 @@ function deriveCompletionResult(
   // the proof chain is incomplete
   return {
     status: 'unproven',
-    statement: resultSegments.map(rs => segLabel(rs.fromId, rs.toId)).join(', '),
-    segments: resultSegments.map(rs => ({
+    statement: resultSegments.map((rs) => segLabel(rs.fromId, rs.toId)).join(', '),
+    segments: resultSegments.map((rs) => ({
       label: segLabel(rs.fromId, rs.toId),
       dp: distancePair(rs.fromId, rs.toId),
     })),
@@ -206,7 +248,8 @@ interface EuclidCanvasProps {
 }
 
 export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: EuclidCanvasProps) {
-  const proposition = (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
+  const proposition =
+    (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = proposition.getTutorial ?? (() => [] as TutorialSubStep[][])
 
@@ -247,7 +290,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [currentStep, setCurrentStep] = useState(0)
   const currentStepRef = useRef(0)
   const [completedSteps, setCompletedSteps] = useState<boolean[]>(
-    proposition.steps.map(() => false),
+    proposition.steps.map(() => false)
   )
   const [isComplete, setIsComplete] = useState(false)
   const [toolToast, setToolToast] = useState<string | null>(null)
@@ -282,7 +325,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
     // From fact row hover
     if (hoveredFactId != null) {
-      const fact = proofFacts.find(f => f.id === hoveredFactId)
+      const fact = proofFacts.find((f) => f.id === hoveredFactId)
       if (fact) {
         if (isAngleFact(fact)) {
           for (const am of getEqualAngles(factStoreRef.current, fact.left)) {
@@ -305,26 +348,32 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   }, [hoveredProofDp, hoveredFactId, proofFacts])
 
   /** Check if a proof fact should be highlighted given the current hover state */
-  const isFactHighlighted = useCallback((fact: ProofFact): boolean => {
-    const { dpKeys, angleKeys, citGroup } = highlightState
-    // Distance equivalence class
-    if (!isAngleFact(fact) && dpKeys != null) {
-      if (dpKeys.has(distancePairKey(fact.left)) || dpKeys.has(distancePairKey(fact.right))) {
+  const isFactHighlighted = useCallback(
+    (fact: ProofFact): boolean => {
+      const { dpKeys, angleKeys, citGroup } = highlightState
+      // Distance equivalence class
+      if (!isAngleFact(fact) && dpKeys != null) {
+        if (dpKeys.has(distancePairKey(fact.left)) || dpKeys.has(distancePairKey(fact.right))) {
+          return true
+        }
+      }
+      // Angle equivalence class
+      if (isAngleFact(fact) && angleKeys != null) {
+        if (
+          angleKeys.has(angleMeasureKey(fact.left)) ||
+          angleKeys.has(angleMeasureKey(fact.right))
+        ) {
+          return true
+        }
+      }
+      // Citation group (cross-type: same derivation highlights related facts)
+      if (citGroup != null && citGroupKey(fact) === citGroup) {
         return true
       }
-    }
-    // Angle equivalence class
-    if (isAngleFact(fact) && angleKeys != null) {
-      if (angleKeys.has(angleMeasureKey(fact.left)) || angleKeys.has(angleMeasureKey(fact.right))) {
-        return true
-      }
-    }
-    // Citation group (cross-type: same derivation highlights related facts)
-    if (citGroup != null && citGroupKey(fact) === citGroup) {
-      return true
-    }
-    return false
-  }, [highlightState])
+      return false
+    },
+    [highlightState]
+  )
 
   // ── Completion result derived from proof ──
   const completionResult = useMemo(() => {
@@ -332,7 +381,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     return deriveCompletionResult(
       factStoreRef.current,
       proposition.resultSegments,
-      constructionRef.current,
+      constructionRef.current
     )
     // proofFacts in deps so we re-derive after conclusion facts are added
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -401,9 +450,10 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
-    celebrationText: completionResult?.status === 'proven' && completionResult.statement
-      ? completionResult.statement
-      : 'Construction complete!',
+    celebrationText:
+      completionResult?.status === 'proven' && completionResult.statement
+        ? completionResult.statement
+        : 'Construction complete!',
     explorationNarration,
   })
 
@@ -422,26 +472,26 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       for (const gf of proposition.givenFacts) {
         const left = distancePair(gf.left.a, gf.left.b)
         const right = distancePair(gf.right.a, gf.right.b)
-        newFacts.push(...addFact(
-          store, left, right,
-          { type: 'given' },
-          gf.statement,
-          'Given',
-          -1, // before any step
-        ))
+        newFacts.push(
+          ...addFact(
+            store,
+            left,
+            right,
+            { type: 'given' },
+            gf.statement,
+            'Given',
+            -1 // before any step
+          )
+        )
       }
     }
     if (proposition.givenAngleFacts) {
       for (const gaf of proposition.givenAngleFacts) {
         const left = angleMeasure(gaf.left.vertex, gaf.left.ray1, gaf.left.ray2)
         const right = angleMeasure(gaf.right.vertex, gaf.right.ray1, gaf.right.ray2)
-        newFacts.push(...addAngleFact(
-          store, left, right,
-          { type: 'given' },
-          gaf.statement,
-          'Given',
-          -1,
-        ))
+        newFacts.push(
+          ...addAngleFact(store, left, right, { type: 'given' }, gaf.statement, 'Given', -1)
+        )
       }
     }
     if (newFacts.length > 0) {
@@ -511,7 +561,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     const newFacts = conclusionFn(
       factStoreRef.current,
       constructionRef.current,
-      proposition.steps.length,
+      proposition.steps.length
     )
     if (newFacts.length > 0) {
       proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
@@ -535,10 +585,10 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
       if (e.key === '?') {
         e.preventDefault()
-        setShowShortcuts(prev => !prev)
+        setShowShortcuts((prev) => !prev)
       } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
-        setPanZoomEnabled(prev => {
+        setPanZoomEnabled((prev) => {
           const next = !prev
           panZoomDisabledRef.current = !next
           return next
@@ -563,10 +613,15 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         // Capture snapshot before advancing — state after this step completes
         snapshotStackRef.current = [
           ...snapshotStackRef.current,
-          captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current, ghostLayersRef.current),
+          captureSnapshot(
+            constructionRef.current,
+            candidatesRef.current,
+            proofFactsRef.current,
+            ghostLayersRef.current
+          ),
         ]
 
-        setCompletedSteps(prev => {
+        setCompletedSteps((prev) => {
           const next = [...prev]
           next[step] = true
           return next
@@ -580,7 +635,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             let updatedCandidates = [...candidatesRef.current]
             for (const el of constructionRef.current.elements) {
               if (el.kind === 'point') continue
-              const additional = findNewIntersections(constructionRef.current, el, updatedCandidates, true)
+              const additional = findNewIntersections(
+                constructionRef.current,
+                el,
+                updatedCandidates,
+                true
+              )
               updatedCandidates = [...updatedCandidates, ...additional]
             }
             candidatesRef.current = updatedCandidates
@@ -589,7 +649,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         setCurrentStep(nextStep)
       }
     },
-    [proposition.steps, extendSegments],
+    [proposition.steps, extendSegments]
   )
 
   // ── Commit handlers ──
@@ -603,7 +663,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         result.state,
         result.circle,
         candidatesRef.current,
-        extendSegments || isCompleteRef.current,
+        extendSegments || isCompleteRef.current
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
@@ -619,7 +679,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       requestDraw()
       musicRef.current?.notifyChange()
     },
-    [checkStep, requestDraw, extendSegments],
+    [checkStep, requestDraw, extendSegments]
   )
 
   const handleCommitSegment = useCallback(
@@ -631,7 +691,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         result.state,
         result.segment,
         candidatesRef.current,
-        extendSegments || isCompleteRef.current,
+        extendSegments || isCompleteRef.current
       )
       candidatesRef.current = [...candidatesRef.current, ...newCandidates]
 
@@ -666,7 +726,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       requestDraw()
       musicRef.current?.notifyChange()
     },
-    [checkStep, requestDraw, extendSegments],
+    [checkStep, requestDraw, extendSegments]
   )
 
   const handleMarkIntersection = useCallback(
@@ -691,7 +751,15 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             }
             // If beyondId is specified, reject candidates on the wrong side
             if (expected.beyondId) {
-              if (!isCandidateBeyondPoint(candidate, expected.beyondId, candidate.ofA, candidate.ofB, constructionRef.current)) {
+              if (
+                !isCandidateBeyondPoint(
+                  candidate,
+                  expected.beyondId,
+                  candidate.ofA,
+                  candidate.ofB,
+                  constructionRef.current
+                )
+              ) {
                 return
               }
             }
@@ -704,12 +772,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         candidate.x,
         candidate.y,
         'intersection',
-        explicitLabel,
+        explicitLabel
       )
       constructionRef.current = result.state
 
       candidatesRef.current = candidatesRef.current.filter(
-        c => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001),
+        (c) => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001)
       )
 
       // Derive Def.15 facts for intersection points on circles
@@ -718,7 +786,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         result.point.id,
         constructionRef.current,
         factStoreRef.current,
-        step,
+        step
       )
       if (newFacts.length > 0) {
         proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
@@ -738,7 +806,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       musicRef.current?.notifyIntersection(candidate.x, candidate.y)
       musicRef.current?.notifyChange()
     },
-    [checkStep, requestDraw, proposition.steps],
+    [checkStep, requestDraw, proposition.steps]
   )
 
   const handleCommitMacro = useCallback(
@@ -760,7 +828,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         factStoreRef.current,
         step,
         extendSegments,
-        outputLabels,
+        outputLabels
       )
 
       constructionRef.current = result.state
@@ -772,7 +840,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       }
 
       // Collect ghost layers produced by the macro itself
-      const macroGhosts = result.ghostLayers.map(gl => ({ ...gl, atStep: step }))
+      const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: step }))
       if (macroGhosts.length > 0) {
         ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
       }
@@ -783,11 +851,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       // Capture snapshot before advancing — state after this step completes
       snapshotStackRef.current = [
         ...snapshotStackRef.current,
-        captureSnapshot(constructionRef.current, candidatesRef.current, proofFactsRef.current, ghostLayersRef.current),
+        captureSnapshot(
+          constructionRef.current,
+          candidatesRef.current,
+          proofFactsRef.current,
+          ghostLayersRef.current
+        ),
       ]
 
       // Directly advance the step (macro validation is handled here, not in validateStep)
-      setCompletedSteps(prev => {
+      setCompletedSteps((prev) => {
         const next = [...prev]
         next[step] = true
         return next
@@ -801,7 +874,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           let updatedCandidates = [...candidatesRef.current]
           for (const el of constructionRef.current.elements) {
             if (el.kind === 'point') continue
-            const additional = findNewIntersections(constructionRef.current, el, updatedCandidates, true)
+            const additional = findNewIntersections(
+              constructionRef.current,
+              el,
+              updatedCandidates,
+              true
+            )
             updatedCandidates = [...updatedCandidates, ...additional]
           }
           candidatesRef.current = updatedCandidates
@@ -812,7 +890,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       requestDraw()
       musicRef.current?.notifyChange()
     },
-    [proposition.steps, extendSegments, requestDraw],
+    [proposition.steps, extendSegments, requestDraw]
   )
 
   const handleRewindToStep = useCallback(
@@ -846,7 +924,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       // 5. Set currentStep, reset completedSteps from targetStep onward
       currentStepRef.current = targetStep
       setCurrentStep(targetStep)
-      setCompletedSteps(prev => {
+      setCompletedSteps((prev) => {
         const next = [...prev]
         for (let i = targetStep; i < next.length; i++) {
           next[i] = false
@@ -890,7 +968,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
       requestDraw()
     },
-    [proposition.steps, requestDraw],
+    [proposition.steps, requestDraw]
   )
 
   // ── Auto-complete: execute each step on 250ms interval ──
@@ -917,7 +995,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         const resolvedB = expected.ofB != null ? resolveSelector(expected.ofB, state) : null
 
         if (resolvedA && resolvedB) {
-          const match = candidates.find(c => {
+          const match = candidates.find((c) => {
             const matches =
               (c.ofA === resolvedA && c.ofB === resolvedB) ||
               (c.ofA === resolvedB && c.ofB === resolvedA)
@@ -925,11 +1003,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             if (expected.beyondId) {
               return isCandidateBeyondPoint(c, expected.beyondId, c.ofA, c.ofB, state)
             }
-            const hasHigher = candidates.some(other =>
-              other !== c &&
-              ((other.ofA === resolvedA && other.ofB === resolvedB) ||
-               (other.ofA === resolvedB && other.ofB === resolvedA)) &&
-              other.y > c.y,
+            const hasHigher = candidates.some(
+              (other) =>
+                other !== c &&
+                ((other.ofA === resolvedA && other.ofB === resolvedB) ||
+                  (other.ofA === resolvedB && other.ofB === resolvedA)) &&
+                other.y > c.y
             )
             return !hasHigher
           })
@@ -943,7 +1022,14 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     }, 250)
 
     return () => clearInterval(interval)
-  }, [autoCompleting, proposition.steps, handleCommitCircle, handleCommitSegment, handleMarkIntersection, handleCommitMacro])
+  }, [
+    autoCompleting,
+    proposition.steps,
+    handleCommitCircle,
+    handleCommitSegment,
+    handleMarkIntersection,
+    handleCommitMacro,
+  ])
 
   // ── Hook up pan/zoom ──
   useEuclidTouch({
@@ -991,7 +1077,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       }
       constructionIntactRef.current = intact
     },
-    [handleConstructionBreakdown],
+    [handleConstructionBreakdown]
   )
 
   useDragGivenPoints({
@@ -1133,11 +1219,14 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           // Derive candidate filter from current step's expected intersection
           // Resolve ElementSelectors to runtime IDs for filtering
           const curStep = currentStepRef.current
-          const curExpected = curStep < proposition.steps.length
-            ? proposition.steps[curStep].expected
-            : null
+          const curExpected =
+            curStep < proposition.steps.length ? proposition.steps[curStep].expected : null
           let candFilter: { ofA: string; ofB: string; beyondId?: string } | null = null
-          if (curExpected?.type === 'intersection' && curExpected.ofA != null && curExpected.ofB != null) {
+          if (
+            curExpected?.type === 'intersection' &&
+            curExpected.ofA != null &&
+            curExpected.ofB != null
+          ) {
             const resolvedA = resolveSelector(curExpected.ofA, constructionRef.current)
             const resolvedB = resolveSelector(curExpected.ofB, constructionRef.current)
             if (resolvedA && resolvedB) {
@@ -1178,7 +1267,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             complete ? proposition.resultSegments : undefined,
             hiddenIds.size > 0 ? hiddenIds : undefined,
             undefined, // transparentBg
-            complete ? proposition.draggablePointIds : undefined,
+            complete ? proposition.draggablePointIds : undefined
           )
 
           // Render Post.2 production segments (extensions to intersection points)
@@ -1189,7 +1278,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             currentStepRef.current,
             viewportRef.current,
             cssWidth,
-            cssHeight,
+            cssHeight
           )
 
           // Render ghost geometry (dependency scaffolding from macros)
@@ -1201,7 +1290,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               cssWidth,
               cssHeight,
               hoveredMacroStepRef.current,
-              ghostOpacitiesRef.current,
+              ghostOpacitiesRef.current
             )
             if (ghostAnimating || hoveredMacroStepRef.current !== null) {
               needsDrawRef.current = true
@@ -1218,7 +1307,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               cssHeight,
               factStoreRef.current,
               hiddenIds.size > 0 ? hiddenIds : undefined,
-              complete ? proposition.resultSegments : undefined,
+              complete ? proposition.resultSegments : undefined
             )
           }
 
@@ -1231,7 +1320,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               cssWidth,
               cssHeight,
               proposition.givenAngles,
-              proposition.equalAngles,
+              proposition.equalAngles
             )
           }
 
@@ -1244,7 +1333,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               viewportRef.current,
               cssWidth,
               cssHeight,
-              performance.now(),
+              performance.now()
             )
             if (stillAnimating) {
               needsDrawRef.current = true
@@ -1254,9 +1343,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           }
 
           // Render drag invitation text post-completion
-          if (complete && completionTimeRef.current > 0 && propositionRef.current.draggablePointIds) {
+          if (
+            complete &&
+            completionTimeRef.current > 0 &&
+            propositionRef.current.draggablePointIds
+          ) {
             const stillShowing = renderDragInvitation(
-              ctx, cssWidth, cssHeight, completionTimeRef.current,
+              ctx,
+              cssWidth,
+              cssHeight,
+              completionTimeRef.current
             )
             if (stillShowing) {
               needsDrawRef.current = true
@@ -1277,7 +1373,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             cssHeight,
             nextColor,
             complete,
-            straightedgeDrawAnimRef.current,
+            straightedgeDrawAnimRef.current
           )
 
           // Render tutorial hint on top
@@ -1289,7 +1385,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             cssWidth,
             cssHeight,
             candidatesRef.current,
-            performance.now() / 1000,
+            performance.now() / 1000
           )
 
           ctx.restore()
@@ -1319,7 +1415,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         counts.set(step.citation, n)
         ordinals.set(`step-${i}`, n)
       }
-      for (const fact of (factsByStep.get(i) ?? [])) {
+      for (const fact of factsByStep.get(i) ?? []) {
         const cd = citationDefFromFact(fact.citation)
         if (cd) {
           const n = (counts.get(cd.key) ?? 0) + 1
@@ -1328,7 +1424,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         }
       }
     }
-    for (const fact of (factsByStep.get(proposition.steps.length) ?? [])) {
+    for (const fact of factsByStep.get(proposition.steps.length) ?? []) {
       const cd = citationDefFromFact(fact.citation)
       if (cd) {
         const n = (counts.get(cd.key) ?? 0) + 1
@@ -1378,9 +1474,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             display: 'block',
             width: '100%',
             height: '100%',
-            cursor: activeTool === 'move'
-              ? undefined // drag hook manages grab/grabbing cursor
-              : activeTool !== 'macro' ? 'none' : undefined,
+            cursor:
+              activeTool === 'move'
+                ? undefined // drag hook manages grab/grabbing cursor
+                : activeTool !== 'macro'
+                  ? 'none'
+                  : undefined,
           }}
         />
 
@@ -1426,7 +1525,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             <ToolButton
               label="Move"
               icon={
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" />
                   <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v6" />
                   <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
@@ -1440,7 +1548,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           <ToolButton
             label="Compass"
             icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="12" cy="5" r="1" />
                 <path d="M12 6l-4 14" />
                 <path d="M12 6l4 14" />
@@ -1453,7 +1570,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           <ToolButton
             label="Straightedge"
             icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="4" y1="20" x2="20" y2="4" />
               </svg>
             }
@@ -1488,7 +1614,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             padding: 0,
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
             {audioEnabled ? (
               <>
@@ -1529,540 +1664,616 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
       </div>
 
       {/* ── Right pane: Proof panel (hidden in playground mode) ── */}
-      {!playgroundMode && <div
-        data-element="proof-panel"
-        style={{
-          width: 340,
-          minWidth: 340,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          background: '#FAFAF0',
-          borderLeft: '1px solid rgba(203, 213, 225, 0.6)',
-        }}
-      >
-        {/* Proposition header */}
+      {!playgroundMode && (
         <div
-          data-element="proof-header"
+          data-element="proof-panel"
           style={{
-            padding: '16px 20px 12px',
-            borderBottom: '1px solid rgba(203, 213, 225, 0.5)',
+            width: 340,
+            minWidth: 340,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            background: '#FAFAF0',
+            borderLeft: '1px solid rgba(203, 213, 225, 0.6)',
           }}
         >
-          <div style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#94a3b8',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: 4,
-            fontFamily: 'system-ui, sans-serif',
-          }}>
-            Proposition I.{proposition.id}
+          {/* Proposition header */}
+          <div
+            data-element="proof-header"
+            style={{
+              padding: '16px 20px 12px',
+              borderBottom: '1px solid rgba(203, 213, 225, 0.5)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: 4,
+                fontFamily: 'system-ui, sans-serif',
+              }}
+            >
+              Proposition I.{proposition.id}
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#334155',
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                lineHeight: 1.4,
+              }}
+            >
+              {proposition.title}
+            </div>
           </div>
-          <div style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: '#334155',
-            fontFamily: 'Georgia, serif',
-            fontStyle: 'italic',
-            lineHeight: 1.4,
-          }}>
-            {proposition.title}
-          </div>
-        </div>
 
-        {/* Scrollable steps + proof chain */}
-        <div
-          ref={proofScrollRef}
-          data-element="proof-steps"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            padding: '12px 20px',
-          }}
-        >
-          {/* Given facts (atStep === -1, displayed before construction steps) */}
-          {(() => {
-            const givenFacts = factsByStep.get(-1) ?? []
-            if (givenFacts.length === 0) return null
-            return (
-              <div data-element="given-facts" style={{ marginBottom: 16 }}>
-                {givenFacts.map(fact => {
-                  const highlighted = isFactHighlighted(fact)
-                  return (
+          {/* Scrollable steps + proof chain */}
+          <div
+            ref={proofScrollRef}
+            data-element="proof-steps"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              padding: '12px 20px',
+            }}
+          >
+            {/* Given facts (atStep === -1, displayed before construction steps) */}
+            {(() => {
+              const givenFacts = factsByStep.get(-1) ?? []
+              if (givenFacts.length === 0) return null
+              return (
+                <div data-element="given-facts" style={{ marginBottom: 16 }}>
+                  {givenFacts.map((fact) => {
+                    const highlighted = isFactHighlighted(fact)
+                    return (
+                      <div
+                        key={fact.id}
+                        onMouseEnter={() => setHoveredFactId(fact.id)}
+                        onMouseLeave={() => setHoveredFactId(null)}
+                        style={{
+                          fontSize: 11,
+                          marginBottom: 3,
+                          paddingLeft: 8,
+                          cursor: 'default',
+                          borderLeft: highlighted
+                            ? '2px solid #10b981'
+                            : '2px solid rgba(78, 121, 167, 0.2)',
+                          background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                          borderRadius: highlighted ? 2 : 0,
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div>
+                          <span
+                            style={{
+                              color: '#4E79A7',
+                              fontWeight: 600,
+                              fontFamily: 'Georgia, serif',
+                            }}
+                          >
+                            {fact.statement}
+                          </span>
+                          <span
+                            style={{
+                              color: '#94a3b8',
+                              fontFamily: 'Georgia, serif',
+                              fontSize: 10,
+                              fontWeight: 600,
+                              marginLeft: 6,
+                            }}
+                          >
+                            [Given]
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+            {proposition.steps.map((step, i) => {
+              const isDone = completedSteps[i]
+              const isCurrent = i === currentStep && !isComplete
+              const isFuture = !isDone && !isCurrent
+              const stepFacts = factsByStep.get(i) ?? []
+
+              const isHovered = isDone && hoveredStepIndex === i
+
+              return (
+                <div
+                  key={i}
+                  data-element="proof-step"
+                  data-step-current={isCurrent ? 'true' : undefined}
+                  onClick={isDone ? () => handleRewindToStep(i) : undefined}
+                  onMouseEnter={
+                    isDone
+                      ? () => {
+                          setHoveredStepIndex(i)
+                          // Activate ghost geometry hover for macro steps
+                          if (step.expected.type === 'macro') {
+                            hoveredMacroStepRef.current = i
+                            needsDrawRef.current = true
+                          }
+                        }
+                      : undefined
+                  }
+                  onMouseLeave={
+                    isDone
+                      ? () => {
+                          setHoveredStepIndex(null)
+                          hoveredMacroStepRef.current = null
+                          needsDrawRef.current = true
+                        }
+                      : undefined
+                  }
+                  style={{
+                    marginBottom: 16,
+                    opacity: isFuture ? 0.35 : 1,
+                    transition: 'opacity 0.3s ease',
+                    cursor: isDone ? 'pointer' : undefined,
+                    borderRadius: 6,
+                    background: isHovered ? 'rgba(16, 185, 129, 0.06)' : undefined,
+                  }}
+                >
+                  {/* Step header: number + instruction + citation */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                    }}
+                  >
+                    {/* Step indicator */}
                     <div
-                      key={fact.id}
-                      onMouseEnter={() => setHoveredFactId(fact.id)}
-                      onMouseLeave={() => setHoveredFactId(null)}
                       style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        marginTop: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         fontSize: 11,
-                        marginBottom: 3,
+                        fontWeight: 700,
+                        fontFamily: 'system-ui, sans-serif',
+                        background: isDone
+                          ? isHovered
+                            ? '#0d9668'
+                            : '#10b981'
+                          : isCurrent
+                            ? '#4E79A7'
+                            : '#e2e8f0',
+                        color: isDone || isCurrent ? '#fff' : '#94a3b8',
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      {isDone ? (isHovered ? '\u21BA' : '\u2713') : i + 1}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Formal instruction */}
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: isCurrent ? 600 : 400,
+                          color: isCurrent ? '#1e293b' : '#475569',
+                          fontFamily: 'Georgia, serif',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {step.instruction}
+                      </div>
+
+                      {/* Citation: progressive disclosure */}
+                      {step.citation &&
+                        (() => {
+                          const cit = CITATIONS[step.citation]
+                          const ord = citationOrdinals.get(`step-${i}`) ?? 1
+                          const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
+                          const showText = ord === 1
+                          return (
+                            <div
+                              data-element="citation-text"
+                              style={{
+                                marginTop: 4,
+                                fontSize: 11,
+                                lineHeight: 1.4,
+                                color: isDone ? '#6b9b6b' : '#7893ab',
+                                fontFamily: 'Georgia, serif',
+                                fontStyle: 'italic',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  fontStyle: 'normal',
+                                  fontSize: 10,
+                                }}
+                              >
+                                {label}
+                              </span>
+                              {showText && cit?.text && (
+                                <span style={{ marginLeft: 4 }}>— {cit.text}</span>
+                              )}
+                            </div>
+                          )
+                        })()}
+
+                      {/* Tutorial guidance for current step */}
+                      {isCurrent && currentInstruction && (
+                        <div
+                          data-element="step-guidance"
+                          style={{
+                            marginTop: 6,
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            background: 'rgba(78, 121, 167, 0.06)',
+                            border: '1px solid rgba(78, 121, 167, 0.15)',
+                            fontSize: 12,
+                            color: '#4E79A7',
+                            fontFamily: 'system-ui, sans-serif',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {currentInstruction}
+                        </div>
+                      )}
+
+                      {/* Facts derived at this step */}
+                      {stepFacts.length > 0 && (
+                        <div style={{ marginTop: 6 }}>
+                          {stepFacts.map((fact) => {
+                            const factCit = citationDefFromFact(fact.citation)
+                            const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
+                            const citLabel = factCit
+                              ? ord <= 2
+                                ? factCit.label
+                                : factCit.key
+                              : null
+                            const showText = ord === 1 && factCit
+                            const explanation = fact.justification.replace(
+                              /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
+                              ''
+                            )
+                            const highlighted = isFactHighlighted(fact)
+                            return (
+                              <div
+                                key={fact.id}
+                                onMouseEnter={() => setHoveredFactId(fact.id)}
+                                onMouseLeave={() => setHoveredFactId(null)}
+                                style={{
+                                  fontSize: 11,
+                                  marginBottom: 3,
+                                  paddingLeft: 8,
+                                  cursor: 'default',
+                                  borderLeft: highlighted
+                                    ? '2px solid #10b981'
+                                    : '2px solid rgba(78, 121, 167, 0.2)',
+                                  background: highlighted
+                                    ? 'rgba(16, 185, 129, 0.08)'
+                                    : 'transparent',
+                                  borderRadius: highlighted ? 2 : 0,
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <div>
+                                  <span
+                                    style={{
+                                      color: '#4E79A7',
+                                      fontWeight: 600,
+                                      fontFamily: 'Georgia, serif',
+                                    }}
+                                  >
+                                    {fact.statement}
+                                  </span>
+                                  {citLabel && (
+                                    <span
+                                      style={{
+                                        color: '#94a3b8',
+                                        fontFamily: 'Georgia, serif',
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                        marginLeft: 6,
+                                      }}
+                                    >
+                                      [{citLabel}]
+                                    </span>
+                                  )}
+                                </div>
+                                {showText && factCit?.text && (
+                                  <div
+                                    style={{
+                                      color: '#94a3b8',
+                                      fontStyle: 'italic',
+                                      fontFamily: 'Georgia, serif',
+                                      fontSize: 10,
+                                      lineHeight: 1.3,
+                                      marginTop: 1,
+                                    }}
+                                  >
+                                    {factCit.text}
+                                  </div>
+                                )}
+                                <div
+                                  style={{
+                                    color: '#94a3b8',
+                                    fontStyle: 'italic',
+                                    fontFamily: 'Georgia, serif',
+                                    fontSize: 10,
+                                    lineHeight: 1.3,
+                                    marginTop: 1,
+                                  }}
+                                >
+                                  {explanation}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Conclusion facts (atStep === steps.length) */}
+            {(() => {
+              const conclusionFacts = factsByStep.get(proposition.steps.length) ?? []
+              if (conclusionFacts.length === 0 && !isComplete) return null
+              return conclusionFacts.map((fact) => {
+                const factCit = citationDefFromFact(fact.citation)
+                const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
+                const citLabel = factCit ? (ord <= 2 ? factCit.label : factCit.key) : null
+                const showText = ord === 1 && factCit
+                const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
+                const highlighted = isFactHighlighted(fact)
+                return (
+                  <div
+                    key={fact.id}
+                    onMouseEnter={() => setHoveredFactId(fact.id)}
+                    onMouseLeave={() => setHoveredFactId(null)}
+                    style={{
+                      fontSize: 11,
+                      marginBottom: 3,
+                      paddingLeft: 28,
+                      marginLeft: 0,
+                      cursor: 'default',
+                    }}
+                  >
+                    <div
+                      style={{
                         paddingLeft: 8,
-                        cursor: 'default',
                         borderLeft: highlighted
                           ? '2px solid #10b981'
-                          : '2px solid rgba(78, 121, 167, 0.2)',
-                        background: highlighted
-                          ? 'rgba(16, 185, 129, 0.08)'
-                          : 'transparent',
+                          : '2px solid rgba(16, 185, 129, 0.3)',
+                        background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
                         borderRadius: highlighted ? 2 : 0,
                         transition: 'all 0.15s ease',
                       }}
                     >
                       <div>
-                        <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
-                          {fact.statement}
-                        </span>
-                        <span style={{
-                          color: '#94a3b8',
-                          fontFamily: 'Georgia, serif',
-                          fontSize: 10,
-                          fontWeight: 600,
-                          marginLeft: 6,
-                        }}>
-                          [Given]
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })()}
-          {proposition.steps.map((step, i) => {
-            const isDone = completedSteps[i]
-            const isCurrent = i === currentStep && !isComplete
-            const isFuture = !isDone && !isCurrent
-            const stepFacts = factsByStep.get(i) ?? []
-
-            const isHovered = isDone && hoveredStepIndex === i
-
-            return (
-              <div
-                key={i}
-                data-element="proof-step"
-                data-step-current={isCurrent ? 'true' : undefined}
-                onClick={isDone ? () => handleRewindToStep(i) : undefined}
-                onMouseEnter={isDone ? () => {
-                  setHoveredStepIndex(i)
-                  // Activate ghost geometry hover for macro steps
-                  if (step.expected.type === 'macro') {
-                    hoveredMacroStepRef.current = i
-                    needsDrawRef.current = true
-                  }
-                } : undefined}
-                onMouseLeave={isDone ? () => {
-                  setHoveredStepIndex(null)
-                  hoveredMacroStepRef.current = null
-                  needsDrawRef.current = true
-                } : undefined}
-                style={{
-                  marginBottom: 16,
-                  opacity: isFuture ? 0.35 : 1,
-                  transition: 'opacity 0.3s ease',
-                  cursor: isDone ? 'pointer' : undefined,
-                  borderRadius: 6,
-                  background: isHovered ? 'rgba(16, 185, 129, 0.06)' : undefined,
-                }}
-              >
-                {/* Step header: number + instruction + citation */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 8,
-                }}>
-                  {/* Step indicator */}
-                  <div style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    flexShrink: 0,
-                    marginTop: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: 'system-ui, sans-serif',
-                    background: isDone
-                      ? (isHovered ? '#0d9668' : '#10b981')
-                      : isCurrent
-                        ? '#4E79A7'
-                        : '#e2e8f0',
-                    color: isDone || isCurrent ? '#fff' : '#94a3b8',
-                    transition: 'all 0.3s ease',
-                  }}>
-                    {isDone ? (isHovered ? '\u21BA' : '\u2713') : i + 1}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Formal instruction */}
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: isCurrent ? 600 : 400,
-                      color: isCurrent ? '#1e293b' : '#475569',
-                      fontFamily: 'Georgia, serif',
-                      lineHeight: 1.4,
-                    }}>
-                      {step.instruction}
-                    </div>
-
-                    {/* Citation: progressive disclosure */}
-                    {step.citation && (() => {
-                      const cit = CITATIONS[step.citation]
-                      const ord = citationOrdinals.get(`step-${i}`) ?? 1
-                      const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
-                      const showText = ord === 1
-                      return (
-                        <div
-                          data-element="citation-text"
+                        <span
                           style={{
-                            marginTop: 4,
-                            fontSize: 11,
-                            lineHeight: 1.4,
-                            color: isDone ? '#6b9b6b' : '#7893ab',
+                            color: '#4E79A7',
+                            fontWeight: 600,
                             fontFamily: 'Georgia, serif',
-                            fontStyle: 'italic',
                           }}
                         >
-                          <span style={{
-                            fontWeight: 600,
-                            fontStyle: 'normal',
-                            fontSize: 10,
-                          }}>
-                            {label}
+                          {fact.statement}
+                        </span>
+                        {citLabel && (
+                          <span
+                            style={{
+                              color: '#94a3b8',
+                              fontFamily: 'Georgia, serif',
+                              fontSize: 10,
+                              fontWeight: 600,
+                              marginLeft: 6,
+                            }}
+                          >
+                            [{citLabel}]
                           </span>
-                          {showText && cit?.text && (
-                            <span style={{ marginLeft: 4 }}>
-                              — {cit.text}
-                            </span>
-                          )}
+                        )}
+                      </div>
+                      {showText && factCit?.text && (
+                        <div
+                          style={{
+                            color: '#94a3b8',
+                            fontStyle: 'italic',
+                            fontFamily: 'Georgia, serif',
+                            fontSize: 10,
+                            lineHeight: 1.3,
+                            marginTop: 1,
+                          }}
+                        >
+                          {factCit.text}
                         </div>
-                      )
-                    })()}
-
-                    {/* Tutorial guidance for current step */}
-                    {isCurrent && currentInstruction && (
+                      )}
                       <div
-                        data-element="step-guidance"
                         style={{
-                          marginTop: 6,
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          background: 'rgba(78, 121, 167, 0.06)',
-                          border: '1px solid rgba(78, 121, 167, 0.15)',
-                          fontSize: 12,
-                          color: '#4E79A7',
-                          fontFamily: 'system-ui, sans-serif',
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {currentInstruction}
-                      </div>
-                    )}
-
-                    {/* Facts derived at this step */}
-                    {stepFacts.length > 0 && (
-                      <div style={{ marginTop: 6 }}>
-                        {stepFacts.map(fact => {
-                          const factCit = citationDefFromFact(fact.citation)
-                          const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
-                          const citLabel = factCit
-                            ? (ord <= 2 ? factCit.label : factCit.key)
-                            : null
-                          const showText = ord === 1 && factCit
-                          const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
-                          const highlighted = isFactHighlighted(fact)
-                          return (
-                            <div
-                              key={fact.id}
-                              onMouseEnter={() => setHoveredFactId(fact.id)}
-                              onMouseLeave={() => setHoveredFactId(null)}
-                              style={{
-                                fontSize: 11,
-                                marginBottom: 3,
-                                paddingLeft: 8,
-                                cursor: 'default',
-                                borderLeft: highlighted
-                                ? '2px solid #10b981'
-                                : '2px solid rgba(78, 121, 167, 0.2)',
-                              background: highlighted
-                                ? 'rgba(16, 185, 129, 0.08)'
-                                : 'transparent',
-                              borderRadius: highlighted ? 2 : 0,
-                              transition: 'all 0.15s ease',
-                            }}>
-                              <div>
-                                <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
-                                  {fact.statement}
-                                </span>
-                                {citLabel && (
-                                  <span style={{
-                                    color: '#94a3b8',
-                                    fontFamily: 'Georgia, serif',
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                    marginLeft: 6,
-                                  }}>
-                                    [{citLabel}]
-                                  </span>
-                                )}
-                              </div>
-                              {showText && factCit?.text && (
-                                <div style={{
-                                  color: '#94a3b8',
-                                  fontStyle: 'italic',
-                                  fontFamily: 'Georgia, serif',
-                                  fontSize: 10,
-                                  lineHeight: 1.3,
-                                  marginTop: 1,
-                                }}>
-                                  {factCit.text}
-                                </div>
-                              )}
-                              <div style={{
-                                color: '#94a3b8',
-                                fontStyle: 'italic',
-                                fontFamily: 'Georgia, serif',
-                                fontSize: 10,
-                                lineHeight: 1.3,
-                                marginTop: 1,
-                              }}>
-                                {explanation}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Conclusion facts (atStep === steps.length) */}
-          {(() => {
-            const conclusionFacts = factsByStep.get(proposition.steps.length) ?? []
-            if (conclusionFacts.length === 0 && !isComplete) return null
-            return conclusionFacts.map(fact => {
-              const factCit = citationDefFromFact(fact.citation)
-              const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
-              const citLabel = factCit
-                ? (ord <= 2 ? factCit.label : factCit.key)
-                : null
-              const showText = ord === 1 && factCit
-              const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
-              const highlighted = isFactHighlighted(fact)
-              return (
-                <div
-                  key={fact.id}
-                  onMouseEnter={() => setHoveredFactId(fact.id)}
-                  onMouseLeave={() => setHoveredFactId(null)}
-                  style={{
-                    fontSize: 11,
-                    marginBottom: 3,
-                    paddingLeft: 28,
-                    marginLeft: 0,
-                    cursor: 'default',
-                  }}
-                >
-                  <div style={{
-                    paddingLeft: 8,
-                    borderLeft: highlighted
-                      ? '2px solid #10b981'
-                      : '2px solid rgba(16, 185, 129, 0.3)',
-                    background: highlighted
-                      ? 'rgba(16, 185, 129, 0.08)'
-                      : 'transparent',
-                    borderRadius: highlighted ? 2 : 0,
-                    transition: 'all 0.15s ease',
-                  }}>
-                    <div>
-                      <span style={{ color: '#4E79A7', fontWeight: 600, fontFamily: 'Georgia, serif' }}>
-                        {fact.statement}
-                      </span>
-                      {citLabel && (
-                        <span style={{
                           color: '#94a3b8',
+                          fontStyle: 'italic',
                           fontFamily: 'Georgia, serif',
                           fontSize: 10,
-                          fontWeight: 600,
-                          marginLeft: 6,
-                        }}>
-                          [{citLabel}]
-                        </span>
-                      )}
-                    </div>
-                    {showText && factCit?.text && (
-                      <div style={{
-                        color: '#94a3b8',
-                        fontStyle: 'italic',
-                        fontFamily: 'Georgia, serif',
-                        fontSize: 10,
-                        lineHeight: 1.3,
-                        marginTop: 1,
-                      }}>
-                        {factCit.text}
-                      </div>
-                    )}
-                    <div style={{
-                      color: '#94a3b8',
-                      fontStyle: 'italic',
-                      fontFamily: 'Georgia, serif',
-                      fontSize: 10,
-                      lineHeight: 1.3,
-                      marginTop: 1,
-                    }}>
-                      {explanation}
-                    </div>
-                  </div>
-                </div>
-              )
-            })
-          })()}
-        </div>
-
-        {/* Conclusion bar — pinned at bottom, segments are hoverable */}
-        {isComplete && completionResult && (
-          <div
-            data-element="proof-conclusion"
-            style={{
-              padding: '12px 20px',
-              borderTop: completionResult.status === 'proven'
-                ? '2px solid rgba(16, 185, 129, 0.4)'
-                : '2px solid rgba(239, 68, 68, 0.4)',
-              background: completionResult.status === 'proven'
-                ? 'rgba(16, 185, 129, 0.06)'
-                : 'rgba(239, 68, 68, 0.06)',
-            }}
-            onMouseLeave={() => { setHoveredProofDp(null); setHoveredFactId(null) }}
-          >
-            {completionResult.status === 'proven' ? (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{
-                  color: '#10b981',
-                  fontWeight: 700,
-                  fontSize: 15,
-                  fontFamily: 'Georgia, serif',
-                }}>
-                  {'∴ '}
-                  {completionResult.segments.map((seg, idx) => (
-                    <span key={seg.label}>
-                      {idx > 0 && (
-                        <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>
-                      )}
-                      <span
-                        data-element="conclusion-segment"
-                        onMouseEnter={() => setHoveredProofDp(seg.dp)}
-                        style={{
-                          cursor: 'default',
-                          borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
-                            ? '2px solid #10b981'
-                            : '2px solid transparent',
-                          transition: 'border-color 0.15s ease',
+                          lineHeight: 1.3,
+                          marginTop: 1,
                         }}
                       >
-                        {seg.label}
-                      </span>
-                    </span>
-                  ))}
-                </span>
-                {(() => {
-                  // Render angle conclusion facts as interactive hoverable spans
-                  const conclusionAngleFacts = (factsByStep.get(proposition.steps.length) ?? [])
-                    .filter(isAngleFact)
-                  if (conclusionAngleFacts.length > 0) {
-                    return (
-                      <div style={{
-                        color: '#10b981',
-                        fontSize: 11,
-                        fontFamily: 'Georgia, serif',
-                        fontStyle: 'italic',
-                        marginTop: 2,
-                        width: '100%',
-                      }}>
-                        {conclusionAngleFacts.map((fact, idx) => (
-                          <span key={fact.id}>
-                            {idx > 0 && ', '}
-                            <span
-                              data-element="conclusion-angle"
-                              onMouseEnter={() => setHoveredFactId(fact.id)}
-                              onMouseLeave={() => setHoveredFactId(null)}
-                              style={{
-                                cursor: 'default',
-                                borderBottom: isFactHighlighted(fact)
-                                  ? '2px solid #10b981'
-                                  : '2px solid transparent',
-                                transition: 'border-color 0.15s ease',
-                              }}
-                            >
-                              {fact.statement}
-                            </span>
-                          </span>
-                        ))}
+                        {explanation}
                       </div>
-                    )
-                  }
-                  // Fall back to static theorem conclusion text
-                  if (proposition.theoremConclusion) {
-                    return (
-                      <div style={{
-                        color: '#10b981',
-                        fontSize: 11,
-                        fontFamily: 'Georgia, serif',
-                        fontStyle: 'italic',
-                        marginTop: 2,
-                        width: '100%',
-                        whiteSpace: 'pre-line',
-                      }}>
-                        {proposition.theoremConclusion}
-                      </div>
-                    )
-                  }
-                  return null
-                })()}
-                <span style={{
-                  color: '#10b981',
-                  fontStyle: 'italic',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fontFamily: 'Georgia, serif',
-                  letterSpacing: '0.02em',
-                }}>
-                  {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
-                </span>
-                {proposition.draggablePointIds && (
-                  <div
-                    data-element="drag-invitation"
+                    </div>
+                  </div>
+                )
+              })
+            })()}
+          </div>
+
+          {/* Conclusion bar — pinned at bottom, segments are hoverable */}
+          {isComplete && completionResult && (
+            <div
+              data-element="proof-conclusion"
+              style={{
+                padding: '12px 20px',
+                borderTop:
+                  completionResult.status === 'proven'
+                    ? '2px solid rgba(16, 185, 129, 0.4)'
+                    : '2px solid rgba(239, 68, 68, 0.4)',
+                background:
+                  completionResult.status === 'proven'
+                    ? 'rgba(16, 185, 129, 0.06)'
+                    : 'rgba(239, 68, 68, 0.06)',
+              }}
+              onMouseLeave={() => {
+                setHoveredProofDp(null)
+                setHoveredFactId(null)
+              }}
+            >
+              {completionResult.status === 'proven' ? (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <span
                     style={{
-                      marginTop: 10,
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      background: 'rgba(78, 121, 167, 0.08)',
-                      border: '1px solid rgba(78, 121, 167, 0.15)',
-                      color: '#4E79A7',
-                      fontSize: 12,
-                      fontFamily: 'system-ui, sans-serif',
-                      fontStyle: 'normal',
-                      fontWeight: 500,
-                      lineHeight: 1.4,
+                      color: '#10b981',
+                      fontWeight: 700,
+                      fontSize: 15,
+                      fontFamily: 'Georgia, serif',
                     }}
                   >
-                    Now try dragging the points to see that it always works.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span style={{ color: '#ef4444', fontWeight: 600, fontSize: 13, fontFamily: 'Georgia, serif' }}>
-                Proof incomplete — could not establish equality for {completionResult.statement}
-              </span>
-            )}
-          </div>
-        )}
-      </div>}
+                    {'∴ '}
+                    {completionResult.segments.map((seg, idx) => (
+                      <span key={seg.label}>
+                        {idx > 0 && <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>}
+                        <span
+                          data-element="conclusion-segment"
+                          onMouseEnter={() => setHoveredProofDp(seg.dp)}
+                          style={{
+                            cursor: 'default',
+                            borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
+                              ? '2px solid #10b981'
+                              : '2px solid transparent',
+                            transition: 'border-color 0.15s ease',
+                          }}
+                        >
+                          {seg.label}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
+                  {(() => {
+                    // Render angle conclusion facts as interactive hoverable spans
+                    const conclusionAngleFacts = (
+                      factsByStep.get(proposition.steps.length) ?? []
+                    ).filter(isAngleFact)
+                    if (conclusionAngleFacts.length > 0) {
+                      return (
+                        <div
+                          style={{
+                            color: '#10b981',
+                            fontSize: 11,
+                            fontFamily: 'Georgia, serif',
+                            fontStyle: 'italic',
+                            marginTop: 2,
+                            width: '100%',
+                          }}
+                        >
+                          {conclusionAngleFacts.map((fact, idx) => (
+                            <span key={fact.id}>
+                              {idx > 0 && ', '}
+                              <span
+                                data-element="conclusion-angle"
+                                onMouseEnter={() => setHoveredFactId(fact.id)}
+                                onMouseLeave={() => setHoveredFactId(null)}
+                                style={{
+                                  cursor: 'default',
+                                  borderBottom: isFactHighlighted(fact)
+                                    ? '2px solid #10b981'
+                                    : '2px solid transparent',
+                                  transition: 'border-color 0.15s ease',
+                                }}
+                              >
+                                {fact.statement}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    }
+                    // Fall back to static theorem conclusion text
+                    if (proposition.theoremConclusion) {
+                      return (
+                        <div
+                          style={{
+                            color: '#10b981',
+                            fontSize: 11,
+                            fontFamily: 'Georgia, serif',
+                            fontStyle: 'italic',
+                            marginTop: 2,
+                            width: '100%',
+                            whiteSpace: 'pre-line',
+                          }}
+                        >
+                          {proposition.theoremConclusion}
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                  <span
+                    style={{
+                      color: '#10b981',
+                      fontStyle: 'italic',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: 'Georgia, serif',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
+                  </span>
+                  {proposition.draggablePointIds && (
+                    <div
+                      data-element="drag-invitation"
+                      style={{
+                        marginTop: 10,
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        background: 'rgba(78, 121, 167, 0.08)',
+                        border: '1px solid rgba(78, 121, 167, 0.15)',
+                        color: '#4E79A7',
+                        fontSize: 12,
+                        fontFamily: 'system-ui, sans-serif',
+                        fontStyle: 'normal',
+                        fontWeight: 500,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Now try dragging the points to see that it always works.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span
+                  style={{
+                    color: '#ef4444',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    fontFamily: 'Georgia, serif',
+                  }}
+                >
+                  Proof incomplete — could not establish equality for {completionResult.statement}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <ToyDebugPanel title="Euclid">
         <DebugCheckbox
@@ -2076,8 +2287,11 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           min={getFrictionRange().min}
           max={getFrictionRange().max}
           step={0.001}
-          onChange={v => { setFrictionCoeff(v); setFriction(v) }}
-          formatValue={v => v.toFixed(3)}
+          onChange={(v) => {
+            setFrictionCoeff(v)
+            setFriction(v)
+          }}
+          formatValue={(v) => v.toFixed(3)}
         />
         <DebugSlider
           label="Ghost opacity"
@@ -2085,8 +2299,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           min={getGhostBaseOpacityRange().min}
           max={getGhostBaseOpacityRange().max}
           step={0.01}
-          onChange={v => { setGhostBaseOpacityVal(v); setGhostBaseOpacity(v); needsDrawRef.current = true }}
-          formatValue={v => v.toFixed(2)}
+          onChange={(v) => {
+            setGhostBaseOpacityVal(v)
+            setGhostBaseOpacity(v)
+            needsDrawRef.current = true
+          }}
+          formatValue={(v) => v.toFixed(2)}
         />
         <DebugSlider
           label="Ghost depth falloff"
@@ -2094,8 +2312,12 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           min={getGhostFalloffRange().min}
           max={getGhostFalloffRange().max}
           step={0.01}
-          onChange={v => { setGhostFalloffCoeff(v); setGhostFalloff(v); needsDrawRef.current = true }}
-          formatValue={v => v.toFixed(2)}
+          onChange={(v) => {
+            setGhostFalloffCoeff(v)
+            setGhostFalloff(v)
+            needsDrawRef.current = true
+          }}
+          formatValue={(v) => v.toFixed(2)}
         />
         {!isComplete && proposition.steps.length > 0 && (
           <button

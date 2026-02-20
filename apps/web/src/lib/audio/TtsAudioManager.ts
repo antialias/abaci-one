@@ -65,12 +65,7 @@ export interface CollectedClip {
 
 export type { VoiceSourceData } from './voiceSource'
 import type { VoiceSourceData } from './voiceSource'
-import {
-  type VoiceSource,
-  PregeneratedVoice,
-  CustomVoice,
-  hydrateVoiceChain,
-} from './voiceSource'
+import { type VoiceSource, PregeneratedVoice, CustomVoice, hydrateVoiceChain } from './voiceSource'
 
 type Listener = () => void
 
@@ -219,9 +214,7 @@ export class TtsAudioManager {
     if (diskVoices.length === 0) return
 
     try {
-      const res = await fetch(
-        `/api/audio/collected-clips/manifest?voices=${diskVoices.join(',')}`
-      )
+      const res = await fetch(`/api/audio/collected-clips/manifest?voices=${diskVoices.join(',')}`)
       if (!res.ok) return
 
       const data: { clipIdsByVoice: Record<string, string[]> } = await res.json()
@@ -493,11 +486,15 @@ export class TtsAudioManager {
           audio.currentTime = Math.min(seekSec, audio.duration)
         } else {
           // Wait for metadata then seek
-          audio.addEventListener('loadedmetadata', () => {
-            if (this._currentAudio === audio && isFinite(audio.duration)) {
-              audio.currentTime = Math.min(seekSec, audio.duration)
-            }
-          }, { once: true })
+          audio.addEventListener(
+            'loadedmetadata',
+            () => {
+              if (this._currentAudio === audio && isFinite(audio.duration)) {
+                audio.currentTime = Math.min(seekSec, audio.duration)
+              }
+            },
+            { once: true }
+          )
         }
       }
     })
@@ -694,8 +691,14 @@ export class TtsAudioManager {
     // Cancel any in-flight playback before starting new speech.
     this._sequenceCancelled = true
     this._currentAudioDurationMs = null
-    if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
-    if (this._subtitleResolve) { this._subtitleResolve(); this._subtitleResolve = null }
+    if (this._subtitleTimer) {
+      clearTimeout(this._subtitleTimer)
+      this._subtitleTimer = null
+    }
+    if (this._subtitleResolve) {
+      this._subtitleResolve()
+      this._subtitleResolve = null
+    }
     this._subtitleText = null
     if (this._currentAudio) {
       this._currentAudio.pause()
@@ -867,8 +870,14 @@ export class TtsAudioManager {
     }
     this._activeUtterances.clear()
     // Clear subtitle display
-    if (this._subtitleTimer) { clearTimeout(this._subtitleTimer); this._subtitleTimer = null }
-    if (this._subtitleResolve) { this._subtitleResolve(); this._subtitleResolve = null }
+    if (this._subtitleTimer) {
+      clearTimeout(this._subtitleTimer)
+      this._subtitleTimer = null
+    }
+    if (this._subtitleResolve) {
+      this._subtitleResolve()
+      this._subtitleResolve = null
+    }
     this._subtitleText = null
     // Clear preloaded audio
     if (this._preloadedAudio) {

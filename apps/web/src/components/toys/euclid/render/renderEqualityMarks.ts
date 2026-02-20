@@ -1,29 +1,24 @@
-import type {
-  ConstructionState,
-  EuclidViewportState,
-} from '../types'
+import type { ConstructionState, EuclidViewportState } from '../types'
 import { getAllSegments, getPoint } from '../engine/constructionState'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 import type { FactStore } from '../engine/factStore'
 import { queryEquality } from '../engine/factStore'
 import { distancePair } from '../engine/facts'
 
-const TICK_LENGTH = 6   // px each side of the line
-const TICK_SPACING = 4  // px between parallel tick marks
+const TICK_LENGTH = 6 // px each side of the line
+const TICK_SPACING = 4 // px between parallel tick marks
 const TICK_COLOR = '#5b8a8a'
 
-function toScreen(
-  wx: number,
-  wy: number,
-  viewport: EuclidViewportState,
-  w: number,
-  h: number,
-) {
+function toScreen(wx: number, wy: number, viewport: EuclidViewportState, w: number, h: number) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    w, h,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    w,
+    h
   )
 }
 
@@ -48,7 +43,7 @@ export function renderEqualityMarks(
   h: number,
   factStore: FactStore,
   hiddenElementIds?: Set<string>,
-  resultSegments?: Array<{ fromId: string; toId: string }>,
+  resultSegments?: Array<{ fromId: string; toId: string }>
 ) {
   // Collect all lines to consider: construction segments + result segments
   const lines: LinePair[] = []
@@ -138,8 +133,10 @@ export function renderEqualityMarks(
     const dirY = dy / len
 
     // Perpendicular — pick the direction pointing more "up" on screen (lower Y)
-    const pAx = -dirY, pAy = dirX
-    const pBx = dirY, pBy = -dirX
+    const pAx = -dirY,
+      pAy = dirX
+    const pBx = dirY,
+      pBy = -dirX
     const perpX = pAy < pBy ? pAx : pBx
     const perpY = pAy < pBy ? pAy : pBy
 

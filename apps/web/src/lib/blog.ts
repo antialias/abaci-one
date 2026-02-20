@@ -66,12 +66,11 @@ export async function getAllPostsMetadata(): Promise<BlogPostMetadata[]> {
       const post = await getPostBySlug(slug)
       const { content, html, ...metadata } = post
       // Create excerpt from first prose paragraph (skip images, headings, HRs, HTML blocks)
-      const firstPara = content.split('\n\n').find(
-        (p) => {
+      const firstPara =
+        content.split('\n\n').find((p) => {
           const t = p.trim()
           return t && !t.startsWith('![') && !t.startsWith('#') && t !== '---' && !t.includes('<')
-        }
-      ) ?? ''
+        }) ?? ''
       // Strip markdown bold/italic markers for clean display
       const stripped = firstPara.replace(/^#+\s+/, '').replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
       const excerpt = `${stripped.substring(0, 200)}...`

@@ -78,8 +78,7 @@ export function useDeviceTilt() {
     const DEAD_ZONE = 2 // degrees - ignore tiny tilts
     const SMOOTHING = 0.3 // low-pass filter factor (0-1, lower = smoother)
 
-    const clamp = (v: number, lo: number, hi: number) =>
-      Math.max(lo, Math.min(hi, v))
+    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
     const handler = (e: DeviceOrientationEvent) => {
       const rawBeta = e.beta ?? 0 // front-back: -180..180, 0 = flat

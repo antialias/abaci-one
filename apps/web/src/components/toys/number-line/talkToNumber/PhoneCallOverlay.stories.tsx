@@ -158,14 +158,7 @@ export const ErrorGenericServer: Story = {
 
 export const Ringing: Story = {
   name: 'Ringing',
-  render: () => (
-    <CallContainer
-      number={7}
-      state="ringing"
-      error={null}
-      errorCode={null}
-    />
-  ),
+  render: () => <CallContainer number={7} state="ringing" error={null} errorCode={null} />,
 }
 
 export const ActiveCall: Story = {
@@ -186,14 +179,7 @@ export const ActiveCall: Story = {
 
 export const Ending: Story = {
   name: 'Ending',
-  render: () => (
-    <CallContainer
-      number={7}
-      state="ending"
-      error={null}
-      errorCode={null}
-    />
-  ),
+  render: () => <CallContainer number={7} state="ending" error={null} errorCode={null} />,
 }
 
 export const Transferring: Story = {

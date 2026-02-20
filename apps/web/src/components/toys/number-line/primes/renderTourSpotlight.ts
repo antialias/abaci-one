@@ -30,7 +30,7 @@ export function renderTourSpotlight(
   const dimAlpha = dimAmount * tourOpacity
 
   // Compute screen positions for each highlight
-  const spots = highlightValues.map(v => ({
+  const spots = highlightValues.map((v) => ({
     value: v,
     screenX: numberToScreenX(v, state.center, state.pixelsPerUnit, cssWidth),
   }))
@@ -45,9 +45,7 @@ export function renderTourSpotlight(
     ctx.moveTo(spot.screenX + SPOTLIGHT_RADIUS, centerY)
     ctx.arc(spot.screenX, centerY, SPOTLIGHT_RADIUS, 0, TAU, true)
   }
-  ctx.fillStyle = isDark
-    ? `rgba(0, 0, 0, ${dimAlpha})`
-    : `rgba(0, 0, 0, ${dimAlpha * 0.7})`
+  ctx.fillStyle = isDark ? `rgba(0, 0, 0, ${dimAlpha})` : `rgba(0, 0, 0, ${dimAlpha * 0.7})`
   ctx.fill('evenodd')
   ctx.restore()
 
@@ -56,8 +54,12 @@ export function renderTourSpotlight(
     const innerR = SPOTLIGHT_RADIUS
     const outerR = SPOTLIGHT_RADIUS + FEATHER_WIDTH
     const gradient = ctx.createRadialGradient(
-      spot.screenX, centerY, innerR,
-      spot.screenX, centerY, outerR
+      spot.screenX,
+      centerY,
+      innerR,
+      spot.screenX,
+      centerY,
+      outerR
     )
     gradient.addColorStop(0, 'rgba(0, 0, 0, 0)')
     const featherAlpha = isDark ? dimAlpha : dimAlpha * 0.7
@@ -65,10 +67,7 @@ export function renderTourSpotlight(
 
     ctx.save()
     ctx.fillStyle = gradient
-    ctx.fillRect(
-      spot.screenX - outerR, centerY - outerR,
-      outerR * 2, outerR * 2
-    )
+    ctx.fillRect(spot.screenX - outerR, centerY - outerR, outerR * 2, outerR * 2)
     ctx.restore()
   }
 
@@ -80,8 +79,12 @@ export function renderTourSpotlight(
     const spf = spot.value >= 2 ? smallestPrimeFactor(spot.value) : spot.value
     const glowRadius = 30
     const glow = ctx.createRadialGradient(
-      spot.screenX, centerY, 0,
-      spot.screenX, centerY, glowRadius
+      spot.screenX,
+      centerY,
+      0,
+      spot.screenX,
+      centerY,
+      glowRadius
     )
     glow.addColorStop(0, primeColorRgba(spf, pulseAlpha * tourOpacity, isDark))
     glow.addColorStop(1, 'rgba(0, 0, 0, 0)')
@@ -89,10 +92,7 @@ export function renderTourSpotlight(
     ctx.save()
     ctx.globalAlpha = 1
     ctx.fillStyle = glow
-    ctx.fillRect(
-      spot.screenX - glowRadius, centerY - glowRadius,
-      glowRadius * 2, glowRadius * 2
-    )
+    ctx.fillRect(spot.screenX - glowRadius, centerY - glowRadius, glowRadius * 2, glowRadius * 2)
     ctx.restore()
   }
 }

@@ -61,7 +61,7 @@ export function FindTheNumberBar({
           { transform: 'scale(1.15)', color: '#10b981' },
           { transform: 'scale(1)', color: '#10b981' },
         ],
-        { duration: 500, easing: 'ease-out', fill: 'forwards' },
+        { duration: 500, easing: 'ease-out', fill: 'forwards' }
       )
     }
     prevGameStateRef.current = gameState
@@ -95,15 +95,18 @@ export function FindTheNumberBar({
     // Invalid input: stay in editing mode (let user fix it)
   }, [inputValue, onStart])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      commitInput()
-    } else if (e.key === 'Escape') {
-      setIsEditing(false)
-      setInputValue('')
-    }
-  }, [commitInput])
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        commitInput()
+      } else if (e.key === 'Escape') {
+        setIsEditing(false)
+        setInputValue('')
+      }
+    },
+    [commitInput]
+  )
 
   const handleTapNumber = useCallback(() => {
     onGiveUp()
@@ -170,16 +173,14 @@ export function FindTheNumberBar({
               color: showInvalid ? '#ef4444' : textColor,
               background: 'transparent',
               border: 'none',
-              borderBottom: `2px solid ${showInvalid ? '#ef4444' : (isDark ? 'rgba(99, 102, 241, 0.6)' : 'rgba(79, 70, 229, 0.5)')}`,
+              borderBottom: `2px solid ${showInvalid ? '#ef4444' : isDark ? 'rgba(99, 102, 241, 0.6)' : 'rgba(79, 70, 229, 0.5)'}`,
               outline: 'none',
               padding: '4px 0',
               caretColor: isDark ? '#818cf8' : '#4f46e5',
             }}
           />
           {showInvalid && (
-            <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>
-              try 3.14 or 1/3
-            </span>
+            <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>try 3.14 or 1/3</span>
           )}
         </div>
       ) : displayNumber !== null ? (
@@ -200,12 +201,12 @@ export function FindTheNumberBar({
             WebkitTapHighlightColor: 'transparent',
           }}
           onPointerEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = isDark
+            ;(e.currentTarget as HTMLElement).style.background = isDark
               ? 'rgba(255,255,255,0.06)'
               : 'rgba(0,0,0,0.04)'
           }}
           onPointerLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = ''
+            ;(e.currentTarget as HTMLElement).style.background = ''
           }}
         >
           {hideTarget && gameState !== 'found'
@@ -229,12 +230,12 @@ export function FindTheNumberBar({
             WebkitTapHighlightColor: 'transparent',
           }}
           onPointerEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = isDark
+            ;(e.currentTarget as HTMLElement).style.background = isDark
               ? 'rgba(255,255,255,0.06)'
               : 'rgba(0,0,0,0.04)'
           }}
           onPointerLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = ''
+            ;(e.currentTarget as HTMLElement).style.background = ''
           }}
         >
           {displayEmoji} tap to pick a number

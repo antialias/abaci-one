@@ -30,7 +30,14 @@ interface TestCardProps {
   children: ReactNode
 }
 
-export function TestCard({ title, description, status, entries, onClear, children }: TestCardProps) {
+export function TestCard({
+  title,
+  description,
+  status,
+  entries,
+  onClear,
+  children,
+}: TestCardProps) {
   return (
     <div
       data-component="TestCard"
@@ -44,7 +51,13 @@ export function TestCard({ title, description, status, entries, onClear, childre
         gap: '12px',
       })}
     >
-      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        })}
+      >
         <div>
           <h3
             className={css({

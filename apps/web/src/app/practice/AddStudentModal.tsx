@@ -1,11 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { EmojiPicker } from '@/components/EmojiPicker'
 import { LinkChildForm } from '@/components/family'
 import { PLAYER_EMOJIS } from '@/constants/playerEmojis'
 import { useDirectEnrollStudent } from '@/hooks/useClassroom'
-import { useCreatePlayer } from '@/hooks/useUserPlayers'
+import { ApiError, useCreatePlayer } from '@/hooks/useUserPlayers'
 import { css } from '../../../styled-system/css'
 
 // Available colors for student avatars
@@ -386,6 +387,61 @@ export function AddStudentModal({
             ))}
           </div>
         </div>
+
+        {/* Player limit error */}
+        {createPlayer.error instanceof ApiError &&
+          createPlayer.error.code === 'PRACTICE_STUDENT_LIMIT_REACHED' && (
+            <div
+              data-element="player-limit-error"
+              className={css({
+                padding: '0.75rem',
+                marginBottom: '1rem',
+                borderRadius: '8px',
+                textAlign: 'center',
+                backgroundColor: isDark ? 'rgba(251, 191, 36, 0.12)' : 'rgba(251, 191, 36, 0.08)',
+                border: '1px solid',
+                borderColor: isDark ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 191, 36, 0.15)',
+              })}
+            >
+              <p
+                className={css({
+                  fontSize: '0.875rem',
+                  color: isDark ? '#fcd34d' : '#b45309',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                Student limit reached
+              </p>
+              <p
+                className={css({
+                  fontSize: '0.75rem',
+                  color: isDark ? '#d4d4d4' : '#525252',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                Upgrade to Family for unlimited students.
+              </p>
+              <Link
+                href="/pricing"
+                data-action="upgrade-for-students"
+                className={css({
+                  display: 'inline-block',
+                  padding: '0.375rem 0.75rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: '600',
+                  color: 'white',
+                  backgroundColor: isDark ? '#7c3aed' : '#8b5cf6',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  _hover: {
+                    backgroundColor: isDark ? '#6d28d9' : '#7c3aed',
+                  },
+                })}
+              >
+                View Plans
+              </Link>
+            </div>
+          )}
 
         {/* Form actions */}
         <div

@@ -1,5 +1,5 @@
 import type { SemanticFrame, GeneratedNumbers, DifficultyLevel } from './types'
-import { SeededRandom } from '../../../../lib/SeededRandom'
+import type { SeededRandom } from '../../../../lib/SeededRandom'
 
 const GRID_MIN = -15
 const GRID_MAX = 15
@@ -83,7 +83,11 @@ function generateTwoPoints(
 ): { point1: { x: number; y: number }; point2: { x: number; y: number } } | null {
   // Collect all valid integer x values with corresponding y on the line within grid bounds
   const validPoints: { x: number; y: number }[] = []
-  for (let x = Math.max(GRID_MIN, frame.xRange.min); x <= Math.min(GRID_MAX, frame.xRange.max); x++) {
+  for (
+    let x = Math.max(GRID_MIN, frame.xRange.min);
+    x <= Math.min(GRID_MAX, frame.xRange.max);
+    x++
+  ) {
     const y = m * x + b
     if (y >= GRID_MIN && y <= GRID_MAX && Number.isInteger(y)) {
       validPoints.push({ x, y })
@@ -121,9 +125,10 @@ function fallbackNumbers(frame: SemanticFrame, difficulty: DifficultyLevel): Gen
   const xAnswer = 1
   const yTarget = m * xAnswer + b
   return {
-    m, b, xAnswer, yTarget,
-    ...(difficulty === 4
-      ? { point1: { x: 0, y: b }, point2: { x: 1, y: m + b } }
-      : {}),
+    m,
+    b,
+    xAnswer,
+    yTarget,
+    ...(difficulty === 4 ? { point1: { x: 0, y: b }, point2: { x: 1, y: m + b } } : {}),
   }
 }

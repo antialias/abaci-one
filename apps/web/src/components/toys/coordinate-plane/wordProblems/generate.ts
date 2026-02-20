@@ -13,10 +13,7 @@ import { SeededRandom } from '../../../../lib/SeededRandom'
  *
  * Pipeline: frame selection → character resolution → number generation → grammar expansion → WordProblem assembly
  */
-export function generateWordProblem(
-  seed: number,
-  difficulty: DifficultyLevel
-): WordProblem {
+export function generateWordProblem(seed: number, difficulty: DifficultyLevel): WordProblem {
   const rng = new SeededRandom(seed)
 
   // 1. Select a frame that supports this difficulty
@@ -40,13 +37,10 @@ export function generateWordProblem(
 
   // 6. Determine what the student needs to solve for
   const solveFor: 'x' | 'y' | 'equation' =
-    difficulty === 1 ? 'y' :
-    difficulty === 2 ? 'y' :
-    difficulty === 4 ? 'equation' :
-    'x'
+    difficulty === 1 ? 'y' : difficulty === 2 ? 'y' : difficulty === 4 ? 'equation' : 'x'
 
   // 7. Assemble the WordProblem
-  const text = spans.map(s => s.text).join('')
+  const text = spans.map((s) => s.text).join('')
 
   return {
     id: `wp-${seed}-${difficulty}`,
@@ -59,7 +53,11 @@ export function generateWordProblem(
     seed,
     axisLabels: { x: resolvedFrame.xNoun.plural, y: resolvedFrame.yNoun.plural },
     unitFormat: {
-      x: { unit: resolvedFrame.xUnit, position: resolvedFrame.xUnitPosition, singular: resolvedFrame.xNoun.singular },
+      x: {
+        unit: resolvedFrame.xUnit,
+        position: resolvedFrame.xUnitPosition,
+        singular: resolvedFrame.xNoun.singular,
+      },
       y: { unit: resolvedFrame.yUnit, position: resolvedFrame.yUnitPosition },
     },
     emoji: resolvedFrame.emoji,
@@ -70,6 +68,6 @@ export function generateWordProblem(
  * Generate a problem with a random seed.
  */
 export function generateRandomProblem(difficulty: DifficultyLevel): WordProblem {
-  const seed = Math.floor(Math.random() * 0xFFFFFFFF)
+  const seed = Math.floor(Math.random() * 0xffffffff)
   return generateWordProblem(seed, difficulty)
 }

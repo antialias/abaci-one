@@ -50,10 +50,11 @@ export function circleArpNotes(radius: number, refDistance: number): string {
   const offset = Math.round(logRatio * SCALE_NOTES.length)
   const centerIdx = Math.max(2, Math.min(FULL_SCALE.length - 2, CENTER_INDEX + offset))
 
-  const indices = [centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2]
-    .map(i => Math.max(0, Math.min(FULL_SCALE.length - 1, i)))
+  const indices = [centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2].map((i) =>
+    Math.max(0, Math.min(FULL_SCALE.length - 1, i))
+  )
 
-  return indices.map(i => FULL_SCALE[i]).join(' ')
+  return indices.map((i) => FULL_SCALE[i]).join(' ')
 }
 
 /**

@@ -89,7 +89,10 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
         }
 
         const filename = `${target.constantId}-${target.style}${target.theme ? `-${target.theme}` : ''}.png`
-        const storageTarget = { type: 'static' as const, relativePath: `images/constants/${filename}` }
+        const storageTarget = {
+          type: 'static' as const,
+          relativePath: `images/constants/${filename}`,
+        }
 
         // Skip if already exists and not force-regenerating
         if (!config.forceRegenerate && imageExists(storageTarget)) {
@@ -100,7 +103,10 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
           })
           skipped++
           const progress = Math.round(((i + 1) / total) * 100)
-          handle.setProgress(progress, `Skipped ${target.constantId} ${target.style} (already exists)`)
+          handle.setProgress(
+            progress,
+            `Skipped ${target.constantId} ${target.style} (already exists)`
+          )
           continue
         }
 
@@ -176,7 +182,9 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
           })
 
           if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-            handle.fail(`Generation aborted after ${MAX_CONSECUTIVE_ERRORS} consecutive failures: ${errorMsg}`)
+            handle.fail(
+              `Generation aborted after ${MAX_CONSECUTIVE_ERRORS} consecutive failures: ${errorMsg}`
+            )
             return
           }
         }

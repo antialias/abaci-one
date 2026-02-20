@@ -18,8 +18,7 @@ const errorMessages: Record<string, { title: string; description: string }> = {
   },
   Verification: {
     title: 'Link expired',
-    description:
-      'The sign-in link has expired or has already been used. Please request a new one.',
+    description: 'The sign-in link has expired or has already been used. Please request a new one.',
   },
   Default: {
     title: 'Something went wrong',
@@ -55,9 +54,7 @@ function ErrorContent() {
           backgroundColor: isDark ? 'gray.800' : 'white',
           border: '1px solid',
           borderColor: isDark ? 'gray.700' : 'gray.200',
-          boxShadow: isDark
-            ? '0 8px 24px rgba(0, 0, 0, 0.4)'
-            : '0 8px 24px rgba(0, 0, 0, 0.1)',
+          boxShadow: isDark ? '0 8px 24px rgba(0, 0, 0, 0.4)' : '0 8px 24px rgba(0, 0, 0, 0.1)',
           textAlign: 'center',
         })}
       >

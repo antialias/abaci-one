@@ -152,7 +152,7 @@ export function SubtitleOverlay() {
               _hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
             })}
           >
-            {"🐢"}
+            {'🐢'}
           </button>
 
           {/* Subtitle text — tap to dismiss */}
@@ -196,7 +196,7 @@ export function SubtitleOverlay() {
               _hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
             })}
           >
-            {"🐇"}
+            {'🐇'}
           </button>
 
           {/* Progress bar */}

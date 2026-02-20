@@ -6,9 +6,7 @@ export type { ImageProvider, ImageProviderMeta, ImageGenerationResult, ImageOpti
 
 const providers: ImageProvider[] = [geminiProvider, openaiProvider]
 
-const providerMap = new Map<string, ImageProvider>(
-  providers.map((p) => [p.meta.id, p])
-)
+const providerMap = new Map<string, ImageProvider>(providers.map((p) => [p.meta.id, p]))
 
 /** Look up a provider by its id (e.g. 'gemini', 'openai'). */
 export function getImageProvider(id: string): ImageProvider | undefined {

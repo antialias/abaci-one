@@ -712,8 +712,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                 {(() => {
                   let foundFirst = false
                   return availability.map((entry, idx) => {
-                    const voiceName =
-                      'name' in entry.source ? entry.source.name : entry.source.type
+                    const voiceName = 'name' in entry.source ? entry.source.name : entry.source.type
                     const isFirst = entry.hasClip && !foundFirst
                     if (entry.hasClip) foundFirst = true
 

@@ -1,6 +1,20 @@
-import type { SemanticFrame, SubjectEntry, GeneratedNumbers, DifficultyLevel, AnnotatedSpan } from './types'
-import { formatWithUnit, pluralize, conjugate3p, conjugateBase, conjugateFor, capitalize, midSentence } from './inflect'
-import { SeededRandom } from '../../../../lib/SeededRandom'
+import type {
+  SemanticFrame,
+  SubjectEntry,
+  GeneratedNumbers,
+  DifficultyLevel,
+  AnnotatedSpan,
+} from './types'
+import {
+  formatWithUnit,
+  pluralize,
+  conjugate3p,
+  conjugateBase,
+  conjugateFor,
+  capitalize,
+  midSentence,
+} from './inflect'
+import type { SeededRandom } from '../../../../lib/SeededRandom'
 
 /** A production is a function that returns an array of annotated spans */
 type Production = (ctx: GrammarContext) => AnnotatedSpan[]
@@ -172,7 +186,10 @@ function goalSentence(ctx: GrammarContext): AnnotatedSpan[] {
 
     if (variant === 0) {
       // "The car needs to reach 290 miles."
-      const verb = conjugateFor({ base: 'need', thirdPerson: 'needs', pastTense: 'needed', gerund: 'needing' }, subject)
+      const verb = conjugateFor(
+        { base: 'need', thirdPerson: 'needs', pastTense: 'needed', gerund: 'needing' },
+        subject
+      )
       return [
         { text: `${subject.phrase} ${verb} to reach ` },
         { text: tFormatted, tag: 'target', value: nums.yTarget },
@@ -212,14 +229,10 @@ function questionSentence(ctx: GrammarContext): AnnotatedSpan[] {
 
   if (frame.xRole === 'elapsed') {
     if (frame.solveForXQuestions && frame.solveForXQuestions.length > 0) {
-      return [
-        { text: rng.pick(frame.solveForXQuestions), tag: 'question' },
-      ]
+      return [{ text: rng.pick(frame.solveForXQuestions), tag: 'question' }]
     }
     // Generic fallback
-    return [
-      { text: `How many ${frame.xNoun.plural} will it take?`, tag: 'question' },
-    ]
+    return [{ text: `How many ${frame.xNoun.plural} will it take?`, tag: 'question' }]
   }
 
   // Acquired
@@ -228,12 +241,13 @@ function questionSentence(ctx: GrammarContext): AnnotatedSpan[] {
 
   if (variant === 0) {
     return [
-      { text: `How many ${frame.xNoun.plural} can ${midSentence(subject.phrase)} get?`, tag: 'question' },
+      {
+        text: `How many ${frame.xNoun.plural} can ${midSentence(subject.phrase)} get?`,
+        tag: 'question',
+      },
     ]
   } else {
-    return [
-      { text: `How many ${frame.xNoun.plural} is that?`, tag: 'question' },
-    ]
+    return [{ text: `How many ${frame.xNoun.plural} is that?`, tag: 'question' }]
   }
 }
 
@@ -321,15 +335,7 @@ function level3Sentence(ctx: GrammarContext): AnnotatedSpan[] {
     ? [...rate, { text: ' ' } as AnnotatedSpan, ...base]
     : [...base, { text: ' ' } as AnnotatedSpan, ...rate]
 
-  return [
-    ...setup,
-    { text: ' ' },
-    ...middle,
-    { text: ' ' },
-    ...goal,
-    { text: ' ' },
-    ...question,
-  ]
+  return [...setup, { text: ' ' }, ...middle, { text: ' ' }, ...goal, { text: ' ' }, ...question]
 }
 
 // Level 4: two points → derive equation
@@ -344,9 +350,15 @@ function level4Sentence(ctx: GrammarContext): AnnotatedSpan[] {
   return [
     { text: setup, tag: 'context' },
     { text: ' ' },
-    { text: `After ${p1.x} ${xUnit}, there were ${formatWithUnit(p1.y, frame.yUnit, frame.yUnitPosition)}`, tag: 'point1' },
+    {
+      text: `After ${p1.x} ${xUnit}, there were ${formatWithUnit(p1.y, frame.yUnit, frame.yUnitPosition)}`,
+      tag: 'point1',
+    },
     { text: '. ' },
-    { text: `After ${p2.x} ${xUnit}, there were ${formatWithUnit(p2.y, frame.yUnit, frame.yUnitPosition)}`, tag: 'point2' },
+    {
+      text: `After ${p2.x} ${xUnit}, there were ${formatWithUnit(p2.y, frame.yUnit, frame.yUnitPosition)}`,
+      tag: 'point2',
+    },
     { text: '. ' },
     { text: 'What equation describes this pattern?', tag: 'question' },
   ]

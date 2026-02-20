@@ -38,7 +38,7 @@ export const gameMode: AgentMode = {
           'NEVER ask "what did you get?", "what\'s your answer?", or "what number did you write down?" ' +
           'unless the game instructions specifically say to. ' +
           'Ask "are you ready?" or "tell me when you\'re done" to pace steps. ' +
-          'The child keeps their work secret — that\'s what makes the reveal magical.\n\n' +
+          "The child keeps their work secret — that's what makes the reveal magical.\n\n" +
           game.sessionInstructions
         )
       }
@@ -60,7 +60,13 @@ export const gameMode: AgentMode = {
     // look_at and indicate are NOT in sessionTools (so the game's onToolCall
     // won't intercept them) — they fall through to the built-in handlers.
     if (game?.sessionTools) {
-      return [...(game.sessionTools as RealtimeTool[]), TOOL_LOOK_AT, TOOL_INDICATE, TOOL_END_GAME, TOOL_HANG_UP]
+      return [
+        ...(game.sessionTools as RealtimeTool[]),
+        TOOL_LOOK_AT,
+        TOOL_INDICATE,
+        TOOL_END_GAME,
+        TOOL_HANG_UP,
+      ]
     }
 
     // Legacy game: restricted tool set

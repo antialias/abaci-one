@@ -40,34 +40,37 @@ export function useChallenge({
   const updatePhase = useCallback((phase: ChallengePhase) => {
     challengeRef.current.phase = phase
     challengeRef.current.phaseStartTime = performance.now()
-    setChallengeVersion(v => v + 1)
+    setChallengeVersion((v) => v + 1)
   }, [])
 
   /** Summon a new problem */
-  const summonProblem = useCallback((difficulty: DifficultyLevel = 3) => {
-    const seed = Math.floor(Math.random() * 0xFFFFFFFF)
-    const problem = generateWordProblem(seed, difficulty)
-    challengeRef.current.problem = problem
-    challengeRef.current.attempts = 0
-    challengeRef.current.revealStep = 0
+  const summonProblem = useCallback(
+    (difficulty: DifficultyLevel = 3) => {
+      const seed = Math.floor(Math.random() * 0xffffffff)
+      const problem = generateWordProblem(seed, difficulty)
+      challengeRef.current.problem = problem
+      challengeRef.current.attempts = 0
+      challengeRef.current.revealStep = 0
 
-    // Start with auto-adjusting phase (viewport animation)
-    updatePhase('auto-adjusting')
-    onSummon?.(problem)
+      // Start with auto-adjusting phase (viewport animation)
+      updatePhase('auto-adjusting')
+      onSummon?.(problem)
 
-    // After a brief delay for viewport animation, transition to presenting
-    setTimeout(() => {
-      if (challengeRef.current.phase === 'auto-adjusting') {
-        updatePhase('presenting')
-        // After slide-in animation, transition to solving
-        setTimeout(() => {
-          if (challengeRef.current.phase === 'presenting') {
-            updatePhase('solving')
-          }
-        }, PRESENT_DELAY_MS)
-      }
-    }, 600) // viewport animation duration
-  }, [enabled, updatePhase, onSummon])
+      // After a brief delay for viewport animation, transition to presenting
+      setTimeout(() => {
+        if (challengeRef.current.phase === 'auto-adjusting') {
+          updatePhase('presenting')
+          // After slide-in animation, transition to solving
+          setTimeout(() => {
+            if (challengeRef.current.phase === 'presenting') {
+              updatePhase('solving')
+            }
+          }, PRESENT_DELAY_MS)
+        }
+      }, 600) // viewport animation duration
+    },
+    [enabled, updatePhase, onSummon]
+  )
 
   /** Dismiss the current problem */
   const dismissProblem = useCallback(() => {
@@ -95,14 +98,16 @@ export function useChallenge({
     const problem = challengeRef.current.problem
     if (!problem) return
 
-    const annotatedTags = problem.spans.filter(s => s.tag && s.tag !== 'context' && s.tag !== 'question')
+    const annotatedTags = problem.spans.filter(
+      (s) => s.tag && s.tag !== 'context' && s.tag !== 'question'
+    )
     const totalSteps = annotatedTags.length
 
     let step = 0
     const interval = setInterval(() => {
       step++
       challengeRef.current.revealStep = step
-      setChallengeVersion(v => v + 1)
+      setChallengeVersion((v) => v + 1)
 
       if (step >= totalSteps) {
         clearInterval(interval)
@@ -115,20 +120,23 @@ export function useChallenge({
   }, [updatePhase, onComplete])
 
   /** Called when the kid enters the correct x answer — fires onComplete and summons next problem */
-  const handleAnswerCorrect = useCallback((difficulty: DifficultyLevel = 3) => {
-    const problem = challengeRef.current.problem
-    if (!problem) return
+  const handleAnswerCorrect = useCallback(
+    (difficulty: DifficultyLevel = 3) => {
+      const problem = challengeRef.current.problem
+      if (!problem) return
 
-    onComplete?.(problem, challengeRef.current.attempts)
+      onComplete?.(problem, challengeRef.current.attempts)
 
-    // Brief celebration, then summon next problem
-    updatePhase('celebrating')
-    setTimeout(() => {
-      if (challengeRef.current.phase === 'celebrating') {
-        summonProblem(difficulty)
-      }
-    }, CELEBRATE_DURATION_MS)
-  }, [updatePhase, onComplete, summonProblem])
+      // Brief celebration, then summon next problem
+      updatePhase('celebrating')
+      setTimeout(() => {
+        if (challengeRef.current.phase === 'celebrating') {
+          summonProblem(difficulty)
+        }
+      }, CELEBRATE_DURATION_MS)
+    },
+    [updatePhase, onComplete, summonProblem]
+  )
 
   return {
     challengeRef,

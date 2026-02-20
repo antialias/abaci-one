@@ -9,14 +9,14 @@ const TOTAL_DURATION_S = 15
 function getPhaseLabel(p: number): string {
   if (p < 0.06) return 'Can the vine reach the star?'
   if (p < 0.14) return 'Day 1: One BIG leap! → 2 (Not quite!)'
-  if (p < 0.40) return 'Day 2: Share the work! Hop → rest (bigger vine!) → bigger hop!'
+  if (p < 0.4) return 'Day 2: Share the work! Hop → rest (bigger vine!) → bigger hop!'
   if (p < 0.47) return 'Day 3: More helpers! → 2.370'
   if (p < 0.53) return 'Day 4: Even more helpers! → 2.441'
   if (p < 0.57) return 'Day 5: More and more! → 2.488'
   if (p < 0.61) return 'Day 6: So many helpers! → 2.522'
   if (p < 0.64) return 'Day 7: A whole team! → 2.566'
   if (p < 0.67) return 'Day 8: A bigger team! → 2.613'
-  if (p < 0.70) return 'Day 9: A huge team! → 2.653'
+  if (p < 0.7) return 'Day 9: A huge team! → 2.653'
   if (p < 0.73) return 'Day 10: Everybody helps! → 2.692'
   if (p < 0.83) return 'The secret: everyone grows together!'
   if (p < 0.92) return 'Each day, the vine got closer...'
@@ -201,9 +201,9 @@ const meta: Meta<HarnessProps> = {
     docs: {
       description: {
         component:
-          'Euler\'s number (e) demo: a magic vine grows along the number line. ' +
+          "Euler's number (e) demo: a magic vine grows along the number line. " +
           'Each round, every leaf sprouts new baby leaves (compound growth). More rounds ' +
-          'means more growth, but it never reaches past e ≈ 2.718 — nature\'s growth limit.',
+          "means more growth, but it never reaches past e ≈ 2.718 — nature's growth limit.",
       },
     },
   },

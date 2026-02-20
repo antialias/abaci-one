@@ -20,10 +20,7 @@ export const GET = withAuth(async () => {
 
     // If no settings exist, create with defaults
     if (!settings) {
-      const [newSettings] = await db
-        .insert(schema.scannerSettings)
-        .values({ userId })
-        .returning()
+      const [newSettings] = await db.insert(schema.scannerSettings).values({ userId }).returning()
       settings = newSettings
     }
 

@@ -38,10 +38,7 @@ export default function EuclidPlaygroundPage() {
           position: 'relative',
         }}
       >
-        <EuclidCanvas
-          propositionId={0}
-          playgroundMode
-        />
+        <EuclidCanvas propositionId={0} playgroundMode />
       </div>
     </div>
   )

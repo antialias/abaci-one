@@ -34,8 +34,7 @@ export function checkAnswer(
   // General case: compare slope and intercept
   return {
     correct:
-      fractionsEqual(eq.slope, target.slope) &&
-      fractionsEqual(eq.intercept, target.intercept),
+      fractionsEqual(eq.slope, target.slope) && fractionsEqual(eq.intercept, target.intercept),
   }
 }
 

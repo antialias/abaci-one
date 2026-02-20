@@ -19,8 +19,12 @@ interface Vec2 {
 // ── Primitive intersections ────────────────────────────────────────
 
 export function circleCircleIntersections(
-  c1x: number, c1y: number, c1r: number,
-  c2x: number, c2y: number, c2r: number,
+  c1x: number,
+  c1y: number,
+  c1r: number,
+  c2x: number,
+  c2y: number,
+  c2r: number
 ): Vec2[] {
   const fc1 = new Flatten.Circle(new Flatten.Point(c1x, c1y), c1r)
   const fc2 = new Flatten.Circle(new Flatten.Point(c2x, c2y), c2r)
@@ -29,8 +33,13 @@ export function circleCircleIntersections(
 }
 
 export function circleSegmentIntersections(
-  cx: number, cy: number, cr: number,
-  x1: number, y1: number, x2: number, y2: number,
+  cx: number,
+  cy: number,
+  cr: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
 ): Vec2[] {
   const fc = new Flatten.Circle(new Flatten.Point(cx, cy), cr)
   const fs = new Flatten.Segment(new Flatten.Point(x1, y1), new Flatten.Point(x2, y2))
@@ -40,8 +49,13 @@ export function circleSegmentIntersections(
 
 /** Circle ∩ infinite line through two points (for "produced" segments — Post.2) */
 export function circleLineIntersections(
-  cx: number, cy: number, cr: number,
-  x1: number, y1: number, x2: number, y2: number,
+  cx: number,
+  cy: number,
+  cr: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
 ): Vec2[] {
   // Degenerate: two identical points can't define a line
   if (Math.abs(x1 - x2) < TOLERANCE && Math.abs(y1 - y2) < TOLERANCE) return []
@@ -52,8 +66,14 @@ export function circleLineIntersections(
 }
 
 export function segmentSegmentIntersection(
-  a1x: number, a1y: number, a2x: number, a2y: number,
-  b1x: number, b1y: number, b2x: number, b2y: number,
+  a1x: number,
+  a1y: number,
+  a2x: number,
+  a2y: number,
+  b1x: number,
+  b1y: number,
+  b2x: number,
+  b2y: number
 ): Vec2[] {
   const sa = new Flatten.Segment(new Flatten.Point(a1x, a1y), new Flatten.Point(a2x, a2y))
   const sb = new Flatten.Segment(new Flatten.Point(b1x, b1y), new Flatten.Point(b2x, b2y))
@@ -66,7 +86,7 @@ export function segmentSegmentIntersection(
 function isDuplicate(
   candidate: Vec2,
   existing: IntersectionCandidate[],
-  statePoints: Vec2[],
+  statePoints: Vec2[]
 ): boolean {
   for (const e of existing) {
     if (Math.abs(candidate.x - e.x) < TOLERANCE && Math.abs(candidate.y - e.y) < TOLERANCE) {
@@ -94,7 +114,11 @@ function getSegmentData(state: ConstructionState, s: ConstructionSegment) {
 }
 
 /** Is (cx, cy) at one of the segment's endpoints? */
-function isEndpoint(cx: number, cy: number, seg: { x1: number; y1: number; x2: number; y2: number }): boolean {
+function isEndpoint(
+  cx: number,
+  cy: number,
+  seg: { x1: number; y1: number; x2: number; y2: number }
+): boolean {
   return (
     (Math.abs(cx - seg.x1) < TOLERANCE && Math.abs(cy - seg.y1) < TOLERANCE) ||
     (Math.abs(cx - seg.x2) < TOLERANCE && Math.abs(cy - seg.y2) < TOLERANCE)
@@ -103,8 +127,9 @@ function isEndpoint(cx: number, cy: number, seg: { x1: number; y1: number; x2: n
 
 /** Return points from `linePts` that aren't already in `segPts`. */
 function removeAlreadyFound(linePts: Vec2[], segPts: Vec2[]): Vec2[] {
-  return linePts.filter(lp =>
-    !segPts.some(sp => Math.abs(lp.x - sp.x) < TOLERANCE && Math.abs(lp.y - sp.y) < TOLERANCE),
+  return linePts.filter(
+    (lp) =>
+      !segPts.some((sp) => Math.abs(lp.x - sp.x) < TOLERANCE && Math.abs(lp.y - sp.y) < TOLERANCE)
   )
 }
 
@@ -120,10 +145,10 @@ export function isCandidateBeyondPoint(
   beyondId: string,
   ofA: string,
   ofB: string,
-  state: ConstructionState,
+  state: ConstructionState
 ): boolean {
   // Find which of ofA/ofB is the segment
-  const segId = [ofA, ofB].find(id => id.startsWith('seg-'))
+  const segId = [ofA, ofB].find((id) => id.startsWith('seg-'))
   if (!segId) return true // no segment involved, can't check
 
   const seg = getSegment(state, segId)
@@ -138,8 +163,7 @@ export function isCandidateBeyondPoint(
 
   // Determine which endpoint is the "beyond" point and which is the "other"
   const isBeyondFrom =
-    Math.abs(beyondPt.x - fromPt.x) < TOLERANCE &&
-    Math.abs(beyondPt.y - fromPt.y) < TOLERANCE
+    Math.abs(beyondPt.x - fromPt.x) < TOLERANCE && Math.abs(beyondPt.y - fromPt.y) < TOLERANCE
   const otherPt = isBeyondFrom ? toPt : fromPt
 
   // dot(candidate − beyondPt, beyondPt − otherPt) > 0
@@ -155,13 +179,13 @@ export function findNewIntersections(
   state: ConstructionState,
   newElement: ConstructionElement,
   existingCandidates: IntersectionCandidate[],
-  extendSegments: boolean = false,
+  extendSegments: boolean = false
 ): IntersectionCandidate[] {
   if (newElement.kind === 'point') return []
 
   const statePoints = state.elements
     .filter((e): e is ConstructionPoint => e.kind === 'point')
-    .map(p => ({ x: p.x, y: p.y }))
+    .map((p) => ({ x: p.x, y: p.y }))
 
   const results: IntersectionCandidate[] = []
 
@@ -191,12 +215,32 @@ export function findNewIntersections(
       const d = getSegmentData(state, s)
       if (!d) continue
       // Always compute finite segment intersections
-      const segPts = circleSegmentIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
+      const segPts = circleSegmentIntersections(
+        newData.cx,
+        newData.cy,
+        newData.r,
+        d.x1,
+        d.y1,
+        d.x2,
+        d.y2
+      )
       addCandidates(segPts, newElement.id, s.id)
       // Additionally check line extension if the circle's center is at a segment endpoint
       // (Euclid's Post.2: "produce" a finite straight line beyond its endpoint)
-      if (extendSegments && (s.origin === 'straightedge' || s.origin === 'given') && isEndpoint(newData.cx, newData.cy, d)) {
-        const linePts = circleLineIntersections(newData.cx, newData.cy, newData.r, d.x1, d.y1, d.x2, d.y2)
+      if (
+        extendSegments &&
+        (s.origin === 'straightedge' || s.origin === 'given') &&
+        isEndpoint(newData.cx, newData.cy, d)
+      ) {
+        const linePts = circleLineIntersections(
+          newData.cx,
+          newData.cy,
+          newData.r,
+          d.x1,
+          d.y1,
+          d.x2,
+          d.y2
+        )
         const extensionPts = removeAlreadyFound(linePts, segPts)
         addCandidates(extensionPts, newElement.id, s.id)
       }
@@ -210,11 +254,31 @@ export function findNewIntersections(
       const d = getCircleData(state, c)
       if (!d) continue
       // Always compute finite segment intersections
-      const segPts = circleSegmentIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
+      const segPts = circleSegmentIntersections(
+        d.cx,
+        d.cy,
+        d.r,
+        newData.x1,
+        newData.y1,
+        newData.x2,
+        newData.y2
+      )
       addCandidates(segPts, newElement.id, c.id)
       // Additionally check line extension if the circle's center is at a segment endpoint
-      if (extendSegments && (newElement.origin === 'straightedge' || newElement.origin === 'given') && isEndpoint(d.cx, d.cy, newData)) {
-        const linePts = circleLineIntersections(d.cx, d.cy, d.r, newData.x1, newData.y1, newData.x2, newData.y2)
+      if (
+        extendSegments &&
+        (newElement.origin === 'straightedge' || newElement.origin === 'given') &&
+        isEndpoint(d.cx, d.cy, newData)
+      ) {
+        const linePts = circleLineIntersections(
+          d.cx,
+          d.cy,
+          d.r,
+          newData.x1,
+          newData.y1,
+          newData.x2,
+          newData.y2
+        )
         const extensionPts = removeAlreadyFound(linePts, segPts)
         addCandidates(extensionPts, newElement.id, c.id)
       }
@@ -226,8 +290,14 @@ export function findNewIntersections(
       const sd = getSegmentData(state, s)
       if (!sd) continue
       const pts = segmentSegmentIntersection(
-        newData.x1, newData.y1, newData.x2, newData.y2,
-        sd.x1, sd.y1, sd.x2, sd.y2,
+        newData.x1,
+        newData.y1,
+        newData.x2,
+        newData.y2,
+        sd.x1,
+        sd.y1,
+        sd.x2,
+        sd.y2
       )
       addCandidates(pts, newElement.id, s.id)
     }

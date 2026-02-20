@@ -9,12 +9,7 @@ import {
   getAllSegments,
   getAllPoints,
 } from '../engine/constructionState'
-import {
-  createFactStore,
-  addFact,
-  queryEquality,
-  rebuildFactStore,
-} from '../engine/factStore'
+import { createFactStore, addFact, queryEquality, rebuildFactStore } from '../engine/factStore'
 import { distancePair } from '../engine/facts'
 import type { ConstructionState, IntersectionCandidate } from '../types'
 import type { ProofFact } from '../engine/facts'
@@ -25,7 +20,7 @@ import type { ProofFact } from '../engine/facts'
 function captureSnapshot(
   construction: ConstructionState,
   candidates: IntersectionCandidate[],
-  proofFacts: ProofFact[],
+  proofFacts: ProofFact[]
 ) {
   return { construction, candidates, proofFacts }
 }
@@ -43,7 +38,14 @@ function givenABWithSegment(): ConstructionState {
   return initializeGiven([
     { kind: 'point', id: 'pt-A', x: 0, y: 0, label: 'A', color: '#1A1A2E', origin: 'given' },
     { kind: 'point', id: 'pt-B', x: 3, y: 0, label: 'B', color: '#1A1A2E', origin: 'given' },
-    { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: '#1A1A2E', origin: 'given' },
+    {
+      kind: 'segment',
+      id: 'seg-AB',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      color: '#1A1A2E',
+      origin: 'given',
+    },
   ])
 }
 
@@ -141,16 +143,30 @@ describe('snapshot system', () => {
       const store = createFactStore()
       const dpAB = distancePair('pt-A', 'pt-B')
       const dpCD = distancePair('pt-C', 'pt-D')
-      const newFacts = addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      const newFacts = addFact(
+        store,
+        dpAB,
+        dpCD,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
 
       const facts0: ProofFact[] = [...newFacts]
       const snap = captureSnapshot(givenAB(), [], facts0)
 
       // Replace proofFacts array (as proofFactsRef.current = [...old, ...new])
       const dpEF = distancePair('pt-E', 'pt-F')
-      const moreFacts = addFact(store, dpCD, dpEF,
-        { type: 'def15', circleId: 'cir-2' }, 'CD = EF', 'test', 1)
+      const moreFacts = addFact(
+        store,
+        dpCD,
+        dpEF,
+        { type: 'def15', circleId: 'cir-2' },
+        'CD = EF',
+        'test',
+        1
+      )
       const facts1 = [...facts0, ...moreFacts]
 
       // Snapshot still has old array
@@ -198,8 +214,15 @@ describe('snapshot system', () => {
       const store = createFactStore()
       const dpAB = distancePair('pt-A', 'pt-B')
       const dpCD = distancePair('pt-C', 'pt-D')
-      const facts1 = addFact(store, dpAB, dpCD,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CD', 'test', 0)
+      const facts1 = addFact(
+        store,
+        dpAB,
+        dpCD,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CD',
+        'test',
+        0
+      )
       const proofFacts1 = [...facts1]
 
       stack.push(captureSnapshot(s1, [], proofFacts1))
@@ -211,9 +234,7 @@ describe('snapshot system', () => {
 
     it('truncating to targetStep removes snapshots after it', () => {
       const s0 = givenABWithSegment()
-      const stack = [
-        captureSnapshot(s0, [], []),
-      ]
+      const stack = [captureSnapshot(s0, [], [])]
 
       // Simulate 3 completed steps
       const { state: s1 } = addCircle(s0, 'pt-A', 'pt-B')
@@ -288,13 +309,27 @@ describe('snapshot system', () => {
       const dpCB = distancePair('pt-C', 'pt-B')
 
       // Step 0: AB = CA (from first circle)
-      const f0 = addFact(store, dpAB, dpCA,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
+      const f0 = addFact(
+        store,
+        dpAB,
+        dpCA,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = CA',
+        'test',
+        0
+      )
       const proofFacts0 = [...f0]
 
       // Step 1: AB = CB (from second circle)
-      const f1 = addFact(store, dpAB, dpCB,
-        { type: 'def15', circleId: 'cir-2' }, 'AB = CB', 'test', 1)
+      const f1 = addFact(
+        store,
+        dpAB,
+        dpCB,
+        { type: 'def15', circleId: 'cir-2' },
+        'AB = CB',
+        'test',
+        1
+      )
       const proofFacts1 = [...proofFacts0, ...f1]
 
       // Step 2 (conclusion): CA = CB (transitive — already known)
@@ -319,16 +354,14 @@ describe('snapshot system', () => {
       const dpAB = distancePair('pt-A', 'pt-B')
       const dpCA = distancePair('pt-C', 'pt-A')
 
-      addFact(store, dpAB, dpCA,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
+      addFact(store, dpAB, dpCA, { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
 
       // Snapshot taken before step 1 has only step-0 facts
       const snapshot = captureSnapshot(givenAB(), [], store.facts.slice())
 
       // Later, conclusion facts are added at step=5 (steps.length)
       const dpCB = distancePair('pt-C', 'pt-B')
-      addFact(store, dpAB, dpCB,
-        { type: 'prop', propId: 1 }, 'AB = CB', 'conclusion', 5)
+      addFact(store, dpAB, dpCB, { type: 'prop', propId: 1 }, 'AB = CB', 'conclusion', 5)
 
       // Snapshot doesn't have the conclusion fact
       expect(snapshot.proofFacts).toHaveLength(1)
@@ -347,10 +380,8 @@ describe('snapshot system', () => {
       const dpCA = distancePair('pt-C', 'pt-A')
       const dpCB = distancePair('pt-C', 'pt-B')
 
-      addFact(original, dpAB, dpCA,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
-      addFact(original, dpAB, dpCB,
-        { type: 'def15', circleId: 'cir-2' }, 'AB = CB', 'test', 1)
+      addFact(original, dpAB, dpCA, { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
+      addFact(original, dpAB, dpCB, { type: 'def15', circleId: 'cir-2' }, 'AB = CB', 'test', 1)
 
       const rebuilt = rebuildFactStore(original.facts)
 
@@ -362,8 +393,15 @@ describe('snapshot system', () => {
 
       // Can add new facts to rebuilt store
       const dpDE = distancePair('pt-D', 'pt-E')
-      const newFacts = addFact(rebuilt, dpCA, dpDE,
-        { type: 'def15', circleId: 'cir-3' }, 'CA = DE', 'test', 2)
+      const newFacts = addFact(
+        rebuilt,
+        dpCA,
+        dpDE,
+        { type: 'def15', circleId: 'cir-3' },
+        'CA = DE',
+        'test',
+        2
+      )
       expect(newFacts).toHaveLength(1)
       // Transitive through rebuilt store
       expect(queryEquality(rebuilt, dpAB, dpDE)).toBe(true)
@@ -375,16 +413,21 @@ describe('snapshot system', () => {
       const dpCA = distancePair('pt-C', 'pt-A')
       const dpCB = distancePair('pt-C', 'pt-B')
 
-      addFact(original, dpAB, dpCA,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
-      addFact(original, dpAB, dpCB,
-        { type: 'def15', circleId: 'cir-2' }, 'AB = CB', 'test', 1)
+      addFact(original, dpAB, dpCA, { type: 'def15', circleId: 'cir-1' }, 'AB = CA', 'test', 0)
+      addFact(original, dpAB, dpCB, { type: 'def15', circleId: 'cir-2' }, 'AB = CB', 'test', 1)
 
       const rebuilt = rebuildFactStore(original.facts)
 
       // CA = CB is transitively known — addFact should reject it
-      const redundant = addFact(rebuilt, dpCA, dpCB,
-        { type: 'cn1', via: dpAB }, 'CA = CB', 'test', 2)
+      const redundant = addFact(
+        rebuilt,
+        dpCA,
+        dpCB,
+        { type: 'cn1', via: dpAB },
+        'CA = CB',
+        'test',
+        2
+      )
       expect(redundant).toHaveLength(0)
     })
   })
@@ -416,10 +459,24 @@ describe('snapshot system', () => {
       const dpBC = distancePair('pt-B', 'pt-C')
 
       const store3 = createFactStore()
-      const f1 = addFact(store3, dpAB, dpAC,
-        { type: 'def15', circleId: 'cir-1' }, 'AB = AC', 'C on circle(A,B)', 2)
-      const f2 = addFact(store3, dpBA, dpBC,
-        { type: 'def15', circleId: 'cir-2' }, 'BA = BC', 'C on circle(B,A)', 2)
+      const f1 = addFact(
+        store3,
+        dpAB,
+        dpAC,
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = AC',
+        'C on circle(A,B)',
+        2
+      )
+      const f2 = addFact(
+        store3,
+        dpBA,
+        dpBC,
+        { type: 'def15', circleId: 'cir-2' },
+        'BA = BC',
+        'C on circle(B,A)',
+        2
+      )
       const facts2 = [...f1, ...f2]
       snapshots.push(captureSnapshot(s3, [], facts2))
 
@@ -530,21 +587,39 @@ describe('snapshot system', () => {
       const store = createFactStore()
 
       // Facts from step 0
-      const f0 = addFact(store, distancePair('pt-A', 'pt-B'), distancePair('pt-A', 'pt-C'),
-        { type: 'def15', circleId: 'cir-1' }, 'AB = AC', 'test', 0)
+      const f0 = addFact(
+        store,
+        distancePair('pt-A', 'pt-B'),
+        distancePair('pt-A', 'pt-C'),
+        { type: 'def15', circleId: 'cir-1' },
+        'AB = AC',
+        'test',
+        0
+      )
 
       // Facts from step 1
-      const f1 = addFact(store, distancePair('pt-B', 'pt-A'), distancePair('pt-B', 'pt-C'),
-        { type: 'def15', circleId: 'cir-2' }, 'BA = BC', 'test', 1)
+      const f1 = addFact(
+        store,
+        distancePair('pt-B', 'pt-A'),
+        distancePair('pt-B', 'pt-C'),
+        { type: 'def15', circleId: 'cir-2' },
+        'BA = BC',
+        'test',
+        1
+      )
 
       const allFacts = [...f0, ...f1]
 
       // Snapshot at step 1 boundary has only step 0 facts
-      const factsAtStep1 = allFacts.filter(f => f.atStep < 1)
+      const factsAtStep1 = allFacts.filter((f) => f.atStep < 1)
       const rebuilt = rebuildFactStore(factsAtStep1)
       expect(rebuilt.facts).toHaveLength(1)
-      expect(queryEquality(rebuilt, distancePair('pt-A', 'pt-B'), distancePair('pt-A', 'pt-C'))).toBe(true)
-      expect(queryEquality(rebuilt, distancePair('pt-B', 'pt-A'), distancePair('pt-B', 'pt-C'))).toBe(false)
+      expect(
+        queryEquality(rebuilt, distancePair('pt-A', 'pt-B'), distancePair('pt-A', 'pt-C'))
+      ).toBe(true)
+      expect(
+        queryEquality(rebuilt, distancePair('pt-B', 'pt-A'), distancePair('pt-B', 'pt-C'))
+      ).toBe(false)
     })
 
     it('construction state nextLabelIndex and nextColorIndex are preserved in snapshot', () => {

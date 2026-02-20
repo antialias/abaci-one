@@ -28,7 +28,7 @@ export const missingDigitGame: GameDefinition = {
   sessionInstructions:
     'You are performing the MISSING DIGIT mind-reading trick with a child on the phone.\n\n' +
     'THE SECRET:\n' +
-    '- When you rearrange a number\'s digits and subtract, the result is ALWAYS divisible by 9.\n' +
+    "- When you rearrange a number's digits and subtract, the result is ALWAYS divisible by 9.\n" +
     '- So the digit sum of the result is always a multiple of 9.\n' +
     '- If the child crosses out one digit and reads you the rest, you add them up.\n' +
     '- The missing digit = 9 - (sum_of_remaining_digits % 9). If that gives 0, the digit is 9.\n' +
@@ -36,16 +36,16 @@ export const missingDigitGame: GameDefinition = {
     '- Example: remaining digits sum to 27. 27 % 9 = 0. Missing digit = 9.\n\n' +
     '⚠️ CRITICAL — PRESERVING THE MAGIC:\n' +
     '- NEVER ask the child what their starting number is, what their scrambled number is, or what their subtraction result is.\n' +
-    '- The only time you ask the child to share numbers is step 5: reading the remaining digits AFTER crossing one out. That\'s the one piece of info you need.\n' +
-    '- Everything else stays secret. That\'s what makes it feel like mind-reading.\n' +
-    '- If the child volunteers numbers, that\'s fine — but never prompt them to share.\n\n' +
+    "- The only time you ask the child to share numbers is step 5: reading the remaining digits AFTER crossing one out. That's the one piece of info you need.\n" +
+    "- Everything else stays secret. That's what makes it feel like mind-reading.\n" +
+    "- If the child volunteers numbers, that's fine — but never prompt them to share.\n\n" +
     'SETUP:\n' +
     '- "I can read your mind using math. Want to see?"\n' +
     '- "Grab a piece of paper and a pencil — you\'ll need them!"\n\n' +
     'STEPS (guide the child through these one at a time):\n\n' +
     '1. "Write down any number — the bigger the better! At least 4 digits. ' +
     'Could be your phone number, a random number, your birthday as digits, anything. Keep it secret!"\n' +
-    '   Do NOT ask them to tell you the number. You don\'t need it.\n\n' +
+    "   Do NOT ask them to tell you the number. You don't need it.\n\n" +
     '2. "Now scramble those digits — rearrange them in any order you want to make a DIFFERENT number. Write that down too."\n\n' +
     '3. "Subtract the smaller number from the bigger one. Take your time — tell me when you\'re done!"\n' +
     '   Be patient — this might take a minute. Offer to help if they struggle.\n' +
@@ -66,9 +66,9 @@ export const missingDigitGame: GameDefinition = {
     '- Challenge them: "Try an even BIGGER number this time!"\n\n' +
     'BONUS — SHOW THE DIGIT COLLAPSE:\n' +
     '- After the reveal, offer: "Want to see something cool about your answer?"\n' +
-    '- Ask them to tell you the full subtraction result (it\'s OK to ask NOW, after the reveal).\n' +
-    '- Add up all the digits. If that\'s more than one digit, add those digits.\n' +
-    '- Keep going until you reach a single digit — it\'s always 9!\n' +
+    "- Ask them to tell you the full subtraction result (it's OK to ask NOW, after the reveal).\n" +
+    "- Add up all the digits. If that's more than one digit, add those digits.\n" +
+    "- Keep going until you reach a single digit — it's always 9!\n" +
     '- Show each step on the number line: look_at + indicate for each intermediate number.\n' +
     '- "Every number made this way eventually collapses to 9. That\'s the secret!"\n\n' +
     'EXPLAINING THE TRICK (if they ask):\n' +
@@ -81,7 +81,7 @@ export const missingDigitGame: GameDefinition = {
     'just add up its digits! If the sum is divisible by 3, so is the number."\n\n' +
     'STYLE:\n' +
     '- Be a mysterious mind-reader. Build suspense.\n' +
-    '- Take your time with the reveal — don\'t blurt it out instantly.\n' +
+    "- Take your time with the reveal — don't blurt it out instantly.\n" +
     '- Be patient during the subtraction — big number subtraction is hard for kids.\n' +
     '- If they make an arithmetic error and the trick "fails", help them recheck.\n' +
     '- Call end_game when done.',
@@ -90,7 +90,7 @@ export const missingDigitGame: GameDefinition = {
     return {
       agentMessage:
         'Missing Digit trick ready! Guide the child step by step. ' +
-        'They\'ll need paper and pencil for this one. ' +
+        "They'll need paper and pencil for this one. " +
         'The secret: add the remaining digits, missing digit = 9 - (sum % 9), or 9 if that gives 0. ' +
         'Start by building mystery, then ask them to write down a big number (4+ digits).',
       state: {},

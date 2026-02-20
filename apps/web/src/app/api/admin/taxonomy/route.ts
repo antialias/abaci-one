@@ -16,47 +16,55 @@ import { withAuth } from '@/lib/auth/withAuth'
  *
  * The new taxonomy will be used immediately by the browse API.
  */
-export const POST = withAuth(async () => {
-  try {
-    const result = await regenerateTaxonomy()
+export const POST = withAuth(
+  async () => {
+    try {
+      const result = await regenerateTaxonomy()
 
-    return NextResponse.json({
-      success: true,
-      labelCount: result.labelCount,
-      labels: result.labels,
-    })
-  } catch (error) {
-    console.error('Failed to regenerate taxonomy:', error)
-    return NextResponse.json(
-      { error: 'Failed to regenerate taxonomy', details: String(error) },
-      { status: 500 }
-    )
-  }
-}, { role: 'admin' })
+      return NextResponse.json({
+        success: true,
+        labelCount: result.labelCount,
+        labels: result.labels,
+      })
+    } catch (error) {
+      console.error('Failed to regenerate taxonomy:', error)
+      return NextResponse.json(
+        { error: 'Failed to regenerate taxonomy', details: String(error) },
+        { status: 500 }
+      )
+    }
+  },
+  { role: 'admin' }
+)
 
 /**
  * GET /api/admin/taxonomy
  *
  * Get the current taxonomy status.
  */
-export const GET = withAuth(async () => {
-  try {
-    const { db, schema } = await import('@/db')
-    const { count } = await import('drizzle-orm')
+export const GET = withAuth(
+  async () => {
+    try {
+      const { db, schema } = await import('@/db')
+      const { count } = await import('drizzle-orm')
 
-    const [result] = await db.select({ count: count() }).from(schema.topicTaxonomy)
+      const [result] = await db.select({ count: count() }).from(schema.topicTaxonomy)
 
-    const labels = await db.select({ label: schema.topicTaxonomy.label }).from(schema.topicTaxonomy)
+      const labels = await db
+        .select({ label: schema.topicTaxonomy.label })
+        .from(schema.topicTaxonomy)
 
-    return NextResponse.json({
-      labelCount: result.count,
-      labels: labels.map((r) => r.label),
-    })
-  } catch (error) {
-    console.error('Failed to get taxonomy:', error)
-    return NextResponse.json(
-      { error: 'Failed to get taxonomy', details: String(error) },
-      { status: 500 }
-    )
-  }
-}, { role: 'admin' })
+      return NextResponse.json({
+        labelCount: result.count,
+        labels: labels.map((r) => r.label),
+      })
+    } catch (error) {
+      console.error('Failed to get taxonomy:', error)
+      return NextResponse.json(
+        { error: 'Failed to get taxonomy', details: String(error) },
+        { status: 500 }
+      )
+    }
+  },
+  { role: 'admin' }
+)

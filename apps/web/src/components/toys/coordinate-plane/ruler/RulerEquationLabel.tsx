@@ -146,7 +146,9 @@ export function RulerEquationLabel({
 
   return (
     <div
-      ref={(el) => { if (containerRef) containerRef.current = el }}
+      ref={(el) => {
+        if (containerRef) containerRef.current = el
+      }}
       data-element="ruler-equation-label"
       style={{
         position: 'absolute',
@@ -174,7 +176,7 @@ export function RulerEquationLabel({
       >
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <math
-          {...{ xmlns: 'http://www.w3.org/1998/Math/MathML' } as any}
+          {...({ xmlns: 'http://www.w3.org/1998/Math/MathML' } as any)}
           style={{
             fontFamily: mathFontFamily,
             fontSize: 16,
@@ -190,7 +192,13 @@ export function RulerEquationLabel({
 
 // ── Equation MathML ────────────────────────────────────────────────
 
-function EquationMml({ equation, equationForm }: { equation: EquationForm; equationForm: EquationDisplayForm }) {
+function EquationMml({
+  equation,
+  equationForm,
+}: {
+  equation: EquationForm
+  equationForm: EquationDisplayForm
+}) {
   switch (equation.kind) {
     case 'point':
       return (
@@ -253,9 +261,7 @@ function SlopeInterceptMml({ slope, intercept }: { slope: Fraction; intercept: F
       {hasIntercept && (
         <>
           <mo>{interceptNeg ? '\u2212' : '+'}</mo>
-          <FractionMml
-            f={interceptNeg ? { num: -intercept.num, den: intercept.den } : intercept}
-          />
+          <FractionMml f={interceptNeg ? { num: -intercept.num, den: intercept.den } : intercept} />
         </>
       )}
     </mrow>
@@ -263,7 +269,15 @@ function SlopeInterceptMml({ slope, intercept }: { slope: Fraction; intercept: F
 }
 
 /** Render an integer coefficient with its variable as a term in standard form */
-function StdTerm({ coeff, variable, isFirst }: { coeff: number; variable: string; isFirst: boolean }) {
+function StdTerm({
+  coeff,
+  variable,
+  isFirst,
+}: {
+  coeff: number
+  variable: string
+  isFirst: boolean
+}) {
   if (coeff === 0) return null
 
   const absCoeff = Math.abs(coeff)

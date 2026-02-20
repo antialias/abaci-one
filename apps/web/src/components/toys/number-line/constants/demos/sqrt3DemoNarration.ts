@@ -30,7 +30,7 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       "Let's build something! " +
       "Here's our base — a line from minus one to one. " +
       "That's two whole units long.",
-    startProgress: 0.00,
+    startProgress: 0.0,
     endProgress: 0.12,
     animationDurationMs: 4500,
     scrubberLabel: 'The base',
@@ -42,7 +42,7 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       "Now let's make a PERFECT triangle — one where every side is the SAME length as the base. " +
       "Watch — we'll swing a copy up from each end, just like a compass!",
     startProgress: 0.12,
-    endProgress: 0.30,
+    endProgress: 0.3,
     animationDurationMs: 6500,
     scrubberLabel: 'Building triangle',
   },
@@ -53,7 +53,7 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Beautiful! But how TALL is our triangle? ' +
       "Let's drop a line straight down from the tip. " +
       "That's the height! I wonder how long it is...",
-    startProgress: 0.30,
+    startProgress: 0.3,
     endProgress: 0.47,
     animationDurationMs: 6000,
     scrubberLabel: 'The height',
@@ -73,11 +73,9 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
 
   // ── Mystery ───────────────────────────────────────────────────────
   {
-    ttsText:
-      'It landed past one but before two. ' +
-      'What IS this mystery number?',
+    ttsText: 'It landed past one but before two. ' + 'What IS this mystery number?',
     startProgress: 0.65,
-    endProgress: 0.80,
+    endProgress: 0.8,
     animationDurationMs: 5000,
     scrubberLabel: 'Mystery number',
   },
@@ -88,8 +86,8 @@ export const SQRT3_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'This is the square root of three! ' +
       "It's the height of every perfect triangle, " +
       'and it shows up in honeycombs, crystals, and nature everywhere!',
-    startProgress: 0.80,
-    endProgress: 1.00,
+    startProgress: 0.8,
+    endProgress: 1.0,
     animationDurationMs: 5500,
     scrubberLabel: 'Square root of three',
   },

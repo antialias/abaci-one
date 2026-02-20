@@ -18,10 +18,7 @@ import { RESOURCE_POLICIES } from './resource-policies'
 /**
  * After linking a parent to a child player.
  */
-export async function syncParentLink(
-  parentUserId: string,
-  childPlayerId: string
-): Promise<void> {
+export async function syncParentLink(parentUserId: string, childPlayerId: string): Promise<void> {
   const enforcer = await getResourceEnforcer()
   await enforcer.addGroupingPolicy(parentUserId, 'parent', `player:${childPlayerId}`)
   await notifyPolicyChanged()
@@ -30,10 +27,7 @@ export async function syncParentLink(
 /**
  * After unlinking a parent from a child player.
  */
-export async function removeParentLink(
-  parentUserId: string,
-  childPlayerId: string
-): Promise<void> {
+export async function removeParentLink(parentUserId: string, childPlayerId: string): Promise<void> {
   const enforcer = await getResourceEnforcer()
   await enforcer.removeGroupingPolicy(parentUserId, 'parent', `player:${childPlayerId}`)
   await notifyPolicyChanged()
@@ -43,10 +37,7 @@ export async function removeParentLink(
  * After enrolling a student in a classroom.
  * The teacher gets "teacher-enrolled" role for this player.
  */
-export async function syncEnrollment(
-  teacherUserId: string,
-  playerId: string
-): Promise<void> {
+export async function syncEnrollment(teacherUserId: string, playerId: string): Promise<void> {
   const enforcer = await getResourceEnforcer()
   await enforcer.addGroupingPolicy(teacherUserId, 'teacher-enrolled', `player:${playerId}`)
   await notifyPolicyChanged()
@@ -56,22 +47,11 @@ export async function syncEnrollment(
  * After unenrolling a student from a classroom.
  * Remove both teacher-enrolled and teacher-present roles.
  */
-export async function removeEnrollment(
-  teacherUserId: string,
-  playerId: string
-): Promise<void> {
+export async function removeEnrollment(teacherUserId: string, playerId: string): Promise<void> {
   const enforcer = await getResourceEnforcer()
   // Remove both roles (presence implies enrollment)
-  await enforcer.removeGroupingPolicy(
-    teacherUserId,
-    'teacher-enrolled',
-    `player:${playerId}`
-  )
-  await enforcer.removeGroupingPolicy(
-    teacherUserId,
-    'teacher-present',
-    `player:${playerId}`
-  )
+  await enforcer.removeGroupingPolicy(teacherUserId, 'teacher-enrolled', `player:${playerId}`)
+  await enforcer.removeGroupingPolicy(teacherUserId, 'teacher-present', `player:${playerId}`)
   await notifyPolicyChanged()
 }
 
@@ -79,22 +59,11 @@ export async function removeEnrollment(
  * After a student enters a classroom (gains presence).
  * Upgrade the teacher's role from teacher-enrolled to teacher-present.
  */
-export async function syncPresence(
-  teacherUserId: string,
-  playerId: string
-): Promise<void> {
+export async function syncPresence(teacherUserId: string, playerId: string): Promise<void> {
   const enforcer = await getResourceEnforcer()
   // Remove enrolled, add present (upgrade)
-  await enforcer.removeGroupingPolicy(
-    teacherUserId,
-    'teacher-enrolled',
-    `player:${playerId}`
-  )
-  await enforcer.addGroupingPolicy(
-    teacherUserId,
-    'teacher-present',
-    `player:${playerId}`
-  )
+  await enforcer.removeGroupingPolicy(teacherUserId, 'teacher-enrolled', `player:${playerId}`)
+  await enforcer.addGroupingPolicy(teacherUserId, 'teacher-present', `player:${playerId}`)
   await notifyPolicyChanged()
 }
 
@@ -102,22 +71,11 @@ export async function syncPresence(
  * After a student leaves a classroom (loses presence).
  * Downgrade the teacher's role from teacher-present to teacher-enrolled.
  */
-export async function removePresence(
-  teacherUserId: string,
-  playerId: string
-): Promise<void> {
+export async function removePresence(teacherUserId: string, playerId: string): Promise<void> {
   const enforcer = await getResourceEnforcer()
   // Remove present, restore enrolled (downgrade)
-  await enforcer.removeGroupingPolicy(
-    teacherUserId,
-    'teacher-present',
-    `player:${playerId}`
-  )
-  await enforcer.addGroupingPolicy(
-    teacherUserId,
-    'teacher-enrolled',
-    `player:${playerId}`
-  )
+  await enforcer.removeGroupingPolicy(teacherUserId, 'teacher-present', `player:${playerId}`)
+  await enforcer.addGroupingPolicy(teacherUserId, 'teacher-enrolled', `player:${playerId}`)
   await notifyPolicyChanged()
 }
 
@@ -129,11 +87,7 @@ export async function syncClassroomOwner(
   classroomId: string
 ): Promise<void> {
   const enforcer = await getResourceEnforcer()
-  await enforcer.addGroupingPolicy(
-    teacherUserId,
-    'teacher',
-    `classroom:${classroomId}`
-  )
+  await enforcer.addGroupingPolicy(teacherUserId, 'teacher', `classroom:${classroomId}`)
   await notifyPolicyChanged()
 }
 
@@ -166,11 +120,7 @@ export async function bulkSyncRelationships(): Promise<void> {
   // Sync parent-child relationships
   const parentLinks = await db.select().from(schema.parentChild).all()
   for (const link of parentLinks) {
-    await enforcer.addGroupingPolicy(
-      link.parentUserId,
-      'parent',
-      `player:${link.childPlayerId}`
-    )
+    await enforcer.addGroupingPolicy(link.parentUserId, 'parent', `player:${link.childPlayerId}`)
   }
 
   // Sync classroom enrollments
@@ -182,10 +132,7 @@ export async function bulkSyncRelationships(): Promise<void> {
       teacherId: schema.classrooms.teacherId,
     })
     .from(schema.classroomEnrollments)
-    .innerJoin(
-      schema.classrooms,
-      eq(schema.classroomEnrollments.classroomId, schema.classrooms.id)
-    )
+    .innerJoin(schema.classrooms, eq(schema.classroomEnrollments.classroomId, schema.classrooms.id))
     .all()
 
   // Track which players have presence (will be upgraded)
@@ -217,11 +164,7 @@ export async function bulkSyncRelationships(): Promise<void> {
   // Sync classroom ownership
   const classrooms = await db.select().from(schema.classrooms).all()
   for (const classroom of classrooms) {
-    await enforcer.addGroupingPolicy(
-      classroom.teacherId,
-      'teacher',
-      `classroom:${classroom.id}`
-    )
+    await enforcer.addGroupingPolicy(classroom.teacherId, 'teacher', `classroom:${classroom.id}`)
   }
 
   await enforcer.savePolicy()

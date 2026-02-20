@@ -20,11 +20,11 @@ const PI = Math.PI
 // ── Precomputed bounces ──────────────────────────────────────────────
 
 interface Bounce {
-  index: number      // 1-based term index
-  fromVal: number    // partial sum before this bounce
-  toVal: number      // partial sum after this bounce
-  jumpSize: number   // 1/n
-  isRight: boolean   // odd terms go right, even go left
+  index: number // 1-based term index
+  fromVal: number // partial sum before this bounce
+  toVal: number // partial sum after this bounce
+  jumpSize: number // 1/n
+  isRight: boolean // odd terms go right, even go left
 }
 
 const MAX_BOUNCES = 200
@@ -58,7 +58,7 @@ function smoothstep(t: number): number {
 
 function easeInOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2
 }
 
 // ── Phase timing ─────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ function easeInOut(t: number): number {
 
 const PHASE = {
   // Seg 0: Place — ball fades in at 0
-  placeBegin: 0.00,
+  placeBegin: 0.0,
   placeEnd: 0.08,
   // Seg 1: First bounces — bounces 1–4 with piece-of-a-whole visualization
   firstBegin: 0.08,
@@ -82,7 +82,7 @@ const PHASE = {
   convergeEnd: 0.86,
   // Seg 5: Reveal — star, label, subtitle
   revealBegin: 0.86,
-  revealEnd: 1.00,
+  revealEnd: 1.0,
 } as const
 
 // ── Accelerating bounce timing ───────────────────────────────────────
@@ -90,7 +90,10 @@ const PHASE = {
 // ratio < 1 → bounces accelerate (each one faster than the last).
 
 function computeBounceBounds(
-  segStart: number, segEnd: number, count: number, ratio: number
+  segStart: number,
+  segEnd: number,
+  count: number,
+  ratio: number
 ): { starts: number[]; ends: number[] } {
   const durations: number[] = []
   let d = 1
@@ -122,12 +125,24 @@ const ACCEL_BOUNDS = computeBounceBounds(PHASE.cascadeBegin, PHASE.convergeEnd, 
 
 // ── Colors ───────────────────────────────────────────────────────────
 
-function rightCol(isDark: boolean) { return isDark ? '#fb923c' : '#ea580c' }     // orange (right/above)
-function leftCol(isDark: boolean) { return isDark ? '#60a5fa' : '#3b82f6' }      // blue (left/below)
-function ballCol(isDark: boolean) { return isDark ? '#fbbf24' : '#d97706' }      // amber ball
-function resultCol(isDark: boolean) { return isDark ? '#34d399' : '#059669' }    // green (result)
-function subtextCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
-function dimCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)' } // dim reference
+function rightCol(isDark: boolean) {
+  return isDark ? '#fb923c' : '#ea580c'
+} // orange (right/above)
+function leftCol(isDark: boolean) {
+  return isDark ? '#60a5fa' : '#3b82f6'
+} // blue (left/below)
+function ballCol(isDark: boolean) {
+  return isDark ? '#fbbf24' : '#d97706'
+} // amber ball
+function resultCol(isDark: boolean) {
+  return isDark ? '#34d399' : '#059669'
+} // green (result)
+function subtextCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'
+}
+function dimCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)'
+} // dim reference
 
 // ── Viewport ─────────────────────────────────────────────────────────
 
@@ -135,7 +150,7 @@ export function ln2DemoViewport(cssWidth: number, cssHeight: number) {
   // Fit [−0.15, 1.15] horizontally with vertical room for arcs
   const center = 0.5
   const rangeWidth = 1.3
-  const ppu = Math.min(cssWidth * 0.75 / rangeWidth, cssHeight * 0.3)
+  const ppu = Math.min((cssWidth * 0.75) / rangeWidth, cssHeight * 0.3)
   return { center, pixelsPerUnit: ppu }
 }
 
@@ -433,42 +448,90 @@ export function renderLn2Overlay(
       const bounce = BOUNCES[i]
       const bounceStart = PHASE.firstBegin + i * bounceSlice
       const bounceEnd = bounceStart + bounceSlice
-      const bounceP = easeInOut(mapRange(revealProgress, bounceStart, bounceEnd - bounceSlice * 0.15))
+      const bounceP = easeInOut(
+        mapRange(revealProgress, bounceStart, bounceEnd - bounceSlice * 0.15)
+      )
 
       if (bounceP <= 0) continue
 
       // Draw completed arc (ghost if done)
       const arcDone = revealProgress >= bounceEnd
-      const arcAlpha = arcDone ? Math.max(0.15, 0.5 * Math.pow(0.85, (revealProgress - bounceEnd) / bounceSlice)) : 1
-      drawBounceArc(ctx, toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, isDark, opacity * arcAlpha, Math.min(1, bounceP), 3)
+      const arcAlpha = arcDone
+        ? Math.max(0.15, 0.5 * 0.85 ** ((revealProgress - bounceEnd) / bounceSlice))
+        : 1
+      drawBounceArc(
+        ctx,
+        toX,
+        axisY,
+        bounce.fromVal,
+        bounce.toVal,
+        bounce.isRight,
+        isDark,
+        opacity * arcAlpha,
+        Math.min(1, bounceP),
+        3
+      )
 
       // Landing dot when arc is done
       if (arcDone) {
-        drawLandingDot(ctx, toX, axisY, bounce.toVal, bounce.isRight, isDark, opacity * arcAlpha * 0.7)
+        drawLandingDot(
+          ctx,
+          toX,
+          axisY,
+          bounce.toVal,
+          bounce.isRight,
+          isDark,
+          opacity * arcAlpha * 0.7
+        )
       }
 
       // Piece subdivision (for bounces 2, 3, 4)
       if (i >= 1) {
         const subdivStart = bounceStart - bounceSlice * 0.1
         const subdivEnd = bounceEnd + bounceSlice * 0.1
-        const subdivFadeIn = smoothstep(mapRange(revealProgress, subdivStart, bounceStart + bounceSlice * 0.1))
-        const subdivFadeOut = 1 - smoothstep(mapRange(revealProgress, bounceEnd - bounceSlice * 0.15, subdivEnd))
+        const subdivFadeIn = smoothstep(
+          mapRange(revealProgress, subdivStart, bounceStart + bounceSlice * 0.1)
+        )
+        const subdivFadeOut =
+          1 - smoothstep(mapRange(revealProgress, bounceEnd - bounceSlice * 0.15, subdivEnd))
         const subdivAlpha = subdivFadeIn * subdivFadeOut
         if (subdivAlpha > 0.01) {
-          drawPieceSubdivision(ctx, toX, axisY, bounce.index, bounce.fromVal, bounce.toVal, bounce.isRight, isDark, opacity * subdivAlpha)
+          drawPieceSubdivision(
+            ctx,
+            toX,
+            axisY,
+            bounce.index,
+            bounce.fromVal,
+            bounce.toVal,
+            bounce.isRight,
+            isDark,
+            opacity * subdivAlpha
+          )
         }
       }
 
       // Ball position during this bounce
       if (!arcDone && bounceP > 0) {
-        const pos = ballOnArc(toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, Math.min(1, bounceP))
+        const pos = ballOnArc(
+          toX,
+          axisY,
+          bounce.fromVal,
+          bounce.toVal,
+          bounce.isRight,
+          Math.min(1, bounceP)
+        )
         drawBall(ctx, pos.x, pos.y, ballRadius, isDark, opacity)
       }
     }
 
     // After all 4 bounces done, ball sits at S(4)
-    if (revealProgress >= PHASE.firstEnd - bounceSlice * 0.1 && revealProgress < PHASE.moreBegin + 0.02) {
-      const restAlpha = smoothstep(mapRange(revealProgress, PHASE.firstEnd - bounceSlice * 0.15, PHASE.firstEnd))
+    if (
+      revealProgress >= PHASE.firstEnd - bounceSlice * 0.1 &&
+      revealProgress < PHASE.moreBegin + 0.02
+    ) {
+      const restAlpha = smoothstep(
+        mapRange(revealProgress, PHASE.firstEnd - bounceSlice * 0.15, PHASE.firstEnd)
+      )
       if (restAlpha > 0) {
         drawBall(ctx, toX(BOUNCES[3].toVal), axisY, ballRadius, isDark, opacity * restAlpha)
       }
@@ -487,29 +550,62 @@ export function renderLn2Overlay(
       const bounce = BOUNCES[i]
       const bounceStart = PHASE.moreBegin + (i - startBounce) * bounceSlice
       const bounceEnd = bounceStart + bounceSlice
-      const bounceP = easeInOut(mapRange(revealProgress, bounceStart, bounceEnd - bounceSlice * 0.1))
+      const bounceP = easeInOut(
+        mapRange(revealProgress, bounceStart, bounceEnd - bounceSlice * 0.1)
+      )
 
       if (bounceP <= 0) continue
 
       const arcDone = revealProgress >= bounceEnd
       const age = arcDone ? (revealProgress - bounceEnd) / segDuration : 0
-      const arcAlpha = arcDone ? Math.max(0.12, 0.5 * Math.pow(0.92, age * 30)) : 1
-      drawBounceArc(ctx, toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, isDark, opacity * arcAlpha, Math.min(1, bounceP), 2)
+      const arcAlpha = arcDone ? Math.max(0.12, 0.5 * 0.92 ** (age * 30)) : 1
+      drawBounceArc(
+        ctx,
+        toX,
+        axisY,
+        bounce.fromVal,
+        bounce.toVal,
+        bounce.isRight,
+        isDark,
+        opacity * arcAlpha,
+        Math.min(1, bounceP),
+        2
+      )
 
       if (arcDone) {
-        drawLandingDot(ctx, toX, axisY, bounce.toVal, bounce.isRight, isDark, opacity * arcAlpha * 0.5)
+        drawLandingDot(
+          ctx,
+          toX,
+          axisY,
+          bounce.toVal,
+          bounce.isRight,
+          isDark,
+          opacity * arcAlpha * 0.5
+        )
       }
 
       if (!arcDone && bounceP > 0) {
-        const pos = ballOnArc(toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, Math.min(1, bounceP))
+        const pos = ballOnArc(
+          toX,
+          axisY,
+          bounce.fromVal,
+          bounce.toVal,
+          bounce.isRight,
+          Math.min(1, bounceP)
+        )
         drawBall(ctx, pos.x, pos.y, ballRadius * 0.9, isDark, opacity)
       }
     }
 
     // Rest position after seg 2
-    if (revealProgress >= PHASE.moreEnd - bounceSlice && revealProgress < PHASE.cascadeBegin + 0.02) {
+    if (
+      revealProgress >= PHASE.moreEnd - bounceSlice &&
+      revealProgress < PHASE.cascadeBegin + 0.02
+    ) {
       const lastBounce = BOUNCES[endBounce - 1]
-      const restP = smoothstep(mapRange(revealProgress, PHASE.moreEnd - bounceSlice * 0.5, PHASE.moreEnd))
+      const restP = smoothstep(
+        mapRange(revealProgress, PHASE.moreEnd - bounceSlice * 0.5, PHASE.moreEnd)
+      )
       if (restP > 0) {
         drawBall(ctx, toX(lastBounce.toVal), axisY, ballRadius * 0.9, isDark, opacity * restP)
       }
@@ -535,13 +631,33 @@ export function renderLn2Overlay(
 
       const arcDone = revealProgress >= bEnd
       const age = arcDone ? (revealProgress - bEnd) / totalDuration : 0
-      const arcAlpha = arcDone ? Math.max(0.06, 0.4 * Math.pow(0.92, age * 30)) : Math.max(0.5, 0.8 - j * 0.01)
+      const arcAlpha = arcDone
+        ? Math.max(0.06, 0.4 * 0.92 ** (age * 30))
+        : Math.max(0.5, 0.8 - j * 0.01)
       const lw = Math.max(1, 2 - j * 0.04)
       const ballScale = Math.max(0.5, 0.7 - j * 0.007)
-      drawBounceArc(ctx, toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, isDark, opacity * arcAlpha, Math.min(1, bounceP), lw)
+      drawBounceArc(
+        ctx,
+        toX,
+        axisY,
+        bounce.fromVal,
+        bounce.toVal,
+        bounce.isRight,
+        isDark,
+        opacity * arcAlpha,
+        Math.min(1, bounceP),
+        lw
+      )
 
       if (!arcDone && bounceP > 0) {
-        const pos = ballOnArc(toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, Math.min(1, bounceP))
+        const pos = ballOnArc(
+          toX,
+          axisY,
+          bounce.fromVal,
+          bounce.toVal,
+          bounce.isRight,
+          Math.min(1, bounceP)
+        )
         drawBall(ctx, pos.x, pos.y, ballRadius * ballScale, isDark, opacity * 0.9)
       }
     }
@@ -549,11 +665,20 @@ export function renderLn2Overlay(
     // Ball rests at final position after all bounces
     const lastEnd = ACCEL_BOUNDS.ends[count - 1]
     if (revealProgress >= lastEnd) {
-      drawBall(ctx, toX(BOUNCES[startBounce + count - 1].toVal), axisY, ballRadius * 0.5, isDark, opacity)
+      drawBall(
+        ctx,
+        toX(BOUNCES[startBounce + count - 1].toVal),
+        axisY,
+        ballRadius * 0.5,
+        isDark,
+        opacity
+      )
     }
 
     // Target line fades in during convergence
-    const lineAlpha = smoothstep(mapRange(revealProgress, PHASE.convergeBegin + 0.06, PHASE.convergeEnd - 0.02))
+    const lineAlpha = smoothstep(
+      mapRange(revealProgress, PHASE.convergeBegin + 0.06, PHASE.convergeEnd - 0.02)
+    )
     drawTargetLine(ctx, toX, axisY, isDark, opacity * lineAlpha * 0.6, 30)
   }
 
@@ -562,8 +687,19 @@ export function renderLn2Overlay(
     for (let i = 0; i < 4 && i < BOUNCES.length; i++) {
       const bounce = BOUNCES[i]
       const age = (revealProgress - PHASE.firstEnd) / (1 - PHASE.firstEnd)
-      const ghostAlpha = Math.max(0.06, 0.3 * Math.pow(0.85, age * 10))
-      drawBounceArc(ctx, toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, isDark, opacity * ghostAlpha, 1, 1.5)
+      const ghostAlpha = Math.max(0.06, 0.3 * 0.85 ** (age * 10))
+      drawBounceArc(
+        ctx,
+        toX,
+        axisY,
+        bounce.fromVal,
+        bounce.toVal,
+        bounce.isRight,
+        isDark,
+        opacity * ghostAlpha,
+        1,
+        1.5
+      )
     }
   }
 
@@ -571,8 +707,19 @@ export function renderLn2Overlay(
     for (let i = 4; i < 12 && i < BOUNCES.length; i++) {
       const bounce = BOUNCES[i]
       const age = (revealProgress - PHASE.moreEnd) / (1 - PHASE.moreEnd)
-      const ghostAlpha = Math.max(0.05, 0.25 * Math.pow(0.88, age * 10))
-      drawBounceArc(ctx, toX, axisY, bounce.fromVal, bounce.toVal, bounce.isRight, isDark, opacity * ghostAlpha, 1, 1)
+      const ghostAlpha = Math.max(0.05, 0.25 * 0.88 ** (age * 10))
+      drawBounceArc(
+        ctx,
+        toX,
+        axisY,
+        bounce.fromVal,
+        bounce.toVal,
+        bounce.isRight,
+        isDark,
+        opacity * ghostAlpha,
+        1,
+        1
+      )
     }
   }
 

@@ -71,10 +71,14 @@ export function useDragGivenPoints({
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
       return screenToWorld2D(
-        sx, sy,
-        v.center.x, v.center.y,
-        v.pixelsPerUnit, v.pixelsPerUnit,
-        cw, ch,
+        sx,
+        sy,
+        v.center.x,
+        v.center.y,
+        v.pixelsPerUnit,
+        v.pixelsPerUnit,
+        cw,
+        ch
       )
     }
 
@@ -89,7 +93,7 @@ export function useDragGivenPoints({
     function hitTestDraggablePoints(
       screenX: number,
       screenY: number,
-      isTouch: boolean,
+      isTouch: boolean
     ): ConstructionPoint | null {
       const prop = propositionRef.current
       if (!prop.draggablePointIds || prop.draggablePointIds.length === 0) return null
@@ -106,10 +110,14 @@ export function useDragGivenPoints({
       for (const pt of getAllPoints(state)) {
         if (!draggableSet.has(pt.id)) continue
         const s = worldToScreen2D(
-          pt.x, pt.y,
-          viewport.center.x, viewport.center.y,
-          viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-          w, h,
+          pt.x,
+          pt.y,
+          viewport.center.x,
+          viewport.center.y,
+          viewport.pixelsPerUnit,
+          viewport.pixelsPerUnit,
+          w,
+          h
         )
         const dx = screenX - s.x
         const dy = screenY - s.y
@@ -186,7 +194,7 @@ export function useDragGivenPoints({
           givenElements = computeFn(positions)
         } else {
           // Simple case: just update the point position directly in the given elements
-          givenElements = prop.givenElements.map(el => {
+          givenElements = prop.givenElements.map((el) => {
             if (el.kind === 'point' && positions.has(el.id)) {
               const pos = positions.get(el.id)!
               return { ...el, x: pos.x, y: pos.y }
@@ -197,7 +205,10 @@ export function useDragGivenPoints({
 
         // Replay the full construction + any post-completion user actions
         const result = replayConstruction(
-          givenElements, prop.steps, prop, postCompletionActionsRef.current,
+          givenElements,
+          prop.steps,
+          prop,
+          postCompletionActionsRef.current
         )
         constructionRef.current = result.state
         factStoreRef.current = result.factStore

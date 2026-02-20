@@ -11,12 +11,15 @@ describe('buildFrame composition', () => {
   it('every scenario references a valid rate pair', () => {
     for (const scenario of SCENARIOS) {
       const pair = RATE_PAIR_REGISTRY.get(scenario.ratePairId)
-      expect(pair, `Scenario "${scenario.id}" references unknown ratePairId "${scenario.ratePairId}"`).toBeDefined()
+      expect(
+        pair,
+        `Scenario "${scenario.id}" references unknown ratePairId "${scenario.ratePairId}"`
+      ).toBeDefined()
     }
   })
 
   it('all frame IDs are unique', () => {
-    const ids = FRAMES.map(f => f.id)
+    const ids = FRAMES.map((f) => f.id)
     const uniqueIds = new Set(ids)
     expect(uniqueIds.size).toBe(ids.length)
   })
@@ -26,7 +29,7 @@ describe('buildFrame composition', () => {
   })
 
   it('every rate pair has at least one scenario', () => {
-    const usedPairIds = new Set(SCENARIOS.map(s => s.ratePairId))
+    const usedPairIds = new Set(SCENARIOS.map((s) => s.ratePairId))
     for (const pair of RATE_PAIRS) {
       expect(usedPairIds.has(pair.id), `Rate pair "${pair.id}" has no scenarios`).toBe(true)
     }
@@ -45,14 +48,14 @@ describe('buildFrame composition', () => {
 
   it('buildFrame produces correct composite ID', () => {
     const pair = RATE_PAIRS[0]
-    const scenario = SCENARIOS.find(s => s.ratePairId === pair.id)!
+    const scenario = SCENARIOS.find((s) => s.ratePairId === pair.id)!
     const frame = buildFrame(pair, scenario)
     expect(frame.id).toBe(`${pair.id}:${scenario.id}`)
   })
 
   it('buildFrame merges pair and scenario fields correctly', () => {
     const pair = RATE_PAIRS[0]
-    const scenario = SCENARIOS.find(s => s.ratePairId === pair.id)!
+    const scenario = SCENARIOS.find((s) => s.ratePairId === pair.id)!
     const frame = buildFrame(pair, scenario)
 
     // From pair
@@ -86,9 +89,15 @@ describe('buildFrame composition', () => {
           ...(level === 4 ? { point1: { x: 1, y: 5 }, point2: { x: 2, y: 7 } } : {}),
         }
         const spans = expandGrammar(resolved, nums, level as DifficultyLevel, rng)
-        expect(spans.length, `Frame "${frame.id}" level ${level} produced empty spans`).toBeGreaterThan(0)
-        const text = spans.map(s => s.text).join('')
-        expect(text.length, `Frame "${frame.id}" level ${level} produced very short text`).toBeGreaterThan(10)
+        expect(
+          spans.length,
+          `Frame "${frame.id}" level ${level} produced empty spans`
+        ).toBeGreaterThan(0)
+        const text = spans.map((s) => s.text).join('')
+        expect(
+          text.length,
+          `Frame "${frame.id}" level ${level} produced very short text`
+        ).toBeGreaterThan(10)
       }
     }
   })
@@ -99,7 +108,9 @@ describe('buildFrame composition', () => {
 
   it('all frames have non-empty setupPhrases and subjects', () => {
     for (const frame of FRAMES) {
-      expect(frame.setupPhrases.length, `Frame "${frame.id}" has no setupPhrases`).toBeGreaterThan(0)
+      expect(frame.setupPhrases.length, `Frame "${frame.id}" has no setupPhrases`).toBeGreaterThan(
+        0
+      )
       expect(frame.subjects.length, `Frame "${frame.id}" has no subjects`).toBeGreaterThan(0)
     }
   })
@@ -115,44 +126,44 @@ describe('buildFrame composition', () => {
 
   describe('scenario noun/verb overrides', () => {
     it('cake-sale uses "piece" instead of "slice"', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:cake-sale')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:cake-sale')!
       expect(frame.xNoun.singular).toBe('piece')
       expect(frame.xNoun.plural).toBe('pieces')
       expect(frame.xUnit).toBe('pieces')
     })
 
     it('pie-contest uses "pie" instead of "slice"', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:pie-contest')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:pie-contest')!
       expect(frame.xNoun.singular).toBe('pie')
       expect(frame.xUnit).toBe('pies')
     })
 
     it('necklace-craft uses "necklace" instead of "bracelet"', () => {
-      const frame = FRAMES.find(f => f.id === 'bracelets-beads-use:necklace-craft')!
+      const frame = FRAMES.find((f) => f.id === 'bracelets-beads-use:necklace-craft')!
       expect(frame.xNoun.singular).toBe('necklace')
       expect(frame.xUnit).toBe('necklaces')
     })
 
     it('keychain-craft uses "keychain" instead of "bracelet"', () => {
-      const frame = FRAMES.find(f => f.id === 'bracelets-beads-use:keychain-craft')!
+      const frame = FRAMES.find((f) => f.id === 'bracelets-beads-use:keychain-craft')!
       expect(frame.xNoun.singular).toBe('keychain')
       expect(frame.xUnit).toBe('keychains')
     })
 
     it('carnival-rides uses "ride" instead of "ticket"', () => {
-      const frame = FRAMES.find(f => f.id === 'tickets-dollars-cost:carnival-rides')!
+      const frame = FRAMES.find((f) => f.id === 'tickets-dollars-cost:carnival-rides')!
       expect(frame.xNoun.singular).toBe('ride')
       expect(frame.xUnit).toBe('rides')
     })
 
     it('swim-laps uses "swim" instead of "run"', () => {
-      const frame = FRAMES.find(f => f.id === 'laps-meters-run:swim-laps')!
+      const frame = FRAMES.find((f) => f.id === 'laps-meters-run:swim-laps')!
       expect(frame.rateVerb.base).toBe('swim')
       expect(frame.rateVerb.thirdPerson).toBe('swims')
     })
 
     it('pizza-shop still uses pair defaults (no overrides)', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:pizza-shop')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:pizza-shop')!
       const pair = RATE_PAIR_REGISTRY.get('slices-dollars-cost')!
       expect(frame.xNoun).toBe(pair.xNoun)
       expect(frame.rateVerb).toBe(pair.rateVerb)

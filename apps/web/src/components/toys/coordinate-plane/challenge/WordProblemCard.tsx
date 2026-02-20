@@ -8,24 +8,21 @@ import { useIsTouchDevice, useHasPhysicalKeyboard } from '../../../../hooks/useD
 
 /** Colors for annotation underlines, keyed by tag */
 const TAG_COLORS: Partial<Record<AnnotationTag, string>> = {
-  slope: '#f59e0b',     // amber
+  slope: '#f59e0b', // amber
   intercept: '#3b82f6', // blue
-  target: '#ef4444',    // red
-  answer: '#10b981',    // emerald
-  point1: '#8b5cf6',    // violet
-  point2: '#ec4899',    // pink
-  x_unit: '#6b7280',    // gray
-  y_unit: '#6b7280',    // gray
+  target: '#ef4444', // red
+  answer: '#10b981', // emerald
+  point1: '#8b5cf6', // violet
+  point2: '#ec4899', // pink
+  x_unit: '#6b7280', // gray
+  y_unit: '#6b7280', // gray
 }
 
 /** Difficulty dots — like a password strength indicator */
 function DifficultyDots({ level }: { level: number }) {
   return (
-    <div
-      data-element="difficulty-dots"
-      style={{ display: 'flex', gap: 3, alignItems: 'center' }}
-    >
-      {[1, 2, 3, 4, 5].map(i => (
+    <div data-element="difficulty-dots" style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+      {[1, 2, 3, 4, 5].map((i) => (
         <div
           key={i}
           style={{
@@ -67,7 +64,9 @@ export function WordProblemCard({
   // Compute which tags are revealed so far
   const revealedTags = new Set<AnnotationTag>()
   if (isRevealing) {
-    const annotatedSpans = problem.spans.filter(s => s.tag && s.tag !== 'context' && s.tag !== 'question')
+    const annotatedSpans = problem.spans.filter(
+      (s) => s.tag && s.tag !== 'context' && s.tag !== 'question'
+    )
     for (let i = 0; i < Math.min(revealStep, annotatedSpans.length); i++) {
       if (annotatedSpans[i].tag) revealedTags.add(annotatedSpans[i].tag!)
     }
@@ -194,24 +193,13 @@ export function WordProblemCard({
       )}
 
       {/* Answering phase: ask for x count using KidNumberInput */}
-      {phase === 'answering' && (
-        <AnswerInput
-          problem={problem}
-          onCorrect={onAnswerCorrect}
-        />
-      )}
+      {phase === 'answering' && <AnswerInput problem={problem} onCorrect={onAnswerCorrect} />}
     </div>
   )
 }
 
 /** Sub-component for the answering phase — uses KidNumberInput with auto-validation */
-function AnswerInput({
-  problem,
-  onCorrect,
-}: {
-  problem: WordProblem
-  onCorrect?: () => void
-}) {
+function AnswerInput({ problem, onCorrect }: { problem: WordProblem; onCorrect?: () => void }) {
   const [feedback, setFeedback] = useState<FeedbackState>('none')
   const isTouchDevice = useIsTouchDevice()
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
@@ -283,11 +271,13 @@ function AnnotatedTextSpan({
   const showHover = canHover && isHovered
 
   const style: CSSProperties = {
-    borderBottom: showUnderline ? `2px solid ${color}` : showHover ? `2px solid ${color}` : undefined,
+    borderBottom: showUnderline
+      ? `2px solid ${color}`
+      : showHover
+        ? `2px solid ${color}`
+        : undefined,
     paddingBottom: showUnderline || showHover ? 1 : undefined,
-    transition: isHovered
-      ? 'all 150ms ease-out'
-      : 'all 400ms ease',
+    transition: isHovered ? 'all 150ms ease-out' : 'all 400ms ease',
     ...(showHover && {
       backgroundColor: `${color}26`,
       borderRadius: 3,

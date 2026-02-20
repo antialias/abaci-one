@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useToast } from '@/components/common/ToastContext'
+import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 // Direct imports to avoid barrel pulling in EmojiPicker (694KB emojibase-data)
 import { AddStudentByFamilyCodeModal } from '@/components/classroom/AddStudentByFamilyCodeModal'
 import { CreateClassroomForm } from '@/components/classroom/CreateClassroomForm'
@@ -401,9 +402,12 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          paddingTop: '160px', // Nav height (80px) + Filter bar height (~80px)
+          paddingTop: '80px', // Filter bar height (~80px) — nav offset handled by PageWithNav
         })}
       >
+        {/* Guest save-your-progress banner */}
+        <GuestProgressBanner />
+
         {/* Filter Bar */}
         <StudentFilterBar
           currentView={currentView}

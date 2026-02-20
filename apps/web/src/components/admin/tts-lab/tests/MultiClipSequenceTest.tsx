@@ -18,7 +18,15 @@ const PRESETS: Record<string, { label: string; segments: TtsSegment[] }> = {
   },
 }
 
-function LabButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function LabButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
@@ -68,13 +76,24 @@ export function MultiClipSequenceTest() {
     setStatus('running')
     setIsPlaying(true)
 
-    log('info', `Playing sequence: [${segments.map((s) => (typeof s === 'string' ? s : JSON.stringify(s))).join(', ')}]`)
+    log(
+      'info',
+      `Playing sequence: [${segments.map((s) => (typeof s === 'string' ? s : JSON.stringify(s))).join(', ')}]`
+    )
 
     // Log per-segment availability
     for (const seg of segments) {
-      const clipId = typeof seg === 'string' ? seg : 'clipId' in seg ? (seg as { clipId: string }).clipId : '(hash)'
+      const clipId =
+        typeof seg === 'string'
+          ? seg
+          : 'clipId' in seg
+            ? (seg as { clipId: string }).clipId
+            : '(hash)'
       const avail = manager.getClipAvailability(clipId)
-      log('info', `  ${clipId}: ${avail.map((a) => `${a.source.type === 'pregenerated' ? a.source.name : 'browser-tts'}=${a.hasClip}`).join(', ')}`)
+      log(
+        'info',
+        `  ${clipId}: ${avail.map((a) => `${a.source.type === 'pregenerated' ? a.source.name : 'browser-tts'}=${a.hasClip}`).join(', ')}`
+      )
     }
 
     const start = performance.now()

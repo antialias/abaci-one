@@ -24,8 +24,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 1,
     type: 'C',
     title: 'Construct an equilateral triangle on a given line',
-    statement:
-      'To construct an equilateral triangle on a given finite straight line.',
+    statement: 'To construct an equilateral triangle on a given finite straight line.',
     method:
       'Draw two circles (centered at each endpoint, radius = the line). Their intersection gives the third vertex.',
     deps: ['Post.1', 'Post.3', 'Def.15', 'Def.20', 'C.N.1'],
@@ -100,7 +99,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     method:
       'Join the two candidate peaks, apply I.5 twice to get contradictory angle inequalities.',
     deps: ['Post.1', 'I.5', 'C.N.5'],
-    note: 'A lemma for I.8. Says: if you fix a base and two side lengths, there\'s only one triangle (on each side).',
+    note: "A lemma for I.8. Says: if you fix a base and two side lengths, there's only one triangle (on each side).",
     block: 'Triangle Congruence',
   },
   8: {
@@ -110,7 +109,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     statement:
       'If two triangles have the two sides equal to two sides respectively, and also have the base equal to the base, then they also have the angles equal which are contained by the equal straight lines.',
     method:
-      'Superposition + I.7. Place bases together; if the peaks didn\'t coincide, I.7 would be violated.',
+      "Superposition + I.7. Place bases together; if the peaks didn't coincide, I.7 would be violated.",
     deps: ['I.7', 'C.N.4'],
     note: 'The second congruence theorem. Combined with SAS, gives full congruence from three sides.',
     block: 'Triangle Congruence',
@@ -210,8 +209,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 17,
     type: 'T',
     title: 'Sum of two angles of a triangle < two right angles',
-    statement:
-      'In any triangle the sum of any two angles is less than two right angles.',
+    statement: 'In any triangle the sum of any two angles is less than two right angles.',
     method: '',
     deps: ['Post.2', 'I.13', 'I.16'],
     note: 'Consequence of the exterior angle theorem. Strengthened to "sum of all three = two right angles" in I.32.',
@@ -221,8 +219,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 18,
     type: 'T',
     title: 'Greater side subtends greater angle',
-    statement:
-      'In any triangle the angle opposite the greater side is greater.',
+    statement: 'In any triangle the angle opposite the greater side is greater.',
     method: '',
     deps: ['I.3', 'I.5', 'I.16', 'Post.1'],
     note: '',
@@ -232,8 +229,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 19,
     type: 'T',
     title: 'Greater angle subtended by greater side',
-    statement:
-      'In any triangle the side opposite the greater angle is greater.',
+    statement: 'In any triangle the side opposite the greater angle is greater.',
     method: 'Proof by contradiction using I.5 and I.18.',
     deps: ['I.5', 'I.18'],
     note: 'Converse of I.18. Together they say: side ordering = angle ordering.',
@@ -243,10 +239,8 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 20,
     type: 'T',
     title: 'Triangle inequality',
-    statement:
-      'In any triangle the sum of any two sides is greater than the remaining one.',
-    method:
-      'Extend one side, use isosceles triangle theorem and I.19.',
+    statement: 'In any triangle the sum of any two sides is greater than the remaining one.',
+    method: 'Extend one side, use isosceles triangle theorem and I.19.',
     deps: ['Post.1', 'Post.2', 'I.3', 'I.5', 'I.19', 'C.N.5'],
     note: 'The triangle inequality. Part of the statement "the shortest path between two points is a straight line."',
     block: 'Triangle Inequalities',
@@ -316,7 +310,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
       'If two triangles have two angles equal to two angles respectively, and one side equal to one side, namely, either the side adjoining the equal angles (ASA), or that opposite one of the equal angles (AAS), then the remaining sides and angle are equal.',
     method: 'Proof by contradiction for both cases.',
     deps: ['I.3', 'I.4', 'I.16', 'Post.1', 'C.N.1'],
-    note: 'The last of Euclid\'s congruence theorems. Together with I.4 (SAS) and I.8 (SSS), these cover the standard cases.',
+    note: "The last of Euclid's congruence theorems. Together with I.4 (SAS) and I.8 (SSS), these cover the standard cases.",
     block: 'More Congruence',
   },
   27: {
@@ -325,8 +319,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     title: 'Alternate angles equal => lines are parallel',
     statement:
       'If a straight line falling on two straight lines makes the alternate angles equal to one another, then the straight lines are parallel to one another.',
-    method:
-      'Proof by contradiction using the exterior angle theorem (I.16).',
+    method: 'Proof by contradiction using the exterior angle theorem (I.16).',
     deps: ['I.16', 'Def.23'],
     note: 'Does NOT require the parallel postulate. Holds in absolute geometry.',
     block: 'Parallel Lines',
@@ -349,7 +342,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     statement:
       'A straight line falling on parallel straight lines makes the alternate angles equal to one another, the exterior angle equal to the interior and opposite angle, and the sum of the interior angles on the same side equal to two right angles.',
     method:
-      'Proof by contradiction \u2014 if angles weren\'t equal, the interior angle sum would be less than two right angles, so by Post.5 the lines would meet, contradicting their being parallel.',
+      "Proof by contradiction \u2014 if angles weren't equal, the interior angle sum would be less than two right angles, so by Post.5 the lines would meet, contradicting their being parallel.",
     deps: ['I.13', 'I.15', 'Post.5', 'C.N.1', 'C.N.2'],
     note: 'FIRST USE OF THE PARALLEL POSTULATE. This is the converse of I.27/I.28. Does NOT hold in hyperbolic geometry. This is the watershed \u2014 everything from here on is Euclidean geometry specifically.',
     block: 'Parallel Lines',
@@ -362,15 +355,14 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
       'Straight lines parallel to the same straight line are also parallel to one another.',
     method: '',
     deps: ['I.29', 'C.N.1'],
-    note: 'Equivalent to the parallel postulate (and to Playfair\'s axiom). Could have been chosen as the postulate instead of Post.5.',
+    note: "Equivalent to the parallel postulate (and to Playfair's axiom). Could have been chosen as the postulate instead of Post.5.",
     block: 'Parallel Lines',
   },
   31: {
     id: 31,
     type: 'C',
     title: 'Construct a line parallel to a given line through a given point',
-    statement:
-      'To draw a straight line through a given point parallel to a given straight line.',
+    statement: 'To draw a straight line through a given point parallel to a given straight line.',
     method:
       'Pick any point on the given line, join to the given point, copy the angle at the join point using I.23, apply I.27.',
     deps: ['I.23', 'I.27', 'Post.1', 'Post.2'],
@@ -383,8 +375,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     title: 'ANGLE SUM OF A TRIANGLE = TWO RIGHT ANGLES',
     statement:
       'In any triangle, if one of the sides is produced, then the exterior angle equals the sum of the two interior and opposite angles, and the sum of the three interior angles of the triangle equals two right angles.',
-    method:
-      'Draw a parallel to one side through the opposite vertex, apply I.29.',
+    method: 'Draw a parallel to one side through the opposite vertex, apply I.29.',
     deps: ['I.13', 'I.29', 'I.31', 'C.N.1', 'C.N.2'],
     note: 'One of the most important results in Book I. Strengthens I.16 (exterior angle > remote interior) to equality. In hyperbolic geometry, the angle sum is < 180; in elliptic, > 180.',
     block: 'Parallel Lines',
@@ -437,8 +428,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 37,
     type: 'T',
     title: 'Triangles on the same base in the same parallels are equal',
-    statement:
-      'Triangles which are on the same base and in the same parallels equal one another.',
+    statement: 'Triangles which are on the same base and in the same parallels equal one another.',
     method:
       'Complete each triangle to a parallelogram, apply I.35, each triangle is half its parallelogram (I.34).',
     deps: ['Post.2', 'I.31', 'I.34', 'I.35'],
@@ -449,8 +439,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     id: 38,
     type: 'T',
     title: 'Triangles on equal bases in the same parallels are equal',
-    statement:
-      'Triangles which are on equal bases and in the same parallels equal one another.',
+    statement: 'Triangles which are on equal bases and in the same parallels equal one another.',
     method: '',
     deps: ['Post.2', 'I.31', 'I.34', 'I.36'],
     note: '',
@@ -541,8 +530,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     type: 'C',
     title: 'Construct a square on a given line',
     statement: 'To describe a square on a given straight line.',
-    method:
-      'Draw perpendicular, cut to equal length, complete parallelogram.',
+    method: 'Draw perpendicular, cut to equal length, complete parallelogram.',
     deps: ['I.3', 'I.11', 'I.29', 'I.31', 'I.34', 'Post.4', 'Def.22'],
     note: 'The second regular polygon (first was equilateral triangle in I.1). Book IV constructs regular 5-, 6-, and 15-gons.',
     block: 'The Grand Finale',
@@ -556,7 +544,7 @@ export const PROPOSITION_REFS: Record<number, PropositionRef> = {
     method:
       'Construct squares on all three sides. Drop a perpendicular from the right-angle vertex to the hypotenuse (extended to the opposite side of the hypotenuse\'s square). This divides the hypotenuse\'s square into two rectangles. Prove each rectangle equals one of the leg squares using SAS (I.4) and the "parallelogram is double triangle" theorem (I.41).',
     deps: ['I.4', 'I.14', 'I.31', 'I.41', 'I.46', 'Def.22', 'Post.1', 'Post.4', 'C.N.2'],
-    note: 'The most famous theorem in mathematics. Known to Old Babylonians (ca. 1900-1600 BCE), over a millennium before Pythagoras. The specific proof here is Euclid\'s own \u2014 earlier proofs likely depended on proportion/similarity (Books V-VI).',
+    note: "The most famous theorem in mathematics. Known to Old Babylonians (ca. 1900-1600 BCE), over a millennium before Pythagoras. The specific proof here is Euclid's own \u2014 earlier proofs likely depended on proportion/similarity (Books V-VI).",
     block: 'The Grand Finale',
   },
   48: {

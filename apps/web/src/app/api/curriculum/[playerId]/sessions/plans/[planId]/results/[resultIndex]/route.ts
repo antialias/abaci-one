@@ -15,7 +15,11 @@ import { getDbUserId } from '@/lib/viewer'
  * - include: Remove exclusion (restore original source)
  */
 export const PATCH = withAuth(async (request, { params }) => {
-  const { playerId, planId, resultIndex: resultIndexStr } = (await params) as { playerId: string; planId: string; resultIndex: string }
+  const {
+    playerId,
+    planId,
+    resultIndex: resultIndexStr,
+  } = (await params) as { playerId: string; planId: string; resultIndex: string }
   const resultIndex = parseInt(resultIndexStr, 10)
 
   if (isNaN(resultIndex) || resultIndex < 0) {

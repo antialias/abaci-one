@@ -37,7 +37,7 @@ function smoothstep(t: number): number {
 
 function easeInOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2
 }
 
 // ── Phase timing ─────────────────────────────────────────────────────
@@ -45,48 +45,64 @@ function easeInOut(t: number): number {
 
 const PHASE = {
   // Seg 1: journey starts
-  startBegin: 0.00,
-  startEnd: 0.10,
+  startBegin: 0.0,
+  startEnd: 0.1,
   // Seg 2: long path (draw square + highlight two sides)
-  longPathBegin: 0.10,
+  longPathBegin: 0.1,
   longPathEnd: 0.25,
   // Seg 3: shortcut diagonal appears
   shortcutBegin: 0.25,
   shortcutEnd: 0.35,
   // Seg 4: compass rotation
   rotateBegin: 0.35,
-  rotateEnd: 0.50,
+  rotateEnd: 0.5,
   // Seg 5: mystery spot
-  mysteryBegin: 0.50,
-  mysteryEnd: 0.60,
+  mysteryBegin: 0.5,
+  mysteryEnd: 0.6,
   // Seg 6: area proof (box squares)
-  proofBegin: 0.60,
-  proofEnd: 0.80,
+  proofBegin: 0.6,
+  proofEnd: 0.8,
   // Seg 7: zoom in on decimals
-  zoomBegin: 0.80,
+  zoomBegin: 0.8,
   zoomEnd: 0.92,
   // Seg 8: final reveal
   revealBegin: 0.92,
-  revealEnd: 1.00,
+  revealEnd: 1.0,
 } as const
 
 // ── Colors ───────────────────────────────────────────────────────────
 
-function squareCol(isDark: boolean) { return isDark ? '#60a5fa' : '#3b82f6' }     // blue
-function pathCol(isDark: boolean) { return isDark ? '#fb923c' : '#ea580c' }        // orange
-function diagCol(isDark: boolean) { return isDark ? '#34d399' : '#059669' }        // green
-function diagColBright(isDark: boolean) { return isDark ? '#6ee7b7' : '#10b981' }
-function proofColA(isDark: boolean) { return isDark ? '#f87171' : '#dc2626' }      // red
-function proofColB(isDark: boolean) { return isDark ? '#a78bfa' : '#7c3aed' }      // purple
-function textCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }
-function subtextCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
+function squareCol(isDark: boolean) {
+  return isDark ? '#60a5fa' : '#3b82f6'
+} // blue
+function pathCol(isDark: boolean) {
+  return isDark ? '#fb923c' : '#ea580c'
+} // orange
+function diagCol(isDark: boolean) {
+  return isDark ? '#34d399' : '#059669'
+} // green
+function diagColBright(isDark: boolean) {
+  return isDark ? '#6ee7b7' : '#10b981'
+}
+function proofColA(isDark: boolean) {
+  return isDark ? '#f87171' : '#dc2626'
+} // red
+function proofColB(isDark: boolean) {
+  return isDark ? '#a78bfa' : '#7c3aed'
+} // purple
+function textCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'
+}
+function subtextCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'
+}
 
 // ── Viewport ─────────────────────────────────────────────────────────
 
 export function sqrt2DemoViewport(cssWidth: number, cssHeight: number) {
   // Center on [0, √2] with some padding; square is above axis up to height ~ppu
   const center = SQRT2 / 2 + 0.1
-  const ppu = Math.min(cssWidth * 0.65 / (SQRT2 + 0.8), cssHeight * 0.28)
+  const ppu = Math.min((cssWidth * 0.65) / (SQRT2 + 0.8), cssHeight * 0.28)
   return { center, pixelsPerUnit: ppu }
 }
 
@@ -191,8 +207,8 @@ function drawDiagonal(
   //
   // Original angle of the diagonal above horizontal = atan(1/1) = π/4
   // Rotating from original position by `angle` radians clockwise
-  const baseAngle = Math.PI / 4  // 45° above horizontal
-  const currentAngle = baseAngle - angle  // decreasing toward 0 (horizontal)
+  const baseAngle = Math.PI / 4 // 45° above horizontal
+  const currentAngle = baseAngle - angle // decreasing toward 0 (horizontal)
 
   const endX = ox + length * Math.cos(currentAngle)
   const endY = axisY - length * Math.sin(currentAngle)
@@ -231,7 +247,7 @@ function drawArc(
   const radius = hPx(SQRT2, ppu)
 
   // Arc from 45° above horizontal to 0° (horizontal)
-  const startAngle = -Math.PI / 4  // canvas angles: negative = above x-axis
+  const startAngle = -Math.PI / 4 // canvas angles: negative = above x-axis
   const endAngle = 0
   const arcEnd = startAngle + (endAngle - startAngle) * progress
 
@@ -281,7 +297,10 @@ function drawTiltedSquare(
   // Vertices: (0,0), (1,1), (0,2), (-1,1) in NL coords
   // (rotated 45° square with side = √2, centered at (0,1))
   const points = [
-    [0, 0], [1, 1], [0, 2], [-1, 1],
+    [0, 0],
+    [1, 1],
+    [0, 2],
+    [-1, 1],
   ]
 
   ctx.beginPath()
@@ -360,7 +379,8 @@ export function renderSqrt2Overlay(
 
     // "Start here!" label
     if (revealProgress < PHASE.longPathBegin) {
-      const labelA = smoothstep(mapRange(revealProgress, 0.03, 0.06)) *
+      const labelA =
+        smoothstep(mapRange(revealProgress, 0.03, 0.06)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.startEnd - 0.02, PHASE.startEnd)))
       if (labelA > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -377,13 +397,16 @@ export function renderSqrt2Overlay(
   // ── Seg 2: The long path — draw square + path ──
   const squareVisible = revealProgress >= PHASE.longPathBegin
   if (squareVisible) {
-    const squareP = smoothstep(mapRange(revealProgress, PHASE.longPathBegin, PHASE.longPathBegin + 0.05))
+    const squareP = smoothstep(
+      mapRange(revealProgress, PHASE.longPathBegin, PHASE.longPathBegin + 0.05)
+    )
     // Square should persist until the proof phase and then during reveal
-    const squareFade = revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
-      ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
-      : revealProgress >= PHASE.revealBegin
-        ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
-        : 1
+    const squareFade =
+      revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
+        ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
+        : revealProgress >= PHASE.revealBegin
+          ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
+          : 1
 
     if (squareP > 0 && squareFade > 0) {
       drawSquare(ctx, toX, axisY, ppu, isDark, opacity * squareP * squareFade)
@@ -391,8 +414,11 @@ export function renderSqrt2Overlay(
 
     // Long path animation
     if (revealProgress < PHASE.shortcutEnd) {
-      const pathP = easeInOut(mapRange(revealProgress, PHASE.longPathBegin + 0.03, PHASE.longPathEnd - 0.02))
-      const pathFade = 1 - smoothstep(mapRange(revealProgress, PHASE.shortcutBegin + 0.03, PHASE.shortcutEnd))
+      const pathP = easeInOut(
+        mapRange(revealProgress, PHASE.longPathBegin + 0.03, PHASE.longPathEnd - 0.02)
+      )
+      const pathFade =
+        1 - smoothstep(mapRange(revealProgress, PHASE.shortcutBegin + 0.03, PHASE.shortcutEnd))
       drawLongPath(ctx, toX, axisY, ppu, isDark, opacity * pathFade, pathP)
 
       // "1 step over" label on bottom, "1 step up" label on right
@@ -408,7 +434,8 @@ export function renderSqrt2Overlay(
       }
       if (pathP > 0.7) {
         const la = smoothstep(mapRange(pathP, 0.7, 0.9))
-        const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.shortcutBegin, PHASE.shortcutBegin + 0.05))
+        const fadeOut =
+          1 - smoothstep(mapRange(revealProgress, PHASE.shortcutBegin, PHASE.shortcutBegin + 0.05))
         const fs = Math.max(10, Math.min(13, ppu * 0.11))
         ctx.font = `${fs}px system-ui, sans-serif`
         ctx.fillStyle = pathCol(isDark)
@@ -426,16 +453,21 @@ export function renderSqrt2Overlay(
     // Before rotation, diagonal is at angle=0 (pointing to (1,1))
     // During rotation, angle goes from 0 to π/4
     // After rotation, it stays at π/4 (flat on number line)
-    const diagAppearP = smoothstep(mapRange(revealProgress, PHASE.shortcutBegin, PHASE.shortcutBegin + 0.05))
-    const rotateP = easeInOut(mapRange(revealProgress, PHASE.rotateBegin + 0.02, PHASE.rotateEnd - 0.02))
+    const diagAppearP = smoothstep(
+      mapRange(revealProgress, PHASE.shortcutBegin, PHASE.shortcutBegin + 0.05)
+    )
+    const rotateP = easeInOut(
+      mapRange(revealProgress, PHASE.rotateBegin + 0.02, PHASE.rotateEnd - 0.02)
+    )
     const angle = rotateP * (Math.PI / 4)
 
     // During zoom phase, fade out diagonal in square position; during reveal, show on number line
-    const diagFade = revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
-      ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
-      : revealProgress >= PHASE.revealBegin
-        ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
-        : 1
+    const diagFade =
+      revealProgress >= PHASE.zoomBegin && revealProgress < PHASE.revealBegin
+        ? 1 - smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.03))
+        : revealProgress >= PHASE.revealBegin
+          ? smoothstep(mapRange(revealProgress, PHASE.revealBegin, PHASE.revealBegin + 0.03))
+          : 1
 
     // Draw the arc during rotation
     if (revealProgress >= PHASE.rotateBegin && revealProgress < PHASE.mysteryEnd) {
@@ -443,11 +475,23 @@ export function renderSqrt2Overlay(
     }
 
     // Draw the diagonal itself
-    drawDiagonal(ctx, toX, axisY, ppu, isDark, opacity * diagAppearP * diagFade, angle, rotateP >= 1)
+    drawDiagonal(
+      ctx,
+      toX,
+      axisY,
+      ppu,
+      isDark,
+      opacity * diagAppearP * diagFade,
+      angle,
+      rotateP >= 1
+    )
 
     // "The shortcut!" label
     if (revealProgress >= PHASE.shortcutBegin && revealProgress < PHASE.rotateBegin) {
-      const la = smoothstep(mapRange(revealProgress, PHASE.shortcutBegin + 0.02, PHASE.shortcutBegin + 0.05)) *
+      const la =
+        smoothstep(
+          mapRange(revealProgress, PHASE.shortcutBegin + 0.02, PHASE.shortcutBegin + 0.05)
+        ) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.shortcutEnd - 0.02, PHASE.shortcutEnd)))
       if (la > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -466,8 +510,11 @@ export function renderSqrt2Overlay(
 
   // ── Seg 5: Mystery spot — question mark ──
   if (revealProgress >= PHASE.mysteryBegin && revealProgress < PHASE.proofBegin) {
-    const qP = smoothstep(mapRange(revealProgress, PHASE.mysteryBegin + 0.02, PHASE.mysteryBegin + 0.06))
-    const qFade = 1 - smoothstep(mapRange(revealProgress, PHASE.mysteryEnd - 0.02, PHASE.mysteryEnd))
+    const qP = smoothstep(
+      mapRange(revealProgress, PHASE.mysteryBegin + 0.02, PHASE.mysteryBegin + 0.06)
+    )
+    const qFade =
+      1 - smoothstep(mapRange(revealProgress, PHASE.mysteryEnd - 0.02, PHASE.mysteryEnd))
     const qAlpha = qP * qFade
 
     if (qAlpha > 0.01) {
@@ -496,7 +543,8 @@ export function renderSqrt2Overlay(
   // ── Seg 6: Area proof — side squares + diagonal square ──
   if (revealProgress >= PHASE.proofBegin && revealProgress < PHASE.zoomBegin) {
     const proofP = mapRange(revealProgress, PHASE.proofBegin, PHASE.proofEnd)
-    const proofFade = 1 - smoothstep(mapRange(revealProgress, PHASE.proofEnd - 0.02, PHASE.proofEnd))
+    const proofFade =
+      1 - smoothstep(mapRange(revealProgress, PHASE.proofEnd - 0.02, PHASE.proofEnd))
 
     // Phase 1: Side squares appear (0-0.35 of proof)
     const sideP = smoothstep(mapRange(proofP, 0, 0.35))
@@ -599,10 +647,7 @@ export function renderSqrt2Overlay(
 
     // Decimal expansion typing out
     const decimalStr = '1.4142135623\u2026'
-    const charsToShow = Math.min(
-      decimalStr.length,
-      Math.floor(1 + zoomP * (decimalStr.length - 1))
-    )
+    const charsToShow = Math.min(decimalStr.length, Math.floor(1 + zoomP * (decimalStr.length - 1)))
     const displayText = '\u221A2 = ' + decimalStr.substring(0, charsToShow)
 
     const fs = Math.max(16, Math.min(24, cssWidth * 0.03))

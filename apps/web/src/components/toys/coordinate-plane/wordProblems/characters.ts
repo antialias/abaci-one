@@ -63,8 +63,8 @@ export function resolveSubject(subject: SubjectEntry, character: Character): Sub
 export function resolveCharacter(frame: SemanticFrame, character: Character): SemanticFrame {
   return {
     ...frame,
-    setupPhrases: frame.setupPhrases.map(p => resolveTemplate(p, character)),
-    subjects: frame.subjects.map(s => resolveSubject(s, character)),
-    solveForXQuestions: frame.solveForXQuestions?.map(q => resolveTemplate(q, character)),
+    setupPhrases: frame.setupPhrases.map((p) => resolveTemplate(p, character)),
+    subjects: frame.subjects.map((s) => resolveSubject(s, character)),
+    solveForXQuestions: frame.solveForXQuestions?.map((q) => resolveTemplate(q, character)),
   }
 }

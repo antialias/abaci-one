@@ -10,7 +10,11 @@ import type { FactStore } from './factStore'
 import type { EqualityFact } from './facts'
 import { distancePair } from './facts'
 import { addSegment, addPoint, getPoint } from './constructionState'
-import { findNewIntersections, circleCircleIntersections, circleLineIntersections } from './intersections'
+import {
+  findNewIntersections,
+  circleCircleIntersections,
+  circleLineIntersections,
+} from './intersections'
 import { addFact, createFactStore } from './factStore'
 
 export interface MacroDef {
@@ -27,7 +31,7 @@ export interface MacroDef {
     factStore: FactStore,
     atStep: number,
     extendSegments?: boolean,
-    outputLabels?: Record<string, string>,
+    outputLabels?: Record<string, string>
   ) => MacroResult
 }
 
@@ -47,9 +51,19 @@ export interface MacroResult {
 function intersectionBeyond(
   lineFrom: { x: number; y: number },
   lineThrough: { x: number; y: number },
-  cx: number, cy: number, cr: number,
+  cx: number,
+  cy: number,
+  cr: number
 ): { x: number; y: number } | null {
-  const pts = circleLineIntersections(cx, cy, cr, lineFrom.x, lineFrom.y, lineThrough.x, lineThrough.y)
+  const pts = circleLineIntersections(
+    cx,
+    cy,
+    cr,
+    lineFrom.x,
+    lineFrom.y,
+    lineThrough.x,
+    lineThrough.y
+  )
   const dx = lineThrough.x - lineFrom.x
   const dy = lineThrough.y - lineFrom.y
   for (const p of pts) {
@@ -87,7 +101,7 @@ const MACRO_PROP_1: MacroDef = {
     factStore: FactStore,
     atStep: number,
     extendSegments: boolean = false,
-    outputLabels?: Record<string, string>,
+    outputLabels?: Record<string, string>
   ): MacroResult {
     const [ptA, ptB] = inputPointIds
     const addedElements: ConstructionElement[] = []
@@ -102,20 +116,26 @@ const MACRO_PROP_1: MacroDef = {
     const pA = getPoint(currentState, ptA)
     const pB = getPoint(currentState, ptB)
     if (!pA || !pB) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
+      return {
+        state: currentState,
+        candidates: currentCandidates,
+        addedElements,
+        newFacts: allNewFacts,
+        ghostLayers: [],
+      }
     }
     const radius = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2)
-    const intersections = circleCircleIntersections(
-      pA.x, pA.y, radius,
-      pB.x, pB.y, radius,
-    )
+    const intersections = circleCircleIntersections(pA.x, pA.y, radius, pB.x, pB.y, radius)
     // Pick highest-Y intersection (above the line AB)
-    const apex = intersections.reduce(
-      (best, p) => (p.y > best.y ? p : best),
-      intersections[0],
-    )
+    const apex = intersections.reduce((best, p) => (p.y > best.y ? p : best), intersections[0])
     if (!apex) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
+      return {
+        state: currentState,
+        candidates: currentCandidates,
+        addedElements,
+        newFacts: allNewFacts,
+        ghostLayers: [],
+      }
     }
 
     // 2. Add the apex point (use explicit label if provided)
@@ -134,38 +154,56 @@ const MACRO_PROP_1: MacroDef = {
     {
       const left = distancePair(ptA, apexId)
       const right = distancePair(ptA, ptB)
-      allNewFacts.push(...addFact(
-        factStore, left, right,
-        { type: 'def15', circleId: `internal-cir-${ptA}` },
-        `${aLabel}${apexLabel} = ${aLabel}${bLabel}`,
-        `Def.15: ${apexLabel} lies on circle centered at ${aLabel} through ${bLabel}`,
-        atStep,
-      ))
+      allNewFacts.push(
+        ...addFact(
+          factStore,
+          left,
+          right,
+          { type: 'def15', circleId: `internal-cir-${ptA}` },
+          `${aLabel}${apexLabel} = ${aLabel}${bLabel}`,
+          `Def.15: ${apexLabel} lies on circle centered at ${aLabel} through ${bLabel}`,
+          atStep
+        )
+      )
     }
     {
       const left = distancePair(ptB, apexId)
       const right = distancePair(ptB, ptA)
-      allNewFacts.push(...addFact(
-        factStore, left, right,
-        { type: 'def15', circleId: `internal-cir-${ptB}` },
-        `${bLabel}${apexLabel} = ${bLabel}${aLabel}`,
-        `Def.15: ${apexLabel} lies on circle centered at ${bLabel} through ${aLabel}`,
-        atStep,
-      ))
+      allNewFacts.push(
+        ...addFact(
+          factStore,
+          left,
+          right,
+          { type: 'def15', circleId: `internal-cir-${ptB}` },
+          `${bLabel}${apexLabel} = ${bLabel}${aLabel}`,
+          `Def.15: ${apexLabel} lies on circle centered at ${bLabel} through ${aLabel}`,
+          atStep
+        )
+      )
     }
 
     // 4. Segment apex → A
     const seg1 = addSegment(currentState, apexId, ptA)
     currentState = seg1.state
     addedElements.push(seg1.segment)
-    const newCands1 = findNewIntersections(currentState, seg1.segment, currentCandidates, extendSegments)
+    const newCands1 = findNewIntersections(
+      currentState,
+      seg1.segment,
+      currentCandidates,
+      extendSegments
+    )
     currentCandidates = [...currentCandidates, ...newCands1]
 
     // 5. Segment apex → B
     const seg2 = addSegment(currentState, apexId, ptB)
     currentState = seg2.state
     addedElements.push(seg2.segment)
-    const newCands2 = findNewIntersections(currentState, seg2.segment, currentCandidates, extendSegments)
+    const newCands2 = findNewIntersections(
+      currentState,
+      seg2.segment,
+      currentCandidates,
+      extendSegments
+    )
     currentCandidates = [...currentCandidates, ...newCands2]
 
     // Ghost: the two construction circles hidden by the macro
@@ -220,7 +258,7 @@ const MACRO_PROP_2: MacroDef = {
     factStore: FactStore,
     atStep: number,
     extendSegments: boolean = false,
-    outputLabels?: Record<string, string>,
+    outputLabels?: Record<string, string>
   ): MacroResult {
     const [targetId, segFromId, segToId] = inputPointIds
     const addedElements: ConstructionElement[] = []
@@ -232,7 +270,13 @@ const MACRO_PROP_2: MacroDef = {
     const segFrom = getPoint(currentState, segFromId)
     const segTo = getPoint(currentState, segToId)
     if (!target || !segFrom || !segTo) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
+      return {
+        state: currentState,
+        candidates: currentCandidates,
+        addedElements,
+        newFacts: allNewFacts,
+        ghostLayers: [],
+      }
     }
 
     // 1. Compute distance to copy
@@ -262,7 +306,12 @@ const MACRO_PROP_2: MacroDef = {
     const seg = addSegment(currentState, targetId, ptResult.point.id)
     currentState = seg.state
     addedElements.push(seg.segment)
-    const newCands = findNewIntersections(currentState, seg.segment, currentCandidates, extendSegments)
+    const newCands = findNewIntersections(
+      currentState,
+      seg.segment,
+      currentCandidates,
+      extendSegments
+    )
     currentCandidates = [...currentCandidates, ...newCands]
 
     // 5. Add fact: dist(target, output) = dist(segFrom, segTo)
@@ -274,13 +323,17 @@ const MACRO_PROP_2: MacroDef = {
 
     const left = distancePair(targetId, outputId)
     const right = distancePair(segFromId, segToId)
-    allNewFacts.push(...addFact(
-      factStore, left, right,
-      { type: 'prop', propId: 2 },
-      `${targetLabel}${outputLabel} = ${segFromLabel}${segToLabel}`,
-      `I.2: placed at ${targetLabel} a line equal to ${segFromLabel}${segToLabel}`,
-      atStep,
-    ))
+    allNewFacts.push(
+      ...addFact(
+        factStore,
+        left,
+        right,
+        { type: 'prop', propId: 2 },
+        `${targetLabel}${outputLabel} = ${segFromLabel}${segToLabel}`,
+        `I.2: placed at ${targetLabel} a line equal to ${segFromLabel}${segToLabel}`,
+        atStep
+      )
+    )
 
     // ── Ghost geometry: full I.2 construction replay ──
     const ghostElements: GhostElement[] = []
@@ -290,8 +343,10 @@ const MACRO_PROP_2: MacroDef = {
     // Step 1: Straightedge A→B
     ghostElements.push({
       kind: 'segment',
-      x1: target.x, y1: target.y,
-      x2: segFrom.x, y2: segFrom.y,
+      x1: target.x,
+      y1: target.y,
+      x2: segFrom.x,
+      y2: segFrom.y,
       color: BYRNE_CYCLE[colorIndex++ % 3],
     })
 
@@ -302,26 +357,44 @@ const MACRO_PROP_2: MacroDef = {
       // Non-degenerate: full I.2 construction ghost with equilateral triangle,
       // circles, intersection points, and production segments.
       const apexCandidates = circleCircleIntersections(
-        target.x, target.y, abRadius,
-        segFrom.x, segFrom.y, abRadius,
+        target.x,
+        target.y,
+        abRadius,
+        segFrom.x,
+        segFrom.y,
+        abRadius
       )
       const apexD = apexCandidates.reduce(
         (best, p) => (p.y > best.y ? p : best),
-        apexCandidates[0],
-      ) ?? { x: target.x, y: target.y + abRadius * Math.sqrt(3) / 2 }
+        apexCandidates[0]
+      ) ?? { x: target.x, y: target.y + (abRadius * Math.sqrt(3)) / 2 }
 
       // Ghost point D + segments DA, DB
-      ghostElements.push(
-        { kind: 'point', x: apexD.x, y: apexD.y, label: 'D', color: BYRNE_CYCLE[colorIndex++ % 3] },
-      )
+      ghostElements.push({
+        kind: 'point',
+        x: apexD.x,
+        y: apexD.y,
+        label: 'D',
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
       const segDA_color = BYRNE_CYCLE[colorIndex % 3]
-      ghostElements.push(
-        { kind: 'segment', x1: apexD.x, y1: apexD.y, x2: target.x, y2: target.y, color: BYRNE_CYCLE[colorIndex++ % 3] },
-      )
+      ghostElements.push({
+        kind: 'segment',
+        x1: apexD.x,
+        y1: apexD.y,
+        x2: target.x,
+        y2: target.y,
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
       const segDB_color = BYRNE_CYCLE[colorIndex % 3]
-      ghostElements.push(
-        { kind: 'segment', x1: apexD.x, y1: apexD.y, x2: segFrom.x, y2: segFrom.y, color: BYRNE_CYCLE[colorIndex++ % 3] },
-      )
+      ghostElements.push({
+        kind: 'segment',
+        x1: apexD.x,
+        y1: apexD.y,
+        x2: segFrom.x,
+        y2: segFrom.y,
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
 
       // I.1's ghost layers (two construction circles) at depth+1
       childGhostLayers.push({
@@ -338,7 +411,8 @@ const MACRO_PROP_2: MacroDef = {
       const bcRadius = dist
       ghostElements.push({
         kind: 'circle',
-        cx: segFrom.x, cy: segFrom.y,
+        cx: segFrom.x,
+        cy: segFrom.y,
         r: bcRadius,
         color: BYRNE_CYCLE[colorIndex++ % 3],
       })
@@ -347,18 +421,29 @@ const MACRO_PROP_2: MacroDef = {
       let dbDirX = segFrom.x - apexD.x
       let dbDirY = segFrom.y - apexD.y
       const dbLen = Math.sqrt(dbDirX * dbDirX + dbDirY * dbDirY)
-      if (dbLen < 1e-9) { dbDirX = 0; dbDirY = 1 }
-      else { dbDirX /= dbLen; dbDirY /= dbLen }
+      if (dbLen < 1e-9) {
+        dbDirX = 0
+        dbDirY = 1
+      } else {
+        dbDirX /= dbLen
+        dbDirY /= dbLen
+      }
 
       // Step 4: E = point on circle(B, |BC|) along ray D→B past B
       const ptE = { x: segFrom.x + bcRadius * dbDirX, y: segFrom.y + bcRadius * dbDirY }
-      ghostElements.push(
-        { kind: 'point', x: ptE.x, y: ptE.y, label: 'E', color: BYRNE_CYCLE[colorIndex++ % 3] },
-      )
+      ghostElements.push({
+        kind: 'point',
+        x: ptE.x,
+        y: ptE.y,
+        label: 'E',
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
       ghostElements.push({
         kind: 'segment',
-        x1: segFrom.x, y1: segFrom.y,
-        x2: ptE.x, y2: ptE.y,
+        x1: segFrom.x,
+        y1: segFrom.y,
+        x2: ptE.x,
+        y2: ptE.y,
         color: segDB_color,
         isProduction: true,
       })
@@ -367,7 +452,8 @@ const MACRO_PROP_2: MacroDef = {
       const deRadius = Math.sqrt((apexD.x - ptE.x) ** 2 + (apexD.y - ptE.y) ** 2)
       ghostElements.push({
         kind: 'circle',
-        cx: apexD.x, cy: apexD.y,
+        cx: apexD.x,
+        cy: apexD.y,
         r: deRadius,
         color: BYRNE_CYCLE[colorIndex++ % 3],
       })
@@ -376,18 +462,29 @@ const MACRO_PROP_2: MacroDef = {
       let daDirX = target.x - apexD.x
       let daDirY = target.y - apexD.y
       const daLen = Math.sqrt(daDirX * daDirX + daDirY * daDirY)
-      if (daLen < 1e-9) { daDirX = 0; daDirY = 1 }
-      else { daDirX /= daLen; daDirY /= daLen }
+      if (daLen < 1e-9) {
+        daDirX = 0
+        daDirY = 1
+      } else {
+        daDirX /= daLen
+        daDirY /= daLen
+      }
 
       // Step 6: F = point on circle(D, |DE|) along ray D→A past A
       const ptF = { x: apexD.x + deRadius * daDirX, y: apexD.y + deRadius * daDirY }
-      ghostElements.push(
-        { kind: 'point', x: ptF.x, y: ptF.y, label: 'F', color: BYRNE_CYCLE[colorIndex++ % 3] },
-      )
+      ghostElements.push({
+        kind: 'point',
+        x: ptF.x,
+        y: ptF.y,
+        label: 'F',
+        color: BYRNE_CYCLE[colorIndex++ % 3],
+      })
       ghostElements.push({
         kind: 'segment',
-        x1: target.x, y1: target.y,
-        x2: ptF.x, y2: ptF.y,
+        x1: target.x,
+        y1: target.y,
+        x2: ptF.x,
+        y2: ptF.y,
         color: segDA_color,
         isProduction: true,
       })
@@ -397,7 +494,8 @@ const MACRO_PROP_2: MacroDef = {
       // I.2 construction to show. Just ghost the circle at B through C.
       ghostElements.push({
         kind: 'circle',
-        cx: segFrom.x, cy: segFrom.y,
+        cx: segFrom.x,
+        cy: segFrom.y,
         r: dist,
         color: BYRNE_CYCLE[colorIndex++ % 3],
       })
@@ -448,7 +546,7 @@ const MACRO_PROP_3: MacroDef = {
     factStore: FactStore,
     atStep: number,
     extendSegments: boolean = false,
-    outputLabels?: Record<string, string>,
+    outputLabels?: Record<string, string>
   ): MacroResult {
     const [cutId, targetId, segFromId, segToId] = inputPointIds
     const addedElements: ConstructionElement[] = []
@@ -461,7 +559,13 @@ const MACRO_PROP_3: MacroDef = {
     const segFrom = getPoint(currentState, segFromId)
     const segTo = getPoint(currentState, segToId)
     if (!cutPoint || !targetPoint || !segFrom || !segTo) {
-      return { state: currentState, candidates: currentCandidates, addedElements, newFacts: allNewFacts, ghostLayers: [] }
+      return {
+        state: currentState,
+        candidates: currentCandidates,
+        addedElements,
+        newFacts: allNewFacts,
+        ghostLayers: [],
+      }
     }
 
     // Optimization: skip I.2 state modification if cutPoint coincides with segFrom
@@ -472,9 +576,12 @@ const MACRO_PROP_3: MacroDef = {
     // Always call I.2 to get ghost layers (even in coincident/degenerate case).
     // When coincident, use a throwaway factStore so we don't pollute the real one.
     const i2Result = MACRO_PROP_2.execute(
-      currentState, [cutId, segFromId, segToId],
-      currentCandidates, coincident ? createFactStore() : factStore,
-      atStep, extendSegments,
+      currentState,
+      [cutId, segFromId, segToId],
+      currentCandidates,
+      coincident ? createFactStore() : factStore,
+      atStep,
+      extendSegments
     )
     const i2GhostLayers = i2Result.ghostLayers
     const i2AddedElements = i2Result.addedElements
@@ -517,13 +624,17 @@ const MACRO_PROP_3: MacroDef = {
 
     const left = distancePair(cutId, resultId)
     const right = distancePair(segFromId, segToId)
-    allNewFacts.push(...addFact(
-      factStore, left, right,
-      { type: 'prop', propId: 3 },
-      `${cutLabel}${resultLabel} = ${segFromLabel}${segToLabel}`,
-      `I.3: cut off from ${cutLabel}${targetPoint.label} a part equal to ${segFromLabel}${segToLabel}`,
-      atStep,
-    ))
+    allNewFacts.push(
+      ...addFact(
+        factStore,
+        left,
+        right,
+        { type: 'prop', propId: 3 },
+        `${cutLabel}${resultLabel} = ${segFromLabel}${segToLabel}`,
+        `I.3: cut off from ${cutLabel}${targetPoint.label} a part equal to ${segFromLabel}${segToLabel}`,
+        atStep
+      )
+    )
 
     // ── Ghost geometry ──
     const ghostElements: GhostElement[] = []
@@ -553,7 +664,8 @@ const MACRO_PROP_3: MacroDef = {
     // Ghost circle at cutPoint with radius = |segFrom-segTo|
     ghostElements.push({
       kind: 'circle',
-      cx: cutPoint.x, cy: cutPoint.y,
+      cx: cutPoint.x,
+      cy: cutPoint.y,
       r: radius,
       color: BYRNE_CYCLE[ghostColorIndex++ % 3],
     })
@@ -561,7 +673,8 @@ const MACRO_PROP_3: MacroDef = {
     // Ghost result point (intersection of circle with ray cutPoint→targetPoint)
     ghostElements.push({
       kind: 'point',
-      x: resultX, y: resultY,
+      x: resultX,
+      y: resultY,
       label: ptResult.point.label,
       color: BYRNE_CYCLE[ghostColorIndex++ % 3],
     })

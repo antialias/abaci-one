@@ -116,26 +116,24 @@ function scorePrime(
   }
 
   // Prime triplet: (p, p+2, p+6) or (p, p+4, p+6)
-  const isTriplet = (
+  const isTriplet =
     (isPrime(p + 2) && isPrime(p + 6)) ||
     (isPrime(p + 4) && isPrime(p + 6)) ||
     (p - 2 >= 2 && isPrime(p - 2) && isPrime(p + 4)) ||
     (p - 4 >= 2 && isPrime(p - 4) && isPrime(p + 2)) ||
     (p - 6 >= 2 && isPrime(p - 6) && isPrime(p - 4)) ||
     (p - 6 >= 2 && isPrime(p - 6) && isPrime(p - 2))
-  )
   if (isTriplet) {
     score += 30
     tags.push('triplet')
   }
 
   // Prime quadruplet: (p, p+2, p+6, p+8)
-  const isQuad = (
+  const isQuad =
     (isPrime(p + 2) && isPrime(p + 6) && isPrime(p + 8)) ||
     (p - 2 >= 2 && isPrime(p - 2) && isPrime(p + 4) && isPrime(p + 6)) ||
     (p - 6 >= 2 && isPrime(p - 6) && isPrime(p - 4) && isPrime(p + 2)) ||
     (p - 8 >= 2 && isPrime(p - 8) && isPrime(p - 6) && isPrime(p - 2))
-  )
   if (isQuad) {
     score += 50
     tags.push('quadruplet')
@@ -188,10 +186,10 @@ function computeScoreThreshold(primeCount: number, cssWidth: number): number {
   if (cssWidth <= 0 || primeCount <= 0) return 0
   const primesPerPixel = primeCount / cssWidth
 
-  if (primesPerPixel < 0.05) return 0    // sparse — show all
+  if (primesPerPixel < 0.05) return 0 // sparse — show all
   if (primesPerPixel < 0.5) return 15
   if (primesPerPixel < 2) return 30
-  return 50                              // extreme density
+  return 50 // extreme density
 }
 
 // --- Main entry point ---
@@ -239,5 +237,5 @@ export function computeInterestingPrimes(
   const threshold = computeScoreThreshold(scored.length, cssWidth)
   if (threshold === 0) return scored
 
-  return scored.filter(p => p.score >= threshold)
+  return scored.filter((p) => p.score >= threshold)
 }

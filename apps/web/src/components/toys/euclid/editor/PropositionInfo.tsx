@@ -9,14 +9,20 @@ interface PropositionInfoProps {
   onAuthorNotesChange: (notes: string) => void
 }
 
-export function PropositionInfo({ propositionId, authorNotes, onAuthorNotesChange }: PropositionInfoProps) {
+export function PropositionInfo({
+  propositionId,
+  authorNotes,
+  onAuthorNotesChange,
+}: PropositionInfoProps) {
   const ref = PROPOSITION_REFS[propositionId]
   const [showReference, setShowReference] = useState(false)
 
   if (!ref) {
     return (
       <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(203, 213, 225, 0.5)' }}>
-        <div style={{ fontSize: 14, color: '#94a3b8' }}>Proposition I.{propositionId} — not found</div>
+        <div style={{ fontSize: 14, color: '#94a3b8' }}>
+          Proposition I.{propositionId} — not found
+        </div>
       </div>
     )
   }
@@ -30,57 +36,67 @@ export function PropositionInfo({ propositionId, authorNotes, onAuthorNotesChang
     >
       {/* Header */}
       <div style={{ padding: '16px 20px 12px' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 4,
-        }}>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#94a3b8',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            fontFamily: 'system-ui, sans-serif',
-          }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 4,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              fontFamily: 'system-ui, sans-serif',
+            }}
+          >
             Proposition I.{propositionId}
           </span>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 20,
-            height: 18,
-            borderRadius: 3,
-            fontSize: 10,
-            fontWeight: 700,
-            background: ref.type === 'C' ? 'rgba(78, 121, 167, 0.15)' : 'rgba(225, 87, 89, 0.15)',
-            color: ref.type === 'C' ? '#4E79A7' : '#E15759',
-          }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 20,
+              height: 18,
+              borderRadius: 3,
+              fontSize: 10,
+              fontWeight: 700,
+              background: ref.type === 'C' ? 'rgba(78, 121, 167, 0.15)' : 'rgba(225, 87, 89, 0.15)',
+              color: ref.type === 'C' ? '#4E79A7' : '#E15759',
+            }}
+          >
             {ref.type}
           </span>
         </div>
-        <div style={{
-          fontSize: 14,
-          fontWeight: 500,
-          color: '#334155',
-          fontFamily: 'Georgia, serif',
-          fontStyle: 'italic',
-          lineHeight: 1.4,
-        }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 500,
+            color: '#334155',
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+            lineHeight: 1.4,
+          }}
+        >
           {ref.title}
         </div>
       </div>
 
       {/* Statement */}
       <div style={{ padding: '0 20px 8px' }}>
-        <div style={{
-          fontSize: 12,
-          color: '#475569',
-          fontFamily: 'Georgia, serif',
-          lineHeight: 1.5,
-        }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: '#475569',
+            fontFamily: 'Georgia, serif',
+            lineHeight: 1.5,
+          }}
+        >
           {ref.statement}
         </div>
       </div>
@@ -88,7 +104,7 @@ export function PropositionInfo({ propositionId, authorNotes, onAuthorNotesChang
       {/* Dependencies */}
       <div style={{ padding: '0 20px 8px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {ref.deps.map(dep => (
+          {ref.deps.map((dep) => (
             <span
               key={dep}
               style={{
@@ -127,23 +143,27 @@ export function PropositionInfo({ propositionId, authorNotes, onAuthorNotesChang
             fontFamily: 'system-ui, sans-serif',
           }}
         >
-          <span style={{
-            transform: showReference ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.15s',
-            display: 'inline-block',
-          }}>
+          <span
+            style={{
+              transform: showReference ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s',
+              display: 'inline-block',
+            }}
+          >
             &#9654;
           </span>
           Reference notes
         </button>
         {showReference && (
-          <div style={{
-            fontSize: 11,
-            color: '#64748b',
-            fontFamily: 'Georgia, serif',
-            lineHeight: 1.5,
-            padding: '4px 0 8px',
-          }}>
+          <div
+            style={{
+              fontSize: 11,
+              color: '#64748b',
+              fontFamily: 'Georgia, serif',
+              lineHeight: 1.5,
+              padding: '4px 0 8px',
+            }}
+          >
             {ref.method && (
               <div style={{ marginBottom: 4 }}>
                 <strong>Method:</strong> {ref.method}
@@ -160,19 +180,21 @@ export function PropositionInfo({ propositionId, authorNotes, onAuthorNotesChang
 
       {/* Author notes */}
       <div style={{ padding: '8px 20px 12px' }}>
-        <div style={{
-          fontSize: 11,
-          fontWeight: 500,
-          color: '#94a3b8',
-          marginBottom: 4,
-          fontFamily: 'system-ui, sans-serif',
-        }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: '#94a3b8',
+            marginBottom: 4,
+            fontFamily: 'system-ui, sans-serif',
+          }}
+        >
           My notes
         </div>
         <textarea
           data-element="author-notes"
           value={authorNotes}
-          onChange={e => onAuthorNotesChange(e.target.value)}
+          onChange={(e) => onAuthorNotesChange(e.target.value)}
           placeholder="Observations, strategies, gotchas..."
           style={{
             width: '100%',

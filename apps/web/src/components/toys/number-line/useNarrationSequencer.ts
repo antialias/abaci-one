@@ -38,10 +38,7 @@ const ADVANCE_TOLERANCE_MS = 1000
  * Both directions are clamped to MAX_STRETCH_RATIO to prevent absurdly
  * slow animations.
  */
-function computeEffectiveDuration(
-  seg: SequencerSegment,
-  audioDurationMs: number | null
-): number {
+function computeEffectiveDuration(seg: SequencerSegment, audioDurationMs: number | null): number {
   if (audioDurationMs === null) return seg.animationDurationMs
   const designedMs = seg.animationDurationMs
   const maxMs = designedMs * MAX_STRETCH_RATIO
@@ -142,24 +139,25 @@ export function useNarrationSequencer() {
         return
       }
 
-      speak(
-        { say: { en: seg.ttsText }, tone: seg.ttsTone ?? tone },
-      ).then(() => {
-        ttsFinishedAtRef.current = performance.now()
-        ttsFinishedRef.current = true
-      }).catch(() => {
-        ttsFinishedAtRef.current = performance.now()
-        // TTS failed or cancelled — still allow segment advancement
-        ttsFinishedRef.current = true
-      })
+      speak({ say: { en: seg.ttsText }, tone: seg.ttsTone ?? tone })
+        .then(() => {
+          ttsFinishedAtRef.current = performance.now()
+          ttsFinishedRef.current = true
+        })
+        .catch(() => {
+          ttsFinishedAtRef.current = performance.now()
+          // TTS failed or cancelled — still allow segment advancement
+          ttsFinishedRef.current = true
+        })
 
       // Preload next segment's audio so the transition is instant (no network wait)
       if (segIdx !== undefined) {
         const nextSeg = segmentsRef.current[segIdx + 1]
         if (nextSeg) {
-          audioManager.preloadForSpeak(
-            { say: { en: nextSeg.ttsText }, tone: nextSeg.ttsTone ?? tone }
-          )
+          audioManager.preloadForSpeak({
+            say: { en: nextSeg.ttsText },
+            tone: nextSeg.ttsTone ?? tone,
+          })
         }
       }
     },
@@ -247,8 +245,7 @@ export function useNarrationSequencer() {
       }
 
       const now = performance.now()
-      const rawElapsed =
-        (now - segmentStartMsRef.current) * speedMultiplier
+      const rawElapsed = (now - segmentStartMsRef.current) * speedMultiplier
 
       // Adaptive timing: latch audio duration once known, then use it for
       // the rest of the segment to prevent animFrac jumps.
@@ -265,9 +262,7 @@ export function useNarrationSequencer() {
       // exactly where the user scrubbed, regardless of adaptive stretching.
       const startFrac = initialFracRef.current
       const remainingDuration = effectiveDuration * (1 - startFrac)
-      const remainingFrac = remainingDuration > 0
-        ? Math.min(1, rawElapsed / remainingDuration)
-        : 1
+      const remainingFrac = remainingDuration > 0 ? Math.min(1, rawElapsed / remainingDuration) : 1
       const animFrac = startFrac + remainingFrac * (1 - startFrac)
 
       // For advancement gating, use elapsed relative to remaining duration
@@ -312,23 +307,18 @@ export function useNarrationSequencer() {
       }
       const currentSeg = segments[segmentIndexRef.current]
       if (currentSeg) {
-        const currentElapsed =
-          (now - segmentStartMsRef.current) * speedMultiplier
+        const currentElapsed = (now - segmentStartMsRef.current) * speedMultiplier
         const currentAudioMs = audioManager.getCurrentAudioDurationMs()
         const currentEffective = computeEffectiveDuration(currentSeg, currentAudioMs)
         // Account for initial frac when computing virtual time
         const currentStartFrac = initialFracRef.current
         const currentRemaining = currentEffective * (1 - currentStartFrac)
-        virtualTimeMs += currentStartFrac * currentEffective + Math.min(
-          currentElapsed,
-          currentRemaining
-        )
+        virtualTimeMs +=
+          currentStartFrac * currentEffective + Math.min(currentElapsed, currentRemaining)
       }
 
       return {
-        segmentIndex: allDone
-          ? segments.length - 1
-          : segmentIndexRef.current,
+        segmentIndex: allDone ? segments.length - 1 : segmentIndexRef.current,
         // When advancing to next segment, report animFrac=0 (new segment
         // just started) to avoid a one-frame discontinuity where the old
         // segment's partial animFrac is applied to the new segment's range.

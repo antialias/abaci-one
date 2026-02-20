@@ -9,9 +9,7 @@ function parseGeminiError(status: number, body: string): string {
     const message = json?.error?.message
     if (typeof message === 'string') {
       const clean = message.split('\n')[0].trim()
-      const retryInfo = json?.error?.details?.find(
-        (d: Record<string, unknown>) => d?.retryDelay
-      )
+      const retryInfo = json?.error?.details?.find((d: Record<string, unknown>) => d?.retryDelay)
       const retrySuffix = retryInfo ? ` (retry after ${retryInfo.retryDelay})` : ''
       return `Gemini ${status}: ${clean}${retrySuffix}`
     }

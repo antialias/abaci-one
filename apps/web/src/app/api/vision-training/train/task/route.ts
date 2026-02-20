@@ -28,160 +28,172 @@ export const dynamic = 'force-dynamic'
 /**
  * POST - Start vision training as a background task
  */
-export const POST = withAuth(async (request: Request) => {
-  try {
-    // Check for already-running training task
-    const existingTask = await db
-      .select()
-      .from(backgroundTasks)
-      .where(eq(backgroundTasks.type, 'vision-training'))
-      .all()
-      .then((tasks) => tasks.find((t) => t.status === 'running' || t.status === 'pending'))
-
-    if (existingTask) {
-      return NextResponse.json({
-        taskId: existingTask.id,
-        status: 'already_running',
-        message: 'Training already in progress',
-      })
-    }
-
-    // Parse request body
-    let config: {
-      modelType?: 'column-classifier' | 'boundary-detector'
-      epochs?: number
-      batchSize?: number
-      validationSplit?: number
-      noAugmentation?: boolean
-      colorAugmentation?: boolean
-      manifestId?: string
-    } = {}
+export const POST = withAuth(
+  async (request: Request) => {
     try {
-      const body = await request.text()
-      if (body) {
-        config = JSON.parse(body)
+      // Check for already-running training task
+      const existingTask = await db
+        .select()
+        .from(backgroundTasks)
+        .where(eq(backgroundTasks.type, 'vision-training'))
+        .all()
+        .then((tasks) => tasks.find((t) => t.status === 'running' || t.status === 'pending'))
+
+      if (existingTask) {
+        return NextResponse.json({
+          taskId: existingTask.id,
+          status: 'already_running',
+          message: 'Training already in progress',
+        })
       }
-    } catch {
-      // Use defaults if body parsing fails
+
+      // Parse request body
+      let config: {
+        modelType?: 'column-classifier' | 'boundary-detector'
+        epochs?: number
+        batchSize?: number
+        validationSplit?: number
+        noAugmentation?: boolean
+        colorAugmentation?: boolean
+        manifestId?: string
+      } = {}
+      try {
+        const body = await request.text()
+        if (body) {
+          config = JSON.parse(body)
+        }
+      } catch {
+        // Use defaults if body parsing fails
+      }
+
+      // Start the background task
+      const taskId = await startVisionTraining({
+        modelType: config.modelType ?? 'column-classifier',
+        epochs: config.epochs,
+        batchSize: config.batchSize,
+        validationSplit: config.validationSplit,
+        noAugmentation: config.noAugmentation,
+        colorAugmentation: config.colorAugmentation,
+        manifestId: config.manifestId,
+      })
+
+      return NextResponse.json({
+        taskId,
+        status: 'started',
+        message: 'Training task started',
+      })
+    } catch (error) {
+      console.error('[VisionTrainingTaskAPI] Error starting training task:', error)
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to start training' },
+        { status: 500 }
+      )
     }
-
-    // Start the background task
-    const taskId = await startVisionTraining({
-      modelType: config.modelType ?? 'column-classifier',
-      epochs: config.epochs,
-      batchSize: config.batchSize,
-      validationSplit: config.validationSplit,
-      noAugmentation: config.noAugmentation,
-      colorAugmentation: config.colorAugmentation,
-      manifestId: config.manifestId,
-    })
-
-    return NextResponse.json({
-      taskId,
-      status: 'started',
-      message: 'Training task started',
-    })
-  } catch (error) {
-    console.error('[VisionTrainingTaskAPI] Error starting training task:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to start training' },
-      { status: 500 }
-    )
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * GET - Check for active training task
  */
-export const GET = withAuth(async () => {
-  try {
-    const tasks = await db
-      .select({
-        id: backgroundTasks.id,
-        status: backgroundTasks.status,
-        progress: backgroundTasks.progress,
-        progressMessage: backgroundTasks.progressMessage,
-      })
-      .from(backgroundTasks)
-      .where(eq(backgroundTasks.type, 'vision-training'))
-      .all()
+export const GET = withAuth(
+  async () => {
+    try {
+      const tasks = await db
+        .select({
+          id: backgroundTasks.id,
+          status: backgroundTasks.status,
+          progress: backgroundTasks.progress,
+          progressMessage: backgroundTasks.progressMessage,
+        })
+        .from(backgroundTasks)
+        .where(eq(backgroundTasks.type, 'vision-training'))
+        .all()
 
-    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
+      const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
-    if (activeTask) {
+      if (activeTask) {
+        return NextResponse.json({
+          taskId: activeTask.id,
+          status: activeTask.status,
+          progress: activeTask.progress,
+          progressMessage: activeTask.progressMessage,
+        })
+      }
+
       return NextResponse.json({
-        taskId: activeTask.id,
-        status: activeTask.status,
-        progress: activeTask.progress,
-        progressMessage: activeTask.progressMessage,
+        taskId: null,
+        status: 'none',
+        message: 'No active training task',
       })
+    } catch (error) {
+      console.error('[VisionTrainingTaskAPI] Error checking task:', error)
+      return NextResponse.json({ error: 'Failed to check task status' }, { status: 500 })
     }
-
-    return NextResponse.json({
-      taskId: null,
-      status: 'none',
-      message: 'No active training task',
-    })
-  } catch (error) {
-    console.error('[VisionTrainingTaskAPI] Error checking task:', error)
-    return NextResponse.json({ error: 'Failed to check task status' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * DELETE - Cancel the active training task
  */
-export const DELETE = withAuth(async () => {
-  try {
-    const tasks = await db
-      .select()
-      .from(backgroundTasks)
-      .where(eq(backgroundTasks.type, 'vision-training'))
-      .all()
+export const DELETE = withAuth(
+  async () => {
+    try {
+      const tasks = await db
+        .select()
+        .from(backgroundTasks)
+        .where(eq(backgroundTasks.type, 'vision-training'))
+        .all()
 
-    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
+      const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
-    if (!activeTask) {
-      return NextResponse.json({ message: 'No training in progress' })
+      if (!activeTask) {
+        return NextResponse.json({ message: 'No training in progress' })
+      }
+
+      const cancelled = await cancelTask(activeTask.id)
+      return NextResponse.json({
+        cancelled,
+        message: cancelled ? 'Training cancellation requested' : 'Could not cancel training',
+      })
+    } catch (error) {
+      console.error('[VisionTrainingTaskAPI] Error cancelling:', error)
+      return NextResponse.json({ error: 'Failed to cancel training' }, { status: 500 })
     }
-
-    const cancelled = await cancelTask(activeTask.id)
-    return NextResponse.json({
-      cancelled,
-      message: cancelled ? 'Training cancellation requested' : 'Could not cancel training',
-    })
-  } catch (error) {
-    console.error('[VisionTrainingTaskAPI] Error cancelling:', error)
-    return NextResponse.json({ error: 'Failed to cancel training' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)
 
 /**
  * PUT - Request early stop (save model at end of current epoch)
  */
-export const PUT = withAuth(async () => {
-  try {
-    const tasks = await db
-      .select()
-      .from(backgroundTasks)
-      .where(eq(backgroundTasks.type, 'vision-training'))
-      .all()
+export const PUT = withAuth(
+  async () => {
+    try {
+      const tasks = await db
+        .select()
+        .from(backgroundTasks)
+        .where(eq(backgroundTasks.type, 'vision-training'))
+        .all()
 
-    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
+      const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
-    if (!activeTask) {
-      return NextResponse.json({ message: 'No training in progress' })
+      if (!activeTask) {
+        return NextResponse.json({ message: 'No training in progress' })
+      }
+
+      const stopped = requestEarlyStop(activeTask.id)
+      return NextResponse.json({
+        stopped,
+        message: stopped
+          ? 'Early stop requested - model will be saved at end of current epoch'
+          : 'Could not request early stop (training may not be running on this pod)',
+      })
+    } catch (error) {
+      console.error('[VisionTrainingTaskAPI] Error requesting early stop:', error)
+      return NextResponse.json({ error: 'Failed to request early stop' }, { status: 500 })
     }
-
-    const stopped = requestEarlyStop(activeTask.id)
-    return NextResponse.json({
-      stopped,
-      message: stopped
-        ? 'Early stop requested - model will be saved at end of current epoch'
-        : 'Could not request early stop (training may not be running on this pod)',
-    })
-  } catch (error) {
-    console.error('[VisionTrainingTaskAPI] Error requesting early stop:', error)
-    return NextResponse.json({ error: 'Failed to request early stop' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)

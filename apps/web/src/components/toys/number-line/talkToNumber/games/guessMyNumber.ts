@@ -25,7 +25,7 @@ export const guessMyNumberGame: GameDefinition = {
     'BINARY SEARCH GAME RULES: ' +
     '1) Ask the child to think of a number in the given range. Wait for them to confirm they have one. ' +
     '2) Use binary search: pick the midpoint of the remaining range and ask "is your number bigger than X?" or "is it less than X?" ' +
-    '3) CRITICAL — after EVERY answer, call indicate with a range ({ from, to }) showing the remaining candidate range and duration_seconds: 30. The number line is already zoomed to show the full range — do NOT call look_at during this game. The child watches the highlighted band shrink within a fixed view — that\'s the whole visual payoff of binary search. ' +
+    "3) CRITICAL — after EVERY answer, call indicate with a range ({ from, to }) showing the remaining candidate range and duration_seconds: 30. The number line is already zoomed to show the full range — do NOT call look_at during this game. The child watches the highlighted band shrink within a fixed view — that's the whole visual payoff of binary search. " +
     '4) Be conversational, not robotic. React to each answer — "Ooh, so it\'s somewhere up here..." Mix up your phrasing. ' +
     '5) When the range is narrow enough, make your guess: "Is it... 42?" ' +
     '6) If they say YES: celebrate, call end_game, then IMMEDIATELY call add_to_call with that number so the child can talk to it. ' +

@@ -43,7 +43,14 @@ export interface SubjectEntry {
 }
 
 /** All frame categories */
-export type FrameCategory = 'money' | 'distance' | 'growth' | 'cooking' | 'crafts' | 'sports' | 'science'
+export type FrameCategory =
+  | 'money'
+  | 'distance'
+  | 'growth'
+  | 'cooking'
+  | 'crafts'
+  | 'sports'
+  | 'science'
 
 /**
  * A rate pair defines the math/linguistic skeleton of a word problem:

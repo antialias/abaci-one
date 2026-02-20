@@ -122,7 +122,10 @@ function createWrapper(overrides: Partial<WrapperProps> = {}) {
         focusDescription="Test focus"
         sessionMode={overrides.sessionMode ?? defaultSessionMode}
         secondsPerTerm={overrides.secondsPerTerm}
-        savedPreferences={{ ...DEFAULT_SESSION_PREFERENCES, gameBreakEnabledGames: ['game1', 'game2'] }}
+        savedPreferences={{
+          ...DEFAULT_SESSION_PREFERENCES,
+          gameBreakEnabledGames: ['game1', 'game2'],
+        }}
       >
         {children}
       </StartPracticeModalProvider>

@@ -57,7 +57,10 @@ export function PracticeConfigClient() {
 
   // Compute preview ranges for all modes at current comfort
   const previewRanges = useMemo(() => {
-    const result: Record<SessionPartType, { min: number; max: number }> = {} as Record<SessionPartType, { min: number; max: number }>
+    const result: Record<SessionPartType, { min: number; max: number }> = {} as Record<
+      SessionPartType,
+      { min: number; max: number }
+    >
     for (const mode of MODES) {
       result[mode] = computeTermCountRange(mode, comfort, editConfig)
     }
@@ -66,7 +69,10 @@ export function PracticeConfigClient() {
 
   // Floor/ceiling ranges from config (for display)
   const floorRanges = useMemo(() => {
-    const result: Record<SessionPartType, { min: number; max: number }> = {} as Record<SessionPartType, { min: number; max: number }>
+    const result: Record<SessionPartType, { min: number; max: number }> = {} as Record<
+      SessionPartType,
+      { min: number; max: number }
+    >
     for (const mode of MODES) {
       result[mode] = computeTermCountRange(mode, 0, editConfig)
     }
@@ -74,7 +80,10 @@ export function PracticeConfigClient() {
   }, [editConfig])
 
   const ceilingRanges = useMemo(() => {
-    const result: Record<SessionPartType, { min: number; max: number }> = {} as Record<SessionPartType, { min: number; max: number }>
+    const result: Record<SessionPartType, { min: number; max: number }> = {} as Record<
+      SessionPartType,
+      { min: number; max: number }
+    >
     for (const mode of MODES) {
       result[mode] = computeTermCountRange(mode, 1, editConfig)
     }
@@ -130,7 +139,10 @@ export function PracticeConfigClient() {
         <div className={css({ paddingTop: '56px' })}>
           <AdminNav />
         </div>
-        <div className={css({ padding: '24px', color: textSecondary })} data-component="practice-config-loading">
+        <div
+          className={css({ padding: '24px', color: textSecondary })}
+          data-component="practice-config-loading"
+        >
           Loading practice config...
         </div>
       </PageWithNav>
@@ -167,7 +179,13 @@ export function PracticeConfigClient() {
         </p>
 
         {/* Pipeline Visualization */}
-        <PipelineVisualization isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} cardBg={cardBg} cardBorder={cardBorder} />
+        <PipelineVisualization
+          isDark={isDark}
+          textPrimary={textPrimary}
+          textSecondary={textSecondary}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+        />
 
         {/* Interactive Preview */}
         <div
@@ -230,8 +248,22 @@ export function PracticeConfigClient() {
           >
             <thead>
               <tr>
-                <th className={css({ textAlign: 'left', padding: '8px', color: textSecondary, fontWeight: '500' })} />
-                <th className={css({ textAlign: 'center', padding: '8px', color: textSecondary, fontWeight: '500' })}>
+                <th
+                  className={css({
+                    textAlign: 'left',
+                    padding: '8px',
+                    color: textSecondary,
+                    fontWeight: '500',
+                  })}
+                />
+                <th
+                  className={css({
+                    textAlign: 'center',
+                    padding: '8px',
+                    color: textSecondary,
+                    fontWeight: '500',
+                  })}
+                >
                   Struggling (0%)
                 </th>
                 <th
@@ -244,7 +276,14 @@ export function PracticeConfigClient() {
                 >
                   At {comfortSlider}%
                 </th>
-                <th className={css({ textAlign: 'center', padding: '8px', color: textSecondary, fontWeight: '500' })}>
+                <th
+                  className={css({
+                    textAlign: 'center',
+                    padding: '8px',
+                    color: textSecondary,
+                    fontWeight: '500',
+                  })}
+                >
                   Mastered (100%)
                 </th>
               </tr>
@@ -255,7 +294,9 @@ export function PracticeConfigClient() {
                   <td className={css({ padding: '8px', fontWeight: '500', color: textPrimary })}>
                     {MODE_LABELS[mode].emoji} {MODE_LABELS[mode].label}
                   </td>
-                  <td className={css({ textAlign: 'center', padding: '8px', color: textSecondary })}>
+                  <td
+                    className={css({ textAlign: 'center', padding: '8px', color: textSecondary })}
+                  >
                     {floorRanges[mode].min}–{floorRanges[mode].max}
                   </td>
                   <td
@@ -268,7 +309,9 @@ export function PracticeConfigClient() {
                   >
                     {previewRanges[mode].min}–{previewRanges[mode].max}
                   </td>
-                  <td className={css({ textAlign: 'center', padding: '8px', color: textSecondary })}>
+                  <td
+                    className={css({ textAlign: 'center', padding: '8px', color: textSecondary })}
+                  >
                     {ceilingRanges[mode].min}–{ceilingRanges[mode].max}
                   </td>
                 </tr>
@@ -277,7 +320,14 @@ export function PracticeConfigClient() {
           </table>
 
           {/* Interpolation bars */}
-          <div className={css({ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' })}>
+          <div
+            className={css({
+              marginTop: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            })}
+          >
             {MODES.map((mode) => (
               <InterpolationBar
                 key={mode}
@@ -294,7 +344,14 @@ export function PracticeConfigClient() {
         </div>
 
         {/* Per-Mode Config Cards */}
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' })}>
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            marginBottom: '24px',
+          })}
+        >
           {MODES.map((mode) => (
             <ModeConfigCard
               key={mode}
@@ -413,7 +470,13 @@ export function PracticeConfigClient() {
         </div>
 
         {/* How It Works Section */}
-        <HowItWorks isDark={isDark} cardBg={cardBg} cardBorder={cardBorder} textPrimary={textPrimary} textSecondary={textSecondary} />
+        <HowItWorks
+          isDark={isDark}
+          cardBg={cardBg}
+          cardBorder={cardBorder}
+          textPrimary={textPrimary}
+          textSecondary={textSecondary}
+        />
       </div>
     </PageWithNav>
   )
@@ -456,7 +519,10 @@ function PipelineVisualization({
       data-component="pipeline-viz"
     >
       {steps.map((step, i) => (
-        <div key={step.title} className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
+        <div
+          key={step.title}
+          className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}
+        >
           <div
             className={css({
               background: cardBg,
@@ -467,7 +533,14 @@ function PipelineVisualization({
               textAlign: 'center',
             })}
           >
-            <div className={css({ fontSize: '13px', fontWeight: '600', color: textPrimary, marginBottom: '4px' })}>
+            <div
+              className={css({
+                fontSize: '13px',
+                fontWeight: '600',
+                color: textPrimary,
+                marginBottom: '4px',
+              })}
+            >
               {step.title}
             </div>
             <div
@@ -482,7 +555,9 @@ function PipelineVisualization({
             </div>
           </div>
           {i < steps.length - 1 && (
-            <span className={css({ color: textSecondary, fontSize: '16px', flexShrink: '0' })}>→</span>
+            <span className={css({ color: textSecondary, fontSize: '16px', flexShrink: '0' })}>
+              →
+            </span>
           )}
         </div>
       ))}
@@ -544,7 +619,14 @@ function InterpolationBar({
           style={{ left: `calc(${pct}% - 2px)` }}
         />
       </div>
-      <span className={css({ fontSize: '11px', color: textSecondary, minWidth: '50px', textAlign: 'right' })}>
+      <span
+        className={css({
+          fontSize: '11px',
+          color: textSecondary,
+          minWidth: '50px',
+          textAlign: 'right',
+        })}
+      >
         {preview.min}–{preview.max}
       </span>
     </div>
@@ -601,14 +683,28 @@ function ModeConfigCard({
       })}
       data-component={`mode-card-${mode}`}
     >
-      <h3 className={css({ fontSize: '15px', fontWeight: '600', color: textPrimary, marginBottom: '16px' })}>
+      <h3
+        className={css({
+          fontSize: '15px',
+          fontWeight: '600',
+          color: textPrimary,
+          marginBottom: '16px',
+        })}
+      >
         {emoji} {label}
       </h3>
 
       <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' })}>
         {/* Floor (Struggling) */}
         <div>
-          <div className={css({ fontSize: '12px', fontWeight: '600', color: textSecondary, marginBottom: '12px' })}>
+          <div
+            className={css({
+              fontSize: '12px',
+              fontWeight: '600',
+              color: textSecondary,
+              marginBottom: '12px',
+            })}
+          >
             Struggling (0% comfort)
           </div>
           <NumberStepper
@@ -633,7 +729,14 @@ function ModeConfigCard({
 
         {/* Ceiling (Mastered) */}
         <div>
-          <div className={css({ fontSize: '12px', fontWeight: '600', color: textSecondary, marginBottom: '12px' })}>
+          <div
+            className={css({
+              fontSize: '12px',
+              fontWeight: '600',
+              color: textSecondary,
+              marginBottom: '12px',
+            })}
+          >
             Mastered (100% comfort)
           </div>
           <NumberStepper
@@ -658,7 +761,9 @@ function ModeConfigCard({
       </div>
 
       {/* Preview bar */}
-      <div className={css({ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' })}>
+      <div
+        className={css({ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' })}
+      >
         <span className={css({ fontSize: '11px', color: textSecondary })}>
           {config.floor.min}–{config.floor.max}
         </span>
@@ -689,7 +794,14 @@ function ModeConfigCard({
         <span className={css({ fontSize: '11px', color: textSecondary })}>
           {config.ceiling.min}–{config.ceiling.max}
         </span>
-        <span className={css({ fontSize: '12px', fontWeight: '600', color: accentBlue, marginLeft: '4px' })}>
+        <span
+          className={css({
+            fontSize: '12px',
+            fontWeight: '600',
+            color: accentBlue,
+            marginLeft: '4px',
+          })}
+        >
           {preview.min}–{preview.max}
         </span>
       </div>
@@ -736,7 +848,9 @@ function NumberStepper({
         marginBottom: '8px',
       })}
     >
-      <span className={css({ fontSize: '12px', color: textSecondary, minWidth: '70px' })}>{label}:</span>
+      <span className={css({ fontSize: '12px', color: textSecondary, minWidth: '70px' })}>
+        {label}:
+      </span>
       <div className={css({ display: 'flex', alignItems: 'center', gap: '0' })}>
         <button
           onClick={() => onChange(Math.max(2, value - 1))}
@@ -844,7 +958,12 @@ function HowItWorks({
         })}
         data-action="toggle-how-it-works"
       >
-        <span style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+        <span
+          style={{
+            transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s',
+          }}
+        >
           ▶
         </span>
         How It Works
@@ -863,32 +982,48 @@ function HowItWorks({
             color: textSecondary,
           })}
         >
-          <ol className={css({ paddingLeft: '20px', margin: '0', display: 'flex', flexDirection: 'column', gap: '8px' })}>
+          <ol
+            className={css({
+              paddingLeft: '20px',
+              margin: '0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            })}
+          >
             <li>
               <strong className={css({ color: textPrimary })}>BKT</strong> tracks per-skill mastery
               (pKnown) from problem history, independently per mode.
             </li>
             <li>
-              <strong className={css({ color: textPrimary })}>Comfort level</strong> (0–1) aggregates
-              pKnown across practicing skills.
+              <strong className={css({ color: textPrimary })}>Comfort level</strong> (0–1)
+              aggregates pKnown across practicing skills.
               <ul className={css({ paddingLeft: '20px', marginTop: '4px' })}>
                 <li>Session mode scales: remediation ×0.6, progression ×0.85, maintenance ×1.0</li>
                 <li>Problem length preference shifts: shorter −0.3, recommended ±0, longer +0.2</li>
               </ul>
             </li>
             <li>
-              <strong className={css({ color: textPrimary })}>This config</strong> defines term counts at
-              comfort=0 (floor) vs comfort=1 (ceiling).
+              <strong className={css({ color: textPrimary })}>This config</strong> defines term
+              counts at comfort=0 (floor) vs comfort=1 (ceiling).
             </li>
             <li>
-              <strong className={css({ color: textPrimary })}>Linear interpolation</strong> between floor
-              and ceiling:{' '}
-              <code className={css({ fontSize: '12px', background: isDark ? '#21262d' : '#f0f0f0', padding: '1px 4px', borderRadius: '3px' })}>
+              <strong className={css({ color: textPrimary })}>Linear interpolation</strong> between
+              floor and ceiling:{' '}
+              <code
+                className={css({
+                  fontSize: '12px',
+                  background: isDark ? '#21262d' : '#f0f0f0',
+                  padding: '1px 4px',
+                  borderRadius: '3px',
+                })}
+              >
                 round(floor + (ceiling - floor) × comfort)
               </code>
             </li>
             <li>
-              Problem generator picks a random term count within the resulting {'{'} min, max {'}'} range.
+              Problem generator picks a random term count within the resulting {'{'} min, max {'}'}{' '}
+              range.
             </li>
           </ol>
           <div
@@ -906,8 +1041,7 @@ function HowItWorks({
             min = round(2 + (4−2) × 0.3) = 3
             <br />
             max = round(3 + (8−3) × 0.3) = 5
-            <br />
-            → problems have 3–5 terms
+            <br />→ problems have 3–5 terms
           </div>
         </div>
       )}

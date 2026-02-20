@@ -81,7 +81,7 @@ export const TOOL_EVOLVE_STORY: RealtimeTool = {
   type: 'function',
   name: 'evolve_story',
   description:
-    'Call this PROACTIVELY to get a fresh story development. Do NOT wait for awkward silence — call it after 4-6 exchanges when the initial topic is settling, when the child gives a short answer, when you feel the conversation could use a new thread, or during any natural breath. Call it even when things are going okay — fresh material keeps the conversation engaging. The only bad time to call this is in the middle of a rapid back-and-forth exchange. You\'ll get back a development, a new tension, and a suggestion to weave in naturally.',
+    "Call this PROACTIVELY to get a fresh story development. Do NOT wait for awkward silence — call it after 4-6 exchanges when the initial topic is settling, when the child gives a short answer, when you feel the conversation could use a new thread, or during any natural breath. Call it even when things are going okay — fresh material keeps the conversation engaging. The only bad time to call this is in the middle of a rapid back-and-forth exchange. You'll get back a development, a new tension, and a suggestion to weave in naturally.",
   parameters: { type: 'object', properties: {} },
 }
 
@@ -140,14 +140,13 @@ export const TOOL_SWITCH_SPEAKER: RealtimeTool = {
 export const TOOL_START_EXPLORATION: RealtimeTool = {
   type: 'function',
   name: 'start_exploration',
-  description:
-    `Launch an animated visual exploration on the number line. For constant explorations (phi, pi, tau, e, gamma, sqrt2, ramanujan): the animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. A pre-recorded narrator handles the narration. Stay quiet during playback. For tour explorations (primes): you will need to hang up first — the tour launches automatically after the call ends. Explain the tour to the child, say goodbye warmly, invite them to call back after watching, then call hang_up. Available explorations: ${AVAILABLE_EXPLORATIONS.map(e => `${e.id} (${e.name})`).join(', ')}.`,
+  description: `Launch an animated visual exploration on the number line. For constant explorations (phi, pi, tau, e, gamma, sqrt2, ramanujan): the animation starts PAUSED — introduce the constant to the child first, then call resume_exploration when ready. A pre-recorded narrator handles the narration. Stay quiet during playback. For tour explorations (primes): you will need to hang up first — the tour launches automatically after the call ends. Explain the tour to the child, say goodbye warmly, invite them to call back after watching, then call hang_up. Available explorations: ${AVAILABLE_EXPLORATIONS.map((e) => `${e.id} (${e.name})`).join(', ')}.`,
   parameters: {
     type: 'object',
     properties: {
       constant_id: {
         type: 'string',
-        enum: AVAILABLE_EXPLORATIONS.map(e => e.id),
+        enum: AVAILABLE_EXPLORATIONS.map((e) => e.id),
         description: 'Which exploration to launch',
       },
     },
@@ -167,7 +166,7 @@ export const TOOL_RESUME_EXPLORATION: RealtimeTool = {
   type: 'function',
   name: 'resume_exploration',
   description:
-    'Resume the exploration animation from where it was paused. Call this after you\'ve answered the child\'s question and they\'re ready to continue watching.',
+    "Resume the exploration animation from where it was paused. Call this after you've answered the child's question and they're ready to continue watching.",
   parameters: { type: 'object', properties: {} },
 }
 
@@ -236,9 +235,9 @@ export const TOOL_REQUEST_MORE_TIME: RealtimeTool = {
 // ── Factory tools (context-dependent) ───────────────────────────────────────
 
 export function makeIdentifyCallerTool(
-  players: Array<{ id: string; name: string; emoji: string }>,
+  players: Array<{ id: string; name: string; emoji: string }>
 ): RealtimeTool {
-  const nameList = players.map(p => p.name).join(', ')
+  const nameList = players.map((p) => p.name).join(', ')
   return {
     type: 'function',
     name: 'identify_caller',
@@ -252,7 +251,8 @@ export function makeIdentifyCallerTool(
       properties: {
         name: {
           type: 'string',
-          description: 'The name the child said (your best guess — fuzzy matching will handle misspellings)',
+          description:
+            'The name the child said (your best guess — fuzzy matching will handle misspellings)',
         },
       },
       required: ['name'],
@@ -275,7 +275,8 @@ export function makeStartGameTool(): RealtimeTool {
         },
         target: {
           type: 'number',
-          description: 'For find_number: the target number to find. For race: the target to reach (default 21).',
+          description:
+            'For find_number: the target number to find. For race: the target to reach (default 21).',
         },
         min: {
           type: 'number',
@@ -287,15 +288,18 @@ export function makeStartGameTool(): RealtimeTool {
         },
         stones: {
           type: 'number',
-          description: 'For nim/poison: total number of stones (default 15). Must be a positive integer.',
+          description:
+            'For nim/poison: total number of stones (default 15). Must be a positive integer.',
         },
         max_take: {
           type: 'number',
-          description: 'For nim/poison: maximum stones a player can take per turn (default 3). Must be a positive integer.',
+          description:
+            'For nim/poison: maximum stones a player can take per turn (default 3). Must be a positive integer.',
         },
         max_add: {
           type: 'number',
-          description: 'For race: maximum a player can add per turn (default 3). Must be a positive integer.',
+          description:
+            'For race: maximum a player can add per turn (default 3). Must be a positive integer.',
         },
       },
       required: ['game_id'],
@@ -335,7 +339,7 @@ export function getDefaultTools(ctx: ModeContext): RealtimeTool[] {
     TOOL_EVOLVE_STORY,
     makeStartGameTool(),
     TOOL_SET_NUMBER_LINE_STYLE,
-    TOOL_INDICATE,
+    TOOL_INDICATE
   )
 
   return tools

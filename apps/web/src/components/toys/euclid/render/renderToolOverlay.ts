@@ -43,13 +43,17 @@ function clampFriction(v: number): number {
 }
 
 /** Get the current friction coefficient. */
-export function getFriction(): number { return friction }
+export function getFriction(): number {
+  return friction
+}
 /** Friction range for debug UI. */
 export function getFrictionRange(): { min: number; max: number } {
   return { min: FRICTION_MIN, max: FRICTION_MAX }
 }
 /** Set the friction coefficient (clamped to safe range). */
-export function setFriction(value: number) { friction = clampFriction(value) }
+export function setFriction(value: number) {
+  friction = clampFriction(value)
+}
 
 // ── Straightedge draw animation type ─────────────────────────────
 
@@ -80,18 +84,16 @@ const sePhysics = {
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-function toScreen(
-  wx: number,
-  wy: number,
-  viewport: EuclidViewportState,
-  w: number,
-  h: number,
-) {
+function toScreen(wx: number, wy: number, viewport: EuclidViewportState, w: number, h: number) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    w, h,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    w,
+    h
   )
 }
 
@@ -174,7 +176,7 @@ function computeHinge(
   pivotX: number,
   pivotY: number,
   scriberX: number,
-  scriberY: number,
+  scriberY: number
 ): { x: number; y: number } {
   const midX = (pivotX + scriberX) / 2
   const midY = (pivotY + scriberY) / 2
@@ -221,7 +223,7 @@ function renderLeg(
   hingeY: number,
   tipX: number,
   tipY: number,
-  alpha: number,
+  alpha: number
 ) {
   const dx = tipX - hingeX
   const dy = tipY - hingeY
@@ -284,12 +286,7 @@ function renderLeg(
 
 // ── Hinge rendering ───────────────────────────────────────────────
 
-function renderHinge(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  alpha: number,
-) {
+function renderHinge(ctx: CanvasRenderingContext2D, x: number, y: number, alpha: number) {
   ctx.save()
   ctx.globalAlpha = alpha
 
@@ -321,7 +318,7 @@ function renderPivotTip(
   tipY: number,
   hingeX: number,
   hingeY: number,
-  alpha: number,
+  alpha: number
 ) {
   // Needle-sharp triangle — this IS the cursor, so it needs to read as "the point"
   const dx = tipX - hingeX
@@ -365,7 +362,7 @@ function renderScriberTip(
   tipX: number,
   tipY: number,
   color: string,
-  alpha: number,
+  alpha: number
 ) {
   ctx.save()
   ctx.globalAlpha = alpha
@@ -395,7 +392,7 @@ function renderCompass(
   scriberX: number,
   scriberY: number,
   alpha: number,
-  nextColor: string,
+  nextColor: string
 ) {
   const hinge = computeHinge(pivotX, pivotY, scriberX, scriberY)
 
@@ -419,7 +416,7 @@ function renderStraightedgeBar(
   fromY: number,
   toX: number,
   toY: number,
-  alpha: number,
+  alpha: number
 ) {
   const dx = toX - fromX
   const dy = toY - fromY
@@ -446,10 +443,10 @@ function renderStraightedgeBar(
   // Four corners of the rectangle, offset perpendicular
   const offset = STRAIGHTEDGE_WIDTH
   const corners = [
-    { x: x1, y: y1 },                               // working edge start
-    { x: x2, y: y2 },                               // working edge end
-    { x: x2 + px * offset, y: y2 + py * offset },   // far edge end
-    { x: x1 + px * offset, y: y1 + py * offset },   // far edge start
+    { x: x1, y: y1 }, // working edge start
+    { x: x2, y: y2 }, // working edge end
+    { x: x2 + px * offset, y: y2 + py * offset }, // far edge end
+    { x: x1 + px * offset, y: y1 + py * offset }, // far edge start
   ]
 
   // Shadow
@@ -466,10 +463,7 @@ function renderStraightedgeBar(
   ctx.restore()
 
   // Gradient fill — warm tan/wood tone, lighter top darker bottom
-  const grad = ctx.createLinearGradient(
-    x1, y1,
-    x1 + px * offset, y1 + py * offset,
-  )
+  const grad = ctx.createLinearGradient(x1, y1, x1 + px * offset, y1 + py * offset)
   grad.addColorStop(0, '#D8CCA8')
   grad.addColorStop(0.3, '#C8B896')
   grad.addColorStop(1, '#8A7A5A')
@@ -515,7 +509,7 @@ function renderStraightedgeEndpoint(
   activeY: number,
   otherX: number,
   otherY: number,
-  alpha: number,
+  alpha: number
 ) {
   const dx = activeX - otherX
   const dy = activeY - otherY
@@ -551,7 +545,7 @@ function renderCompassCenterSetPreview(
   centerSy: number,
   pointerSx: number,
   pointerSy: number,
-  radiusScreen: number,
+  radiusScreen: number
 ) {
   // Dashed line center -> pointer
   ctx.beginPath()
@@ -579,7 +573,7 @@ function renderCompassRadiusSetPreview(
   centerSy: number,
   pointerSx: number,
   pointerSy: number,
-  radiusScreen: number,
+  radiusScreen: number
 ) {
   // Faint guide ring
   ctx.beginPath()
@@ -606,7 +600,7 @@ function renderCompassSweepingPreview(
   cumulativeSweep: number,
   pointerSx: number | null,
   pointerSy: number | null,
-  nextColor: string,
+  nextColor: string
 ) {
   // Faint guide ring
   ctx.beginPath()
@@ -646,7 +640,7 @@ function renderStraightedgeFromSetPreview(
   pointerSy: number,
   nextColor: string,
   canvasW: number,
-  canvasH: number,
+  canvasH: number
 ) {
   // Extend line to viewport edges
   const dx = pointerSx - fromSx
@@ -690,7 +684,7 @@ export function renderToolOverlay(
   h: number,
   nextColor: string,
   isComplete: boolean,
-  straightedgeDrawAnim: StraightedgeDrawAnim | null,
+  straightedgeDrawAnim: StraightedgeDrawAnim | null
 ): void {
   const ppu = viewport.pixelsPerUnit
 
@@ -789,13 +783,23 @@ export function renderToolOverlay(
         const sc = toScreen(center.x, center.y, viewport, w, h)
         const radiusScreen = compassPhase.radius * ppu
 
-        const pointerSx = pointerWorld ? toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h).x : null
-        const pointerSy = pointerWorld ? toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h).y : null
+        const pointerSx = pointerWorld
+          ? toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h).x
+          : null
+        const pointerSy = pointerWorld
+          ? toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h).y
+          : null
 
         renderCompassSweepingPreview(
-          ctx, sc.x, sc.y, radiusScreen,
-          compassPhase.startAngle, compassPhase.cumulativeSweep,
-          pointerSx, pointerSy, nextColor,
+          ctx,
+          sc.x,
+          sc.y,
+          radiusScreen,
+          compassPhase.startAngle,
+          compassPhase.cumulativeSweep,
+          pointerSx,
+          pointerSy,
+          nextColor
         )
 
         const currentAngle = compassPhase.startAngle + compassPhase.cumulativeSweep
@@ -809,13 +813,7 @@ export function renderToolOverlay(
     if (compassPhase.tag === 'idle' && pointerWorld) {
       const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
       const bob = Math.sin(performance.now() / 600) * 2
-      renderCompass(
-        ctx,
-        sp.x, sp.y + bob,
-        sp.x + COMPASS_IDLE_SPREAD, sp.y + bob,
-        0.4,
-        nextColor,
-      )
+      renderCompass(ctx, sp.x, sp.y + bob, sp.x + COMPASS_IDLE_SPREAD, sp.y + bob, 0.4, nextColor)
     }
     return
   }

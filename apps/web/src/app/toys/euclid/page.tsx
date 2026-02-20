@@ -12,10 +12,7 @@ export default function EuclidPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const { data: completedList } = useEuclidProgress(selectedPlayerId)
 
-  const completed = useMemo(
-    () => new Set(completedList ?? []),
-    [completedList],
-  )
+  const completed = useMemo(() => new Set(completedList ?? []), [completedList])
 
   return (
     <div
@@ -41,10 +38,7 @@ export default function EuclidPage() {
             >
               Euclid
             </span>
-            <PlayerPicker
-              selectedPlayerId={selectedPlayerId}
-              onSelect={setSelectedPlayerId}
-            />
+            <PlayerPicker selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} />
           </div>
         }
       />
@@ -59,9 +53,7 @@ export default function EuclidPage() {
         <EuclidMap
           completed={completed}
           onSelectProp={(propId) => {
-            const params = selectedPlayerId
-              ? `?player=${encodeURIComponent(selectedPlayerId)}`
-              : ''
+            const params = selectedPlayerId ? `?player=${encodeURIComponent(selectedPlayerId)}` : ''
             router.push(`/toys/euclid/${propId}${params}`)
           }}
           onSelectPlayground={() => router.push('/toys/euclid/playground')}

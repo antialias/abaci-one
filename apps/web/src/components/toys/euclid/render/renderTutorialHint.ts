@@ -12,29 +12,22 @@ import { worldToScreen2D } from '../../shared/coordinateConversions'
 const HINT_COLOR = 'rgba(78, 121, 167,'
 const HINT_FILL = `${HINT_COLOR} 0.7)`
 
-function toScreen(
-  wx: number,
-  wy: number,
-  viewport: EuclidViewportState,
-  w: number,
-  h: number,
-) {
+function toScreen(wx: number, wy: number, viewport: EuclidViewportState, w: number, h: number) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    w, h,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    w,
+    h
   )
 }
 
 // ── Individual hint renderers ──────────────────────────────────────
 
-function renderPointHint(
-  ctx: CanvasRenderingContext2D,
-  sx: number,
-  sy: number,
-  time: number,
-) {
+function renderPointHint(ctx: CanvasRenderingContext2D, sx: number, sy: number, time: number) {
   // Pulsing ring
   const pulse = 1 + Math.sin(time * 4) * 0.15
   const ringRadius = 16 * pulse
@@ -74,7 +67,7 @@ function renderArrowHint(
   fromSy: number,
   toSx: number,
   toSy: number,
-  time: number,
+  time: number
 ) {
   const dx = toSx - fromSx
   const dy = toSy - fromSy
@@ -100,14 +93,8 @@ function renderArrowHint(
   const headLen = 12
   ctx.beginPath()
   ctx.moveTo(toSx, toSy)
-  ctx.lineTo(
-    toSx - headLen * Math.cos(angle - 0.4),
-    toSy - headLen * Math.sin(angle - 0.4),
-  )
-  ctx.lineTo(
-    toSx - headLen * Math.cos(angle + 0.4),
-    toSy - headLen * Math.sin(angle + 0.4),
-  )
+  ctx.lineTo(toSx - headLen * Math.cos(angle - 0.4), toSy - headLen * Math.sin(angle - 0.4))
+  ctx.lineTo(toSx - headLen * Math.cos(angle + 0.4), toSy - headLen * Math.sin(angle + 0.4))
   ctx.closePath()
   ctx.fillStyle = HINT_FILL
   ctx.fill()
@@ -127,7 +114,7 @@ function renderSweepHint(
   cx: number,
   cy: number,
   screenRadius: number,
-  time: number,
+  time: number
 ) {
   // Rotating dashed arc with leading dot — "sweep around"
   const r = screenRadius + 18
@@ -162,7 +149,7 @@ function renderCandidatesHint(
   viewport: EuclidViewportState,
   w: number,
   h: number,
-  time: number,
+  time: number
 ) {
   const pulse = 1 + Math.sin(time * 3) * 0.2
   const alpha = 0.4 + Math.sin(time * 3) * 0.2
@@ -197,7 +184,7 @@ export function renderTutorialHint(
   w: number,
   h: number,
   candidates: IntersectionCandidate[],
-  time: number,
+  time: number
 ): void {
   if (hint.type === 'none') return
 
@@ -239,17 +226,18 @@ export function renderTutorialHint(
       const resolvedA = resolveSelector(hint.ofA, state)
       const resolvedB = resolveSelector(hint.ofB, state)
       if (!resolvedA || !resolvedB) return
-      filtered = candidates.filter(c =>
-        (c.ofA === resolvedA && c.ofB === resolvedB) ||
-        (c.ofA === resolvedB && c.ofB === resolvedA),
+      filtered = candidates.filter(
+        (c) =>
+          (c.ofA === resolvedA && c.ofB === resolvedB) ||
+          (c.ofA === resolvedB && c.ofB === resolvedA)
       )
     } else {
       filtered = candidates
     }
     // Further filter by beyondId when specified (e.g. "beyond B on segment DB")
     if (hint.beyondId) {
-      filtered = filtered.filter(c =>
-        isCandidateBeyondPoint(c, hint.beyondId!, c.ofA, c.ofB, state),
+      filtered = filtered.filter((c) =>
+        isCandidateBeyondPoint(c, hint.beyondId!, c.ofA, c.ofB, state)
       )
     }
     // In guided mode, only show one candidate to avoid confusing the student.

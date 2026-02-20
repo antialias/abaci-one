@@ -53,10 +53,10 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // Seg 0: The question
   {
     ttsText:
-      'Let\'s find out what happens when you add every number together. ' +
-      'One plus two plus three plus four — all of them, forever! Let\'s watch!',
-    startProgress: 0.000,
-    endProgress: 0.040,
+      "Let's find out what happens when you add every number together. " +
+      "One plus two plus three plus four — all of them, forever! Let's watch!",
+    startProgress: 0.0,
+    endProgress: 0.04,
     animationDurationMs: 4500,
     scrubberLabel: 'Add all numbers',
   },
@@ -65,9 +65,9 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       'Look at that! One, three, six, ten, fifteen — the pile gets bigger ' +
-      'faster and faster! It zooms off to infinity. There\'s no stopping it!',
-    startProgress: 0.040,
-    endProgress: 0.070,
+      "faster and faster! It zooms off to infinity. There's no stopping it!",
+    startProgress: 0.04,
+    endProgress: 0.07,
     animationDurationMs: 4500,
     scrubberLabel: 'Zooms to infinity!',
   },
@@ -75,10 +75,10 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // Seg 2: The hook
   {
     ttsText:
-      'But here\'s the wild part. Mathematicians found a secret number ' +
-      'hiding inside that crazy sum. Let\'s go on a treasure hunt to find it!',
-    startProgress: 0.070,
-    endProgress: 0.100,
+      "But here's the wild part. Mathematicians found a secret number " +
+      "hiding inside that crazy sum. Let's go on a treasure hunt to find it!",
+    startProgress: 0.07,
+    endProgress: 0.1,
     animationDurationMs: 5000,
     scrubberLabel: 'A secret hides',
   },
@@ -93,9 +93,9 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'First, what if we shrink each number before adding? ' +
       'Take one, add a half, add a third, add a quarter. ' +
       'The pieces are small, but even those still pile up to infinity! ' +
-      'Shrinking a little isn\'t enough.',
-    startProgress: 0.100,
-    endProgress: 0.150,
+      "Shrinking a little isn't enough.",
+    startProgress: 0.1,
+    endProgress: 0.15,
     animationDurationMs: 7000,
     scrubberLabel: 'Shrink a little',
   },
@@ -105,10 +105,10 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'We need to shrink HARDER! What if we square the bottom numbers? ' +
       'One over one is still one. But one over two-squared is just a quarter! ' +
-      'One over three-squared is a ninth — that\'s tiny! One over four-squared ' +
+      "One over three-squared is a ninth — that's tiny! One over four-squared " +
       'is a sixteenth. They get SO small, SO fast!',
-    startProgress: 0.150,
-    endProgress: 0.200,
+    startProgress: 0.15,
+    endProgress: 0.2,
     animationDurationMs: 7000,
     scrubberLabel: 'Shrink HARDER',
   },
@@ -119,8 +119,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'And when you add all those tiny pieces together... watch the pile. ' +
       'It slows down... and stops growing! It settles to about one point six four five. ' +
       'Not infinity — a real, beautiful number!',
-    startProgress: 0.200,
-    endProgress: 0.260,
+    startProgress: 0.2,
+    endProgress: 0.26,
     animationDurationMs: 6500,
     scrubberLabel: 'It settles!',
   },
@@ -133,11 +133,11 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       'How much we squish is like a tuning knob. Knob at two means ' +
-      'square the bottoms. Let\'s try other settings! Knob at three: ' +
+      "square the bottoms. Let's try other settings! Knob at three: " +
       'the pieces get even tinier! Knob at four: they practically vanish! ' +
       'Each setting gives a different answer.',
-    startProgress: 0.260,
-    endProgress: 0.320,
+    startProgress: 0.26,
+    endProgress: 0.32,
     animationDurationMs: 7000,
     scrubberLabel: 'The tuning knob',
   },
@@ -145,10 +145,10 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // Seg 7: Plotting points
   {
     ttsText:
-      'Each knob setting gives us a number. Let\'s mark them on a graph. ' +
+      "Each knob setting gives us a number. Let's mark them on a graph. " +
       'Knob two lands here... knob three over here... knob four right there.',
-    startProgress: 0.320,
-    endProgress: 0.370,
+    startProgress: 0.32,
+    endProgress: 0.37,
     animationDurationMs: 5500,
     scrubberLabel: 'Plot the points',
   },
@@ -158,8 +158,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'Now connect the dots. See that? ' +
       'A smooth, beautiful curve — like a roller coaster track!',
-    startProgress: 0.370,
-    endProgress: 0.420,
+    startProgress: 0.37,
+    endProgress: 0.42,
     animationDurationMs: 5000,
     scrubberLabel: 'Connect the dots',
   },
@@ -174,8 +174,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Now watch what happens when the knob slides toward one. ' +
       'The pieces barely shrink at all. ' +
       'The sum gets bigger... and bigger...',
-    startProgress: 0.420,
-    endProgress: 0.470,
+    startProgress: 0.42,
+    endProgress: 0.47,
     animationDurationMs: 5500,
     scrubberLabel: 'Approaching the wall',
   },
@@ -183,11 +183,11 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // Seg 10: The wall
   {
     ttsText:
-      'At knob one, it\'s one plus a half plus a third plus a quarter — ' +
-      'and THAT goes to infinity too! There\'s a wall in our track. ' +
-      'The roller coaster can\'t go there!',
-    startProgress: 0.470,
-    endProgress: 0.520,
+      "At knob one, it's one plus a half plus a third plus a quarter — " +
+      "and THAT goes to infinity too! There's a wall in our track. " +
+      "The roller coaster can't go there!",
+    startProgress: 0.47,
+    endProgress: 0.52,
     animationDurationMs: 6000,
     scrubberLabel: 'The wall!',
   },
@@ -199,10 +199,10 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // Seg 11: Smooth track + how to get past?
   {
     ttsText:
-      'But look at the track we\'ve built on this side of the wall. ' +
-      'It\'s perfectly smooth — no bumps, no kinks. ' +
+      "But look at the track we've built on this side of the wall. " +
+      "It's perfectly smooth — no bumps, no kinks. " +
       'But how do we get past the wall to the other side?',
-    startProgress: 0.520,
+    startProgress: 0.52,
     endProgress: 0.555,
     animationDurationMs: 5000,
     scrubberLabel: 'Smooth track',
@@ -212,11 +212,11 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       'What if the track makes a sharp turn? ' +
-      'Nope — it cracks! Sharp corners aren\'t smooth. ' +
+      "Nope — it cracks! Sharp corners aren't smooth. " +
       'What about a wiggly path? Too wobbly — that breaks too! ' +
       'Only a perfectly smooth path can survive.',
     startProgress: 0.555,
-    endProgress: 0.600,
+    endProgress: 0.6,
     animationDurationMs: 6500,
     scrubberLabel: 'Failed attempts',
   },
@@ -224,12 +224,12 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // Seg 13: The seesaw — WHY the smooth path goes negative
   {
     ttsText:
-      'Here\'s the secret. On our side of the wall, the track rockets UP to infinity. ' +
+      "Here's the secret. On our side of the wall, the track rockets UP to infinity. " +
       'But a smooth path has to reach the wall from both sides. ' +
       'And if it goes up on the right... the only smooth way is to plunge ' +
       'DOWN on the left! Like a seesaw — one side up, the other must go down.',
-    startProgress: 0.600,
-    endProgress: 0.650,
+    startProgress: 0.6,
+    endProgress: 0.65,
     animationDurationMs: 7000,
     scrubberLabel: 'The seesaw',
   },
@@ -241,8 +241,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Then it climbs... but stays negative! ' +
       'The wall flipped everything to the minus side. ' +
       'And the pencil draws the only smooth path, all by itself.',
-    startProgress: 0.650,
-    endProgress: 0.700,
+    startProgress: 0.65,
+    endProgress: 0.7,
     animationDurationMs: 6500,
     scrubberLabel: 'Below zero',
   },
@@ -258,8 +258,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Remember, knob at two means one over n-squared — it squishes numbers small. ' +
       'But the minus sign is like a flipper! ' +
       'Instead of squishing numbers smaller, it flips them bigger!',
-    startProgress: 0.700,
-    endProgress: 0.760,
+    startProgress: 0.7,
+    endProgress: 0.76,
     animationDurationMs: 7500,
     scrubberLabel: 'The flipper',
   },
@@ -271,8 +271,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'But four to the power of one is just... four! The minus sign flipped it back! ' +
       'So knob at negative one gives us back one plus two plus three plus four forever — ' +
       'our original question!',
-    startProgress: 0.760,
-    endProgress: 0.810,
+    startProgress: 0.76,
+    endProgress: 0.81,
     animationDurationMs: 7000,
     scrubberLabel: 'Our original question',
   },
@@ -281,10 +281,10 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       'At knob negative one, the actual sum — one plus two plus three plus four — ' +
-      'it explodes to infinity! It\'s pure chaos at that spot. ' +
+      "it explodes to infinity! It's pure chaos at that spot. " +
       'Watch the numbers fly!',
-    startProgress: 0.810,
-    endProgress: 0.850,
+    startProgress: 0.81,
+    endProgress: 0.85,
     animationDurationMs: 5500,
     scrubberLabel: 'Volcano!',
   },
@@ -303,7 +303,7 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Knob four? Real answer. Bridge matches. ' +
       'Every single point where the sum converges, the bridge nails the real answer. ' +
       'Because the bridge was BUILT from those real answers!',
-    startProgress: 0.850,
+    startProgress: 0.85,
     endProgress: 0.895,
     animationDurationMs: 9000,
     scrubberLabel: 'Trust the bridge',
@@ -313,11 +313,11 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       'And this bridge — the one smooth path, built from real math, ' +
-      'the only path that doesn\'t break — ' +
+      "the only path that doesn't break — " +
       'it flies right over the chaos at knob negative one. ' +
       'And it says the height there is... negative one twelfth!',
     startProgress: 0.895,
-    endProgress: 0.940,
+    endProgress: 0.94,
     animationDurationMs: 7000,
     scrubberLabel: 'Negative one twelfth!',
   },
@@ -328,8 +328,8 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'We squished numbers and found real answers. ' +
       'Those answers built the only smooth bridge. ' +
       'The bridge told us the pattern hidden inside one plus two plus three forever.',
-    startProgress: 0.940,
-    endProgress: 0.970,
+    startProgress: 0.94,
+    endProgress: 0.97,
     animationDurationMs: 6000,
     scrubberLabel: 'Putting it together',
   },
@@ -341,9 +341,9 @@ export const RAMANUJAN_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'in a letter to a famous professor. ' +
       'One plus two plus three forever equals negative one twelfth. ' +
       'The smooth bridge proves he was right. ' +
-      'It\'s the ghost note — hidden inside infinity.',
-    startProgress: 0.970,
-    endProgress: 1.000,
+      "It's the ghost note — hidden inside infinity.",
+    startProgress: 0.97,
+    endProgress: 1.0,
     animationDurationMs: 8000,
     scrubberLabel: "Ramanujan's letter",
   },

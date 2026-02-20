@@ -54,7 +54,9 @@ function getActiveTask(): { taskId: string; prompt: string } | null {
   try {
     const stored = sessionStorage.getItem(ACTIVE_TASK_KEY)
     return stored ? JSON.parse(stored) : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 export function DemoRefinePanel({
@@ -88,7 +90,9 @@ export function DemoRefinePanel({
     try {
       const stored = sessionStorage.getItem(historyStorageKey)
       return stored ? JSON.parse(stored) : []
-    } catch { return [] }
+    } catch {
+      return []
+    }
   })
   const [expandedHistoryIdx, setExpandedHistoryIdx] = useState<number | null>(null)
   const [continueTarget, setContinueTarget] = useState<string | null>(null)
@@ -99,7 +103,8 @@ export function DemoRefinePanel({
   const currentPromptRef = useRef(resumedTask.current?.prompt ?? '')
   // Tracks intermediate result between claude_result and completed events (avoids stale closures)
   const pendingResultRef = useRef<{ sessionId: string | null; success: boolean | null }>({
-    sessionId: null, success: null,
+    sessionId: null,
+    success: null,
   })
 
   // Screenshot annotation state
@@ -114,9 +119,19 @@ export function DemoRefinePanel({
   const [size, setSize] = useState({ w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT })
 
   // Drag state
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(
+    null
+  )
   // Resize state
-  const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number; origX: number; origY: number; edge: string } | null>(null)
+  const resizeRef = useRef<{
+    startX: number
+    startY: number
+    origW: number
+    origH: number
+    origX: number
+    origY: number
+    edge: string
+  } | null>(null)
 
   // Initialize position on mount
   useEffect(() => {
@@ -142,13 +157,15 @@ export function DemoRefinePanel({
 
   // Persist history to sessionStorage
   useEffect(() => {
-    try { sessionStorage.setItem(historyStorageKey, JSON.stringify(history)) } catch {}
+    try {
+      sessionStorage.setItem(historyStorageKey, JSON.stringify(history))
+    } catch {}
   }, [history, historyStorageKey])
 
   // Auto-select most recent session for continuation
   useEffect(() => {
     if (state !== 'idle') return
-    const mostRecent = [...history].reverse().find(e => e.sessionId)
+    const mostRecent = [...history].reverse().find((e) => e.sessionId)
     setContinueTarget(mostRecent?.sessionId ?? null)
   }, [history, state])
 
@@ -156,10 +173,13 @@ export function DemoRefinePanel({
   useEffect(() => {
     if (taskId && state === 'running') {
       try {
-        sessionStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify({
-          taskId,
-          prompt: currentPromptRef.current,
-        }))
+        sessionStorage.setItem(
+          ACTIVE_TASK_KEY,
+          JSON.stringify({
+            taskId,
+            prompt: currentPromptRef.current,
+          })
+        )
       } catch {}
     } else {
       sessionStorage.removeItem(ACTIVE_TASK_KEY)
@@ -172,24 +192,27 @@ export function DemoRefinePanel({
       onTaskStart?.()
       resumedTask.current = null
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ---- History helpers ----
 
   const pushOptimisticEntry = useCallback(() => {
-    setHistory(prev => [...prev, {
-      prompt: currentPromptRef.current,
-      success: null,
-      sessionId: null,
-      error: 'Interrupted before completion',
-      toolCount: 0,
-      timestamp: Date.now(),
-    }])
+    setHistory((prev) => [
+      ...prev,
+      {
+        prompt: currentPromptRef.current,
+        success: null,
+        sessionId: null,
+        error: 'Interrupted before completion',
+        toolCount: 0,
+        timestamp: Date.now(),
+      },
+    ])
   }, [])
 
   const updateLastEntry = useCallback((patch: Partial<HistoryEntry>) => {
-    setHistory(prev => {
+    setHistory((prev) => {
       if (prev.length === 0) return prev
       const next = [...prev]
       next[next.length - 1] = { ...next[next.length - 1], ...patch }
@@ -197,30 +220,35 @@ export function DemoRefinePanel({
     })
   }, [])
 
-  const finalizeHistory = useCallback((ok: boolean | null, sid: string | null, err: string | null) => {
-    updateLastEntry({
-      success: ok,
-      sessionId: sid,
-      error: err,
-      toolCount: toolCountRef.current,
-    })
-  }, [updateLastEntry])
+  const finalizeHistory = useCallback(
+    (ok: boolean | null, sid: string | null, err: string | null) => {
+      updateLastEntry({
+        success: ok,
+        sessionId: sid,
+        error: err,
+        toolCount: toolCountRef.current,
+      })
+    },
+    [updateLastEntry]
+  )
 
   // ---- Socket.IO event handler (ref pattern avoids stale closures) ----
 
-  const eventHandlerRef = useRef<(event: { taskId: string; eventType: string; payload: Record<string, unknown> }) => void>(() => {})
+  const eventHandlerRef = useRef<
+    (event: { taskId: string; eventType: string; payload: Record<string, unknown> }) => void
+  >(() => {})
   eventHandlerRef.current = (event) => {
     if (event.taskId !== taskId) return
 
     switch (event.eventType) {
       case 'claude_output':
-        setOutput(prev => [...prev, { type: 'text', content: String(event.payload.text ?? '') }])
+        setOutput((prev) => [...prev, { type: 'text', content: String(event.payload.text ?? '') }])
         break
       case 'tool_use': {
         toolCountRef.current++
         const tool = String(event.payload.tool ?? '')
         const file = event.payload.file ? ` ${event.payload.file}` : ''
-        setOutput(prev => [...prev, { type: 'tool', content: `${tool}${file}` }])
+        setOutput((prev) => [...prev, { type: 'tool', content: `${tool}${file}` }])
         updateLastEntry({ toolCount: toolCountRef.current })
         break
       }
@@ -240,14 +268,17 @@ export function DemoRefinePanel({
         pendingResultRef.current.success = ok
         setSessionId(sid)
         setSuccess(ok)
-        setOutput(prev => [...prev, {
-          type: 'result',
-          content: ok ? 'Completed successfully' : 'Completed with errors',
-        }])
+        setOutput((prev) => [
+          ...prev,
+          {
+            type: 'result',
+            content: ok ? 'Completed successfully' : 'Completed with errors',
+          },
+        ])
         break
       }
       case 'stderr':
-        setOutput(prev => [...prev, { type: 'error', content: String(event.payload.text ?? '') }])
+        setOutput((prev) => [...prev, { type: 'error', content: String(event.payload.text ?? '') }])
         break
       case 'progress':
         setProgress(Number(event.payload.progress ?? 0))
@@ -292,50 +323,64 @@ export function DemoRefinePanel({
       socket.emit('task:subscribe', taskId)
     })
 
-    socket.on('task:event', (evt: { taskId: string; eventType: string; payload: Record<string, unknown> }) => {
-      eventHandlerRef.current(evt)
-    })
+    socket.on(
+      'task:event',
+      (evt: { taskId: string; eventType: string; payload: Record<string, unknown> }) => {
+        eventHandlerRef.current(evt)
+      }
+    )
 
     // Handle task:state — server sends current state on subscribe.
     // If the task already finished (e.g. during HMR), transition out of running.
-    socket.on('task:state', (taskState: { id: string; status: string; error?: string | null; output?: { sessionId?: string } | null }) => {
-      if (taskState.id !== taskId) return
-      if (taskState.status === 'completed') {
-        const sid = taskState.output?.sessionId ?? null
-        pendingResultRef.current = { sessionId: sid, success: true }
-        if (sid) setSessionId(sid)
-        setSuccess(true)
-        setOutput(prev => [...prev, { type: 'result', content: 'Completed successfully' }])
-        setState('done')
-        finalizeHistory(true, sid, null)
-        onTaskEnd?.()
-      } else if (taskState.status === 'failed') {
-        const errMsg = taskState.error ?? 'Task failed'
-        setError(errMsg)
-        setState('done')
-        finalizeHistory(false, null, errMsg)
-        onTaskEnd?.()
-      } else if (taskState.status === 'cancelled') {
-        setError('Task cancelled')
-        setState('done')
-        finalizeHistory(null, null, 'Cancelled')
-        onTaskEnd?.()
+    socket.on(
+      'task:state',
+      (taskState: {
+        id: string
+        status: string
+        error?: string | null
+        output?: { sessionId?: string } | null
+      }) => {
+        if (taskState.id !== taskId) return
+        if (taskState.status === 'completed') {
+          const sid = taskState.output?.sessionId ?? null
+          pendingResultRef.current = { sessionId: sid, success: true }
+          if (sid) setSessionId(sid)
+          setSuccess(true)
+          setOutput((prev) => [...prev, { type: 'result', content: 'Completed successfully' }])
+          setState('done')
+          finalizeHistory(true, sid, null)
+          onTaskEnd?.()
+        } else if (taskState.status === 'failed') {
+          const errMsg = taskState.error ?? 'Task failed'
+          setError(errMsg)
+          setState('done')
+          finalizeHistory(false, null, errMsg)
+          onTaskEnd?.()
+        } else if (taskState.status === 'cancelled') {
+          setError('Task cancelled')
+          setState('done')
+          finalizeHistory(null, null, 'Cancelled')
+          onTaskEnd?.()
+        }
       }
-    })
+    )
 
     return () => {
       socket.disconnect()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, isRunning])
 
   // --- Drag-to-move (header) ---
-  const handleDragStart = useCallback((e: React.PointerEvent) => {
-    if (!pos) return
-    e.preventDefault()
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }, [pos])
+  const handleDragStart = useCallback(
+    (e: React.PointerEvent) => {
+      if (!pos) return
+      e.preventDefault()
+      dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    [pos]
+  )
 
   const handleDragMove = useCallback((e: React.PointerEvent) => {
     const d = dragRef.current
@@ -354,21 +399,24 @@ export function DemoRefinePanel({
   }, [])
 
   // --- Drag-to-resize (edges/corners) ---
-  const handleResizeStart = useCallback((e: React.PointerEvent, edge: string) => {
-    if (!pos) return
-    e.preventDefault()
-    e.stopPropagation()
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origW: size.w,
-      origH: size.h,
-      origX: pos.x,
-      origY: pos.y,
-      edge,
-    }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }, [pos, size])
+  const handleResizeStart = useCallback(
+    (e: React.PointerEvent, edge: string) => {
+      if (!pos) return
+      e.preventDefault()
+      e.stopPropagation()
+      resizeRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origW: size.w,
+        origH: size.h,
+        origX: pos.x,
+        origY: pos.y,
+        edge,
+      }
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    [pos, size]
+  )
 
   const handleResizeMove = useCallback((e: React.PointerEvent) => {
     const r = resizeRef.current
@@ -529,9 +577,11 @@ export function DemoRefinePanel({
           endProgress,
           prompt: prompt.trim(),
           selectedSegments: segments,
-          ...(screenshotDataUrl ? {
-            screenshotBase64: screenshotDataUrl.replace(/^data:image\/png;base64,/, ''),
-          } : {}),
+          ...(screenshotDataUrl
+            ? {
+                screenshotBase64: screenshotDataUrl.replace(/^data:image\/png;base64,/, ''),
+              }
+            : {}),
           ...(continueTarget ? { continueSessionId: continueTarget } : {}),
         }),
       })
@@ -554,7 +604,18 @@ export function DemoRefinePanel({
       finalizeHistory(false, null, errMsg)
       setState('idle')
     }
-  }, [prompt, constantId, startProgress, endProgress, segments, onTaskStart, pushOptimisticEntry, finalizeHistory, screenshotDataUrl, continueTarget])
+  }, [
+    prompt,
+    constantId,
+    startProgress,
+    endProgress,
+    segments,
+    onTaskStart,
+    pushOptimisticEntry,
+    finalizeHistory,
+    screenshotDataUrl,
+    continueTarget,
+  ])
 
   const handleCancel = useCallback(() => {
     if (taskId && state === 'running') {
@@ -593,7 +654,7 @@ export function DemoRefinePanel({
   const resizeHandle = (edge: string, cursor: string, style: React.CSSProperties) => (
     <div
       data-element={`refine-resize-${edge}`}
-      onPointerDown={e => handleResizeStart(e, edge)}
+      onPointerDown={(e) => handleResizeStart(e, edge)}
       onPointerMove={handleResizeMove}
       onPointerUp={handleResizeEnd}
       onPointerCancel={handleResizeEnd}
@@ -632,9 +693,7 @@ export function DemoRefinePanel({
         WebkitBackdropFilter: 'blur(12px)',
         border: `1px solid ${border}`,
         borderRadius: 12,
-        boxShadow: isDark
-          ? '0 8px 32px rgba(0,0,0,0.5)'
-          : '0 8px 32px rgba(0,0,0,0.15)',
+        boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.15)',
         color: textColor,
         fontFamily: 'system-ui, sans-serif',
         fontSize: 13,
@@ -674,7 +733,14 @@ export function DemoRefinePanel({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: 12,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             Refine Demo
           </span>
           <span style={{ fontSize: 11, color: mutedColor }}>
@@ -685,7 +751,7 @@ export function DemoRefinePanel({
         <button
           data-action="refine-close"
           onClick={state === 'running' ? handleCancel : onClose}
-          onPointerDown={e => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           style={{
             background: 'none',
             border: 'none',
@@ -761,7 +827,15 @@ export function DemoRefinePanel({
               }}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '10px 14px', flexShrink: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              justifyContent: 'flex-end',
+              padding: '10px 14px',
+              flexShrink: 0,
+            }}
+          >
             <button
               data-action="refine-annotation-cancel"
               onClick={handleAnnotationCancel}
@@ -815,8 +889,15 @@ export function DemoRefinePanel({
       )}
 
       {/* Content area */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {/* History section — always visible when there are entries and in idle/done state */}
         {history.length > 0 && (state === 'idle' || state === 'done') && (
           <div
@@ -829,7 +910,7 @@ export function DemoRefinePanel({
             }}
           >
             {/* "New session" row — only when there are continuable entries */}
-            {history.some(e => e.sessionId) && (
+            {history.some((e) => e.sessionId) && (
               <div
                 data-element="refine-history-new-session"
                 onClick={() => setContinueTarget(null)}
@@ -839,17 +920,23 @@ export function DemoRefinePanel({
                   gap: 8,
                   padding: '6px 14px',
                   cursor: 'pointer',
-                  borderLeft: !continueTarget ? `3px solid ${accentColor}` : '3px solid transparent',
+                  borderLeft: !continueTarget
+                    ? `3px solid ${accentColor}`
+                    : '3px solid transparent',
                   backgroundColor: !continueTarget
-                    ? (isDark ? 'rgba(168, 85, 247, 0.06)' : 'rgba(168, 85, 247, 0.04)')
+                    ? isDark
+                      ? 'rgba(168, 85, 247, 0.06)'
+                      : 'rgba(168, 85, 247, 0.04)'
                     : undefined,
                 }}
               >
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: !continueTarget ? 600 : 400,
-                  color: !continueTarget ? accentColor : mutedColor,
-                }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: !continueTarget ? 600 : 400,
+                    color: !continueTarget ? accentColor : mutedColor,
+                  }}
+                >
                   + New session
                 </span>
               </div>
@@ -858,12 +945,10 @@ export function DemoRefinePanel({
               const isExpanded = expandedHistoryIdx === i
               const isSelected = !!entry.sessionId && continueTarget === entry.sessionId
               const isContinuable = !!entry.sessionId
-              const statusColor = entry.success === true ? '#4ade80'
-                : entry.success === false ? '#f87171'
-                : '#fbbf24'
-              const statusLabel = entry.success === true ? 'OK'
-                : entry.success === false ? 'FAIL'
-                : 'CANCELLED'
+              const statusColor =
+                entry.success === true ? '#4ade80' : entry.success === false ? '#f87171' : '#fbbf24'
+              const statusLabel =
+                entry.success === true ? 'OK' : entry.success === false ? 'FAIL' : 'CANCELLED'
               return (
                 <div key={i}>
                   <div
@@ -882,36 +967,45 @@ export function DemoRefinePanel({
                       borderLeft: isSelected ? `3px solid ${accentColor}` : '3px solid transparent',
                       borderBottom: isExpanded ? 'none' : undefined,
                       backgroundColor: isSelected
-                        ? (isDark ? 'rgba(168, 85, 247, 0.06)' : 'rgba(168, 85, 247, 0.04)')
+                        ? isDark
+                          ? 'rgba(168, 85, 247, 0.06)'
+                          : 'rgba(168, 85, 247, 0.04)'
                         : isExpanded
-                          ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')
+                          ? isDark
+                            ? 'rgba(255,255,255,0.03)'
+                            : 'rgba(0,0,0,0.02)'
                           : undefined,
                     }}
                   >
-                    <span style={{
-                      fontSize: 9,
-                      fontWeight: 700,
-                      padding: '1px 5px',
-                      borderRadius: 3,
-                      backgroundColor: statusColor + '22',
-                      color: statusColor,
-                      flexShrink: 0,
-                      letterSpacing: '0.04em',
-                    }}>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: '1px 5px',
+                        borderRadius: 3,
+                        backgroundColor: statusColor + '22',
+                        color: statusColor,
+                        flexShrink: 0,
+                        letterSpacing: '0.04em',
+                      }}
+                    >
                       {statusLabel}
                     </span>
-                    <span style={{
-                      flex: 1,
-                      fontSize: 11,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      color: isSelected ? textColor : textColor,
-                    }}>
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: 11,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: isSelected ? textColor : textColor,
+                      }}
+                    >
                       {entry.prompt}
                     </span>
                     <span style={{ fontSize: 10, color: mutedColor, flexShrink: 0 }}>
-                      {entry.toolCount > 0 && `${entry.toolCount} tools \u00b7 `}{formatAge(entry.timestamp)}
+                      {entry.toolCount > 0 && `${entry.toolCount} tools \u00b7 `}
+                      {formatAge(entry.timestamp)}
                     </span>
                     <span
                       data-action="refine-history-expand"
@@ -938,11 +1032,20 @@ export function DemoRefinePanel({
                       style={{
                         padding: '4px 14px 8px 14px',
                         fontSize: 11,
-                        borderLeft: isSelected ? `3px solid ${accentColor}` : '3px solid transparent',
+                        borderLeft: isSelected
+                          ? `3px solid ${accentColor}`
+                          : '3px solid transparent',
                         backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                       }}
                     >
-                      <div style={{ color: mutedColor, marginBottom: 4, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                      <div
+                        style={{
+                          color: mutedColor,
+                          marginBottom: 4,
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.5,
+                        }}
+                      >
                         {entry.prompt}
                       </div>
                       {entry.error && (
@@ -960,7 +1063,9 @@ export function DemoRefinePanel({
                             fontSize: 10,
                             padding: '1px 6px',
                             borderRadius: 3,
-                            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
+                            backgroundColor: isDark
+                              ? 'rgba(30, 41, 59, 0.8)'
+                              : 'rgba(241, 245, 249, 0.8)',
                             cursor: 'pointer',
                             fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
                             display: 'inline-block',
@@ -1002,8 +1107,16 @@ export function DemoRefinePanel({
                 }}
               >
                 <span style={{ fontWeight: 600, minWidth: 20 }}>#{seg.index}</span>
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {seg.scrubberLabel ? `${seg.scrubberLabel}: ` : ''}{seg.ttsText}
+                <span
+                  style={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {seg.scrubberLabel ? `${seg.scrubberLabel}: ` : ''}
+                  {seg.ttsText}
                 </span>
               </div>
             ))}
@@ -1013,7 +1126,15 @@ export function DemoRefinePanel({
         {state === 'idle' && (
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {error && (
-              <div style={{ fontSize: 12, color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#ef4444',
+                  padding: '6px 10px',
+                  background: 'rgba(239,68,68,0.1)',
+                  borderRadius: 6,
+                }}
+              >
                 {error}
               </div>
             )}
@@ -1021,13 +1142,15 @@ export function DemoRefinePanel({
               ref={textareaRef}
               data-element="refine-prompt"
               value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              placeholder={continueTarget
-                ? 'Follow-up on the previous refinement...'
-                : history.length > 0
-                  ? 'Describe the next refinement...'
-                  : "Describe the refinement... e.g., 'Make the narration more exciting during the spiral reveal'"}
-              onKeyDown={e => {
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={
+                continueTarget
+                  ? 'Follow-up on the previous refinement...'
+                  : history.length > 0
+                    ? 'Describe the next refinement...'
+                    : "Describe the refinement... e.g., 'Make the narration more exciting during the spiral reveal'"
+              }
+              onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault()
                   handleSubmit()
@@ -1066,7 +1189,9 @@ export function DemoRefinePanel({
                     objectFit: 'contain',
                   }}
                 />
-                <span style={{ fontSize: 10, color: mutedColor, flex: 1 }}>Screenshot attached</span>
+                <span style={{ fontSize: 10, color: mutedColor, flex: 1 }}>
+                  Screenshot attached
+                </span>
                 <button
                   data-action="refine-screenshot-remove"
                   onClick={() => setScreenshotDataUrl(null)}
@@ -1153,13 +1278,15 @@ export function DemoRefinePanel({
                   flexShrink: 0,
                 }}
               >
-                <div style={{
-                  height: '100%',
-                  width: `${progress}%`,
-                  backgroundColor: accentColor,
-                  transition: 'width 0.3s',
-                  borderRadius: 2,
-                }} />
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${progress}%`,
+                    backgroundColor: accentColor,
+                    transition: 'width 0.3s',
+                    borderRadius: 2,
+                  }}
+                />
               </div>
             )}
 
@@ -1228,14 +1355,13 @@ export function DemoRefinePanel({
                 }
                 return (
                   <div key={i} style={{ color, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {prefix}{line.content}
+                    {prefix}
+                    {line.content}
                   </div>
                 )
               })}
               {state === 'running' && (
-                <div style={{ color: mutedColor, marginTop: 4 }}>
-                  Working...
-                </div>
+                <div style={{ color: mutedColor, marginTop: 4 }}>Working...</div>
               )}
               <div ref={outputEndRef} />
             </div>
@@ -1253,9 +1379,7 @@ export function DemoRefinePanel({
                   flexShrink: 0,
                 }}
               >
-                {error && (
-                  <div style={{ fontSize: 12, color: '#ef4444' }}>{error}</div>
-                )}
+                {error && <div style={{ fontSize: 12, color: '#ef4444' }}>{error}</div>}
                 {sessionId && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 11, color: mutedColor }}>Resume:</span>
@@ -1268,7 +1392,9 @@ export function DemoRefinePanel({
                         fontSize: 11,
                         padding: '2px 8px',
                         borderRadius: 4,
-                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(241, 245, 249, 0.8)',
+                        backgroundColor: isDark
+                          ? 'rgba(30, 41, 59, 0.8)'
+                          : 'rgba(241, 245, 249, 0.8)',
                         cursor: 'pointer',
                         userSelect: 'all',
                         fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',

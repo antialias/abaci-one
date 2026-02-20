@@ -43,12 +43,12 @@ export function angleMeasuresEqual(x: AngleMeasure, y: AngleMeasure): boolean {
 
 export type Citation =
   | { type: 'def15'; circleId: string }
-  | { type: 'cn1'; via: DistancePair }     // transitivity through shared equal
-  | { type: 'cn2' }                        // addition (C.N.2)
-  | { type: 'cn3'; whole: DistancePair; part: DistancePair }  // subtraction
-  | { type: 'cn3-angle'; whole: AngleMeasure; part: AngleMeasure }  // angle subtraction
-  | { type: 'cn4' }                        // superposition (C.N.4)
-  | { type: 'given' }                      // hypothesis / given fact
+  | { type: 'cn1'; via: DistancePair } // transitivity through shared equal
+  | { type: 'cn2' } // addition (C.N.2)
+  | { type: 'cn3'; whole: DistancePair; part: DistancePair } // subtraction
+  | { type: 'cn3-angle'; whole: AngleMeasure; part: AngleMeasure } // angle subtraction
+  | { type: 'cn4' } // superposition (C.N.4)
+  | { type: 'given' } // hypothesis / given fact
   | { type: 'prop'; propId: number }
 
 // ── Equality facts ────────────────────────────────────────────────
@@ -58,8 +58,8 @@ export interface EqualityFact {
   readonly left: DistancePair
   readonly right: DistancePair
   readonly citation: Citation
-  readonly statement: string       // "CA = AB"
-  readonly justification: string   // "Def.15: C on circle centered at A through B"
+  readonly statement: string // "CA = AB"
+  readonly justification: string // "Def.15: C on circle centered at A through B"
   readonly atStep: number
 }
 
@@ -68,7 +68,7 @@ export interface AngleEqualityFact {
   readonly left: AngleMeasure
   readonly right: AngleMeasure
   readonly citation: Citation
-  readonly statement: string       // "∠ABC = ∠DEF"
+  readonly statement: string // "∠ABC = ∠DEF"
   readonly justification: string
   readonly atStep: number
 }

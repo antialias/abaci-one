@@ -24,6 +24,7 @@ import type { PracticeBreakConfig } from '@/lib/arcade/manifest-schema'
 import {
   ActiveSessionExistsClientError,
   NoSkillsEnabledClientError,
+  SessionLimitReachedError,
   sessionPlanKeys,
   useApproveSessionPlan,
   useGenerateSessionPlan,
@@ -202,6 +203,7 @@ interface StartPracticeModalContextValue {
   isStarting: boolean
   displayError: Error | null
   isNoSkillsError: boolean
+  isSessionLimitError: boolean
   /** Progress percentage (0-100) during plan generation */
   generationProgress: number
   /** Human-readable progress message during plan generation */
@@ -641,7 +643,11 @@ export function StartPracticeModalProvider({
   const [isStartFlow, setIsStartFlow] = useState(false)
 
   const isStarting =
-    isStartFlow || generatePlan.isPending || generatePlan.isGenerating || approvePlan.isPending || startPlan.isPending
+    isStartFlow ||
+    generatePlan.isPending ||
+    generatePlan.isGenerating ||
+    approvePlan.isPending ||
+    startPlan.isPending
 
   const displayError = useMemo(() => {
     if (generatePlan.error && !(generatePlan.error instanceof ActiveSessionExistsClientError)) {
@@ -656,8 +662,11 @@ export function StartPracticeModalProvider({
     return null
   }, [generatePlan.error, generatePlan.taskError, approvePlan.error, startPlan.error])
 
-  const isNoSkillsError = displayError instanceof NoSkillsEnabledClientError ||
+  const isNoSkillsError =
+    displayError instanceof NoSkillsEnabledClientError ||
     (displayError?.message?.includes('no skills are enabled') ?? false)
+
+  const isSessionLimitError = displayError instanceof SessionLimitReachedError
 
   // Refs to stable mutation functions (avoids re-triggering effects)
   const onStartedRef = useRef(onStarted)
@@ -878,6 +887,7 @@ export function StartPracticeModalProvider({
     isStarting,
     displayError,
     isNoSkillsError,
+    isSessionLimitError,
     generationProgress: generatePlan.progress,
     generationProgressMessage: generatePlan.progressMessage,
 

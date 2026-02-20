@@ -15,8 +15,8 @@ function easeInOut(t: number): number {
 }
 
 // Sub-phase boundaries within construction progress (0→1)
-const HIGHLIGHT_END = 0.20
-const PIVOT_END = 0.50
+const HIGHLIGHT_END = 0.2
+const PIVOT_END = 0.5
 const SWEEP_END = 0.85
 
 const NUM_TREADS = 24
@@ -34,13 +34,21 @@ export function renderPiConstruction(
   constructionProgress: number,
   opacity: number
 ): void {
-  renderConstruction(ctx, state, cssWidth, cssHeight, {
-    radius: 0.5,
-    centerNLY: -0.5,
-    radiusSpoke: false,
-    ...config,
-    spokeLabel: '1 across',
-  }, constructionProgress, opacity)
+  renderConstruction(
+    ctx,
+    state,
+    cssWidth,
+    cssHeight,
+    {
+      radius: 0.5,
+      centerNLY: -0.5,
+      radiusSpoke: false,
+      ...config,
+      spokeLabel: '1 across',
+    },
+    constructionProgress,
+    opacity
+  )
 }
 
 /**
@@ -56,13 +64,21 @@ export function renderTauConstruction(
   constructionProgress: number,
   opacity: number
 ): void {
-  renderConstruction(ctx, state, cssWidth, cssHeight, {
-    radius: 1,
-    centerNLY: -1,
-    radiusSpoke: true,
-    ...config,
-    spokeLabel: '1 to edge',
-  }, constructionProgress, opacity)
+  renderConstruction(
+    ctx,
+    state,
+    cssWidth,
+    cssHeight,
+    {
+      radius: 1,
+      centerNLY: -1,
+      radiusSpoke: true,
+      ...config,
+      spokeLabel: '1 to edge',
+    },
+    constructionProgress,
+    opacity
+  )
 }
 
 interface ConstructionParams {
@@ -142,7 +158,7 @@ function renderConstruction(
   // ── Phase 2: Pivot segment from horizontal to vertical ──
   if (sweepP <= 0) {
     const easedP = easeInOut(pivotP)
-    const angle = easedP * Math.PI / 2
+    const angle = (easedP * Math.PI) / 2
 
     // Segment endpoints: pivot at (0,0) on axis, tip arcs to (0,-1)
     const tipNLX = Math.cos(angle)
@@ -294,7 +310,7 @@ function renderConstruction(
     ctx.lineWidth = 1.5
     for (let i = 0; i < NUM_TREADS; i++) {
       // Same angle formula as renderRollingCircle at t=0
-      const angle = Math.PI / 2 - 2 * Math.PI * i / NUM_TREADS
+      const angle = Math.PI / 2 - (2 * Math.PI * i) / NUM_TREADS
       const treadAlpha = Math.max(0, Math.min(1, (treadP - i / NUM_TREADS) * NUM_TREADS))
       if (treadAlpha <= 0) continue
 

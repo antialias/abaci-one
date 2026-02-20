@@ -13,11 +13,11 @@ export interface SievePhase {
 }
 
 export const SIEVE_PHASES: SievePhase[] = [
-  { factor: 2, startMs: 4000, durationMs: 5000 },     // seg 1: sweep 4000–9000, tail 9000–10200
-  { factor: 3, startMs: 10200, durationMs: 3000 },    // seg 2: sweep 10200–13200, tail 13200–14400
-  { factor: 5, startMs: 14400, durationMs: 1800 },    // seg 3a: sweep 14400–16200
-  { factor: 7, startMs: 16600, durationMs: 1300 },    // seg 3b: sweep 16600–17900
-  { factor: 11, startMs: 18300, durationMs: 800 },    // seg 3c: sweep 18300–19100, tail 19100–20300
+  { factor: 2, startMs: 4000, durationMs: 5000 }, // seg 1: sweep 4000–9000, tail 9000–10200
+  { factor: 3, startMs: 10200, durationMs: 3000 }, // seg 2: sweep 10200–13200, tail 13200–14400
+  { factor: 5, startMs: 14400, durationMs: 1800 }, // seg 3a: sweep 14400–16200
+  { factor: 7, startMs: 16600, durationMs: 1300 }, // seg 3b: sweep 16600–17900
+  { factor: 11, startMs: 18300, durationMs: 800 }, // seg 3c: sweep 18300–19100, tail 19100–20300
 ]
 
 export const CELEBRATION_START_MS = 20300
@@ -41,7 +41,7 @@ export const SWEEP_MAX_N = 130
 /** Timing constants for each composite's animation after being marked */
 const FLASH_DURATION = 120
 const SHAKE_DURATION = 130 // 120–250ms after mark
-const FALL_DURATION = 350  // 250–600ms after mark
+const FALL_DURATION = 350 // 250–600ms after mark
 const ANIM_TOTAL = FLASH_DURATION + SHAKE_DURATION + FALL_DURATION // 600ms
 
 interface CompositeAnimState {
@@ -68,11 +68,11 @@ function sweepEase(t: number, factor: number): number {
   // Factors 2, 3: ease-in quad (t²) — 50% of time covers first 25% of range
   // Factors 5, 7: gentler t^1.5 — fewer composites to show
   const power = factor <= 3 ? 2 : 1.5
-  return Math.pow(t, power)
+  return t ** power
 }
 
 function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3)
+  return 1 - (1 - t) ** 3
 }
 
 /** Decompose n into its prime factors, e.g. 12 → [2, 2, 3] */
@@ -114,10 +114,18 @@ function compositionChains(n: number): { factor: number; multiples: number[] }[]
 let sieveTrackingRange = 20
 let sieveFollowHops = 15
 
-export function getSieveTrackingRange(): number { return sieveTrackingRange }
-export function setSieveTrackingRange(v: number): void { sieveTrackingRange = Math.max(5, v) }
-export function getSieveFollowHops(): number { return sieveFollowHops }
-export function setSieveFollowHops(v: number): void { sieveFollowHops = Math.max(1, Math.round(v)) }
+export function getSieveTrackingRange(): number {
+  return sieveTrackingRange
+}
+export function setSieveTrackingRange(v: number): void {
+  sieveTrackingRange = Math.max(5, v)
+}
+export function getSieveFollowHops(): number {
+  return sieveFollowHops
+}
+export function setSieveFollowHops(v: number): void {
+  sieveFollowHops = Math.max(1, Math.round(v))
+}
 
 // --- Compute marked composites with exact mark times ---
 
@@ -139,9 +147,7 @@ function computeCompositeStates(
 
     if (sweepRange <= 0) continue
 
-    const linearProgress = clamp01(
-      (dwellElapsedMs - phase.startMs) / phase.durationMs
-    )
+    const linearProgress = clamp01((dwellElapsedMs - phase.startMs) / phase.durationMs)
     const phaseProgress = sweepEase(linearProgress, p)
     const maxReached = sweepStart + sweepRange * phaseProgress
 
@@ -153,7 +159,7 @@ function computeCompositeStates(
       const fractionAlongSweep = (m - sweepStart) / sweepRange
       // Invert power easing: t = fraction^(1/power)
       const power = p <= 3 ? 2 : 1.5
-      const linearFraction = Math.pow(fractionAlongSweep, 1 / power)
+      const linearFraction = fractionAlongSweep ** (1 / power)
       const markTimeMs = phase.startMs + linearFraction * phase.durationMs
 
       composites.set(m, { factor: p, markTimeMs })
@@ -182,9 +188,7 @@ function getActiveSweep(
   for (let i = SIEVE_PHASES.length - 1; i >= 0; i--) {
     const phase = SIEVE_PHASES[i]
     if (dwellElapsedMs < phase.startMs) continue
-    const linearProgress = clamp01(
-      (dwellElapsedMs - phase.startMs) / phase.durationMs
-    )
+    const linearProgress = clamp01((dwellElapsedMs - phase.startMs) / phase.durationMs)
     if (linearProgress >= 1) continue
     const progress = sweepEase(linearProgress, phase.factor)
     const sweepStart = phase.factor
@@ -203,8 +207,8 @@ export interface SieveViewport {
 
 export interface SievePhaseViewports {
   factor: number
-  start: SieveViewport  // zoomed-in: first ~10 new composites visible
-  end: SieveViewport    // zoomed-out: ~40 new composites visible
+  start: SieveViewport // zoomed-in: first ~10 new composites visible
+  end: SieveViewport // zoomed-out: ~40 new composites visible
 }
 
 /**
@@ -213,10 +217,7 @@ export interface SievePhaseViewports {
  * - `start`: zoomed in so the first ~10 new composites fill the screen
  * - `end`: zoomed out so ~40 new composites are visible
  */
-export function computeSieveViewports(
-  cssWidth: number,
-  maxN: number
-): SievePhaseViewports[] {
+export function computeSieveViewports(cssWidth: number, maxN: number): SievePhaseViewports[] {
   // Run the actual sieve to find which composites are NEW for each factor
   const alreadyMarked = new Set<number>()
   const result: SievePhaseViewports[] = []
@@ -296,7 +297,7 @@ function clampSieveViewport(vp: SieveViewport, cssWidth: number): SieveViewport 
   let { center, pixelsPerUnit } = vp
 
   // 10% of visible width as left margin (origin isn't pinned to screen edge)
-  const leftMargin = halfRange * 0.2  // 10% of full width = 20% of halfRange
+  const leftMargin = halfRange * 0.2 // 10% of full width = 20% of halfRange
 
   // If the viewport is wider than the usable range, zoom in to fit
   const usableRange = SWEEP_MAX_N + leftMargin
@@ -430,10 +431,10 @@ export function getSieveViewportState(
 // --- Per-tick transforms for main renderer ---
 
 export interface SieveTickTransform {
-  opacity: number    // 0 = hidden, 1 = normal
-  offsetX: number    // horizontal shake (px)
-  offsetY: number    // vertical fall (px)
-  rotation: number   // radians
+  opacity: number // 0 = hidden, 1 = normal
+  offsetX: number // horizontal shake (px)
+  offsetY: number // vertical fall (px)
+  rotation: number // radians
 }
 
 /**
@@ -468,9 +469,7 @@ export function computeSieveTickTransforms(
     const sweepRange = SWEEP_MAX_N - sweepStart
     if (sweepRange <= 0) continue
 
-    const linearProgress = clamp01(
-      (dwellElapsedMs - phase.startMs) / phase.durationMs
-    )
+    const linearProgress = clamp01((dwellElapsedMs - phase.startMs) / phase.durationMs)
     const sweepValue = sweepStart + sweepRange * sweepEase(linearProgress, p)
 
     // Once hopper leaves viewport, all remaining multiples are instantly gone
@@ -598,9 +597,7 @@ export function renderSieveOverlay(
     const celebrationElapsed = dwellElapsedMs - CELEBRATION_START_MS
     const washRamp = clamp01(celebrationElapsed / 800)
     const washAlpha = 0.4 * washRamp
-    ctx.fillStyle = isDark
-      ? `rgba(26, 26, 46, ${washAlpha})`
-      : `rgba(248, 248, 248, ${washAlpha})`
+    ctx.fillStyle = isDark ? `rgba(26, 26, 46, ${washAlpha})` : `rgba(248, 248, 248, ${washAlpha})`
     ctx.fillRect(0, 0, cssWidth, cssHeight)
   }
 
@@ -616,12 +613,9 @@ export function renderSieveOverlay(
     const baseX = numberToScreenX(value, state.center, state.pixelsPerUnit, cssWidth)
     const t = localTime / FLASH_DURATION
     const glowRadius = 12 + 8 * easeOutQuint(t)
-    const glowAlpha = (0.5 + 0.3 * (1 - t))
+    const glowAlpha = 0.5 + 0.3 * (1 - t)
 
-    const gradient = ctx.createRadialGradient(
-      baseX, centerY, 0,
-      baseX, centerY, glowRadius
-    )
+    const gradient = ctx.createRadialGradient(baseX, centerY, 0, baseX, centerY, glowRadius)
     gradient.addColorStop(0, primeColorRgba(anim.factor, glowAlpha, isDark))
     gradient.addColorStop(1, primeColorRgba(anim.factor, 0, isDark))
 
@@ -791,9 +785,7 @@ export function renderSieveOverlay(
 
       // Glow around hopper
       const glowRadius = dotRadius * 2.5
-      const glow = ctx.createRadialGradient(
-        hopperSX, hopperY, 0, hopperSX, hopperY, glowRadius
-      )
+      const glow = ctx.createRadialGradient(hopperSX, hopperY, 0, hopperSX, hopperY, glowRadius)
       glow.addColorStop(0, primeColorRgba(p, targetAlreadyGone ? 0.2 : 0.35, isDark))
       glow.addColorStop(1, primeColorRgba(p, 0, isDark))
       ctx.beginPath()
@@ -806,25 +798,15 @@ export function renderSieveOverlay(
   // Factor spotlight glow (pulsing highlight on the prime factor being used)
   for (const phase of SIEVE_PHASES) {
     if (dwellElapsedMs < phase.startMs) break
-    const phaseProgress = clamp01(
-      (dwellElapsedMs - phase.startMs) / phase.durationMs
-    )
+    const phaseProgress = clamp01((dwellElapsedMs - phase.startMs) / phase.durationMs)
     if (phaseProgress >= 1) continue
 
-    const factorX = numberToScreenX(
-      phase.factor,
-      state.center,
-      state.pixelsPerUnit,
-      cssWidth
-    )
+    const factorX = numberToScreenX(phase.factor, state.center, state.pixelsPerUnit, cssWidth)
     const glowRadius = 20
     const pulsePhase = (dwellElapsedMs / 300) % (Math.PI * 2)
     const pulseAlpha = 0.2 + 0.1 * Math.sin(pulsePhase)
 
-    const gradient = ctx.createRadialGradient(
-      factorX, centerY, 0,
-      factorX, centerY, glowRadius
-    )
+    const gradient = ctx.createRadialGradient(factorX, centerY, 0, factorX, centerY, glowRadius)
     gradient.addColorStop(0, primeColorRgba(phase.factor, pulseAlpha, isDark))
     gradient.addColorStop(1, primeColorRgba(phase.factor, 0, isDark))
 
@@ -848,13 +830,10 @@ export function renderSieveOverlay(
       // Pulsing radial glow
       const glowRadius = 20
       const phaseOffset = n * 0.07
-      const pulsePhase = (dwellElapsedMs / 400) + phaseOffset
+      const pulsePhase = dwellElapsedMs / 400 + phaseOffset
       const pulseAlpha = (0.25 + 0.15 * Math.sin(pulsePhase)) * celebrationRamp
 
-      const gradient = ctx.createRadialGradient(
-        sx, centerY, 0,
-        sx, centerY, glowRadius
-      )
+      const gradient = ctx.createRadialGradient(sx, centerY, 0, sx, centerY, glowRadius)
       gradient.addColorStop(0, primeColorRgba(n, pulseAlpha, isDark))
       gradient.addColorStop(1, primeColorRgba(n, 0, isDark))
 
@@ -880,9 +859,7 @@ export function renderSieveOverlay(
     // Dim the celebration glows so composition arcs stand out
     if (compRamp > 0) {
       const dimAlpha = 0.3 * compRamp
-      ctx.fillStyle = isDark
-        ? `rgba(26, 26, 46, ${dimAlpha})`
-        : `rgba(248, 248, 248, ${dimAlpha})`
+      ctx.fillStyle = isDark ? `rgba(26, 26, 46, ${dimAlpha})` : `rgba(248, 248, 248, ${dimAlpha})`
       ctx.fillRect(0, 0, cssWidth, cssHeight)
     }
 
@@ -931,7 +908,12 @@ export function renderSieveOverlay(
     const labelDelayMs = arcTimeOffset + 200
     const labelT = clamp01((compElapsed - labelDelayMs) / 600)
     if (labelT > 0) {
-      const exampleSX = numberToScreenX(COMPOSITION_EXAMPLE, state.center, state.pixelsPerUnit, cssWidth)
+      const exampleSX = numberToScreenX(
+        COMPOSITION_EXAMPLE,
+        state.center,
+        state.pixelsPerUnit,
+        cssWidth
+      )
       const labelAlpha = easeOutCubic(labelT)
 
       // Build label like "2 × 2 × 3 = 12"

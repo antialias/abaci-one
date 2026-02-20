@@ -30,10 +30,10 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   {
     ttsText:
       'Imagine sharing a yummy cookie! ' +
-      'If there\'s just one friend, they get the whole thing. ' +
+      "If there's just one friend, they get the whole thing. " +
       'One friend, one whole cookie!',
-    startProgress: 0.00,
-    endProgress: 0.10,
+    startProgress: 0.0,
+    endProgress: 0.1,
     animationDurationMs: 5000,
     scrubberLabel: 'One whole cookie',
   },
@@ -44,8 +44,8 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'Now two friends want to share. ' +
       'Each one gets half — see how the step is shorter? ' +
       'More friends means smaller pieces!',
-    startProgress: 0.10,
-    endProgress: 0.20,
+    startProgress: 0.1,
+    endProgress: 0.2,
     animationDurationMs: 5500,
     scrubberLabel: 'Two friends share',
   },
@@ -56,7 +56,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
       'With three friends, each gets a third. ' +
       'But wait — what about one-and-a-half friends? ' +
       'Or two-and-a-quarter? What if sharing could be perfectly smooth?',
-    startProgress: 0.20,
+    startProgress: 0.2,
     endProgress: 0.34,
     animationDurationMs: 7000,
     scrubberLabel: 'Three friends',
@@ -101,7 +101,7 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Collection ──────────────────────────────────────────────────
   {
     ttsText:
-      'Now let\'s collect all those little extra bits and line them up! ' +
+      "Now let's collect all those little extra bits and line them up! " +
       'The big ones go first, then the smaller ones. ' +
       'See how the bar grows fast at first, then slower and slower?',
     startProgress: 0.65,
@@ -115,10 +115,10 @@ export const GAMMA_DEMO_SEGMENTS: DemoNarrationSegment[] = [
     ttsText:
       'All those tiny extras add up to a very special number. ' +
       'Mathematicians call it gamma! ' +
-      'It\'s about zero point five seven seven, and it pops up all over mathematics — ' +
+      "It's about zero point five seven seven, and it pops up all over mathematics — " +
       'whenever sharing and smoothness play together.',
     startProgress: 0.86,
-    endProgress: 1.00,
+    endProgress: 1.0,
     animationDurationMs: 7000,
     scrubberLabel: "It's gamma!",
   },

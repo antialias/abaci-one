@@ -6,7 +6,12 @@
  * indicator on the number line.
  */
 
-import type { GameDefinition, GameStartResult, GameActionResult, GameToolCallResult } from '../gameRegistry'
+import type {
+  GameDefinition,
+  GameStartResult,
+  GameActionResult,
+  GameToolCallResult,
+} from '../gameRegistry'
 
 const DEFAULT_TARGET = 21
 const DEFAULT_MAX_ADD = 3
@@ -21,8 +26,7 @@ export const raceGame: GameDefinition = {
   id: 'race',
   category: 'strategy',
   name: 'Race to 21',
-  description:
-    'Race to reach the target! Take turns adding 1–3. First to hit the target wins.',
+  description: 'Race to reach the target! Take turns adding 1–3. First to hit the target wins.',
 
   agentRules: '',
   needsProximityUpdates: false,
@@ -34,7 +38,7 @@ export const raceGame: GameDefinition = {
       type: 'function' as const,
       name: 'add_number',
       description:
-        'Add a number to the current position during a Race game. Call this after EVERY move — yours or the child\'s. ' +
+        "Add a number to the current position during a Race game. Call this after EVERY move — yours or the child's. " +
         'The display updates automatically.',
       parameters: {
         type: 'object',
@@ -61,8 +65,8 @@ export const raceGame: GameDefinition = {
     '- Explain: "We start at 0. Each turn you add 1, 2, or 3. First to reach [target] wins!"\n\n' +
     'MOVES:\n' +
     '- YOUR TURN: First ANNOUNCE your move ("I\'ll add 2, taking us to 14"), then call add_number.\n' +
-    '  The child needs to hear what you\'re doing BEFORE the display changes.\n' +
-    '- CHILD\'S TURN: After the child says their number, call add_number immediately.\n' +
+    "  The child needs to hear what you're doing BEFORE the display changes.\n" +
+    "- CHILD'S TURN: After the child says their number, call add_number immediately.\n" +
     '- The display updates automatically.\n\n' +
     'STRATEGY:\n' +
     '- The winning strategy: land on multiples of (max_add + 1) counting back from the target.\n' +
@@ -70,7 +74,7 @@ export const raceGame: GameDefinition = {
     '- If (target - position) % (max_add + 1) == 0, the OTHER player is winning.\n\n' +
     'ENDGAME:\n' +
     '- When someone reaches the target, they win.\n' +
-    '- If it\'s the child\'s turn and they can reach the target in one move (position + max_add >= target), ' +
+    "- If it's the child's turn and they can reach the target in one move (position + max_add >= target), " +
     'they win automatically — congratulate them, call add_number for the winning move, then end_game.\n' +
     '- Call end_game when the game is over.\n' +
     '- After the game, explain the strategy at an age-appropriate level.\n\n' +
@@ -80,7 +84,11 @@ export const raceGame: GameDefinition = {
     '- Build excitement as you approach the target!\n' +
     '- "We\'re at 14 now — your turn! How much do you want to add?"',
 
-  onToolCall(rawState: unknown, toolName: string, args: Record<string, unknown>): GameToolCallResult {
+  onToolCall(
+    rawState: unknown,
+    toolName: string,
+    args: Record<string, unknown>
+  ): GameToolCallResult {
     if (toolName !== 'add_number') {
       return { agentMessage: `Unknown tool: ${toolName}`, state: rawState }
     }

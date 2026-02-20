@@ -119,15 +119,13 @@ describe('resolveSelector', () => {
       state = s2.state
 
       // Selectors find the right element by definition, not by index
-      expect(resolveSelector(
-        { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
-        state,
-      )).toBe(c2.circle.id)
+      expect(
+        resolveSelector({ kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' }, state)
+      ).toBe(c2.circle.id)
 
-      expect(resolveSelector(
-        { kind: 'segment', fromId: 'pt-B', toId: 'pt-C' },
-        state,
-      )).toBe(s2.segment.id)
+      expect(resolveSelector({ kind: 'segment', fromId: 'pt-B', toId: 'pt-C' }, state)).toBe(
+        s2.segment.id
+      )
     })
   })
 })

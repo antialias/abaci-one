@@ -62,16 +62,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.client_reference_id || session.metadata?.userId
   if (!userId || !session.subscription || !session.customer) return
 
-  const stripeSubscriptionId = typeof session.subscription === 'string'
-    ? session.subscription
-    : session.subscription.id
-  const stripeCustomerId = typeof session.customer === 'string'
-    ? session.customer
-    : session.customer.id
+  const stripeSubscriptionId =
+    typeof session.subscription === 'string' ? session.subscription : session.subscription.id
+  const stripeCustomerId =
+    typeof session.customer === 'string' ? session.customer : session.customer.id
 
-  // Fetch full subscription to get current_period_end
+  // Fetch full subscription to get current_period_end (lives on SubscriptionItem in newer API versions)
   const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId)
-  const currentPeriodEnd = new Date(sub.current_period_end * 1000)
+  const firstItem = sub.items.data[0]
+  const currentPeriodEnd = firstItem?.current_period_end
+    ? new Date(firstItem.current_period_end * 1000)
+    : new Date()
 
   const now = new Date()
   const existing = await db
@@ -133,7 +134,9 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
     .update(schema.subscriptions)
     .set({
       status,
-      currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      currentPeriodEnd: sub.items.data[0]?.current_period_end
+        ? new Date(sub.items.data[0].current_period_end * 1000)
+        : new Date(),
       cancelAtPeriodEnd: sub.cancel_at_period_end,
       updatedAt: new Date(),
     })
@@ -164,9 +167,10 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const subDetails = invoice.parent?.subscription_details
   if (!subDetails) return
 
-  const stripeSubscriptionId = typeof subDetails.subscription === 'string'
-    ? subDetails.subscription
-    : subDetails.subscription.id
+  const stripeSubscriptionId =
+    typeof subDetails.subscription === 'string'
+      ? subDetails.subscription
+      : subDetails.subscription.id
 
   await db
     .update(schema.subscriptions)
@@ -182,9 +186,12 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 /** Map Stripe subscription status to our simplified status set. */
 function mapStripeStatus(status: string): 'active' | 'past_due' | 'canceled' | 'trialing' {
   switch (status) {
-    case 'active': return 'active'
-    case 'trialing': return 'trialing'
-    case 'past_due': return 'past_due'
+    case 'active':
+      return 'active'
+    case 'trialing':
+      return 'trialing'
+    case 'past_due':
+      return 'past_due'
     case 'canceled':
     case 'unpaid':
     case 'incomplete_expired':

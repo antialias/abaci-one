@@ -34,7 +34,7 @@ function smoothstep(t: number): number {
 
 function easeInOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2
 }
 
 // ── Phase timing ─────────────────────────────────────────────────────
@@ -42,40 +42,52 @@ function easeInOut(t: number): number {
 
 const PHASE = {
   // Seg 0: base — highlight segment from −1 to 1
-  baseBegin: 0.00,
+  baseBegin: 0.0,
   baseEnd: 0.12,
   // Seg 1: build — equilateral triangle sides swing up
   buildBegin: 0.12,
-  buildEnd: 0.30,
+  buildEnd: 0.3,
   // Seg 2: height — dashed altitude drops from apex
-  heightBegin: 0.30,
+  heightBegin: 0.3,
   heightEnd: 0.47,
   // Seg 3: rotate — compass swings height to number line
   rotateBegin: 0.47,
   rotateEnd: 0.65,
   // Seg 4: mystery — question mark at landing spot
   mysteryBegin: 0.65,
-  mysteryEnd: 0.80,
+  mysteryEnd: 0.8,
   // Seg 5: reveal — star, label
-  revealBegin: 0.80,
-  revealEnd: 1.00,
+  revealBegin: 0.8,
+  revealEnd: 1.0,
 } as const
 
 // ── Colors ───────────────────────────────────────────────────────────
 
-function triCol(isDark: boolean) { return isDark ? '#60a5fa' : '#3b82f6' }         // blue (triangle)
-function heightCol(isDark: boolean) { return isDark ? '#fb923c' : '#ea580c' }      // orange (height)
-function heightColBright(isDark: boolean) { return isDark ? '#fdba74' : '#f97316' }
-function resultCol(isDark: boolean) { return isDark ? '#34d399' : '#059669' }      // green (√3)
-function textCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }
-function subtextCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
+function triCol(isDark: boolean) {
+  return isDark ? '#60a5fa' : '#3b82f6'
+} // blue (triangle)
+function heightCol(isDark: boolean) {
+  return isDark ? '#fb923c' : '#ea580c'
+} // orange (height)
+function heightColBright(isDark: boolean) {
+  return isDark ? '#fdba74' : '#f97316'
+}
+function resultCol(isDark: boolean) {
+  return isDark ? '#34d399' : '#059669'
+} // green (√3)
+function textCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'
+}
+function subtextCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'
+}
 
 // ── Viewport ─────────────────────────────────────────────────────────
 
 export function sqrt3DemoViewport(cssWidth: number, cssHeight: number) {
   // Center on [−1, √3] with some padding; triangle reaches √3 ≈ 1.732 above axis
   const center = (SQRT3 - 1) / 2 + 0.1 // ≈ 0.466
-  const ppu = Math.min(cssWidth * 0.65 / (SQRT3 + 1.5), cssHeight * 0.25)
+  const ppu = Math.min((cssWidth * 0.65) / (SQRT3 + 1.5), cssHeight * 0.25)
   return { center, pixelsPerUnit: ppu }
 }
 
@@ -326,7 +338,7 @@ function drawArc(
   // Arc from π/2 (straight up) to 0 (horizontal right)
   // Canvas: negative angles are above x-axis
   const startAngle = -Math.PI / 2 // straight up in canvas coords
-  const endAngle = 0              // horizontal right
+  const endAngle = 0 // horizontal right
   const arcEnd = startAngle + (endAngle - startAngle) * progress
 
   ctx.beginPath()
@@ -392,7 +404,8 @@ export function renderSqrt3Overlay(
 
     // "-1" and "1" labels
     if (revealProgress < PHASE.buildBegin + 0.05) {
-      const labelA = smoothstep(mapRange(revealProgress, 0.03, 0.06)) *
+      const labelA =
+        smoothstep(mapRange(revealProgress, 0.03, 0.06)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.baseEnd - 0.02, PHASE.baseEnd + 0.03)))
       if (labelA > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -415,7 +428,9 @@ export function renderSqrt3Overlay(
   // ── Seg 1: Build — equilateral triangle sides swing up ──
   const triVisible = revealProgress >= PHASE.buildBegin
   if (triVisible) {
-    const sideP = easeInOut(mapRange(revealProgress, PHASE.buildBegin + 0.02, PHASE.buildEnd - 0.02))
+    const sideP = easeInOut(
+      mapRange(revealProgress, PHASE.buildBegin + 0.02, PHASE.buildEnd - 0.02)
+    )
 
     if (sideP > 0) {
       drawTriangle(ctx, toX, axisY, ppu, isDark, opacity, sideP)
@@ -423,7 +438,8 @@ export function renderSqrt3Overlay(
 
     // "Perfect triangle!" label
     if (revealProgress >= PHASE.buildBegin + 0.08 && revealProgress < PHASE.heightBegin) {
-      const la = smoothstep(mapRange(revealProgress, PHASE.buildBegin + 0.08, PHASE.buildEnd - 0.04)) *
+      const la =
+        smoothstep(mapRange(revealProgress, PHASE.buildBegin + 0.08, PHASE.buildEnd - 0.04)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.buildEnd - 0.02, PHASE.buildEnd)))
       if (la > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -441,7 +457,9 @@ export function renderSqrt3Overlay(
   // ── Seg 2: Height — dashed altitude drops from apex ──
   const heightVisible = revealProgress >= PHASE.heightBegin
   if (heightVisible) {
-    const heightP = easeInOut(mapRange(revealProgress, PHASE.heightBegin + 0.02, PHASE.heightEnd - 0.04))
+    const heightP = easeInOut(
+      mapRange(revealProgress, PHASE.heightBegin + 0.02, PHASE.heightEnd - 0.04)
+    )
 
     // Before rotation, draw the vertical height
     if (revealProgress < PHASE.rotateBegin && heightP > 0) {
@@ -450,7 +468,8 @@ export function renderSqrt3Overlay(
 
     // "How tall?" label
     if (revealProgress >= PHASE.heightBegin + 0.04 && revealProgress < PHASE.rotateBegin) {
-      const la = smoothstep(mapRange(revealProgress, PHASE.heightBegin + 0.04, PHASE.heightBegin + 0.08)) *
+      const la =
+        smoothstep(mapRange(revealProgress, PHASE.heightBegin + 0.04, PHASE.heightBegin + 0.08)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.heightEnd - 0.03, PHASE.heightEnd)))
       if (la > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -468,7 +487,9 @@ export function renderSqrt3Overlay(
   // ── Seg 3: Rotate — compass swings height to number line ──
   const rotateVisible = revealProgress >= PHASE.rotateBegin
   if (rotateVisible) {
-    const rotateP = easeInOut(mapRange(revealProgress, PHASE.rotateBegin + 0.02, PHASE.rotateEnd - 0.02))
+    const rotateP = easeInOut(
+      mapRange(revealProgress, PHASE.rotateBegin + 0.02, PHASE.rotateEnd - 0.02)
+    )
     const angle = rotateP * (Math.PI / 2) // from 0 (vertical) to π/2 (horizontal)
 
     // Draw the arc during rotation and mystery
@@ -482,8 +503,11 @@ export function renderSqrt3Overlay(
 
   // ── Seg 4: Mystery — question mark at landing spot ──
   if (revealProgress >= PHASE.mysteryBegin && revealProgress < PHASE.revealBegin) {
-    const qP = smoothstep(mapRange(revealProgress, PHASE.mysteryBegin + 0.02, PHASE.mysteryBegin + 0.06))
-    const qFade = 1 - smoothstep(mapRange(revealProgress, PHASE.mysteryEnd - 0.02, PHASE.mysteryEnd))
+    const qP = smoothstep(
+      mapRange(revealProgress, PHASE.mysteryBegin + 0.02, PHASE.mysteryBegin + 0.06)
+    )
+    const qFade =
+      1 - smoothstep(mapRange(revealProgress, PHASE.mysteryEnd - 0.02, PHASE.mysteryEnd))
     const qAlpha = qP * qFade
 
     if (qAlpha > 0.01) {

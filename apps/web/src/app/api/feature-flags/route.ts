@@ -17,9 +17,6 @@ export const GET = withAuth(async (_request, { userId, userRole }) => {
     return NextResponse.json({ flags })
   } catch (error) {
     console.error('[feature-flags] Failed to fetch flags:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch feature flags' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch feature flags' }, { status: 500 })
   }
 })

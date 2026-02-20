@@ -71,6 +71,6 @@ export const PLAYGROUND_PROP: PropositionDef = {
   id: 0,
   title: 'Construction Playground',
   givenElements,
-  draggablePointIds: givenElements.map(el => el.id),
+  draggablePointIds: givenElements.map((el) => el.id),
   steps: [],
 }

@@ -26,7 +26,9 @@ export const subscriptions = sqliteTable('subscriptions', {
   stripeSubscriptionId: text('stripe_subscription_id').unique(),
 
   /** Plan name — matches TierName (excluding 'guest') */
-  plan: text('plan', { enum: ['free', 'family'] }).notNull().default('free'),
+  plan: text('plan', { enum: ['free', 'family'] })
+    .notNull()
+    .default('free'),
 
   /** Subscription lifecycle status */
   status: text('status', {
@@ -39,9 +41,7 @@ export const subscriptions = sqliteTable('subscriptions', {
   currentPeriodEnd: integer('current_period_end', { mode: 'timestamp' }),
 
   /** Whether the subscription will cancel at period end */
-  cancelAtPeriodEnd: integer('cancel_at_period_end', { mode: 'boolean' })
-    .notNull()
-    .default(false),
+  cancelAtPeriodEnd: integer('cancel_at_period_end', { mode: 'boolean' }).notNull().default(false),
 
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

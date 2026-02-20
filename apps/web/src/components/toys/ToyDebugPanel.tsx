@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import * as Slider from '@radix-ui/react-slider'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 
@@ -15,12 +15,24 @@ interface DebugSliderProps {
   formatValue?: (value: number) => string
 }
 
-export function DebugSlider({ label, value, min, max, step = 1, onChange, formatValue }: DebugSliderProps) {
+export function DebugSlider({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  onChange,
+  formatValue,
+}: DebugSliderProps) {
   return (
     <div data-element="debug-slider" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 500 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 500 }}
+      >
         <span>{label}</span>
-        <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>{formatValue ? formatValue(value) : value}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>
+          {formatValue ? formatValue(value) : value}
+        </span>
       </div>
       <Slider.Root
         value={[value]}
@@ -95,7 +107,7 @@ export function DebugCheckbox({ label, checked, onChange }: DebugCheckboxProps) 
       <input
         type="checkbox"
         checked={checked}
-        onChange={e => onChange(e.target.checked)}
+        onChange={(e) => onChange(e.target.checked)}
         style={{
           accentColor: '#818cf8',
           width: 14,
@@ -143,7 +155,13 @@ export function ToyDebugPanel({ title, children }: ToyDebugPanelProps) {
     >
       <div
         data-element="debug-panel-title"
-        style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}
+        style={{
+          fontWeight: 700,
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          opacity: 0.6,
+        }}
       >
         {title} Debug
       </div>

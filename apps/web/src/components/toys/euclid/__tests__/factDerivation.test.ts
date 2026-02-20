@@ -26,7 +26,8 @@ describe('deriveDef15Facts', () => {
 
     const store = createFactStore()
     const candidate: IntersectionCandidate = {
-      x: 1, y: 1.73,
+      x: 1,
+      y: 1.73,
       ofA: cir.circle.id,
       ofB: 'seg-1', // doesn't matter — only circles produce Def.15 facts
       which: 0,
@@ -39,7 +40,9 @@ describe('deriveDef15Facts', () => {
     expect(newFacts[0].citation).toEqual({ type: 'def15', circleId: cir.circle.id })
 
     // AC = AB should now be queryable
-    expect(queryEquality(store, distancePair('pt-A', 'pt-C'), distancePair('pt-A', 'pt-B'))).toBe(true)
+    expect(queryEquality(store, distancePair('pt-A', 'pt-C'), distancePair('pt-A', 'pt-B'))).toBe(
+      true
+    )
   })
 
   it('derives equalities for a point on two circles', () => {
@@ -55,7 +58,8 @@ describe('deriveDef15Facts', () => {
 
     const store = createFactStore()
     const candidate: IntersectionCandidate = {
-      x: 1, y: 1.73,
+      x: 1,
+      y: 1.73,
       ofA: cir1.circle.id,
       ofB: cir2.circle.id,
       which: 0,
@@ -65,21 +69,24 @@ describe('deriveDef15Facts', () => {
 
     // Two Def.15 facts: AC = AB (from cir1), BC = BA (from cir2)
     expect(newFacts).toHaveLength(2)
-    const statements = newFacts.map(f => f.statement)
+    const statements = newFacts.map((f) => f.statement)
     expect(statements).toContain('AC = AB')
     expect(statements).toContain('BC = BA')
 
     // Transitivity: AC = AB and BC = BA, so AC = BC via C.N.1
-    expect(queryEquality(store, distancePair('pt-A', 'pt-C'), distancePair('pt-B', 'pt-C'))).toBe(true)
+    expect(queryEquality(store, distancePair('pt-A', 'pt-C'), distancePair('pt-B', 'pt-C'))).toBe(
+      true
+    )
   })
 
   it('produces no facts when candidate involves no circles', () => {
-    let state = givenAB()
+    const state = givenAB()
     const store = createFactStore()
 
     // Candidate from two segments — no circles
     const candidate: IntersectionCandidate = {
-      x: 1, y: 0.5,
+      x: 1,
+      y: 0.5,
       ofA: 'seg-1',
       ofB: 'seg-2',
       which: 0,
@@ -95,7 +102,8 @@ describe('deriveDef15Facts', () => {
 
     // Candidate references a circle that doesn't exist in state
     const candidate: IntersectionCandidate = {
-      x: 1, y: 0.5,
+      x: 1,
+      y: 0.5,
       ofA: 'cir-99',
       ofB: 'seg-1',
       which: 0,
@@ -114,7 +122,8 @@ describe('deriveDef15Facts', () => {
 
     const store = createFactStore()
     const candidate: IntersectionCandidate = {
-      x: 1, y: 1.73,
+      x: 1,
+      y: 1.73,
       ofA: cir.circle.id,
       ofB: 'seg-1',
       which: 0,
@@ -133,7 +142,8 @@ describe('deriveDef15Facts', () => {
 
     const store = createFactStore()
     const candidate: IntersectionCandidate = {
-      x: 1, y: 1.73,
+      x: 1,
+      y: 1.73,
       ofA: cir.circle.id,
       ofB: 'seg-1',
       which: 0,

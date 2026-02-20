@@ -11,9 +11,7 @@ import type { MusicCard } from '../types'
 export function MusicCardFront({ card }: { card: MusicCard }) {
   if (card.type === 'staff-note' && card.clef) {
     const accidental =
-      card.accidental && card.accidental !== 'none'
-        ? (card.accidental as Accidental)
-        : undefined
+      card.accidental && card.accidental !== 'none' ? (card.accidental as Accidental) : undefined
 
     return (
       <div

@@ -144,8 +144,7 @@ export function createMatchingPairsProvider<
         return {
           ...state,
           flippedCards: newFlippedCards,
-          currentMoveStartTime:
-            flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
+          currentMoveStartTime: flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
           isProcessingMove: newFlippedCards.length === 2,
           showMismatchFeedback: false,
         }
@@ -311,7 +310,11 @@ export function createMatchingPairsProvider<
     const onGameComplete = useGameCompletionCallback()
     const previousPhaseRef = useRef<string | null>(null)
     useEffect(() => {
-      if (state.gamePhase === 'results' && previousPhaseRef.current !== 'results' && onGameComplete) {
+      if (
+        state.gamePhase === 'results' &&
+        previousPhaseRef.current !== 'results' &&
+        onGameComplete
+      ) {
         onGameComplete(state as unknown as Record<string, unknown>)
       }
       previousPhaseRef.current = state.gamePhase
@@ -361,9 +364,7 @@ export function createMatchingPairsProvider<
         totalMoves: state.moves,
         matchedPairs: state.matchedPairs,
         totalPairs: state.totalPairs,
-        gameTime: state.gameStartTime
-          ? (state.gameEndTime || Date.now()) - state.gameStartTime
-          : 0,
+        gameTime: state.gameStartTime ? (state.gameEndTime || Date.now()) - state.gameStartTime : 0,
         accuracy: state.moves > 0 ? (state.matchedPairs / state.moves) * 100 : 0,
         averageTimePerMove:
           state.moves > 0 && state.gameStartTime
@@ -613,9 +614,7 @@ export function createMatchingPairsProvider<
   function useMatchingPairs(): MatchingPairsContextValue<TCard, TConfig> {
     const context = useContext(Context)
     if (!context) {
-      throw new Error(
-        `useMatchingPairs must be used within the ${variant.gameName} Provider`
-      )
+      throw new Error(`useMatchingPairs must be used within the ${variant.gameName} Provider`)
     }
     return context
   }

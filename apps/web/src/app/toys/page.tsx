@@ -10,19 +10,22 @@ const toys = [
     href: '/toys/number-line',
     icon: '📏',
     name: 'Number Line',
-    description: 'Explore numbers with pinch-to-zoom and drag. See tick marks at every power of 10.',
+    description:
+      'Explore numbers with pinch-to-zoom and drag. See tick marks at every power of 10.',
   },
   {
     href: '/toys/coordinate-plane',
     icon: '📐',
     name: 'Coordinate Plane',
-    description: 'Explore the 2D plane with pan and zoom. Magnitude-aware grid with smooth prominence scaling.',
+    description:
+      'Explore the 2D plane with pan and zoom. Magnitude-aware grid with smooth prominence scaling.',
   },
   {
     href: '/toys/dice',
     icon: '🎲',
     name: 'Dice Tray',
-    description: 'Throw colorful 3D dice with physics. Add multiple dice, roll them all, and see the sum.',
+    description:
+      'Throw colorful 3D dice with physics. Add multiple dice, roll them all, and see the sum.',
   },
   {
     href: '/toys/euclid',
@@ -96,9 +99,7 @@ export default function ToysPage() {
                   display: 'block',
                   padding: '24px',
                   borderRadius: '16px',
-                  background: isDark
-                    ? 'rgba(31, 41, 55, 0.6)'
-                    : 'rgba(255, 255, 255, 0.8)',
+                  background: isDark ? 'rgba(31, 41, 55, 0.6)' : 'rgba(255, 255, 255, 0.8)',
                   border: isDark
                     ? '1px solid rgba(75, 85, 99, 0.5)'
                     : '1px solid rgba(209, 213, 219, 0.8)',

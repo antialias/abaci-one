@@ -97,12 +97,17 @@ export function RouterChangeTest() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const ss = window.speechSynthesis
       if (ss.speaking || ss.pending) {
-        s = appendNavLog(s, 'warn', `speechSynthesis leaked: speaking=${ss.speaking} pending=${ss.pending}`)
+        s = appendNavLog(
+          s,
+          'warn',
+          `speechSynthesis leaked: speaking=${ss.speaking} pending=${ss.pending}`
+        )
       }
     }
 
     // Final speak — does TTS still work after the whole gauntlet?
-    const finalProblem = STRESS_PROBLEMS[state.totalSteps % STRESS_PROBLEMS.length] ?? STRESS_PROBLEMS[0]
+    const finalProblem =
+      STRESS_PROBLEMS[state.totalSteps % STRESS_PROBLEMS.length] ?? STRESS_PROBLEMS[0]
     s = appendNavLog(
       s,
       'info',
@@ -151,9 +156,17 @@ export function RouterChangeTest() {
       log: [],
     }
 
-    let s = appendNavLog(state, 'info', `=== Navigation Stress: ${steps} steps, ${interruptMs}ms interrupt ===`)
+    let s = appendNavLog(
+      state,
+      'info',
+      `=== Navigation Stress: ${steps} steps, ${interruptMs}ms interrupt ===`
+    )
     s = appendNavLog(s, 'info', `Collection: ${manager.getCollection().length} clips`)
-    s = appendNavLog(s, 'info', `Problems: ${STRESS_PROBLEMS.length} templates, ${STRESS_PROBLEMS.reduce((n, p) => n + p.length, 0)} total segments`)
+    s = appendNavLog(
+      s,
+      'info',
+      `Problems: ${STRESS_PROBLEMS.length} templates, ${STRESS_PROBLEMS.reduce((n, p) => n + p.length, 0)} total segments`
+    )
 
     // Fire the first problem right here before navigating
     const problem = STRESS_PROBLEMS[0]
@@ -166,7 +179,10 @@ export function RouterChangeTest() {
     setStatus('running')
 
     // Fire speak — don't await, navigate mid-playback
-    speak().then(() => {}, () => {})
+    speak().then(
+      () => {},
+      () => {}
+    )
 
     // Navigate to first bounce step
     setTimeout(() => {
@@ -231,13 +247,22 @@ export function RouterChangeTest() {
       })}
     >
       {/* Header */}
-      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        })}
+      >
         <div>
-          <h3 className={css({ fontSize: '14px', fontWeight: '600', color: '#f0f6fc', margin: '0' })}>
+          <h3
+            className={css({ fontSize: '14px', fontWeight: '600', color: '#f0f6fc', margin: '0' })}
+          >
             Test 1: Navigation Stress
           </h3>
           <p className={css({ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' })}>
-            Fire multi-segment practice problems (novel + pregenerated), navigate mid-speech, repeat {steps}x
+            Fire multi-segment practice problems (novel + pregenerated), navigate mid-speech, repeat{' '}
+            {steps}x
           </p>
         </div>
         <span
@@ -270,7 +295,9 @@ export function RouterChangeTest() {
       </div>
 
       {/* Config */}
-      <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' })}>
+      <div
+        className={css({ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' })}
+      >
         <label className={labelCss}>
           Steps:
           <input
@@ -300,7 +327,14 @@ export function RouterChangeTest() {
       </div>
 
       {/* Segment preview */}
-      <div className={css({ fontSize: '11px', color: '#484f58', fontFamily: 'monospace', lineHeight: '1.6' })}>
+      <div
+        className={css({
+          fontSize: '11px',
+          color: '#484f58',
+          fontFamily: 'monospace',
+          lineHeight: '1.6',
+        })}
+      >
         {Array.from({ length: steps }, (_, i) => {
           const p = STRESS_PROBLEMS[i % STRESS_PROBLEMS.length]
           return (

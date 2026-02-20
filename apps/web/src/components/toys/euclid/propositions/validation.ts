@@ -22,7 +22,7 @@ export function validateStep(
   expected: ExpectedAction,
   state: ConstructionState,
   lastElement: ConstructionElement,
-  candidate?: IntersectionCandidate,
+  candidate?: IntersectionCandidate
 ): boolean {
   if (expected.type === 'compass' && lastElement.kind === 'circle') {
     return (
@@ -31,7 +31,11 @@ export function validateStep(
     )
   }
 
-  if (expected.type === 'intersection' && lastElement.kind === 'point' && lastElement.origin === 'intersection') {
+  if (
+    expected.type === 'intersection' &&
+    lastElement.kind === 'point' &&
+    lastElement.origin === 'intersection'
+  ) {
     // If ofA/ofB are specified, resolve selectors and check that the candidate matches
     if (expected.ofA != null && expected.ofB != null) {
       if (!candidate) return false
@@ -44,7 +48,13 @@ export function validateStep(
       if (!matchesElements) return false
       // If beyondId is specified, candidate must be on the extension past that point
       if (expected.beyondId) {
-        return isCandidateBeyondPoint(candidate, expected.beyondId, candidate.ofA, candidate.ofB, state)
+        return isCandidateBeyondPoint(
+          candidate,
+          expected.beyondId,
+          candidate.ofA,
+          candidate.ofB,
+          state
+        )
       }
       return true
     }

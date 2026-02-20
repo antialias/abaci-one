@@ -39,9 +39,7 @@ interface LabelInfo {
 
 const LABEL_PAD = 6
 
-function computeLabelCollisions(
-  labelInfos: LabelInfo[]
-): Set<LabelInfo> {
+function computeLabelCollisions(labelInfos: LabelInfo[]): Set<LabelInfo> {
   // Sort by prominence descending so higher-prominence labels take priority
   const sorted = [...labelInfos].sort((a, b) => b.tick.prominence - a.tick.prominence)
   const visible = new Set<LabelInfo>()
@@ -86,7 +84,7 @@ export function renderCoordinatePlane(
   xCollisionFadeMap?: CollisionFadeMap,
   yCollisionFadeMap?: CollisionFadeMap,
   overlays?: CoordinatePlaneOverlay[],
-  probeState?: EquationProbeState,
+  probeState?: EquationProbeState
 ): boolean {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS
   let animating = false
@@ -102,10 +100,7 @@ export function renderCoordinatePlane(
     const focalPxX = zoomFocalX * cssWidth
     const focalPxY = zoomFocalY * cssHeight
     const radius = Math.max(cssWidth, cssHeight) * 0.7
-    const gradient = ctx.createRadialGradient(
-      focalPxX, focalPxY, 0,
-      focalPxX, focalPxY, radius
-    )
+    const gradient = ctx.createRadialGradient(focalPxX, focalPxY, 0, focalPxX, focalPxY, radius)
     gradient.addColorStop(0, `hsla(${zoomHue}, ${sat}%, ${lum}%, ${intensity})`)
     gradient.addColorStop(1, `hsla(${zoomHue}, ${sat}%, ${lum}%, 0)`)
     ctx.fillStyle = gradient
@@ -255,14 +250,11 @@ export function renderCoordinatePlane(
   // X labels: default below axis, flip above when axis near bottom edge.
   // Y labels: default left of axis, flip right when axis near left edge.
   const xSpaceBelow = cssHeight - xAxisDrawY
-  const xLabelFlip = xSpaceBelow < LABEL_FLIP_ZONE
-    ? smoothstep(1 - xSpaceBelow / LABEL_FLIP_ZONE)
-    : 0
+  const xLabelFlip =
+    xSpaceBelow < LABEL_FLIP_ZONE ? smoothstep(1 - xSpaceBelow / LABEL_FLIP_ZONE) : 0
 
   const ySpaceLeft = yAxisDrawX
-  const yLabelFlip = ySpaceLeft < LABEL_FLIP_ZONE
-    ? smoothstep(1 - ySpaceLeft / LABEL_FLIP_ZONE)
-    : 0
+  const yLabelFlip = ySpaceLeft < LABEL_FLIP_ZONE ? smoothstep(1 - ySpaceLeft / LABEL_FLIP_ZONE) : 0
 
   // ── Pass 6: On-grid overlays ───────────────────────────────────
   if (overlays) {
@@ -356,7 +348,11 @@ export function renderCoordinatePlane(
 
       if (xCollisionFadeMap) {
         const result = computeCollisionOpacity(
-          tick.value, isVisible, xCollisionFadeMap, now, COLLISION_FADE_MS
+          tick.value,
+          isVisible,
+          xCollisionFadeMap,
+          now,
+          COLLISION_FADE_MS
         )
         collisionOpacity = result.opacity
         if (result.animating) animating = true
@@ -427,7 +423,11 @@ export function renderCoordinatePlane(
 
       if (yCollisionFadeMap) {
         const result = computeCollisionOpacity(
-          tick.value, isVisible, yCollisionFadeMap, now, COLLISION_FADE_MS
+          tick.value,
+          isVisible,
+          yCollisionFadeMap,
+          now,
+          COLLISION_FADE_MS
         )
         collisionOpacity = result.opacity
         if (result.animating) animating = true

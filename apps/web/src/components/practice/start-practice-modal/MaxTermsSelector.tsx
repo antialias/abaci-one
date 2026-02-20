@@ -88,19 +88,16 @@ function formatRange(min: number, max: number): string {
  * If all enabled modes have the same range, returns a single range (e.g. "2\u20134").
  * Otherwise returns per-mode ranges (e.g. "🧮2\u20135 🧠2\u20133").
  */
-function formatRangeText(
-  perModeRanges: Record<string, { min: number; max: number }>,
-): string {
-  const entries = MODE_ORDER
-    .filter((m) => perModeRanges[m] !== undefined)
-    .map((m) => ({ mode: m, ...perModeRanges[m] }))
+function formatRangeText(perModeRanges: Record<string, { min: number; max: number }>): string {
+  const entries = MODE_ORDER.filter((m) => perModeRanges[m] !== undefined).map((m) => ({
+    mode: m,
+    ...perModeRanges[m],
+  }))
 
   if (entries.length === 0) return '2\u20134'
 
   // Check if all ranges are identical
-  const allSame = entries.every(
-    (e) => e.min === entries[0].min && e.max === entries[0].max
-  )
+  const allSame = entries.every((e) => e.min === entries[0].min && e.max === entries[0].max)
 
   if (allSame || entries.length === 1) {
     return formatRange(entries[0].min, entries[0].max)
@@ -112,14 +109,12 @@ function formatRangeText(
     visualization: '\u{1F9E0}',
     linear: '\u{1F4AD}',
   }
-  return entries
-    .map((e) => `${modeEmojis[e.mode]}${formatRange(e.min, e.max)}`)
-    .join(' ')
+  return entries.map((e) => `${modeEmojis[e.mode]}${formatRange(e.min, e.max)}`).join(' ')
 }
 
 function formatModeReadiness(
   comfortByMode: Record<string, number>,
-  enabledParts: Record<string, boolean>,
+  enabledParts: Record<string, boolean>
 ): string | null {
   const parts: string[] = []
   for (const mode of MODE_ORDER) {
@@ -268,13 +263,21 @@ function MasteryScaleTooltipContent({
             pref === 'shorter'
               ? { width: 6, height: 10, background: '#60a5fa' }
               : pref === 'recommended'
-                ? { width: 8, height: 14, background: 'white', boxShadow: '0 0 4px rgba(255,255,255,0.5)' }
+                ? {
+                    width: 8,
+                    height: 14,
+                    background: 'white',
+                    boxShadow: '0 0 4px rgba(255,255,255,0.5)',
+                  }
                 : { width: 6, height: 10, background: '#f472b6' }
-          const label = pref === 'shorter' ? 'Shorter' : pref === 'recommended' ? 'Recommended' : 'Longer'
+          const label =
+            pref === 'shorter' ? 'Shorter' : pref === 'recommended' ? 'Recommended' : 'Longer'
 
           return (
             <div key={pref}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span
                     style={{
@@ -286,23 +289,38 @@ function MasteryScaleTooltipContent({
                   />
                   {label}
                 </span>
-                <span style={{ color: '#9ca3af' }}>
-                  {formatRangeText(prefRanges)}
-                </span>
+                <span style={{ color: '#9ca3af' }}>{formatRangeText(prefRanges)}</span>
               </div>
               {/* Show per-mode breakdown if modes have different ranges */}
-              {hasMultipleModes && hasPerModeData && (() => {
-                const modeEntries = enabledModes.map((m) => ({ mode: m, range: prefRanges[m] })).filter((e) => e.range)
-                const allSame = modeEntries.every(
-                  (e) => e.range.min === modeEntries[0].range.min && e.range.max === modeEntries[0].range.max
-                )
-                if (allSame) return null
-                return (
-                  <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginLeft: 18, marginTop: 1 }}>
-                    {modeEntries.map((e) => `${MODE_LABELS[e.mode]} ${formatRange(e.range.min, e.range.max)}`).join(' \u00b7 ')}
-                  </div>
-                )
-              })()}
+              {hasMultipleModes &&
+                hasPerModeData &&
+                (() => {
+                  const modeEntries = enabledModes
+                    .map((m) => ({ mode: m, range: prefRanges[m] }))
+                    .filter((e) => e.range)
+                  const allSame = modeEntries.every(
+                    (e) =>
+                      e.range.min === modeEntries[0].range.min &&
+                      e.range.max === modeEntries[0].range.max
+                  )
+                  if (allSame) return null
+                  return (
+                    <div
+                      style={{
+                        fontSize: '0.6875rem',
+                        color: '#6b7280',
+                        marginLeft: 18,
+                        marginTop: 1,
+                      }}
+                    >
+                      {modeEntries
+                        .map(
+                          (e) => `${MODE_LABELS[e.mode]} ${formatRange(e.range.min, e.range.max)}`
+                        )
+                        .join(' \u00b7 ')}
+                    </div>
+                  )
+                })()}
             </div>
           )
         })}
@@ -346,15 +364,14 @@ function SelectedRangeDetail({
   overallComfort: number
   isDark: boolean
 }) {
-  const entries = MODE_ORDER
-    .filter((m) => perModeRanges[m] !== undefined)
-    .map((m) => ({ mode: m, ...perModeRanges[m] }))
+  const entries = MODE_ORDER.filter((m) => perModeRanges[m] !== undefined).map((m) => ({
+    mode: m,
+    ...perModeRanges[m],
+  }))
 
   if (entries.length === 0) return null
 
-  const allSame = entries.every(
-    (e) => e.min === entries[0].min && e.max === entries[0].max
-  )
+  const allSame = entries.every((e) => e.min === entries[0].min && e.max === entries[0].max)
 
   return (
     <div
@@ -380,7 +397,7 @@ function SelectedRangeDetail({
             return (
               <span key={e.mode}>
                 {i > 0 && ' \u00b7 '}
-                {MODE_EMOJIS[e.mode]}{' '}{MODE_LABELS[e.mode]} {formatRange(e.min, e.max)} ({pct}%)
+                {MODE_EMOJIS[e.mode]} {MODE_LABELS[e.mode]} {formatRange(e.min, e.max)} ({pct}%)
               </span>
             )
           })}
@@ -424,10 +441,13 @@ export function ProblemLengthSelector() {
   // if so, readiness is shown inline in the range detail row, not the subtitle
   const selectedRanges = ranges[problemLengthPreference]
   const selectedEntries = MODE_ORDER.filter((m) => selectedRanges[m] !== undefined)
-  const rangesDiffer = selectedEntries.length > 1 && !selectedEntries.every(
-    (m) => selectedRanges[m].min === selectedRanges[selectedEntries[0]].min
-      && selectedRanges[m].max === selectedRanges[selectedEntries[0]].max
-  )
+  const rangesDiffer =
+    selectedEntries.length > 1 &&
+    !selectedEntries.every(
+      (m) =>
+        selectedRanges[m].min === selectedRanges[selectedEntries[0]].min &&
+        selectedRanges[m].max === selectedRanges[selectedEntries[0]].max
+    )
 
   return (
     <div data-setting="problem-length">
@@ -534,7 +554,10 @@ export function ProblemLengthSelector() {
             },
           })}
         >
-          {rangesDiffer ? `${readinessPct}% readiness` : (modeReadiness ?? `${readinessPct}% readiness`)} &middot; {subtitle} &#9432;
+          {rangesDiffer
+            ? `${readinessPct}% readiness`
+            : (modeReadiness ?? `${readinessPct}% readiness`)}{' '}
+          &middot; {subtitle} &#9432;
         </div>
       </Tooltip>
     </div>

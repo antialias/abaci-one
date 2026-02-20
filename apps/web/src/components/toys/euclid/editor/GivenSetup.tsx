@@ -1,11 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useCallback, useState } from 'react'
-import type {
-  ConstructionState,
-  EuclidViewportState,
-  SerializedElement,
-} from '../types'
+import type { ConstructionState, EuclidViewportState, SerializedElement } from '../types'
 import { BYRNE } from '../types'
 import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
 
@@ -41,8 +37,8 @@ export function GivenSetup({
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
 
-  const points = givenElements.filter(e => e.kind === 'point')
-  const segments = givenElements.filter(e => e.kind === 'segment')
+  const points = givenElements.filter((e) => e.kind === 'point')
+  const segments = givenElements.filter((e) => e.kind === 'segment')
 
   // ── Draw given elements on a separate overlay ──
   useEffect(() => {
@@ -94,11 +90,29 @@ export function GivenSetup({
 
       // Draw segments
       for (const seg of segments) {
-        const from = points.find(p => p.id === seg.fromId)
-        const to = points.find(p => p.id === seg.toId)
+        const from = points.find((p) => p.id === seg.fromId)
+        const to = points.find((p) => p.id === seg.toId)
         if (!from || !to) continue
-        const s1 = worldToScreen2D(from.x!, from.y!, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
-        const s2 = worldToScreen2D(to.x!, to.y!, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
+        const s1 = worldToScreen2D(
+          from.x!,
+          from.y!,
+          vp.center.x,
+          vp.center.y,
+          vp.pixelsPerUnit,
+          vp.pixelsPerUnit,
+          cssW,
+          cssH
+        )
+        const s2 = worldToScreen2D(
+          to.x!,
+          to.y!,
+          vp.center.x,
+          vp.center.y,
+          vp.pixelsPerUnit,
+          vp.pixelsPerUnit,
+          cssW,
+          cssH
+        )
         ctx.strokeStyle = BYRNE.given
         ctx.lineWidth = 2
         ctx.beginPath()
@@ -109,7 +123,16 @@ export function GivenSetup({
 
       // Draw points
       for (const pt of points) {
-        const s = worldToScreen2D(pt.x!, pt.y!, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
+        const s = worldToScreen2D(
+          pt.x!,
+          pt.y!,
+          vp.center.x,
+          vp.center.y,
+          vp.pixelsPerUnit,
+          vp.pixelsPerUnit,
+          cssW,
+          cssH
+        )
         const isSelected = selectedPointId === pt.id
         const isSegFrom = segmentFromId === pt.id
 
@@ -154,7 +177,17 @@ export function GivenSetup({
     // Keep redrawing for interactive feedback
     const interval = setInterval(drawGiven, 100)
     return () => clearInterval(interval)
-  }, [givenElements, selectedPointId, segmentMode, segmentFromId, canvasRef, viewportRef, needsDrawRef, points, segments])
+  }, [
+    givenElements,
+    selectedPointId,
+    segmentMode,
+    segmentFromId,
+    canvasRef,
+    viewportRef,
+    needsDrawRef,
+    points,
+    segments,
+  ])
 
   // ── Canvas click handler ──
   useEffect(() => {
@@ -172,7 +205,16 @@ export function GivenSetup({
 
       // Hit test existing points
       for (const pt of points) {
-        const s = worldToScreen2D(pt.x!, pt.y!, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
+        const s = worldToScreen2D(
+          pt.x!,
+          pt.y!,
+          vp.center.x,
+          vp.center.y,
+          vp.pixelsPerUnit,
+          vp.pixelsPerUnit,
+          cssW,
+          cssH
+        )
         const dx = sx - s.x
         const dy = sy - s.y
         if (Math.sqrt(dx * dx + dy * dy) < 15) {
@@ -193,7 +235,16 @@ export function GivenSetup({
 
       // No point hit — add new point if not in segment mode
       if (!segmentMode) {
-        const world = screenToWorld2D(sx, sy, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
+        const world = screenToWorld2D(
+          sx,
+          sy,
+          vp.center.x,
+          vp.center.y,
+          vp.pixelsPerUnit,
+          vp.pixelsPerUnit,
+          cssW,
+          cssH
+        )
         // Snap to grid
         const snappedX = Math.round(world.x * 2) / 2
         const snappedY = Math.round(world.y * 2) / 2
@@ -221,7 +272,16 @@ export function GivenSetup({
       const vp = viewportRef.current
 
       for (const pt of points) {
-        const s = worldToScreen2D(pt.x!, pt.y!, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
+        const s = worldToScreen2D(
+          pt.x!,
+          pt.y!,
+          vp.center.x,
+          vp.center.y,
+          vp.pixelsPerUnit,
+          vp.pixelsPerUnit,
+          cssW,
+          cssH
+        )
         if (Math.sqrt((sx - s.x) ** 2 + (sy - s.y) ** 2) < 15) {
           draggingRef.current = pt.id!
           canvas!.style.cursor = 'grabbing'
@@ -241,7 +301,16 @@ export function GivenSetup({
       const cssH = canvas!.height / dpr
       const vp = viewportRef.current
 
-      const world = screenToWorld2D(sx, sy, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssW, cssH)
+      const world = screenToWorld2D(
+        sx,
+        sy,
+        vp.center.x,
+        vp.center.y,
+        vp.pixelsPerUnit,
+        vp.pixelsPerUnit,
+        cssW,
+        cssH
+      )
       const snappedX = Math.round(world.x * 2) / 2
       const snappedY = Math.round(world.y * 2) / 2
       onMovePoint(draggingRef.current, snappedX, snappedY)
@@ -301,7 +370,7 @@ export function GivenSetup({
         <button
           data-action="rename-point"
           onClick={() => {
-            const pt = points.find(p => p.id === selectedPointId)
+            const pt = points.find((p) => p.id === selectedPointId)
             if (pt) {
               setRenamingId(pt.id!)
               setRenameValue(pt.label!)
@@ -325,20 +394,22 @@ export function GivenSetup({
       )}
 
       {renamingId && (
-        <div style={{
-          display: 'flex',
-          gap: 4,
-          alignItems: 'center',
-          padding: '4px 8px',
-          borderRadius: 8,
-          background: 'rgba(255, 255, 255, 0.95)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 4,
+            alignItems: 'center',
+            padding: '4px 8px',
+            borderRadius: 8,
+            background: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          }}
+        >
           <input
             data-element="rename-input"
             value={renameValue}
-            onChange={e => setRenameValue(e.target.value.toUpperCase())}
-            onKeyDown={e => {
+            onChange={(e) => setRenameValue(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && renameValue.trim()) {
                 onRenamePoint(renamingId, renameValue.trim())
                 setRenamingId(null)

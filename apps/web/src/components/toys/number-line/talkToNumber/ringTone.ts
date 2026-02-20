@@ -49,9 +49,12 @@ export function playRingTone(audioContext: AudioContext): { stop: () => void } {
 
   // Auto-stop after all scheduled cycles (safety net)
   const totalDuration = maxCycles * cycleDuration
-  const stopTimer = setTimeout(() => {
-    if (!stopped) cleanup()
-  }, totalDuration * 1000 + 100)
+  const stopTimer = setTimeout(
+    () => {
+      if (!stopped) cleanup()
+    },
+    totalDuration * 1000 + 100
+  )
 
   function cleanup() {
     stopped = true

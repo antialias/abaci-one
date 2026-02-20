@@ -18,7 +18,7 @@ export function deriveDef15Facts(
   newPointId: string,
   state: ConstructionState,
   store: FactStore,
-  atStep: number,
+  atStep: number
 ): EqualityFact[] {
   const allNewFacts: EqualityFact[] = []
 
@@ -50,7 +50,7 @@ export function deriveDef15Facts(
       { type: 'def15', circleId: elementId },
       statement,
       justification,
-      atStep,
+      atStep
     )
     allNewFacts.push(...newFacts)
   }

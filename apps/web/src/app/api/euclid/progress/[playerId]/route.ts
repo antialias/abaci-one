@@ -27,7 +27,7 @@ export const GET = withAuth(async (_request, { params }) => {
       .from(euclidProgress)
       .where(eq(euclidProgress.playerId, playerId))
 
-    const completed = rows.map(r => r.propositionId)
+    const completed = rows.map((r) => r.propositionId)
 
     return NextResponse.json({ completed })
   } catch (error) {
@@ -59,10 +59,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Idempotent insert — ignore if already exists
-    await db
-      .insert(euclidProgress)
-      .values({ playerId, propositionId })
-      .onConflictDoNothing()
+    await db.insert(euclidProgress).values({ playerId, propositionId }).onConflictDoNothing()
 
     // Return full updated list
     const rows = await db
@@ -70,7 +67,7 @@ export const POST = withAuth(async (request, { params }) => {
       .from(euclidProgress)
       .where(eq(euclidProgress.playerId, playerId))
 
-    const completed = rows.map(r => r.propositionId)
+    const completed = rows.map((r) => r.propositionId)
 
     return NextResponse.json({ completed })
   } catch (error) {

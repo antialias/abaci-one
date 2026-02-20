@@ -151,8 +151,7 @@ export default function DebugPracticePage() {
 
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
             {PRESETS.map((preset) => {
-              const isLoading =
-                loading === preset.id && !(useModal && showModal)
+              const isLoading = loading === preset.id && !(useModal && showModal)
               return (
                 <div
                   key={preset.id}

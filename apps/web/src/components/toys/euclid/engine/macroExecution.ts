@@ -24,10 +24,7 @@ export function createMacroAnimation(result: MacroResult): MacroAnimation {
  */
 export function tickMacroAnimation(anim: MacroAnimation): number {
   const elapsed = performance.now() - anim.startTime
-  const count = Math.min(
-    Math.floor(elapsed / anim.perElementMs) + 1,
-    anim.elements.length,
-  )
+  const count = Math.min(Math.floor(elapsed / anim.perElementMs) + 1, anim.elements.length)
   return count
 }
 

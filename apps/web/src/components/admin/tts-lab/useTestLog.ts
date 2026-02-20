@@ -24,10 +24,7 @@ export function useTestLog(maxEntries = 200): UseTestLogReturn {
   const log = useCallback(
     (level: LogLevel, message: string, detail?: string) => {
       setEntries((prev) => {
-        const next = [
-          ...prev,
-          { timestamp: Date.now() - startRef.current, level, message, detail },
-        ]
+        const next = [...prev, { timestamp: Date.now() - startRef.current, level, message, detail }]
         return next.length > maxEntries ? next.slice(-maxEntries) : next
       })
     },

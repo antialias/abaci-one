@@ -84,9 +84,8 @@ export function AdditionWorksheetClient({
         <div
           data-component="addition-worksheet-page"
           className={css({
-            height: '100vh',
+            height: 'calc(100vh - var(--app-nav-height))',
             bg: isDark ? 'gray.900' : 'gray.50',
-            paddingTop: 'var(--app-nav-height)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',

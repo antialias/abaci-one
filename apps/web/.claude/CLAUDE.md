@@ -43,6 +43,14 @@ Quick rules: Never modify schema directly, never modify deployed migrations, alw
 - **Gotcha**: `padding: '1 2'` doesn't work - use `padding: '4px 8px'` or `paddingX/paddingY`
 - **Fix broken CSS**: Run `/fix-css`
 
+### Nav Height Offset (Fixed-Position AppNavBar)
+**The `AppNavBar` is `position: fixed` and overlaps page content.** Every page showing the nav MUST account for its height. How this is handled depends on the code path:
+
+- **`PageWithNav` without `navTitle`** (standard pages like practice, settings, pricing): The component automatically wraps children in a div with `paddingTop: var(--app-nav-height)`. Pages must NEVER add their own nav-height padding — just add content padding (e.g., `paddingTop: '2rem'`), NOT `calc(80px + 2rem)`. For full-viewport-height layouts (`height: 100vh` + `overflow: hidden`), use `height: 'calc(100vh - var(--app-nav-height))'` instead.
+- **`PageWithNav` with `navTitle`** (arcade games, guide): Children are rendered WITHOUT automatic padding. These pages use `StandardGameLayout` (which dynamically measures nav height) or the `with-fixed-nav` CSS class.
+- **`AppNavBar` used directly** (toys, euclid): Must handle nav offset themselves via `paddingTop: 'var(--app-nav-height)'`.
+- **Preview mode**: No nav rendered, no offset needed.
+
 ### Socket.IO Connections
 **NEVER import `io` from `socket.io-client` directly.** Use `createSocket()` from `@/lib/socket` instead. It provides the correct server path (`/api/socket`). Calling `io()` directly will silently fail to connect.
 

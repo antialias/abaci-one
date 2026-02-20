@@ -24,9 +24,9 @@ function getPhaseLabel(revealProgress: number, demo: 'pi' | 'tau'): string {
       ? 'Sweep: circle drawn around diameter'
       : 'Sweep: circle drawn around radius (compass arm)'
   }
-  if (revealProgress < 0.30) return 'Treads: sprouting around circumference'
+  if (revealProgress < 0.3) return 'Treads: sprouting around circumference'
   if (revealProgress < 0.92) {
-    const t = (revealProgress - 0.30) / (0.92 - 0.30)
+    const t = (revealProgress - 0.3) / (0.92 - 0.3)
     const pct = Math.round(t * 100)
     return demo === 'pi'
       ? `Rolling: circle unrolls toward π (${pct}%)`
@@ -111,9 +111,7 @@ function CircleConstructionHarness({ width, height, dark, speed, autoPlay, demo 
   speedRef.current = speed
 
   // Compute viewport state for this demo
-  const viewport = demo === 'pi'
-    ? piDemoViewport(width, height)
-    : tauDemoViewport(width, height)
+  const viewport = demo === 'pi' ? piDemoViewport(width, height) : tauDemoViewport(width, height)
   const nlState: NumberLineState = {
     center: viewport.center,
     pixelsPerUnit: viewport.pixelsPerUnit,

@@ -189,13 +189,8 @@ function getClefForSelection(clefOption: ClefOption): 'treble' | 'bass' {
   return clefOption
 }
 
-function getNotePool(
-  clef: 'treble' | 'bass',
-  difficulty: Difficulty
-): NoteDefinition[] {
-  return clef === 'treble'
-    ? TREBLE_NOTE_POOLS[difficulty]
-    : BASS_NOTE_POOLS[difficulty]
+function getNotePool(clef: 'treble' | 'bass', difficulty: Difficulty): NoteDefinition[] {
+  return clef === 'treble' ? TREBLE_NOTE_POOLS[difficulty] : BASS_NOTE_POOLS[difficulty]
 }
 
 /**

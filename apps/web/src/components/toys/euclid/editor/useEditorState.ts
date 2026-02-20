@@ -64,13 +64,16 @@ export function useEditorState({
   const snapshotStackRef = useRef<EditorSnapshot[]>([])
 
   // ── Capture snapshot ──
-  const captureSnapshot = useCallback((): EditorSnapshot => ({
-    construction: constructionRef.current,
-    candidates: [...candidatesRef.current],
-    proofFacts: [...proofFactsRef.current],
-    ghostLayers: [...ghostLayersRef.current],
-    steps: [...steps],
-  }), [constructionRef, candidatesRef, ghostLayersRef, steps])
+  const captureSnapshot = useCallback(
+    (): EditorSnapshot => ({
+      construction: constructionRef.current,
+      candidates: [...candidatesRef.current],
+      proofFacts: [...proofFactsRef.current],
+      ghostLayers: [...ghostLayersRef.current],
+      steps: [...steps],
+    }),
+    [constructionRef, candidatesRef, ghostLayersRef, steps]
+  )
 
   // ── Given element management ──
 
@@ -88,49 +91,52 @@ export function useEditorState({
       color: BYRNE.given,
       origin: 'given',
     }
-    setGivenElements(prev => [...prev, el])
+    setGivenElements((prev) => [...prev, el])
     setDirty(true)
     return el.id
   }, [])
 
-  const addGivenSegment = useCallback((fromId: string, toId: string) => {
-    const segCount = givenElements.filter(e => e.kind === 'segment').length
-    const el: SerializedElement = {
-      kind: 'segment',
-      id: `seg-${segCount + 1}`,
-      fromId,
-      toId,
-      color: BYRNE.given,
-      origin: 'given',
-    }
-    setGivenElements(prev => [...prev, el])
-    setDirty(true)
-  }, [givenElements])
+  const addGivenSegment = useCallback(
+    (fromId: string, toId: string) => {
+      const segCount = givenElements.filter((e) => e.kind === 'segment').length
+      const el: SerializedElement = {
+        kind: 'segment',
+        id: `seg-${segCount + 1}`,
+        fromId,
+        toId,
+        color: BYRNE.given,
+        origin: 'given',
+      }
+      setGivenElements((prev) => [...prev, el])
+      setDirty(true)
+    },
+    [givenElements]
+  )
 
   const updateGivenPointPosition = useCallback((pointId: string, x: number, y: number) => {
-    setGivenElements(prev =>
-      prev.map(el => el.id === pointId ? { ...el, x, y } : el),
-    )
+    setGivenElements((prev) => prev.map((el) => (el.id === pointId ? { ...el, x, y } : el)))
     setDirty(true)
   }, [])
 
   const renameGivenPoint = useCallback((pointId: string, newLabel: string) => {
     const newId = `pt-${newLabel}`
-    setGivenElements(prev => prev.map(el => {
-      if (el.id === pointId) return { ...el, id: newId, label: newLabel }
-      if (el.fromId === pointId) return { ...el, fromId: newId }
-      if (el.toId === pointId) return { ...el, toId: newId }
-      if (el.centerId === pointId) return { ...el, centerId: newId }
-      if (el.radiusPointId === pointId) return { ...el, radiusPointId: newId }
-      return el
-    }))
+    setGivenElements((prev) =>
+      prev.map((el) => {
+        if (el.id === pointId) return { ...el, id: newId, label: newLabel }
+        if (el.fromId === pointId) return { ...el, fromId: newId }
+        if (el.toId === pointId) return { ...el, toId: newId }
+        if (el.centerId === pointId) return { ...el, centerId: newId }
+        if (el.radiusPointId === pointId) return { ...el, radiusPointId: newId }
+        return el
+      })
+    )
     setDirty(true)
   }, [])
 
   // ── Initialize construction from given elements ──
 
   const initializeConstruction = useCallback(() => {
-    const elements: ConstructionElement[] = givenElements.map(el => {
+    const elements: ConstructionElement[] = givenElements.map((el) => {
       if (el.kind === 'point') {
         return {
           kind: 'point' as const,
@@ -184,13 +190,15 @@ export function useEditorState({
     setProofFacts([])
 
     // Reset snapshot stack with initial state
-    snapshotStackRef.current = [{
-      construction: constructionRef.current,
-      candidates: [],
-      proofFacts: [],
-      ghostLayers: [],
-      steps: [],
-    }]
+    snapshotStackRef.current = [
+      {
+        construction: constructionRef.current,
+        candidates: [],
+        proofFacts: [],
+        ghostLayers: [],
+        steps: [],
+      },
+    ]
   }, [givenElements, constructionRef, candidatesRef, factStoreRef, ghostLayersRef])
 
   // ── Start proof mode ──
@@ -218,25 +226,28 @@ export function useEditorState({
 
   // ── Add step ──
 
-  const addStep = useCallback((step: SerializedStep) => {
-    // Capture snapshot before this step
-    snapshotStackRef.current.push({
-      construction: constructionRef.current,
-      candidates: [...candidatesRef.current],
-      proofFacts: [...proofFactsRef.current],
-      ghostLayers: [...ghostLayersRef.current],
-      steps: [...steps],
-    })
+  const addStep = useCallback(
+    (step: SerializedStep) => {
+      // Capture snapshot before this step
+      snapshotStackRef.current.push({
+        construction: constructionRef.current,
+        candidates: [...candidatesRef.current],
+        proofFacts: [...proofFactsRef.current],
+        ghostLayers: [...ghostLayersRef.current],
+        steps: [...steps],
+      })
 
-    setSteps(prev => [...prev, step])
-    setActiveCitation(null)
-    setDirty(true)
-  }, [constructionRef, candidatesRef, ghostLayersRef, steps])
+      setSteps((prev) => [...prev, step])
+      setActiveCitation(null)
+      setDirty(true)
+    },
+    [constructionRef, candidatesRef, ghostLayersRef, steps]
+  )
 
   // ── Update step instruction / notes ──
 
   const updateStepInstruction = useCallback((index: number, instruction: string) => {
-    setSteps(prev => {
+    setSteps((prev) => {
       const next = [...prev]
       next[index] = { ...next[index], instruction }
       return next
@@ -245,7 +256,7 @@ export function useEditorState({
   }, [])
 
   const updateStepNotes = useCallback((index: number, notes: string) => {
-    setSteps(prev => {
+    setSteps((prev) => {
       const next = [...prev]
       next[index] = { ...next[index], notes }
       return next
@@ -267,7 +278,7 @@ export function useEditorState({
       factStoreRef.current = rebuildFactStore(snapshot.proofFacts)
       setSteps(snapshot.steps)
     } else {
-      setSteps(prev => prev.slice(0, -1))
+      setSteps((prev) => prev.slice(0, -1))
     }
     setActiveCitation(null)
     setDirty(true)
@@ -275,23 +286,26 @@ export function useEditorState({
 
   // ── Rewind to step ──
 
-  const rewindToStep = useCallback((targetStep: number) => {
-    if (targetStep >= steps.length) return
-    // We need to replay from the beginning
-    const targetSnapshot = snapshotStackRef.current[targetStep]
-    if (!targetSnapshot) return
+  const rewindToStep = useCallback(
+    (targetStep: number) => {
+      if (targetStep >= steps.length) return
+      // We need to replay from the beginning
+      const targetSnapshot = snapshotStackRef.current[targetStep]
+      if (!targetSnapshot) return
 
-    constructionRef.current = targetSnapshot.construction
-    candidatesRef.current = targetSnapshot.candidates
-    proofFactsRef.current = targetSnapshot.proofFacts
-    setProofFacts(targetSnapshot.proofFacts)
-    ghostLayersRef.current = targetSnapshot.ghostLayers
-    factStoreRef.current = rebuildFactStore(targetSnapshot.proofFacts)
-    snapshotStackRef.current = snapshotStackRef.current.slice(0, targetStep + 1)
-    setSteps(targetSnapshot.steps)
-    setActiveCitation(null)
-    setDirty(true)
-  }, [steps, constructionRef, candidatesRef, factStoreRef, ghostLayersRef])
+      constructionRef.current = targetSnapshot.construction
+      candidatesRef.current = targetSnapshot.candidates
+      proofFactsRef.current = targetSnapshot.proofFacts
+      setProofFacts(targetSnapshot.proofFacts)
+      ghostLayersRef.current = targetSnapshot.ghostLayers
+      factStoreRef.current = rebuildFactStore(targetSnapshot.proofFacts)
+      snapshotStackRef.current = snapshotStackRef.current.slice(0, targetStep + 1)
+      setSteps(targetSnapshot.steps)
+      setActiveCitation(null)
+      setDirty(true)
+    },
+    [steps, constructionRef, candidatesRef, factStoreRef, ghostLayersRef]
+  )
 
   // ── Update proof facts ──
 
@@ -302,23 +316,26 @@ export function useEditorState({
 
   // ── Generate default instruction from action ──
 
-  const generateInstruction = useCallback((citation: string, action: SerializedAction): string => {
-    const state = constructionRef.current
-    const label = (id: string) => getPoint(state, id)?.label ?? id.replace('pt-', '')
+  const generateInstruction = useCallback(
+    (citation: string, action: SerializedAction): string => {
+      const state = constructionRef.current
+      const label = (id: string) => getPoint(state, id)?.label ?? id.replace('pt-', '')
 
-    switch (action.type) {
-      case 'compass':
-        return `Draw circle centered at ${label(action.centerId)} through ${label(action.radiusPointId)}.`
-      case 'straightedge':
-        return `Draw segment from ${label(action.fromId)} to ${label(action.toId)}.`
-      case 'intersection':
-        return `Mark intersection point ${action.label}.`
-      case 'macro':
-        return `Apply I.${action.propId}.`
-      case 'fact-only':
-        return `By ${citation}.`
-    }
-  }, [constructionRef])
+      switch (action.type) {
+        case 'compass':
+          return `Draw circle centered at ${label(action.centerId)} through ${label(action.radiusPointId)}.`
+        case 'straightedge':
+          return `Draw segment from ${label(action.fromId)} to ${label(action.toId)}.`
+        case 'intersection':
+          return `Mark intersection point ${action.label}.`
+        case 'macro':
+          return `Apply I.${action.propId}.`
+        case 'fact-only':
+          return `By ${citation}.`
+      }
+    },
+    [constructionRef]
+  )
 
   // ── Serialize to ProofJSON ──
 

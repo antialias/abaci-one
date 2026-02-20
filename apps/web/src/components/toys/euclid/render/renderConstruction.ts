@@ -6,7 +6,13 @@ import type {
   IntersectionCandidate,
 } from '../types'
 import { BYRNE } from '../types'
-import { getAllPoints, getAllCircles, getAllSegments, getPoint, getRadius } from '../engine/constructionState'
+import {
+  getAllPoints,
+  getAllCircles,
+  getAllSegments,
+  getPoint,
+  getRadius,
+} from '../engine/constructionState'
 import { isCandidateBeyondPoint } from '../engine/intersections'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 
@@ -21,18 +27,16 @@ const CANDIDATE_COLOR_ACTIVE = 'rgba(120, 120, 120, 0.5)'
 const CANDIDATE_COLOR_DIM = 'rgba(120, 120, 120, 0.15)'
 const RESULT_COLOR = '#10b981' // matches completion banner green
 
-function toScreen(
-  wx: number,
-  wy: number,
-  viewport: EuclidViewportState,
-  w: number,
-  h: number,
-) {
+function toScreen(wx: number, wy: number, viewport: EuclidViewportState, w: number, h: number) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    w, h,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    w,
+    h
   )
 }
 
@@ -53,7 +57,7 @@ export function renderConstruction(
   resultSegments?: Array<{ fromId: string; toId: string }>,
   hiddenElementIds?: Set<string>,
   transparentBg?: boolean,
-  draggablePointIds?: string[],
+  draggablePointIds?: string[]
 ) {
   const ppu = viewport.pixelsPerUnit
 
@@ -116,15 +120,16 @@ export function renderConstruction(
       } else if (matchesElements && !candidateFilter.beyondId) {
         // When multiple candidates match with no beyondId (e.g. circle-circle),
         // only highlight the one with the highest Y (matches tutorial arrow convention)
-        const hasHigherMatch = candidates.some(other =>
-          other !== c &&
-          ((other.ofA === candidateFilter.ofA && other.ofB === candidateFilter.ofB) ||
-           (other.ofA === candidateFilter.ofB && other.ofB === candidateFilter.ofA)) &&
-          other.y > c.y,
+        const hasHigherMatch = candidates.some(
+          (other) =>
+            other !== c &&
+            ((other.ofA === candidateFilter.ofA && other.ofB === candidateFilter.ofB) ||
+              (other.ofA === candidateFilter.ofB && other.ofB === candidateFilter.ofA)) &&
+            other.y > c.y
         )
         if (hasHigherMatch) isPreferred = false
       }
-      color = (matchesElements && isPreferred) ? CANDIDATE_COLOR_ACTIVE : CANDIDATE_COLOR_DIM
+      color = matchesElements && isPreferred ? CANDIDATE_COLOR_ACTIVE : CANDIDATE_COLOR_DIM
     }
 
     ctx.beginPath()
@@ -171,8 +176,8 @@ export function renderConstruction(
 
       for (let ring = 0; ring < RIPPLE_COUNT; ring++) {
         // Stagger rings within a point + stagger between points
-        const offset = (ring / RIPPLE_COUNT) + (ptIdx * STAGGER_PER_POINT / RIPPLE_PERIOD)
-        const t = ((time / RIPPLE_PERIOD) + offset) % 1 // 0→1 phase
+        const offset = ring / RIPPLE_COUNT + (ptIdx * STAGGER_PER_POINT) / RIPPLE_PERIOD
+        const t = (time / RIPPLE_PERIOD + offset) % 1 // 0→1 phase
         const radius = POINT_RADIUS + t * RIPPLE_MAX_RADIUS
         // Fade out as ring expands: bright at birth, gone at max radius
         const alpha = 0.5 * (1 - t)
@@ -262,7 +267,7 @@ export function renderDragInvitation(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  completionTime: number,
+  completionTime: number
 ): boolean {
   const now = performance.now()
   const elapsed = now - completionTime

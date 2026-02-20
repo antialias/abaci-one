@@ -10,78 +10,81 @@ import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 
-export const GET = withAuth(async (request) => {
-  const url = new URL(request.url)
-  const taskId = url.searchParams.get('taskId')
+export const GET = withAuth(
+  async (request) => {
+    const url = new URL(request.url)
+    const taskId = url.searchParams.get('taskId')
 
-  // Single task with events
-  if (taskId) {
-    const task = await db.query.backgroundTasks.findFirst({
-      where: eq(schema.backgroundTasks.id, taskId),
-    })
+    // Single task with events
+    if (taskId) {
+      const task = await db.query.backgroundTasks.findFirst({
+        where: eq(schema.backgroundTasks.id, taskId),
+      })
 
-    if (!task) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+      if (!task) {
+        return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+      }
+
+      const events = await db
+        .select({
+          id: schema.backgroundTaskEvents.id,
+          taskId: schema.backgroundTaskEvents.taskId,
+          eventType: schema.backgroundTaskEvents.eventType,
+          payload: schema.backgroundTaskEvents.payload,
+          createdAt: schema.backgroundTaskEvents.createdAt,
+        })
+        .from(schema.backgroundTaskEvents)
+        .where(eq(schema.backgroundTaskEvents.taskId, taskId))
+        .orderBy(schema.backgroundTaskEvents.id)
+        .limit(200)
+        .all()
+
+      return NextResponse.json({
+        task: {
+          id: task.id,
+          type: task.type,
+          status: task.status,
+          progress: task.progress ?? 0,
+          progressMessage: task.progressMessage,
+          error: task.error,
+          createdAt: task.createdAt,
+          startedAt: task.startedAt,
+          completedAt: task.completedAt,
+          events: events.map((e) => ({ ...e, payload: sanitizePayload(e.payload) })),
+        },
+      })
     }
 
-    const events = await db
+    // Task list (no events, no input/output blobs — fast)
+    const limit = parseInt(url.searchParams.get('limit') ?? '50', 10)
+
+    const taskList = await db
       .select({
-        id: schema.backgroundTaskEvents.id,
-        taskId: schema.backgroundTaskEvents.taskId,
-        eventType: schema.backgroundTaskEvents.eventType,
-        payload: schema.backgroundTaskEvents.payload,
-        createdAt: schema.backgroundTaskEvents.createdAt,
+        id: schema.backgroundTasks.id,
+        type: schema.backgroundTasks.type,
+        status: schema.backgroundTasks.status,
+        progress: schema.backgroundTasks.progress,
+        progressMessage: schema.backgroundTasks.progressMessage,
+        error: schema.backgroundTasks.error,
+        createdAt: schema.backgroundTasks.createdAt,
+        startedAt: schema.backgroundTasks.startedAt,
+        completedAt: schema.backgroundTasks.completedAt,
       })
-      .from(schema.backgroundTaskEvents)
-      .where(eq(schema.backgroundTaskEvents.taskId, taskId))
-      .orderBy(schema.backgroundTaskEvents.id)
-      .limit(200)
+      .from(schema.backgroundTasks)
+      .orderBy(desc(schema.backgroundTasks.createdAt))
+      .limit(Math.min(limit, 100))
       .all()
 
-    return NextResponse.json({
-      task: {
-        id: task.id,
-        type: task.type,
-        status: task.status,
-        progress: task.progress ?? 0,
-        progressMessage: task.progressMessage,
-        error: task.error,
-        createdAt: task.createdAt,
-        startedAt: task.startedAt,
-        completedAt: task.completedAt,
-        events: events.map((e) => ({ ...e, payload: sanitizePayload(e.payload) })),
-      },
-    })
-  }
+    const tasks = taskList.map((t) => ({
+      ...t,
+      progress: t.progress ?? 0,
+      events: [],
+    }))
 
-  // Task list (no events, no input/output blobs — fast)
-  const limit = parseInt(url.searchParams.get('limit') ?? '50', 10)
-
-  const taskList = await db
-    .select({
-      id: schema.backgroundTasks.id,
-      type: schema.backgroundTasks.type,
-      status: schema.backgroundTasks.status,
-      progress: schema.backgroundTasks.progress,
-      progressMessage: schema.backgroundTasks.progressMessage,
-      error: schema.backgroundTasks.error,
-      createdAt: schema.backgroundTasks.createdAt,
-      startedAt: schema.backgroundTasks.startedAt,
-      completedAt: schema.backgroundTasks.completedAt,
-    })
-    .from(schema.backgroundTasks)
-    .orderBy(desc(schema.backgroundTasks.createdAt))
-    .limit(Math.min(limit, 100))
-    .all()
-
-  const tasks = taskList.map((t) => ({
-    ...t,
-    progress: t.progress ?? 0,
-    events: [],
-  }))
-
-  return NextResponse.json({ tasks })
-}, { role: 'admin' })
+    return NextResponse.json({ tasks })
+  },
+  { role: 'admin' }
+)
 
 /**
  * Remove or truncate large fields from event payloads

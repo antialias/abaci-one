@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation } from '@tanstack/react-query'
-import { Check, X } from 'lucide-react'
+import { Check } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -60,7 +60,10 @@ export default function PricingPage() {
         className={css({
           minHeight: '100vh',
           backgroundColor: isDark ? 'gray.900' : 'gray.50',
-          padding: '2rem 1rem',
+          paddingTop: '2rem',
+          paddingLeft: '1rem',
+          paddingRight: '1rem',
+          paddingBottom: '2rem',
         })}
       >
         <div className={css({ maxWidth: '900px', margin: '0 auto' })}>
@@ -82,8 +85,8 @@ export default function PricingPage() {
                 fontSize: '1.125rem',
               })}
             >
-              Everything you need to build strong math skills.
-              The free tier is fully functional — upgrade when your family grows.
+              Everything you need to build strong math skills. The free tier is fully functional —
+              upgrade when your family grows.
             </p>
           </div>
 
@@ -120,11 +123,7 @@ export default function PricingPage() {
                 })}
                 style={{
                   backgroundColor:
-                    interval === i
-                      ? isDark
-                        ? '#374151'
-                        : '#ffffff'
-                      : 'transparent',
+                    interval === i ? (isDark ? '#374151' : '#ffffff') : 'transparent',
                   color:
                     interval === i
                       ? isDark
@@ -432,7 +431,6 @@ function FeatureList({
       {features.map((f) => {
         const value = f[column]
         const isIncluded = value === true
-        const isExcluded = value === false
 
         return (
           <li
@@ -443,32 +441,23 @@ function FeatureList({
               gap: '0.5rem',
               padding: '0.375rem 0',
               fontSize: '0.875rem',
-              color: isExcluded
-                ? isDark
-                  ? 'gray.600'
-                  : 'gray.400'
-                : isDark
-                  ? 'gray.300'
-                  : 'gray.700',
+              color: isDark ? 'gray.300' : 'gray.700',
             })}
           >
-            {isExcluded ? (
-              <X size={16} className={css({ color: isDark ? 'gray.600' : 'gray.400', flexShrink: 0 })} />
-            ) : (
-              <Check
-                size={16}
-                className={css({
-                  color: column === 'family'
+            <Check
+              size={16}
+              className={css({
+                color:
+                  column === 'family'
                     ? isDark
                       ? 'purple.400'
                       : 'purple.500'
                     : isDark
                       ? 'green.400'
                       : 'green.500',
-                  flexShrink: 0,
-                })}
-              />
-            )}
+                flexShrink: 0,
+              })}
+            />
             <span>
               {f.label}
               {typeof value === 'string' && (

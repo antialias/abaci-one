@@ -47,17 +47,13 @@ function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
       {
         instruction: `${drag} to point A`,
-        speech: isTouch
-          ? 'Drag over to point A.'
-          : 'Drag over to point A.',
+        speech: isTouch ? 'Drag over to point A.' : 'Drag over to point A.',
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-A' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around again`,
-        speech: isTouch
-          ? 'Sweep all the way around again!'
-          : 'Move all the way around again!',
+        speech: isTouch ? 'Sweep all the way around again!' : 'Move all the way around again!',
         hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-A' },
         advanceOn: null,
       },
@@ -187,8 +183,7 @@ export const PROP_1: PropositionDef = {
       },
       {
         pointId: 'pt-B',
-        speech:
-          'Watch the triangle get bigger and smaller. It always stays equilateral!',
+        speech: 'Watch the triangle get bigger and smaller. It always stays equilateral!',
       },
     ],
   },

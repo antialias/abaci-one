@@ -62,8 +62,5 @@ export function useFeatureFlag(key: string) {
 
   // Stable reference — only changes when the primitive `enabled` or
   // the structurally-shared `config` actually differ.
-  return useMemo(
-    () => ({ enabled, config, isLoading }),
-    [enabled, config, isLoading]
-  )
+  return useMemo(() => ({ enabled, config, isLoading }), [enabled, config, isLoading])
 }

@@ -24,11 +24,7 @@ export function smoothstep(t: number): number {
  * Each segment uses smoothstep(t) = 3t^2 - 2t^3 which has zero derivative
  * at both endpoints -> C1 continuous at all joints.
  */
-export function computeProminence(
-  numTicks: number,
-  anchorMax: number,
-  mediumMax: number
-): number {
+export function computeProminence(numTicks: number, anchorMax: number, mediumMax: number): number {
   const fadeEnd = mediumMax * 1.5
 
   if (numTicks <= 0) return 1.0
@@ -49,7 +45,12 @@ export function computeProminence(
 // ── Visual landmark interpolation ───────────────────────────────────
 
 /** Piecewise linear interpolation between three landmarks at p=1, p=0.5, p=0 */
-export function lerpLandmarks(prominence: number, anchor: number, medium: number, fine: number): number {
+export function lerpLandmarks(
+  prominence: number,
+  anchor: number,
+  medium: number,
+  fine: number
+): number {
   if (prominence >= 0.5) {
     const t = (prominence - 0.5) / 0.5
     return medium + t * (anchor - medium)

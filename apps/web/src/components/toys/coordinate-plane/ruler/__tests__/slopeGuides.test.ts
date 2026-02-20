@@ -32,29 +32,29 @@ describe('slopeGuides', () => {
 
     it('includes slope 0', () => {
       const state = computeSlopeGuides(0, 0, 3, 1)
-      const zero = state.guides.find(g => g.slope.num === 0 && g.slope.den === 1)
+      const zero = state.guides.find((g) => g.slope.num === 0 && g.slope.den === 1)
       expect(zero).toBeDefined()
     })
 
     it('includes vertical slope', () => {
       const state = computeSlopeGuides(0, 0, 3, 1)
-      const vert = state.guides.find(g => g.slope.den === 0)
+      const vert = state.guides.find((g) => g.slope.den === 0)
       expect(vert).toBeDefined()
       expect(vert!.slope.label).toBe('\u221E')
     })
 
     it('includes slopes up to ±11', () => {
       const state = computeSlopeGuides(0, 0, 3, 1)
-      const s11 = state.guides.find(g => g.slope.num === 11 && g.slope.den === 1)
-      const sNeg11 = state.guides.find(g => g.slope.num === -11 && g.slope.den === 1)
+      const s11 = state.guides.find((g) => g.slope.num === 11 && g.slope.den === 1)
+      const sNeg11 = state.guides.find((g) => g.slope.num === -11 && g.slope.den === 1)
       expect(s11).toBeDefined()
       expect(sNeg11).toBeDefined()
     })
 
     it('includes inverse slopes up to ±1/11', () => {
       const state = computeSlopeGuides(0, 0, 3, 1)
-      const inv11 = state.guides.find(g => g.slope.num === 1 && g.slope.den === 11)
-      const invNeg11 = state.guides.find(g => g.slope.num === -1 && g.slope.den === 11)
+      const inv11 = state.guides.find((g) => g.slope.num === 1 && g.slope.den === 11)
+      const invNeg11 = state.guides.find((g) => g.slope.num === -1 && g.slope.den === 11)
       expect(inv11).toBeDefined()
       expect(invNeg11).toBeDefined()
     })
@@ -89,8 +89,8 @@ describe('slopeGuides', () => {
       expect(pts).toContainEqual({ x: 2, y: 1 })
       expect(pts).toContainEqual({ x: -4, y: -2 })
       // Odd x values should not appear
-      expect(pts.find(p => p.x === 1)).toBeUndefined()
-      expect(pts.find(p => p.x === 3)).toBeUndefined()
+      expect(pts.find((p) => p.x === 1)).toBeUndefined()
+      expect(pts.find((p) => p.x === 3)).toBeUndefined()
     })
 
     it('finds integer points along slope=1/3 from non-origin anchor', () => {
@@ -135,7 +135,7 @@ describe('slopeGuides', () => {
       expect(pts).toContainEqual({ x: 1, y: 3 })
       expect(pts).toContainEqual({ x: -1, y: -3 })
       // x=2 -> y=6 is out of range
-      expect(pts.find(p => p.x === 2)).toBeUndefined()
+      expect(pts.find((p) => p.x === 2)).toBeUndefined()
     })
 
     it('handles negative slope', () => {

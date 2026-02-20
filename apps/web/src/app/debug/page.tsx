@@ -1,6 +1,16 @@
 'use client'
 
-import { Bug, Cable, Camera, Eye, Gamepad2, GraduationCap, TestTube, Volume2, Wifi } from 'lucide-react'
+import {
+  Bug,
+  Cable,
+  Camera,
+  Eye,
+  Gamepad2,
+  GraduationCap,
+  TestTube,
+  Volume2,
+  Wifi,
+} from 'lucide-react'
 import Link from 'next/link'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'

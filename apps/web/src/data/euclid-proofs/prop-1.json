@@ -3,9 +3,32 @@
   "title": "Construct an equilateral triangle on a given line",
   "kind": "construction",
   "givenElements": [
-    { "kind": "point", "id": "pt-A", "label": "A", "x": -2, "y": 0, "color": "#1A1A2E", "origin": "given" },
-    { "kind": "point", "id": "pt-B", "label": "B", "x": 2, "y": 0, "color": "#1A1A2E", "origin": "given" },
-    { "kind": "segment", "id": "seg-AB", "fromId": "pt-A", "toId": "pt-B", "color": "#1A1A2E", "origin": "given" }
+    {
+      "kind": "point",
+      "id": "pt-A",
+      "label": "A",
+      "x": -2,
+      "y": 0,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-B",
+      "label": "B",
+      "x": 2,
+      "y": 0,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "segment",
+      "id": "seg-AB",
+      "fromId": "pt-A",
+      "toId": "pt-B",
+      "color": "#1A1A2E",
+      "origin": "given"
+    }
   ],
   "steps": [
     {

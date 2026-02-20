@@ -42,12 +42,14 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-Z' },
-          highlightIds: [],
-          tool: 'compass',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-Z' },
+            highlightIds: [],
+            tool: 'compass',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -60,12 +62,14 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'straightedge', fromId: 'pt-X', toId: 'pt-B' },
-          highlightIds: [],
-          tool: 'straightedge',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'straightedge', fromId: 'pt-X', toId: 'pt-B' },
+            highlightIds: [],
+            tool: 'straightedge',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -78,16 +82,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: {
-            type: 'intersection',
-            beyondId: 'pt-Q',
-            label: 'C',
+        steps: [
+          {
+            instruction: 'test',
+            expected: {
+              type: 'intersection',
+              beyondId: 'pt-Q',
+              label: 'C',
+            },
+            highlightIds: [],
+            tool: null,
           },
-          highlightIds: [],
-          tool: null,
-        }],
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -100,16 +106,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: {
-            type: 'intersection',
-            ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-TYPO' },
-            ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-B' },
+        steps: [
+          {
+            instruction: 'test',
+            expected: {
+              type: 'intersection',
+              ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-TYPO' },
+              ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-B' },
+            },
+            highlightIds: [],
+            tool: null,
           },
-          highlightIds: [],
-          tool: null,
-        }],
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -122,16 +130,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: {
-            type: 'intersection',
-            ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-B' },
-            ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-NOPE' },
+        steps: [
+          {
+            instruction: 'test',
+            expected: {
+              type: 'intersection',
+              ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-B' },
+              ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-NOPE' },
+            },
+            highlightIds: [],
+            tool: null,
           },
-          highlightIds: [],
-          tool: null,
-        }],
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -144,12 +154,14 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-MISSING'] },
-          highlightIds: [],
-          tool: 'macro',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-MISSING'] },
+            highlightIds: [],
+            tool: 'macro',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -191,7 +203,12 @@ describe('validatePropositionDef', () => {
         steps: [
           {
             instruction: 'construct triangle',
-            expected: { type: 'macro', propId: 1, inputPointIds: ['pt-A', 'pt-B'], outputLabels: { apex: 'D' } },
+            expected: {
+              type: 'macro',
+              propId: 1,
+              inputPointIds: ['pt-A', 'pt-B'],
+              outputLabels: { apex: 'D' },
+            },
             highlightIds: [],
             tool: 'macro',
           },
@@ -240,12 +257,14 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
-          highlightIds: ['pt-A', 'pt-WRONG'],
-          tool: 'compass',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
+            highlightIds: ['pt-A', 'pt-WRONG'],
+            tool: 'compass',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -318,7 +337,7 @@ describe('validatePropositionDef', () => {
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(3)
-      const ids = errors.map(e => e.pointId).sort()
+      const ids = errors.map((e) => e.pointId).sort()
       expect(ids).toEqual(['pt-X', 'pt-Y', 'pt-Z'])
     })
 
@@ -327,16 +346,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A'),
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-BAD1' },
-          highlightIds: ['pt-BAD2'],
-          tool: 'compass',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-BAD1' },
+            highlightIds: ['pt-BAD2'],
+            tool: 'compass',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(2)
-      const ids = errors.map(e => e.pointId).sort()
+      const ids = errors.map((e) => e.pointId).sort()
       expect(ids).toEqual(['pt-BAD1', 'pt-BAD2'])
     })
 
@@ -345,12 +366,14 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A'),
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'compass', centerId: 'pt-X', radiusPointId: 'pt-Y' },
-          highlightIds: [],
-          tool: 'compass',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'compass', centerId: 'pt-X', radiusPointId: 'pt-Y' },
+            highlightIds: [],
+            tool: 'compass',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(2)
@@ -391,16 +414,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: {
-            type: 'intersection',
-            beyondId: 'pt-C',
-            label: 'C',
+        steps: [
+          {
+            instruction: 'test',
+            expected: {
+              type: 'intersection',
+              beyondId: 'pt-C',
+              label: 'C',
+            },
+            highlightIds: [],
+            tool: null,
           },
-          highlightIds: [],
-          tool: null,
-        }],
+        ],
       }
       // pt-C is introduced BY this step, so beyondId referencing it should fail
       const errors = validatePropositionDef(prop)
@@ -444,16 +469,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: {
-            type: 'intersection',
-            ofA: 'pt-WRONG',
-            ofB: 'pt-B',
+        steps: [
+          {
+            instruction: 'test',
+            expected: {
+              type: 'intersection',
+              ofA: 'pt-WRONG',
+              ofB: 'pt-B',
+            },
+            highlightIds: [],
+            tool: null,
           },
-          highlightIds: [],
-          tool: null,
-        }],
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(1)
@@ -465,16 +492,18 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: minimalGiven('A', 'B'),
-        steps: [{
-          instruction: 'test',
-          expected: {
-            type: 'intersection',
-            ofA: 'cir-1',
-            ofB: 'seg-2',
+        steps: [
+          {
+            instruction: 'test',
+            expected: {
+              type: 'intersection',
+              ofA: 'cir-1',
+              ofB: 'seg-2',
+            },
+            highlightIds: [],
+            tool: null,
           },
-          highlightIds: [],
-          tool: null,
-        }],
+        ],
       }
       // cir-1 and seg-2 are not point IDs — should not be validated as points
       const errors = validatePropositionDef(prop)
@@ -499,12 +528,14 @@ describe('validatePropositionDef', () => {
         id: 99,
         title: 'test',
         givenElements: [],
-        steps: [{
-          instruction: 'test',
-          expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
-          highlightIds: [],
-          tool: 'compass',
-        }],
+        steps: [
+          {
+            instruction: 'test',
+            expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
+            highlightIds: [],
+            tool: 'compass',
+          },
+        ],
       }
       const errors = validatePropositionDef(prop)
       expect(errors).toHaveLength(2)

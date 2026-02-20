@@ -104,66 +104,74 @@ const smallBtnStyle = css({
 
 /** Pre-populated capture bodies for known blog posts */
 const CAPTURE_BODY_DEFAULTS: Record<string, string> = {
-  'ten-frames-for-regrouping': JSON.stringify({
-    config: {
-      version: 4,
-      mode: 'custom',
-      problemsPerPage: 6,
-      cols: 3,
-      pages: 1,
-      orientation: 'landscape',
-      name: '',
-      digitRange: { min: 2, max: 2 },
-      operator: 'addition',
-      pAnyStart: 0.75,
-      pAllStart: 0.25,
-      interpolate: false,
-      displayRules: {
-        carryBoxes: 'always',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'always',
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+  'ten-frames-for-regrouping': JSON.stringify(
+    {
+      config: {
+        version: 4,
+        mode: 'custom',
+        problemsPerPage: 6,
+        cols: 3,
+        pages: 1,
+        orientation: 'landscape',
+        name: '',
+        digitRange: { min: 2, max: 2 },
+        operator: 'addition',
+        pAnyStart: 0.75,
+        pAllStart: 0.25,
+        interpolate: false,
+        displayRules: {
+          carryBoxes: 'always',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'always',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        fontSize: 16,
+        seed: 42,
+        includeAnswerKey: false,
+        includeQRCode: false,
       },
-      fontSize: 16,
-      seed: 42,
-      includeAnswerKey: false,
-      includeQRCode: false,
     },
-  }, null, 2),
-  'multi-digit-worksheets': JSON.stringify({
-    config: {
-      version: 4,
-      mode: 'custom',
-      problemsPerPage: 8,
-      cols: 4,
-      pages: 1,
-      orientation: 'landscape',
-      name: '',
-      digitRange: { min: 3, max: 4 },
-      operator: 'addition',
-      pAnyStart: 0.6,
-      pAllStart: 0.15,
-      interpolate: false,
-      displayRules: {
-        carryBoxes: 'always',
-        answerBoxes: 'always',
-        placeValueColors: 'always',
-        tenFrames: 'never',
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: 'never',
-        borrowingHints: 'never',
+    null,
+    2
+  ),
+  'multi-digit-worksheets': JSON.stringify(
+    {
+      config: {
+        version: 4,
+        mode: 'custom',
+        problemsPerPage: 8,
+        cols: 4,
+        pages: 1,
+        orientation: 'landscape',
+        name: '',
+        digitRange: { min: 3, max: 4 },
+        operator: 'addition',
+        pAnyStart: 0.6,
+        pAllStart: 0.15,
+        interpolate: false,
+        displayRules: {
+          carryBoxes: 'always',
+          answerBoxes: 'always',
+          placeValueColors: 'always',
+          tenFrames: 'never',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: 'never',
+          borrowingHints: 'never',
+        },
+        fontSize: 16,
+        seed: 77,
+        includeAnswerKey: false,
+        includeQRCode: false,
       },
-      fontSize: 16,
-      seed: 77,
-      includeAnswerKey: false,
-      includeQRCode: false,
     },
-  }, null, 2),
+    null,
+    2
+  ),
 }
 
 /** Helper to build a worksheet capture body */
@@ -181,62 +189,70 @@ function worksheetCaptureBody(overrides: {
   problemsPerPage?: number
   cols?: number
 }): string {
-  return JSON.stringify({
-    config: {
-      version: 4,
-      mode: 'custom',
-      problemsPerPage: overrides.problemsPerPage ?? 6,
-      cols: overrides.cols ?? 3,
-      pages: 1,
-      orientation: 'landscape',
-      name: '',
-      digitRange: overrides.digitRange ?? { min: 2, max: 2 },
-      operator: overrides.operator ?? 'addition',
-      pAnyStart: overrides.pAnyStart ?? 0,
-      pAllStart: overrides.pAllStart ?? 0,
-      interpolate: false,
-      displayRules: {
-        carryBoxes: overrides.carryBoxes ?? 'never',
-        answerBoxes: 'always',
-        placeValueColors: overrides.placeValueColors ?? 'never',
-        tenFrames: overrides.tenFrames ?? 'never',
-        problemNumbers: 'always',
-        cellBorders: 'always',
-        borrowNotation: overrides.borrowNotation ?? 'never',
-        borrowingHints: overrides.borrowingHints ?? 'never',
+  return JSON.stringify(
+    {
+      config: {
+        version: 4,
+        mode: 'custom',
+        problemsPerPage: overrides.problemsPerPage ?? 6,
+        cols: overrides.cols ?? 3,
+        pages: 1,
+        orientation: 'landscape',
+        name: '',
+        digitRange: overrides.digitRange ?? { min: 2, max: 2 },
+        operator: overrides.operator ?? 'addition',
+        pAnyStart: overrides.pAnyStart ?? 0,
+        pAllStart: overrides.pAllStart ?? 0,
+        interpolate: false,
+        displayRules: {
+          carryBoxes: overrides.carryBoxes ?? 'never',
+          answerBoxes: 'always',
+          placeValueColors: overrides.placeValueColors ?? 'never',
+          tenFrames: overrides.tenFrames ?? 'never',
+          problemNumbers: 'always',
+          cellBorders: 'always',
+          borrowNotation: overrides.borrowNotation ?? 'never',
+          borrowingHints: overrides.borrowingHints ?? 'never',
+        },
+        fontSize: 16,
+        seed: overrides.seed ?? 42,
+        includeAnswerKey: false,
+        includeQRCode: false,
       },
-      fontSize: 16,
-      seed: overrides.seed ?? 42,
-      includeAnswerKey: false,
-      includeQRCode: false,
     },
-  }, null, 2)
+    null,
+    2
+  )
 }
 
 /** Pre-populated capture bodies for inline embeds, keyed by "slug/embedId" */
 const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
   // No borrowing required — pAnyStart=0, pAllStart=0
-  'subtraction-worksheets/no-borrowing': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/no-borrowing': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0,
     pAllStart: 0,
     seed: 100,
   }),
   // Borrowing problems, but no scaffolding shown
-  'subtraction-worksheets/comparison-no-notation': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/comparison-no-notation': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0.8,
     pAllStart: 0.3,
     borrowNotation: 'never',
     seed: 200,
   }),
   // Same problems with borrow notation boxes
-  'subtraction-worksheets/comparison-with-notation': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/comparison-with-notation': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0.8,
     pAllStart: 0.3,
     borrowNotation: 'always',
     seed: 200,
   }),
   // Single borrow in ones place, with place value colors
-  'subtraction-worksheets/single-borrow-ones': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/single-borrow-ones': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0.6,
     pAllStart: 0,
     borrowNotation: 'always',
@@ -244,7 +260,8 @@ const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
     seed: 300,
   }),
   // Borrowing hints with curved arrows
-  'subtraction-worksheets/hints-detail': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/hints-detail': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0.8,
     pAllStart: 0.3,
     borrowNotation: 'always',
@@ -253,7 +270,8 @@ const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
     seed: 400,
   }),
   // Multiple borrows — 3-digit numbers
-  'subtraction-worksheets/multiple-borrows': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/multiple-borrows': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0.9,
     pAllStart: 0.5,
     digitRange: { min: 3, max: 3 },
@@ -262,7 +280,8 @@ const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
     seed: 500,
   }),
   // Cascading borrows — 3-4 digit numbers
-  'subtraction-worksheets/cascading-borrows': worksheetCaptureBody({ operator: 'subtraction',
+  'subtraction-worksheets/cascading-borrows': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 1.0,
     pAllStart: 0.8,
     digitRange: { min: 3, max: 4 },
@@ -330,7 +349,8 @@ const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
     seed: 55,
   }),
   // 3-digit subtraction with borrow notation
-  'multi-digit-worksheets/three-digit-subtraction': worksheetCaptureBody({ operator: 'subtraction',
+  'multi-digit-worksheets/three-digit-subtraction': worksheetCaptureBody({
+    operator: 'subtraction',
     pAnyStart: 0.7,
     pAllStart: 0.2,
     digitRange: { min: 3, max: 3 },
@@ -420,7 +440,8 @@ export default function BlogImagesAdmin() {
   // Capture-from-URL state
   const [captureUrl, setCaptureUrl] = useState('/api/worksheets/preview')
   const [captureMethod, setCaptureMethod] = useState<'GET' | 'POST'>('POST')
-  const [captureBodyDrafts, setCaptureBodyDrafts] = useState<Record<string, string>>(CAPTURE_BODY_DEFAULTS)
+  const [captureBodyDrafts, setCaptureBodyDrafts] =
+    useState<Record<string, string>>(CAPTURE_BODY_DEFAULTS)
   const [captureExtractPath, setCaptureExtractPath] = useState('pages.0')
   const [capturingSnapshotSlug, setCapturingSnapshotSlug] = useState<string | null>(null)
 
@@ -438,7 +459,8 @@ export default function BlogImagesAdmin() {
   const [expandedEmbedSlugs, setExpandedEmbedSlugs] = useState<Set<string>>(new Set())
 
   // Embed capture-from-URL state (keyed by "slug/embedId")
-  const [embedCaptureBodyDrafts, setEmbedCaptureBodyDrafts] = useState<Record<string, string>>(EMBED_CAPTURE_DEFAULTS)
+  const [embedCaptureBodyDrafts, setEmbedCaptureBodyDrafts] =
+    useState<Record<string, string>>(EMBED_CAPTURE_DEFAULTS)
   const [capturingEmbedKey, setCapturingEmbedKey] = useState<string | null>(null)
 
   const { state: taskState } = useBackgroundTask<BlogImageGenerateOutput>(taskId)
@@ -497,7 +519,10 @@ export default function BlogImagesAdmin() {
   const generatedPosts = configuredPosts.filter((p) => getEffectiveHeroType(p) === 'generated')
   const missingImages = generatedPosts.filter((p) => !p.imageExists)
 
-  async function generate(targets: Array<{ slug: string; prompt: string }>, forceRegenerate = false) {
+  async function generate(
+    targets: Array<{ slug: string; prompt: string }>,
+    forceRegenerate = false
+  ) {
     if (!selectedProvider || !selectedModel) {
       setError('Select a provider and model first')
       return
@@ -559,9 +584,7 @@ export default function BlogImagesAdmin() {
       if (!prev) return prev
       return {
         ...prev,
-        posts: prev.posts.map((p) =>
-          p.slug === post.slug ? { ...p, featured: newFeatured } : p
-        ),
+        posts: prev.posts.map((p) => (p.slug === post.slug ? { ...p, featured: newFeatured } : p)),
       }
     })
     try {
@@ -599,9 +622,7 @@ export default function BlogImagesAdmin() {
       if (!prev) return prev
       return {
         ...prev,
-        posts: prev.posts.map((p) =>
-          p.slug === slug ? { ...p, heroCrop: crop } : p
-        ),
+        posts: prev.posts.map((p) => (p.slug === slug ? { ...p, heroCrop: crop } : p)),
       }
     })
   }
@@ -640,9 +661,7 @@ export default function BlogImagesAdmin() {
       if (!prev) return prev
       return {
         ...prev,
-        posts: prev.posts.map((p) =>
-          p.slug === post.slug ? { ...p, heroType: newType } : p
-        ),
+        posts: prev.posts.map((p) => (p.slug === post.slug ? { ...p, heroType: newType } : p)),
       }
     })
     try {
@@ -904,7 +923,10 @@ export default function BlogImagesAdmin() {
     setLoadedEmbedConfigSlugs((prev) => new Set([...prev, slug]))
   }
 
-  async function saveEmbedConfig(slug: string, config: Record<string, { type: string; componentId?: string }>) {
+  async function saveEmbedConfig(
+    slug: string,
+    config: Record<string, { type: string; componentId?: string }>
+  ) {
     setEmbedConfigDrafts((prev) => ({ ...prev, [slug]: config }))
     try {
       await fetch(`/api/admin/blog/${slug}/embeds`, {
@@ -928,7 +950,10 @@ export default function BlogImagesAdmin() {
 
   function handleEmbedComponentChange(slug: string, embedId: string, componentId: string) {
     const current = embedConfigDrafts[slug] ?? {}
-    const updated = { ...current, [embedId]: { ...current[embedId], type: 'component', componentId } }
+    const updated = {
+      ...current,
+      [embedId]: { ...current[embedId], type: 'component', componentId },
+    }
     saveEmbedConfig(slug, updated)
   }
 
@@ -1141,11 +1166,7 @@ export default function BlogImagesAdmin() {
             <option value="">Provider...</option>
             {status?.providers.map((p) =>
               p.models.map((m) => (
-                <option
-                  key={`${p.id}:${m.id}`}
-                  value={`${p.id}:${m.id}`}
-                  disabled={!p.available}
-                >
+                <option key={`${p.id}:${m.id}`} value={`${p.id}:${m.id}`} disabled={!p.available}>
                   {p.name} / {m.name}
                   {!p.available ? ' (no key)' : ''}
                 </option>
@@ -1233,7 +1254,14 @@ export default function BlogImagesAdmin() {
           >
             <div>{error || taskState?.error || 'Task failed'}</div>
             {taskState?.status === 'failed' && slugErrors.size > 0 && (
-              <div className={css({ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' })}>
+              <div
+                className={css({
+                  marginTop: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                })}
+              >
                 {[...slugErrors.entries()].map(([slug, err]) => (
                   <div
                     key={slug}
@@ -1311,12 +1339,18 @@ export default function BlogImagesAdmin() {
             })}
           >
             <div>
-              {hasFailures ? 'Completed with errors' : 'Done'}:{' '}
-              {taskState.output.generated} generated, {taskState.output.skipped} skipped,{' '}
-              {taskState.output.failed} failed
+              {hasFailures ? 'Completed with errors' : 'Done'}: {taskState.output.generated}{' '}
+              generated, {taskState.output.skipped} skipped, {taskState.output.failed} failed
             </div>
             {failedResults.length > 0 && (
-              <div className={css({ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' })}>
+              <div
+                className={css({
+                  marginTop: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                })}
+              >
                 {failedResults.map((r) => (
                   <div
                     key={r.slug}
@@ -1400,7 +1434,11 @@ export default function BlogImagesAdmin() {
                           cursor: 'pointer',
                           alignSelf: 'center',
                         })}
-                        title={post.featured ? 'Featured — click to unfeature' : 'Not featured — click to feature'}
+                        title={
+                          post.featured
+                            ? 'Featured — click to unfeature'
+                            : 'Not featured — click to feature'
+                        }
                       >
                         <input
                           data-action="toggle-featured"
@@ -1513,7 +1551,10 @@ export default function BlogImagesAdmin() {
                             setPromptDraft={setPromptDraft}
                             savingPromptSlug={savingPromptSlug}
                             onStartEditing={() => startEditingPrompt(post)}
-                            onCancelEditing={() => { setEditingPromptSlug(null); setPromptDraft('') }}
+                            onCancelEditing={() => {
+                              setEditingPromptSlug(null)
+                              setPromptDraft('')
+                            }}
                             onSavePrompt={() => handleSavePrompt(post.slug)}
                             onRefine={() => handleRefine(post)}
                           />
@@ -1523,7 +1564,9 @@ export default function BlogImagesAdmin() {
                           <StorybookUI
                             post={post}
                             storyIdDraft={storyIdDrafts[post.slug] ?? post.heroStoryId ?? ''}
-                            onStoryIdChange={(val) => setStoryIdDrafts((prev) => ({ ...prev, [post.slug]: val }))}
+                            onStoryIdChange={(val) =>
+                              setStoryIdDrafts((prev) => ({ ...prev, [post.slug]: val }))
+                            }
                             onSaveStoryId={() => handleSaveStoryId(post)}
                             onCapture={() => handleCaptureStorybook(post)}
                             capturing={capturingSlug === post.slug}
@@ -1533,8 +1576,12 @@ export default function BlogImagesAdmin() {
                         {effectiveType === 'component' && (
                           <ComponentRegistryUI
                             post={post}
-                            componentIdDraft={componentIdDrafts[post.slug] ?? post.heroComponentId ?? ''}
-                            onComponentIdChange={(val) => setComponentIdDrafts((prev) => ({ ...prev, [post.slug]: val }))}
+                            componentIdDraft={
+                              componentIdDrafts[post.slug] ?? post.heroComponentId ?? ''
+                            }
+                            onComponentIdChange={(val) =>
+                              setComponentIdDrafts((prev) => ({ ...prev, [post.slug]: val }))
+                            }
                             onSave={() => handleSaveComponentId(post)}
                           />
                         )}
@@ -1550,7 +1597,9 @@ export default function BlogImagesAdmin() {
                             captureMethod={captureMethod}
                             onCaptureMethodChange={setCaptureMethod}
                             captureBody={captureBodyDrafts[post.slug] ?? ''}
-                            onCaptureBodyChange={(val) => setCaptureBodyDrafts((prev) => ({ ...prev, [post.slug]: val }))}
+                            onCaptureBodyChange={(val) =>
+                              setCaptureBodyDrafts((prev) => ({ ...prev, [post.slug]: val }))
+                            }
                             captureExtractPath={captureExtractPath}
                             onCaptureExtractPathChange={setCaptureExtractPath}
                             capturing={capturingSnapshotSlug === post.slug}
@@ -1560,7 +1609,13 @@ export default function BlogImagesAdmin() {
 
                         {/* Status line */}
                         {post.imageExists && post.sizeBytes && effectiveType === 'generated' && (
-                          <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px' })}>
+                          <div
+                            className={css({
+                              fontSize: '11px',
+                              color: '#484f58',
+                              marginTop: '4px',
+                            })}
+                          >
                             {formatBytes(post.sizeBytes)}
                             {post.heroCrop && (
                               <span className={css({ marginLeft: '8px' })}>
@@ -1604,7 +1659,14 @@ export default function BlogImagesAdmin() {
                       </div>
 
                       {/* Status + actions */}
-                      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 })}>
+                      <div
+                        className={css({
+                          display: 'flex',
+                          gap: '8px',
+                          alignItems: 'center',
+                          flexShrink: 0,
+                        })}
+                      >
                         {effectiveType === 'generated' && (
                           <>
                             {post.imageExists && (
@@ -1615,10 +1677,13 @@ export default function BlogImagesAdmin() {
                                 <button
                                   data-action="open-crop-editor"
                                   onClick={() =>
-                                    setCropEditorSlug(cropEditorSlug === post.slug ? null : post.slug)
+                                    setCropEditorSlug(
+                                      cropEditorSlug === post.slug ? null : post.slug
+                                    )
                                   }
                                   className={css({
-                                    backgroundColor: cropEditorSlug === post.slug ? '#30363d' : '#21262d',
+                                    backgroundColor:
+                                      cropEditorSlug === post.slug ? '#30363d' : '#21262d',
                                     color: '#c9d1d9',
                                     border: '1px solid #30363d',
                                     borderRadius: '6px',
@@ -1700,13 +1765,24 @@ export default function BlogImagesAdmin() {
                           })
                         }
                         embedConfigs={embedConfigDrafts[post.slug] ?? {}}
-                        onEmbedTypeChange={(embedId, type) => handleEmbedTypeChange(post.slug, embedId, type)}
-                        onEmbedComponentChange={(embedId, componentId) => handleEmbedComponentChange(post.slug, embedId, componentId)}
+                        onEmbedTypeChange={(embedId, type) =>
+                          handleEmbedTypeChange(post.slug, embedId, type)
+                        }
+                        onEmbedComponentChange={(embedId, componentId) =>
+                          handleEmbedComponentChange(post.slug, embedId, componentId)
+                        }
                         embedHtmlDrafts={embedHtmlDrafts}
                         onLoadEmbedHtml={(embedId) => loadEmbedHtml(post.slug, embedId)}
-                        onEmbedHtmlChange={(embedId, html) => handleEmbedHtmlChange(post.slug, embedId, html)}
+                        onEmbedHtmlChange={(embedId, html) =>
+                          handleEmbedHtmlChange(post.slug, embedId, html)
+                        }
                         embedCaptureBodyDrafts={embedCaptureBodyDrafts}
-                        onEmbedCaptureBodyChange={(embedId, val) => setEmbedCaptureBodyDrafts((prev) => ({ ...prev, [`${post.slug}/${embedId}`]: val }))}
+                        onEmbedCaptureBodyChange={(embedId, val) =>
+                          setEmbedCaptureBodyDrafts((prev) => ({
+                            ...prev,
+                            [`${post.slug}/${embedId}`]: val,
+                          }))
+                        }
                         capturingEmbedKey={capturingEmbedKey}
                         onCaptureEmbed={(embedId) => handleCaptureEmbedSnapshot(post.slug, embedId)}
                       />
@@ -1755,7 +1831,11 @@ export default function BlogImagesAdmin() {
                       <label
                         data-element="featured-toggle"
                         className={css({ cursor: 'pointer' })}
-                        title={post.featured ? 'Featured — click to unfeature' : 'Not featured — click to feature'}
+                        title={
+                          post.featured
+                            ? 'Featured — click to unfeature'
+                            : 'Not featured — click to feature'
+                        }
                       >
                         <input
                           data-action="toggle-featured"
@@ -1912,13 +1992,24 @@ export default function BlogImagesAdmin() {
                         })
                       }
                       embedConfigs={embedConfigDrafts[post.slug] ?? {}}
-                      onEmbedTypeChange={(embedId, type) => handleEmbedTypeChange(post.slug, embedId, type)}
-                      onEmbedComponentChange={(embedId, componentId) => handleEmbedComponentChange(post.slug, embedId, componentId)}
+                      onEmbedTypeChange={(embedId, type) =>
+                        handleEmbedTypeChange(post.slug, embedId, type)
+                      }
+                      onEmbedComponentChange={(embedId, componentId) =>
+                        handleEmbedComponentChange(post.slug, embedId, componentId)
+                      }
                       embedHtmlDrafts={embedHtmlDrafts}
                       onLoadEmbedHtml={(embedId) => loadEmbedHtml(post.slug, embedId)}
-                      onEmbedHtmlChange={(embedId, html) => handleEmbedHtmlChange(post.slug, embedId, html)}
+                      onEmbedHtmlChange={(embedId, html) =>
+                        handleEmbedHtmlChange(post.slug, embedId, html)
+                      }
                       embedCaptureBodyDrafts={embedCaptureBodyDrafts}
-                      onEmbedCaptureBodyChange={(embedId, val) => setEmbedCaptureBodyDrafts((prev) => ({ ...prev, [`${post.slug}/${embedId}`]: val }))}
+                      onEmbedCaptureBodyChange={(embedId, val) =>
+                        setEmbedCaptureBodyDrafts((prev) => ({
+                          ...prev,
+                          [`${post.slug}/${embedId}`]: val,
+                        }))
+                      }
                       capturingEmbedKey={capturingEmbedKey}
                       onCaptureEmbed={(embedId) => handleCaptureEmbedSnapshot(post.slug, embedId)}
                     />
@@ -1987,11 +2078,7 @@ function GeneratedUI({
           })}
         />
         <div className={css({ display: 'flex', gap: '8px', marginTop: '4px' })}>
-          <button
-            data-action="cancel-prompt"
-            onClick={onCancelEditing}
-            className={smallBtnStyle}
-          >
+          <button data-action="cancel-prompt" onClick={onCancelEditing} className={smallBtnStyle}>
             Cancel
           </button>
           <button
@@ -2080,7 +2167,9 @@ function StorybookUI({
 
   return (
     <div data-element="storybook-ui">
-      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' })}>
+      <div
+        className={css({ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' })}
+      >
         <input
           data-element="story-id-input"
           type="text"
@@ -2385,7 +2474,14 @@ function HtmlUI({
           '&:focus': { outline: 'none', borderColor: '#58a6ff' },
         })}
       />
-      <div className={css({ fontSize: '11px', color: '#484f58', marginTop: '4px', marginBottom: '8px' })}>
+      <div
+        className={css({
+          fontSize: '11px',
+          color: '#484f58',
+          marginTop: '4px',
+          marginBottom: '8px',
+        })}
+      >
         Auto-saves after 500ms
       </div>
       {htmlDraft && (
@@ -2478,7 +2574,14 @@ function InlineEmbedsSection({
         <span>
           Inline Embeds ({post.embeds.length})
           {configuredCount > 0 && (
-            <span className={css({ color: '#3fb950', marginLeft: '6px', fontSize: '11px', fontWeight: 'normal' })}>
+            <span
+              className={css({
+                color: '#3fb950',
+                marginLeft: '6px',
+                fontSize: '11px',
+                fontWeight: 'normal',
+              })}
+            >
               {configuredCount}/{post.embeds.length} configured
             </span>
           )}
@@ -2487,7 +2590,14 @@ function InlineEmbedsSection({
       </button>
 
       {expanded && (
-        <div className={css({ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px' })}>
+        <div
+          className={css({
+            padding: '8px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          })}
+        >
           {post.embeds.map((embed) => {
             const config = embedConfigs[embed.id]
             const embedType = config?.type ?? ''
@@ -2565,7 +2675,14 @@ function InlineEmbedRow({
         border: '1px solid #21262d',
       })}
     >
-      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '6px',
+        })}
+      >
         <div>
           <div className={css({ fontSize: '12px', fontWeight: '600', color: '#f0f6fc' })}>
             {embed.id}
@@ -2810,7 +2927,9 @@ function ComponentRegistryUI({
 
   return (
     <div data-element="component-registry-ui">
-      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' })}>
+      <div
+        className={css({ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' })}
+      >
         <select
           data-action="select-hero-component"
           value={componentIdDraft}

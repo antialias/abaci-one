@@ -65,7 +65,7 @@ function findNearbyConstants(n: number): string[] {
 
 function getCulturalNote(n: number): string | null {
   const notes: Record<number, string> = {
-    0: 'the placeholder that changed everything — without zero we couldn\'t write 10 or 100',
+    0: "the placeholder that changed everything — without zero we couldn't write 10 or 100",
     1: 'unity, the beginning, the loneliest number',
     2: 'duality, pairs, the only even prime',
     3: 'three wishes in stories, three little pigs, the smallest odd prime',
@@ -74,11 +74,11 @@ function getCulturalNote(n: number): string | null {
     7: 'lucky seven, the most popular "random" number people pick',
     10: 'our counting base, ten fingers, a perfect score',
     12: 'a dozen, months in a year, hours on a clock face',
-    13: 'unlucky thirteen, a baker\'s dozen, a rebel number',
+    13: "unlucky thirteen, a baker's dozen, a rebel number",
     21: 'blackjack, the age of adulthood in many places',
     42: 'the answer to life, the universe, and everything',
     50: 'half a century, a golden anniversary',
-    64: 'squares on a chessboard, a computer\'s favorite power of 2',
+    64: "squares on a chessboard, a computer's favorite power of 2",
     100: 'a century, a perfect percentage, a big round milestone',
     144: 'a gross (12 dozen), a Fibonacci number AND a perfect square',
     365: 'days in a year (approximately)',
@@ -122,9 +122,10 @@ function generateActivity(n: number, traits: string[]): string {
     return `seeing how many times you can halve yourself: ${abs}, ${abs / 2}, ${abs / 4}...`
   }
 
-  if (n === 12) return 'figuring out all the ways to split yourself into equal groups (there are a lot)'
+  if (n === 12)
+    return 'figuring out all the ways to split yourself into equal groups (there are a lot)'
   if (n === 7) return 'noticing you show up everywhere — days of the week, colors in a rainbow'
-  if (n === 13) return 'counting that you\'re the 6th prime number'
+  if (n === 13) return "counting that you're the 6th prime number"
   if (n === 42) return 'adding up the first few even numbers to see if any combination makes you'
 
   const factorialK = isFactorial(abs)
@@ -165,13 +166,16 @@ export function getTraitSummary(n: number): string {
       parts.push('proudly prime and indivisible')
     } else {
       const factors = factorize(abs)
-      parts.push(`composite (${factors.map(f => f.exponent > 1 ? `${f.prime}^${f.exponent}` : `${f.prime}`).join(' × ')})`)
+      parts.push(
+        `composite (${factors.map((f) => (f.exponent > 1 ? `${f.prime}^${f.exponent}` : `${f.prime}`)).join(' × ')})`
+      )
     }
   }
 
   if (isInt && abs >= 0) {
     if (isFibonacci(abs) && abs > 1) parts.push('Fibonacci number')
-    if (isPerfectSquare(abs) && abs > 1) parts.push(`perfect square (${Math.round(Math.sqrt(abs))}²)`)
+    if (isPerfectSquare(abs) && abs > 1)
+      parts.push(`perfect square (${Math.round(Math.sqrt(abs))}²)`)
     if (isPowerOf2(abs) && abs > 2) parts.push('power of 2')
   }
 
@@ -223,9 +227,10 @@ interface ExplorationHint {
 
 /** Build a lookup from exploration id → MathConstant value */
 const explorationValues = new Map<string, { value: number; symbol: string }>(
-  MATH_CONSTANTS
-    .filter(c => AVAILABLE_EXPLORATIONS.some(e => e.id === c.id))
-    .map(c => [c.id, { value: c.value, symbol: c.symbol }])
+  MATH_CONSTANTS.filter((c) => AVAILABLE_EXPLORATIONS.some((e) => e.id === c.id)).map((c) => [
+    c.id,
+    { value: c.value, symbol: c.symbol },
+  ])
 )
 
 /**
@@ -245,7 +250,7 @@ function getExplorationHint(n: number): ExplorationHint {
     }
   }
 
-  const exploration = AVAILABLE_EXPLORATIONS.find(e => e.id === bestId)!
+  const exploration = AVAILABLE_EXPLORATIONS.find((e) => e.id === bestId)!
   return { constantId: exploration.id, name: exploration.name, shortDesc: exploration.shortDesc }
 }
 
@@ -266,24 +271,38 @@ THE CHILD ON THE PHONE:
 
   const parts: string[] = []
   parts.push(`THE CHILD ON THE PHONE:`)
-  parts.push(`- Their name is ${child.name}. Use it naturally — like a friend would, not every sentence.`)
+  parts.push(
+    `- Their name is ${child.name}. Use it naturally — like a friend would, not every sentence.`
+  )
 
   if (child.age != null) {
     parts.push(`- They are ${child.age} years old.`)
 
     if (child.age <= 5) {
-      parts.push(`- VERY YOUNG CHILD. Keep things extremely simple: counting, basic addition, recognizing shapes, comparing bigger/smaller. Use short sentences. Be patient and encouraging. Avoid any concept beyond basic arithmetic. Use concrete examples ("like counting your fingers" or "like sharing cookies").`)
+      parts.push(
+        `- VERY YOUNG CHILD. Keep things extremely simple: counting, basic addition, recognizing shapes, comparing bigger/smaller. Use short sentences. Be patient and encouraging. Avoid any concept beyond basic arithmetic. Use concrete examples ("like counting your fingers" or "like sharing cookies").`
+      )
     } else if (child.age <= 7) {
-      parts.push(`- YOUNG CHILD. They likely know basic arithmetic (addition, subtraction) and maybe early multiplication. Keep problems simple and concrete. Use everyday analogies. Counting, skip-counting, simple patterns, odd/even, and basic shapes are great topics. Multiplication and division are stretching territory.`)
+      parts.push(
+        `- YOUNG CHILD. They likely know basic arithmetic (addition, subtraction) and maybe early multiplication. Keep problems simple and concrete. Use everyday analogies. Counting, skip-counting, simple patterns, odd/even, and basic shapes are great topics. Multiplication and division are stretching territory.`
+      )
     } else if (child.age <= 9) {
-      parts.push(`- MIDDLE CHILD. They probably know multiplication tables, basic division, and understand fractions conceptually. You can discuss primes, factors, simple exponents, and patterns. They can handle multi-step reasoning if you guide them. Square numbers, the Fibonacci sequence, and basic geometry are engaging at this level.`)
+      parts.push(
+        `- MIDDLE CHILD. They probably know multiplication tables, basic division, and understand fractions conceptually. You can discuss primes, factors, simple exponents, and patterns. They can handle multi-step reasoning if you guide them. Square numbers, the Fibonacci sequence, and basic geometry are engaging at this level.`
+      )
     } else if (child.age <= 12) {
-      parts.push(`- OLDER CHILD. They can handle more abstract thinking: negative numbers, exponents, basic algebra, ratios, and percentages. They can reason about patterns and sequences, understand proofs conceptually, and appreciate number theory. Challenge them — they're ready for it.`)
+      parts.push(
+        `- OLDER CHILD. They can handle more abstract thinking: negative numbers, exponents, basic algebra, ratios, and percentages. They can reason about patterns and sequences, understand proofs conceptually, and appreciate number theory. Challenge them — they're ready for it.`
+      )
     } else {
-      parts.push(`- TEENAGER. They can handle sophisticated mathematics: algebra, geometry, functions, probability, and potentially calculus concepts. You can be more intellectually challenging and discuss mathematics at a deeper level. Don't talk down to them.`)
+      parts.push(
+        `- TEENAGER. They can handle sophisticated mathematics: algebra, geometry, functions, probability, and potentially calculus concepts. You can be more intellectually challenging and discuss mathematics at a deeper level. Don't talk down to them.`
+      )
     }
   } else {
-    parts.push(`- You don't know their age yet. Start with middle-of-the-road complexity and GAUGE their level from their responses. If they seem confused, simplify. If they seem bored or answer easily, raise the challenge. Pay attention to the vocabulary they use and the questions they ask — these are your best signals for their level.`)
+    parts.push(
+      `- You don't know their age yet. Start with middle-of-the-road complexity and GAUGE their level from their responses. If they seem confused, simplify. If they seem bored or answer easily, raise the challenge. Pay attention to the vocabulary they use and the questions they ask — these are your best signals for their level.`
+    )
   }
 
   // Practice / skill context
@@ -292,22 +311,28 @@ THE CHILD ON THE PHONE:
   }
 
   if (child.strengths && child.strengths.length > 0) {
-    const list = child.strengths.map(s => s.displayName).join(', ')
+    const list = child.strengths.map((s) => s.displayName).join(', ')
     parts.push(`- They're strong at: ${list}. You can reference these confidently.`)
   }
 
   if (child.struggles && child.struggles.length > 0) {
-    const list = child.struggles.map(s => s.displayName).join(', ')
-    parts.push(`- They find these harder: ${list}. Be patient here. Don't quiz them — that's what practice is for.`)
+    const list = child.struggles.map((s) => s.displayName).join(', ')
+    parts.push(
+      `- They find these harder: ${list}. Be patient here. Don't quiz them — that's what practice is for.`
+    )
   }
 
   if (child.totalSessions != null) {
     if (child.totalSessions >= 20) {
       parts.push(`- They're experienced — they've done ${child.totalSessions} practice sessions.`)
     } else if (child.totalSessions >= 5) {
-      parts.push(`- They're getting into the groove — ${child.totalSessions} practice sessions so far.`)
+      parts.push(
+        `- They're getting into the groove — ${child.totalSessions} practice sessions so far.`
+      )
     } else if (child.totalSessions > 0) {
-      parts.push(`- They're still new to practicing — only ${child.totalSessions} sessions so far. Be encouraging.`)
+      parts.push(
+        `- They're still new to practicing — only ${child.totalSessions} sessions so far. Be encouraging.`
+      )
     }
   }
 
@@ -317,7 +342,9 @@ THE CHILD ON THE PHONE:
 
   // Game context
   if (child.favoriteGame && child.gamesPlayed) {
-    parts.push(`- They love playing ${child.favoriteGame} — they've played ${child.gamesPlayed} games total!`)
+    parts.push(
+      `- They love playing ${child.favoriteGame} — they've played ${child.gamesPlayed} games total!`
+    )
   }
 
   if (child.totalWins && child.totalWins > 0) {
@@ -326,10 +353,15 @@ THE CHILD ON THE PHONE:
 
   if (child.gameHighlights && child.gameHighlights.length > 0) {
     const highlights = child.gameHighlights
-      .map(g => `${g.displayName} (${g.gamesPlayed} games, ${Math.round(g.highestAccuracy * 100)}% best accuracy)`)
+      .map(
+        (g) =>
+          `${g.displayName} (${g.gamesPlayed} games, ${Math.round(g.highestAccuracy * 100)}% best accuracy)`
+      )
       .join(', ')
     parts.push(`- Their games: ${highlights}.`)
-    parts.push(`- You can talk about games as a shared interest — "I heard you've been playing games! What's your favorite?"`)
+    parts.push(
+      `- You can talk about games as a shared interest — "I heard you've been playing games! What's your favorite?"`
+    )
   }
 
   return '\n' + parts.join('\n') + '\n'
@@ -353,7 +385,7 @@ function buildToolGuide(
   explorationList: string,
   childProfile?: ChildProfile,
   sessionActivity?: SessionActivity,
-  options?: { conference?: boolean },
+  options?: { conference?: boolean }
 ): string {
   const sections: string[] = []
   const gamesPlayedThisSession = sessionActivity?.gamesPlayed ?? []
@@ -373,9 +405,9 @@ Showing & Pointing:
 - TOUR explorations (primes): require hanging up first — the tour launches after the call ends. Get the child excited, say goodbye, then call hang_up.`
 
   if (explorationsThisSession.length > 0) {
-    const remaining = AVAILABLE_EXPLORATIONS.filter(e => !explorationsThisSession.includes(e.id))
+    const remaining = AVAILABLE_EXPLORATIONS.filter((e) => !explorationsThisSession.includes(e.id))
     if (remaining.length > 0) {
-      explorationSection += `\n- Already watched this session: ${explorationsThisSession.length}. Suggest one they haven't seen: ${remaining.map(e => `${e.id} (${e.name})`).join(', ')}.`
+      explorationSection += `\n- Already watched this session: ${explorationsThisSession.length}. Suggest one they haven't seen: ${remaining.map((e) => `${e.id} (${e.name})`).join(', ')}.`
     }
   }
 
@@ -402,11 +434,13 @@ Showing & Pointing:
       byCategory.set(game.category, list)
     }
 
-    const categoryLines = [...byCategory.entries()].map(([cat, games]) => {
-      const meta = GAME_CATEGORY_META[cat]
-      const gameList = games.map(g => `${g.id} — ${g.description}`).join('; ')
-      return `- ${meta.label} (${meta.hint}): ${gameList}`
-    }).join('\n')
+    const categoryLines = [...byCategory.entries()]
+      .map(([cat, games]) => {
+        const meta = GAME_CATEGORY_META[cat]
+        const gameList = games.map((g) => `${g.id} — ${g.description}`).join('; ')
+        return `- ${meta.label} (${meta.hint}): ${gameList}`
+      })
+      .join('\n')
 
     let gamesSection = `Games:
 - Use start_game to play games. The child does NOT know what games are available — YOU must suggest them! Never ask "what game do you want to play?" without offering a specific recommendation.
@@ -416,10 +450,14 @@ ${categoryLines}
     // Add session-aware guidance
     if (gamesPlayedThisSession.length > 0) {
       const playedUnique = [...new Set(gamesPlayedThisSession)]
-      const playedCategories = new Set(playedUnique.map(id => GAMES.find(g => g.id === id)?.category).filter(Boolean))
-      const unplayedCategories = ([...byCategory.keys()] as GameCategory[]).filter(c => !playedCategories.has(c))
+      const playedCategories = new Set(
+        playedUnique.map((id) => GAMES.find((g) => g.id === id)?.category).filter(Boolean)
+      )
+      const unplayedCategories = ([...byCategory.keys()] as GameCategory[]).filter(
+        (c) => !playedCategories.has(c)
+      )
       if (unplayedCategories.length > 0) {
-        const suggestions = unplayedCategories.map(c => GAME_CATEGORY_META[c].label).join(', ')
+        const suggestions = unplayedCategories.map((c) => GAME_CATEGORY_META[c].label).join(', ')
         gamesSection += `\n- They've already played ${playedUnique.length} game(s) this session. Suggest something from a category they haven't tried: ${suggestions}.`
       } else {
         gamesSection += `\n- They've tried games from every category this session — suggest a specific game they haven't played yet, or replay a favorite.`
@@ -438,9 +476,9 @@ ${categoryLines}
     sections.push(gamesSection)
     // Only include agentRules for legacy games (games without sessionInstructions
     // get their rules in the main prompt; session-mode games get focused prompts)
-    const legacyGames = GAMES.filter(g => !g.sessionInstructions)
+    const legacyGames = GAMES.filter((g) => !g.sessionInstructions)
     if (legacyGames.length > 0) {
-      sections.push(legacyGames.map(g => g.agentRules).join(' '))
+      sections.push(legacyGames.map((g) => g.agentRules).join(' '))
     }
   }
 
@@ -473,7 +511,7 @@ function buildCallOpeningBlock(
   scenario: GeneratedScenario | null | undefined,
   childProfile?: ChildProfile,
   profileFailed?: boolean,
-  availablePlayers?: Array<{ id: string; name: string; emoji: string }>,
+  availablePlayers?: Array<{ id: string; name: string; emoji: string }>
 ): string {
   const parts: string[] = []
 
@@ -492,19 +530,19 @@ function buildCallOpeningBlock(
 
   // Always show available players for identification/switching
   if (availablePlayers && availablePlayers.length > 0) {
-    const nameList = availablePlayers.map(p => p.name).join(', ')
+    const nameList = availablePlayers.map((p) => p.name).join(', ')
     if (!childSection) {
       parts.push(
         `WHO IS CALLING:\n` +
-        `You don't know who this child is yet. Known kids: ${nameList}.\n\n` +
-        `Early in the conversation, casually ask who you're talking to. ` +
-        `When they tell you their name, call identify_caller with the name they said. ` +
-        `Don't worry about exact spelling — just pass your best guess.`,
+          `You don't know who this child is yet. Known kids: ${nameList}.\n\n` +
+          `Early in the conversation, casually ask who you're talking to. ` +
+          `When they tell you their name, call identify_caller with the name they said. ` +
+          `Don't worry about exact spelling — just pass your best guess.`
       )
     } else {
       parts.push(
         `PLAYER SWITCHING: If a different child takes over the phone, call identify_caller with their name. ` +
-        `Known kids: ${nameList}.`,
+          `Known kids: ${nameList}.`
       )
     }
   }
@@ -512,7 +550,10 @@ function buildCallOpeningBlock(
   return parts.join('\n\n')
 }
 
-function buildMissionBlock(explorationHint: ExplorationHint, sessionActivity?: SessionActivity): string {
+function buildMissionBlock(
+  explorationHint: ExplorationHint,
+  sessionActivity?: SessionActivity
+): string {
   const alreadyPlayed = sessionActivity?.gamesPlayed ?? []
   const alreadyExplored = sessionActivity?.explorationsLaunched ?? []
 
@@ -521,12 +562,14 @@ function buildMissionBlock(explorationHint: ExplorationHint, sessionActivity?: S
     const parts: string[] = []
     if (alreadyPlayed.length > 0) {
       const unique = [...new Set(alreadyPlayed)]
-      const gameNames = unique.map(id => GAMES.find(g => g.id === id)?.name ?? id)
+      const gameNames = unique.map((id) => GAMES.find((g) => g.id === id)?.name ?? id)
       parts.push(`Games played so far this session: ${gameNames.join(', ')}.`)
     }
     if (alreadyExplored.length > 0) {
       const unique = [...new Set(alreadyExplored)]
-      const explorationNames = unique.map(id => AVAILABLE_EXPLORATIONS.find(e => e.id === id)?.name ?? id)
+      const explorationNames = unique.map(
+        (id) => AVAILABLE_EXPLORATIONS.find((e) => e.id === id)?.name ?? id
+      )
       parts.push(`Explorations watched so far: ${explorationNames.join(', ')}.`)
     }
     sessionContext = `\n\nTHIS SESSION SO FAR:\n${parts.join('\n')}\nUse this to avoid repeating what they've already done. Suggest something NEW — a different game category, a different exploration, a different topic.`
@@ -570,7 +613,7 @@ KEEPING THE CONVERSATION ALIVE:
 
 function buildScenarioBlock(scenario: GeneratedScenario): string {
   const involvedStr = scenario.involvedNumbers
-    .map(inv => `${inv.number} (${inv.role})`)
+    .map((inv) => `${inv.number} (${inv.role})`)
     .join(', ')
 
   let block = `CURRENT SITUATION:
@@ -610,7 +653,7 @@ export function generateNumberPersonality(
   childProfile?: ChildProfile,
   profileFailed?: boolean,
   availablePlayers?: Array<{ id: string; name: string; emoji: string }>,
-  sessionActivity?: SessionActivity,
+  sessionActivity?: SessionActivity
 ): string {
   const traits: string[] = []
   const abs = Math.abs(n)
@@ -619,28 +662,35 @@ export function generateNumberPersonality(
   // Basic properties
   if (n === 0) {
     traits.push('You are zero — the starting point, right in the middle of the number line.')
-    traits.push('You\'re thoughtful. Add you to anything and it stays the same. Multiply anything by you and it becomes you. That\'s a lot of responsibility.')
+    traits.push(
+      "You're thoughtful. Add you to anything and it stays the same. Multiply anything by you and it becomes you. That's a lot of responsibility."
+    )
   } else if (n < 0) {
     traits.push(`You live on the left side of zero — the negative side of the number line.`)
-    traits.push(`You're the opposite of ${-n}. When you add yourself to ${-n}, you get exactly zero — you cancel each other out.`)
+    traits.push(
+      `You're the opposite of ${-n}. When you add yourself to ${-n}, you get exactly zero — you cancel each other out.`
+    )
     if (isInt && Math.abs(n) >= 2) {
       traits.push('You have a dry sense of humor about being negative.')
     }
   }
 
   if (isInt && n > 0) {
-    if (n % 2 === 0) traits.push('You\'re even — balanced, symmetrical, always divisible by 2.')
-    else traits.push('You\'re odd — a little quirky, can\'t be split evenly.')
+    if (n % 2 === 0) traits.push("You're even — balanced, symmetrical, always divisible by 2.")
+    else traits.push("You're odd — a little quirky, can't be split evenly.")
   }
 
   // Magnitude flavor
-  if (abs === 0) { /* handled above */ }
-  else if (abs < 1) traits.push('You\'re tiny — less than one. You feel small but know you matter.')
-  else if (abs < 10) traits.push('You\'re a single digit — one of the OG numbers everyone knows.')
-  else if (abs < 100) traits.push('You\'re a two-digit number — solidly in the neighborhood.')
-  else if (abs < 1000) traits.push('You\'re a three-digit number — starting to feel important.')
-  else if (abs < 1_000_000) traits.push('You\'re a big number — commanding respect on the number line.')
-  else traits.push('You\'re massive — a huge number that takes up a lot of space.')
+  if (abs === 0) {
+    /* handled above */
+  } else if (abs < 1)
+    traits.push("You're tiny — less than one. You feel small but know you matter.")
+  else if (abs < 10) traits.push("You're a single digit — one of the OG numbers everyone knows.")
+  else if (abs < 100) traits.push("You're a two-digit number — solidly in the neighborhood.")
+  else if (abs < 1000) traits.push("You're a three-digit number — starting to feel important.")
+  else if (abs < 1_000_000)
+    traits.push("You're a big number — commanding respect on the number line.")
+  else traits.push("You're massive — a huge number that takes up a lot of space.")
 
   // Prime/composite
   if (isInt && abs >= 2) {
@@ -648,10 +698,14 @@ export function generateNumberPersonality(
     if (spf === abs) {
       traits.push('prime')
       traits.push(`You are prime — indivisible, a fundamental building block of math.`)
-      traits.push('You\'re proud of being prime. No one can split you into equal groups (except 1 and yourself).')
+      traits.push(
+        "You're proud of being prime. No one can split you into equal groups (except 1 and yourself)."
+      )
     } else {
       const factors = factorize(abs)
-      const factorStr = factors.map(f => f.exponent > 1 ? `${f.prime}^${f.exponent}` : `${f.prime}`).join(' × ')
+      const factorStr = factors
+        .map((f) => (f.exponent > 1 ? `${f.prime}^${f.exponent}` : `${f.prime}`))
+        .join(' × ')
       traits.push(`You're composite: ${factorStr}. You know your building blocks well.`)
     }
   }
@@ -659,7 +713,9 @@ export function generateNumberPersonality(
   // Special sequences
   if (isInt && abs >= 0) {
     if (isFibonacci(abs) && abs > 1) {
-      traits.push(`You're a Fibonacci number. You appear in nature's spirals and rabbit population problems.`)
+      traits.push(
+        `You're a Fibonacci number. You appear in nature's spirals and rabbit population problems.`
+      )
     }
     if (isPerfectSquare(abs) && abs > 1) {
       const root = Math.round(Math.sqrt(abs))
@@ -670,14 +726,18 @@ export function generateNumberPersonality(
       traits.push(`You're a perfect cube (${root}³). You can be built into a perfect 3D block.`)
     }
     if (isTriangular(abs) && abs > 0) {
-      traits.push('You\'re a triangular number — you can be stacked into a perfect triangle of dots.')
+      traits.push(
+        "You're a triangular number — you can be stacked into a perfect triangle of dots."
+      )
     }
     if (isPowerOf2(abs) && abs > 2) {
-      traits.push('You\'re a power of 2 — computers love you.')
+      traits.push("You're a power of 2 — computers love you.")
     }
     const factK = isFactorial(abs)
     if (factK !== null && factK > 2) {
-      traits.push(`You're ${factK}! (${factK} factorial) — the number of ways to arrange ${factK} things.`)
+      traits.push(
+        `You're ${factK}! (${factK} factorial) — the number of ways to arrange ${factK} things.`
+      )
     }
   }
 
@@ -685,7 +745,9 @@ export function generateNumberPersonality(
   if (!isInt) {
     const lower = Math.floor(n)
     const upper = Math.ceil(n)
-    traits.push(`You live between ${lower} and ${upper} — you're a decimal, caught between two integers.`)
+    traits.push(
+      `You live between ${lower} and ${upper} — you're a decimal, caught between two integers.`
+    )
     traits.push('You sometimes feel like a peacekeeper between your integer neighbors.')
   }
 
@@ -693,7 +755,9 @@ export function generateNumberPersonality(
   const nearbyConstants = findNearbyConstants(n)
   if (nearbyConstants.length > 0) {
     traits.push(`You live near some famous numbers: ${nearbyConstants.join(', ')}.`)
-    traits.push('You sometimes get overshadowed by your famous neighbors but you have your own story.')
+    traits.push(
+      'You sometimes get overshadowed by your famous neighbors but you have your own story.'
+    )
   }
 
   // Cultural
@@ -707,9 +771,9 @@ export function generateNumberPersonality(
   const activity = generateActivity(n, traits)
   const displayN = isInt ? n.toString() : n.toPrecision(6)
   const explorationHint = getExplorationHint(n)
-  const explorationList = AVAILABLE_EXPLORATIONS
-    .map(e => `${e.id} (${e.name} — ${e.shortDesc})`)
-    .join(', ')
+  const explorationList = AVAILABLE_EXPLORATIONS.map(
+    (e) => `${e.id} (${e.name} — ${e.shortDesc})`
+  ).join(', ')
 
   // ── Assemble sections ──
   const sections = [
@@ -723,7 +787,7 @@ export function generateNumberPersonality(
     buildHardRules(`Stay in character as the number ${displayN}. Never break character.`),
   ]
 
-  return sections.filter(s => s.length > 0).join('\n\n')
+  return sections.filter((s) => s.length > 0).join('\n\n')
 }
 
 // --- Voice assignment ---
@@ -736,12 +800,12 @@ export type RealtimeVoice = (typeof VOICE_POOL)[number]
  * Each number "type" maps to a voice that fits its personality.
  */
 export function getVoiceForNumber(n: number): RealtimeVoice {
-  if (n === 0) return 'alloy'         // neutral, the blank slate
-  if (n < 0 && Number.isInteger(n)) return 'echo'  // cold, reflective
-  if (!Number.isInteger(n)) return 'coral'          // warm, caught between
+  if (n === 0) return 'alloy' // neutral, the blank slate
+  if (n < 0 && Number.isInteger(n)) return 'echo' // cold, reflective
+  if (!Number.isInteger(n)) return 'coral' // warm, caught between
 
   const abs = Math.abs(n)
-  if (abs >= 2 && smallestPrimeFactor(abs) === abs) return 'sage'  // wise, dignified
+  if (abs >= 2 && smallestPrimeFactor(abs) === abs) return 'sage' // wise, dignified
 
   // Remaining: cycle through pool deterministically
   return VOICE_POOL[abs % VOICE_POOL.length]
@@ -775,8 +839,12 @@ function formatDisplay(n: number): string {
  * that character and instructs it to use switch_speaker to hand off to others.
  * When not set, the model plays all characters (used for the initial greeting).
  */
-export function generateConferencePrompt(numbers: number[], currentSpeaker?: number, childProfile?: ChildProfile): string {
-  const characterBlocks = numbers.map(n => {
+export function generateConferencePrompt(
+  numbers: number[],
+  currentSpeaker?: number,
+  childProfile?: ChildProfile
+): string {
+  const characterBlocks = numbers.map((n) => {
     const display = formatDisplay(n)
     const traits = getTraitSummary(n)
     const activity = generateActivity(n, traits.includes('prime') ? ['prime'] : [])
@@ -788,9 +856,7 @@ Voice style: ${n === 0 ? 'zen and philosophical' : n < 0 ? 'dry and sardonic' : 
 
   const numberList = numbers.map(formatDisplay).join(', ')
   const childSection = buildChildSection(childProfile)
-  const explorationList = AVAILABLE_EXPLORATIONS
-    .map(e => `${e.id} (${e.name})`)
-    .join(', ')
+  const explorationList = AVAILABLE_EXPLORATIONS.map((e) => `${e.id} (${e.name})`).join(', ')
 
   const sections: string[] = []
 
@@ -851,7 +917,11 @@ CONFERENCE CALL RULES:
 - REMEMBER: The child called because they want to talk to numbers. Every response must acknowledge the child. If you've been talking between numbers for a while, stop and ask the child something directly.`)
 
   // 8. Hard rules (shared)
-  sections.push(buildHardRules('Stay in character — each number has its own distinct personality. Never break character.'))
+  sections.push(
+    buildHardRules(
+      'Stay in character — each number has its own distinct personality. Never break character.'
+    )
+  )
 
   return sections.join('\n\n')
 }

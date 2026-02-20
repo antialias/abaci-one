@@ -106,10 +106,7 @@ export function toStandardForm(slope: Fraction, intercept: Fraction): StandardFo
  * Compute the linear equation form for the line through (x1, y1) and (x2, y2).
  * All inputs must be integers.
  */
-export function equationFromPoints(
-  x1: number, y1: number,
-  x2: number, y2: number,
-): EquationForm {
+export function equationFromPoints(x1: number, y1: number, x2: number, y2: number): EquationForm {
   // Same point
   if (x1 === x2 && y1 === y2) {
     return { kind: 'point', x: x1, y: y1 }

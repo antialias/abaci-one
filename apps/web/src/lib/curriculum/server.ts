@@ -231,10 +231,7 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     })
   } else {
     players = await db.query.players.findMany({
-      where: and(
-        eq(schema.players.userId, userId),
-        eq(schema.players.isPracticeStudent, true)
-      ),
+      where: and(eq(schema.players.userId, userId), eq(schema.players.isPracticeStudent, true)),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
     })
   }
@@ -268,63 +265,66 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
 
   // Build enriched players (all data is pre-fetched, no async work per player)
   const playersWithSkills = players.map((player) => {
-      const skills = skillsByPlayer.get(player.id) ?? []
+    const skills = skillsByPlayer.get(player.id) ?? []
 
-      // Get practicing skills and compute lastPracticedAt
-      const practicingSkills: string[] = []
-      let lastPracticedAt: Date | null = null
+    // Get practicing skills and compute lastPracticedAt
+    const practicingSkills: string[] = []
+    let lastPracticedAt: Date | null = null
 
-      for (const skill of skills) {
-        if (skill.isPracticing) {
-          practicingSkills.push(skill.skillId)
-        }
-        if (skill.lastPracticedAt) {
-          if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
-            lastPracticedAt = skill.lastPracticedAt
-          }
+    for (const skill of skills) {
+      if (skill.isPracticing) {
+        practicingSkills.push(skill.skillId)
+      }
+      if (skill.lastPracticedAt) {
+        if (!lastPracticedAt || skill.lastPracticedAt > lastPracticedAt) {
+          lastPracticedAt = skill.lastPracticedAt
         }
       }
+    }
 
-      // Compute skill category
-      const skillCategory = computeSkillCategory(practicingSkills)
+    // Compute skill category
+    const skillCategory = computeSkillCategory(practicingSkills)
 
-      // Compute intervention data (only for non-archived students with skills)
-      let intervention = null
-      if (!player.isArchived && practicingSkills.length > 0) {
-        const distribution = computePlayerSkillDistribution(practicingSkills, sessionResultsByPlayer.get(player.id) ?? [])
-        const daysSinceLastPractice = lastPracticedAt
-          ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
-          : Infinity
-
-        intervention = computeIntervention(
-          distribution,
-          daysSinceLastPractice,
-          practicingSkills.length > 0
-        )
-      }
-
-      // Convert server presence to client-compatible shape
-      const serverPresence = presenceMap.get(player.id)
-      const currentPresence = serverPresence
-        ? {
-            playerId: serverPresence.playerId,
-            classroomId: serverPresence.classroomId,
-            enteredAt: serverPresence.enteredAt.toISOString(),
-            enteredBy: serverPresence.enteredBy,
-            classroom: serverPresence.classroom,
-          }
-        : null
-
-      return {
-        ...player,
+    // Compute intervention data (only for non-archived students with skills)
+    let intervention = null
+    if (!player.isArchived && practicingSkills.length > 0) {
+      const distribution = computePlayerSkillDistribution(
         practicingSkills,
-        lastPracticedAt,
-        skillCategory,
-        intervention,
-        enrolledClassrooms: enrollmentMap.get(player.id) ?? [],
-        currentPresence,
-        activeSession: activeSessionMap.get(player.id) ?? null,
-      }
+        sessionResultsByPlayer.get(player.id) ?? []
+      )
+      const daysSinceLastPractice = lastPracticedAt
+        ? (Date.now() - lastPracticedAt.getTime()) / (1000 * 60 * 60 * 24)
+        : Infinity
+
+      intervention = computeIntervention(
+        distribution,
+        daysSinceLastPractice,
+        practicingSkills.length > 0
+      )
+    }
+
+    // Convert server presence to client-compatible shape
+    const serverPresence = presenceMap.get(player.id)
+    const currentPresence = serverPresence
+      ? {
+          playerId: serverPresence.playerId,
+          classroomId: serverPresence.classroomId,
+          enteredAt: serverPresence.enteredAt.toISOString(),
+          enteredBy: serverPresence.enteredBy,
+          classroom: serverPresence.classroom,
+        }
+      : null
+
+    return {
+      ...player,
+      practicingSkills,
+      lastPracticedAt,
+      skillCategory,
+      intervention,
+      enrolledClassrooms: enrollmentMap.get(player.id) ?? [],
+      currentPresence,
+      activeSession: activeSessionMap.get(player.id) ?? null,
+    }
   })
 
   return playersWithSkills
@@ -332,19 +332,7 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
 
 // Re-export the individual functions for granular prefetching
 export { getPlayer } from '@/lib/arcade/player-manager'
-
-/**
- * Get a player that is flagged as a practice student.
- * Returns undefined if the player doesn't exist or isn't a practice student.
- *
- * Use this instead of getPlayer() in practice routes to enforce the invariant
- * that only practice students can access the practice system.
- */
-export async function getPracticeStudent(playerId: string): Promise<Player | undefined> {
-  const player = await getPlayer(playerId)
-  if (!player || !player.isPracticeStudent) return undefined
-  return player
-}
+export { getPracticeStudent } from './practice-student'
 export {
   getAllSkillMastery,
   getPaginatedSessions,

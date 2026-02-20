@@ -43,7 +43,10 @@ export class ApiError extends Error {
 }
 
 async function createPlayer(
-  newPlayer: Pick<Player, 'name' | 'emoji' | 'color'> & { isActive?: boolean; isPracticeStudent?: boolean }
+  newPlayer: Pick<Player, 'name' | 'emoji' | 'color'> & {
+    isActive?: boolean
+    isPracticeStudent?: boolean
+  }
 ): Promise<Player> {
   const res = await api('players', {
     method: 'POST',
@@ -66,7 +69,9 @@ async function updatePlayer({
   updates,
 }: {
   id: string
-  updates: Partial<Pick<Player, 'name' | 'emoji' | 'color' | 'isActive' | 'isArchived' | 'notes' | 'age'>>
+  updates: Partial<
+    Pick<Player, 'name' | 'emoji' | 'color' | 'isActive' | 'isArchived' | 'notes' | 'age'>
+  >
 }): Promise<Player> {
   const res = await api(`players/${id}`, {
     method: 'PATCH',

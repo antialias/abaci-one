@@ -19,18 +19,33 @@ const PI = Math.PI
 
 // Known bifurcation points (period-doubling) for the logistic map
 const BIFURCATION_POINTS = [
-  { r: 3.0,    period: 2,  label: 'r₁' },
-  { r: 3.4495, period: 4,  label: 'r₂' },
-  { r: 3.5441, period: 8,  label: 'r₃' },
+  { r: 3.0, period: 2, label: 'r₁' },
+  { r: 3.4495, period: 4, label: 'r₂' },
+  { r: 3.5441, period: 8, label: 'r₃' },
   { r: 3.5644, period: 16, label: 'r₄' },
   { r: 3.5688, period: 32, label: 'r₅' },
 ]
 
 // Intervals between successive bifurcation points
 const INTERVALS = [
-  { from: BIFURCATION_POINTS[0].r, to: BIFURCATION_POINTS[1].r, width: BIFURCATION_POINTS[1].r - BIFURCATION_POINTS[0].r, label: 'Δ₁' },
-  { from: BIFURCATION_POINTS[1].r, to: BIFURCATION_POINTS[2].r, width: BIFURCATION_POINTS[2].r - BIFURCATION_POINTS[1].r, label: 'Δ₂' },
-  { from: BIFURCATION_POINTS[2].r, to: BIFURCATION_POINTS[3].r, width: BIFURCATION_POINTS[3].r - BIFURCATION_POINTS[2].r, label: 'Δ₃' },
+  {
+    from: BIFURCATION_POINTS[0].r,
+    to: BIFURCATION_POINTS[1].r,
+    width: BIFURCATION_POINTS[1].r - BIFURCATION_POINTS[0].r,
+    label: 'Δ₁',
+  },
+  {
+    from: BIFURCATION_POINTS[1].r,
+    to: BIFURCATION_POINTS[2].r,
+    width: BIFURCATION_POINTS[2].r - BIFURCATION_POINTS[1].r,
+    label: 'Δ₂',
+  },
+  {
+    from: BIFURCATION_POINTS[2].r,
+    to: BIFURCATION_POINTS[3].r,
+    width: BIFURCATION_POINTS[3].r - BIFURCATION_POINTS[2].r,
+    label: 'Δ₃',
+  },
 ]
 
 // Ratios converge to delta
@@ -38,7 +53,6 @@ const RATIOS = [
   { value: INTERVALS[0].width / INTERVALS[1].width, label: 'Δ₁/Δ₂' },
   { value: INTERVALS[1].width / INTERVALS[2].width, label: 'Δ₂/Δ₃' },
 ]
-
 
 // ── Precomputed iteration sequences ─────────────────────────────────
 
@@ -147,51 +161,82 @@ function smoothstep(t: number): number {
 
 function easeInOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2
 }
 
 // ── Phase timing (12 segments) ──────────────────────────────────────
 
 const PHASE = {
   // Seg 0a: Dot splash (silent animation)
-  splashBegin: 0.000, splashEnd: 0.025,
+  splashBegin: 0.0,
+  splashEnd: 0.025,
   // Seg 0b: Meet the dot (narration)
-  meetBegin: 0.025, meetEnd: 0.060,
+  meetBegin: 0.025,
+  meetEnd: 0.06,
   // Seg 1: The rule — iterate at r=2.8, dot settles
-  ruleBegin: 0.060, ruleEnd: 0.140,
+  ruleBegin: 0.06,
+  ruleEnd: 0.14,
   // Seg 2: Turn up the dial — slide r rightward
-  dialBegin: 0.140, dialEnd: 0.200,
+  dialBegin: 0.14,
+  dialEnd: 0.2,
   // Seg 3: First split! — r=3.2, period-2
-  splitBegin: 0.200, splitEnd: 0.300,
+  splitBegin: 0.2,
+  splitEnd: 0.3,
   // Seg 4: Why it splits — overshoot visualization
-  whyBegin: 0.300, whyEnd: 0.370,
+  whyBegin: 0.3,
+  whyEnd: 0.37,
   // Seg 5: Four! — r=3.5, period-4
-  fourBegin: 0.370, fourEnd: 0.450,
+  fourBegin: 0.37,
+  fourEnd: 0.45,
   // Seg 6: The cascade — 8→16→32, gaps shrink
-  cascadeBegin: 0.450, cascadeEnd: 0.560,
+  cascadeBegin: 0.45,
+  cascadeEnd: 0.56,
   // Seg 7: The full picture — bifurcation diagram sweeps in
-  fullBegin: 0.560, fullEnd: 0.640,
+  fullBegin: 0.56,
+  fullEnd: 0.64,
   // Seg 8: Measuring gaps — proportional bars
-  gapBegin: 0.640, gapEnd: 0.730,
+  gapBegin: 0.64,
+  gapEnd: 0.73,
   // Seg 9: The magic ratio — ratio computation, pan right
-  ratioBegin: 0.730, ratioEnd: 0.820,
+  ratioBegin: 0.73,
+  ratioEnd: 0.82,
   // Seg 10a: Zoom into cascade — fractal self-similarity
-  zoomBegin: 0.820, zoomEnd: 0.910,
+  zoomBegin: 0.82,
+  zoomEnd: 0.91,
   // Seg 10b: Delta — star reveal
-  revealBegin: 0.910, revealEnd: 1.000,
+  revealBegin: 0.91,
+  revealEnd: 1.0,
 } as const
 
 // ── Colors ───────────────────────────────────────────────────────────
 
-function stableCol(isDark: boolean) { return isDark ? '#60a5fa' : '#3b82f6' }
-function period2Col(isDark: boolean) { return isDark ? '#a78bfa' : '#7c3aed' }
-function period4Col(isDark: boolean) { return isDark ? '#fb923c' : '#ea580c' }
-function chaoticCol(isDark: boolean) { return isDark ? '#f87171' : '#dc2626' }
-function bracket1Col(_isDark: boolean) { return '#22c55e' }
-function bracket2Col(_isDark: boolean) { return '#3b82f6' }
-function bracket3Col(_isDark: boolean) { return '#ec4899' }
-function goldCol(_isDark: boolean) { return '#eab308' }
-function subtextCol(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
+function stableCol(isDark: boolean) {
+  return isDark ? '#60a5fa' : '#3b82f6'
+}
+function period2Col(isDark: boolean) {
+  return isDark ? '#a78bfa' : '#7c3aed'
+}
+function period4Col(isDark: boolean) {
+  return isDark ? '#fb923c' : '#ea580c'
+}
+function chaoticCol(isDark: boolean) {
+  return isDark ? '#f87171' : '#dc2626'
+}
+function bracket1Col(_isDark: boolean) {
+  return '#22c55e'
+}
+function bracket2Col(_isDark: boolean) {
+  return '#3b82f6'
+}
+function bracket3Col(_isDark: boolean) {
+  return '#ec4899'
+}
+function goldCol(_isDark: boolean) {
+  return '#eab308'
+}
+function subtextCol(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'
+}
 
 function columnColor(r: number, isDark: boolean): string {
   if (r < 3.0) return stableCol(isDark)
@@ -206,7 +251,7 @@ export function feigenbaumDemoViewport(cssWidth: number, cssHeight: number) {
   // Initial view fits [2.2, 3.4] with room for iteration track above
   const center = 2.8
   const rangeWidth = 1.2
-  const ppu = Math.min(cssWidth * 0.75 / rangeWidth, cssHeight * 0.35)
+  const ppu = Math.min((cssWidth * 0.75) / rangeWidth, cssHeight * 0.35)
   return { center, pixelsPerUnit: ppu }
 }
 
@@ -229,7 +274,7 @@ function drawIterationTrack(
   verticalScale: number,
   dotColor: string,
   trailColor: string,
-  alpha: number,
+  alpha: number
 ) {
   if (alpha <= 0) return
   const screenX = toX(r)
@@ -291,7 +336,7 @@ function drawIterationTrack(
   // Highlight settled positions (last few values if they're close together)
   if (bounceIndex >= sequence.length - 1 && sequence.length > 4) {
     const last4 = sequence.slice(-4)
-    const uniqueSettled = [...new Set(last4.map(v => Math.round(v * 100) / 100))]
+    const uniqueSettled = [...new Set(last4.map((v) => Math.round(v * 100) / 100))]
     for (const v of uniqueSettled) {
       const y = axisY - v * verticalScale
       ctx.beginPath()
@@ -328,7 +373,7 @@ function drawGapMeasureInSitu(
   axisY: number,
   progress: number,
   isDark: boolean,
-  alpha: number,
+  alpha: number
 ) {
   if (alpha <= 0) return
 
@@ -345,7 +390,7 @@ function drawGapMeasureInSitu(
   const d2ScreenWidth = d2Right - d2Left
 
   // ── Phase 1: Brackets appear over the actual gaps ─────────────
-  const p1 = smoothstep(mapRange(progress, 0.0, 0.30))
+  const p1 = smoothstep(mapRange(progress, 0.0, 0.3))
   if (p1 > 0) {
     // Green bracket under Δ₁
     ctx.strokeStyle = colors[0]
@@ -364,7 +409,7 @@ function drawGapMeasureInSitu(
     ctx.fillRect(d1Left, axisY - 20, d1Right - d1Left, 20 + bracketY - axisY)
 
     // Blue bracket under Δ₂ (slightly delayed)
-    const p1b = smoothstep(mapRange(progress, 0.10, 0.28))
+    const p1b = smoothstep(mapRange(progress, 0.1, 0.28))
     if (p1b > 0) {
       ctx.strokeStyle = colors[1]
       ctx.lineWidth = 2.5
@@ -384,7 +429,7 @@ function drawGapMeasureInSitu(
   }
 
   // ── Phase 2: Slide the blue ruler across the green gap ────────
-  const p2 = mapRange(progress, 0.30, 0.90)
+  const p2 = mapRange(progress, 0.3, 0.9)
   if (p2 > 0) {
     const ratio = RATIOS[0].value // ≈ 4.75
     // Animate from 0 copies to full ratio
@@ -397,9 +442,8 @@ function drawGapMeasureInSitu(
     const stampH = 8
     for (let i = 0; i <= fullCopies && i < 5; i++) {
       const stampLeft = d1Left + i * d2ScreenWidth
-      const stampRight = i < fullCopies
-        ? stampLeft + d2ScreenWidth
-        : stampLeft + d2ScreenWidth * partialFrac
+      const stampRight =
+        i < fullCopies ? stampLeft + d2ScreenWidth : stampLeft + d2ScreenWidth * partialFrac
       if (stampRight <= d1Left) continue
       const clippedRight = Math.min(stampRight, d1Right)
       const w = clippedRight - stampLeft
@@ -468,7 +512,7 @@ function drawGapMeasureInSitu(
   }
 
   // ── Phase 3: Settled count ────────────────────────────────────
-  const p3 = mapRange(progress, 0.90, 1.0)
+  const p3 = mapRange(progress, 0.9, 1.0)
   if (p3 > 0) {
     const fadeIn = smoothstep(p3)
 
@@ -522,7 +566,7 @@ function drawGapRatioVisual(
   axisY: number,
   progress: number,
   isDark: boolean,
-  alpha: number,
+  alpha: number
 ) {
   if (alpha <= 0) return
 
@@ -539,7 +583,7 @@ function drawGapRatioVisual(
   const d3ScreenWidth = toX(INTERVALS[2].to) - toX(INTERVALS[2].from)
 
   // Seg 8's tiling brightens from faded context to full in phase 3
-  const refBrighten = smoothstep(mapRange(progress, 0.55, 0.70))
+  const refBrighten = smoothstep(mapRange(progress, 0.55, 0.7))
   const refAlpha = alpha * (0.2 + refBrighten * 0.6)
   {
     const ratio = RATIOS[0].value
@@ -585,7 +629,7 @@ function drawGapRatioVisual(
   }
 
   // ── Phase 1: Highlight blue gap as new container ──────────────
-  const p1 = smoothstep(mapRange(progress, 0.0, 0.10))
+  const p1 = smoothstep(mapRange(progress, 0.0, 0.1))
   if (p1 > 0) {
     // Bold blue bracket
     ctx.strokeStyle = colors[1]
@@ -606,7 +650,7 @@ function drawGapRatioVisual(
     // Pink bracket over Δ₃ (the new ruler)
     const d3Left = toX(INTERVALS[2].from)
     const d3Right = toX(INTERVALS[2].to)
-    const p1b = smoothstep(mapRange(progress, 0.04, 0.10))
+    const p1b = smoothstep(mapRange(progress, 0.04, 0.1))
     if (p1b > 0) {
       ctx.strokeStyle = colors[2]
       ctx.lineWidth = 2.5
@@ -625,7 +669,7 @@ function drawGapRatioVisual(
   }
 
   // ── Phase 2: Slide pink ruler across blue gap ─────────────────
-  const p2 = mapRange(progress, 0.10, 0.55)
+  const p2 = mapRange(progress, 0.1, 0.55)
   if (p2 > 0) {
     const ratio2 = RATIOS[1].value // ≈ 4.67
     const count = easeInOut(Math.min(1, p2)) * ratio2
@@ -637,9 +681,8 @@ function drawGapRatioVisual(
     const stampH = 8
     for (let i = 0; i <= fullCopies && i < 5; i++) {
       const stampLeft = d2Left + i * d3ScreenWidth
-      const stampRight = i < fullCopies
-        ? stampLeft + d3ScreenWidth
-        : stampLeft + d3ScreenWidth * partialFrac
+      const stampRight =
+        i < fullCopies ? stampLeft + d3ScreenWidth : stampLeft + d3ScreenWidth * partialFrac
       if (stampRight <= d2Left) continue
       const clippedRight = Math.min(stampRight, d2Right)
       const w = clippedRight - stampLeft
@@ -705,7 +748,7 @@ function drawGapRatioVisual(
   }
 
   // ── Phase 3: Both tilings visible, matching "≈4½" labels ─────
-  const p3 = mapRange(progress, 0.55, 0.80)
+  const p3 = mapRange(progress, 0.55, 0.8)
   if (p3 > 0) {
     // Redraw completed pink stamps in blue gap (held from phase 2)
     const ratio2 = RATIOS[1].value
@@ -767,7 +810,7 @@ function drawGapRatioVisual(
   }
 
   // ── Phase 4: "Same count every time!" emphasis ────────────────
-  const p4 = mapRange(progress, 0.80, 1.0)
+  const p4 = mapRange(progress, 0.8, 1.0)
   if (p4 > 0) {
     const fadeIn = smoothstep(p4)
 
@@ -806,7 +849,6 @@ function drawGapRatioVisual(
   }
 }
 
-
 /** Draw attractor dots for a single r-value column. */
 function drawBifurcationColumn(
   ctx: CanvasRenderingContext2D,
@@ -817,7 +859,7 @@ function drawBifurcationColumn(
   verticalScale: number,
   color: string,
   alpha: number,
-  dotRadius: number,
+  dotRadius: number
 ) {
   if (alpha <= 0) return
   const screenX = toX(r)
@@ -838,7 +880,7 @@ function drawStar(
   cy: number,
   r: number,
   color: string,
-  alpha: number,
+  alpha: number
 ) {
   if (alpha <= 0 || r <= 0) return
   ctx.beginPath()
@@ -856,8 +898,6 @@ function drawStar(
   ctx.fill()
 }
 
-
-
 // ── Main render ──────────────────────────────────────────────────────
 
 export function renderFeigenbaumOverlay(
@@ -867,7 +907,7 @@ export function renderFeigenbaumOverlay(
   cssHeight: number,
   isDark: boolean,
   revealProgress: number,
-  opacity: number,
+  opacity: number
 ): void {
   if (opacity <= 0) return
 
@@ -937,7 +977,8 @@ export function renderFeigenbaumOverlay(
     // The rule formula — visible from mid seg 0b through seg 1
     if (meetP > 0.4) {
       const formulaP = smoothstep(mapRange(meetP, 0.4, 0.8))
-      const formulaFade = 1 - smoothstep(mapRange(revealProgress, PHASE.ruleEnd - 0.02, PHASE.ruleEnd))
+      const formulaFade =
+        1 - smoothstep(mapRange(revealProgress, PHASE.ruleEnd - 0.02, PHASE.ruleEnd))
       const formulaAlpha = opacity * formulaP * formulaFade
 
       // "The rule:" header
@@ -972,10 +1013,17 @@ export function renderFeigenbaumOverlay(
     const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.dialBegin, PHASE.dialEnd))
 
     drawIterationTrack(
-      ctx, toX, axisY, 2.8, ITER_R28,
-      bounceIndex, bounceFrac, verticalScale,
-      stableCol(isDark), stableCol(isDark),
-      opacity * fadeOut,
+      ctx,
+      toX,
+      axisY,
+      2.8,
+      ITER_R28,
+      bounceIndex,
+      bounceFrac,
+      verticalScale,
+      stableCol(isDark),
+      stableCol(isDark),
+      opacity * fadeOut
     )
 
     // Show "spot" and "room left" annotations on the track during early bounces
@@ -1034,7 +1082,11 @@ export function renderFeigenbaumOverlay(
   // Then holds at r=3.2 to let the oscillation sink in.
   if (revealProgress >= PHASE.dialBegin && revealProgress < PHASE.fourBegin) {
     // Continuous r-value: slides from 2.8 through to 3.2 across segs 2+3
-    const slideP = mapRange(revealProgress, PHASE.dialBegin, PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.4)
+    const slideP = mapRange(
+      revealProgress,
+      PHASE.dialBegin,
+      PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.4
+    )
     const currentR = 2.8 + Math.min(1, slideP) * 0.4 // 2.8 → 3.2
     const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.whyEnd - 0.02, PHASE.fourBegin))
 
@@ -1056,16 +1108,26 @@ export function renderFeigenbaumOverlay(
 
     // Color transitions from stable blue to period-2 purple as r crosses 3.0
     const purpleMix = smoothstep(mapRange(currentR, 2.95, 3.1))
-    const dotColor = purpleMix > 0.01
-      ? (purpleMix > 0.99 ? period2Col(isDark) : stableCol(isDark))
-      : stableCol(isDark)
+    const dotColor =
+      purpleMix > 0.01
+        ? purpleMix > 0.99
+          ? period2Col(isDark)
+          : stableCol(isDark)
+        : stableCol(isDark)
     const trailColor = dotColor
 
     drawIterationTrack(
-      ctx, toX, axisY, currentR, dialSeq,
-      bounceIndex, bounceFrac, verticalScale,
-      dotColor, trailColor,
-      opacity * fadeOut,
+      ctx,
+      toX,
+      axisY,
+      currentR,
+      dialSeq,
+      bounceIndex,
+      bounceFrac,
+      verticalScale,
+      dotColor,
+      trailColor,
+      opacity * fadeOut
     )
 
     // Diamond marker on axis showing the dial position
@@ -1090,9 +1152,13 @@ export function renderFeigenbaumOverlay(
 
     // "Two homes!" callout once r has arrived at 3.2 and oscillation is visible
     if (revealProgress > PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.6) {
-      const calloutP = smoothstep(mapRange(revealProgress,
-        PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.6,
-        PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.85))
+      const calloutP = smoothstep(
+        mapRange(
+          revealProgress,
+          PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.6,
+          PHASE.splitBegin + (PHASE.splitEnd - PHASE.splitBegin) * 0.85
+        )
+      )
       ctx.font = 'bold 13px system-ui, sans-serif'
       ctx.fillStyle = period2Col(isDark)
       ctx.textAlign = 'center'
@@ -1172,13 +1238,21 @@ export function renderFeigenbaumOverlay(
     const bounceFloat = fourP * totalBounces
     const bounceIndex = Math.min(Math.floor(bounceFloat), totalBounces)
     const bounceFrac = bounceFloat - Math.floor(bounceFloat)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.cascadeBegin, PHASE.cascadeBegin + 0.03))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.cascadeBegin, PHASE.cascadeBegin + 0.03))
 
     drawIterationTrack(
-      ctx, toX, axisY, 3.5, ITER_R35,
-      bounceIndex, bounceFrac, verticalScale,
-      period4Col(isDark), period4Col(isDark),
-      opacity * fadeOut,
+      ctx,
+      toX,
+      axisY,
+      3.5,
+      ITER_R35,
+      bounceIndex,
+      bounceFrac,
+      verticalScale,
+      period4Col(isDark),
+      period4Col(isDark),
+      opacity * fadeOut
     )
 
     // "r = 3.5" label
@@ -1208,7 +1282,8 @@ export function renderFeigenbaumOverlay(
   // so the child sees the cascade through individual dots, not the diagram.
   if (revealProgress >= PHASE.cascadeBegin && revealProgress < PHASE.fullBegin) {
     const cascP = mapRange(revealProgress, PHASE.cascadeBegin, PHASE.cascadeEnd)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.fullBegin))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.fullBegin))
 
     // Phase 1 (0–0.45): period-8 at r=3.54
     const p8P = mapRange(cascP, 0, 0.45)
@@ -1220,10 +1295,17 @@ export function renderFeigenbaumOverlay(
       const p8Fade = 1 - smoothstep(mapRange(cascP, 0.4, 0.5))
 
       drawIterationTrack(
-        ctx, toX, axisY, 3.54, ITER_R354,
-        bounceIndex, bounceFrac, verticalScale,
-        chaoticCol(isDark), chaoticCol(isDark),
-        opacity * fadeOut * p8Fade,
+        ctx,
+        toX,
+        axisY,
+        3.54,
+        ITER_R354,
+        bounceIndex,
+        bounceFrac,
+        verticalScale,
+        chaoticCol(isDark),
+        chaoticCol(isDark),
+        opacity * fadeOut * p8Fade
       )
 
       // "r = 3.54" label
@@ -1256,10 +1338,17 @@ export function renderFeigenbaumOverlay(
       const bounceFrac = bounceFloat - Math.floor(bounceFloat)
 
       drawIterationTrack(
-        ctx, toX, axisY, 3.564, ITER_R3564,
-        bounceIndex, bounceFrac, verticalScale,
-        chaoticCol(isDark), chaoticCol(isDark),
-        opacity * fadeOut,
+        ctx,
+        toX,
+        axisY,
+        3.564,
+        ITER_R3564,
+        bounceIndex,
+        bounceFrac,
+        verticalScale,
+        chaoticCol(isDark),
+        chaoticCol(isDark),
+        opacity * fadeOut
       )
 
       // "r = 3.564" label
@@ -1311,7 +1400,9 @@ export function renderFeigenbaumOverlay(
       if (revealProgress < PHASE.gapBegin) return 1.0
       if (revealProgress < PHASE.zoomBegin) return 0.3
       // During Seg 10: brighten back up as we zoom into the fractal
-      return 0.3 + 0.7 * smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.06))
+      return (
+        0.3 + 0.7 * smoothstep(mapRange(revealProgress, PHASE.zoomBegin, PHASE.zoomBegin + 0.06))
+      )
     })()
 
     // Full sweep: r=2.5 → 3.58 across the entire segment
@@ -1377,7 +1468,7 @@ export function renderFeigenbaumOverlay(
     // the child has been watching in earlier segments.
     if (fullP > 0 && fullP < 1 && dimFactor >= 1.0) {
       // Find the bifurcation column closest to the sweep edge
-      const frontierCol = BIFURCATION_DATA.find(col => col.r >= sweepR - 0.01 && col.r <= sweepR)
+      const frontierCol = BIFURCATION_DATA.find((col) => col.r >= sweepR - 0.01 && col.r <= sweepR)
       if (frontierCol && frontierCol.attractors.length > 0) {
         const attractors = frontierCol.attractors
         const screenX = toX(frontierCol.r)

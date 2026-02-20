@@ -15,77 +15,80 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
  *
  * Returns the audio manifest, active voice, and per-voice clip counts.
  */
-export const GET = withAuth(async () => {
-  try {
-    // Fetch active voice from DB
-    const [settings] = await db
-      .select()
-      .from(appSettings)
-      .where(eq(appSettings.id, 'default'))
-      .limit(1)
+export const GET = withAuth(
+  async () => {
+    try {
+      // Fetch active voice from DB
+      const [settings] = await db
+        .select()
+        .from(appSettings)
+        .where(eq(appSettings.id, 'default'))
+        .limit(1)
 
-    const activeVoice = settings?.audioVoice ?? DEFAULT_APP_SETTINGS.audioVoice
+      const activeVoice = settings?.audioVoice ?? DEFAULT_APP_SETTINGS.audioVoice
 
-    // Scan data/audio/ for voice directories
-    const voices: Record<string, { total: number; existing: number }> = {}
-    const manifestFilenames = new Set(AUDIO_MANIFEST.map((e) => e.filename))
+      // Scan data/audio/ for voice directories
+      const voices: Record<string, { total: number; existing: number }> = {}
+      const manifestFilenames = new Set(AUDIO_MANIFEST.map((e) => e.filename))
 
-    if (existsSync(AUDIO_DIR)) {
-      const entries = readdirSync(AUDIO_DIR)
-      for (const entry of entries) {
-        const entryPath = join(AUDIO_DIR, entry)
-        if (statSync(entryPath).isDirectory()) {
-          const files = readdirSync(entryPath)
-          const existingCount = files.filter((f) => manifestFilenames.has(f)).length
-          voices[entry] = {
-            total: AUDIO_MANIFEST.length,
-            existing: existingCount,
+      if (existsSync(AUDIO_DIR)) {
+        const entries = readdirSync(AUDIO_DIR)
+        for (const entry of entries) {
+          const entryPath = join(AUDIO_DIR, entry)
+          if (statSync(entryPath).isDirectory()) {
+            const files = readdirSync(entryPath)
+            const existingCount = files.filter((f) => manifestFilenames.has(f)).length
+            voices[entry] = {
+              total: AUDIO_MANIFEST.length,
+              existing: existingCount,
+            }
           }
         }
       }
-    }
 
-    // Count total collected clips (denominator for health metric)
-    const [{ count: totalCollectedClips }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(ttsCollectedClips)
+      // Count total collected clips (denominator for health metric)
+      const [{ count: totalCollectedClips }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(ttsCollectedClips)
 
-    // Count audio files per voice directory for all known + custom voices
-    const voiceClipCounts: Record<string, number> = {}
-    const knownVoices = new Set<string>(ALL_VOICES)
+      // Count audio files per voice directory for all known + custom voices
+      const voiceClipCounts: Record<string, number> = {}
+      const knownVoices = new Set<string>(ALL_VOICES)
 
-    // Scan all directories under data/audio/ to catch custom voices too
-    const allVoiceDirs: string[] = [...ALL_VOICES]
-    if (existsSync(AUDIO_DIR)) {
-      for (const entry of readdirSync(AUDIO_DIR)) {
-        const entryPath = join(AUDIO_DIR, entry)
-        if (statSync(entryPath).isDirectory() && !knownVoices.has(entry)) {
-          allVoiceDirs.push(entry)
+      // Scan all directories under data/audio/ to catch custom voices too
+      const allVoiceDirs: string[] = [...ALL_VOICES]
+      if (existsSync(AUDIO_DIR)) {
+        for (const entry of readdirSync(AUDIO_DIR)) {
+          const entryPath = join(AUDIO_DIR, entry)
+          if (statSync(entryPath).isDirectory() && !knownVoices.has(entry)) {
+            allVoiceDirs.push(entry)
+          }
         }
       }
-    }
 
-    for (const voice of allVoiceDirs) {
-      const voiceDir = join(AUDIO_DIR, voice)
-      if (existsSync(voiceDir)) {
-        const files = readdirSync(voiceDir)
-        voiceClipCounts[voice] = files.filter(
-          (f) => f.endsWith('.mp3') || f.endsWith('.webm')
-        ).length
-      } else {
-        voiceClipCounts[voice] = 0
+      for (const voice of allVoiceDirs) {
+        const voiceDir = join(AUDIO_DIR, voice)
+        if (existsSync(voiceDir)) {
+          const files = readdirSync(voiceDir)
+          voiceClipCounts[voice] = files.filter(
+            (f) => f.endsWith('.mp3') || f.endsWith('.webm')
+          ).length
+        } else {
+          voiceClipCounts[voice] = 0
+        }
       }
-    }
 
-    return NextResponse.json({
-      activeVoice,
-      manifest: AUDIO_MANIFEST,
-      voices,
-      totalCollectedClips,
-      voiceClipCounts,
-    })
-  } catch (error) {
-    console.error('Error fetching audio status:', error)
-    return NextResponse.json({ error: 'Failed to fetch audio status' }, { status: 500 })
-  }
-}, { role: 'admin' })
+      return NextResponse.json({
+        activeVoice,
+        manifest: AUDIO_MANIFEST,
+        voices,
+        totalCollectedClips,
+        voiceClipCounts,
+      })
+    } catch (error) {
+      console.error('Error fetching audio status:', error)
+      return NextResponse.json({ error: 'Failed to fetch audio status' }, { status: 500 })
+    }
+  },
+  { role: 'admin' }
+)

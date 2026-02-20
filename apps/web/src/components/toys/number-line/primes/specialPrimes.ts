@@ -5,8 +5,14 @@ import { smallestPrimeFactor } from './sieve'
 export const MERSENNE_PRIMES = new Set([3, 7, 31, 127, 8191, 131071, 524287, 2147483647])
 
 export const MERSENNE_EXPONENTS = new Map<number, number>([
-  [3, 2], [7, 3], [31, 5], [127, 7], [8191, 13],
-  [131071, 17], [524287, 19], [2147483647, 31],
+  [3, 2],
+  [7, 3],
+  [31, 5],
+  [127, 7],
+  [8191, 13],
+  [131071, 17],
+  [524287, 19],
+  [2147483647, 31],
 ])
 
 // --- Pair arc types ---
@@ -43,7 +49,17 @@ export function computePrimePairArcs(visiblePrimes: number[]): PrimePairArc[] {
 // --- Special prime labels for tooltip ---
 
 export interface SpecialPrimeLabel {
-  type: 'twin' | 'cousin' | 'sexy' | 'triplet' | 'quadruplet' | 'mersenne' | 'sophie-germain' | 'palindrome' | 'gap-record' | 'high-merit'
+  type:
+    | 'twin'
+    | 'cousin'
+    | 'sexy'
+    | 'triplet'
+    | 'quadruplet'
+    | 'mersenne'
+    | 'sophie-germain'
+    | 'palindrome'
+    | 'gap-record'
+    | 'high-merit'
   text: string
 }
 
@@ -112,8 +128,7 @@ export function getSpecialPrimeLabels(p: number): SpecialPrimeLabel[] {
 
   // Prime quadruplets: (p, p+2, p+6, p+8)
   const quadruplets: number[][] = []
-  if (isPrime(p + 2) && isPrime(p + 6) && isPrime(p + 8))
-    quadruplets.push([p, p + 2, p + 6, p + 8])
+  if (isPrime(p + 2) && isPrime(p + 6) && isPrime(p + 8)) quadruplets.push([p, p + 2, p + 6, p + 8])
   if (p - 2 >= 2 && isPrime(p - 2) && isPrime(p + 4) && isPrime(p + 6))
     quadruplets.push([p - 2, p, p + 4, p + 6])
   if (p - 6 >= 2 && isPrime(p - 6) && isPrime(p - 4) && isPrime(p + 2))
@@ -139,14 +154,20 @@ export function getSpecialPrimeLabels(p: number): SpecialPrimeLabel[] {
   // Sophie Germain: p is Sophie Germain if 2p+1 is also prime
   const safePrime = 2 * p + 1
   if (safePrime < 1e12 && isPrime(safePrime)) {
-    labels.push({ type: 'sophie-germain', text: `Sophie Germain (2\u00d7${p}+1 = ${safePrime} is prime)` })
+    labels.push({
+      type: 'sophie-germain',
+      text: `Sophie Germain (2\u00d7${p}+1 = ${safePrime} is prime)`,
+    })
   }
 
   // Palindrome prime
   const s = String(p)
   let isPalin = true
   for (let i = 0; i < s.length >>> 1; i++) {
-    if (s[i] !== s[s.length - 1 - i]) { isPalin = false; break }
+    if (s[i] !== s[s.length - 1 - i]) {
+      isPalin = false
+      break
+    }
   }
   if (isPalin && s.length >= 2) {
     labels.push({ type: 'palindrome', text: `Palindrome prime (${s.length} digits)` })
@@ -157,7 +178,10 @@ export function getSpecialPrimeLabels(p: number): SpecialPrimeLabel[] {
 
 function superscriptStr(n: number): string {
   const superDigits = '\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079'
-  return String(n).split('').map(d => superDigits[parseInt(d)]).join('')
+  return String(n)
+    .split('')
+    .map((d) => superDigits[parseInt(d)])
+    .join('')
 }
 
 // --- Arc colors (used by both render and tooltip) ---

@@ -38,7 +38,7 @@ export function computeTickMarks(
   const powerInfo: { power: number; prominence: number; opacity: number }[] = []
 
   for (let power = maxPower; power >= minPower; power--) {
-    const spacing = Math.pow(10, power)
+    const spacing = 10 ** power
     const tickSpacingPx = spacing * pixelsPerUnit
 
     // Skip if too dense (more than ~130 ticks) or too small (< 2px apart)
@@ -65,7 +65,7 @@ export function computeTickMarks(
 
   // powerInfo is already ordered from coarsest (highest power) to finest
   for (const { power, prominence, opacity } of powerInfo) {
-    const spacing = Math.pow(10, power)
+    const spacing = 10 ** power
     const firstIndex = Math.ceil(leftValue / spacing)
     const lastIndex = Math.floor(rightValue / spacing)
 
@@ -78,7 +78,7 @@ export function computeTickMarks(
       let dominated = false
       for (const coarser of powerInfo) {
         if (coarser.power <= power) break // only check strictly coarser
-        const coarserSpacing = Math.pow(10, coarser.power)
+        const coarserSpacing = 10 ** coarser.power
         // V is a multiple of coarserSpacing if i is a multiple of 10^(P'-P)
         const ratio = Math.round(coarserSpacing / spacing)
         if (i % ratio === 0) {

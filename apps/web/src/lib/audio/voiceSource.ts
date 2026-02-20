@@ -26,11 +26,7 @@ export abstract class VoiceSource {
    * Generate a clip on-demand and return the audio blob.
    * Returns null on failure. Only meaningful when `canGenerate()` is true.
    */
-  async generate(
-    _clipId: string,
-    _text: string,
-    _tone: string
-  ): Promise<Blob | null> {
+  async generate(_clipId: string, _text: string, _tone: string): Promise<Blob | null> {
     return null
   }
 }
@@ -49,11 +45,7 @@ export class PregeneratedVoice extends VoiceSource {
     return true
   }
 
-  async generate(
-    clipId: string,
-    text: string,
-    tone: string
-  ): Promise<Blob | null> {
+  async generate(clipId: string, text: string, tone: string): Promise<Blob | null> {
     try {
       const res = await fetch('/api/audio/generate-clip', {
         method: 'POST',

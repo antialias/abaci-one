@@ -7,7 +7,12 @@
  * indicators on the number line, updated automatically via remove_stones.
  */
 
-import type { GameDefinition, GameStartResult, GameActionResult, GameToolCallResult } from '../gameRegistry'
+import type {
+  GameDefinition,
+  GameStartResult,
+  GameActionResult,
+  GameToolCallResult,
+} from '../gameRegistry'
 
 const DEFAULT_STONES = 15
 const DEFAULT_MAX_TAKE = 3
@@ -32,12 +37,12 @@ export const nimGame: GameDefinition = {
     'On each turn, the player removes 1 to max_take stones from the pool. ' +
     'Stones are always removed from the top (highest remaining numbers). ' +
     '3) WINNING: Whoever takes the LAST stone WINS. ' +
-    '4) MOVES: After EVERY move (yours or the child\'s), call remove_stones with count: <number of stones taken>. ' +
+    "4) MOVES: After EVERY move (yours or the child's), call remove_stones with count: <number of stones taken>. " +
     'This automatically updates the visual display. Do NOT call indicate manually during this game. ' +
     'Do NOT call look_at during this game (viewport is locked). ' +
     '5) COMMUNICATION: Tell the child how many stones remain after every move. ' +
     'Be conversational and encouraging. "There are 9 stones left — your turn! How many do you want to take?" ' +
-    '6) CHILD\'S TURN: Ask the child how many stones they want to take (1 to max_take). ' +
+    "6) CHILD'S TURN: Ask the child how many stones they want to take (1 to max_take). " +
     'Validate their move — they must take at least 1 and at most max_take (or the remaining count if fewer are left). ' +
     'If they make an invalid move, gently explain and let them try again. ' +
     '7) YOUR STRATEGY: The winning strategy is to leave your opponent with a multiple of (max_take + 1) stones. ' +
@@ -60,14 +65,15 @@ export const nimGame: GameDefinition = {
       type: 'function' as const,
       name: 'remove_stones',
       description:
-        'Remove stones from the pool during a Nim game. Call this after EVERY move — yours or the child\'s. ' +
+        "Remove stones from the pool during a Nim game. Call this after EVERY move — yours or the child's. " +
         'Stones are always removed from the top (highest remaining numbers). The display updates automatically.',
       parameters: {
         type: 'object',
         properties: {
           count: {
             type: 'number',
-            description: 'Number of stones to remove (1 to max_take, or remaining count if fewer are left)',
+            description:
+              'Number of stones to remove (1 to max_take, or remaining count if fewer are left)',
           },
         },
         required: ['count'],
@@ -85,15 +91,15 @@ export const nimGame: GameDefinition = {
     '- Whoever takes the LAST stone WINS.\n\n' +
     'MOVES:\n' +
     '- YOUR TURN: First ANNOUNCE your move out loud ("I\'ll take 2 stones"), then call remove_stones.\n' +
-    '  The child needs to hear what you\'re doing BEFORE the display changes.\n' +
-    '- CHILD\'S TURN: After the child says how many they want, call remove_stones immediately.\n' +
+    "  The child needs to hear what you're doing BEFORE the display changes.\n" +
+    "- CHILD'S TURN: After the child says how many they want, call remove_stones immediately.\n" +
     '- This automatically updates the visual display. Do NOT call indicate or look_at.\n' +
     '- Tell the child how many stones remain after every move.\n\n' +
     'STRATEGY:\n' +
     '- The winning strategy is to leave your opponent with a multiple of (max_take + 1) stones.\n' +
     '- If remaining % (max_take + 1) != 0, you can win: take (remaining % (max_take + 1)) stones.\n' +
-    '- If remaining % (max_take + 1) == 0, you\'re in a losing position — take 1 and hope they make a mistake.\n\n' +
-    'CHILD\'S TURN:\n' +
+    "- If remaining % (max_take + 1) == 0, you're in a losing position — take 1 and hope they make a mistake.\n\n" +
+    "CHILD'S TURN:\n" +
     '- Ask how many stones they want to take. Validate: at least 1, at most max_take (or remaining if fewer).\n' +
     '- If invalid, gently explain and let them try again.\n\n' +
     'ENDGAME:\n' +
@@ -107,7 +113,11 @@ export const nimGame: GameDefinition = {
     '- "9 stones left — your turn! How many do you want to take?"\n' +
     '- Celebrate good moves briefly. Be a gracious winner or loser.',
 
-  onToolCall(rawState: unknown, toolName: string, args: Record<string, unknown>): GameToolCallResult {
+  onToolCall(
+    rawState: unknown,
+    toolName: string,
+    args: Record<string, unknown>
+  ): GameToolCallResult {
     if (toolName !== 'remove_stones') {
       return { agentMessage: `Unknown tool: ${toolName}`, state: rawState }
     }
@@ -162,21 +172,30 @@ export const nimGame: GameDefinition = {
       return {
         agentMessage: 'Invalid move: remove must be a positive integer.',
         state: s,
-        indicate: { numbers: Array.from({ length: s.remaining }, (_, i) => i + 1), persistent: true },
+        indicate: {
+          numbers: Array.from({ length: s.remaining }, (_, i) => i + 1),
+          persistent: true,
+        },
       }
     }
     if (remove > s.maxTake) {
       return {
         agentMessage: `Invalid move: you can take at most ${s.maxTake} stones per turn.`,
         state: s,
-        indicate: { numbers: Array.from({ length: s.remaining }, (_, i) => i + 1), persistent: true },
+        indicate: {
+          numbers: Array.from({ length: s.remaining }, (_, i) => i + 1),
+          persistent: true,
+        },
       }
     }
     if (remove > s.remaining) {
       return {
         agentMessage: `Invalid move: only ${s.remaining} stones remain.`,
         state: s,
-        indicate: { numbers: Array.from({ length: s.remaining }, (_, i) => i + 1), persistent: true },
+        indicate: {
+          numbers: Array.from({ length: s.remaining }, (_, i) => i + 1),
+          persistent: true,
+        },
       }
     }
 

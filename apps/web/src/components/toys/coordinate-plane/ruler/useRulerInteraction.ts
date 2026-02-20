@@ -21,9 +21,12 @@ interface UseRulerInteractionOptions {
 
 /** Distance from a point to the segment AB, clamped to segment */
 function distToSegment(
-  px: number, py: number,
-  ax: number, ay: number,
-  bx: number, by: number,
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number
 ): number {
   const dx = bx - ax
   const dy = by - ay
@@ -45,20 +48,28 @@ function hitTest(
   ruler: RulerState,
   planeState: CoordinatePlaneState,
   cssWidth: number,
-  cssHeight: number,
+  cssHeight: number
 ): RulerHitZone {
   const s = planeState
   const a = worldToScreen2D(
-    ruler.ax, ruler.ay,
-    s.center.x, s.center.y,
-    s.pixelsPerUnit.x, s.pixelsPerUnit.y,
-    cssWidth, cssHeight,
+    ruler.ax,
+    ruler.ay,
+    s.center.x,
+    s.center.y,
+    s.pixelsPerUnit.x,
+    s.pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
   )
   const b = worldToScreen2D(
-    ruler.bx, ruler.by,
-    s.center.x, s.center.y,
-    s.pixelsPerUnit.x, s.pixelsPerUnit.y,
-    cssWidth, cssHeight,
+    ruler.bx,
+    ruler.by,
+    s.center.x,
+    s.center.y,
+    s.pixelsPerUnit.x,
+    s.pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
   )
 
   const dA = Math.sqrt((screenX - a.x) ** 2 + (screenY - a.y) ** 2)
@@ -121,7 +132,16 @@ export function useRulerInteraction({
         bodyDragAnchorA = { x: ruler.ax, y: ruler.ay }
         bodyDragAnchorB = { x: ruler.bx, y: ruler.by }
         const s = stateRef.current
-        const w = screenToWorld2D(sx, sy, s.center.x, s.center.y, s.pixelsPerUnit.x, s.pixelsPerUnit.y, cssW, cssH)
+        const w = screenToWorld2D(
+          sx,
+          sy,
+          s.center.x,
+          s.center.y,
+          s.pixelsPerUnit.x,
+          s.pixelsPerUnit.y,
+          cssW,
+          cssH
+        )
         bodyDragStartWorld = { x: w.x, y: w.y }
       }
 
@@ -138,7 +158,16 @@ export function useRulerInteraction({
       const ruler = rulerRef.current
 
       if (dragZone === 'handleA' || dragZone === 'handleB') {
-        const w = screenToWorld2D(sx, sy, s.center.x, s.center.y, s.pixelsPerUnit.x, s.pixelsPerUnit.y, cssW, cssH)
+        const w = screenToWorld2D(
+          sx,
+          sy,
+          s.center.x,
+          s.center.y,
+          s.pixelsPerUnit.x,
+          s.pixelsPerUnit.y,
+          cssW,
+          cssH
+        )
         const snappedX = snapToInt(w.x)
         const snappedY = snapToInt(w.y)
 
@@ -158,7 +187,16 @@ export function useRulerInteraction({
         }
         onRulerChange()
       } else if (dragZone === 'body') {
-        const w = screenToWorld2D(sx, sy, s.center.x, s.center.y, s.pixelsPerUnit.x, s.pixelsPerUnit.y, cssW, cssH)
+        const w = screenToWorld2D(
+          sx,
+          sy,
+          s.center.x,
+          s.center.y,
+          s.pixelsPerUnit.x,
+          s.pixelsPerUnit.y,
+          cssW,
+          cssH
+        )
         const rawDx = w.x - bodyDragStartWorld.x
         const rawDy = w.y - bodyDragStartWorld.y
         const intDx = Math.round(rawDx)
@@ -267,5 +305,15 @@ export function useRulerInteraction({
       canvas.removeEventListener('touchend', onTouchEnd, { capture: true })
       canvas.removeEventListener('touchcancel', onTouchEnd, { capture: true })
     }
-  }, [canvasRef, rulerRef, stateRef, pointerCapturedRef, onRulerChange, onActiveHandleChange, getCanvasRect, enabled, slopeGuideRef])
+  }, [
+    canvasRef,
+    rulerRef,
+    stateRef,
+    pointerCapturedRef,
+    onRulerChange,
+    onActiveHandleChange,
+    getCanvasRect,
+    enabled,
+    slopeGuideRef,
+  ])
 }

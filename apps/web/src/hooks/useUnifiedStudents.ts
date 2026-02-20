@@ -152,12 +152,14 @@ export function useUnifiedStudents(
     for (const child of myChildren) {
       const relationship: StudentRelationship = {
         isMyChild: true,
-        isEnrolled: child.enrolledClassrooms !== undefined
-          ? child.enrolledClassrooms.length > 0
-          : enrolledIds.has(child.id),
-        isPresent: child.currentPresence !== undefined
-          ? child.currentPresence !== null
-          : presenceMap.has(child.id),
+        isEnrolled:
+          child.enrolledClassrooms !== undefined
+            ? child.enrolledClassrooms.length > 0
+            : enrolledIds.has(child.id),
+        isPresent:
+          child.currentPresence !== undefined
+            ? child.currentPresence !== null
+            : presenceMap.has(child.id),
         enrollmentStatus: null, // TODO: Add pending enrollment lookup
       }
 

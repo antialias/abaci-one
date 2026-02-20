@@ -655,29 +655,30 @@ export function FeatureFlagsClient() {
                       >
                         {flag.key}
                       </span>
-                      {flag.allowedRoles && (() => {
-                        try {
-                          const roles = JSON.parse(flag.allowedRoles) as string[]
-                          return roles.map((role) => (
-                            <span
-                              key={role}
-                              className={css({
-                                padding: '1px 6px',
-                                borderRadius: '10px',
-                                fontSize: '10px',
-                                fontWeight: '600',
-                                backgroundColor: '#30363d',
-                                color: '#8b949e',
-                                textTransform: 'capitalize',
-                              })}
-                            >
-                              {role}
-                            </span>
-                          ))
-                        } catch {
-                          return null
-                        }
-                      })()}
+                      {flag.allowedRoles &&
+                        (() => {
+                          try {
+                            const roles = JSON.parse(flag.allowedRoles) as string[]
+                            return roles.map((role) => (
+                              <span
+                                key={role}
+                                className={css({
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  fontSize: '10px',
+                                  fontWeight: '600',
+                                  backgroundColor: '#30363d',
+                                  color: '#8b949e',
+                                  textTransform: 'capitalize',
+                                })}
+                              >
+                                {role}
+                              </span>
+                            ))
+                          } catch {
+                            return null
+                          }
+                        })()}
                     </span>
                     <span
                       className={css({
@@ -890,12 +891,19 @@ export function FeatureFlagsClient() {
 
                         {/* Role gating */}
                         <div className={css({ marginBottom: '16px' })}>
-                          <label className={css({
-                            display: 'block',
-                            fontSize: '12px',
-                            color: '#8b949e',
-                            marginBottom: '6px',
-                          })}>Visible to roles <span className={css({ color: '#6e7681' })}>(none checked = all roles)</span></label>
+                          <label
+                            className={css({
+                              display: 'block',
+                              fontSize: '12px',
+                              color: '#8b949e',
+                              marginBottom: '6px',
+                            })}
+                          >
+                            Visible to roles{' '}
+                            <span className={css({ color: '#6e7681' })}>
+                              (none checked = all roles)
+                            </span>
+                          </label>
                           <div className={css({ display: 'flex', gap: '12px' })}>
                             {ALL_ROLES.map((role) => (
                               <label
@@ -929,202 +937,202 @@ export function FeatureFlagsClient() {
 
                         {/* Per-user overrides */}
                         <div data-element="overrides-section">
-                        <h4
-                          className={css({
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            marginBottom: '10px',
-                            color: '#8b949e',
-                          })}
-                        >
-                          Per-User Overrides
-                        </h4>
+                          <h4
+                            className={css({
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              marginBottom: '10px',
+                              color: '#8b949e',
+                            })}
+                          >
+                            Per-User Overrides
+                          </h4>
 
-                        {/* Existing overrides list */}
-                        {overridesLoading ? (
-                          <div
-                            className={css({
-                              color: '#8b949e',
-                              fontSize: '13px',
-                              marginBottom: '12px',
-                            })}
-                          >
-                            Loading overrides...
-                          </div>
-                        ) : overrides.length === 0 ? (
-                          <div
-                            className={css({
-                              color: '#8b949e',
-                              fontSize: '13px',
-                              marginBottom: '12px',
-                            })}
-                          >
-                            No user overrides for this flag.
-                          </div>
-                        ) : (
-                          <div className={css({ marginBottom: '12px' })}>
-                            {overrides.map((override) => (
-                              <div
-                                key={override.userId}
-                                data-element="override-row"
-                                className={css({
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '12px',
-                                  padding: '8px 12px',
-                                  backgroundColor: '#161b22',
-                                  border: '1px solid #21262d',
-                                  borderRadius: '6px',
-                                  marginBottom: '6px',
-                                  fontSize: '13px',
-                                })}
-                              >
-                                <span
+                          {/* Existing overrides list */}
+                          {overridesLoading ? (
+                            <div
+                              className={css({
+                                color: '#8b949e',
+                                fontSize: '13px',
+                                marginBottom: '12px',
+                              })}
+                            >
+                              Loading overrides...
+                            </div>
+                          ) : overrides.length === 0 ? (
+                            <div
+                              className={css({
+                                color: '#8b949e',
+                                fontSize: '13px',
+                                marginBottom: '12px',
+                              })}
+                            >
+                              No user overrides for this flag.
+                            </div>
+                          ) : (
+                            <div className={css({ marginBottom: '12px' })}>
+                              {overrides.map((override) => (
+                                <div
+                                  key={override.userId}
+                                  data-element="override-row"
                                   className={css({
-                                    flex: '1',
-                                    color: '#e6edf3',
-                                    fontFamily: 'monospace',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '8px 12px',
+                                    backgroundColor: '#161b22',
+                                    border: '1px solid #21262d',
+                                    borderRadius: '6px',
+                                    marginBottom: '6px',
+                                    fontSize: '13px',
                                   })}
                                 >
-                                  {override.userEmail ?? override.userId}
-                                </span>
-                                <span
-                                  className={css({
-                                    padding: '2px 8px',
-                                    borderRadius: '10px',
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    backgroundColor: override.enabled ? '#23863633' : '#da363333',
-                                    color: override.enabled ? '#3fb950' : '#f85149',
-                                    border: `1px solid ${override.enabled ? '#23863666' : '#da363366'}`,
-                                  })}
-                                >
-                                  {override.enabled ? 'ON' : 'OFF'}
-                                </span>
-                                {override.config && (
                                   <span
                                     className={css({
+                                      flex: '1',
+                                      color: '#e6edf3',
                                       fontFamily: 'monospace',
-                                      fontSize: '11px',
-                                      color: '#8b949e',
-                                      maxWidth: '200px',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
                                     })}
                                   >
-                                    {override.config}
+                                    {override.userEmail ?? override.userId}
                                   </span>
-                                )}
-                                <button
-                                  data-action="delete-override"
-                                  onClick={() =>
-                                    deleteOverrideMutation.mutate({
-                                      flagKey: flag.key,
-                                      userId: override.userId,
-                                    })
-                                  }
-                                  disabled={deleteOverrideMutation.isPending}
-                                  className={css({
-                                    padding: '2px 8px',
-                                    backgroundColor: 'transparent',
-                                    color: '#f85149',
-                                    border: '1px solid #da3633',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    cursor: 'pointer',
-                                    '&:hover': { backgroundColor: '#da363322' },
-                                    '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-                                  })}
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                                  <span
+                                    className={css({
+                                      padding: '2px 8px',
+                                      borderRadius: '10px',
+                                      fontSize: '11px',
+                                      fontWeight: '600',
+                                      backgroundColor: override.enabled ? '#23863633' : '#da363333',
+                                      color: override.enabled ? '#3fb950' : '#f85149',
+                                      border: `1px solid ${override.enabled ? '#23863666' : '#da363366'}`,
+                                    })}
+                                  >
+                                    {override.enabled ? 'ON' : 'OFF'}
+                                  </span>
+                                  {override.config && (
+                                    <span
+                                      className={css({
+                                        fontFamily: 'monospace',
+                                        fontSize: '11px',
+                                        color: '#8b949e',
+                                        maxWidth: '200px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      })}
+                                    >
+                                      {override.config}
+                                    </span>
+                                  )}
+                                  <button
+                                    data-action="delete-override"
+                                    onClick={() =>
+                                      deleteOverrideMutation.mutate({
+                                        flagKey: flag.key,
+                                        userId: override.userId,
+                                      })
+                                    }
+                                    disabled={deleteOverrideMutation.isPending}
+                                    className={css({
+                                      padding: '2px 8px',
+                                      backgroundColor: 'transparent',
+                                      color: '#f85149',
+                                      border: '1px solid #da3633',
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      cursor: 'pointer',
+                                      '&:hover': { backgroundColor: '#da363322' },
+                                      '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                                    })}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
-                        {/* Add override form */}
-                        <div
-                          data-element="add-override-form"
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'flex-end',
-                            gap: '8px',
-                            flexWrap: 'wrap',
-                          })}
-                        >
-                          <div className={css({ flex: '1', minWidth: '200px' })}>
-                            <label className={labelStyle}>User email</label>
-                            <input
-                              type="email"
-                              value={overrideEmail}
-                              onChange={(e) => setOverrideEmail(e.target.value)}
-                              placeholder="user@example.com"
-                              className={editInputStyle}
-                            />
-                          </div>
-                          <div className={css({ minWidth: '120px' })}>
-                            <label className={labelStyle}>Override config (JSON)</label>
-                            <input
-                              type="text"
-                              value={overrideConfig}
-                              onChange={(e) => setOverrideConfig(e.target.value)}
-                              placeholder="null = inherit"
-                              className={editInputStyle}
-                            />
-                          </div>
-                          <label
+                          {/* Add override form */}
+                          <div
+                            data-element="add-override-form"
                             className={css({
                               display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              paddingBottom: '8px',
+                              alignItems: 'flex-end',
+                              gap: '8px',
+                              flexWrap: 'wrap',
                             })}
                           >
-                            <input
-                              type="checkbox"
-                              checked={overrideEnabled}
-                              onChange={(e) => setOverrideEnabled(e.target.checked)}
-                              className={css({ cursor: 'pointer' })}
-                            />
-                            Enabled
-                          </label>
-                          <button
-                            data-action="add-override"
-                            onClick={handleAddOverride}
-                            disabled={!overrideEmail.trim() || addOverrideMutation.isPending}
-                            className={css({
-                              padding: '6px 14px',
-                              backgroundColor: '#238636',
-                              color: '#ffffff',
-                              border: '1px solid #2ea043',
-                              borderRadius: '6px',
-                              fontSize: '13px',
-                              fontWeight: '500',
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
-                              '&:hover': { backgroundColor: '#2ea043' },
-                              '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-                            })}
-                          >
-                            {addOverrideMutation.isPending ? 'Adding...' : 'Add Override'}
-                          </button>
-                        </div>
-                        {overrideError && (
-                          <div
-                            className={css({
-                              color: '#f85149',
-                              fontSize: '13px',
-                              marginTop: '6px',
-                            })}
-                          >
-                            {overrideError}
+                            <div className={css({ flex: '1', minWidth: '200px' })}>
+                              <label className={labelStyle}>User email</label>
+                              <input
+                                type="email"
+                                value={overrideEmail}
+                                onChange={(e) => setOverrideEmail(e.target.value)}
+                                placeholder="user@example.com"
+                                className={editInputStyle}
+                              />
+                            </div>
+                            <div className={css({ minWidth: '120px' })}>
+                              <label className={labelStyle}>Override config (JSON)</label>
+                              <input
+                                type="text"
+                                value={overrideConfig}
+                                onChange={(e) => setOverrideConfig(e.target.value)}
+                                placeholder="null = inherit"
+                                className={editInputStyle}
+                              />
+                            </div>
+                            <label
+                              className={css({
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                paddingBottom: '8px',
+                              })}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={overrideEnabled}
+                                onChange={(e) => setOverrideEnabled(e.target.checked)}
+                                className={css({ cursor: 'pointer' })}
+                              />
+                              Enabled
+                            </label>
+                            <button
+                              data-action="add-override"
+                              onClick={handleAddOverride}
+                              disabled={!overrideEmail.trim() || addOverrideMutation.isPending}
+                              className={css({
+                                padding: '6px 14px',
+                                backgroundColor: '#238636',
+                                color: '#ffffff',
+                                border: '1px solid #2ea043',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                '&:hover': { backgroundColor: '#2ea043' },
+                                '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                              })}
+                            >
+                              {addOverrideMutation.isPending ? 'Adding...' : 'Add Override'}
+                            </button>
                           </div>
-                        )}
-                      </div>
+                          {overrideError && (
+                            <div
+                              className={css({
+                                color: '#f85149',
+                                fontSize: '13px',
+                                marginTop: '6px',
+                              })}
+                            >
+                              {overrideError}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

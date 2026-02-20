@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
-import { getPracticeStudent, getRecentSessionResults, getSessionPlan } from '@/lib/curriculum/server'
+import {
+  getPracticeStudent,
+  getRecentSessionResults,
+  getSessionPlan,
+} from '@/lib/curriculum/server'
 import { getDbUserId } from '@/lib/viewer'
 import { SummaryClient } from '../../summary/SummaryClient'
 

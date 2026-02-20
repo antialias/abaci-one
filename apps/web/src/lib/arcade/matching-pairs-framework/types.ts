@@ -347,11 +347,7 @@ export interface MatchingPairsVariant<
   adjustConfigForBreak?: (config: TConfig, maxMinutes: number) => TConfig
 
   /** Can the card be flipped? Framework provides default, variant can override. */
-  canFlipCard?: (
-    card: TCard,
-    flippedCards: TCard[],
-    isProcessingMove: boolean
-  ) => boolean
+  canFlipCard?: (card: TCard, flippedCards: TCard[], isProcessingMove: boolean) => boolean
 }
 
 // ============================================================================

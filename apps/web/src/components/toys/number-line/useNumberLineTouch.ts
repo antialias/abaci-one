@@ -35,7 +35,15 @@ function clampPixelsPerUnit(ppu: number): number {
  *
  * All math uses absolute anchor-based computations (not deltas) to prevent drift.
  */
-export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomVelocity, onTap, onHover, onLongPress }: UseNumberLineTouchOptions) {
+export function useNumberLineTouch({
+  stateRef,
+  canvasRef,
+  onStateChange,
+  onZoomVelocity,
+  onTap,
+  onHover,
+  onLongPress,
+}: UseNumberLineTouchOptions) {
   // Anchor state for single-finger drag / mouse drag
   const dragAnchorRef = useRef<number | null>(null)
 
@@ -43,7 +51,9 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
   const pinchAnchorsRef = useRef<{ n1: number; n2: number; id1: number; id2: number } | null>(null)
 
   // Tap detection state
-  const tapStartRef = useRef<{ time: number; x: number; y: number; cancelled: boolean } | null>(null)
+  const tapStartRef = useRef<{ time: number; x: number; y: number; cancelled: boolean } | null>(
+    null
+  )
 
   // Long-press timer
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -307,7 +317,7 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
 
       // Zoom factor: positive deltaY = scroll down = zoom out
       const oldPPU = state.pixelsPerUnit
-      const zoomFactor = Math.pow(1.001, -e.deltaY)
+      const zoomFactor = 1.001 ** -e.deltaY
       const newPPU = clampPixelsPerUnit(oldPPU * zoomFactor)
       state.pixelsPerUnit = newPPU
 
@@ -364,5 +374,15 @@ export function useNumberLineTouch({ stateRef, canvasRef, onStateChange, onZoomV
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
       if (mouseLongPressTimer) clearTimeout(mouseLongPressTimer)
     }
-  }, [canvasRef, stateRef, onStateChange, onZoomVelocity, onTap, onHover, onLongPress, getCanvasWidth, getCanvasRect])
+  }, [
+    canvasRef,
+    stateRef,
+    onStateChange,
+    onZoomVelocity,
+    onTap,
+    onHover,
+    onLongPress,
+    getCanvasWidth,
+    getCanvasRect,
+  ])
 }

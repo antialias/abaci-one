@@ -39,7 +39,11 @@ export { GenericSetupPhase } from './components/GenericSetupPhase'
 export type { GenericSetupPhaseProps } from './components/GenericSetupPhase'
 export { GenericGamePhase } from './components/GenericGamePhase'
 export type { GenericGamePhaseProps } from './components/GenericGamePhase'
-export { GenericResultsPhase, formatGameTime, getPerformanceAnalysis } from './components/GenericResultsPhase'
+export {
+  GenericResultsPhase,
+  formatGameTime,
+  getPerformanceAnalysis,
+} from './components/GenericResultsPhase'
 export type { GenericResultsPhaseProps } from './components/GenericResultsPhase'
 export { createMatchingPairsGameComponent } from './components/GenericGameComponent'
 

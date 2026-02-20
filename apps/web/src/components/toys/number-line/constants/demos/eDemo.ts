@@ -32,42 +32,46 @@ function smoothstep(t: number): number {
 
 function easeOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return 1 - Math.pow(1 - c, 3)
+  return 1 - (1 - c) ** 3
 }
 
 // ── Viewport ───────────────────────────────────────────────────────────
 
 export function eDemoViewport(cssWidth: number, cssHeight: number) {
   const center = Math.E / 2
-  const ppu = Math.min(cssWidth * 0.85 / (Math.E + 0.8), cssHeight * 0.30)
+  const ppu = Math.min((cssWidth * 0.85) / (Math.E + 0.8), cssHeight * 0.3)
   return { center, pixelsPerUnit: ppu }
 }
 
 // ── Compound growth ────────────────────────────────────────────────────
 
 function compoundResult(n: number): number {
-  return Math.pow(1 + 1 / n, n)
+  return (1 + 1 / n) ** n
 }
 
 function compoundAfterSteps(n: number, steps: number): number {
-  return Math.pow(1 + 1 / n, steps)
+  return (1 + 1 / n) ** steps
 }
 
 // ── Phase timing ───────────────────────────────────────────────────────
 
-interface Level { n: number; startP: number; endP: number }
+interface Level {
+  n: number
+  startP: number
+  endP: number
+}
 
 const LEVELS: Level[] = [
-  { n: 1,   startP: 0.06, endP: 0.14 },
-  { n: 2,   startP: 0.14, endP: 0.40 },   // Centerpiece — extra time to teach
-  { n: 3,   startP: 0.40, endP: 0.47 },
-  { n: 4,   startP: 0.47, endP: 0.53 },
-  { n: 6,   startP: 0.53, endP: 0.57 },
-  { n: 8,   startP: 0.57, endP: 0.61 },
-  { n: 12,  startP: 0.61, endP: 0.64 },
-  { n: 20,  startP: 0.64, endP: 0.67 },
-  { n: 50,  startP: 0.67, endP: 0.70 },
-  { n: 100, startP: 0.70, endP: 0.73 },
+  { n: 1, startP: 0.06, endP: 0.14 },
+  { n: 2, startP: 0.14, endP: 0.4 }, // Centerpiece — extra time to teach
+  { n: 3, startP: 0.4, endP: 0.47 },
+  { n: 4, startP: 0.47, endP: 0.53 },
+  { n: 6, startP: 0.53, endP: 0.57 },
+  { n: 8, startP: 0.57, endP: 0.61 },
+  { n: 12, startP: 0.61, endP: 0.64 },
+  { n: 20, startP: 0.64, endP: 0.67 },
+  { n: 50, startP: 0.67, endP: 0.7 },
+  { n: 100, startP: 0.7, endP: 0.73 },
 ]
 
 const SMOOTH_START = 0.73
@@ -78,10 +82,18 @@ const LABELS_START = 0.92
 
 // ── Colors ─────────────────────────────────────────────────────────────
 
-function vineCol(isDark: boolean) { return isDark ? '#22c55e' : '#16a34a' }
-function vineBright(isDark: boolean) { return isDark ? '#86efac' : '#4ade80' }
-function budCol(isDark: boolean) { return isDark ? '#a3e635' : '#65a30d' }
-function boundaryCol(isDark: boolean) { return isDark ? '#fbbf24' : '#d97706' }
+function vineCol(isDark: boolean) {
+  return isDark ? '#22c55e' : '#16a34a'
+}
+function vineBright(isDark: boolean) {
+  return isDark ? '#86efac' : '#4ade80'
+}
+function budCol(isDark: boolean) {
+  return isDark ? '#a3e635' : '#65a30d'
+}
+function boundaryCol(isDark: boolean) {
+  return isDark ? '#fbbf24' : '#d97706'
+}
 
 // ── Drawing helpers ────────────────────────────────────────────────────
 
@@ -329,7 +341,7 @@ function drawSegmentDividers(
   const halfH = sw * 1.1 + 3
 
   for (let s = 1; s < n; s++) {
-    const val = vineEnd * s / n
+    const val = (vineEnd * s) / n
     const sx = toX(val)
 
     // Glow behind
@@ -373,8 +385,8 @@ function drawSegmentWave(
   const sw = stemW(ppu)
 
   for (let s = 0; s < n; s++) {
-    const segStart = vineEnd * s / n
-    const segEnd = vineEnd * (s + 1) / n
+    const segStart = (vineEnd * s) / n
+    const segEnd = (vineEnd * (s + 1)) / n
 
     // Stagger: each segment starts its pulse slightly later
     const delay = (s / n) * 0.35
@@ -510,7 +522,11 @@ export function renderEOverlay(
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'
       ctx.globalAlpha = opacity * fi * 0.8
-      ctx.fillText('Can the vine reach the star?', (toX(0) + toX(Math.E / 2)), axisY - stemW(ppu) / 2 - 8)
+      ctx.fillText(
+        'Can the vine reach the star?',
+        toX(0) + toX(Math.E / 2),
+        axisY - stemW(ppu) / 2 - 8
+      )
     }
   }
 
@@ -531,9 +547,7 @@ export function renderEOverlay(
     const lp = mapRange(revealProgress, activeLevel.startP, activeLevel.endP)
 
     // Previous level's vine endpoint (for smooth retraction to 1)
-    const prevEnd = activeLevelIdx > 0
-      ? compoundResult(LEVELS[activeLevelIdx - 1].n)
-      : 1
+    const prevEnd = activeLevelIdx > 0 ? compoundResult(LEVELS[activeLevelIdx - 1].n) : 1
     const hasRetract = activeLevelIdx > 0
 
     // Sub-phases — retraction only after the first level
@@ -545,7 +559,7 @@ export function renderEOverlay(
     const introP = mapRange(lp, hasRetract ? 0.08 : 0, hasRetract ? 0.22 : 0.08)
     const growStart = hasRetract ? 0.18 : 0.05
     const growP = mapRange(lp, growStart, 0.82)
-    const holdP = mapRange(lp, 0.80, 1.0)
+    const holdP = mapRange(lp, 0.8, 1.0)
 
     const finalVal = compoundResult(n)
 
@@ -614,11 +628,12 @@ export function renderEOverlay(
         currentVineEnd = gr_vineAfter
       } else {
         gr_settleP = mapRange(roundFrac, 0.85, 1.0)
-        currentVineEnd = growP >= 1
-          ? finalVal
-          : gr_vineBefore + (gr_vineAfter - gr_vineBefore) * smoothstep(gr_settleP)
+        currentVineEnd =
+          growP >= 1
+            ? finalVal
+            : gr_vineBefore + (gr_vineAfter - gr_vineBefore) * smoothstep(gr_settleP)
         gr_budP = mapRange(roundFrac, 0, 0.28)
-        gr_tendrilP = mapRange(roundFrac, 0.20, 0.88)
+        gr_tendrilP = mapRange(roundFrac, 0.2, 0.88)
       }
     }
 
@@ -641,9 +656,8 @@ export function renderEOverlay(
           const restPulse = 0.7 + 0.3 * Math.sin(gr_restProgress * Math.PI)
           drawSegmentDividers(ctx, toX, axisY, currentVineEnd, n, ppu, isDark, opacity * restPulse)
         } else {
-          const divAlpha = gr_budP > 0
-            ? smoothstep(gr_budP)
-            : gr_settleP > 0 ? 1 - smoothstep(gr_settleP) : 0.6
+          const divAlpha =
+            gr_budP > 0 ? smoothstep(gr_budP) : gr_settleP > 0 ? 1 - smoothstep(gr_settleP) : 0.6
           drawSegmentDividers(ctx, toX, axisY, gr_vineBefore, n, ppu, isDark, opacity * divAlpha)
 
           // Pulsing wave: each piece lights up left-to-right, pushing energy to tip
@@ -677,7 +691,8 @@ export function renderEOverlay(
 
         // During hop 1's wave: "Each piece of vine makes a hop!"
         if (gr_curRound === 0 && !gr_isResting && gr_budP > 0.1) {
-          const a = smoothstep(mapRange(gr_budP, 0.1, 0.4)) *
+          const a =
+            smoothstep(mapRange(gr_budP, 0.1, 0.4)) *
             (1 - smoothstep(mapRange(gr_tendrilP, 0.4, 0.7)))
           if (a > 0.01) {
             ctx.font = `${fs}px system-ui, sans-serif`
@@ -716,7 +731,8 @@ export function renderEOverlay(
 
         // During hop 2's tendril: "A bigger hop!"
         if (gr_curRound === 1 && !gr_isResting && gr_tendrilP > 0.5) {
-          const a = smoothstep(mapRange(gr_tendrilP, 0.5, 0.75)) *
+          const a =
+            smoothstep(mapRange(gr_tendrilP, 0.5, 0.75)) *
             (1 - smoothstep(mapRange(holdP, 0.2, 0.5)))
           if (a > 0.01) {
             ctx.font = `bold ${fs}px system-ui, sans-serif`
@@ -732,7 +748,8 @@ export function renderEOverlay(
 
     // --- "Let's try again!" during retraction ---
     if (hasRetract && retractP > 0 && retractP < 0.85) {
-      const ra = smoothstep(mapRange(retractP, 0, 0.3)) * (1 - smoothstep(mapRange(retractP, 0.5, 0.85)))
+      const ra =
+        smoothstep(mapRange(retractP, 0, 0.3)) * (1 - smoothstep(mapRange(retractP, 0.5, 0.85)))
       if (ra > 0.01) {
         const fs = Math.max(10, Math.min(13, ppu * 0.11))
         ctx.font = `italic ${fs}px system-ui, sans-serif`
@@ -748,11 +765,12 @@ export function renderEOverlay(
     if (introP > 0) {
       // For Day 2, fade out earlier since sub-labels take over
       const earlyFade = activeLevelIdx === 1 ? 0.15 : 0.6
-      const fadeOut = holdP > 0.3
-        ? 1 - smoothstep(mapRange(holdP, 0.3, 0.8))
-        : growP > earlyFade
-          ? 1 - smoothstep(mapRange(growP, earlyFade, earlyFade + 0.15))
-          : 1
+      const fadeOut =
+        holdP > 0.3
+          ? 1 - smoothstep(mapRange(holdP, 0.3, 0.8))
+          : growP > earlyFade
+            ? 1 - smoothstep(mapRange(growP, earlyFade, earlyFade + 0.15))
+            : 1
       const ia = smoothstep(introP) * fadeOut
       if (ia > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -803,7 +821,8 @@ export function renderEOverlay(
     // Label — fades out before convergence text appears
     if (smoothP > 0.35) {
       const fadeIn = smoothstep(mapRange(smoothP, 0.35, 0.6))
-      const fadeOut = 1 - smoothstep(mapRange(revealProgress, CONVERGE_START, CONVERGE_START + 0.03))
+      const fadeOut =
+        1 - smoothstep(mapRange(revealProgress, CONVERGE_START, CONVERGE_START + 0.03))
       const la = fadeIn * fadeOut
       if (la > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.12))
@@ -812,7 +831,11 @@ export function renderEOverlay(
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         ctx.globalAlpha = opacity * la
-        ctx.fillText('The secret: everyone grows together!', toX(Math.E / 2 + 0.3), axisY + stemW(ppu) / 2 + 4)
+        ctx.fillText(
+          'The secret: everyone grows together!',
+          toX(Math.E / 2 + 0.3),
+          axisY + stemW(ppu) / 2 + 4
+        )
       }
     }
   }
@@ -821,7 +844,8 @@ export function renderEOverlay(
   const convergeP = mapRange(revealProgress, CONVERGE_START, CONVERGE_END)
   if (convergeP > 0 && revealProgress < LABELS_START + 0.03) {
     const fadeIn = smoothstep(convergeP)
-    const fadeOut = 1 - smoothstep(mapRange(revealProgress, LABELS_START - 0.01, LABELS_START + 0.02))
+    const fadeOut =
+      1 - smoothstep(mapRange(revealProgress, LABELS_START - 0.01, LABELS_START + 0.02))
     const ca = fadeIn * fadeOut
 
     if (ca > 0.01) {
@@ -844,7 +868,11 @@ export function renderEOverlay(
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'
       ctx.globalAlpha = opacity * ca * 0.9
-      ctx.fillText('Each day, the vine got closer...', (toX(0) + eSx) / 2, axisY - stemW(ppu) / 2 - 14)
+      ctx.fillText(
+        'Each day, the vine got closer...',
+        (toX(0) + eSx) / 2,
+        axisY - stemW(ppu) / 2 - 14
+      )
 
       // Strengthen boundary line
       ctx.beginPath()

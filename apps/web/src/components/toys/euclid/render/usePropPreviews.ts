@@ -99,17 +99,17 @@ export function usePropPreviews(): Map<number, string> {
         viewport,
         PREVIEW_W,
         PREVIEW_H,
-        idle,         // compassPhase: idle
-        idle,         // straightedgePhase: idle
-        null,         // pointerWorld
-        null,         // snappedPointId
-        [],           // candidates
-        0,            // nextColorIndex
-        null,         // candidateFilter
-        true,         // isComplete
+        idle, // compassPhase: idle
+        idle, // straightedgePhase: idle
+        null, // pointerWorld
+        null, // snappedPointId
+        [], // candidates
+        0, // nextColorIndex
+        null, // candidateFilter
+        true, // isComplete
         prop.resultSegments,
-        undefined,    // hiddenElementIds
-        true,         // transparentBg
+        undefined, // hiddenElementIds
+        true // transparentBg
       )
 
       map.set(propId, canvas.toDataURL('image/png'))

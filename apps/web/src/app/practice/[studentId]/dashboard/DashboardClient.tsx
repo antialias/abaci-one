@@ -863,10 +863,16 @@ export function SkillCard({
                       fontWeight: 'bold',
                       color:
                         pk >= 0.8
-                          ? isDark ? 'green.400' : 'green.600'
+                          ? isDark
+                            ? 'green.400'
+                            : 'green.600'
                           : pk < 0.5
-                            ? isDark ? 'red.400' : 'red.600'
-                            : isDark ? 'yellow.400' : 'yellow.600',
+                            ? isDark
+                              ? 'red.400'
+                              : 'red.600'
+                            : isDark
+                              ? 'yellow.400'
+                              : 'yellow.600',
                     })}
                   >
                     {pct}%

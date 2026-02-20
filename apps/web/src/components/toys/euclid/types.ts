@@ -80,7 +80,13 @@ export interface IntersectionCandidate {
 export type CompassPhase =
   | { tag: 'idle' }
   | { tag: 'center-set'; centerId: string }
-  | { tag: 'radius-set'; centerId: string; radiusPointId: string; radius: number; enterTime: number }
+  | {
+      tag: 'radius-set'
+      centerId: string
+      radiusPointId: string
+      radius: number
+      enterTime: number
+    }
   | {
       tag: 'sweeping'
       centerId: string
@@ -91,9 +97,7 @@ export type CompassPhase =
       cumulativeSweep: number
     }
 
-export type StraightedgePhase =
-  | { tag: 'idle' }
-  | { tag: 'from-set'; fromId: string }
+export type StraightedgePhase = { tag: 'idle' } | { tag: 'from-set'; fromId: string }
 
 export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move'
 
@@ -151,9 +155,20 @@ export interface AngleSpec {
 
 export type ExpectedAction =
   | { type: 'compass'; centerId: string; radiusPointId: string }
-  | { type: 'intersection'; ofA?: ElementSelector; ofB?: ElementSelector; beyondId?: string; label?: string }
+  | {
+      type: 'intersection'
+      ofA?: ElementSelector
+      ofB?: ElementSelector
+      beyondId?: string
+      label?: string
+    }
   | { type: 'straightedge'; fromId: string; toId: string }
-  | { type: 'macro'; propId: number; inputPointIds: string[]; outputLabels?: Record<string, string> }
+  | {
+      type: 'macro'
+      propId: number
+      inputPointIds: string[]
+      outputLabels?: Record<string, string>
+    }
 
 export interface PropositionStep {
   instruction: string
@@ -241,17 +256,37 @@ export interface ExplorationNarration {
 // ── Ghost geometry (dependency visualization) ────────────────────
 
 /** Lightweight geometry for the ghost layer — not part of construction state */
-export interface GhostCircle { kind: 'circle'; cx: number; cy: number; r: number; color: string }
-export interface GhostSegment { kind: 'segment'; x1: number; y1: number; x2: number; y2: number; color: string; isProduction?: boolean }
-export interface GhostPoint { kind: 'point'; x: number; y: number; label: string; color: string }
+export interface GhostCircle {
+  kind: 'circle'
+  cx: number
+  cy: number
+  r: number
+  color: string
+}
+export interface GhostSegment {
+  kind: 'segment'
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  color: string
+  isProduction?: boolean
+}
+export interface GhostPoint {
+  kind: 'point'
+  x: number
+  y: number
+  label: string
+  color: string
+}
 export type GhostElement = GhostCircle | GhostSegment | GhostPoint
 
 /** A collection of ghost elements from one macro invocation at a specific depth */
 export interface GhostLayer {
-  propId: number       // which proposition's internals these represent
-  depth: number        // 1 = direct dependency, 2 = dependency's dependency, etc.
+  propId: number // which proposition's internals these represent
+  depth: number // 1 = direct dependency, 2 = dependency's dependency, etc.
   elements: GhostElement[]
-  atStep: number       // construction step index that produced this layer
+  atStep: number // construction step index that produced this layer
 }
 
 /**
@@ -260,9 +295,7 @@ export interface GhostLayer {
  * "produces" (extends) a finite line, requiring circle-line intersection on the extension.
  */
 export function needsExtendedSegments(prop: PropositionDef): boolean {
-  return prop.steps.some(
-    s => s.expected.type === 'intersection' && s.expected.beyondId != null,
-  )
+  return prop.steps.some((s) => s.expected.type === 'intersection' && s.expected.beyondId != null)
 }
 
 // ── Proof Editor JSON types ────────────────────────────────────────
@@ -305,7 +338,12 @@ export type SerializedAction =
   | { type: 'compass'; centerId: string; radiusPointId: string }
   | { type: 'straightedge'; fromId: string; toId: string }
   | { type: 'intersection'; ofA: string; ofB: string; label: string; beyondId?: string }
-  | { type: 'macro'; propId: number; inputPointIds: string[]; outputLabels?: Record<string, string> }
+  | {
+      type: 'macro'
+      propId: number
+      inputPointIds: string[]
+      outputLabels?: Record<string, string>
+    }
   | { type: 'fact-only' }
 
 export interface SerializedIntersection {

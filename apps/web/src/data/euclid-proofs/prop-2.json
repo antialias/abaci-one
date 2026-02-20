@@ -3,10 +3,41 @@
   "title": "Place a line equal to a given line at a given point",
   "kind": "construction",
   "givenElements": [
-    { "kind": "point", "id": "pt-A", "label": "A", "x": -1.5, "y": 1.5, "color": "#1A1A2E", "origin": "given" },
-    { "kind": "point", "id": "pt-B", "label": "B", "x": 0, "y": 0, "color": "#1A1A2E", "origin": "given" },
-    { "kind": "point", "id": "pt-C", "label": "C", "x": 1.5, "y": 0, "color": "#1A1A2E", "origin": "given" },
-    { "kind": "segment", "id": "seg-BC", "fromId": "pt-B", "toId": "pt-C", "color": "#1A1A2E", "origin": "given" }
+    {
+      "kind": "point",
+      "id": "pt-A",
+      "label": "A",
+      "x": -1.5,
+      "y": 1.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-B",
+      "label": "B",
+      "x": 0,
+      "y": 0,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-C",
+      "label": "C",
+      "x": 1.5,
+      "y": 0,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "segment",
+      "id": "seg-BC",
+      "fromId": "pt-B",
+      "toId": "pt-C",
+      "color": "#1A1A2E",
+      "origin": "given"
+    }
   ],
   "steps": [
     {
@@ -17,7 +48,12 @@
     {
       "citation": "I.1",
       "instruction": "Construct equilateral triangle on AB (I.1)",
-      "action": { "type": "macro", "propId": 1, "inputPointIds": ["pt-A", "pt-B"], "outputLabels": { "apex": "D" } },
+      "action": {
+        "type": "macro",
+        "propId": 1,
+        "inputPointIds": ["pt-A", "pt-B"],
+        "outputLabels": { "apex": "D" }
+      },
       "notes": "I.1 macro produces apex D plus segments DA and DB. No circles are added to state — they are internal to the proven tool."
     },
     {
@@ -28,7 +64,13 @@
     {
       "citation": "Def.15",
       "instruction": "Mark where the circle crosses line DB, past B",
-      "action": { "type": "intersection", "ofA": "cir-1", "ofB": "seg-4", "label": "E", "beyondId": "pt-B" },
+      "action": {
+        "type": "intersection",
+        "ofA": "cir-1",
+        "ofB": "seg-4",
+        "label": "E",
+        "beyondId": "pt-B"
+      },
       "notes": "E is on the extension of DB beyond B. seg-4 is the segment from D to B created by the I.1 macro."
     },
     {
@@ -39,12 +81,16 @@
     {
       "citation": "Def.15",
       "instruction": "Mark where the circle crosses line DA, past A",
-      "action": { "type": "intersection", "ofA": "cir-2", "ofB": "seg-3", "label": "F", "beyondId": "pt-A" },
+      "action": {
+        "type": "intersection",
+        "ofA": "cir-2",
+        "ofB": "seg-3",
+        "label": "F",
+        "beyondId": "pt-A"
+      },
       "notes": "F is on the extension of DA beyond A. seg-3 is the segment from D to A created by the I.1 macro. Then C.N.3 gives AF = BE (subtracting DA from DF and DB from DE), and C.N.1 gives AF = BC transitively."
     }
   ],
-  "resultSegments": [
-    { "fromId": "pt-A", "toId": "pt-F" }
-  ],
+  "resultSegments": [{ "fromId": "pt-A", "toId": "pt-F" }],
   "authorNotes": "The key insight is using the equilateral triangle to create two radii from D that share a common length (DA = DB), enabling the subtraction argument via C.N.3. The tutorial should emphasize picking the intersection 'past B' and 'past A' — the beyondId constraint is critical."
 }

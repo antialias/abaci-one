@@ -49,7 +49,7 @@ export function computeProximity(
   // Determine precision of the target number to decide required zoom
   const precision = getTargetPrecision(target)
   // At minimum, one unit at the target's precision should be ~20px wide
-  const unitAtPrecision = Math.pow(10, -precision)
+  const unitAtPrecision = 10 ** -precision
   const pxPerPrecisionUnit = unitAtPrecision * pixelsPerUnit
   const requiredPx = 20
   // Raw zoom ratio (uncapped) — exposed for hint logic

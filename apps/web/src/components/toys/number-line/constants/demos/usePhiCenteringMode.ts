@@ -2,8 +2,15 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import type { AlignmentConfig } from './renderPhiExploreImage'
 
 const ALL_SUBJECTS = [
-  'fiddlehead', 'galaxy', 'hurricane', 'nautilus', 'pinecone',
-  'rams-horn', 'romanesco', 'sunflower', 'wave',
+  'fiddlehead',
+  'galaxy',
+  'hurricane',
+  'nautilus',
+  'pinecone',
+  'rams-horn',
+  'romanesco',
+  'sunflower',
+  'wave',
 ] as const
 
 const DEFAULT_ALIGNMENT: AlignmentConfig = {
@@ -49,9 +56,7 @@ export interface PhiCenteringMode {
 export function usePhiCenteringMode(resolvedTheme: string | undefined): PhiCenteringMode {
   const [enabled, setEnabled] = useState(false)
   const [subjectId, setSubjectIdRaw] = useState<string>(ALL_SUBJECTS[0])
-  const [theme, setThemeRaw] = useState<ThemeVariant>(
-    resolvedTheme === 'dark' ? 'dark' : 'light'
-  )
+  const [theme, setThemeRaw] = useState<ThemeVariant>(resolvedTheme === 'dark' ? 'dark' : 'light')
   const [alignment, setAlignment] = useState<AlignmentConfig>({ ...DEFAULT_ALIGNMENT })
   const [image, setImage] = useState<HTMLImageElement | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -71,9 +76,7 @@ export function usePhiCenteringMode(resolvedTheme: string | undefined): PhiCente
     let cancelled = false
     async function load() {
       try {
-        const res = await fetch(
-          `/images/constants/phi-explore/alignment.json?t=${Date.now()}`
-        )
+        const res = await fetch(`/images/constants/phi-explore/alignment.json?t=${Date.now()}`)
         if (!res.ok) return
         const data = (await res.json()) as AlignmentJson
         if (cancelled) return
@@ -88,7 +91,9 @@ export function usePhiCenteringMode(resolvedTheme: string | undefined): PhiCente
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
     // Only load once when enabled
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
@@ -122,7 +127,9 @@ export function usePhiCenteringMode(resolvedTheme: string | undefined): PhiCente
     }
     setDirty(false)
 
-    return () => { loadIdRef.current++ }
+    return () => {
+      loadIdRef.current++
+    }
   }, [enabled, subjectId, theme])
 
   // Debounced auto-save
@@ -161,14 +168,17 @@ export function usePhiCenteringMode(resolvedTheme: string | undefined): PhiCente
     }
   }, [])
 
-  const updateAlignment = useCallback((partial: Partial<AlignmentConfig>) => {
-    setAlignment(prev => {
-      const next = { ...prev, ...partial }
-      return next
-    })
-    setDirty(true)
-    scheduleSave()
-  }, [scheduleSave])
+  const updateAlignment = useCallback(
+    (partial: Partial<AlignmentConfig>) => {
+      setAlignment((prev) => {
+        const next = { ...prev, ...partial }
+        return next
+      })
+      setDirty(true)
+      scheduleSave()
+    },
+    [scheduleSave]
+  )
 
   const resetAlignment = useCallback(() => {
     setAlignment({ ...DEFAULT_ALIGNMENT })
@@ -185,13 +195,13 @@ export function usePhiCenteringMode(resolvedTheme: string | undefined): PhiCente
   }, [])
 
   const nextSubject = useCallback(() => {
-    const idx = ALL_SUBJECTS.indexOf(subjectId as typeof ALL_SUBJECTS[number])
+    const idx = ALL_SUBJECTS.indexOf(subjectId as (typeof ALL_SUBJECTS)[number])
     const next = ALL_SUBJECTS[(idx + 1) % ALL_SUBJECTS.length]
     setSubjectIdRaw(next)
   }, [subjectId])
 
   const prevSubject = useCallback(() => {
-    const idx = ALL_SUBJECTS.indexOf(subjectId as typeof ALL_SUBJECTS[number])
+    const idx = ALL_SUBJECTS.indexOf(subjectId as (typeof ALL_SUBJECTS)[number])
     const prev = ALL_SUBJECTS[(idx - 1 + ALL_SUBJECTS.length) % ALL_SUBJECTS.length]
     setSubjectIdRaw(prev)
   }, [subjectId])

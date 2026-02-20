@@ -10,7 +10,14 @@
 
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { generateFamilyCode, parentChild, type Player, players, users, type User } from '@/db/schema'
+import {
+  generateFamilyCode,
+  parentChild,
+  type Player,
+  players,
+  users,
+  type User,
+} from '@/db/schema'
 import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
 
 /**

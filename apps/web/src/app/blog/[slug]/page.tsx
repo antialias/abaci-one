@@ -349,4 +349,3 @@ export default async function BlogPost({ params }: Props) {
     </div>
   )
 }
-

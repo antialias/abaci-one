@@ -38,10 +38,7 @@ export async function getRouteEnforcer(): Promise<Enforcer> {
 export async function getResourceEnforcer(): Promise<Enforcer> {
   if (!resourceEnforcerPromise) {
     const adapter = new DrizzleCasbinAdapter()
-    resourceEnforcerPromise = newEnforcer(
-      path.join(POLICIES_DIR, 'resource-model.conf'),
-      adapter
-    )
+    resourceEnforcerPromise = newEnforcer(path.join(POLICIES_DIR, 'resource-model.conf'), adapter)
 
     // Set up Redis subscriber for cross-replica invalidation
     if (!subscriberSetup) {

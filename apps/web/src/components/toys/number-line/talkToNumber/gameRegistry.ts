@@ -43,8 +43,14 @@ export type GameCategory = 'trick' | 'strategy' | 'guessing'
 
 /** Human-readable label + suggestion hint for each category. */
 export const GAME_CATEGORY_META: Record<GameCategory, { label: string; hint: string }> = {
-  trick: { label: 'MIND-READING TRICKS', hint: 'great when the child seems curious or wants to see something magical' },
-  strategy: { label: 'STRATEGY GAMES', hint: 'great when the child is competitive or wants a challenge' },
+  trick: {
+    label: 'MIND-READING TRICKS',
+    hint: 'great when the child seems curious or wants to see something magical',
+  },
+  strategy: {
+    label: 'STRATEGY GAMES',
+    hint: 'great when the child is competitive or wants a challenge',
+  },
   guessing: { label: 'GUESSING GAMES', hint: 'good warm-ups or quick games' },
 }
 
@@ -75,11 +81,20 @@ export interface GameDefinition {
   // ── Session mode fields (optional — games without these use legacy flow) ──
 
   /** Tool definitions exposed to the agent during this game's session mode. */
-  sessionTools?: Array<{ type: 'function'; name: string; description: string; parameters: Record<string, unknown> }>
+  sessionTools?: Array<{
+    type: 'function'
+    name: string
+    description: string
+    parameters: Record<string, unknown>
+  }>
   /** Focused instructions for the agent during this game (replaces the full personality prompt). */
   sessionInstructions?: string
   /** Handle a session-mode tool call. Dispatched when the agent calls one of sessionTools. */
-  onToolCall?: (state: unknown, toolName: string, args: Record<string, unknown>) => GameToolCallResult
+  onToolCall?: (
+    state: unknown,
+    toolName: string,
+    args: Record<string, unknown>
+  ) => GameToolCallResult
 }
 
 // ── Registry ─────────────────────────────────────────────────────────
@@ -109,13 +124,13 @@ export const GAMES: GameDefinition[] = [
 // ── Derived helpers ──────────────────────────────────────────────────
 
 /** Map from game ID → definition (for fast lookup). */
-export const GAME_MAP = new Map(GAMES.map(g => [g.id, g]))
+export const GAME_MAP = new Map(GAMES.map((g) => [g.id, g]))
 
 /** Set of all valid game IDs. */
-export const GAME_IDS = GAMES.map(g => g.id)
+export const GAME_IDS = GAMES.map((g) => g.id)
 
 /** Build the description for the generic start_game tool. */
 export function getGameToolDescription(): string {
-  const list = GAMES.map(g => `${g.id} — ${g.description}`).join('; ')
+  const list = GAMES.map((g) => `${g.id} — ${g.description}`).join('; ')
   return `Start a game on the number line. You MUST call this tool before playing any game — it sets up the visual display (viewport, indicators, labels). Never play a game ad-hoc without calling start_game first, even if you already know the rules. Available games: ${list}`
 }

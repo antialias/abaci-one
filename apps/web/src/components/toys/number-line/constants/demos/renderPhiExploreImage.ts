@@ -20,10 +20,10 @@ const CONV = {
 // rectangle is fully opaque within this radius.
 // Golden rect corners: (0,0), (φ,0), (φ,-1), (0,-1). CONV.y is negative.
 const MAX_CORNER_DIST_SUB = Math.max(
-  Math.hypot(CONV.x, CONV.y),                        // to (0, 0)
-  Math.hypot(RECT_RATIO - CONV.x, CONV.y),            // to (φ, 0)
-  Math.hypot(RECT_RATIO - CONV.x, CONV.y + 1),        // to (φ, -1)
-  Math.hypot(CONV.x, CONV.y + 1),                     // to (0, -1)
+  Math.hypot(CONV.x, CONV.y), // to (0, 0)
+  Math.hypot(RECT_RATIO - CONV.x, CONV.y), // to (φ, 0)
+  Math.hypot(RECT_RATIO - CONV.x, CONV.y + 1), // to (φ, -1)
+  Math.hypot(CONV.x, CONV.y + 1) // to (0, -1)
 )
 
 // Full circle radius: feather occupies the outer 25%, so the opaque
@@ -158,7 +158,7 @@ export function renderPhiExploreImage(
 
   // Image center offset from convergence (in buffer pixels)
   const imgCx = cx + alignment.offsetX * boxH * bufferScale
-  const imgCy = cy + (-alignment.offsetY) * boxH * bufferScale
+  const imgCy = cy + -alignment.offsetY * boxH * bufferScale
 
   tc.drawImage(image, imgCx - imgDrawW / 2, imgCy - imgDrawH / 2, imgDrawW, imgDrawH)
   tc.restore()

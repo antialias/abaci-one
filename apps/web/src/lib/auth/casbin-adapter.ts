@@ -13,9 +13,7 @@ export class DrizzleCasbinAdapter implements Adapter {
     const rules = await db.select().from(schema.casbinRules).all()
 
     for (const rule of rules) {
-      const values = [rule.v0, rule.v1, rule.v2, rule.v3, rule.v4, rule.v5].filter(
-        (v) => v !== ''
-      )
+      const values = [rule.v0, rule.v1, rule.v2, rule.v3, rule.v4, rule.v5].filter((v) => v !== '')
       const line = `${rule.ptype}, ${values.join(', ')}`
       Helper.loadPolicyLine(line, model)
     }
@@ -92,9 +90,7 @@ export class DrizzleCasbinAdapter implements Adapter {
 
     for (const row of rows) {
       const values = [row.v0, row.v1, row.v2, row.v3, row.v4, row.v5]
-      const matches = fieldValues.every(
-        (fv, i) => fv === '' || values[fieldIndex + i] === fv
-      )
+      const matches = fieldValues.every((fv, i) => fv === '' || values[fieldIndex + i] === fv)
       if (matches) {
         await db.delete(schema.casbinRules).where(eq(schema.casbinRules.id, row.id))
       }

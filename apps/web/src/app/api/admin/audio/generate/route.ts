@@ -11,30 +11,33 @@ import { withAuth } from '@/lib/auth/withAuth'
  * Body: { voice: string }
  * Response: { taskId: string }
  */
-export const POST = withAuth(async (request: NextRequest) => {
-  try {
-    const body = await request.json()
-    const { voice, clipIds } = body
+export const POST = withAuth(
+  async (request: NextRequest) => {
+    try {
+      const body = await request.json()
+      const { voice, clipIds } = body
 
-    if (typeof voice !== 'string' || voice.trim().length === 0) {
-      return NextResponse.json({ error: 'voice must be a non-empty string' }, { status: 400 })
+      if (typeof voice !== 'string' || voice.trim().length === 0) {
+        return NextResponse.json({ error: 'voice must be a non-empty string' }, { status: 400 })
+      }
+
+      if (
+        clipIds !== undefined &&
+        (!Array.isArray(clipIds) || !clipIds.every((id: unknown) => typeof id === 'string'))
+      ) {
+        return NextResponse.json({ error: 'clipIds must be an array of strings' }, { status: 400 })
+      }
+
+      const taskId = await startAudioGeneration({
+        voice: voice.trim(),
+        ...(clipIds ? { clipIds } : {}),
+      })
+
+      return NextResponse.json({ taskId })
+    } catch (error) {
+      console.error('Error starting audio generation:', error)
+      return NextResponse.json({ error: 'Failed to start audio generation' }, { status: 500 })
     }
-
-    if (
-      clipIds !== undefined &&
-      (!Array.isArray(clipIds) || !clipIds.every((id: unknown) => typeof id === 'string'))
-    ) {
-      return NextResponse.json({ error: 'clipIds must be an array of strings' }, { status: 400 })
-    }
-
-    const taskId = await startAudioGeneration({
-      voice: voice.trim(),
-      ...(clipIds ? { clipIds } : {}),
-    })
-
-    return NextResponse.json({ taskId })
-  } catch (error) {
-    console.error('Error starting audio generation:', error)
-    return NextResponse.json({ error: 'Failed to start audio generation' }, { status: 500 })
-  }
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)

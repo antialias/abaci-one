@@ -67,7 +67,11 @@ import {
 } from './progress-manager'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { revokeSharesForSession } from '@/lib/session-share'
-import { computeComfortLevel, computeComfortLevelByMode, applyTermCountOverride } from './comfort-level'
+import {
+  computeComfortLevel,
+  computeComfortLevelByMode,
+  applyTermCountOverride,
+} from './comfort-level'
 import {
   computeTermCountRange,
   parseTermCountScaling,
@@ -415,7 +419,10 @@ export async function generateSessionPlan(
     const normalizedWeight = config.partTimeWeights[partType] / totalEnabledWeight
     const modeComfort = comfortByMode?.[partType] ?? rawComfortResult
     const rawModeComfortLevel = modeComfort.comfortLevel
-    const adjustedModeComfortLevel = Math.max(0, Math.min(1, rawModeComfortLevel + comfortAdjustment))
+    const adjustedModeComfortLevel = Math.max(
+      0,
+      Math.min(1, rawModeComfortLevel + comfortAdjustment)
+    )
 
     partSlotStructures.push({
       partType,
@@ -441,7 +448,8 @@ export async function generateSessionPlan(
   for (const { partType, normalizedWeight } of partSlotStructures) {
     const partDurationMinutes = durationMinutes * normalizedWeight
     const partProblemCount =
-      overrideProblemsPerPart ?? Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
+      overrideProblemsPerPart ??
+      Math.max(2, Math.floor((partDurationMinutes * 60) / avgTimeSeconds))
     previewParts.push({ type: partType, problemCount: partProblemCount })
   }
 
@@ -835,23 +843,75 @@ async function buildSessionPartAsync(
 
   for (let i = 0; i < adjustedFocusCount; i++) {
     slots.push(
-      createSlot(slots.length, 'focus', focusConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+      createSlot(
+        slots.length,
+        'focus',
+        focusConstraints,
+        type,
+        config,
+        costCalculator,
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel,
+        termCountScalingConfig
+      )
     )
   }
   for (let i = 0; i < reinforceCount; i++) {
     slots.push(
-      createSlot(slots.length, 'reinforce', focusConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+      createSlot(
+        slots.length,
+        'reinforce',
+        focusConstraints,
+        type,
+        config,
+        costCalculator,
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel,
+        termCountScalingConfig
+      )
     )
   }
   for (let i = 0; i < reviewCount; i++) {
     const skill = needsReview[i % Math.max(1, needsReview.length)]
     slots.push(
-      createSlot(slots.length, 'review', skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+      createSlot(
+        slots.length,
+        'review',
+        skill ? buildConstraintsForSkill(skill, phaseConstraints) : phaseConstraints,
+        type,
+        config,
+        costCalculator,
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel,
+        termCountScalingConfig
+      )
     )
   }
   for (let i = 0; i < challengeCount; i++) {
     slots.push(
-      createSlot(slots.length, 'challenge', phaseConstraints, type, config, costCalculator, studentMaxSkillCost, comfortLevel, comfortFactors, comfortAdjustment, rawComfortLevel, termCountScalingConfig)
+      createSlot(
+        slots.length,
+        'challenge',
+        phaseConstraints,
+        type,
+        config,
+        costCalculator,
+        studentMaxSkillCost,
+        comfortLevel,
+        comfortFactors,
+        comfortAdjustment,
+        rawComfortLevel,
+        termCountScalingConfig
+      )
     )
   }
 

@@ -361,7 +361,10 @@ function AbacusMethodSection() {
   const selectedTutorial = skillTutorials?.[selectedSkillIndex] ?? null
 
   return (
-    <section data-section="abacus-method" className={stack({ gap: '8', py: { base: '12', md: '16' }, px: '4' })}>
+    <section
+      data-section="abacus-method"
+      className={stack({ gap: '8', py: { base: '12', md: '16' }, px: '4' })}
+    >
       <div className={container({ maxW: '7xl' })}>
         <div data-element="section-header" className={css({ textAlign: 'center', mb: '8' })}>
           <h2
@@ -776,7 +779,10 @@ function ArcadeSection() {
   const availableGames = useAvailableGames()
 
   return (
-    <section data-section="arcade" className={stack({ gap: '6', py: { base: '12', md: '16' }, px: '4' })}>
+    <section
+      data-section="arcade"
+      className={stack({ gap: '6', py: { base: '12', md: '16' }, px: '4' })}
+    >
       <div className={container({ maxW: '7xl' })}>
         <div className={css({ textAlign: 'center', mb: '8' })}>
           <h2
@@ -975,7 +981,8 @@ function ExplorationCard({
           className={css({
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%)',
+            background:
+              'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%)',
             zIndex: 1,
           })}
         />
@@ -1023,7 +1030,10 @@ function PrintableToolsSection() {
   const t = useTranslations('home')
 
   return (
-    <section data-section="printable-tools" className={stack({ gap: '8', py: { base: '12', md: '16' }, px: '4' })}>
+    <section
+      data-section="printable-tools"
+      className={stack({ gap: '8', py: { base: '12', md: '16' }, px: '4' })}
+    >
       <div className={container({ maxW: '7xl' })}>
         <div className={css({ textAlign: 'center', mb: '8' })}>
           <h2

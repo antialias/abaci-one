@@ -64,7 +64,7 @@ export const CITATIONS: Record<string, CitationDef> = {
     label: 'Common Notion 4',
     text: 'Things which coincide with one another equal one another.',
   },
-  'Given': {
+  Given: {
     key: 'Given',
     label: 'Given',
     text: 'Stated as a hypothesis.',
@@ -94,13 +94,21 @@ export const CITATIONS: Record<string, CitationDef> = {
 /** Get the citation def for a structured Citation from the fact engine. */
 export function citationDefFromFact(citation: Citation): CitationDef | null {
   switch (citation.type) {
-    case 'def15': return CITATIONS['Def.15']
-    case 'cn1': return CITATIONS['C.N.1']
-    case 'cn2': return CITATIONS['C.N.2']
-    case 'cn3': return CITATIONS['C.N.3']
-    case 'cn3-angle': return CITATIONS['C.N.3']
-    case 'cn4': return CITATIONS['C.N.4']
-    case 'given': return CITATIONS['Given']
-    case 'prop': return CITATIONS[`I.${citation.propId}`] ?? null
+    case 'def15':
+      return CITATIONS['Def.15']
+    case 'cn1':
+      return CITATIONS['C.N.1']
+    case 'cn2':
+      return CITATIONS['C.N.2']
+    case 'cn3':
+      return CITATIONS['C.N.3']
+    case 'cn3-angle':
+      return CITATIONS['C.N.3']
+    case 'cn4':
+      return CITATIONS['C.N.4']
+    case 'given':
+      return CITATIONS['Given']
+    case 'prop':
+      return CITATIONS[`I.${citation.propId}`] ?? null
   }
 }

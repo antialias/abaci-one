@@ -21,14 +21,12 @@ const NODE_H = 48
 // Transitive reduction (copied from propositionGraph.ts)
 // ---------------------------------------------------------------------------
 
-function transitiveReduction(
-  visibleIds: number[],
-): Array<{ from: number; to: number }> {
+function transitiveReduction(visibleIds: number[]): Array<{ from: number; to: number }> {
   const visibleSet = new Set(visibleIds)
   const edges: Array<{ from: number; to: number }> = []
 
   for (const v of visibleIds) {
-    const directParents = getPrerequisites(v).filter(d => visibleSet.has(d))
+    const directParents = getPrerequisites(v).filter((d) => visibleSet.has(d))
     if (directParents.length <= 1) {
       for (const u of directParents) {
         edges.push({ from: u, to: v })
@@ -84,7 +82,7 @@ function computeLevels(): Map<number, number> {
 // Main
 // ---------------------------------------------------------------------------
 
-const allIds = propositions.map(p => p.id)
+const allIds = propositions.map((p) => p.id)
 const levels = computeLevels()
 const reducedEdges = transitiveReduction(allIds)
 
@@ -97,7 +95,7 @@ for (const { from, to } of reducedEdges) {
   parentMap.get(String(to))!.push(String(from))
 }
 
-const stratData = allIds.map(id => ({
+const stratData = allIds.map((id) => ({
   id: String(id),
   parentIds: parentMap.get(String(id))!,
 }))

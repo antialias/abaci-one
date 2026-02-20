@@ -1,13 +1,17 @@
 import type { RenderConstant } from '../types'
 import type { MathConstant } from './constantsData'
-import { SYMBOL_GAP_ABOVE_TICKS, CONSTANT_COLOR_LIGHT, CONSTANT_COLOR_DARK } from './renderConstants'
+import {
+  SYMBOL_GAP_ABOVE_TICKS,
+  CONSTANT_COLOR_LIGHT,
+  CONSTANT_COLOR_DARK,
+} from './renderConstants'
 
 /** Pre-built lookup from constant ID → MathConstant (populated on first call) */
 let constantLookup: Map<string, MathConstant> | null = null
 
 function getConstantLookup(allConstants: MathConstant[]): Map<string, MathConstant> {
   if (!constantLookup) {
-    constantLookup = new Map(allConstants.map(c => [c.id, c]))
+    constantLookup = new Map(allConstants.map((c) => [c.id, c]))
   }
   return constantLookup
 }

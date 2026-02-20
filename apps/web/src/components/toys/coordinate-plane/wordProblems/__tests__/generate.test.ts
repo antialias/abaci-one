@@ -26,7 +26,7 @@ describe('generateWordProblem', () => {
       const p = generateWordProblem(seed, 3)
       const { slope, intercept } = p.equation
       // y = mx + b should hold at the answer point
-      const computedY = (slope.num / slope.den) * p.answer.x + (intercept.num / intercept.den)
+      const computedY = (slope.num / slope.den) * p.answer.x + intercept.num / intercept.den
       expect(computedY).toBeCloseTo(p.answer.y, 10)
       // Answer x should be an integer
       expect(Number.isInteger(p.answer.x)).toBe(true)
@@ -54,13 +54,13 @@ describe('generateWordProblem', () => {
 
   it('spans join to form text', () => {
     const p = generateWordProblem(42, 3)
-    const joined = p.spans.map(s => s.text).join('')
+    const joined = p.spans.map((s) => s.text).join('')
     expect(joined).toBe(p.text)
   })
 
   it('has annotation spans with correct tags', () => {
     const p = generateWordProblem(42, 3)
-    const tags = p.spans.filter(s => s.tag).map(s => s.tag!)
+    const tags = p.spans.filter((s) => s.tag).map((s) => s.tag!)
     expect(tags).toContain('slope')
     expect(tags).toContain('intercept')
     expect(tags).toContain('target')

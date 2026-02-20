@@ -12,36 +12,36 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://abaci.one'
  * Create a Stripe Checkout session for the Family plan.
  * Body: { interval: 'month' | 'year' }
  */
-export const POST = withAuth(async (request, { userId, userEmail }) => {
-  const { interval = 'month' } = await request.json()
+export const POST = withAuth(
+  async (request, { userId, userEmail }) => {
+    const { interval = 'month' } = await request.json()
 
-  const priceId = interval === 'year' ? FAMILY_ANNUAL_PRICE_ID : FAMILY_MONTHLY_PRICE_ID
-  if (!priceId) {
-    return NextResponse.json(
-      { error: 'Stripe price not configured' },
-      { status: 500 }
-    )
-  }
+    const priceId = interval === 'year' ? FAMILY_ANNUAL_PRICE_ID : FAMILY_MONTHLY_PRICE_ID
+    if (!priceId) {
+      return NextResponse.json({ error: 'Stripe price not configured' }, { status: 500 })
+    }
 
-  // Check if user already has a Stripe customer ID
-  const existing = await db
-    .select({ stripeCustomerId: schema.subscriptions.stripeCustomerId })
-    .from(schema.subscriptions)
-    .where(eq(schema.subscriptions.userId, userId))
-    .get()
+    // Check if user already has a Stripe customer ID
+    const existing = await db
+      .select({ stripeCustomerId: schema.subscriptions.stripeCustomerId })
+      .from(schema.subscriptions)
+      .where(eq(schema.subscriptions.userId, userId))
+      .get()
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${APP_URL}/settings?billing=success`,
-    cancel_url: `${APP_URL}/settings?billing=canceled`,
-    client_reference_id: userId,
-    ...(existing?.stripeCustomerId
-      ? { customer: existing.stripeCustomerId }
-      : { customer_email: userEmail || undefined }),
-    metadata: { userId },
-  })
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${APP_URL}/settings?billing=success`,
+      cancel_url: `${APP_URL}/settings?billing=canceled`,
+      client_reference_id: userId,
+      ...(existing?.stripeCustomerId
+        ? { customer: existing.stripeCustomerId }
+        : { customer_email: userEmail || undefined }),
+      metadata: { userId },
+    })
 
-  return NextResponse.json({ url: session.url })
-}, { role: 'user' })
+    return NextResponse.json({ url: session.url })
+  },
+  { role: 'user' }
+)

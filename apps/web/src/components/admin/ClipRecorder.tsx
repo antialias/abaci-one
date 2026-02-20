@@ -193,11 +193,7 @@ export function ClipRecorder({
         >
           &ldquo;{promptText}&rdquo;
         </div>
-        {tone && (
-          <div className={css({ color: '#8b949e', fontSize: '13px' })}>
-            Tone: {tone}
-          </div>
-        )}
+        {tone && <div className={css({ color: '#8b949e', fontSize: '13px' })}>Tone: {tone}</div>}
         {hasExistingClip && (
           <div
             className={css({
@@ -206,7 +202,9 @@ export function ClipRecorder({
               marginTop: '4px',
             })}
           >
-            {isDeactivated ? 'Existing clip (deactivated) — re-recording will replace it' : 'Existing clip — re-recording will replace it'}
+            {isDeactivated
+              ? 'Existing clip (deactivated) — re-recording will replace it'
+              : 'Existing clip — re-recording will replace it'}
           </div>
         )}
       </div>
@@ -381,9 +379,7 @@ export function ClipRecorder({
 
       {/* State: uploading */}
       {state === 'uploading' && (
-        <div className={css({ color: '#8b949e', fontSize: '14px' })}>
-          Uploading...
-        </div>
+        <div className={css({ color: '#8b949e', fontSize: '14px' })}>Uploading...</div>
       )}
     </div>
   )

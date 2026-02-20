@@ -9,18 +9,17 @@ const ARC_LINE_WIDTH = 1.5
  * Compute the screen-space angle (in radians) from a vertex to a ray endpoint.
  * Note: canvas Y is flipped (down = positive), so we negate dy for math coords.
  */
-function angleToPoint(
-  vx: number, vy: number,
-  px: number, py: number,
-): number {
+function angleToPoint(vx: number, vy: number, px: number, py: number): number {
   return Math.atan2(py - vy, px - vx)
 }
 
 /** Convert world coordinates to screen coordinates */
 function toScreen(
-  wx: number, wy: number,
+  wx: number,
+  wy: number,
   viewport: EuclidViewportState,
-  w: number, h: number,
+  w: number,
+  h: number
 ): { sx: number; sy: number } {
   const sx = w / 2 + (wx - viewport.center.x) * viewport.pixelsPerUnit
   const sy = h / 2 - (wy - viewport.center.y) * viewport.pixelsPerUnit
@@ -40,10 +39,12 @@ function normalizeAngle(a: number): number {
  */
 function drawArc(
   ctx: CanvasRenderingContext2D,
-  cx: number, cy: number,
-  startAngle: number, endAngle: number,
+  cx: number,
+  cy: number,
+  startAngle: number,
+  endAngle: number,
   color: string,
-  tickCount: number,
+  tickCount: number
 ) {
   // Ensure we draw the shorter arc
   let start = normalizeAngle(startAngle)
@@ -79,14 +80,8 @@ function drawArc(
       const outerR = ARC_RADIUS_PX + TICK_LENGTH_PX
 
       ctx.beginPath()
-      ctx.moveTo(
-        cx + innerR * Math.cos(tickAngle),
-        cy + innerR * Math.sin(tickAngle),
-      )
-      ctx.lineTo(
-        cx + outerR * Math.cos(tickAngle),
-        cy + outerR * Math.sin(tickAngle),
-      )
+      ctx.moveTo(cx + innerR * Math.cos(tickAngle), cy + innerR * Math.sin(tickAngle))
+      ctx.lineTo(cx + outerR * Math.cos(tickAngle), cy + outerR * Math.sin(tickAngle))
       ctx.strokeStyle = color
       ctx.lineWidth = 1.5
       ctx.stroke()
@@ -101,9 +96,10 @@ export function renderAngleArcs(
   ctx: CanvasRenderingContext2D,
   state: ConstructionState,
   viewport: EuclidViewportState,
-  w: number, h: number,
+  w: number,
+  h: number,
   givenAngles?: Array<{ spec: AngleSpec; color: string }>,
-  equalAngles?: Array<[AngleSpec, AngleSpec]>,
+  equalAngles?: Array<[AngleSpec, AngleSpec]>
 ) {
   if (!givenAngles || givenAngles.length === 0) return
 

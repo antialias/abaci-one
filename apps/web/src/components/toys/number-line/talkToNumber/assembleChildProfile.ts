@@ -11,11 +11,11 @@ import type { GameStatsBreakdown } from '@/db/schema/player-stats'
 
 /** Static map — avoids importing game manifests which pull in React. */
 const GAME_DISPLAY_NAMES: Record<string, string> = {
-  'matching': 'Matching Pairs',
+  matching: 'Matching Pairs',
   'complement-race': 'Complement Race',
   'card-sorting': 'Card Sorting',
   'memory-quiz': 'Memory Quiz',
-  'rithmomachia': 'Rithmomachia',
+  rithmomachia: 'Rithmomachia',
   'know-your-world': 'Know Your World',
 }
 
@@ -36,7 +36,10 @@ function formatRecency(date: Date): string {
   return 'a while ago'
 }
 
-function toSkillSnapshot(skill: { skillId: string; masteryClassification: 'strong' | 'developing' | 'weak' }): SkillSnapshot {
+function toSkillSnapshot(skill: {
+  skillId: string
+  masteryClassification: 'strong' | 'developing' | 'weak'
+}): SkillSnapshot {
   return {
     displayName: getSkillDisplayName(skill.skillId),
     mastery: skill.masteryClassification,
@@ -91,12 +94,12 @@ export async function assembleChildProfile(
       profile.strengths = bkt.strengths.slice(0, 3).map(toSkillSnapshot)
       profile.struggles = bkt.interventionNeeded.slice(0, 3).map(toSkillSnapshot)
       profile.developing = bkt.skills
-        .filter(s => s.masteryClassification === 'developing')
+        .filter((s) => s.masteryClassification === 'developing')
         .slice(0, 3)
         .map(toSkillSnapshot)
 
       // Count unique sessions
-      const sessionIds = new Set(results.map(r => r.sessionId))
+      const sessionIds = new Set(results.map((r) => r.sessionId))
       profile.totalSessions = sessionIds.size
 
       // Last practiced

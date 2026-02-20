@@ -9,7 +9,10 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { evolveScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
-import type { GeneratedScenario, TranscriptEntry } from '@/components/toys/number-line/talkToNumber/generateScenario'
+import type {
+  GeneratedScenario,
+  TranscriptEntry,
+} from '@/components/toys/number-line/talkToNumber/generateScenario'
 
 export const POST = withAuth(async (request) => {
   try {
@@ -39,7 +42,7 @@ export const POST = withAuth(async (request) => {
       number,
       scenario,
       recentTranscripts ?? [],
-      conferenceNumbers ?? [number],
+      conferenceNumbers ?? [number]
     )
 
     return NextResponse.json({ evolution })

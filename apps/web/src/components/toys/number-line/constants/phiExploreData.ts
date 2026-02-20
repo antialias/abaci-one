@@ -13,8 +13,7 @@ export const PHI_EXPLORE_PROMPT_PREFIX =
 export const PHI_EXPLORE_THEME_MODIFIERS = {
   light:
     'IMPORTANT: Use a clean white (#ffffff) background. Ensure all colors are vibrant and visible against the light background. Same subject and composition.',
-  dark:
-    'IMPORTANT: Use a dark navy background (#1e1e28). Use bright, saturated colors with high contrast against the dark background. Same subject and composition.',
+  dark: 'IMPORTANT: Use a dark navy background (#1e1e28). Use bright, saturated colors with high contrast against the dark background. Same subject and composition.',
 } as const
 
 export const PHI_EXPLORE_SUBJECTS: PhiExploreSubject[] = [

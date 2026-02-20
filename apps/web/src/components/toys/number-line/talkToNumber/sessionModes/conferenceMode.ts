@@ -16,7 +16,7 @@ export const conferenceMode: AgentMode = {
     generateConferencePrompt(
       ctx.conferenceNumbers,
       ctx.currentSpeaker ?? undefined,
-      ctx.childProfile,
+      ctx.childProfile
     ),
 
   getTools: () => getConferenceTools(),

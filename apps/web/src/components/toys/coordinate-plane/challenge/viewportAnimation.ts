@@ -35,7 +35,10 @@ export function computeViewportTarget(
   }
 
   // Compute bounding box
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity
   for (const p of points) {
     minX = Math.min(minX, p.x)
     maxX = Math.max(maxX, p.x)

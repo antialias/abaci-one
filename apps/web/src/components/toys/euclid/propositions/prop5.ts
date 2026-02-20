@@ -1,4 +1,9 @@
-import type { PropositionDef, ConstructionElement, ConstructionState, TutorialSubStep } from '../types'
+import type {
+  PropositionDef,
+  ConstructionElement,
+  ConstructionState,
+  TutorialSubStep,
+} from '../types'
 import { BYRNE } from '../types'
 import type { FactStore } from '../engine/factStore'
 import type { ProofFact } from '../engine/facts'
@@ -31,9 +36,7 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
       {
         instruction: `${sweep} around`,
-        speech: isTouch
-          ? 'Sweep around to draw the circle!'
-          : 'Move around to draw the circle!',
+        speech: isTouch ? 'Sweep around to draw the circle!' : 'Move around to draw the circle!',
         hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-C' },
         advanceOn: null,
       },
@@ -58,8 +61,8 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point C`,
         speech: isTouch
-          ? "Now we need to produce AC past C. Press and hold on C to start a circle."
-          : "Now we need to produce AC past C. Click and hold on C to start a circle.",
+          ? 'Now we need to produce AC past C. Press and hold on C to start a circle.'
+          : 'Now we need to produce AC past C. Click and hold on C to start a circle.',
         hint: { type: 'point', pointId: 'pt-C' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
@@ -73,9 +76,7 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
       {
         instruction: `${sweep} around`,
-        speech: isTouch
-          ? 'Sweep around to draw the circle!'
-          : 'Move around to draw the circle!',
+        speech: isTouch ? 'Sweep around to draw the circle!' : 'Move around to draw the circle!',
         hint: { type: 'sweep', centerId: 'pt-C', radiusPointId: 'pt-F' },
         advanceOn: null,
       },
@@ -116,16 +117,16 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tap} point F`,
         speech: isTouch
-          ? 'Tap F — one end of the length we\'re matching.'
-          : 'Click F — one end of the length we\'re matching.',
+          ? "Tap F — one end of the length we're matching."
+          : "Click F — one end of the length we're matching.",
         hint: { type: 'point', pointId: 'pt-F' },
         advanceOn: { kind: 'macro-select', index: 2 },
       },
       {
         instruction: `${tap} point A`,
         speech: isTouch
-          ? "Tap A — the other end. Proposition Three will find G where AG equals AF!"
-          : "Click A — the other end. Proposition Three will find G where AG equals AF!",
+          ? 'Tap A — the other end. Proposition Three will find G where AG equals AF!'
+          : 'Click A — the other end. Proposition Three will find G where AG equals AF!',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: null,
       },
@@ -146,8 +147,8 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point G`,
         speech: isTouch
-          ? "Almost done! Join G to B. Press and hold on G."
-          : "Almost done! Join G to B. Click and hold on G.",
+          ? 'Almost done! Join G to B. Press and hold on G.'
+          : 'Almost done! Join G to B. Click and hold on G.',
         hint: { type: 'point', pointId: 'pt-G' },
         advanceOn: null,
       },
@@ -168,7 +169,7 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
 function deriveProp5Conclusion(
   store: FactStore,
   _state: ConstructionState,
-  atStep: number,
+  atStep: number
 ): ProofFact[] {
   const allNewFacts: ProofFact[] = []
 
@@ -180,94 +181,108 @@ function deriveProp5Conclusion(
   // 1. C.N.3 — CG = BF
   //    AG = AF (from I.3), AC = AB (given)
   //    AG − AC = AF − AB → CG = BF
-  allNewFacts.push(...addFact(
-    store,
-    dpCG,
-    dpBF,
-    { type: 'cn3', whole: dpAG, part: dpAC },
-    'CG = BF',
-    'C.N.3: AG − AC = AF − AB (since AG = AF, AB = AC)',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addFact(
+      store,
+      dpCG,
+      dpBF,
+      { type: 'cn3', whole: dpAG, part: dpAC },
+      'CG = BF',
+      'C.N.3: AG − AC = AF − AB (since AG = AF, AB = AC)',
+      atStep
+    )
+  )
 
   // 2. I.4 (SAS) — FC = GB
   const dpFC = distancePair('pt-F', 'pt-C')
   const dpGB = distancePair('pt-G', 'pt-B')
 
-  allNewFacts.push(...addFact(
-    store,
-    dpFC,
-    dpGB,
-    { type: 'prop', propId: 4 },
-    'FC = GB',
-    'I.4: △AFC ≅ △AGB (AF = AG, AC = AB, ∠FAC = ∠GAB)',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addFact(
+      store,
+      dpFC,
+      dpGB,
+      { type: 'prop', propId: 4 },
+      'FC = GB',
+      'I.4: △AFC ≅ △AGB (AF = AG, AC = AB, ∠FAC = ∠GAB)',
+      atStep
+    )
+  )
 
   // 3. ∠AFC = ∠AGB (I.4: remaining angles of △AFC ≅ △AGB)
   const angAFC = angleMeasure('pt-F', 'pt-A', 'pt-C')
   const angAGB = angleMeasure('pt-G', 'pt-A', 'pt-B')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angAFC,
-    angAGB,
-    { type: 'prop', propId: 4 },
-    '∠AFC = ∠AGB',
-    'I.4: △AFC ≅ △AGB — remaining angles',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angAFC,
+      angAGB,
+      { type: 'prop', propId: 4 },
+      '∠AFC = ∠AGB',
+      'I.4: △AFC ≅ △AGB — remaining angles',
+      atStep
+    )
+  )
 
   // 4. ∠ACF = ∠ABG (I.4: remaining angles of △AFC ≅ △AGB)
   const angACF = angleMeasure('pt-C', 'pt-A', 'pt-F')
   const angABG = angleMeasure('pt-B', 'pt-A', 'pt-G')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angACF,
-    angABG,
-    { type: 'prop', propId: 4 },
-    '∠ACF = ∠ABG',
-    'I.4: △AFC ≅ △AGB — remaining angles',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angACF,
+      angABG,
+      { type: 'prop', propId: 4 },
+      '∠ACF = ∠ABG',
+      'I.4: △AFC ≅ △AGB — remaining angles',
+      atStep
+    )
+  )
 
   // 5. ∠FBC = ∠GCB (I.4: △BFC ≅ △CGB — under-base angles)
   const angFBC = angleMeasure('pt-B', 'pt-F', 'pt-C')
   const angGCB = angleMeasure('pt-C', 'pt-G', 'pt-B')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angFBC,
-    angGCB,
-    { type: 'prop', propId: 4 },
-    '∠FBC = ∠GCB',
-    'I.4: △BFC ≅ △CGB — under-base angles',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angFBC,
+      angGCB,
+      { type: 'prop', propId: 4 },
+      '∠FBC = ∠GCB',
+      'I.4: △BFC ≅ △CGB — under-base angles',
+      atStep
+    )
+  )
 
   // 6. ∠BCF = ∠CBG (I.4: △BFC ≅ △CGB — remaining angles)
   const angBCF = angleMeasure('pt-C', 'pt-B', 'pt-F')
   const angCBG = angleMeasure('pt-B', 'pt-C', 'pt-G')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angBCF,
-    angCBG,
-    { type: 'prop', propId: 4 },
-    '∠BCF = ∠CBG',
-    'I.4: △BFC ≅ △CGB — remaining angles',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angBCF,
+      angCBG,
+      { type: 'prop', propId: 4 },
+      '∠BCF = ∠CBG',
+      'I.4: △BFC ≅ △CGB — remaining angles',
+      atStep
+    )
+  )
 
   // 7. ∠ABC = ∠ACB (C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF)
   const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
   const angACB = angleMeasure('pt-C', 'pt-A', 'pt-B')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angABC,
-    angACB,
-    { type: 'cn3-angle', whole: angABG, part: angCBG },
-    '∠ABC = ∠ACB',
-    'C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angABC,
+      angACB,
+      { type: 'cn3-angle', whole: angABG, part: angCBG },
+      '∠ABC = ∠ACB',
+      'C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF',
+      atStep
+    )
+  )
 
   return allNewFacts
 }
@@ -311,7 +326,7 @@ const ROTATION_ANGLE = Math.atan2(
   (DEFAULT_B.x - DEFAULT_A.x) * (DEFAULT_C.y - DEFAULT_A.y) -
     (DEFAULT_B.y - DEFAULT_A.y) * (DEFAULT_C.x - DEFAULT_A.x),
   (DEFAULT_B.x - DEFAULT_A.x) * (DEFAULT_C.x - DEFAULT_A.x) +
-    (DEFAULT_B.y - DEFAULT_A.y) * (DEFAULT_C.y - DEFAULT_A.y),
+    (DEFAULT_B.y - DEFAULT_A.y) * (DEFAULT_C.y - DEFAULT_A.y)
 )
 
 /**
@@ -320,7 +335,7 @@ const ROTATION_ANGLE = Math.atan2(
  *   C = A + Rot(ROTATION_ANGLE) · (B − A)
  */
 export function computeProp5GivenElements(
-  positions: Map<string, { x: number; y: number }>,
+  positions: Map<string, { x: number; y: number }>
 ): ConstructionElement[] {
   const A = positions.get('pt-A') ?? DEFAULT_A
   const B = positions.get('pt-B') ?? DEFAULT_B
@@ -339,9 +354,30 @@ export function computeProp5GivenElements(
     { kind: 'point', id: 'pt-A', x: A.x, y: A.y, label: 'A', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-B', x: B.x, y: B.y, label: 'B', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-C', x: C.x, y: C.y, label: 'C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AC', fromId: 'pt-A', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-BC', fromId: 'pt-B', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'segment',
+      id: 'seg-AB',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-AC',
+      fromId: 'pt-A',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-BC',
+      fromId: 'pt-B',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
   ] as ConstructionElement[]
 }
 
@@ -380,12 +416,57 @@ export const PROP_5: PropositionDef = {
   draggablePointIds: ['pt-A', 'pt-B'],
   computeGivenElements: computeProp5GivenElements,
   givenElements: [
-    { kind: 'point', id: 'pt-A', x: DEFAULT_A.x, y: DEFAULT_A.y, label: 'A', color: BYRNE.given, origin: 'given' },
-    { kind: 'point', id: 'pt-B', x: DEFAULT_B.x, y: DEFAULT_B.y, label: 'B', color: BYRNE.given, origin: 'given' },
-    { kind: 'point', id: 'pt-C', x: DEFAULT_C.x, y: DEFAULT_C.y, label: 'C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AC', fromId: 'pt-A', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-BC', fromId: 'pt-B', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'point',
+      id: 'pt-A',
+      x: DEFAULT_A.x,
+      y: DEFAULT_A.y,
+      label: 'A',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'point',
+      id: 'pt-B',
+      x: DEFAULT_B.x,
+      y: DEFAULT_B.y,
+      label: 'B',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'point',
+      id: 'pt-C',
+      x: DEFAULT_C.x,
+      y: DEFAULT_C.y,
+      label: 'C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-AB',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-AC',
+      fromId: 'pt-A',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-BC',
+      fromId: 'pt-B',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
   ] as ConstructionElement[],
   steps: [
     // 0. Circle centered at B through C
@@ -478,8 +559,7 @@ export const PROP_5: PropositionDef = {
       },
       {
         pointId: 'pt-B',
-        speech:
-          'Watch how C follows to keep the triangle isosceles. The angles always match!',
+        speech: 'Watch how C follows to keep the triangle isosceles. The angles always match!',
       },
     ],
   },

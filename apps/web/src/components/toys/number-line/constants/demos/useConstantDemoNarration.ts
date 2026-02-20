@@ -1,9 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react'
 import type { DemoState } from './useConstantDemo'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
-import {
-  SUBTITLE_TOP_OFFSET, SUBTITLE_BOTTOM_OFFSET,
-} from '../../viewportAnimation'
+import { SUBTITLE_TOP_OFFSET, SUBTITLE_BOTTOM_OFFSET } from '../../viewportAnimation'
 import { useNarrationSequencer } from '../../useNarrationSequencer'
 
 // ── Shared types ────────────────────────────────────────────────────
@@ -56,7 +54,15 @@ export function useConstantDemoNarration(
   const audioManager = useAudioManagerInstance()
 
   // Shared narration sequencer (handles TTS + segment gating)
-  const { start: seqStart, startFrom: seqStartFrom, tick: seqTick, stop: seqStop, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef } = useNarrationSequencer()
+  const {
+    start: seqStart,
+    startFrom: seqStartFrom,
+    tick: seqTick,
+    stop: seqStop,
+    mutedRef: seqMutedRef,
+    releaseTtsGate: seqReleaseTtsGate,
+    segmentIndexRef: seqSegmentIndexRef,
+  } = useNarrationSequencer()
 
   // Playback speed multiplier (1 = normal, 0.5 = half, 2 = double)
   const playbackSpeedRef = useRef(1)
@@ -92,7 +98,10 @@ export function useConstantDemoNarration(
       rafRef.current = 0
     }
     seqStop()
-    audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET })
+    audioManager.configure({
+      subtitleAnchor: 'bottom',
+      subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET,
+    })
   }, [seqStop, audioManager])
 
   /** Start the RAF tick loop that drives progress via the sequencer. */
@@ -112,7 +121,10 @@ export function useConstantDemoNarration(
       }
 
       const cfg = activeConfigRef.current
-      if (!cfg) { stopNarration(); return }
+      if (!cfg) {
+        stopNarration()
+        return
+      }
 
       // Drive progress via the shared sequencer
       const result = seqTick(playbackSpeedRef.current)
@@ -131,7 +143,8 @@ export function useConstantDemoNarration(
       }
 
       // Sweep revealProgress linearly from seg.startProgress to seg.endProgress
-      const targetProgress = seg.startProgress + (seg.endProgress - seg.startProgress) * result.animFrac
+      const targetProgress =
+        seg.startProgress + (seg.endProgress - seg.startProgress) * result.animFrac
       setRevealProgress(targetProgress)
 
       if (result.allDone) {
@@ -147,27 +160,30 @@ export function useConstantDemoNarration(
   }, [demoStateRef, setRevealProgress, seqTick, stopNarration])
 
   /** Start narration for the given constant. */
-  const startNarration = useCallback((constantId: string) => {
-    const config = configs[constantId]
-    if (!config || config.segments.length === 0) return
-    if (isNarratingRef.current) stopNarration()
+  const startNarration = useCallback(
+    (constantId: string) => {
+      const config = configs[constantId]
+      if (!config || config.segments.length === 0) return
+      if (isNarratingRef.current) stopNarration()
 
-    isNarratingRef.current = true
-    activeConstantRef.current = constantId
-    activeConfigRef.current = config
+      isNarratingRef.current = true
+      activeConstantRef.current = constantId
+      activeConfigRef.current = config
 
-    // Position subtitles at top of viewport
-    audioManager.configure({
-      subtitleAnchor: 'top',
-      subtitleBottomOffset: SUBTITLE_TOP_OFFSET,
-    })
+      // Position subtitles at top of viewport
+      audioManager.configure({
+        subtitleAnchor: 'top',
+        subtitleBottomOffset: SUBTITLE_TOP_OFFSET,
+      })
 
-    // Start the sequencer (speaks segment 0 immediately)
-    seqStart(config.segments, config.tone)
+      // Start the sequencer (speaks segment 0 immediately)
+      seqStart(config.segments, config.tone)
 
-    // Start RAF tick loop
-    startTickLoop()
-  }, [configs, audioManager, seqStart, stopNarration, startTickLoop])
+      // Start RAF tick loop
+      startTickLoop()
+    },
+    [configs, audioManager, seqStart, stopNarration, startTickLoop]
+  )
 
   /**
    * Resume narration from the current revealProgress position.
@@ -176,65 +192,72 @@ export function useConstantDemoNarration(
    * up from the exact scrubbed point. TTS audio also seeks to match,
    * so narration resumes mid-sentence.
    */
-  const resumeNarration = useCallback((constantId: string) => {
-    const config = configs[constantId]
-    if (!config || config.segments.length === 0) return
+  const resumeNarration = useCallback(
+    (constantId: string) => {
+      const config = configs[constantId]
+      if (!config || config.segments.length === 0) return
 
-    const ds = demoStateRef.current
-    if (ds.phase === 'idle' || ds.phase === 'fading') return
-    if (ds.revealProgress >= 1) return // already at the end — no-op
+      const ds = demoStateRef.current
+      if (ds.phase === 'idle' || ds.phase === 'fading') return
+      if (ds.revealProgress >= 1) return // already at the end — no-op
 
-    const segIdx = findSegmentForProgress(config.segments, ds.revealProgress)
-    if (segIdx < 0) return
+      const segIdx = findSegmentForProgress(config.segments, ds.revealProgress)
+      if (segIdx < 0) return
 
-    // Compute how far through this segment the scrubbed position is
-    const seg = config.segments[segIdx]
-    const segSpan = seg.endProgress - seg.startProgress
-    const frac = segSpan > 0
-      ? Math.max(0, Math.min(1, (ds.revealProgress - seg.startProgress) / segSpan))
-      : 0
+      // Compute how far through this segment the scrubbed position is
+      const seg = config.segments[segIdx]
+      const segSpan = seg.endProgress - seg.startProgress
+      const frac =
+        segSpan > 0
+          ? Math.max(0, Math.min(1, (ds.revealProgress - seg.startProgress) / segSpan))
+          : 0
 
-    if (isNarratingRef.current) stopNarration()
+      if (isNarratingRef.current) stopNarration()
 
-    isNarratingRef.current = true
-    activeConstantRef.current = constantId
-    activeConfigRef.current = config
+      isNarratingRef.current = true
+      activeConstantRef.current = constantId
+      activeConfigRef.current = config
 
-    // Position subtitles at top of viewport
-    audioManager.configure({
-      subtitleAnchor: 'top',
-      subtitleBottomOffset: SUBTITLE_TOP_OFFSET,
-    })
+      // Position subtitles at top of viewport
+      audioManager.configure({
+        subtitleAnchor: 'top',
+        subtitleBottomOffset: SUBTITLE_TOP_OFFSET,
+      })
 
-    // Queue a seek so the TTS clip starts mid-sentence to match the
-    // scrubbed position. playMp3() will apply it when the audio loads.
-    const seekMs = frac * seg.animationDurationMs
-    audioManager.seekNextAudio(seekMs)
+      // Queue a seek so the TTS clip starts mid-sentence to match the
+      // scrubbed position. playMp3() will apply it when the audio loads.
+      const seekMs = frac * seg.animationDurationMs
+      audioManager.seekNextAudio(seekMs)
 
-    // Start the sequencer from the found segment with the initial fraction.
-    // The sequencer maps elapsed time from frac→1 so the animation picks
-    // up exactly where the user scrubbed, regardless of adaptive timing.
-    seqStartFrom(config.segments, config.tone, segIdx, frac)
+      // Start the sequencer from the found segment with the initial fraction.
+      // The sequencer maps elapsed time from frac→1 so the animation picks
+      // up exactly where the user scrubbed, regardless of adaptive timing.
+      seqStartFrom(config.segments, config.tone, segIdx, frac)
 
-    // Start RAF tick loop
-    startTickLoop()
-  }, [configs, demoStateRef, audioManager, seqStartFrom, stopNarration, startTickLoop])
+      // Start RAF tick loop
+      startTickLoop()
+    },
+    [configs, demoStateRef, audioManager, seqStartFrom, stopNarration, startTickLoop]
+  )
 
   /**
    * Idempotent auto-start: call from draw() after tickDemo().
    * Starts narration if the given constantId has a config AND narration
    * hasn't already been triggered for this demo session.
    */
-  const startIfNeeded = useCallback((constantId: string | null) => {
-    if (!constantId) return
-    if (isNarratingRef.current) return
-    if (triggeredForRef.current === constantId) return
-    if (!configs[constantId]) return
+  const startIfNeeded = useCallback(
+    (constantId: string | null) => {
+      if (!constantId) return
+      if (isNarratingRef.current) return
+      if (triggeredForRef.current === constantId) return
+      if (!configs[constantId]) return
 
-    console.log(`[DemoNarration] startIfNeeded → starting narration for "${constantId}"`)
-    triggeredForRef.current = constantId
-    startNarration(constantId)
-  }, [configs, startNarration])
+      console.log(`[DemoNarration] startIfNeeded → starting narration for "${constantId}"`)
+      triggeredForRef.current = constantId
+      startNarration(constantId)
+    },
+    [configs, startNarration]
+  )
 
   /**
    * Mark a constantId as already triggered without starting narration.
@@ -267,10 +290,25 @@ export function useConstantDemoNarration(
           rafRef.current = 0
         }
         seqStop()
-        audioManager.configure({ subtitleAnchor: 'bottom', subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET, playbackRate: 1 })
+        audioManager.configure({
+          subtitleAnchor: 'bottom',
+          subtitleBottomOffset: SUBTITLE_BOTTOM_OFFSET,
+          playbackRate: 1,
+        })
       }
     }
   }, [seqStop, audioManager])
 
-  return { startIfNeeded, stop: stopNarration, resume: resumeNarration, isNarrating: isNarratingRef, markTriggered, reset, mutedRef: seqMutedRef, releaseTtsGate: seqReleaseTtsGate, segmentIndexRef: seqSegmentIndexRef, playbackSpeedRef }
+  return {
+    startIfNeeded,
+    stop: stopNarration,
+    resume: resumeNarration,
+    isNarrating: isNarratingRef,
+    markTriggered,
+    reset,
+    mutedRef: seqMutedRef,
+    releaseTtsGate: seqReleaseTtsGate,
+    segmentIndexRef: seqSegmentIndexRef,
+    playbackSpeedRef,
+  }
 }

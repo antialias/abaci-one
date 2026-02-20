@@ -27,10 +27,8 @@ export const LN2_DEMO_TONE =
 export const LN2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Place ───────────────────────────────────────────────────────────
   {
-    ttsText:
-      "Look! Here comes a little ball. " +
-      "It's sitting right on zero, ready to bounce!",
-    startProgress: 0.00,
+    ttsText: 'Look! Here comes a little ball. ' + "It's sitting right on zero, ready to bounce!",
+    startProgress: 0.0,
     endProgress: 0.08,
     animationDurationMs: 3500,
     scrubberLabel: 'The ball appears',
@@ -39,11 +37,11 @@ export const LN2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── First bounces ──────────────────────────────────────────────────
   {
     ttsText:
-      "A big bounce to the right — all the way to ONE! " +
-      "Now it bounces back, but only HALF as far. See? Half of the first jump. " +
-      "Forward again — only a THIRD as far this time! " +
-      "And back — just a QUARTER of the first jump. " +
-      "The whole thing, then half, a third, a quarter... see the pattern?",
+      'A big bounce to the right — all the way to ONE! ' +
+      'Now it bounces back, but only HALF as far. See? Half of the first jump. ' +
+      'Forward again — only a THIRD as far this time! ' +
+      'And back — just a QUARTER of the first jump. ' +
+      'The whole thing, then half, a third, a quarter... see the pattern?',
     startProgress: 0.08,
     endProgress: 0.35,
     animationDurationMs: 14000,
@@ -53,9 +51,9 @@ export const LN2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── More bounces ───────────────────────────────────────────────────
   {
     ttsText:
-      "A fifth, a sixth, a seventh — " +
-      "the jumps keep following the same pattern, and each one is smaller! " +
-      "Back and forth, tighter and tighter.",
+      'A fifth, a sixth, a seventh — ' +
+      'the jumps keep following the same pattern, and each one is smaller! ' +
+      'Back and forth, tighter and tighter.',
     startProgress: 0.35,
     endProgress: 0.55,
     animationDurationMs: 8000,
@@ -65,9 +63,9 @@ export const LN2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Cascade ────────────────────────────────────────────────────────
   {
     ttsText:
-      "The ball keeps overshooting and coming back, " +
+      'The ball keeps overshooting and coming back, ' +
       "but it's getting trapped — it can't escape! " +
-      "Every bounce pulls it closer to one special spot.",
+      'Every bounce pulls it closer to one special spot.',
     startProgress: 0.55,
     endProgress: 0.72,
     animationDurationMs: 6000,
@@ -77,8 +75,8 @@ export const LN2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Converge ──────────────────────────────────────────────────────
   {
     ttsText:
-      "Can you even see the bounces now? " +
-      "The ball is spiraling in, faster and faster — " +
+      'Can you even see the bounces now? ' +
+      'The ball is spiraling in, faster and faster — ' +
       "it can't go anywhere else!",
     startProgress: 0.72,
     endProgress: 0.86,
@@ -89,12 +87,12 @@ export const LN2_DEMO_SEGMENTS: DemoNarrationSegment[] = [
   // ── Reveal ─────────────────────────────────────────────────────────
   {
     ttsText:
-      "That spot is called the natural log of two! " +
+      'That spot is called the natural log of two! ' +
       "It's about zero point six nine three. " +
-      "Whenever something DOUBLES — like one cookie becoming two — " +
-      "this number is hiding inside, telling you how fast it grew.",
+      'Whenever something DOUBLES — like one cookie becoming two — ' +
+      'this number is hiding inside, telling you how fast it grew.',
     startProgress: 0.86,
-    endProgress: 1.00,
+    endProgress: 1.0,
     animationDurationMs: 7000,
     scrubberLabel: 'Natural log of two',
   },

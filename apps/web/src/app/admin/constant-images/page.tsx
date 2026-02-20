@@ -109,13 +109,21 @@ export default function ConstantImagesPage() {
   const pipelineAdvancingRef = useRef(false)
 
   const { state: taskState, cancel: cancelTask } = useBackgroundTask<ImageGenerateOutput>(taskId)
-  const { state: phiTaskState, cancel: cancelPhiTask } = useBackgroundTask<PhiExploreGenerateOutput>(phiTaskId)
+  const { state: phiTaskState, cancel: cancelPhiTask } =
+    useBackgroundTask<PhiExploreGenerateOutput>(phiTaskId)
 
-  const isGenerating = taskState?.status === 'pending' || taskState?.status === 'running'
-    || (!!taskId && !taskState && polledTaskStatus !== 'completed' && polledTaskStatus !== 'failed')
+  const isGenerating =
+    taskState?.status === 'pending' ||
+    taskState?.status === 'running' ||
+    (!!taskId && !taskState && polledTaskStatus !== 'completed' && polledTaskStatus !== 'failed')
 
-  const isPhiGenerating = phiTaskState?.status === 'pending' || phiTaskState?.status === 'running'
-    || (!!phiTaskId && !phiTaskState && phiPolledTaskStatus !== 'completed' && phiPolledTaskStatus !== 'failed')
+  const isPhiGenerating =
+    phiTaskState?.status === 'pending' ||
+    phiTaskState?.status === 'running' ||
+    (!!phiTaskId &&
+      !phiTaskState &&
+      phiPolledTaskStatus !== 'completed' &&
+      phiPolledTaskStatus !== 'failed')
 
   // REST polling fallback: when taskId is set but socket hasn't delivered state yet
   useEffect(() => {
@@ -267,7 +275,9 @@ export default function ConstantImagesPage() {
   const stats = useMemo(() => {
     if (!status) return { total: 0, base: 0, light: 0, dark: 0 }
     const total = status.constants.length * 2
-    let base = 0, light = 0, dark = 0
+    let base = 0,
+      light = 0,
+      dark = 0
     for (const c of status.constants) {
       if (c.metaphor.exists) base++
       if (c.math.exists) base++
@@ -283,7 +293,9 @@ export default function ConstantImagesPage() {
   const phiStats = useMemo(() => {
     if (!status?.phiExplore) return { total: 0, base: 0, light: 0, dark: 0 }
     const total = status.phiExplore.length
-    let base = 0, light = 0, dark = 0
+    let base = 0,
+      light = 0,
+      dark = 0
     for (const s of status.phiExplore) {
       if (s.exists) base++
       if (s.lightExists) light++
@@ -326,79 +338,85 @@ export default function ConstantImagesPage() {
     return set
   }, [phiTaskState, isPhiGenerating])
 
-  const handleGenerate = useCallback(async (
-    targets?: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>,
-    forceRegenerate?: boolean,
-    themeOverride?: 'light' | 'dark'
-  ) => {
-    setError(null)
-    setPolledTaskError(null)
-    setPolledTaskStatus(null)
-    setLastResult(null)
+  const handleGenerate = useCallback(
+    async (
+      targets?: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>,
+      forceRegenerate?: boolean,
+      themeOverride?: 'light' | 'dark'
+    ) => {
+      setError(null)
+      setPolledTaskError(null)
+      setPolledTaskStatus(null)
+      setLastResult(null)
 
-    const themedTargets = targets
-      ? targets.map((t) => ({ ...t, theme: t.theme ?? themeOverride }))
-      : undefined
+      const themedTargets = targets
+        ? targets.map((t) => ({ ...t, theme: t.theme ?? themeOverride }))
+        : undefined
 
-    try {
-      const res = await fetch('/api/admin/constant-images/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          model,
-          targets: themedTargets,
-          forceRegenerate,
-          ...(themeOverride && !themedTargets && { theme: themeOverride }),
-        }),
-      })
-      if (!res.ok) {
+      try {
+        const res = await fetch('/api/admin/constant-images/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider,
+            model,
+            targets: themedTargets,
+            forceRegenerate,
+            ...(themeOverride && !themedTargets && { theme: themeOverride }),
+          }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || `HTTP ${res.status}`)
+        }
         const data = await res.json()
-        throw new Error(data.error || `HTTP ${res.status}`)
+        setTaskId(data.taskId)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to start generation')
+        // If pipeline is running and we hit an error, clear it
+        setPipelineQueue([])
       }
-      const data = await res.json()
-      setTaskId(data.taskId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start generation')
-      // If pipeline is running and we hit an error, clear it
-      setPipelineQueue([])
-    }
-  }, [provider, model])
+    },
+    [provider, model]
+  )
 
-  const handlePhiGenerate = useCallback(async (opts?: {
-    targets?: Array<{ subjectId: string; theme?: 'light' | 'dark' }>
-    forceRegenerate?: boolean
-    theme?: 'light' | 'dark'
-    pipeline?: boolean
-  }) => {
-    setError(null)
-    setPhiPolledTaskError(null)
-    setPhiPolledTaskStatus(null)
-    setPhiLastResult(null)
+  const handlePhiGenerate = useCallback(
+    async (opts?: {
+      targets?: Array<{ subjectId: string; theme?: 'light' | 'dark' }>
+      forceRegenerate?: boolean
+      theme?: 'light' | 'dark'
+      pipeline?: boolean
+    }) => {
+      setError(null)
+      setPhiPolledTaskError(null)
+      setPhiPolledTaskStatus(null)
+      setPhiLastResult(null)
 
-    try {
-      const res = await fetch('/api/admin/constant-images/phi-explore/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          model,
-          targets: opts?.targets,
-          forceRegenerate: opts?.forceRegenerate,
-          theme: opts?.theme,
-          pipeline: opts?.pipeline,
-        }),
-      })
-      if (!res.ok) {
+      try {
+        const res = await fetch('/api/admin/constant-images/phi-explore/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider,
+            model,
+            targets: opts?.targets,
+            forceRegenerate: opts?.forceRegenerate,
+            theme: opts?.theme,
+            pipeline: opts?.pipeline,
+          }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || `HTTP ${res.status}`)
+        }
         const data = await res.json()
-        throw new Error(data.error || `HTTP ${res.status}`)
+        setPhiTaskId(data.taskId)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to start phi explore generation')
       }
-      const data = await res.json()
-      setPhiTaskId(data.taskId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start phi explore generation')
-    }
-  }, [provider, model])
+    },
+    [provider, model]
+  )
 
   // Pipeline advancement: when a task completes and there's more in the queue, advance
   useEffect(() => {
@@ -494,13 +512,15 @@ export default function ConstantImagesPage() {
   const selectedValue = `${provider}:${model}`
 
   // Pipeline progress info
-  const pipelinePhaseIndex = pipelineQueue.length > 0
-    ? 3 - pipelineQueue.length
-    : -1
-  const pipelinePhaseLabel = pipelineQueue[0] === 'base' ? 'base images'
-    : pipelineQueue[0] === 'light' ? 'light variants'
-    : pipelineQueue[0] === 'dark' ? 'dark variants'
-    : ''
+  const pipelinePhaseIndex = pipelineQueue.length > 0 ? 3 - pipelineQueue.length : -1
+  const pipelinePhaseLabel =
+    pipelineQueue[0] === 'base'
+      ? 'base images'
+      : pipelineQueue[0] === 'light'
+        ? 'light variants'
+        : pipelineQueue[0] === 'dark'
+          ? 'dark variants'
+          : ''
 
   const phiBaseMissing = phiStats.total - phiStats.base
   const phiLightMissing = phiStats.total - phiStats.light
@@ -541,11 +561,16 @@ export default function ConstantImagesPage() {
             Generate AI illustrations for math constants. Each constant has a metaphor and a math
             style image.
             {stats.total > 0 && (
-              <> Base: {stats.base}/{stats.total}, Light: {stats.light}/{stats.total}, Dark: {stats.dark}/{stats.total}</>
+              <>
+                {' '}
+                Base: {stats.base}/{stats.total}, Light: {stats.light}/{stats.total}, Dark:{' '}
+                {stats.dark}/{stats.total}
+              </>
             )}
           </p>
           <p className={css({ fontSize: '12px', color: '#d29922', marginTop: '8px' })}>
-            Images are baked into the source code and deployed with the build. Generate locally, commit to git, then deploy. Do not regenerate on production.
+            Images are baked into the source code and deployed with the build. Generate locally,
+            commit to git, then deploy. Do not regenerate on production.
           </p>
         </div>
 
@@ -769,7 +794,9 @@ export default function ConstantImagesPage() {
               <span className={css({ fontSize: '13px', fontWeight: '600', color: '#58a6ff' })}>
                 {pipelineQueue.length > 0
                   ? `Pipeline Step ${pipelinePhaseIndex + 1}/3 — Generating ${pipelinePhaseLabel}...`
-                  : taskState ? 'Generating images...' : 'Starting generation...'}
+                  : taskState
+                    ? 'Generating images...'
+                    : 'Starting generation...'}
               </span>
               <span className={css({ fontSize: '12px', color: '#8b949e' })}>
                 {taskState?.progress ?? 0}%
@@ -827,9 +854,7 @@ export default function ConstantImagesPage() {
                 generatingSet={generatingSet}
                 expandedPrompts={expandedPrompts}
                 onTogglePrompt={togglePrompt}
-                onRegenerate={(constantId, style) =>
-                  handleGenerate([{ constantId, style }], true)
-                }
+                onRegenerate={(constantId, style) => handleGenerate([{ constantId, style }], true)}
                 provider={provider}
               />
             ))}
@@ -852,7 +877,11 @@ export default function ConstantImagesPage() {
               <p className={css({ fontSize: '13px', color: '#8b949e' })}>
                 AI-generated images of natural phenomena exhibiting the golden spiral.
                 {phiStats.total > 0 && (
-                  <> Base: {phiStats.base}/{phiStats.total}, Light: {phiStats.light}/{phiStats.total}, Dark: {phiStats.dark}/{phiStats.total}</>
+                  <>
+                    {' '}
+                    Base: {phiStats.base}/{phiStats.total}, Light: {phiStats.light}/{phiStats.total}
+                    , Dark: {phiStats.dark}/{phiStats.total}
+                  </>
                 )}
               </p>
             </div>
@@ -1030,10 +1059,14 @@ export default function ConstantImagesPage() {
                 <div>
                   <span className={css({ fontWeight: '600' })}>Generation complete: </span>
                   {phiLastResult.generated > 0 && (
-                    <span className={css({ color: '#3fb950' })}>{phiLastResult.generated} generated </span>
+                    <span className={css({ color: '#3fb950' })}>
+                      {phiLastResult.generated} generated{' '}
+                    </span>
                   )}
                   {phiLastResult.skipped > 0 && (
-                    <span className={css({ color: '#8b949e' })}>{phiLastResult.skipped} skipped </span>
+                    <span className={css({ color: '#8b949e' })}>
+                      {phiLastResult.skipped} skipped{' '}
+                    </span>
                   )}
                   {phiLastResult.failed > 0 && (
                     <span className={css({ color: '#f85149' })}>{phiLastResult.failed} failed</span>
@@ -1129,7 +1162,8 @@ export default function ConstantImagesPage() {
               })}
             >
               {status.phiExplore.map((subject) => {
-                const aligningTheme = aligningKey?.subjectId === subject.id ? aligningKey.theme : null
+                const aligningTheme =
+                  aligningKey?.subjectId === subject.id ? aligningKey.theme : null
                 return (
                   <div key={subject.id}>
                     <PhiExploreCard
@@ -1139,7 +1173,10 @@ export default function ConstantImagesPage() {
                       isExpanded={phiExpandedPrompts.has(subject.id)}
                       onTogglePrompt={() => togglePhiPrompt(subject.id)}
                       onRegenerate={() =>
-                        handlePhiGenerate({ targets: [{ subjectId: subject.id }], forceRegenerate: true })
+                        handlePhiGenerate({
+                          targets: [{ subjectId: subject.id }],
+                          forceRegenerate: true,
+                        })
                       }
                       provider={provider}
                       aligningTheme={aligningTheme}
@@ -1229,14 +1266,45 @@ function ConstantCard({
             return (
               <span
                 key={style}
-                className={css({ fontSize: '10px', color: '#3fb950', padding: '2px 6px', backgroundColor: '#23863533', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '3px' })}
+                className={css({
+                  fontSize: '10px',
+                  color: '#3fb950',
+                  padding: '2px 6px',
+                  backgroundColor: '#23863533',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                })}
               >
                 {style}
                 {hasLight && (
-                  <span data-element={`badge-${style}-light`} title="Light variant" className={css({ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f0f6fc', border: '1px solid #484f58' })} />
+                  <span
+                    data-element={`badge-${style}-light`}
+                    title="Light variant"
+                    className={css({
+                      display: 'inline-block',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: '#f0f6fc',
+                      border: '1px solid #484f58',
+                    })}
+                  />
                 )}
                 {hasDark && (
-                  <span data-element={`badge-${style}-dark`} title="Dark variant" className={css({ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#21262d', border: '1px solid #484f58' })} />
+                  <span
+                    data-element={`badge-${style}-dark`}
+                    title="Dark variant"
+                    className={css({
+                      display: 'inline-block',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: '#21262d',
+                      border: '1px solid #484f58',
+                    })}
+                  />
                 )}
               </span>
             )
@@ -1529,13 +1597,44 @@ function PhiExploreCard({
         </span>
         <div className={css({ marginLeft: 'auto', display: 'flex', gap: '4px' })}>
           {subject.exists && (
-            <span className={css({ fontSize: '10px', color: '#3fb950', padding: '2px 6px', backgroundColor: '#23863533', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '3px' })}>
+            <span
+              className={css({
+                fontSize: '10px',
+                color: '#3fb950',
+                padding: '2px 6px',
+                backgroundColor: '#23863533',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+              })}
+            >
               base
               {subject.lightExists && (
-                <span title="Light variant" className={css({ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f0f6fc', border: '1px solid #484f58' })} />
+                <span
+                  title="Light variant"
+                  className={css({
+                    display: 'inline-block',
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: '#f0f6fc',
+                    border: '1px solid #484f58',
+                  })}
+                />
               )}
               {subject.darkExists && (
-                <span title="Dark variant" className={css({ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#21262d', border: '1px solid #484f58' })} />
+                <span
+                  title="Dark variant"
+                  className={css({
+                    display: 'inline-block',
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: '#21262d',
+                    border: '1px solid #484f58',
+                  })}
+                />
               )}
             </span>
           )}
@@ -1602,9 +1701,7 @@ function PhiExploreCard({
                     />
                   ) : (
                     <div className={css({ textAlign: 'center', color: '#484f58' })}>
-                      <div className={css({ fontSize: '14px' })}>
-                        {'\u{1F300}'}
-                      </div>
+                      <div className={css({ fontSize: '14px' })}>{'\u{1F300}'}</div>
                     </div>
                   )}
                 </div>
@@ -1846,7 +1943,7 @@ function PhiAlignmentEditor({
     const oy = pad + (drawH - 1 * mapScale) / 2
 
     const toCanvasX = (x: number) => ox + x * mapScale
-    const toCanvasY = (y: number) => oy + (-y) * mapScale
+    const toCanvasY = (y: number) => oy + -y * mapScale
 
     // Spiral convergence point in canvas coords
     const convCx = toCanvasX(SPIRAL_CONVERGENCE.x)
@@ -1943,8 +2040,10 @@ function PhiAlignmentEditor({
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
       const isInCanvasArea =
-        e.clientX >= rect.left && e.clientX <= rect.right &&
-        e.clientY >= rect.top && e.clientY <= rect.bottom
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
       if (!isInCanvasArea) return
 
       e.preventDefault()
@@ -1974,8 +2073,7 @@ function PhiAlignmentEditor({
       }
 
       const mode = e.shiftKey ? 'rotate' : 'pan'
-      const startAngle =
-        mode === 'rotate' ? Math.atan2(cy - layout.convCy, cx - layout.convCx) : 0
+      const startAngle = mode === 'rotate' ? Math.atan2(cy - layout.convCy, cx - layout.convCx) : 0
 
       dragRef.current = {
         mode,
@@ -2048,8 +2146,10 @@ function PhiAlignmentEditor({
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
       const isInCanvasArea =
-        e.clientX >= rect.left && e.clientX <= rect.right &&
-        e.clientY >= rect.top && e.clientY <= rect.bottom
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
       if (!isInCanvasArea) return
 
       e.preventDefault()
@@ -2124,7 +2224,8 @@ function PhiAlignmentEditor({
             fontFamily: 'monospace',
           })}
         >
-          S:{draft.scale.toFixed(2)} R:{draft.rotation.toFixed(1)} X:{draft.offsetX.toFixed(2)} Y:{draft.offsetY.toFixed(2)}
+          S:{draft.scale.toFixed(2)} R:{draft.rotation.toFixed(1)} X:{draft.offsetX.toFixed(2)} Y:
+          {draft.offsetY.toFixed(2)}
         </span>
         {saveError && (
           <span

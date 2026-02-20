@@ -38,7 +38,7 @@ function smoothstep(t: number): number {
 
 function easeInOut(t: number): number {
   const c = Math.max(0, Math.min(1, t))
-  return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2
 }
 
 // ── Crescent math ────────────────────────────────────────────────────
@@ -68,12 +68,24 @@ const CRESCENTS: { k: number; area: number; cumulative: number }[] = []
 
 // ── Colors ───────────────────────────────────────────────────────────
 
-function stepCol(isDark: boolean) { return isDark ? '#22d3ee' : '#3b82f6' }    // cyan / blue
-function stepColDim(isDark: boolean) { return isDark ? '#164e63' : '#bfdbfe' }
-function curveCol(isDark: boolean) { return isDark ? '#a78bfa' : '#7c3aed' }   // purple
-function crescentCol(isDark: boolean) { return isDark ? '#fbbf24' : '#f59e0b' } // gold
-function textColor(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)' }
-function subtextColor(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
+function stepCol(isDark: boolean) {
+  return isDark ? '#22d3ee' : '#3b82f6'
+} // cyan / blue
+function stepColDim(isDark: boolean) {
+  return isDark ? '#164e63' : '#bfdbfe'
+}
+function curveCol(isDark: boolean) {
+  return isDark ? '#a78bfa' : '#7c3aed'
+} // purple
+function crescentCol(isDark: boolean) {
+  return isDark ? '#fbbf24' : '#f59e0b'
+} // gold
+function textColor(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'
+}
+function subtextColor(isDark: boolean) {
+  return isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'
+}
 
 // ── Phase timing ─────────────────────────────────────────────────────
 //
@@ -90,12 +102,12 @@ function subtextColor(isDark: boolean) { return isDark ? 'rgba(255,255,255,0.6)'
 
 const PHASE = {
   // Steps appear one by one
-  step1Start: 0.00,
-  step1End: 0.10,
-  step2Start: 0.10,
-  step2End: 0.20,
-  step3Start: 0.20,
-  step3End: 0.30,
+  step1Start: 0.0,
+  step1End: 0.1,
+  step2Start: 0.1,
+  step2End: 0.2,
+  step3Start: 0.2,
+  step3End: 0.3,
   // "What about in-between?" question
   questionStart: 0.28,
   questionEnd: 0.34,
@@ -113,7 +125,7 @@ const PHASE = {
   collectEnd: 0.86,
   // Final reveal
   revealStart: 0.86,
-  revealEnd: 1.00,
+  revealEnd: 1.0,
 } as const
 
 // ── Viewport ─────────────────────────────────────────────────────────
@@ -133,7 +145,7 @@ export function gammaDemoViewport(cssWidth: number, cssHeight: number) {
   // Center on the rectangle region [1, 11], with some left margin
   const center = 5.5
   // Fit ~12 units horizontally
-  const ppu = Math.min(cssWidth * 0.85 / 12, cssHeight * 0.35)
+  const ppu = Math.min((cssWidth * 0.85) / 12, cssHeight * 0.35)
   return { center, pixelsPerUnit: ppu }
 }
 
@@ -283,7 +295,7 @@ function drawGammaBar(
   // Glow behind
   ctx.fillStyle = crescentCol(isDark)
   ctx.globalAlpha = alpha * 0.2
-  ctx.fillRect(x0 - 2, axisY - barH / 2 - 2, (x1 - x0) + 4, barH + 4)
+  ctx.fillRect(x0 - 2, axisY - barH / 2 - 2, x1 - x0 + 4, barH + 4)
 
   // Main bar
   ctx.fillStyle = crescentCol(isDark)
@@ -398,7 +410,8 @@ export function renderGammaOverlay(
 
     // Label "1 friend → 1 cookie"
     if (revealProgress < PHASE.step2Start) {
-      const labelAlpha = smoothstep(mapRange(revealProgress, PHASE.step1Start + 0.03, PHASE.step1Start + 0.06)) *
+      const labelAlpha =
+        smoothstep(mapRange(revealProgress, PHASE.step1Start + 0.03, PHASE.step1Start + 0.06)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.step1End - 0.02, PHASE.step1End)))
       if (labelAlpha > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.14))
@@ -440,7 +453,8 @@ export function renderGammaOverlay(
 
     // Label "2 friends → ½ each"
     if (revealProgress < PHASE.step3Start) {
-      const labelAlpha = smoothstep(mapRange(revealProgress, PHASE.step2Start + 0.03, PHASE.step2Start + 0.06)) *
+      const labelAlpha =
+        smoothstep(mapRange(revealProgress, PHASE.step2Start + 0.03, PHASE.step2Start + 0.06)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.step2End - 0.02, PHASE.step2End)))
       if (labelAlpha > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.14))
@@ -483,7 +497,8 @@ export function renderGammaOverlay(
 
     // Label "3 friends → ⅓ each"
     if (revealProgress < PHASE.questionStart) {
-      const labelAlpha = smoothstep(mapRange(revealProgress, PHASE.step3Start + 0.02, PHASE.step3Start + 0.05)) *
+      const labelAlpha =
+        smoothstep(mapRange(revealProgress, PHASE.step3Start + 0.02, PHASE.step3Start + 0.05)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.step3End - 0.03, PHASE.step3End)))
       if (labelAlpha > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.14))
@@ -506,7 +521,15 @@ export function renderGammaOverlay(
 
     if (qAlpha > 0.01) {
       drawQuestionDot(ctx, toX, axisY, 1.5, ppu, isDark, opacity * qAlpha)
-      drawQuestionDot(ctx, toX, axisY, 2.5, ppu, isDark, opacity * qAlpha * smoothstep(mapRange(qP, 0.3, 0.7)))
+      drawQuestionDot(
+        ctx,
+        toX,
+        axisY,
+        2.5,
+        ppu,
+        isDark,
+        opacity * qAlpha * smoothstep(mapRange(qP, 0.3, 0.7))
+      )
 
       // Label
       const fs = Math.max(10, Math.min(13, ppu * 0.12))
@@ -521,16 +544,23 @@ export function renderGammaOverlay(
 
   // ── Phase: Draw all steps (dimmed) once curve begins ──
   if (revealProgress >= PHASE.curveStart) {
-    const stepsAlpha = smoothstep(mapRange(revealProgress, PHASE.curveStart, PHASE.curveStart + 0.03))
+    const stepsAlpha = smoothstep(
+      mapRange(revealProgress, PHASE.curveStart, PHASE.curveStart + 0.03)
+    )
     // During collection/reveal, fade out the construction
-    const constructionFade = 1 - smoothstep(mapRange(revealProgress, PHASE.collectStart + 0.1, PHASE.collectEnd))
+    const constructionFade =
+      1 - smoothstep(mapRange(revealProgress, PHASE.collectStart + 0.1, PHASE.collectEnd))
 
     if (stepsAlpha > 0 && constructionFade > 0) {
-      const maxK = revealProgress >= PHASE.cascadeEnd ? MAX_K : (
-        revealProgress >= PHASE.cascadeStart ? (
-          3 + Math.floor(mapRange(revealProgress, PHASE.cascadeStart, PHASE.cascadeEnd) * (MAX_K - 3))
-        ) : 3
-      )
+      const maxK =
+        revealProgress >= PHASE.cascadeEnd
+          ? MAX_K
+          : revealProgress >= PHASE.cascadeStart
+            ? 3 +
+              Math.floor(
+                mapRange(revealProgress, PHASE.cascadeStart, PHASE.cascadeEnd) * (MAX_K - 3)
+              )
+            : 3
 
       for (let k = 1; k <= maxK; k++) {
         const dim = revealProgress >= PHASE.crescentHighlightStart
@@ -541,19 +571,36 @@ export function renderGammaOverlay(
     // ── Draw the 1/x curve ──
     if (constructionFade > 0) {
       const curveDrawP = mapRange(revealProgress, PHASE.curveStart, PHASE.curveEnd)
-      const curveEndVal = revealProgress >= PHASE.cascadeEnd ? MAX_K + 1 : (
-        revealProgress >= PHASE.cascadeStart ?
-          4 + mapRange(revealProgress, PHASE.cascadeStart, PHASE.cascadeEnd) * (MAX_K - 3) : 4
+      const curveEndVal =
+        revealProgress >= PHASE.cascadeEnd
+          ? MAX_K + 1
+          : revealProgress >= PHASE.cascadeStart
+            ? 4 + mapRange(revealProgress, PHASE.cascadeStart, PHASE.cascadeEnd) * (MAX_K - 3)
+            : 4
+      drawCurve(
+        ctx,
+        toX,
+        axisY,
+        1,
+        curveEndVal,
+        ppu,
+        isDark,
+        opacity * constructionFade,
+        curveDrawP
       )
-      drawCurve(ctx, toX, axisY, 1, curveEndVal, ppu, isDark, opacity * constructionFade, curveDrawP)
     }
 
     // ── Draw crescents ──
     if (revealProgress >= PHASE.crescentHighlightStart && constructionFade > 0) {
-      const maxCrescentK = revealProgress >= PHASE.cascadeEnd ? MAX_K : (
-        revealProgress >= PHASE.cascadeStart ?
-          3 + Math.floor(mapRange(revealProgress, PHASE.cascadeStart, PHASE.cascadeEnd) * (MAX_K - 3)) : 3
-      )
+      const maxCrescentK =
+        revealProgress >= PHASE.cascadeEnd
+          ? MAX_K
+          : revealProgress >= PHASE.cascadeStart
+            ? 3 +
+              Math.floor(
+                mapRange(revealProgress, PHASE.cascadeStart, PHASE.cascadeEnd) * (MAX_K - 3)
+              )
+            : 3
 
       for (let k = 1; k <= maxCrescentK; k++) {
         // Sequential glow: each crescent lights up in turn
@@ -567,15 +614,30 @@ export function renderGammaOverlay(
         const flyP = mapRange(collectP, (k - 1) / MAX_K, k / MAX_K)
         const collectionFade = 1 - smoothstep(flyP)
 
-        drawCrescent(ctx, toX, axisY, k, ppu, isDark, opacity * baseAlpha * constructionFade * collectionFade)
+        drawCrescent(
+          ctx,
+          toX,
+          axisY,
+          k,
+          ppu,
+          isDark,
+          opacity * baseAlpha * constructionFade * collectionFade
+        )
       }
     }
   }
 
   // ── Phase: Crescents label ──
   if (revealProgress >= PHASE.crescentHighlightStart && revealProgress < PHASE.collectStart) {
-    const labelIn = smoothstep(mapRange(revealProgress, PHASE.crescentHighlightStart + 0.02, PHASE.crescentHighlightStart + 0.06))
-    const labelOut = 1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.cascadeEnd + 0.02))
+    const labelIn = smoothstep(
+      mapRange(
+        revealProgress,
+        PHASE.crescentHighlightStart + 0.02,
+        PHASE.crescentHighlightStart + 0.06
+      )
+    )
+    const labelOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.cascadeEnd + 0.02))
     const labelAlpha = labelIn * labelOut
 
     if (labelAlpha > 0.01) {
@@ -591,8 +653,11 @@ export function renderGammaOverlay(
 
   // ── Phase: Cascade label ──
   if (revealProgress >= PHASE.cascadeStart && revealProgress < PHASE.collectStart) {
-    const labelIn = smoothstep(mapRange(revealProgress, PHASE.cascadeStart + 0.01, PHASE.cascadeStart + 0.04))
-    const labelOut = 1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.cascadeEnd))
+    const labelIn = smoothstep(
+      mapRange(revealProgress, PHASE.cascadeStart + 0.01, PHASE.cascadeStart + 0.04)
+    )
+    const labelOut =
+      1 - smoothstep(mapRange(revealProgress, PHASE.cascadeEnd - 0.02, PHASE.cascadeEnd))
     const labelAlpha = labelIn * labelOut
 
     if (labelAlpha > 0.01) {
@@ -630,7 +695,8 @@ export function renderGammaOverlay(
 
     // "Collecting..." label during flight
     if (revealProgress < PHASE.revealStart) {
-      const labelAlpha = smoothstep(mapRange(revealProgress, PHASE.collectStart + 0.02, PHASE.collectStart + 0.06)) *
+      const labelAlpha =
+        smoothstep(mapRange(revealProgress, PHASE.collectStart + 0.02, PHASE.collectStart + 0.06)) *
         (1 - smoothstep(mapRange(revealProgress, PHASE.collectEnd - 0.04, PHASE.collectEnd)))
       if (labelAlpha > 0.01) {
         const fs = Math.max(11, Math.min(14, ppu * 0.14))
@@ -639,7 +705,11 @@ export function renderGammaOverlay(
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         ctx.globalAlpha = opacity * labelAlpha
-        ctx.fillText('Lining up the extra bits...', toX(barLength / 2), axisY + Math.max(8, Math.min(16, ppu * 0.1)) / 2 + 8)
+        ctx.fillText(
+          'Lining up the extra bits...',
+          toX(barLength / 2),
+          axisY + Math.max(8, Math.min(16, ppu * 0.1)) / 2 + 8
+        )
       }
     }
   }
@@ -656,7 +726,14 @@ export function renderGammaOverlay(
     const starY = axisY - Math.max(8, Math.min(16, ppu * 0.1)) / 2 - 12
     const starR = Math.max(6, Math.min(10, ppu * 0.06))
     const starPulse = 1 + 0.1 * Math.sin(revealProgress * Math.PI * 8)
-    drawStar(ctx, gammaX, starY, starR * starPulse * revealP, crescentCol(isDark), opacity * revealP)
+    drawStar(
+      ctx,
+      gammaX,
+      starY,
+      starR * starPulse * revealP,
+      crescentCol(isDark),
+      opacity * revealP
+    )
 
     // "γ" label above
     if (revealP > 0.3) {
@@ -691,7 +768,11 @@ export function renderGammaOverlay(
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.globalAlpha = opacity * subP * 0.7
-      ctx.fillText('The sharing leftover', gammaX, axisY + Math.max(8, Math.min(16, ppu * 0.1)) / 2 + 26)
+      ctx.fillText(
+        'The sharing leftover',
+        gammaX,
+        axisY + Math.max(8, Math.min(16, ppu * 0.1)) / 2 + 26
+      )
     }
 
     // Formula for curious kids

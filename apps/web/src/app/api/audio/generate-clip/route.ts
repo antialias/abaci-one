@@ -23,10 +23,7 @@ export const POST = withAuth(async (request) => {
 
     // Validate required fields
     if (!voice || !clipId || !text) {
-      return NextResponse.json(
-        { error: 'voice, clipId, and text are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'voice, clipId, and text are required' }, { status: 400 })
     }
 
     // Prevent directory traversal
@@ -42,18 +39,12 @@ export const POST = withAuth(async (request) => {
     // Check API key
     const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
     }
 
     // Disk cache check — return existing file if present
     const voiceDir = join(AUDIO_DIR, voice)
-    const candidates = [
-      join(voiceDir, `${clipId}.mp3`),
-      join(voiceDir, `cc-${clipId}.mp3`),
-    ]
+    const candidates = [join(voiceDir, `${clipId}.mp3`), join(voiceDir, `cc-${clipId}.mp3`)]
     for (const path of candidates) {
       if (existsSync(path)) {
         const fileBuffer = readFileSync(path)
@@ -86,10 +77,7 @@ export const POST = withAuth(async (request) => {
     if (!response.ok) {
       const errText = await response.text()
       console.error('[generate-clip] OpenAI error:', response.status, errText)
-      return NextResponse.json(
-        { error: `OpenAI error: ${response.status}` },
-        { status: 502 }
-      )
+      return NextResponse.json({ error: `OpenAI error: ${response.status}` }, { status: 502 })
     }
 
     const arrayBuffer = await response.arrayBuffer()
@@ -108,9 +96,6 @@ export const POST = withAuth(async (request) => {
     })
   } catch (error) {
     console.error('[generate-clip] Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 })

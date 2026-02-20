@@ -7,7 +7,13 @@ import type {
   GhostLayer,
 } from '../types'
 import { needsExtendedSegments } from '../types'
-import { initializeGiven, addSegment, addCircle, addPoint, skipPointLabel } from './constructionState'
+import {
+  initializeGiven,
+  addSegment,
+  addCircle,
+  addPoint,
+  skipPointLabel,
+} from './constructionState'
 import { createFactStore, addFact, addAngleFact } from './factStore'
 import type { FactStore } from './factStore'
 import type { ProofFact } from './facts'
@@ -51,7 +57,7 @@ export function replayConstruction(
   givenElements: ConstructionElement[],
   steps: PropositionStep[],
   propDef: PropositionDef,
-  extraActions?: PostCompletionAction[],
+  extraActions?: PostCompletionAction[]
 ): ReplayResult {
   let state = initializeGiven(givenElements)
   const factStore = createFactStore()
@@ -65,13 +71,7 @@ export function replayConstruction(
     for (const gf of propDef.givenFacts) {
       const left = distancePair(gf.left.a, gf.left.b)
       const right = distancePair(gf.right.a, gf.right.b)
-      const newFacts = addFact(
-        factStore, left, right,
-        { type: 'given' },
-        gf.statement,
-        'Given',
-        -1,
-      )
+      const newFacts = addFact(factStore, left, right, { type: 'given' }, gf.statement, 'Given', -1)
       proofFacts.push(...newFacts)
     }
   }
@@ -82,11 +82,13 @@ export function replayConstruction(
       const left = angleMeasure(gaf.left.vertex, gaf.left.ray1, gaf.left.ray2)
       const right = angleMeasure(gaf.right.vertex, gaf.right.ray1, gaf.right.ray2)
       const newFacts = addAngleFact(
-        factStore, left, right,
+        factStore,
+        left,
+        right,
         { type: 'given' },
         gaf.statement,
         'Given',
-        -1,
+        -1
       )
       proofFacts.push(...newFacts)
     }
@@ -119,7 +121,7 @@ export function replayConstruction(
 
       let matchingCandidate: IntersectionCandidate | undefined
       if (resolvedA && resolvedB) {
-        matchingCandidate = candidates.find(c => {
+        matchingCandidate = candidates.find((c) => {
           const matches =
             (c.ofA === resolvedA && c.ofB === resolvedB) ||
             (c.ofA === resolvedB && c.ofB === resolvedA)
@@ -128,29 +130,43 @@ export function replayConstruction(
             return isCandidateBeyondPoint(c, expected.beyondId, c.ofA, c.ofB, state)
           }
           // When no beyondId, pick highest-Y candidate (matches convention)
-          const hasHigher = candidates.some(other =>
-            other !== c &&
-            ((other.ofA === resolvedA && other.ofB === resolvedB) ||
-             (other.ofA === resolvedB && other.ofB === resolvedA)) &&
-            other.y > c.y,
+          const hasHigher = candidates.some(
+            (other) =>
+              other !== c &&
+              ((other.ofA === resolvedA && other.ofB === resolvedB) ||
+                (other.ofA === resolvedB && other.ofB === resolvedA)) &&
+              other.y > c.y
           )
           return !hasHigher
         })
       } else if (expected.ofA == null && expected.ofB == null && candidates.length > 0) {
         // Wildcard intersection (no ofA/ofB specified): pick highest-Y candidate
-        matchingCandidate = candidates.reduce(
-          (best, c) => (c.y > best.y ? c : best),
-          candidates[0],
-        )
+        matchingCandidate = candidates.reduce((best, c) => (c.y > best.y ? c : best), candidates[0])
       }
 
       if (matchingCandidate) {
-        const result = addPoint(state, matchingCandidate.x, matchingCandidate.y, 'intersection', expected.label)
+        const result = addPoint(
+          state,
+          matchingCandidate.x,
+          matchingCandidate.y,
+          'intersection',
+          expected.label
+        )
         state = result.state
         candidates = candidates.filter(
-          c => !(Math.abs(c.x - matchingCandidate!.x) < 0.001 && Math.abs(c.y - matchingCandidate!.y) < 0.001),
+          (c) =>
+            !(
+              Math.abs(c.x - matchingCandidate!.x) < 0.001 &&
+              Math.abs(c.y - matchingCandidate!.y) < 0.001
+            )
         )
-        const newFacts = deriveDef15Facts(matchingCandidate, result.point.id, state, factStore, stepIdx)
+        const newFacts = deriveDef15Facts(
+          matchingCandidate,
+          result.point.id,
+          state,
+          factStore,
+          stepIdx
+        )
         proofFacts.push(...newFacts)
         stepSucceeded = true
       } else {
@@ -167,7 +183,7 @@ export function replayConstruction(
           factStore,
           stepIdx,
           extendSegments,
-          expected.outputLabels,
+          expected.outputLabels
         )
         state = result.state
         candidates = result.candidates
@@ -214,19 +230,26 @@ export function replayConstruction(
         candidates = [...candidates, ...newCands]
       } else if (action.type === 'intersection') {
         // Find matching candidate by parent elements and which-index
-        const matching = candidates.find(c =>
-          ((c.ofA === action.ofA && c.ofB === action.ofB) ||
-           (c.ofA === action.ofB && c.ofB === action.ofA)) &&
-          c.which === action.which,
+        const matching = candidates.find(
+          (c) =>
+            ((c.ofA === action.ofA && c.ofB === action.ofB) ||
+              (c.ofA === action.ofB && c.ofB === action.ofA)) &&
+            c.which === action.which
         )
         if (matching) {
           const result = addPoint(state, matching.x, matching.y, 'intersection')
           state = result.state
           candidates = candidates.filter(
-            c => !(Math.abs(c.x - matching.x) < 0.001 && Math.abs(c.y - matching.y) < 0.001),
+            (c) => !(Math.abs(c.x - matching.x) < 0.001 && Math.abs(c.y - matching.y) < 0.001)
           )
           // Derive Def.15 facts for the new intersection point
-          const newFacts = deriveDef15Facts(matching, result.point.id, state, factStore, steps.length)
+          const newFacts = deriveDef15Facts(
+            matching,
+            result.point.id,
+            state,
+            factStore,
+            steps.length
+          )
           proofFacts.push(...newFacts)
         } else {
           // Advance label/color indices so subsequent point labels stay stable

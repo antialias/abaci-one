@@ -19,10 +19,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     label: 'Evidence Quality Charts',
     description: 'Charts showing evidence weighting by help level and response time',
     component: dynamic(
-      () =>
-        import('@/components/blog/ValidationCharts').then(
-          (mod) => mod.EvidenceQualityCharts
-        ),
+      () => import('@/components/blog/ValidationCharts').then((mod) => mod.EvidenceQualityCharts),
       { ssr: false }
     ),
   },
@@ -41,10 +38,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     label: 'Classification Charts',
     description: 'Charts showing BKT skill classification thresholds and confidence intervals',
     component: dynamic(
-      () =>
-        import('@/components/blog/ValidationCharts').then(
-          (mod) => mod.ClassificationCharts
-        ),
+      () => import('@/components/blog/ValidationCharts').then((mod) => mod.ClassificationCharts),
       { ssr: false }
     ),
   },
@@ -53,9 +47,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     description: 'Charts showing skill-specific difficulty multipliers and learning trajectories',
     component: dynamic(
       () =>
-        import('@/components/blog/SkillDifficultyCharts').then(
-          (mod) => mod.SkillDifficultyCharts
-        ),
+        import('@/components/blog/SkillDifficultyCharts').then((mod) => mod.SkillDifficultyCharts),
       { ssr: false }
     ),
   },
@@ -64,9 +56,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     description: 'Charts comparing BKT vs fluency multipliers vs baseline targeting modes',
     component: dynamic(
       () =>
-        import('@/components/blog/ValidationCharts').then(
-          (mod) => mod.ThreeWayComparisonCharts
-        ),
+        import('@/components/blog/ValidationCharts').then((mod) => mod.ThreeWayComparisonCharts),
       { ssr: false }
     ),
   },
@@ -74,10 +64,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     label: 'Validation Results Charts',
     description: 'Charts showing convergence speed results across journey simulator modes',
     component: dynamic(
-      () =>
-        import('@/components/blog/ValidationCharts').then(
-          (mod) => mod.ValidationResultsCharts
-        ),
+      () => import('@/components/blog/ValidationCharts').then((mod) => mod.ValidationResultsCharts),
       { ssr: false }
     ),
   },
@@ -85,10 +72,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     label: 'Blame Attribution Charts',
     description: 'Charts showing blame distribution across skills for incorrect answers',
     component: dynamic(
-      () =>
-        import('@/components/blog/ValidationCharts').then(
-          (mod) => mod.BlameAttributionCharts
-        ),
+      () => import('@/components/blog/ValidationCharts').then((mod) => mod.BlameAttributionCharts),
       { ssr: false }
     ),
   },

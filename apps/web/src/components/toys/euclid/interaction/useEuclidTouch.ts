@@ -50,10 +50,14 @@ export function useEuclidTouch({
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
       return screenToWorld2D(
-        sx, sy,
-        v.center.x, v.center.y,
-        v.pixelsPerUnit, v.pixelsPerUnit,
-        cw, ch,
+        sx,
+        sy,
+        v.center.x,
+        v.center.y,
+        v.pixelsPerUnit,
+        v.pixelsPerUnit,
+        cw,
+        ch
       )
     }
 
@@ -215,7 +219,7 @@ export function useEuclidTouch({
       const v = viewportRef.current
 
       const anchor = toWorld(sx, sy, cw, ch)
-      const zoomFactor = Math.pow(1.001, -e.deltaY)
+      const zoomFactor = 1.001 ** -e.deltaY
       const newPpu = clampPPU(v.pixelsPerUnit * zoomFactor)
       v.pixelsPerUnit = newPpu
       v.center.x = anchor.x - (sx - cw / 2) / newPpu
@@ -244,5 +248,12 @@ export function useEuclidTouch({
       window.removeEventListener('mouseup', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
     }
-  }, [canvasRef, viewportRef, pointerCapturedRef, onViewportChange, getCanvasRect, panZoomDisabledRef])
+  }, [
+    canvasRef,
+    viewportRef,
+    pointerCapturedRef,
+    onViewportChange,
+    getCanvasRect,
+    panZoomDisabledRef,
+  ])
 }

@@ -36,8 +36,17 @@ describe('Proposition I.2 full construction with selectors', () => {
 
     // ── Step 1: Construct equilateral triangle (macro I.1) ──
     const macro = MACRO_REGISTRY[1]
-    const outputLabels = steps[1].expected.type === 'macro' ? steps[1].expected.outputLabels : undefined
-    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, 1, true, outputLabels)
+    const outputLabels =
+      steps[1].expected.type === 'macro' ? steps[1].expected.outputLabels : undefined
+    const macroResult = macro.execute(
+      state,
+      ['pt-A', 'pt-B'],
+      candidates,
+      factStore,
+      1,
+      true,
+      outputLabels
+    )
     state = macroResult.state
     candidates = macroResult.candidates
     // factStore is mutated in place by the macro
@@ -66,7 +75,7 @@ describe('Proposition I.2 full construction with selectors', () => {
     expect(resolvedOfB).toBeTruthy()
 
     // Find the candidate matching the resolved selectors, beyond B
-    const step3Candidates = candidates.filter(c => {
+    const step3Candidates = candidates.filter((c) => {
       const matches =
         (c.ofA === resolvedOfA && c.ofB === resolvedOfB) ||
         (c.ofA === resolvedOfB && c.ofB === resolvedOfA)
@@ -87,7 +96,7 @@ describe('Proposition I.2 full construction with selectors', () => {
     // Derive Def.15 facts (mutates factStore in place)
     deriveDef15Facts(candE, ptE.point.id, state, factStore, 3)
     candidates = candidates.filter(
-      c => !(Math.abs(c.x - candE.x) < 0.001 && Math.abs(c.y - candE.y) < 0.001),
+      (c) => !(Math.abs(c.x - candE.x) < 0.001 && Math.abs(c.y - candE.y) < 0.001)
     )
 
     expect(validateStep(steps[3].expected, state, ptE.point, candE)).toBe(true)
@@ -108,7 +117,7 @@ describe('Proposition I.2 full construction with selectors', () => {
     expect(resolved5A).toBe(cirDE.circle.id)
     expect(resolved5B).toBeTruthy()
 
-    const step5Candidates = candidates.filter(c => {
+    const step5Candidates = candidates.filter((c) => {
       const matches =
         (c.ofA === resolved5A && c.ofB === resolved5B) ||
         (c.ofA === resolved5B && c.ofB === resolved5A)
@@ -129,7 +138,7 @@ describe('Proposition I.2 full construction with selectors', () => {
     // Derive Def.15 facts (mutates factStore in place)
     deriveDef15Facts(candF, ptF.point.id, state, factStore, 5)
     candidates = candidates.filter(
-      c => !(Math.abs(c.x - candF.x) < 0.001 && Math.abs(c.y - candF.y) < 0.001),
+      (c) => !(Math.abs(c.x - candF.x) < 0.001 && Math.abs(c.y - candF.y) < 0.001)
     )
 
     expect(validateStep(steps[5].expected, state, ptF.point, candF)).toBe(true)
@@ -159,7 +168,9 @@ describe('Proposition I.2 full construction with selectors', () => {
     candidates = [...candidates, ...findNewIntersections(state, segAB.segment, candidates, true)]
 
     const macro = MACRO_REGISTRY[1]
-    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, 1, true, { apex: 'D' })
+    const macroResult = macro.execute(state, ['pt-A', 'pt-B'], candidates, factStore, 1, true, {
+      apex: 'D',
+    })
     state = macroResult.state
     candidates = macroResult.candidates
 

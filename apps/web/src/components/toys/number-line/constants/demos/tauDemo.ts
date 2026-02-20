@@ -13,12 +13,12 @@ export function tauDemoViewport(cssWidth: number, cssHeight: number) {
   const center = TAU / 2
   // Fit horizontal range [-1, tau+1] = width tau+2
   // Vertical: circle is 2 units tall (r=1), needs to fit above the axis
-  const ppu = Math.min(cssWidth * 0.85 / (TAU + 2), cssHeight * 0.22)
+  const ppu = Math.min((cssWidth * 0.85) / (TAU + 2), cssHeight * 0.22)
   return { center, pixelsPerUnit: ppu }
 }
 
 // Phase boundaries within revealProgress
-const CONSTRUCTION_END = 0.30
+const CONSTRUCTION_END = 0.3
 const ROLLING_END = 0.92
 
 /**
@@ -41,7 +41,7 @@ export function renderTauOverlay(
   const t = mapRange(revealProgress, CONSTRUCTION_END, ROLLING_END)
   const labelAlpha = mapRange(revealProgress, ROLLING_END, 1.0)
 
-  const circumColor = isDark ? '#2dd4bf' : '#0d9488'  // teal
+  const circumColor = isDark ? '#2dd4bf' : '#0d9488' // teal
   const spokeColor = isDark ? '#f87171' : '#dc2626'
   const refColor = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)'
 
@@ -50,21 +50,40 @@ export function renderTauOverlay(
 
   if (constructionP < 1) {
     // Construction phases: highlight → pivot → sweep → treads
-    renderTauConstruction(ctx, state, cssWidth, cssHeight, {
-      circumColor, spokeColor, refColor,
-    }, constructionP, opacity)
+    renderTauConstruction(
+      ctx,
+      state,
+      cssWidth,
+      cssHeight,
+      {
+        circumColor,
+        spokeColor,
+        refColor,
+      },
+      constructionP,
+      opacity
+    )
   } else {
     // Rolling phase: unit circle rolls from 0 to τ
-    const pos = renderRollingCircle(ctx, state, cssWidth, cssHeight, {
-      radius: 1,
-      radiusSpoke: true,
-      circumColor,
-      spokeColor,
-      refColor,
-      accentColor: isDark ? '#fbbf24' : '#d97706',
-      trailColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
-      spokeLabel: '1 to edge',
-    }, t, 1, opacity)
+    const pos = renderRollingCircle(
+      ctx,
+      state,
+      cssWidth,
+      cssHeight,
+      {
+        radius: 1,
+        radiusSpoke: true,
+        circumColor,
+        spokeColor,
+        refColor,
+        accentColor: isDark ? '#fbbf24' : '#d97706',
+        trailColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)',
+        spokeLabel: '1 to edge',
+      },
+      t,
+      1,
+      opacity
+    )
 
     const ppu = state.pixelsPerUnit
     const toX = (nlx: number) => numberToScreenX(nlx, state.center, ppu, cssWidth)
@@ -137,7 +156,11 @@ export function renderTauOverlay(
       const subFontSize = Math.max(10, Math.min(13, ppu * 0.11))
       ctx.font = `${subFontSize}px system-ui, sans-serif`
       ctx.fillStyle = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'
-      ctx.fillText('trip around \u00F7 center to edge', pos.ccx, pos.ccy - pos.screenR - 8 - formulaFontSize - 2)
+      ctx.fillText(
+        'trip around \u00F7 center to edge',
+        pos.ccx,
+        pos.ccy - pos.screenR - 8 - formulaFontSize - 2
+      )
     }
   }
 

@@ -97,9 +97,7 @@ export function createMatchingPairsGameComponent<
               {state.gamePhase === 'setup' && (
                 <GenericSetupPhase ctx={ctx} SetupContent={variant.SetupContent} />
               )}
-              {state.gamePhase === 'playing' && (
-                <GenericGamePhase ctx={ctx} variant={variant} />
-              )}
+              {state.gamePhase === 'playing' && <GenericGamePhase ctx={ctx} variant={variant} />}
               {state.gamePhase === 'results' && (
                 <GenericResultsPhase ctx={ctx} gameName={variant.gameName} />
               )}

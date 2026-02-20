@@ -137,7 +137,9 @@ function createWrapper(overrides: WrapperOverrides = {}) {
         studentName="Test Student"
         focusDescription="Test focus"
         sessionMode={overrides.sessionMode ?? defaultSessionMode}
-        savedPreferences={'savedPreferences' in overrides ? overrides.savedPreferences : defaultSavedPreferences}
+        savedPreferences={
+          'savedPreferences' in overrides ? overrides.savedPreferences : defaultSavedPreferences
+        }
         onSavePreferences={overrides.onSavePreferences}
         existingPlan={overrides.existingPlan as any}
       >

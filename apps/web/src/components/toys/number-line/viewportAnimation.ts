@@ -35,7 +35,7 @@ export const SUBTITLE_BOTTOM_OFFSET = 64
 /** Ease-out cubic: fast start, gentle stop. Clamps t to [0, 1]. */
 export function easeOutCubic(t: number): number {
   const c = Math.min(1, Math.max(0, t))
-  return 1 - Math.pow(1 - c, 3)
+  return 1 - (1 - c) ** 3
 }
 
 // ── Viewport interpolation ─────────────────────────────────────────
@@ -90,14 +90,8 @@ export function snapViewport(tgt: Viewport, state: NumberLineState): void {
  *
  * Typical thresholds: 0.4 (constant demos) – 0.5 (prime tour).
  */
-export function computeViewportDeviation(
-  current: Viewport,
-  target: Viewport
-): number {
-  const centerDev =
-    Math.abs(current.center - target.center) / (Math.abs(target.center) || 1)
-  const zoomDev = Math.abs(
-    Math.log(current.pixelsPerUnit / target.pixelsPerUnit)
-  )
+export function computeViewportDeviation(current: Viewport, target: Viewport): number {
+  const centerDev = Math.abs(current.center - target.center) / (Math.abs(target.center) || 1)
+  const zoomDev = Math.abs(Math.log(current.pixelsPerUnit / target.pixelsPerUnit))
   return centerDev + zoomDev * 0.5
 }

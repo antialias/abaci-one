@@ -16,6 +16,10 @@ export interface ImageGenerationResult {
 
 export interface ImageProvider {
   readonly meta: ImageProviderMeta
-  generate(opts: { model: string; prompt: string; options?: ImageOptions }): Promise<ImageGenerationResult>
+  generate(opts: {
+    model: string
+    prompt: string
+    options?: ImageOptions
+  }): Promise<ImageGenerationResult>
   isAvailable(): boolean
 }

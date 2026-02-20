@@ -23,78 +23,81 @@ import { withAuth } from '@/lib/auth/withAuth'
  *   topicCount: number    // Number of test topics (first N entries in ids)
  * }
  */
-export const POST = withAuth(async (req: NextRequest) => {
-  try {
-    const body = await req.json()
-    const topics: string[] = body.topics
+export const POST = withAuth(
+  async (req: NextRequest) => {
+    try {
+      const body = await req.json()
+      const topics: string[] = body.topics
 
-    if (!Array.isArray(topics) || topics.length === 0) {
-      return NextResponse.json(
-        { error: 'Request body must contain a non-empty "topics" array' },
-        { status: 400 }
-      )
-    }
-
-    if (topics.length > 50) {
-      return NextResponse.json({ error: 'Maximum 50 topics allowed' }, { status: 400 })
-    }
-
-    // Filter out empty topics
-    const validTopics = topics.filter((t) => t.trim().length > 0)
-    if (validTopics.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one non-empty topic is required' },
-        { status: 400 }
-      )
-    }
-
-    // Load taxonomy
-    const taxonomy = await loadTaxonomy()
-
-    // Generate embeddings for test topics
-    const topicEmbeddings = await generateEmbeddings(validTopics)
-
-    // Build combined IDs and embeddings array
-    // First: test topics (topic:0, topic:1, ...)
-    // Then: taxonomy labels (label:...)
-    const allIds: string[] = []
-    const allEmbeddings: Float32Array[] = []
-
-    for (let i = 0; i < validTopics.length; i++) {
-      allIds.push(`topic:${i}`)
-      allEmbeddings.push(topicEmbeddings[i])
-    }
-
-    for (let i = 0; i < taxonomy.labels.length; i++) {
-      allIds.push(labelId(taxonomy.labels[i]))
-      allEmbeddings.push(taxonomy.embeddings[i])
-    }
-
-    // Compute upper-triangle distance matrix
-    const n = allIds.length
-    const matrix: number[] = []
-
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const dist = 1 - cosineSimilarity(allEmbeddings[i], allEmbeddings[j])
-        matrix.push(dist)
+      if (!Array.isArray(topics) || topics.length === 0) {
+        return NextResponse.json(
+          { error: 'Request body must contain a non-empty "topics" array' },
+          { status: 400 }
+        )
       }
-    }
 
-    return NextResponse.json({
-      ids: allIds,
-      matrix,
-      topicCount: validTopics.length,
-      topics: validTopics, // Echo back the validated topics
-    })
-  } catch (error) {
-    console.error('Failed to test clustering:', error)
-    return NextResponse.json(
-      { error: 'Failed to test clustering', details: String(error) },
-      { status: 500 }
-    )
-  }
-}, { role: 'admin' })
+      if (topics.length > 50) {
+        return NextResponse.json({ error: 'Maximum 50 topics allowed' }, { status: 400 })
+      }
+
+      // Filter out empty topics
+      const validTopics = topics.filter((t) => t.trim().length > 0)
+      if (validTopics.length === 0) {
+        return NextResponse.json(
+          { error: 'At least one non-empty topic is required' },
+          { status: 400 }
+        )
+      }
+
+      // Load taxonomy
+      const taxonomy = await loadTaxonomy()
+
+      // Generate embeddings for test topics
+      const topicEmbeddings = await generateEmbeddings(validTopics)
+
+      // Build combined IDs and embeddings array
+      // First: test topics (topic:0, topic:1, ...)
+      // Then: taxonomy labels (label:...)
+      const allIds: string[] = []
+      const allEmbeddings: Float32Array[] = []
+
+      for (let i = 0; i < validTopics.length; i++) {
+        allIds.push(`topic:${i}`)
+        allEmbeddings.push(topicEmbeddings[i])
+      }
+
+      for (let i = 0; i < taxonomy.labels.length; i++) {
+        allIds.push(labelId(taxonomy.labels[i]))
+        allEmbeddings.push(taxonomy.embeddings[i])
+      }
+
+      // Compute upper-triangle distance matrix
+      const n = allIds.length
+      const matrix: number[] = []
+
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const dist = 1 - cosineSimilarity(allEmbeddings[i], allEmbeddings[j])
+          matrix.push(dist)
+        }
+      }
+
+      return NextResponse.json({
+        ids: allIds,
+        matrix,
+        topicCount: validTopics.length,
+        topics: validTopics, // Echo back the validated topics
+      })
+    } catch (error) {
+      console.error('Failed to test clustering:', error)
+      return NextResponse.json(
+        { error: 'Failed to test clustering', details: String(error) },
+        { status: 500 }
+      )
+    }
+  },
+  { role: 'admin' }
+)
 
 /**
  * Compute cosine similarity between two embedding vectors.

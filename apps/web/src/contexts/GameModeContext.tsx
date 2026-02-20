@@ -24,7 +24,13 @@ export interface GameModeProviderProps {
   isLoading: boolean
   // Mutations from useUserPlayers (with optional callbacks)
   createPlayer: (
-    player: { name: string; emoji: string; color: string; isActive: boolean; isPracticeStudent?: boolean },
+    player: {
+      name: string
+      emoji: string
+      color: string
+      isActive: boolean
+      isPracticeStudent?: boolean
+    },
     options?: MutationOptions
   ) => void
   updatePlayerMutation: (

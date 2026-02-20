@@ -48,6 +48,7 @@ const VisionRecordingPlayer = dynamic(
 )
 
 import { useToast } from '@/components/common/ToastContext'
+import { GuestProgressBanner, recordGuestSession } from '@/components/GuestProgressBanner'
 import {
   SessionModeBannerProvider,
   useSessionModeBanner,
@@ -135,6 +136,13 @@ export function SummaryClient({
   const isDark = resolvedTheme === 'dark'
   const { showSuccess, showError } = useToast()
   const router = useRouter()
+
+  // Record guest session completion for "save your progress" prompts
+  useEffect(() => {
+    if (justCompleted) {
+      recordGuestSession()
+    }
+  }, [justCompleted])
 
   // UI state
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
@@ -314,6 +322,9 @@ export function SummaryClient({
         <PageWithNav>
           {/* Practice Sub-Navigation */}
           <PracticeSubNav student={player} pageContext="summary" />
+
+          {/* Guest save-your-progress banner */}
+          <GuestProgressBanner />
 
           <main
             data-component="practice-summary-page"

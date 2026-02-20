@@ -1,9 +1,4 @@
-import {
-  initializeGiven,
-  addCircle,
-  addSegment,
-  addPoint,
-} from '../engine/constructionState'
+import { initializeGiven, addCircle, addSegment, addPoint } from '../engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from '../engine/intersections'
 import { resolveSelector } from '../engine/selectors'
 import { MACRO_REGISTRY } from '../engine/macros'
@@ -35,7 +30,7 @@ export function buildProp1FinalState(): ConstructionState {
   candidates = [...candidates, ...findNewIntersections(state, cir2.circle, candidates, false)]
 
   // Step 2: Mark intersection C (highest Y = apex of triangle)
-  const topCandidate = candidates.reduce((best, c) => c.y > best.y ? c : best, candidates[0])
+  const topCandidate = candidates.reduce((best, c) => (c.y > best.y ? c : best), candidates[0])
   const ptC = addPoint(state, topCandidate.x, topCandidate.y, 'intersection', 'C')
   state = ptC.state
 
@@ -68,8 +63,17 @@ export function buildProp2FinalState(): ConstructionState {
 
   // Step 1: I.1 macro on A,B → apex D
   const macro1 = MACRO_REGISTRY[1]
-  const outputLabels1 = steps[1].expected.type === 'macro' ? steps[1].expected.outputLabels : undefined
-  const macroResult1 = macro1.execute(state, ['pt-A', 'pt-B'], candidates, factStore, 1, ext, outputLabels1)
+  const outputLabels1 =
+    steps[1].expected.type === 'macro' ? steps[1].expected.outputLabels : undefined
+  const macroResult1 = macro1.execute(
+    state,
+    ['pt-A', 'pt-B'],
+    candidates,
+    factStore,
+    1,
+    ext,
+    outputLabels1
+  )
   state = macroResult1.state
   candidates = macroResult1.candidates
 
@@ -83,7 +87,7 @@ export function buildProp2FinalState(): ConstructionState {
   if (step3.type !== 'intersection') throw new Error('Expected intersection step')
   const resolved3A = step3.ofA != null ? resolveSelector(step3.ofA, state) : null
   const resolved3B = step3.ofB != null ? resolveSelector(step3.ofB, state) : null
-  const step3Cands = candidates.filter(c => {
+  const step3Cands = candidates.filter((c) => {
     const matches =
       (c.ofA === resolved3A && c.ofB === resolved3B) ||
       (c.ofA === resolved3B && c.ofB === resolved3A)
@@ -96,7 +100,7 @@ export function buildProp2FinalState(): ConstructionState {
   state = ptE.state
   deriveDef15Facts(candE, ptE.point.id, state, factStore, 3)
   candidates = candidates.filter(
-    c => !(Math.abs(c.x - candE.x) < 0.001 && Math.abs(c.y - candE.y) < 0.001),
+    (c) => !(Math.abs(c.x - candE.x) < 0.001 && Math.abs(c.y - candE.y) < 0.001)
   )
 
   // Step 4: Circle at D through E
@@ -109,7 +113,7 @@ export function buildProp2FinalState(): ConstructionState {
   if (step5.type !== 'intersection') throw new Error('Expected intersection step')
   const resolved5A = step5.ofA != null ? resolveSelector(step5.ofA, state) : null
   const resolved5B = step5.ofB != null ? resolveSelector(step5.ofB, state) : null
-  const step5Cands = candidates.filter(c => {
+  const step5Cands = candidates.filter((c) => {
     const matches =
       (c.ofA === resolved5A && c.ofB === resolved5B) ||
       (c.ofA === resolved5B && c.ofB === resolved5A)
@@ -137,8 +141,17 @@ export function buildProp3FinalState(): ConstructionState {
 
   // Step 0: I.2 macro on [A, C, D] → result E
   const macro2 = MACRO_REGISTRY[2]
-  const outputLabels0 = steps[0].expected.type === 'macro' ? steps[0].expected.outputLabels : undefined
-  const macroResult = macro2.execute(state, ['pt-A', 'pt-C', 'pt-D'], candidates, factStore, 0, false, outputLabels0)
+  const outputLabels0 =
+    steps[0].expected.type === 'macro' ? steps[0].expected.outputLabels : undefined
+  const macroResult = macro2.execute(
+    state,
+    ['pt-A', 'pt-C', 'pt-D'],
+    candidates,
+    factStore,
+    0,
+    false,
+    outputLabels0
+  )
   state = macroResult.state
   candidates = macroResult.candidates
 
@@ -152,9 +165,10 @@ export function buildProp3FinalState(): ConstructionState {
   if (step2.type !== 'intersection') throw new Error('Expected intersection step')
   const resolved2A = step2.ofA != null ? resolveSelector(step2.ofA, state) : null
   const resolved2B = step2.ofB != null ? resolveSelector(step2.ofB, state) : null
-  const step2Cands = candidates.filter(c =>
-    (c.ofA === resolved2A && c.ofB === resolved2B) ||
-    (c.ofA === resolved2B && c.ofB === resolved2A),
+  const step2Cands = candidates.filter(
+    (c) =>
+      (c.ofA === resolved2A && c.ofB === resolved2B) ||
+      (c.ofA === resolved2B && c.ofB === resolved2A)
   )
   const candF = step2Cands[0]
   const ptFResult = addPoint(state, candF.x, candF.y, 'intersection', step2.label)

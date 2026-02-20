@@ -12,36 +12,39 @@ const HOMEPAGE_IMAGES_DIR = join(process.cwd(), 'public', 'images', 'homepage')
  *
  * Returns all preview targets with their image existence and file size.
  */
-export const GET = withAuth(async () => {
-  const targets = PREVIEW_TARGETS.map((target) => {
-    const filePath = join(HOMEPAGE_IMAGES_DIR, `${target.id}.png`)
-    const exists = existsSync(filePath)
+export const GET = withAuth(
+  async () => {
+    const targets = PREVIEW_TARGETS.map((target) => {
+      const filePath = join(HOMEPAGE_IMAGES_DIR, `${target.id}.png`)
+      const exists = existsSync(filePath)
 
-    return {
-      id: target.id,
-      type: target.type,
-      label: target.label,
-      width: target.width,
-      height: target.height,
-      prompt: target.type === 'ai' ? target.prompt : undefined,
-      imageExists: exists,
-      sizeBytes: exists ? statSync(filePath).size : undefined,
-    }
-  })
+      return {
+        id: target.id,
+        type: target.type,
+        label: target.label,
+        width: target.width,
+        height: target.height,
+        prompt: target.type === 'ai' ? target.prompt : undefined,
+        imageExists: exists,
+        sizeBytes: exists ? statSync(filePath).size : undefined,
+      }
+    })
 
-  const providers = IMAGE_PROVIDERS.map((p) => {
-    const hasKey =
-      'envKeyAlt' in p
-        ? !!(process.env[p.envKey] || process.env[p.envKeyAlt!])
-        : !!process.env[p.envKey]
+    const providers = IMAGE_PROVIDERS.map((p) => {
+      const hasKey =
+        'envKeyAlt' in p
+          ? !!(process.env[p.envKey] || process.env[p.envKeyAlt!])
+          : !!process.env[p.envKey]
 
-    return {
-      id: p.id,
-      name: p.name,
-      available: hasKey,
-      models: p.models.map((m) => ({ id: m.id, name: m.name })),
-    }
-  })
+      return {
+        id: p.id,
+        name: p.name,
+        available: hasKey,
+        models: p.models.map((m) => ({ id: m.id, name: m.name })),
+      }
+    })
 
-  return NextResponse.json({ targets, providers })
-}, { role: 'admin' })
+    return NextResponse.json({ targets, providers })
+  },
+  { role: 'admin' }
+)

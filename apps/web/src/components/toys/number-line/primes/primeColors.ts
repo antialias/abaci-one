@@ -24,11 +24,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
     const k = (n + h / 30) % 12
     return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
   }
-  return [
-    Math.round(f(0) * 255),
-    Math.round(f(8) * 255),
-    Math.round(f(4) * 255),
-  ]
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]
 }
 
 /**
@@ -38,7 +34,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
  */
 export function primeColorRgba(prime: number, alpha: number, isDark: boolean): string {
   const hue = primeHue(prime)
-  const sat = isDark ? 0.70 : 0.65
+  const sat = isDark ? 0.7 : 0.65
   const lum = isDark ? 0.55 : 0.45
   const [r, g, b] = hslToRgb(hue, sat, lum)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
@@ -49,7 +45,7 @@ export function primeColorRgba(prime: number, alpha: number, isDark: boolean): s
  */
 export function primeColorRgb(prime: number, isDark: boolean): string {
   const hue = primeHue(prime)
-  const sat = isDark ? 0.70 : 0.65
+  const sat = isDark ? 0.7 : 0.65
   const lum = isDark ? 0.55 : 0.45
   const [r, g, b] = hslToRgb(hue, sat, lum)
   return `rgb(${r}, ${g}, ${b})`
@@ -60,7 +56,7 @@ export function primeColorRgb(prime: number, isDark: boolean): string {
  */
 export function primeColorHex(prime: number, isDark: boolean): string {
   const hue = primeHue(prime)
-  const sat = isDark ? 0.70 : 0.65
+  const sat = isDark ? 0.7 : 0.65
   const lum = isDark ? 0.55 : 0.45
   const [r, g, b] = hslToRgb(hue, sat, lum)
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`

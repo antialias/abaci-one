@@ -13,18 +13,16 @@ import { getPoint } from '../engine/constructionState'
 import { resolveSelector } from '../engine/selectors'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 
-function toScreen(
-  wx: number,
-  wy: number,
-  viewport: EuclidViewportState,
-  w: number,
-  h: number,
-) {
+function toScreen(wx: number, wy: number, viewport: EuclidViewportState, w: number, h: number) {
   return worldToScreen2D(
-    wx, wy,
-    viewport.center.x, viewport.center.y,
-    viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-    w, h,
+    wx,
+    wy,
+    viewport.center.x,
+    viewport.center.y,
+    viewport.pixelsPerUnit,
+    viewport.pixelsPerUnit,
+    w,
+    h
   )
 }
 
@@ -35,11 +33,12 @@ export function renderProductionSegments(
   completedUpTo: number,
   viewport: EuclidViewportState,
   w: number,
-  h: number,
+  h: number
 ) {
   for (let i = 0; i < completedUpTo; i++) {
     const step = steps[i]
-    if (step.expected.type !== 'intersection' || !step.expected.beyondId || !step.expected.label) continue
+    if (step.expected.type !== 'intersection' || !step.expected.beyondId || !step.expected.label)
+      continue
 
     const beyondPt = getPoint(state, step.expected.beyondId)
     const intPt = getPoint(state, `pt-${step.expected.label}`)
@@ -51,7 +50,7 @@ export function renderProductionSegments(
     const resolvedB = step.expected.ofB != null ? resolveSelector(step.expected.ofB, state) : null
     for (const id of [resolvedA, resolvedB]) {
       if (id) {
-        const el = state.elements.find(e => e.id === id)
+        const el = state.elements.find((e) => e.id === id)
         if (el && el.kind === 'segment') {
           segColor = el.color
           break

@@ -9,11 +9,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'pizza-shop',
     ratePairId: 'slices-dollars-cost',
-    setupPhrases: [
-      'At the pizza shop,',
-      '{name} is ordering pizza.',
-      'At lunch,',
-    ],
+    setupPhrases: ['At the pizza shop,', '{name} is ordering pizza.', 'At lunch,'],
     subjects: [
       { phrase: '{name}', conjugation: 'thirdPerson' },
       { phrase: '{Pronoun}', conjugation: 'thirdPerson' },
@@ -460,11 +456,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'carnival-rides',
     ratePairId: 'tickets-dollars-cost',
-    setupPhrases: [
-      'At the carnival,',
-      '{name} is at the school carnival.',
-      'The fair is in town!',
-    ],
+    setupPhrases: ['At the carnival,', '{name} is at the school carnival.', 'The fair is in town!'],
     subjects: [
       { phrase: '{name}', conjugation: 'thirdPerson' },
       { phrase: '{Pronoun}', conjugation: 'thirdPerson' },

@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf'
 
 interface MusicFlashcardRequest {
   clef: 'treble' | 'bass' | 'both'
-  lowNote: number  // position relative to bottom line (0 = E for treble, G for bass)
+  lowNote: number // position relative to bottom line (0 = E for treble, G for bass)
   highNote: number
   layout: '1-up' | '4-up' | '6-up'
   showNoteNames: boolean
@@ -21,7 +21,7 @@ function getNoteName(position: number, clef: 'treble' | 'bass'): string {
   // Handle negative positions (below staff)
   const adjustedPos = ((position % 7) + 7) % 7
   const noteName = notes[adjustedPos]
-  
+
   // Special naming for certain positions
   if (clef === 'treble') {
     if (position === -2) return 'C' // Middle C
@@ -30,7 +30,7 @@ function getNoteName(position: number, clef: 'treble' | 'bass'): string {
   if (clef === 'bass') {
     if (position === 10) return 'C' // Middle C
   }
-  
+
   return noteName
 }
 
@@ -49,12 +49,12 @@ function drawMusicCard(
   const staffTop = y + height * 0.3
   const staffWidth = width * 0.85
   const staffLeft = x + (width - staffWidth) / 2
-  
+
   // Draw card border
   doc.setDrawColor(180)
   doc.setLineWidth(0.3)
   doc.roundedRect(x, y, width, height, 3, 3, 'S')
-  
+
   // Draw 5 staff lines
   doc.setDrawColor(0)
   doc.setLineWidth(0.3)
@@ -62,17 +62,17 @@ function drawMusicCard(
     const lineY = staffTop + i * lineGap * 2
     doc.line(staffLeft, lineY, staffLeft + staffWidth, lineY)
   }
-  
+
   // Draw clef (using text since we can't embed Bravura easily)
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   const clefText = clef === 'treble' ? 'G' : 'F'
   doc.text(clefText, staffLeft + 5, staffTop + lineGap * 4)
-  
+
   // Calculate note Y position
   const noteY = staffTop + (8 - position) * lineGap
   const noteX = staffLeft + staffWidth * 0.55
-  
+
   // Draw ledger lines if needed
   doc.setLineWidth(0.3)
   if (position < 0) {
@@ -93,11 +93,11 @@ function drawMusicCard(
       ledgerPos += 2
     }
   }
-  
+
   // Draw note (filled ellipse)
   doc.setFillColor('0')
   doc.ellipse(noteX, noteY, 4, 3, 'F')
-  
+
   // Draw note name in corner if requested
   if (showNoteName) {
     const noteName = getNoteName(position, clef)
@@ -107,7 +107,7 @@ function drawMusicCard(
     doc.text(noteName, x + width - 8, y + height - 5)
     doc.setTextColor(0)
   }
-  
+
   // Draw clef label at top
   doc.setFontSize(7)
   doc.setTextColor(120)
@@ -122,7 +122,7 @@ export const POST = withAuth(async (request) => {
 
     // Generate list of notes
     const notes: Array<{ position: number; clef: 'treble' | 'bass' }> = []
-    
+
     const addNotesForClef = (c: 'treble' | 'bass') => {
       for (let pos = lowNote; pos <= highNote; pos++) {
         notes.push({ position: pos, clef: c })
@@ -143,13 +143,13 @@ export const POST = withAuth(async (request) => {
       format: 'letter',
     })
 
-    const pageWidth = 215.9  // Letter width in mm
+    const pageWidth = 215.9 // Letter width in mm
     const pageHeight = 279.4 // Letter height in mm
     const margin = 12
 
     // Layout configuration
     let cols: number, rows: number, cardWidth: number, cardHeight: number
-    
+
     switch (layout) {
       case '1-up':
         cols = 1

@@ -3,12 +3,7 @@ import { PROP_3 } from '../propositions/prop3'
 import { validateStep } from '../propositions/validation'
 import { resolveSelector } from '../engine/selectors'
 import { MACRO_REGISTRY } from '../engine/macros'
-import {
-  initializeGiven,
-  addCircle,
-  addPoint,
-  getPoint,
-} from '../engine/constructionState'
+import { initializeGiven, addCircle, addPoint, getPoint } from '../engine/constructionState'
 import { findNewIntersections } from '../engine/intersections'
 import { createFactStore, queryEquality } from '../engine/factStore'
 import { deriveDef15Facts } from '../engine/factDerivation'
@@ -44,8 +39,17 @@ describe('Proposition I.3 full construction', () => {
     const macro = MACRO_REGISTRY[2]
     expect(macro).toBeDefined()
 
-    const outputLabels = steps[0].expected.type === 'macro' ? steps[0].expected.outputLabels : undefined
-    const macroResult = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], candidates, factStore, 0, false, outputLabels)
+    const outputLabels =
+      steps[0].expected.type === 'macro' ? steps[0].expected.outputLabels : undefined
+    const macroResult = macro.execute(
+      state,
+      ['pt-A', 'pt-C', 'pt-D'],
+      candidates,
+      factStore,
+      0,
+      false,
+      outputLabels
+    )
     state = macroResult.state
     candidates = macroResult.candidates
 
@@ -64,7 +68,7 @@ describe('Proposition I.3 full construction', () => {
     expect(queryEquality(factStore, dpAE, dpCD)).toBe(true)
 
     // Verify macro produced a segment
-    expect(macroResult.addedElements.some(e => e.kind === 'segment')).toBe(true)
+    expect(macroResult.addedElements.some((e) => e.kind === 'segment')).toBe(true)
 
     // ── Step 1: Draw circle centered at A through E ──
     const cirAE = addCircle(state, 'pt-A', 'pt-E')
@@ -83,7 +87,7 @@ describe('Proposition I.3 full construction', () => {
     expect(resolvedOfB).toBeTruthy() // should resolve to seg-AB
 
     // Find matching candidate
-    const step2Candidates = candidates.filter(c => {
+    const step2Candidates = candidates.filter((c) => {
       return (
         (c.ofA === resolvedOfA && c.ofB === resolvedOfB) ||
         (c.ofA === resolvedOfB && c.ofB === resolvedOfA)
@@ -120,7 +124,15 @@ describe('Proposition I.3 full construction', () => {
     const factStore = createFactStore()
 
     const macro = MACRO_REGISTRY[2]
-    const macroResult = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], candidates, factStore, 0, false, { result: 'E' })
+    const macroResult = macro.execute(
+      state,
+      ['pt-A', 'pt-C', 'pt-D'],
+      candidates,
+      factStore,
+      0,
+      false,
+      { result: 'E' }
+    )
 
     const ptA = getPoint(macroResult.state, 'pt-A')!
     const ptC = getPoint(macroResult.state, 'pt-C')!
@@ -139,7 +151,15 @@ describe('Proposition I.3 full construction', () => {
 
     // Execute macro
     const macro = MACRO_REGISTRY[2]
-    const macroResult = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], candidates, factStore, 0, false, { result: 'E' })
+    const macroResult = macro.execute(
+      state,
+      ['pt-A', 'pt-C', 'pt-D'],
+      candidates,
+      factStore,
+      0,
+      false,
+      { result: 'E' }
+    )
     state = macroResult.state
     candidates = macroResult.candidates
 
@@ -154,9 +174,10 @@ describe('Proposition I.3 full construction', () => {
     const resolvedOfA = step2.ofA != null ? resolveSelector(step2.ofA, state) : null
     const resolvedOfB = step2.ofB != null ? resolveSelector(step2.ofB, state) : null
 
-    const matchingCands = candidates.filter(c =>
-      (c.ofA === resolvedOfA && c.ofB === resolvedOfB) ||
-      (c.ofA === resolvedOfB && c.ofB === resolvedOfA),
+    const matchingCands = candidates.filter(
+      (c) =>
+        (c.ofA === resolvedOfA && c.ofB === resolvedOfB) ||
+        (c.ofA === resolvedOfB && c.ofB === resolvedOfA)
     )
     expect(matchingCands.length).toBeGreaterThanOrEqual(1)
 

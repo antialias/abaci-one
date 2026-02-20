@@ -28,9 +28,9 @@ export const trick1089Game: GameDefinition = {
     '⚠️ CRITICAL — PRESERVING THE MAGIC:\n' +
     '- NEVER ask the child what number they picked, what they wrote down, or what any intermediate result is.\n' +
     '- NEVER ask "what did you get?" at ANY step. You do NOT need to know their numbers.\n' +
-    '- The child keeps ALL their work SECRET until the big reveal. That\'s what makes it magical.\n' +
+    "- The child keeps ALL their work SECRET until the big reveal. That's what makes it magical.\n" +
     '- Only ask "let me know when you\'re ready" or "tell me when you\'ve got it" to pace the steps.\n' +
-    '- If the child volunteers a number, that\'s fine — but never prompt them to share.\n\n' +
+    "- If the child volunteers a number, that's fine — but never prompt them to share.\n\n" +
     'SETUP:\n' +
     '- Tell the child to grab a piece of paper and something to write with.\n' +
     '- Build mystery: "I\'m going to read your mind using math..."\n\n' +
@@ -41,9 +41,9 @@ export const trick1089Game: GameDefinition = {
     '   If they try to tell you: "No no, keep it secret! I\'m going to figure it out with my mind."\n\n' +
     '2. "Now write the digits in reverse order underneath it."\n\n' +
     '3. "Subtract the smaller number from the bigger one. Take your time, no rush. ' +
-    'Oh — and if your answer is less than 100, write a zero in front so it\'s 3 digits. ' +
+    "Oh — and if your answer is less than 100, write a zero in front so it's 3 digits. " +
     'Tell me when you\'re done!"\n' +
-    '   Do NOT ask what they got. Just wait for them to say they\'re ready.\n\n' +
+    "   Do NOT ask what they got. Just wait for them to say they're ready.\n\n" +
     '4. "Now reverse THAT number — write those digits backwards."\n\n' +
     '5. "Add those last two numbers together... and DON\'T tell me the answer!"\n' +
     '   Wait a moment for them to finish.\n\n' +
@@ -70,7 +70,7 @@ export const trick1089Game: GameDefinition = {
     '- Be a showman! Build mystery and suspense.\n' +
     '- Wait patiently while they do the math — they might need time.\n' +
     '- Be amazed and dramatic at the reveal, even though you know the trick.\n' +
-    '- Call end_game when they\'re ready to move on.',
+    "- Call end_game when they're ready to move on.",
 
   onStart(): GameStartResult {
     return {

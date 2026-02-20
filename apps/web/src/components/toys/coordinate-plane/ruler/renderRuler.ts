@@ -1,4 +1,10 @@
-import type { RulerState, VisualRulerState, EquationProbeState, Fraction, SlopeGuideState } from './types'
+import type {
+  RulerState,
+  VisualRulerState,
+  EquationProbeState,
+  Fraction,
+  SlopeGuideState,
+} from './types'
 import type { CoordinatePlaneState } from '../types'
 import { worldToScreen2D, screenToWorld2D } from '../../shared/coordinateConversions'
 import { SYSTEM_FONT } from '../../shared/tickMath'
@@ -30,27 +36,37 @@ export function rulerToScreen(
   ruler: RulerState | VisualRulerState,
   state: CoordinatePlaneState,
   cssWidth: number,
-  cssHeight: number,
+  cssHeight: number
 ): RulerScreenInfo {
   const a = worldToScreen2D(
-    ruler.ax, ruler.ay,
-    state.center.x, state.center.y,
-    state.pixelsPerUnit.x, state.pixelsPerUnit.y,
-    cssWidth, cssHeight,
+    ruler.ax,
+    ruler.ay,
+    state.center.x,
+    state.center.y,
+    state.pixelsPerUnit.x,
+    state.pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
   )
   const b = worldToScreen2D(
-    ruler.bx, ruler.by,
-    state.center.x, state.center.y,
-    state.pixelsPerUnit.x, state.pixelsPerUnit.y,
-    cssWidth, cssHeight,
+    ruler.bx,
+    ruler.by,
+    state.center.x,
+    state.center.y,
+    state.pixelsPerUnit.x,
+    state.pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
   )
   const dx = b.x - a.x
   const dy = b.y - a.y
   const length = Math.sqrt(dx * dx + dy * dy)
   const angle = Math.atan2(dy, dx)
   return {
-    ax: a.x, ay: a.y,
-    bx: b.x, by: b.y,
+    ax: a.x,
+    ay: a.y,
+    bx: b.x,
+    by: b.y,
     midX: (a.x + b.x) / 2,
     midY: (a.y + b.y) / 2,
     angle,
@@ -76,7 +92,7 @@ export function renderRuler(
   isDark: boolean,
   activeHandle: 'handleA' | 'handleB' | 'body' | null,
   probeState?: EquationProbeState,
-  slopeGuideState?: SlopeGuideState | null,
+  slopeGuideState?: SlopeGuideState | null
 ) {
   const info = rulerToScreen(visualRuler, planeState, cssWidth, cssHeight)
   if (info.length < 0.5) return // degenerate
@@ -97,8 +113,8 @@ export function renderRuler(
   // Extend to viewport edge to communicate infinite slope line
 
   const laserCore = isDark
-    ? 'rgba(251, 191, 36, 0.6)'  // amber-400
-    : 'rgba(217, 119, 6, 0.55)'  // amber-600
+    ? 'rgba(251, 191, 36, 0.6)' // amber-400
+    : 'rgba(217, 119, 6, 0.55)' // amber-600
   const laserGlow = isDark
     ? 'rgba(251, 191, 36, 0.12)' // soft outer glow
     : 'rgba(217, 119, 6, 0.10)'
@@ -170,9 +186,7 @@ export function renderRuler(
   ctx.fill()
 
   // Edge lines — amber tinted to match body
-  const edgeColor = isDark
-    ? 'rgba(251, 191, 36, 0.6)'
-    : 'rgba(217, 119, 6, 0.5)'
+  const edgeColor = isDark ? 'rgba(251, 191, 36, 0.6)' : 'rgba(217, 119, 6, 0.5)'
   ctx.strokeStyle = edgeColor
   ctx.lineWidth = 0.5
 
@@ -195,9 +209,7 @@ export function renderRuler(
   const steps = Math.round(worldDist)
 
   if (steps > 0 && steps <= 200) {
-    const tickColor = isDark
-      ? 'rgba(129, 140, 248, 0.4)'
-      : 'rgba(100, 116, 139, 0.35)'
+    const tickColor = isDark ? 'rgba(129, 140, 248, 0.4)' : 'rgba(100, 116, 139, 0.35)'
     ctx.strokeStyle = tickColor
     ctx.lineWidth = 0.75
 
@@ -211,7 +223,7 @@ export function renderRuler(
       ctx.moveTo(tx + perpX * BODY_HALF_WIDTH, ty + perpY * BODY_HALF_WIDTH)
       ctx.lineTo(
         tx + perpX * (BODY_HALF_WIDTH + TICK_LENGTH),
-        ty + perpY * (BODY_HALF_WIDTH + TICK_LENGTH),
+        ty + perpY * (BODY_HALF_WIDTH + TICK_LENGTH)
       )
       ctx.stroke()
     }
@@ -225,21 +237,43 @@ export function renderRuler(
   // ── Coordinate awareness ──────────────────────────────────────
 
   drawCoordinateAwareness(
-    ctx, ax, ay, snappedRuler.ax, snappedRuler.ay,
-    bx, by, planeState, cssWidth, cssHeight, isDark,
+    ctx,
+    ax,
+    ay,
+    snappedRuler.ax,
+    snappedRuler.ay,
+    bx,
+    by,
+    planeState,
+    cssWidth,
+    cssHeight,
+    isDark
   )
   drawCoordinateAwareness(
-    ctx, bx, by, snappedRuler.bx, snappedRuler.by,
-    ax, ay, planeState, cssWidth, cssHeight, isDark,
+    ctx,
+    bx,
+    by,
+    snappedRuler.bx,
+    snappedRuler.by,
+    ax,
+    ay,
+    planeState,
+    cssWidth,
+    cssHeight,
+    isDark
   )
 
   // ── Probe dot + coordinate awareness (equation slider) ──────
   if (probeState?.active) {
     const probe = worldToScreen2D(
-      probeState.worldX, probeState.worldY,
-      planeState.center.x, planeState.center.y,
-      planeState.pixelsPerUnit.x, planeState.pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      probeState.worldX,
+      probeState.worldY,
+      planeState.center.x,
+      planeState.center.y,
+      planeState.pixelsPerUnit.x,
+      planeState.pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     )
     const probeRadius = 4
     const probeColor = isDark ? 'rgba(129, 140, 248, 0.9)' : 'rgba(79, 70, 229, 0.9)'
@@ -251,7 +285,16 @@ export function renderRuler(
 
     // Dashed projection lines + pills when near a solve point
     if (probeState.nearX != null || probeState.nearY != null) {
-      drawProbeCoordinateAwareness(ctx, probe.x, probe.y, probeState, planeState, cssWidth, cssHeight, isDark)
+      drawProbeCoordinateAwareness(
+        ctx,
+        probe.x,
+        probe.y,
+        probeState,
+        planeState,
+        cssWidth,
+        cssHeight,
+        isDark
+      )
     }
   }
 
@@ -262,14 +305,18 @@ export function renderRuler(
 function drawCoordinateAwareness(
   ctx: CanvasRenderingContext2D,
   /** Screen position of this handle */
-  hx: number, hy: number,
+  hx: number,
+  hy: number,
   /** Snapped integer coordinates for labels */
-  worldX: number, worldY: number,
+  worldX: number,
+  worldY: number,
   /** Screen position of the other handle (for floating label direction) */
-  otherX: number, otherY: number,
+  otherX: number,
+  otherY: number,
   planeState: CoordinatePlaneState,
-  cssWidth: number, cssHeight: number,
-  isDark: boolean,
+  cssWidth: number,
+  cssHeight: number,
+  isDark: boolean
 ) {
   const { center, pixelsPerUnit } = planeState
 
@@ -292,14 +339,15 @@ function drawCoordinateAwareness(
 /** Mode A: Dashed projection lines to axes with coordinate pills */
 function drawProjectionLines(
   ctx: CanvasRenderingContext2D,
-  hx: number, hy: number,
-  worldX: number, worldY: number,
-  xAxisScreenY: number, yAxisScreenX: number,
-  isDark: boolean,
+  hx: number,
+  hy: number,
+  worldX: number,
+  worldY: number,
+  xAxisScreenY: number,
+  yAxisScreenX: number,
+  isDark: boolean
 ) {
-  const dashColor = isDark
-    ? 'rgba(129, 140, 248, 0.35)'
-    : 'rgba(79, 70, 229, 0.35)'
+  const dashColor = isDark ? 'rgba(129, 140, 248, 0.35)' : 'rgba(79, 70, 229, 0.35)'
 
   ctx.save()
   ctx.setLineDash([4, 3])
@@ -329,10 +377,11 @@ function drawProjectionLines(
 /** Draw a small pill label at an axis intersection */
 function drawCoordinatePill(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
+  x: number,
+  y: number,
   text: string,
   isDark: boolean,
-  axis: 'x-axis' | 'y-axis',
+  axis: 'x-axis' | 'y-axis'
 ) {
   ctx.save()
   ctx.font = `11px ${SYSTEM_FONT}`
@@ -381,10 +430,13 @@ function drawCoordinatePill(
 /** Mode B: Floating (x, y) label near the handle, away from ruler body */
 function drawFloatingLabel(
   ctx: CanvasRenderingContext2D,
-  hx: number, hy: number,
-  worldX: number, worldY: number,
-  otherX: number, otherY: number,
-  isDark: boolean,
+  hx: number,
+  hy: number,
+  worldX: number,
+  worldY: number,
+  otherX: number,
+  otherY: number,
+  isDark: boolean
 ) {
   // Direction away from the other handle
   const dx = hx - otherX
@@ -440,9 +492,10 @@ function drawFloatingLabel(
 
 function drawHandle(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
+  x: number,
+  y: number,
   isDark: boolean,
-  active: boolean,
+  active: boolean
 ) {
   const radius = HANDLE_RADIUS
 
@@ -460,21 +513,21 @@ function drawHandle(
   ctx.beginPath()
   ctx.arc(x, y, radius, 0, Math.PI * 2)
   ctx.fillStyle = isDark
-    ? (active ? 'rgba(99, 102, 241, 0.85)' : 'rgba(71, 85, 105, 0.7)')
-    : (active ? 'rgba(79, 70, 229, 0.85)' : 'rgba(203, 213, 225, 0.8)')
+    ? active
+      ? 'rgba(99, 102, 241, 0.85)'
+      : 'rgba(71, 85, 105, 0.7)'
+    : active
+      ? 'rgba(79, 70, 229, 0.85)'
+      : 'rgba(203, 213, 225, 0.8)'
   ctx.fill()
 
-  ctx.strokeStyle = isDark
-    ? 'rgba(129, 140, 248, 0.6)'
-    : 'rgba(100, 116, 139, 0.5)'
+  ctx.strokeStyle = isDark ? 'rgba(129, 140, 248, 0.6)' : 'rgba(100, 116, 139, 0.5)'
   ctx.lineWidth = 1.5
   ctx.stroke()
 
   // Crosshair
   const crossSize = 4
-  ctx.strokeStyle = isDark
-    ? 'rgba(226, 232, 240, 0.8)'
-    : 'rgba(30, 41, 59, 0.6)'
+  ctx.strokeStyle = isDark ? 'rgba(226, 232, 240, 0.8)' : 'rgba(30, 41, 59, 0.6)'
   ctx.lineWidth = 1
 
   ctx.beginPath()
@@ -498,18 +551,28 @@ function drawSlopeGuides(
   planeState: CoordinatePlaneState,
   cssWidth: number,
   cssHeight: number,
-  isDark: boolean,
+  isDark: boolean
 ) {
   const { center, pixelsPerUnit } = planeState
   const anchor = worldToScreen2D(
-    state.anchorX, state.anchorY,
-    center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-    cssWidth, cssHeight,
+    state.anchorX,
+    state.anchorY,
+    center.x,
+    center.y,
+    pixelsPerUnit.x,
+    pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
   )
   const handle = worldToScreen2D(
-    state.handleX, state.handleY,
-    center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-    cssWidth, cssHeight,
+    state.handleX,
+    state.handleY,
+    center.x,
+    center.y,
+    pixelsPerUnit.x,
+    pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
   )
   const viewportDiag = Math.sqrt(cssWidth * cssWidth + cssHeight * cssHeight)
 
@@ -517,8 +580,26 @@ function drawSlopeGuides(
   const fadeRadius = Math.min(cssWidth, cssHeight) * 0.5
 
   // Compute visible world-coordinate range (with 1-unit margin)
-  const topLeft = screenToWorld2D(0, 0, center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y, cssWidth, cssHeight)
-  const bottomRight = screenToWorld2D(cssWidth, cssHeight, center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y, cssWidth, cssHeight)
+  const topLeft = screenToWorld2D(
+    0,
+    0,
+    center.x,
+    center.y,
+    pixelsPerUnit.x,
+    pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
+  )
+  const bottomRight = screenToWorld2D(
+    cssWidth,
+    cssHeight,
+    center.x,
+    center.y,
+    pixelsPerUnit.x,
+    pixelsPerUnit.y,
+    cssWidth,
+    cssHeight
+  )
   const minWorldX = Math.min(topLeft.x, bottomRight.x) - 1
   const maxWorldX = Math.max(topLeft.x, bottomRight.x) + 1
   const minWorldY = Math.min(topLeft.y, bottomRight.y) - 1
@@ -532,8 +613,13 @@ function drawSlopeGuides(
 
     // ── Find nearest drop point first (need it for opacity) ────
     const intPoints = guideIntegerIntersections(
-      state.anchorX, state.anchorY, slope,
-      minWorldX, maxWorldX, minWorldY, maxWorldY,
+      state.anchorX,
+      state.anchorY,
+      slope,
+      minWorldX,
+      maxWorldX,
+      minWorldY,
+      maxWorldY
     )
 
     let nearest: { x: number; y: number } | null = null
@@ -552,15 +638,18 @@ function drawSlopeGuides(
     if (!nearest) continue
 
     const sp = worldToScreen2D(
-      nearest.x, nearest.y,
-      center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      nearest.x,
+      nearest.y,
+      center.x,
+      center.y,
+      pixelsPerUnit.x,
+      pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     )
 
     // Screen distance from handle to nearest drop point
-    const screenDist = Math.sqrt(
-      (sp.x - handle.x) ** 2 + (sp.y - handle.y) ** 2,
-    )
+    const screenDist = Math.sqrt((sp.x - handle.x) ** 2 + (sp.y - handle.y) ** 2)
     if (screenDist >= fadeRadius) continue
 
     const opacity = 1 - screenDist / fadeRadius
@@ -617,10 +706,11 @@ function drawSlopeGuides(
 /** Draw a small slope label pill at the given screen position */
 function drawSlopePill(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
+  x: number,
+  y: number,
   text: string,
   opacity: number,
-  isDark: boolean,
+  isDark: boolean
 ) {
   ctx.save()
   ctx.globalAlpha = opacity
@@ -671,11 +761,13 @@ function formatFractionText(f: Fraction): string {
 /** Draw dashed projection lines + coordinate pills for the probe solve point */
 function drawProbeCoordinateAwareness(
   ctx: CanvasRenderingContext2D,
-  px: number, py: number,
+  px: number,
+  py: number,
   probeState: EquationProbeState,
   planeState: CoordinatePlaneState,
-  cssWidth: number, cssHeight: number,
-  isDark: boolean,
+  cssWidth: number,
+  cssHeight: number,
+  isDark: boolean
 ) {
   const { center, pixelsPerUnit } = planeState
 
@@ -688,9 +780,7 @@ function drawProbeCoordinateAwareness(
 
   if (!xAxisVisible && !yAxisVisible) return
 
-  const dashColor = isDark
-    ? 'rgba(129, 140, 248, 0.5)'
-    : 'rgba(79, 70, 229, 0.5)'
+  const dashColor = isDark ? 'rgba(129, 140, 248, 0.5)' : 'rgba(79, 70, 229, 0.5)'
 
   ctx.save()
   ctx.setLineDash([4, 3])
@@ -702,9 +792,14 @@ function drawProbeCoordinateAwareness(
   if (probeState.nearX != null && probeState.solvedAtNearX && xAxisVisible) {
     // Snap the vertical line to the exact integer x position
     const snapScreenX = worldToScreen2D(
-      probeState.nearX, 0,
-      center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      probeState.nearX,
+      0,
+      center.x,
+      center.y,
+      pixelsPerUnit.x,
+      pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     ).x
 
     ctx.beginPath()
@@ -721,9 +816,14 @@ function drawProbeCoordinateAwareness(
   if (probeState.nearY != null && probeState.solvedAtNearY && yAxisVisible) {
     // Snap the horizontal line to the exact integer y position
     const snapScreenY = worldToScreen2D(
-      0, probeState.nearY,
-      center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      0,
+      probeState.nearY,
+      center.x,
+      center.y,
+      pixelsPerUnit.x,
+      pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     ).y
 
     ctx.beginPath()
@@ -741,9 +841,14 @@ function drawProbeCoordinateAwareness(
   if (probeState.nearX != null && probeState.solvedAtNearX && yAxisVisible) {
     // Solved y → pill on y-axis
     const solvedYScreen = worldToScreen2D(
-      0, probeState.solvedAtNearX.yFrac.num / probeState.solvedAtNearX.yFrac.den,
-      center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      0,
+      probeState.solvedAtNearX.yFrac.num / probeState.solvedAtNearX.yFrac.den,
+      center.x,
+      center.y,
+      pixelsPerUnit.x,
+      pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     ).y
 
     ctx.beginPath()
@@ -752,15 +857,27 @@ function drawProbeCoordinateAwareness(
     ctx.stroke()
 
     ctx.setLineDash([])
-    drawCoordinatePill(ctx, yAxisScreenX, solvedYScreen, formatFractionText(probeState.solvedAtNearX.yFrac), isDark, 'y-axis')
+    drawCoordinatePill(
+      ctx,
+      yAxisScreenX,
+      solvedYScreen,
+      formatFractionText(probeState.solvedAtNearX.yFrac),
+      isDark,
+      'y-axis'
+    )
   }
 
   if (probeState.nearY != null && probeState.solvedAtNearY && xAxisVisible) {
     // Solved x → pill on x-axis
     const solvedXScreen = worldToScreen2D(
-      probeState.solvedAtNearY.xFrac.num / probeState.solvedAtNearY.xFrac.den, 0,
-      center.x, center.y, pixelsPerUnit.x, pixelsPerUnit.y,
-      cssWidth, cssHeight,
+      probeState.solvedAtNearY.xFrac.num / probeState.solvedAtNearY.xFrac.den,
+      0,
+      center.x,
+      center.y,
+      pixelsPerUnit.x,
+      pixelsPerUnit.y,
+      cssWidth,
+      cssHeight
     ).x
 
     ctx.beginPath()
@@ -769,7 +886,14 @@ function drawProbeCoordinateAwareness(
     ctx.stroke()
 
     ctx.setLineDash([])
-    drawCoordinatePill(ctx, solvedXScreen, xAxisScreenY, formatFractionText(probeState.solvedAtNearY.xFrac), isDark, 'x-axis')
+    drawCoordinatePill(
+      ctx,
+      solvedXScreen,
+      xAxisScreenY,
+      formatFractionText(probeState.solvedAtNearY.xFrac),
+      isDark,
+      'x-axis'
+    )
   }
 
   ctx.setLineDash([])

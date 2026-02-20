@@ -1,4 +1,9 @@
-import type { PropositionDef, ConstructionElement, ConstructionState, TutorialSubStep } from '../types'
+import type {
+  PropositionDef,
+  ConstructionElement,
+  ConstructionState,
+  TutorialSubStep,
+} from '../types'
 import { BYRNE } from '../types'
 import type { FactStore } from '../engine/factStore'
 import type { ProofFact } from '../engine/facts'
@@ -30,48 +35,54 @@ function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
 function deriveProp4Conclusion(
   store: FactStore,
   _state: ConstructionState,
-  atStep: number,
+  atStep: number
 ): ProofFact[] {
   const allNewFacts: ProofFact[] = []
 
   // Distance: BC = EF
   const dpBC = distancePair('pt-B', 'pt-C')
   const dpEF = distancePair('pt-E', 'pt-F')
-  allNewFacts.push(...addFact(
-    store,
-    dpBC,
-    dpEF,
-    { type: 'cn4' },
-    'BC = EF',
-    'C.N.4: Since AB = DE, AC = DF, and ∠BAC = ∠EDF, triangles coincide by superposition',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addFact(
+      store,
+      dpBC,
+      dpEF,
+      { type: 'cn4' },
+      'BC = EF',
+      'C.N.4: Since AB = DE, AC = DF, and ∠BAC = ∠EDF, triangles coincide by superposition',
+      atStep
+    )
+  )
 
   // Angle: ∠ABC = ∠DEF
   const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
   const angDEF = angleMeasure('pt-E', 'pt-D', 'pt-F')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angABC,
-    angDEF,
-    { type: 'cn4' },
-    '∠ABC = ∠DEF',
-    'C.N.4: Remaining angles of congruent triangles coincide',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angABC,
+      angDEF,
+      { type: 'cn4' },
+      '∠ABC = ∠DEF',
+      'C.N.4: Remaining angles of congruent triangles coincide',
+      atStep
+    )
+  )
 
   // Angle: ∠ACB = ∠DFE
   const angACB = angleMeasure('pt-C', 'pt-A', 'pt-B')
   const angDFE = angleMeasure('pt-F', 'pt-D', 'pt-E')
-  allNewFacts.push(...addAngleFact(
-    store,
-    angACB,
-    angDFE,
-    { type: 'cn4' },
-    '∠ACB = ∠DFE',
-    'C.N.4: Remaining angles of congruent triangles coincide',
-    atStep,
-  ))
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angACB,
+      angDFE,
+      { type: 'cn4' },
+      '∠ACB = ∠DFE',
+      'C.N.4: Remaining angles of congruent triangles coincide',
+      atStep
+    )
+  )
 
   return allNewFacts
 }
@@ -107,7 +118,7 @@ const THETA = 0.4 // rotation angle in radians
  *   E = D + Rot(θ)·(B−A), F = D + Rot(θ)·(C−A)
  */
 export function computeProp4GivenElements(
-  positions: Map<string, { x: number; y: number }>,
+  positions: Map<string, { x: number; y: number }>
 ): ConstructionElement[] {
   const A = positions.get('pt-A') ?? DEFAULT_A
   const B = positions.get('pt-B') ?? DEFAULT_B
@@ -131,15 +142,50 @@ export function computeProp4GivenElements(
     { kind: 'point', id: 'pt-A', x: A.x, y: A.y, label: 'A', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-B', x: B.x, y: B.y, label: 'B', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-C', x: C.x, y: C.y, label: 'C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AC', fromId: 'pt-A', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-BC', fromId: 'pt-B', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'segment',
+      id: 'seg-AB',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-AC',
+      fromId: 'pt-A',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-BC',
+      fromId: 'pt-B',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
     // Triangle DEF — 3 points + 2 segments (EF missing — user draws it)
     { kind: 'point', id: 'pt-D', x: D.x, y: D.y, label: 'D', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-E', x: E.x, y: E.y, label: 'E', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-F', x: F.x, y: F.y, label: 'F', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-DE', fromId: 'pt-D', toId: 'pt-E', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-DF', fromId: 'pt-D', toId: 'pt-F', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'segment',
+      id: 'seg-DE',
+      fromId: 'pt-D',
+      toId: 'pt-E',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-DF',
+      fromId: 'pt-D',
+      toId: 'pt-F',
+      color: BYRNE.given,
+      origin: 'given',
+    },
   ] as ConstructionElement[]
 }
 
@@ -161,7 +207,8 @@ const F = {
 
 export const PROP_4: PropositionDef = {
   id: 4,
-  title: 'If two triangles have two sides and the included angle equal, the triangles are congruent',
+  title:
+    'If two triangles have two sides and the included angle equal, the triangles are congruent',
   kind: 'theorem',
   resultSegments: [
     { fromId: 'pt-B', toId: 'pt-C' },
@@ -189,11 +236,13 @@ export const PROP_4: PropositionDef = {
       { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' },
     ],
   ],
-  givenAngleFacts: [{
-    left: { vertex: 'pt-A', ray1: 'pt-B', ray2: 'pt-C' },
-    right: { vertex: 'pt-D', ray1: 'pt-E', ray2: 'pt-F' },
-    statement: '∠BAC = ∠EDF',
-  }],
+  givenAngleFacts: [
+    {
+      left: { vertex: 'pt-A', ray1: 'pt-B', ray2: 'pt-C' },
+      right: { vertex: 'pt-D', ray1: 'pt-E', ray2: 'pt-F' },
+      statement: '∠BAC = ∠EDF',
+    },
+  ],
   theoremConclusion: '△ABC = △DEF\n∠ABC = ∠DEF, ∠ACB = ∠DFE',
   superpositionFlash: {
     pairs: [
@@ -208,18 +257,85 @@ export const PROP_4: PropositionDef = {
   computeGivenElements: computeProp4GivenElements,
   givenElements: [
     // Triangle ABC — all 3 points + 3 segments
-    { kind: 'point', id: 'pt-A', x: DEFAULT_A.x, y: DEFAULT_A.y, label: 'A', color: BYRNE.given, origin: 'given' },
-    { kind: 'point', id: 'pt-B', x: DEFAULT_B.x, y: DEFAULT_B.y, label: 'B', color: BYRNE.given, origin: 'given' },
-    { kind: 'point', id: 'pt-C', x: DEFAULT_C.x, y: DEFAULT_C.y, label: 'C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AB', fromId: 'pt-A', toId: 'pt-B', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-AC', fromId: 'pt-A', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-BC', fromId: 'pt-B', toId: 'pt-C', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'point',
+      id: 'pt-A',
+      x: DEFAULT_A.x,
+      y: DEFAULT_A.y,
+      label: 'A',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'point',
+      id: 'pt-B',
+      x: DEFAULT_B.x,
+      y: DEFAULT_B.y,
+      label: 'B',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'point',
+      id: 'pt-C',
+      x: DEFAULT_C.x,
+      y: DEFAULT_C.y,
+      label: 'C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-AB',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-AC',
+      fromId: 'pt-A',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-BC',
+      fromId: 'pt-B',
+      toId: 'pt-C',
+      color: BYRNE.given,
+      origin: 'given',
+    },
     // Triangle DEF — 3 points + 2 segments (EF missing — user draws it)
-    { kind: 'point', id: 'pt-D', x: DEFAULT_D.x, y: DEFAULT_D.y, label: 'D', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'point',
+      id: 'pt-D',
+      x: DEFAULT_D.x,
+      y: DEFAULT_D.y,
+      label: 'D',
+      color: BYRNE.given,
+      origin: 'given',
+    },
     { kind: 'point', id: 'pt-E', x: E.x, y: E.y, label: 'E', color: BYRNE.given, origin: 'given' },
     { kind: 'point', id: 'pt-F', x: F.x, y: F.y, label: 'F', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-DE', fromId: 'pt-D', toId: 'pt-E', color: BYRNE.given, origin: 'given' },
-    { kind: 'segment', id: 'seg-DF', fromId: 'pt-D', toId: 'pt-F', color: BYRNE.given, origin: 'given' },
+    {
+      kind: 'segment',
+      id: 'seg-DE',
+      fromId: 'pt-D',
+      toId: 'pt-E',
+      color: BYRNE.given,
+      origin: 'given',
+    },
+    {
+      kind: 'segment',
+      id: 'seg-DF',
+      fromId: 'pt-D',
+      toId: 'pt-F',
+      color: BYRNE.given,
+      origin: 'given',
+    },
   ] as ConstructionElement[],
   steps: [
     {
@@ -242,18 +358,16 @@ export const PROP_4: PropositionDef = {
       },
       {
         pointId: 'pt-B',
-        speech:
-          'Watch the matching side of DEF change too. Both triangles stay congruent!',
+        speech: 'Watch the matching side of DEF change too. Both triangles stay congruent!',
       },
       {
         pointId: 'pt-C',
-        speech:
-          'See how EF always equals BC? The third side always matches.',
+        speech: 'See how EF always equals BC? The third side always matches.',
       },
       {
         pointId: 'pt-D',
         speech:
-          'Watch the congruence hold everywhere. It doesn\'t matter where the second triangle sits!',
+          "Watch the congruence hold everywhere. It doesn't matter where the second triangle sits!",
       },
     ],
   },

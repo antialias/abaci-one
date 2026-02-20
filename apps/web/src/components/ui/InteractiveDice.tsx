@@ -107,12 +107,20 @@ function DiceIcon({
   // Dark mode: lighter indigo with more contrast against dark backgrounds
   // Light mode: deeper indigo that stands out against light backgrounds
   const faceBackground = colorScheme
-    ? (isDark ? colorScheme.faceDark : colorScheme.faceLight)
-    : (isDark ? '#818cf8' : '#4f46e5') // indigo-400 dark, indigo-600 light
+    ? isDark
+      ? colorScheme.faceDark
+      : colorScheme.faceLight
+    : isDark
+      ? '#818cf8'
+      : '#4f46e5' // indigo-400 dark, indigo-600 light
   const faceBorder = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.5)'
   const dotColor = colorScheme
-    ? (isDark ? colorScheme.dotDark : colorScheme.dotLight)
-    : (isDark ? '#1e1b4b' : 'white') // indigo-950 dots on light bg in dark mode
+    ? isDark
+      ? colorScheme.dotDark
+      : colorScheme.dotLight
+    : isDark
+      ? '#1e1b4b'
+      : 'white' // indigo-950 dots on light bg in dark mode
 
   // Render dots for a face
   const renderDots = (face: number) => {
@@ -297,7 +305,9 @@ export function InteractiveDice({
   // Track which face we're showing (for ensuring consecutive rolls differ)
   const minFace = onRolledValue ? 1 : 2
   const faceCount = onRolledValue ? 6 : 5
-  const [currentFace, setCurrentFace] = useState(() => Math.floor(Math.random() * faceCount) + minFace)
+  const [currentFace, setCurrentFace] = useState(
+    () => Math.floor(Math.random() * faceCount) + minFace
+  )
 
   // Draggable dice state with physics simulation
   const [isDragging, setIsDragging] = useState(false)
@@ -380,7 +390,8 @@ export function InteractiveDice({
 
       // Ensure it's different from the current face
       const maxFace = minFace + faceCount - 1
-      const targetFace = baseFace === currentFace ? (baseFace === maxFace ? minFace : baseFace + 1) : baseFace
+      const targetFace =
+        baseFace === currentFace ? (baseFace === maxFace ? minFace : baseFace + 1) : baseFace
 
       // Add 1-2 full spins for visual drama
       const extraSpins = Math.floor(Math.random() * 2) + 1
@@ -440,9 +451,9 @@ export function InteractiveDice({
       right: 'Y',
     }
     const TIP_SIGN: Record<TipDirection, 1 | -1> = {
-      up: -1,    // rotateX -= 90
-      down: 1,   // rotateX += 90
-      left: 1,   // rotateY += 90
+      up: -1, // rotateX -= 90
+      down: 1, // rotateX += 90
+      left: 1, // rotateY += 90
       right: -1, // rotateY -= 90
     }
 
@@ -523,10 +534,18 @@ export function InteractiveDice({
           // moved by half the dice size in the tip direction
           const halfSize = DICE_SIZE / 2
           switch (tip.tipDirection) {
-            case 'up': p.y -= halfSize; break
-            case 'down': p.y += halfSize; break
-            case 'left': p.x -= halfSize; break
-            case 'right': p.x += halfSize; break
+            case 'up':
+              p.y -= halfSize
+              break
+            case 'down':
+              p.y += halfSize
+              break
+            case 'left':
+              p.x -= halfSize
+              break
+            case 'right':
+              p.x += halfSize
+              break
           }
 
           // Update face state

@@ -36,65 +36,68 @@ export interface PreflightResult {
  *
  * Returns a structured result indicating if training can proceed.
  */
-export const GET = withAuth(async () => {
-  // Check platform support first
-  const platformCheck = isPlatformSupported()
-  if (!platformCheck.supported) {
-    return NextResponse.json({
-      ready: false,
-      platform: platformCheck,
-      venv: {
-        exists: false,
-        python: TRAINING_PYTHON,
-        isAppleSilicon: false,
-        hasGpu: false,
-      },
-      dependencies: {
-        allInstalled: false,
-        installed: [],
-        missing: [],
-        error: 'Platform not supported',
-      },
-    })
-  }
+export const GET = withAuth(
+  async () => {
+    // Check platform support first
+    const platformCheck = isPlatformSupported()
+    if (!platformCheck.supported) {
+      return NextResponse.json({
+        ready: false,
+        platform: platformCheck,
+        venv: {
+          exists: false,
+          python: TRAINING_PYTHON,
+          isAppleSilicon: false,
+          hasGpu: false,
+        },
+        dependencies: {
+          allInstalled: false,
+          installed: [],
+          missing: [],
+          error: 'Platform not supported',
+        },
+      })
+    }
 
-  // Check/setup venv
-  const venvResult = await ensureVenvReady()
+    // Check/setup venv
+    const venvResult = await ensureVenvReady()
 
-  if (!venvResult.success) {
+    if (!venvResult.success) {
+      return NextResponse.json({
+        ready: false,
+        platform: { supported: true },
+        venv: {
+          exists: false,
+          python: venvResult.python,
+          isAppleSilicon: venvResult.isAppleSilicon,
+          hasGpu: venvResult.hasGpu,
+          error: venvResult.error,
+        },
+        dependencies: {
+          allInstalled: false,
+          installed: [],
+          missing: [],
+          error: 'Venv setup failed',
+        },
+      })
+    }
+
+    // Check all dependencies
+    const depResult = await checkDependencies()
+
+    const ready = depResult.allInstalled
+
     return NextResponse.json({
-      ready: false,
+      ready,
       platform: { supported: true },
       venv: {
-        exists: false,
+        exists: true,
         python: venvResult.python,
         isAppleSilicon: venvResult.isAppleSilicon,
         hasGpu: venvResult.hasGpu,
-        error: venvResult.error,
       },
-      dependencies: {
-        allInstalled: false,
-        installed: [],
-        missing: [],
-        error: 'Venv setup failed',
-      },
+      dependencies: depResult,
     })
-  }
-
-  // Check all dependencies
-  const depResult = await checkDependencies()
-
-  const ready = depResult.allInstalled
-
-  return NextResponse.json({
-    ready,
-    platform: { supported: true },
-    venv: {
-      exists: true,
-      python: venvResult.python,
-      isAppleSilicon: venvResult.isAppleSilicon,
-      hasGpu: venvResult.hasGpu,
-    },
-    dependencies: depResult,
-  })
-}, { role: 'admin' })
+  },
+  { role: 'admin' }
+)

@@ -23,7 +23,10 @@ import type { ConstructionState, EuclidViewportState } from '@/components/toys/e
 // ---------------------------------------------------------------------------
 // Number line imports
 // ---------------------------------------------------------------------------
-import { renderPiOverlay, piDemoViewport } from '@/components/toys/number-line/constants/demos/piDemo'
+import {
+  renderPiOverlay,
+  piDemoViewport,
+} from '@/components/toys/number-line/constants/demos/piDemo'
 
 // ---------------------------------------------------------------------------
 // Coordinate plane imports
@@ -125,17 +128,17 @@ const euclidProp1: CanvasPreviewTarget = {
       viewport,
       w,
       h,
-      idle,         // compassPhase
-      idle,         // straightedgePhase
-      null,         // pointerWorld
-      null,         // snappedPointId
-      [],           // candidates
-      0,            // nextColorIndex
-      null,         // candidateFilter
-      true,         // isComplete
+      idle, // compassPhase
+      idle, // straightedgePhase
+      null, // pointerWorld
+      null, // snappedPointId
+      [], // candidates
+      0, // nextColorIndex
+      null, // candidateFilter
+      true, // isComplete
       PROP_1.resultSegments,
-      undefined,    // hiddenElementIds
-      false,        // transparentBg (white bg for preview)
+      undefined, // hiddenElementIds
+      false // transparentBg (white bg for preview)
     )
   },
 }
@@ -211,9 +214,7 @@ export const CANVAS_TARGETS = PREVIEW_TARGETS.filter(
   (t): t is CanvasPreviewTarget => t.type === 'canvas'
 )
 
-export const AI_TARGETS = PREVIEW_TARGETS.filter(
-  (t): t is AIPreviewTarget => t.type === 'ai'
-)
+export const AI_TARGETS = PREVIEW_TARGETS.filter((t): t is AIPreviewTarget => t.type === 'ai')
 
 /** Look up a target by id. */
 export function getPreviewTarget(id: string): PreviewTarget | undefined {

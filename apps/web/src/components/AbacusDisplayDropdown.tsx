@@ -4,7 +4,12 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Label from '@radix-ui/react-label'
 import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
-import { AbacusStatic, type BeadShape, type ColorScheme, useAbacusDisplay } from '@soroban/abacus-react'
+import {
+  AbacusStatic,
+  type BeadShape,
+  type ColorScheme,
+  useAbacusDisplay,
+} from '@soroban/abacus-react'
 import { useState } from 'react'
 import { css } from '../../styled-system/css'
 import { hstack, stack } from '../../styled-system/patterns'

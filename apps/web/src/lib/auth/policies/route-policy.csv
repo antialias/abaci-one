@@ -33,6 +33,7 @@ p, guest, /api/create/*, *
 p, guest, /api/feature-flags, GET
 
 # Guest-accessible practice & app routes
+p, guest, /api/players, *
 p, guest, /api/players/*, *
 p, guest, /api/family/*, *
 p, guest, /api/curriculum/*, *

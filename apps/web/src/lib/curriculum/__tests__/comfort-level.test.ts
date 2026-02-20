@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { computeComfortLevel, computeComfortLevelByMode, applyTermCountOverride } from '../comfort-level'
+import {
+  computeComfortLevel,
+  computeComfortLevelByMode,
+  applyTermCountOverride,
+} from '../comfort-level'
 import type { BktModeResult, SkillBktResult } from '../bkt/types'
 import type { SessionMode } from '../session-mode'
 

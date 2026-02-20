@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  CHARACTERS,
-  resolveTemplate,
-  resolveSubject,
-  resolveCharacter,
-} from '../characters'
+import { CHARACTERS, resolveTemplate, resolveSubject, resolveCharacter } from '../characters'
 import { FRAMES } from '../frames'
 import type { Character } from '../characters'
 import type { SemanticFrame, SubjectEntry } from '../types'
@@ -27,7 +22,7 @@ describe('characters', () => {
   })
 
   it('names are unique', () => {
-    const names = new Set(CHARACTERS.map(c => c.name))
+    const names = new Set(CHARACTERS.map((c) => c.name))
     expect(names.size).toBe(CHARACTERS.length)
   })
 
@@ -46,18 +41,19 @@ describe('characters', () => {
     })
 
     it('replaces {possessive}', () => {
-      expect(resolveTemplate('{name} is saving {possessive} allowance.', marcus))
-        .toBe('Marcus is saving his allowance.')
+      expect(resolveTemplate('{name} is saving {possessive} allowance.', marcus)).toBe(
+        'Marcus is saving his allowance.'
+      )
     })
 
     it('replaces {Possessive} (capitalized)', () => {
-      expect(resolveTemplate('{Possessive} goal is $100.', yuki))
-        .toBe('Their goal is $100.')
+      expect(resolveTemplate('{Possessive} goal is $100.', yuki)).toBe('Their goal is $100.')
     })
 
     it('replaces multiple placeholders in one string', () => {
-      expect(resolveTemplate("{name}'s family is on {possessive} trip.", sonia))
-        .toBe("Sonia's family is on her trip.")
+      expect(resolveTemplate("{name}'s family is on {possessive} trip.", sonia)).toBe(
+        "Sonia's family is on her trip."
+      )
     })
 
     it('returns string unchanged when no placeholders present', () => {
@@ -111,41 +107,41 @@ describe('characters', () => {
     })
 
     it('resolves setupPhrases', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:pizza-shop')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:pizza-shop')!
       const resolved = resolveCharacter(frame, marcus)
       expect(resolved.setupPhrases).toContain('Marcus is ordering pizza.')
     })
 
     it('resolves subjects', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:pizza-shop')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:pizza-shop')!
       const resolved = resolveCharacter(frame, marcus)
-      const nameSubject = resolved.subjects.find(s => s.phrase === 'Marcus')
+      const nameSubject = resolved.subjects.find((s) => s.phrase === 'Marcus')
       expect(nameSubject).toBeDefined()
       expect(nameSubject!.conjugation).toBe('thirdPerson')
 
-      const pronounSubject = resolved.subjects.find(s => s.phrase === 'He')
+      const pronounSubject = resolved.subjects.find((s) => s.phrase === 'He')
       expect(pronounSubject).toBeDefined()
       expect(pronounSubject!.conjugation).toBe('thirdPerson')
     })
 
     it('auto-sets "they" conjugation to base', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:pizza-shop')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:pizza-shop')!
       const resolved = resolveCharacter(frame, yuki)
-      const pronounSubject = resolved.subjects.find(s => s.phrase === 'They')
+      const pronounSubject = resolved.subjects.find((s) => s.phrase === 'They')
       expect(pronounSubject).toBeDefined()
       expect(pronounSubject!.conjugation).toBe('base')
     })
 
     it('resolves solveForXQuestions', () => {
-      const frame = FRAMES.find(f => f.id === 'weeks-dollars-save:savings')!
+      const frame = FRAMES.find((f) => f.id === 'weeks-dollars-save:savings')!
       const resolved = resolveCharacter(frame, marcus)
       expect(resolved.solveForXQuestions).toContain('How many weeks until Marcus has enough money?')
     })
 
     it('preserves literal subjects', () => {
-      const frame = FRAMES.find(f => f.id === 'slices-dollars-cost:pizza-shop')!
+      const frame = FRAMES.find((f) => f.id === 'slices-dollars-cost:pizza-shop')!
       const resolved = resolveCharacter(frame, marcus)
-      const literal = resolved.subjects.find(s => s.phrase === 'A customer')
+      const literal = resolved.subjects.find((s) => s.phrase === 'A customer')
       expect(literal).toBeDefined()
     })
 
@@ -154,14 +150,20 @@ describe('characters', () => {
         for (const char of CHARACTERS) {
           const resolved = resolveCharacter(frame, char)
           for (const phrase of resolved.setupPhrases) {
-            expect(phrase).not.toMatch(/\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/)
+            expect(phrase).not.toMatch(
+              /\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/
+            )
           }
           for (const s of resolved.subjects) {
-            expect(s.phrase).not.toMatch(/\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/)
+            expect(s.phrase).not.toMatch(
+              /\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/
+            )
           }
           if (resolved.solveForXQuestions) {
             for (const q of resolved.solveForXQuestions) {
-              expect(q).not.toMatch(/\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/)
+              expect(q).not.toMatch(
+                /\{name\}|\{pronoun\}|\{Pronoun\}|\{possessive\}|\{Possessive\}/
+              )
             }
           }
         }

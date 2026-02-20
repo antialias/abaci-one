@@ -82,10 +82,14 @@ export function useToolInteraction({
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
       return screenToWorld2D(
-        sx, sy,
-        v.center.x, v.center.y,
-        v.pixelsPerUnit, v.pixelsPerUnit,
-        cw, ch,
+        sx,
+        sy,
+        v.center.x,
+        v.center.y,
+        v.pixelsPerUnit,
+        v.pixelsPerUnit,
+        cw,
+        ch
       )
     }
 
@@ -137,7 +141,13 @@ export function useToolInteraction({
       const allowCandidateTap = !expected || expected.type === 'intersection'
       if (allowCandidateTap && compass.tag === 'idle' && straightedge.tag === 'idle') {
         const hitCandidate = hitTestIntersectionCandidates(
-          sx, sy, candidatesRef.current, viewport, w, h, isTouch,
+          sx,
+          sy,
+          candidatesRef.current,
+          viewport,
+          w,
+          h,
+          isTouch
         )
         if (hitCandidate) {
           e.stopPropagation()
@@ -362,15 +372,26 @@ export function useToolInteraction({
         const from = getPoint(state, straightedgePhaseRef.current.fromId)
         if (from) {
           const sf = worldToScreen2D(
-            from.x, from.y,
-            viewport.center.x, viewport.center.y,
-            viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-            w, h,
+            from.x,
+            from.y,
+            viewport.center.x,
+            viewport.center.y,
+            viewport.pixelsPerUnit,
+            viewport.pixelsPerUnit,
+            w,
+            h
           )
           const edgeHit = hitTestAlongRulerEdge(
-            sf.x, sf.y, sx, sy,
+            sf.x,
+            sf.y,
+            sx,
+            sy,
             straightedgePhaseRef.current.fromId,
-            state, viewport, w, h, isTouch,
+            state,
+            viewport,
+            w,
+            h,
+            isTouch
           )
           snappedPointIdRef.current = edgeHit?.id ?? null
         }
@@ -408,15 +429,26 @@ export function useToolInteraction({
         const from = getPoint(state, straightedge.fromId)
         if (from) {
           const sf = worldToScreen2D(
-            from.x, from.y,
-            viewport.center.x, viewport.center.y,
-            viewport.pixelsPerUnit, viewport.pixelsPerUnit,
-            w, h,
+            from.x,
+            from.y,
+            viewport.center.x,
+            viewport.center.y,
+            viewport.pixelsPerUnit,
+            viewport.pixelsPerUnit,
+            w,
+            h
           )
           const edgeHit = hitTestAlongRulerEdge(
-            sf.x, sf.y, sx, sy,
+            sf.x,
+            sf.y,
+            sx,
+            sy,
             straightedge.fromId,
-            state, viewport, w, h, isTouch,
+            state,
+            viewport,
+            w,
+            h,
+            isTouch
           )
           if (edgeHit) {
             onCommitSegment(straightedge.fromId, edgeHit.id)

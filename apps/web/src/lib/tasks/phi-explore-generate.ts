@@ -36,9 +36,7 @@ export interface PhiExploreGenerateOutput {
  * Generates golden-ratio subject illustrations using the specified AI provider.
  * Reports per-image progress via task events.
  */
-export async function startPhiExploreGeneration(
-  input: PhiExploreGenerateInput
-): Promise<string> {
+export async function startPhiExploreGeneration(input: PhiExploreGenerateInput): Promise<string> {
   return createTask<PhiExploreGenerateInput, PhiExploreGenerateOutput, PhiExploreGenerateEvent>(
     'phi-explore-generate',
     input,
@@ -129,9 +127,7 @@ export async function startPhiExploreGeneration(
         })
 
         // Build the full prompt
-        const themeModifier = target.theme
-          ? ` ${PHI_EXPLORE_THEME_MODIFIERS[target.theme]}`
-          : ''
+        const themeModifier = target.theme ? ` ${PHI_EXPLORE_THEME_MODIFIERS[target.theme]}` : ''
         const fullPrompt = `${PHI_EXPLORE_PROMPT_PREFIX} ${subject.prompt}${themeModifier}`
 
         try {
