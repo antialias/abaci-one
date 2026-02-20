@@ -22,6 +22,7 @@ import { useAudioManager } from '@/hooks/useAudioManager'
 import { useTier } from '@/hooks/useTier'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { billingKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 
@@ -395,7 +396,23 @@ function AbacusTab({ isDark }: { isDark: boolean }) {
 function BillingTab({ isDark }: { isDark: boolean }) {
   const { tier, limits } = useTier()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const billingResult = searchParams.get('billing')
+  const sessionId = searchParams.get('session_id')
+
+  // On success redirect, verify the checkout session to sync the subscription
+  // locally. This means we don't depend on webhooks reaching the server
+  // (critical for local dev, and good defense-in-depth for production).
+  useEffect(() => {
+    if (billingResult !== 'success' || !sessionId) return
+    api('billing/checkout/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.tier() })
+    })
+  }, [billingResult, sessionId, queryClient])
 
   const portalMutation = useMutation({
     mutationFn: async () => {

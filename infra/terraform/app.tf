@@ -13,13 +13,17 @@ resource "kubernetes_secret" "app_env" {
   }
 
   data = {
-    AUTH_SECRET         = var.auth_secret
-    AUTH_GOOGLE_ID      = var.auth_google_id
-    AUTH_GOOGLE_SECRET  = var.auth_google_secret
-    EMAIL_SERVER        = var.email_server
-    EMAIL_FROM          = var.email_from
-    LLM_OPENAI_API_KEY  = var.openai_api_key
-    COVERAGE_API_TOKEN  = var.coverage_api_token
+    AUTH_SECRET                     = var.auth_secret
+    AUTH_GOOGLE_ID                  = var.auth_google_id
+    AUTH_GOOGLE_SECRET              = var.auth_google_secret
+    EMAIL_SERVER                    = var.email_server
+    EMAIL_FROM                      = var.email_from
+    LLM_OPENAI_API_KEY              = var.openai_api_key
+    COVERAGE_API_TOKEN              = var.coverage_api_token
+    STRIPE_SECRET_KEY               = var.stripe_secret_key
+    STRIPE_FAMILY_MONTHLY_PRICE_ID  = var.stripe_family_monthly_price_id
+    STRIPE_FAMILY_ANNUAL_PRICE_ID   = var.stripe_family_annual_price_id
+    STRIPE_WEBHOOK_SECRET           = var.stripe_webhook_secret
   }
 }
 

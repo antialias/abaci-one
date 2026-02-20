@@ -160,6 +160,33 @@ variable "email_from" {
   default     = "Abaci One <hallock@gmail.com>"
 }
 
+# Stripe Billing
+variable "stripe_secret_key" {
+  description = "Stripe secret API key (live or test)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_family_monthly_price_id" {
+  description = "Stripe Price ID for Family Plan monthly ($6/mo)"
+  type        = string
+  default     = ""
+}
+
+variable "stripe_family_annual_price_id" {
+  description = "Stripe Price ID for Family Plan annual ($50/yr)"
+  type        = string
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ArgoCD Configuration
 variable "coverage_api_token" {
   description = "Bearer token for the /api/coverage-results endpoint (used by GitHub Actions)"
