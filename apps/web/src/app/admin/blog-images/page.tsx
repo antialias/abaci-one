@@ -8,8 +8,10 @@ import { BlogCropEditor } from '@/components/admin/BlogCropEditor'
 import { RefinePromptModal } from '@/components/admin/RefinePromptModal'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { BlogImageGenerateOutput } from '@/lib/tasks/blog-image-generate'
+import { getHeroComponentList } from '@/lib/blog/heroComponentRegistry'
+import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
 
-type HeroType = 'generated' | 'storybook' | 'component'
+type HeroType = 'generated' | 'storybook' | 'component' | 'html'
 
 interface BlogPostStatus {
   slug: string
@@ -22,6 +24,7 @@ interface BlogPostStatus {
   heroImageUrl: string | null
   heroType: string | null
   heroStoryId: string | null
+  heroComponentId: string | null
   imageExists: boolean
   sizeBytes?: number
 }
@@ -60,6 +63,7 @@ const HERO_TYPE_OPTIONS: { value: HeroType; label: string }[] = [
   { value: 'generated', label: 'Generated' },
   { value: 'storybook', label: 'Storybook' },
   { value: 'component', label: 'Component' },
+  { value: 'html', label: 'HTML' },
 ]
 
 const segmentBtnStyle = (active: boolean) =>
@@ -90,6 +94,70 @@ const smallBtnStyle = css({
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 })
 
+/** Pre-populated capture bodies for known blog posts */
+const CAPTURE_BODY_DEFAULTS: Record<string, string> = {
+  'ten-frames-for-regrouping': JSON.stringify({
+    config: {
+      version: 4,
+      mode: 'custom',
+      problemsPerPage: 6,
+      cols: 3,
+      pages: 1,
+      orientation: 'landscape',
+      name: '',
+      digitRange: { min: 2, max: 2 },
+      operator: 'addition',
+      pAnyStart: 0.75,
+      pAllStart: 0.25,
+      interpolate: false,
+      displayRules: {
+        carryBoxes: 'always',
+        answerBoxes: 'always',
+        placeValueColors: 'always',
+        tenFrames: 'always',
+        problemNumbers: 'always',
+        cellBorders: 'always',
+        borrowNotation: 'never',
+        borrowingHints: 'never',
+      },
+      fontSize: 16,
+      seed: 42,
+      includeAnswerKey: false,
+      includeQRCode: false,
+    },
+  }, null, 2),
+  'multi-digit-worksheets': JSON.stringify({
+    config: {
+      version: 4,
+      mode: 'custom',
+      problemsPerPage: 8,
+      cols: 4,
+      pages: 1,
+      orientation: 'landscape',
+      name: '',
+      digitRange: { min: 3, max: 4 },
+      operator: 'addition',
+      pAnyStart: 0.6,
+      pAllStart: 0.15,
+      interpolate: false,
+      displayRules: {
+        carryBoxes: 'always',
+        answerBoxes: 'always',
+        placeValueColors: 'always',
+        tenFrames: 'never',
+        problemNumbers: 'always',
+        cellBorders: 'always',
+        borrowNotation: 'never',
+        borrowingHints: 'never',
+      },
+      fontSize: 16,
+      seed: 77,
+      includeAnswerKey: false,
+      includeQRCode: false,
+    },
+  }, null, 2),
+}
+
 export default function BlogImagesAdmin() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [selectedValue, setSelectedValue] = useState('')
@@ -112,10 +180,20 @@ export default function BlogImagesAdmin() {
   const [storyIdDrafts, setStoryIdDrafts] = useState<Record<string, string>>({})
   const [capturingSlug, setCapturingSlug] = useState<string | null>(null)
 
-  // Component HTML state
+  // HTML state (was "component" before rename)
   const [htmlDrafts, setHtmlDrafts] = useState<Record<string, string>>({})
   const [loadedHtmlSlugs, setLoadedHtmlSlugs] = useState<Set<string>>(new Set())
   const htmlSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  // Capture-from-URL state
+  const [captureUrl, setCaptureUrl] = useState('/api/worksheets/preview')
+  const [captureMethod, setCaptureMethod] = useState<'GET' | 'POST'>('POST')
+  const [captureBodyDrafts, setCaptureBodyDrafts] = useState<Record<string, string>>(CAPTURE_BODY_DEFAULTS)
+  const [captureExtractPath, setCaptureExtractPath] = useState('pages.0')
+  const [capturingSnapshotSlug, setCapturingSnapshotSlug] = useState<string | null>(null)
+
+  // Component registry state
+  const [componentIdDrafts, setComponentIdDrafts] = useState<Record<string, string>>({})
 
   const { state: taskState } = useBackgroundTask<BlogImageGenerateOutput>(taskId)
 
@@ -486,6 +564,81 @@ export default function BlogImagesAdmin() {
         // ignore
       })
     }, 500)
+  }
+
+  async function handleCaptureSnapshot(slug: string) {
+    if (!captureUrl.trim()) {
+      setError('Enter a URL to capture')
+      return
+    }
+    setCapturingSnapshotSlug(slug)
+    setError(null)
+    try {
+      const payload: Record<string, unknown> = {
+        slug,
+        url: captureUrl.trim(),
+        method: captureMethod,
+      }
+      const bodyText = captureBodyDrafts[slug] ?? ''
+      if (captureMethod === 'POST' && bodyText.trim()) {
+        try {
+          payload.body = JSON.parse(bodyText)
+        } catch {
+          setError('Invalid JSON in request body')
+          setCapturingSnapshotSlug(null)
+          return
+        }
+      }
+      if (captureExtractPath.trim()) {
+        payload.extractPath = captureExtractPath.trim()
+      }
+      const res = await fetch('/api/admin/blog-images/capture-snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Capture failed')
+        return
+      }
+      // Re-load the hero HTML into the draft so the textarea + preview update
+      const htmlRes = await fetch(`/api/admin/blog/${slug}/hero-html`)
+      if (htmlRes.ok) {
+        const data = await htmlRes.json()
+        if (data.html !== null) {
+          setHtmlDrafts((prev) => ({ ...prev, [slug]: data.html }))
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Capture failed')
+    } finally {
+      setCapturingSnapshotSlug(null)
+    }
+  }
+
+  async function handleSaveComponentId(post: BlogPostStatus) {
+    const componentId = componentIdDrafts[post.slug]?.trim() || ''
+    try {
+      const res = await fetch(`/api/admin/blog/${post.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroComponentId: componentId }),
+      })
+      if (res.ok) {
+        setStatus((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            posts: prev.posts.map((p) =>
+              p.slug === post.slug ? { ...p, heroComponentId: componentId || null } : p
+            ),
+          }
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save component ID')
+    }
   }
 
   // Build per-slug error and fallback maps from task events
@@ -999,11 +1152,30 @@ export default function BlogImagesAdmin() {
                         )}
 
                         {effectiveType === 'component' && (
-                          <ComponentUI
+                          <ComponentRegistryUI
+                            post={post}
+                            componentIdDraft={componentIdDrafts[post.slug] ?? post.heroComponentId ?? ''}
+                            onComponentIdChange={(val) => setComponentIdDrafts((prev) => ({ ...prev, [post.slug]: val }))}
+                            onSave={() => handleSaveComponentId(post)}
+                          />
+                        )}
+
+                        {effectiveType === 'html' && (
+                          <HtmlUI
                             post={post}
                             htmlDraft={htmlDrafts[post.slug] ?? ''}
                             onHtmlChange={(val) => handleHtmlChange(post.slug, val)}
                             onLoad={() => loadHeroHtml(post.slug)}
+                            captureUrl={captureUrl}
+                            onCaptureUrlChange={setCaptureUrl}
+                            captureMethod={captureMethod}
+                            onCaptureMethodChange={setCaptureMethod}
+                            captureBody={captureBodyDrafts[post.slug] ?? ''}
+                            onCaptureBodyChange={(val) => setCaptureBodyDrafts((prev) => ({ ...prev, [post.slug]: val }))}
+                            captureExtractPath={captureExtractPath}
+                            onCaptureExtractPathChange={setCaptureExtractPath}
+                            capturing={capturingSnapshotSlug === post.slug}
+                            onCapture={() => handleCaptureSnapshot(post.slug)}
                           />
                         )}
 
@@ -1541,24 +1713,220 @@ function StorybookUI({
   )
 }
 
-function ComponentUI({
+function HtmlUI({
   post,
   htmlDraft,
   onHtmlChange,
   onLoad,
+  captureUrl,
+  onCaptureUrlChange,
+  captureMethod,
+  onCaptureMethodChange,
+  captureBody,
+  onCaptureBodyChange,
+  captureExtractPath,
+  onCaptureExtractPathChange,
+  capturing,
+  onCapture,
 }: {
   post: BlogPostStatus
   htmlDraft: string
   onHtmlChange: (val: string) => void
   onLoad: () => void
+  captureUrl: string
+  onCaptureUrlChange: (val: string) => void
+  captureMethod: 'GET' | 'POST'
+  onCaptureMethodChange: (val: 'GET' | 'POST') => void
+  captureBody: string
+  onCaptureBodyChange: (val: string) => void
+  captureExtractPath: string
+  onCaptureExtractPathChange: (val: string) => void
+  capturing: boolean
+  onCapture: () => void
 }) {
+  const hasCapture = !!captureBody.trim()
+  const [captureOpen, setCaptureOpen] = useState(hasCapture)
+
   useEffect(() => {
     onLoad()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.slug])
 
   return (
-    <div data-element="component-ui">
+    <div data-element="html-ui">
+      {/* Capture from URL section */}
+      <div
+        data-element="capture-section"
+        className={css({
+          marginBottom: '8px',
+          border: hasCapture ? '1px solid #30363d' : '1px solid #21262d',
+          borderRadius: '6px',
+          overflow: 'hidden',
+        })}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            backgroundColor: '#161b22',
+          })}
+        >
+          <button
+            data-action="toggle-capture"
+            onClick={() => setCaptureOpen(!captureOpen)}
+            className={css({
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '6px 10px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: hasCapture ? '#c9d1d9' : '#8b949e',
+              fontSize: '11px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              '&:hover': { color: '#c9d1d9' },
+            })}
+          >
+            <span>
+              Capture from URL
+              {hasCapture && (
+                <span className={css({ color: '#3fb950', marginLeft: '6px', fontSize: '10px' })}>
+                  configured
+                </span>
+              )}
+            </span>
+            <span>{captureOpen ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {hasCapture && (
+            <button
+              data-action="clear-capture"
+              onClick={() => {
+                onCaptureBodyChange('')
+                setCaptureOpen(false)
+              }}
+              title="Clear capture config"
+              className={css({
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#484f58',
+                fontSize: '11px',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                '&:hover': { color: '#f85149' },
+              })}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {captureOpen && (
+          <div
+            data-element="capture-fields"
+            className={css({
+              padding: '10px',
+              backgroundColor: '#0d1117',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            })}
+          >
+            <div className={css({ display: 'flex', gap: '8px', alignItems: 'center' })}>
+              <input
+                data-element="capture-url-input"
+                type="text"
+                value={captureUrl}
+                onChange={(e) => onCaptureUrlChange(e.target.value)}
+                placeholder="/api/worksheets/preview"
+                className={css({
+                  flex: 1,
+                  backgroundColor: '#161b22',
+                  border: '1px solid #30363d',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  color: '#c9d1d9',
+                  fontSize: '12px',
+                  '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+                })}
+              />
+              <div className={css({ display: 'flex' })}>
+                {(['GET', 'POST'] as const).map((m) => (
+                  <button
+                    key={m}
+                    data-action={`capture-method-${m.toLowerCase()}`}
+                    onClick={() => onCaptureMethodChange(m)}
+                    className={segmentBtnStyle(captureMethod === m)}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {captureMethod === 'POST' && (
+              <textarea
+                data-element="capture-body-textarea"
+                value={captureBody}
+                onChange={(e) => onCaptureBodyChange(e.target.value)}
+                placeholder='{"key": "value"}'
+                rows={3}
+                className={css({
+                  width: '100%',
+                  backgroundColor: '#161b22',
+                  border: '1px solid #30363d',
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  color: '#c9d1d9',
+                  fontSize: '11px',
+                  resize: 'vertical',
+                  fontFamily: 'monospace',
+                  '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+                })}
+              />
+            )}
+            <div className={css({ display: 'flex', gap: '8px', alignItems: 'center' })}>
+              <input
+                data-element="capture-extract-path-input"
+                type="text"
+                value={captureExtractPath}
+                onChange={(e) => onCaptureExtractPathChange(e.target.value)}
+                placeholder="Extract path (e.g. pages.0)"
+                className={css({
+                  flex: 1,
+                  backgroundColor: '#161b22',
+                  border: '1px solid #30363d',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  color: '#c9d1d9',
+                  fontSize: '12px',
+                  '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+                })}
+              />
+              <button
+                data-action="capture-snapshot"
+                onClick={onCapture}
+                disabled={capturing || !captureUrl.trim()}
+                className={css({
+                  backgroundColor: '#238636',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 14px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  '&:hover': { backgroundColor: '#2ea043' },
+                  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                {capturing ? 'Capturing...' : 'Capture'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <textarea
         data-element="html-textarea"
         value={htmlDraft}
@@ -1583,7 +1951,7 @@ function ComponentUI({
       </div>
       {htmlDraft && (
         <div
-          data-element="component-preview"
+          data-element="html-preview"
           className={css({
             borderRadius: '6px',
             overflow: 'hidden',
@@ -1600,6 +1968,75 @@ function ComponentUI({
               height: '100%',
             })}
           />
+        </div>
+      )}
+    </div>
+  )
+}
+
+const heroComponentList = getHeroComponentList()
+
+function ComponentRegistryUI({
+  post,
+  componentIdDraft,
+  onComponentIdChange,
+  onSave,
+}: {
+  post: BlogPostStatus
+  componentIdDraft: string
+  onComponentIdChange: (val: string) => void
+  onSave: () => void
+}) {
+  const currentId = componentIdDraft || post.heroComponentId || ''
+
+  return (
+    <div data-element="component-registry-ui">
+      <div className={css({ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' })}>
+        <select
+          data-action="select-hero-component"
+          value={componentIdDraft}
+          onChange={(e) => onComponentIdChange(e.target.value)}
+          className={css({
+            flex: 1,
+            backgroundColor: '#0d1117',
+            border: '1px solid #30363d',
+            borderRadius: '6px',
+            padding: '4px 8px',
+            color: '#c9d1d9',
+            fontSize: '12px',
+            cursor: 'pointer',
+            '&:focus': { outline: 'none', borderColor: '#58a6ff' },
+          })}
+        >
+          <option value="">Select a component...</option>
+          {heroComponentList.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+        <button
+          data-action="save-component-id"
+          onClick={onSave}
+          disabled={!componentIdDraft.trim()}
+          className={smallBtnStyle}
+        >
+          Save
+        </button>
+      </div>
+      {currentId && (
+        <div
+          data-element="component-preview"
+          className={css({
+            borderRadius: '6px',
+            overflow: 'hidden',
+            border: '1px solid #21262d',
+            aspectRatio: '2.4 / 1',
+            maxHeight: '200px',
+            backgroundColor: '#0d1117',
+          })}
+        >
+          <HeroComponentBanner componentId={currentId} />
         </div>
       )}
     </div>
