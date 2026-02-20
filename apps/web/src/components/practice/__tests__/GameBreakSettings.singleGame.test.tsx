@@ -65,6 +65,7 @@ vi.mock('@/hooks/useSessionPlan', () => ({
     existingPlan = null
   },
   NoSkillsEnabledClientError: class extends Error {},
+  SessionLimitReachedError: class extends Error {},
   sessionPlanKeys: {
     active: (id: string) => ['session-plan', 'active', id],
   },

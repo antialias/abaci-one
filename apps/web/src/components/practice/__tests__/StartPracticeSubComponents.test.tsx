@@ -41,6 +41,19 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
+vi.mock('@/hooks/useTier', () => ({
+  useTier: () => ({
+    tier: 'pro',
+    limits: {
+      maxPracticeStudents: null,
+      maxSessionMinutes: 20,
+      maxSessionsPerWeek: null,
+      maxOfflineParsingPerMonth: 100,
+    },
+    isLoading: false,
+  }),
+}))
+
 vi.mock('@/hooks/useSessionPlan', () => ({
   useGenerateSessionPlan: () => ({
     mutateAsync: vi.fn(),
@@ -72,6 +85,7 @@ vi.mock('@/hooks/useSessionPlan', () => ({
     existingPlan = null
   },
   NoSkillsEnabledClientError: class extends Error {},
+  SessionLimitReachedError: class extends Error {},
   sessionPlanKeys: {
     active: (id: string) => ['session-plan', 'active', id],
   },
