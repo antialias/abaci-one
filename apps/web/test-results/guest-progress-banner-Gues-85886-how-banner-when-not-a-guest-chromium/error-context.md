@@ -1,0 +1,334 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e5]:
+      - navigation [ref=e6]:
+        - link "Create" [ref=e8] [cursor=pointer]:
+          - /url: /create
+        - link "Practice" [ref=e10] [cursor=pointer]:
+          - /url: /practice
+        - link "Games" [ref=e12] [cursor=pointer]:
+          - /url: /games
+        - link "Blog" [ref=e14] [cursor=pointer]:
+          - /url: /blog
+      - button "☰ T" [ref=e15] [cursor=pointer]:
+        - generic [ref=e16]: ☰
+        - generic:
+          - generic: T
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - heading "Abaci One" [level=1] [ref=e22]
+        - paragraph [ref=e23]: The world's oldest calculator, reimagined
+      - generic [ref=e24]:
+        - generic [ref=e25]: Scroll to explore
+        - generic [ref=e26]: ↓
+    - generic [ref=e29]:
+      - heading "Your child can learn to calculate in their head" [level=2] [ref=e30]
+      - paragraph [ref=e31]: The abacus is the world's most proven tool for building mental math. Kids who learn it don't just memorize facts — they build a mental picture of how numbers work. And they can practice right here.
+      - link "Learn why it works →" [ref=e32] [cursor=pointer]:
+        - /url: /why-abacus
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - heading "The abacus teaches kids to see numbers" [level=2] [ref=e36]
+        - paragraph [ref=e37]: Children who learn the abacus don't just memorize math facts — they build a mental picture of how numbers work. That's why abacus students develop faster mental arithmetic than any other method.
+      - generic [ref=e42]:
+        - heading "What You'll Learn" [level=3] [ref=e43]
+        - generic [ref=e44]:
+          - generic [ref=e46] [cursor=pointer]:
+            - img [ref=e51]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "0"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "0"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "0"
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - generic [ref=e94]: Read and set numbers
+                - generic [ref=e95]: Foundation
+              - generic [ref=e96]: Master abacus number representation from zero to thousands
+              - generic [ref=e97]: 0-9999
+          - generic [ref=e99] [cursor=pointer]:
+            - img [ref=e104]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "5"
+            - generic [ref=e119]:
+              - generic [ref=e120]:
+                - generic [ref=e121]: Friends techniques
+                - generic [ref=e122]: Core
+              - generic [ref=e123]: Add and subtract using complement pairs and mental shortcuts
+              - generic [ref=e124]: 5 = 2+3
+          - generic [ref=e126] [cursor=pointer]:
+            - img [ref=e131]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "3"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "6"
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - generic [ref=e161]: Multiply & divide
+                - generic [ref=e162]: Advanced
+              - generic [ref=e163]: Fluent multi-digit calculations with advanced techniques
+              - generic [ref=e164]: 12×34
+          - generic [ref=e166] [cursor=pointer]:
+            - img [ref=e171]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "2"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "1"
+            - generic [ref=e199]:
+              - generic [ref=e200]:
+                - generic [ref=e201]: Mental calculation
+                - generic [ref=e202]: Expert
+              - generic [ref=e203]: Visualize and compute without the physical tool (Anzan)
+              - generic [ref=e204]: Speed math
+    - generic [ref=e206]:
+      - generic [ref=e207]:
+        - heading "Practice that meets your child where they are" [level=2] [ref=e208]
+        - paragraph [ref=e209]: Not too easy. Not too hard. Every session adapts.
+      - generic [ref=e210]:
+        - generic [ref=e211]:
+          - img [ref=e213]
+          - heading "Tracks real mastery" [level=3] [ref=e215]
+          - paragraph [ref=e216]: Every answer updates a skill model of your child's abilities. Practice sessions target what they're ready to learn next — not what a grade level says they should know.
+        - generic [ref=e217]:
+          - img [ref=e219]
+          - heading "Games that teach in disguise" [level=3] [ref=e221]
+          - paragraph [ref=e222]: Between drills, kids earn solo game rounds — but every game is still teaching. Match abacus images to numbers, answer complements to drive a train, race through mental math. They're always learning, whether they know it or not.
+        - generic [ref=e223]:
+          - img [ref=e225]
+          - heading "Works for multiple kids" [level=3] [ref=e230]
+          - paragraph [ref=e231]: Set up profiles for each child with independent progress tracking. Each gets their own adaptive path.
+      - link "Start practicing →" [ref=e233] [cursor=pointer]:
+        - /url: /practice
+        - generic [ref=e234]: Start practicing
+        - generic [ref=e235]: →
+    - generic [ref=e237]:
+      - generic [ref=e238]:
+        - heading "The Arcade" [level=2] [ref=e239]
+        - paragraph [ref=e240]: Math games worth earning. Solo challenges and multiplayer battles that kids actually want to play.
+      - generic [ref=e241]:
+        - link "⚔️ Matching Pairs Battle Multiplayer memory battle with friends 1-4 players 👥 Multiplayer 🎯 Strategic 🏆 Competitive" [ref=e242] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e246]:
+            - generic [ref=e247]: ⚔️
+            - heading "Matching Pairs Battle" [level=3] [ref=e248]
+            - paragraph [ref=e249]: Multiplayer memory battle with friends
+            - paragraph [ref=e250]: 1-4 players
+            - generic [ref=e251]:
+              - generic [ref=e252]: 👥 Multiplayer
+              - generic [ref=e253]: 🎯 Strategic
+              - generic [ref=e254]: 🏆 Competitive
+        - link "🎵 Music Note Match Match notes on the staff with their names 1-4 players 🎵 Music 📖 Sight-Reading 🧠 Memory" [ref=e255] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e259]:
+            - generic [ref=e260]: 🎵
+            - heading "Music Note Match" [level=3] [ref=e261]
+            - paragraph [ref=e262]: Match notes on the staff with their names
+            - paragraph [ref=e263]: 1-4 players
+            - generic [ref=e264]:
+              - generic [ref=e265]: 🎵 Music
+              - generic [ref=e266]: 📖 Sight-Reading
+              - generic [ref=e267]: 🧠 Memory
+    - generic [ref=e269]:
+      - generic [ref=e270]:
+        - heading "Mathematical playgrounds" [level=2] [ref=e271]
+        - paragraph [ref=e272]: Not everything has to be a drill. Explore geometry, number lines, and more — tools for curiosity, not just correctness.
+      - generic [ref=e273]:
+        - link "Euclid's Elements Compass-and-straightedge geometry, proposition by proposition" [ref=e274] [cursor=pointer]:
+          - /url: /toys/euclid
+          - generic [ref=e278]:
+            - heading "Euclid's Elements" [level=3] [ref=e279]
+            - paragraph [ref=e280]: Compass-and-straightedge geometry, proposition by proposition
+        - link "Constant Demos Watch pi roll, e branch, and the golden ratio spiral — 10 animated explorations" [ref=e281] [cursor=pointer]:
+          - /url: /toys/number-line
+          - generic [ref=e285]:
+            - heading "Constant Demos" [level=3] [ref=e286]
+            - paragraph [ref=e287]: Watch pi roll, e branch, and the golden ratio spiral — 10 animated explorations
+        - link "Talk to a Number Dial any number on the line and have a voice conversation about its properties" [ref=e288] [cursor=pointer]:
+          - /url: /toys/number-line
+          - generic [ref=e292]:
+            - heading "Talk to a Number" [level=3] [ref=e293]
+            - paragraph [ref=e294]: Dial any number on the line and have a voice conversation about its properties
+        - link "Coordinate Plane Word problems on a magnitude-aware 2D grid" [ref=e295] [cursor=pointer]:
+          - /url: /toys/coordinate-plane
+          - generic [ref=e299]:
+            - heading "Coordinate Plane" [level=3] [ref=e300]
+            - paragraph [ref=e301]: Word problems on a magnitude-aware 2D grid
+        - link "Dice Tray 3D physics dice. Add them up." [ref=e302] [cursor=pointer]:
+          - /url: /toys/dice
+          - generic [ref=e306]:
+            - heading "Dice Tray" [level=3] [ref=e307]
+            - paragraph [ref=e308]: 3D physics dice. Add them up.
+    - generic [ref=e310]:
+      - generic [ref=e311]:
+        - heading "Printable practice materials" [level=2] [ref=e312]
+        - paragraph [ref=e313]: Generate worksheets, flashcards, and calendars — better than what you can buy. Customize everything. Download as PDF.
+      - generic [ref=e314]:
+        - generic [ref=e317]:
+          - generic [ref=e318]:
+            - generic [ref=e319]: 📄
+            - generic [ref=e320]: Multiple Formats
+            - generic [ref=e321]: PDF, PNG, SVG, HTML
+          - generic [ref=e322]:
+            - generic [ref=e323]: 🎨
+            - generic [ref=e324]: Customizable
+            - generic [ref=e325]: Bead shapes, colors, layouts
+          - generic [ref=e326]:
+            - generic [ref=e327]: 📐
+            - generic [ref=e328]: All Paper Sizes
+            - generic [ref=e329]: A3, A4, A5, US Letter
+        - link "Create materials →" [ref=e331] [cursor=pointer]:
+          - /url: /create
+          - generic [ref=e332]: Create materials
+          - generic [ref=e333]: →
+    - paragraph [ref=e336]: Built by a parent, for their kids. Not a startup. Not ad-supported. Just better math practice.
+    - generic [ref=e339]:
+      - heading "Try it now — no account needed" [level=2] [ref=e340]
+      - paragraph [ref=e341]: Create a student profile and start your first practice session. Everything works without signing up.
+      - link "Get started →" [ref=e342] [cursor=pointer]:
+        - /url: /practice
+        - generic [ref=e343]: Get started
+        - generic [ref=e344]: →
+      - link "Soroban teacher? See what we built for you →" [ref=e345] [cursor=pointer]:
+        - /url: /for-teachers
+    - generic [ref=e348]:
+      - generic [ref=e349]:
+        - heading "From the Blog" [level=2] [ref=e350]
+        - paragraph [ref=e351]: Insights on ed-tech and pedagogy
+      - generic [ref=e352]:
+        - 'link "From Paper to Practice: How We Parse Handwritten Worksheets with Vision AI Most math practice doesn''t happen on a screen. It happens on paper — workbook pages, printed worksheets, flashcard drills at the kitchen table. A kid might do thirty addition problems before dinner an... Abaci.one Team · February 19, 2026 vision-ai worksheet-parsing" [ref=e353] [cursor=pointer]':
+          - /url: /blog/worksheet-parsing-with-vision-ai
+          - img [ref=e357]:
+            - generic [ref=e359]: 35 + 12 =
+            - generic [ref=e360]: 48 − 19 =
+            - generic [ref=e361]: 27 + 45 =
+            - generic [ref=e362]: 63 − 28 =
+            - generic [ref=e363]: 54 + 37 =
+            - generic [ref=e364]: "47"
+            - generic [ref=e365]: "31"
+            - generic [ref=e366]: "72"
+            - generic [ref=e367]: "35"
+            - generic [ref=e368]: "81"
+            - generic [ref=e369]: WORKSHEET
+            - generic [ref=e370]: ✏️
+            - generic [ref=e372]: Vision AI
+            - generic [ref=e377]: ✓
+            - generic [ref=e378]: 35 + 12 = 47
+            - generic [ref=e379]: ✗
+            - generic [ref=e380]: 48 − 19 ≠ 31
+            - generic [ref=e381]: ✓
+            - generic [ref=e382]: 27 + 45 = 72
+            - generic [ref=e384]: Skill Model
+            - generic [ref=e385]: Addition
+            - generic [ref=e388]: Subtraction
+            - generic [ref=e391]: Regrouping
+            - generic [ref=e394]: Paper practice → Structured data → Smarter recommendations
+          - generic [ref=e395]:
+            - 'heading "From Paper to Practice: How We Parse Handwritten Worksheets with Vision AI" [level=3] [ref=e396]'
+            - paragraph [ref=e397]: Most math practice doesn't happen on a screen. It happens on paper — workbook pages, printed worksheets, flashcard drills at the kitchen table. A kid might do thirty addition problems before dinner an...
+            - generic [ref=e398]:
+              - generic [ref=e399]: Abaci.one Team
+              - generic [ref=e400]: ·
+              - time [ref=e401]: February 19, 2026
+            - generic [ref=e402]:
+              - generic [ref=e403]: vision-ai
+              - generic [ref=e404]: worksheet-parsing
+        - 'link "See What They''re Doing: Vision-Powered Abacus Detection There''s something magical about watching a child work through a math problem on a physical abacus. Their fingers move the beads, their mind calculates, and slowly the answer takes shape. But as a pare... Abaci.one Team · January 6, 2026 vision machine-learning" [ref=e405] [cursor=pointer]':
+          - /url: /blog/vision-powered-abacus-detection
+          - generic [ref=e407]:
+            - 'heading "See What They''re Doing: Vision-Powered Abacus Detection" [level=3] [ref=e408]'
+            - paragraph [ref=e409]: There's something magical about watching a child work through a math problem on a physical abacus. Their fingers move the beads, their mind calculates, and slowly the answer takes shape. But as a pare...
+            - generic [ref=e410]:
+              - generic [ref=e411]: Abaci.one Team
+              - generic [ref=e412]: ·
+              - time [ref=e413]: January 6, 2026
+            - generic [ref=e414]:
+              - generic [ref=e415]: vision
+              - generic [ref=e416]: machine-learning
+        - 'link "Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work > Abstract: Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column c... Abaci.one Team · December 13, 2025 education machine-learning" [ref=e417] [cursor=pointer]':
+          - /url: /blog/conjunctive-bkt-skill-tracing
+          - generic [ref=e419]:
+            - 'heading "Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work" [level=3] [ref=e420]'
+            - paragraph [ref=e421]: "> Abstract: Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column c..."
+            - generic [ref=e422]:
+              - generic [ref=e423]: Abaci.one Team
+              - generic [ref=e424]: ·
+              - time [ref=e425]: December 13, 2025
+            - generic [ref=e426]:
+              - generic [ref=e427]: education
+              - generic [ref=e428]: machine-learning
+      - link "View All Posts →" [ref=e430] [cursor=pointer]:
+        - /url: /blog
+        - generic [ref=e431]: View All Posts
+        - generic [ref=e432]: →
+  - img [ref=e437]:
+    - generic [ref=e494] [cursor=pointer]: "0"
+    - generic [ref=e502] [cursor=pointer]: "0"
+    - generic [ref=e510] [cursor=pointer]: "0"
+    - generic [ref=e518] [cursor=pointer]: "0"
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e519]
+  - generic [ref=e521]:
+    - generic [ref=e522]:
+      - generic [ref=e523]: "Working on:"
+      - generic [ref=e524]: 2 + 3 = 2 + (5 - 2) = 5
+      - text: 💡 add heaven bead in ones column
+    - 'tooltip "Working on: 2 + 3 = 2 + (5 - 2) = 5 💡 add heaven bead in ones column" [ref=e525]':
+      - generic [ref=e526]:
+        - generic [ref=e527]: "Working on:"
+        - generic [ref=e528]: 2 + 3 = 2 + (5 - 2) = 5
+        - text: 💡 add heaven bead in ones column
+```

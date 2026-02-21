@@ -23,6 +23,7 @@ export {
   canPerformAction,
   getAccessiblePlayers,
   isParentOf,
+  getParentedPlayerIds,
   isTeacherOf,
   generateAuthorizationError,
 } from './access-control'
@@ -37,7 +38,6 @@ export {
   unlinkParentFromChild,
   getOrCreateFamilyCode,
   regenerateFamilyCode,
-  isParent,
   generateFamilyCode,
 } from './family-manager'
 

@@ -22,7 +22,14 @@ All documentation must be reachable from root README via linked path. Unlinked d
 
 **Never auto-commit.** User must manually test before committing.
 
-**Dev server:** User manages it, NOT Claude Code. Never run `pnpm dev` or `npm start`.
+**Dev server:** User manages it, NOT Claude Code. Never run `pnpm dev` or `npm start`. **Dev server runs on port 3000** — do not assume 3002 or any other port.
+
+### E2E Tests (Playwright)
+- **Use `npx @playwright/test test`**, NOT `npx playwright test` — the monorepo has both packages and the wrong binary causes version conflicts
+- **Always pass `BASE_URL=http://localhost:3000`** to skip playwright's webServer auto-start
+- **Check existing DB state before writing tests** — use `mcp__sqlite__read_query` to understand what data already exists (e.g., seed students, existing sessions). Don't assume a clean database.
+- **Prefer archiving over deleting** for test cleanup — FK constraints make hard deletes fail silently. The `isArchived` flag excludes records from enforcement checks without breaking referential integrity.
+- **Tests sharing mutable state (same user account) must run serially** — use `test.describe.configure({ mode: 'serial' })`
 
 ---
 
@@ -78,15 +85,18 @@ All new elements MUST have data attributes: `data-component`, `data-element`, `d
 - Loading states: `query.isLoading` or `mutation.isPending` (not `useState`)
 - Cache refresh: `queryClient.invalidateQueries({ queryKey: ... })`
 
+### Storybook
+Global decorators are in `.storybook/preview.tsx`. It wraps all stories with: `SessionProvider` (next-auth), `QueryClientProvider`, `ThemeProvider`, `NextIntlClientProvider`, `AbacusDisplayProvider`. If a component needs a provider not in that list, add a story-level decorator or add it to the global preview.
+
+**`AppNavBar` contains multiple sub-components internally** (e.g., `HamburgerMenu` is defined inside `AppNavBar.tsx`, not in a separate file). If a stack trace references a function name, search the *importing file's* imports, not just files matching that function name.
+
 ---
 
 ## Database Access
 
-SQLite + Drizzle ORM. Location: `./data/sqlite.db`
+**Local dev:** SQLite + Drizzle ORM at `./data/sqlite.db`. Use MCP tools: `mcp__sqlite__read_query`, `mcp__sqlite__write_query`, `mcp__sqlite__describe_table`. Do NOT use bash `sqlite3` commands.
 
-**Use MCP tools:** `mcp__sqlite__read_query`, `mcp__sqlite__write_query`, `mcp__sqlite__describe_table`
-
-**DO NOT use bash `sqlite3` commands.**
+**Production:** libsql server in-cluster (NOT a local file). Use `./scripts/prod-query.sh "SQL"` or see root `CLAUDE.md` → "Production Database (libsql)" for programmatic access via Kubernetes MCP.
 
 ---
 

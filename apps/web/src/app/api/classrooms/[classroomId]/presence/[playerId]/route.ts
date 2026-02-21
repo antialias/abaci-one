@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { leaveSpecificClassroom, getTeacherClassroom, isParent } from '@/lib/classroom'
+import { leaveSpecificClassroom, getTeacherClassroom, isParentOf } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
@@ -17,7 +17,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
     // Check authorization: must be teacher of classroom OR parent of student
     const classroom = await getTeacherClassroom(userId)
     const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(userId, playerId)
+    const parentCheck = await isParentOf(userId, playerId)
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(

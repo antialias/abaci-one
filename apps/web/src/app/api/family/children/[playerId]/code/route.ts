@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getOrCreateFamilyCode, isParent, regenerateFamilyCode } from '@/lib/classroom'
+import { getOrCreateFamilyCode, isParentOf, regenerateFamilyCode } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -15,7 +15,7 @@ export const GET = withAuth(async (_request, { params }) => {
     const userId = await getUserId()
 
     // Verify user is a parent of this child
-    const parentCheck = await isParent(userId, playerId)
+    const parentCheck = await isParentOf(userId, playerId)
     if (!parentCheck) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
@@ -45,7 +45,7 @@ export const POST = withAuth(async (_request, { params }) => {
     const userId = await getUserId()
 
     // Verify user is a parent of this child
-    const parentCheck = await isParent(userId, playerId)
+    const parentCheck = await isParentOf(userId, playerId)
     if (!parentCheck) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }

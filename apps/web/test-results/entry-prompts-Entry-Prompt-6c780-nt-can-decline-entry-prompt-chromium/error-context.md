@@ -1,0 +1,830 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e5]:
+      - navigation [ref=e6]:
+        - link "Create" [ref=e8] [cursor=pointer]:
+          - /url: /create
+        - link "Practice" [ref=e10] [cursor=pointer]:
+          - /url: /practice
+        - link "Games" [ref=e12] [cursor=pointer]:
+          - /url: /games
+        - link "Blog" [ref=e14] [cursor=pointer]:
+          - /url: /blog
+      - button "☰ T" [ref=e15] [cursor=pointer]:
+        - generic [ref=e16]: ☰
+        - generic:
+          - generic: T
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - heading "Abaci One" [level=1] [ref=e22]
+        - paragraph [ref=e23]: Math practice that adapts to your child
+      - generic [ref=e24]:
+        - generic [ref=e25]: Scroll to explore
+        - generic [ref=e26]: ↓
+    - generic [ref=e29]:
+      - heading "Your child can learn to calculate in their head" [level=2] [ref=e30]
+      - paragraph [ref=e31]: The abacus is the world's most proven tool for building mental math. Kids who learn it don't just memorize facts — they build a mental picture of how numbers work. And they can practice right here.
+      - link "Learn why it works →" [ref=e32] [cursor=pointer]:
+        - /url: /why-abacus
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - heading "The abacus teaches kids to see numbers" [level=2] [ref=e36]
+        - paragraph [ref=e37]: Children who learn the abacus don't just memorize math facts — they build a mental picture of how numbers work. That's why abacus students develop faster mental arithmetic than any other method.
+      - generic [ref=e39]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - heading "2 + 3" [level=2] [ref=e47]
+            - paragraph [ref=e48]: "Add 3 to make 5 by using complement: 3 = 5 - 2"
+          - img [ref=e51]:
+            - generic [ref=e54]:
+              - generic:
+                - generic: ↓
+            - generic [ref=e72] [cursor=pointer]: "2"
+        - generic [ref=e75]:
+          - heading "What You'll Learn" [level=3] [ref=e76]
+          - generic [ref=e77]:
+            - generic [ref=e79] [cursor=pointer]:
+              - img [ref=e84]:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+              - generic [ref=e125]:
+                - generic [ref=e126]:
+                  - generic [ref=e127]: Read and set numbers
+                  - generic [ref=e128]: Foundation
+                - generic [ref=e129]: Master abacus number representation from zero to thousands
+                - generic [ref=e130]: 0-9999
+            - generic [ref=e132] [cursor=pointer]:
+              - img [ref=e137]:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+              - generic [ref=e152]:
+                - generic [ref=e153]:
+                  - generic [ref=e154]: Friends techniques
+                  - generic [ref=e155]: Core
+                - generic [ref=e156]: Add and subtract using complement pairs and mental shortcuts
+                - generic [ref=e157]: 5 = 2+3
+            - generic [ref=e159] [cursor=pointer]:
+              - img [ref=e164]:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+              - generic [ref=e192]:
+                - generic [ref=e193]:
+                  - generic [ref=e194]: Multiply & divide
+                  - generic [ref=e195]: Advanced
+                - generic [ref=e196]: Fluent multi-digit calculations with advanced techniques
+                - generic [ref=e197]: 12×34
+            - generic [ref=e199] [cursor=pointer]:
+              - img [ref=e204]:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: "0"
+                              - generic: "1"
+                              - generic: "2"
+                              - generic: "3"
+                              - generic: "4"
+                              - generic: "5"
+                              - generic: "6"
+                              - generic: "7"
+                              - generic: "8"
+                              - generic: "9"
+              - generic [ref=e232]:
+                - generic [ref=e233]:
+                  - generic [ref=e234]: Mental calculation
+                  - generic [ref=e235]: Expert
+                - generic [ref=e236]: Visualize and compute without the physical tool (Anzan)
+                - generic [ref=e237]: Speed math
+    - generic [ref=e239]:
+      - generic [ref=e240]:
+        - heading "Practice that meets your child where they are" [level=2] [ref=e241]
+        - paragraph [ref=e242]: Not too easy. Not too hard. Every session adapts.
+      - generic [ref=e243]:
+        - generic [ref=e244]:
+          - img [ref=e246]
+          - heading "Tracks real mastery" [level=3] [ref=e248]
+          - paragraph [ref=e249]: Every answer updates a skill model of your child's abilities. Practice sessions target what they're ready to learn next — not what a grade level says they should know.
+        - generic [ref=e250]:
+          - img [ref=e252]
+          - heading "Games that teach in disguise" [level=3] [ref=e254]
+          - paragraph [ref=e255]: Between drills, kids earn solo game rounds — but every game is still teaching. Match abacus images to numbers, answer complements to drive a train, race through mental math. They're always learning, whether they know it or not.
+        - generic [ref=e256]:
+          - img [ref=e258]
+          - heading "Works for multiple kids" [level=3] [ref=e263]
+          - paragraph [ref=e264]: Set up profiles for each child with independent progress tracking. Each gets their own adaptive path.
+      - link "Start practicing →" [ref=e266] [cursor=pointer]:
+        - /url: /practice
+        - generic [ref=e267]: Start practicing
+        - generic [ref=e268]: →
+    - generic [ref=e270]:
+      - generic [ref=e271]:
+        - heading "The Arcade" [level=2] [ref=e272]
+        - paragraph [ref=e273]: Math games worth earning. Solo challenges and multiplayer battles that kids actually want to play.
+      - generic [ref=e274]:
+        - link "⚔️ Matching Pairs Battle Multiplayer memory battle with friends 1-4 players 👥 Multiplayer 🎯 Strategic 🏆 Competitive" [ref=e275] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e279]:
+            - generic [ref=e280]: ⚔️
+            - heading "Matching Pairs Battle" [level=3] [ref=e281]
+            - paragraph [ref=e282]: Multiplayer memory battle with friends
+            - paragraph [ref=e283]: 1-4 players
+            - generic [ref=e284]:
+              - generic [ref=e285]: 👥 Multiplayer
+              - generic [ref=e286]: 🎯 Strategic
+              - generic [ref=e287]: 🏆 Competitive
+        - link "🎵 Music Note Match Match notes on the staff with their names 1-4 players 🎵 Music 📖 Sight-Reading 🧠 Memory" [ref=e288] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e292]:
+            - generic [ref=e293]: 🎵
+            - heading "Music Note Match" [level=3] [ref=e294]
+            - paragraph [ref=e295]: Match notes on the staff with their names
+            - paragraph [ref=e296]: 1-4 players
+            - generic [ref=e297]:
+              - generic [ref=e298]: 🎵 Music
+              - generic [ref=e299]: 📖 Sight-Reading
+              - generic [ref=e300]: 🧠 Memory
+        - link "🧠 Memory Lightning Memorize soroban numbers and recall them 1-8 players 👥 Multiplayer 🧠 Memory 🧮 Soroban" [ref=e301] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e305]:
+            - generic [ref=e306]: 🧠
+            - heading "Memory Lightning" [level=3] [ref=e307]
+            - paragraph [ref=e308]: Memorize soroban numbers and recall them
+            - paragraph [ref=e309]: 1-8 players
+            - generic [ref=e310]:
+              - generic [ref=e311]: 👥 Multiplayer
+              - generic [ref=e312]: 🧠 Memory
+              - generic [ref=e313]: 🧮 Soroban
+        - link "🏁 Speed Complement Race 🏁 Race against opponents while solving complement problems 1-4 players 👥 1-4 Players 🚂 Sprint Mode 🤖 AI Opponents 🔥 Speed Challenge" [ref=e314] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e318]:
+            - generic [ref=e319]: 🏁
+            - heading "Speed Complement Race 🏁" [level=3] [ref=e320]
+            - paragraph [ref=e321]: Race against opponents while solving complement problems
+            - paragraph [ref=e322]: 1-4 players
+            - generic [ref=e323]:
+              - generic [ref=e324]: 👥 1-4 Players
+              - generic [ref=e325]: 🚂 Sprint Mode
+              - generic [ref=e326]: 🤖 AI Opponents
+              - generic [ref=e327]: 🔥 Speed Challenge
+        - link "🔢 Card Sorting Challenge Sort abacus cards using pattern recognition Solo challenge 🧠 Pattern Recognition 🎯 Solo Challenge 📊 Smart Scoring" [ref=e328] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e332]:
+            - generic [ref=e333]: 🔢
+            - heading "Card Sorting Challenge" [level=3] [ref=e334]
+            - paragraph [ref=e335]: Sort abacus cards using pattern recognition
+            - paragraph [ref=e336]: Solo challenge
+            - generic [ref=e337]:
+              - generic [ref=e338]: 🧠 Pattern Recognition
+              - generic [ref=e339]: 🎯 Solo Challenge
+              - generic [ref=e340]: 📊 Smart Scoring
+        - link "🔄 Yjs Sync Demo Real-time collaboration demo with Yjs 1-8 players 🤝 Collaborative ⚡ Real-time 🔬 Demo" [ref=e341] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e345]:
+            - generic [ref=e346]: 🔄
+            - heading "Yjs Sync Demo" [level=3] [ref=e347]
+            - paragraph [ref=e348]: Real-time collaboration demo with Yjs
+            - paragraph [ref=e349]: 1-8 players
+            - generic [ref=e350]:
+              - generic [ref=e351]: 🤝 Collaborative
+              - generic [ref=e352]: ⚡ Real-time
+              - generic [ref=e353]: 🔬 Demo
+        - link "🎲 Rithmomachia Medieval mathematical battle game 1-2 players ⚔️ Strategy 🔢 Mathematical 🏛️ Historical 🎯 Two-Player" [ref=e354] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e358]:
+            - generic [ref=e359]: 🎲
+            - heading "Rithmomachia" [level=3] [ref=e360]
+            - paragraph [ref=e361]: Medieval mathematical battle game
+            - paragraph [ref=e362]: 1-2 players
+            - generic [ref=e363]:
+              - generic [ref=e364]: ⚔️ Strategy
+              - generic [ref=e365]: 🔢 Mathematical
+              - generic [ref=e366]: 🏛️ Historical
+              - generic [ref=e367]: 🎯 Two-Player
+        - link "🌍 Know Your World Test your geography knowledge by finding countries and states on the map! 1-8 players 👥 Multiplayer 🎓 Educational 🗺️ Geography" [ref=e368] [cursor=pointer]:
+          - /url: /games
+          - generic [ref=e372]:
+            - generic [ref=e373]: 🌍
+            - heading "Know Your World" [level=3] [ref=e374]
+            - paragraph [ref=e375]: Test your geography knowledge by finding countries and states on the map!
+            - paragraph [ref=e376]: 1-8 players
+            - generic [ref=e377]:
+              - generic [ref=e378]: 👥 Multiplayer
+              - generic [ref=e379]: 🎓 Educational
+              - generic [ref=e380]: 🗺️ Geography
+    - generic [ref=e382]:
+      - generic [ref=e383]:
+        - heading "Mathematical playgrounds" [level=2] [ref=e384]
+        - paragraph [ref=e385]: Not everything has to be a drill. Explore geometry, number lines, and more — tools for curiosity, not just correctness.
+      - generic [ref=e386]:
+        - link "Euclid's Elements Compass-and-straightedge geometry, proposition by proposition" [ref=e387] [cursor=pointer]:
+          - /url: /toys/euclid
+          - generic [ref=e391]:
+            - heading "Euclid's Elements" [level=3] [ref=e392]
+            - paragraph [ref=e393]: Compass-and-straightedge geometry, proposition by proposition
+        - link "Constant Demos Watch pi roll, e branch, and the golden ratio spiral — 10 animated explorations" [ref=e394] [cursor=pointer]:
+          - /url: /toys/number-line
+          - generic [ref=e398]:
+            - heading "Constant Demos" [level=3] [ref=e399]
+            - paragraph [ref=e400]: Watch pi roll, e branch, and the golden ratio spiral — 10 animated explorations
+        - link "Talk to a Number Dial any number on the line and have a voice conversation about its properties" [ref=e401] [cursor=pointer]:
+          - /url: /toys/number-line
+          - generic [ref=e405]:
+            - heading "Talk to a Number" [level=3] [ref=e406]
+            - paragraph [ref=e407]: Dial any number on the line and have a voice conversation about its properties
+        - link "Coordinate Plane Word problems on a magnitude-aware 2D grid" [ref=e408] [cursor=pointer]:
+          - /url: /toys/coordinate-plane
+          - generic [ref=e412]:
+            - heading "Coordinate Plane" [level=3] [ref=e413]
+            - paragraph [ref=e414]: Word problems on a magnitude-aware 2D grid
+        - link "Dice Tray 3D physics dice. Add them up." [ref=e415] [cursor=pointer]:
+          - /url: /toys/dice
+          - generic [ref=e419]:
+            - heading "Dice Tray" [level=3] [ref=e420]
+            - paragraph [ref=e421]: 3D physics dice. Add them up.
+    - generic [ref=e423]:
+      - generic [ref=e424]:
+        - heading "Printable practice materials" [level=2] [ref=e425]
+        - paragraph [ref=e426]: Generate worksheets, flashcards, and calendars — better than what you can buy. Customize everything. Download as PDF.
+      - generic [ref=e427]:
+        - generic [ref=e429]:
+          - generic [ref=e431]:
+            - img [ref=e434]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "4"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "5"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "3"
+            - generic [ref=e475]: "453"
+          - generic [ref=e477]:
+            - img [ref=e480]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "4"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "2"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "8"
+            - generic [ref=e521]: "428"
+          - generic [ref=e523]:
+            - img [ref=e526]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "8"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "1"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "5"
+            - generic [ref=e567]: "815"
+          - generic [ref=e569]:
+            - img [ref=e572]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "7"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "2"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "8"
+            - generic [ref=e613]: "728"
+          - generic [ref=e615]:
+            - img [ref=e618]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "6"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "4"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "3"
+            - generic [ref=e659]: "643"
+          - generic [ref=e661]:
+            - img [ref=e664]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "9"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "6"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "0"
+            - generic [ref=e705]: "960"
+          - generic [ref=e707]:
+            - img [ref=e710]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "9"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "8"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "1"
+            - generic [ref=e751]: "981"
+          - generic [ref=e753]:
+            - img [ref=e756]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "2"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "8"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "7"
+            - generic [ref=e797]: "287"
+          - generic [ref=e799]:
+            - img [ref=e802]:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "9"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "0"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "1"
+            - generic [ref=e843]: "901"
+        - generic [ref=e844]:
+          - generic [ref=e845]:
+            - generic [ref=e846]: 📄
+            - generic [ref=e847]: Multiple Formats
+            - generic [ref=e848]: PDF, PNG, SVG, HTML
+          - generic [ref=e849]:
+            - generic [ref=e850]: 🎨
+            - generic [ref=e851]: Customizable
+            - generic [ref=e852]: Bead shapes, colors, layouts
+          - generic [ref=e853]:
+            - generic [ref=e854]: 📐
+            - generic [ref=e855]: All Paper Sizes
+            - generic [ref=e856]: A3, A4, A5, US Letter
+        - link "Create materials →" [ref=e858] [cursor=pointer]:
+          - /url: /create
+          - generic [ref=e859]: Create materials
+          - generic [ref=e860]: →
+    - paragraph [ref=e863]: Built by a parent, for their kids. Not a startup. Not ad-supported. Just better math practice.
+    - generic [ref=e866]:
+      - heading "Try it now — no account needed" [level=2] [ref=e867]
+      - paragraph [ref=e868]: Create a student profile and start your first practice session. Everything works without signing up.
+      - link "Get started →" [ref=e869] [cursor=pointer]:
+        - /url: /practice
+        - generic [ref=e870]: Get started
+        - generic [ref=e871]: →
+      - link "Soroban teacher? See what we built for you →" [ref=e872] [cursor=pointer]:
+        - /url: /for-teachers
+    - generic [ref=e875]:
+      - generic [ref=e876]:
+        - heading "From the Blog" [level=2] [ref=e877]
+        - paragraph [ref=e878]: Insights on ed-tech and pedagogy
+      - generic [ref=e879]:
+        - 'link "From Paper to Practice: How We Parse Handwritten Worksheets with Vision AI Most math practice doesn''t happen on a screen. It happens on paper — workbook pages, printed worksheets, flashcard drills at the kitchen table. A kid might do thirty addition problems before dinner an... Abaci.one Team · February 19, 2026 vision-ai worksheet-parsing" [ref=e880] [cursor=pointer]':
+          - /url: /blog/worksheet-parsing-with-vision-ai
+          - img [ref=e884]:
+            - generic [ref=e886]: 35 + 12 =
+            - generic [ref=e887]: 48 − 19 =
+            - generic [ref=e888]: 27 + 45 =
+            - generic [ref=e889]: 63 − 28 =
+            - generic [ref=e890]: 54 + 37 =
+            - generic [ref=e891]: "47"
+            - generic [ref=e892]: "31"
+            - generic [ref=e893]: "72"
+            - generic [ref=e894]: "35"
+            - generic [ref=e895]: "81"
+            - generic [ref=e896]: WORKSHEET
+            - generic [ref=e897]: ✏️
+            - generic [ref=e899]: Vision AI
+            - generic [ref=e904]: ✓
+            - generic [ref=e905]: 35 + 12 = 47
+            - generic [ref=e906]: ✗
+            - generic [ref=e907]: 48 − 19 ≠ 31
+            - generic [ref=e908]: ✓
+            - generic [ref=e909]: 27 + 45 = 72
+            - generic [ref=e911]: Skill Model
+            - generic [ref=e912]: Addition
+            - generic [ref=e915]: Subtraction
+            - generic [ref=e918]: Regrouping
+            - generic [ref=e921]: Paper practice → Structured data → Smarter recommendations
+          - generic [ref=e922]:
+            - 'heading "From Paper to Practice: How We Parse Handwritten Worksheets with Vision AI" [level=3] [ref=e923]'
+            - paragraph [ref=e924]: Most math practice doesn't happen on a screen. It happens on paper — workbook pages, printed worksheets, flashcard drills at the kitchen table. A kid might do thirty addition problems before dinner an...
+            - generic [ref=e925]:
+              - generic [ref=e926]: Abaci.one Team
+              - generic [ref=e927]: ·
+              - time [ref=e928]: February 19, 2026
+            - generic [ref=e929]:
+              - generic [ref=e930]: vision-ai
+              - generic [ref=e931]: worksheet-parsing
+        - 'link "Observation Mode 📷 Vision 42 94% Live Mirror Mode Stable Auto-Crop Calibration 4/4 markers See What They''re Doing: Vision-Powered Abacus Detection There''s something magical about watching a child work through a math problem on a physical abacus. Their fingers move the beads, their mind calculates, and slowly the answer takes shape. But as a pare... Abaci.one Team · January 6, 2026 vision machine-learning" [ref=e932] [cursor=pointer]':
+          - /url: /blog/vision-powered-abacus-detection
+          - generic [ref=e934]:
+            - generic [ref=e935]:
+              - generic [ref=e936]: Observation Mode
+              - generic [ref=e937]:
+                - img [ref=e940]
+                - generic [ref=e1002]:
+                  - generic [ref=e1003]: 📷
+                  - generic [ref=e1004]: Vision
+                - generic [ref=e1005]:
+                  - generic [ref=e1006]:
+                    - generic [ref=e1007]: "42"
+                    - generic [ref=e1008]: 94%
+                  - generic [ref=e1011]: Live
+            - generic [ref=e1012]:
+              - generic [ref=e1013]: Mirror Mode
+              - generic [ref=e1014]:
+                - img [ref=e1017]:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: "0"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: "0"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: "0"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: "4"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic: "2"
+                - img [ref=e1087]
+                - generic [ref=e1151]: Stable
+            - generic [ref=e1152]:
+              - generic [ref=e1153]: Auto-Crop Calibration
+              - generic [ref=e1154]:
+                - img [ref=e1157]
+                - img
+                - generic:
+                  - img
+                - generic:
+                  - img
+                - generic:
+                  - img
+                - generic:
+                  - img
+                - generic [ref=e1219]: 4/4 markers
+          - generic [ref=e1220]:
+            - 'heading "See What They''re Doing: Vision-Powered Abacus Detection" [level=3] [ref=e1221]'
+            - paragraph [ref=e1222]: There's something magical about watching a child work through a math problem on a physical abacus. Their fingers move the beads, their mind calculates, and slowly the answer takes shape. But as a pare...
+            - generic [ref=e1223]:
+              - generic [ref=e1224]: Abaci.one Team
+              - generic [ref=e1225]: ·
+              - time [ref=e1226]: January 6, 2026
+            - generic [ref=e1227]:
+              - generic [ref=e1228]: vision
+              - generic [ref=e1229]: machine-learning
+        - 'link "4 2 3 3 1 8 = Skill Mastery Blame direct addition 90% 0% 10''s: 8=10-2 38% 0% 5''s: 3=5-2 58% 0% Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work > Abstract: Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column c... Abaci.one Team · December 13, 2025 education machine-learning" [ref=e1230] [cursor=pointer]':
+          - /url: /blog/conjunctive-bkt-skill-tracing
+          - generic [ref=e1232]:
+            - generic [ref=e1235]:
+              - generic [ref=e1236]:
+                - generic [ref=e1238]: "4"
+                - generic [ref=e1239]: "2"
+              - generic [ref=e1240]:
+                - generic [ref=e1242]: "3"
+                - generic [ref=e1243]: "3"
+              - generic [ref=e1244]:
+                - generic [ref=e1246]: "1"
+                - generic [ref=e1247]: "8"
+              - generic [ref=e1251]: =
+            - generic [ref=e1254]:
+              - generic [ref=e1255]:
+                - generic [ref=e1256]: Skill
+                - generic [ref=e1257]: Mastery
+                - generic [ref=e1258]: Blame
+              - generic [ref=e1259]:
+                - generic [ref=e1260]: direct addition
+                - generic [ref=e1264]: 90%
+                - generic [ref=e1267]: 0%
+              - generic [ref=e1268]:
+                - generic [ref=e1269]: "10's: 8=10-2"
+                - generic [ref=e1273]: 38%
+                - generic [ref=e1276]: 0%
+              - generic [ref=e1277]:
+                - generic [ref=e1278]: "5's: 3=5-2"
+                - generic [ref=e1282]: 58%
+                - generic [ref=e1285]: 0%
+          - generic [ref=e1286]:
+            - 'heading "Binary Outcomes, Granular Insights: How We Know Which Abacus Skill Needs Work" [level=3] [ref=e1287]'
+            - paragraph [ref=e1288]: "> Abstract: Soroban (Japanese abacus) pedagogy treats arithmetic as a sequence of visual-motor patterns to be drilled to automaticity. Each numeral operation (adding 1, adding 2, ...) in each column c..."
+            - generic [ref=e1289]:
+              - generic [ref=e1290]: Abaci.one Team
+              - generic [ref=e1291]: ·
+              - time [ref=e1292]: December 13, 2025
+            - generic [ref=e1293]:
+              - generic [ref=e1294]: education
+              - generic [ref=e1295]: machine-learning
+      - link "View All Posts →" [ref=e1297] [cursor=pointer]:
+        - /url: /blog
+        - generic [ref=e1298]: View All Posts
+        - generic [ref=e1299]: →
+  - img [ref=e1304]:
+    - generic [ref=e1361] [cursor=pointer]: "0"
+    - generic [ref=e1369] [cursor=pointer]: "0"
+    - generic [ref=e1377] [cursor=pointer]: "0"
+    - generic [ref=e1385] [cursor=pointer]: "0"
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e1386]
+  - generic [ref=e1388]:
+    - generic [ref=e1389]:
+      - generic [ref=e1390]: "Working on:"
+      - generic [ref=e1391]: 2 + 3 = 2 + (5 - 2) = 5
+      - text: 💡 add heaven bead in ones column
+    - 'tooltip "Working on: 2 + 3 = 2 + (5 - 2) = 5 💡 add heaven bead in ones column" [ref=e1392]':
+      - generic [ref=e1393]:
+        - generic [ref=e1394]: "Working on:"
+        - generic [ref=e1395]: 2 + 3 = 2 + (5 - 2) = 5
+        - text: 💡 add heaven bead in ones column
+```

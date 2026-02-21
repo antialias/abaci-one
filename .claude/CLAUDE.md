@@ -37,12 +37,55 @@ kubectl logs -n abaci -l app=abaci-app --tail=100
 
 ## Application Architecture
 
-- **StatefulSet**: `abaci-app` with 3 replicas for HA
+- **Deployment**: `abaci-app` with 3 replicas for HA
 - **Services**:
   - `abaci-app` (ClusterIP) - main service
   - `abaci-app-headless` - for StatefulSet DNS
   - `abaci-app-primary` - routes to primary instance
 - **Redis**: Session/cache store
+
+## Production Database (libsql)
+
+**Production does NOT use a local SQLite file.** The `DATABASE_URL` points to a libsql server running in-cluster:
+
+```
+DATABASE_URL=http://libsql.abaci.svc.cluster.local:8080
+```
+
+**The local dev database** (`apps/web/data/sqlite.db`) is a separate SQLite file — changes there do NOT affect production.
+
+**To query the production database**, exec into any app pod and use Node.js with the libsql HTTP API (no `curl` or `sqlite3` available in the container):
+
+```bash
+# 1. Get a pod name
+kubectl get pods -n abaci -l app=abaci-app
+
+# 2. Run a query via Node.js fetch to the libsql HTTP pipeline API
+kubectl exec -n abaci <pod-name> -- node -e "
+  fetch('http://libsql.abaci.svc.cluster.local:8080/v2/pipeline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{
+        type: 'execute',
+        stmt: { sql: 'SELECT * FROM users LIMIT 5' }
+      }]
+    })
+  }).then(r => r.json()).then(d => console.log(JSON.stringify(d, null, 2)))
+"
+```
+
+**Convenience script** (preferred — works from local terminal):
+```bash
+./scripts/prod-query.sh "SELECT id, email, upgraded_at FROM users WHERE email IS NOT NULL LIMIT 5"
+```
+
+**From Claude Code** (when you need to query prod programmatically), use `mcp__kubernetes__exec_in_pod` or just run the script via Bash tool.
+
+**Important notes:**
+- Column names use `snake_case` in SQL (e.g., `user_id`, `is_practice_student`), NOT camelCase
+- Use parameterized queries for safety when using the raw API: `{ sql: 'SELECT * FROM users WHERE id = ?', args: [{ type: 'text', value: 'some-id' }] }`
+- Multiple queries can be batched in a single `requests` array
 
 ## Fixbot (Automated CI Fix System)
 

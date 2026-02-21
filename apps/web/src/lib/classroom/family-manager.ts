@@ -207,29 +207,5 @@ export async function regenerateFamilyCode(playerId: string): Promise<string | n
   return newCode
 }
 
-/**
- * Check if a user is a parent of a player
- *
- * Checks both:
- * 1. The parent_child many-to-many table (new relationship)
- * 2. The players.userId field (legacy - original creator)
- */
-export async function isParent(userId: string, playerId: string): Promise<boolean> {
-  // Check the parent_child table first (many-to-many relationship)
-  const link = await db.query.parentChild.findFirst({
-    where: and(eq(parentChild.parentUserId, userId), eq(parentChild.childPlayerId, playerId)),
-  })
-  if (link) return true
-
-  // Fallback: Check if user is the original creator (legacy players)
-  // This handles players created before the parent_child system was added
-  const player = await db.query.players.findFirst({
-    where: eq(players.id, playerId),
-  })
-  if (player && player.userId === userId) return true
-
-  return false
-}
-
 // Re-export the generateFamilyCode function from schema for convenience
 export { generateFamilyCode } from '@/db/schema'

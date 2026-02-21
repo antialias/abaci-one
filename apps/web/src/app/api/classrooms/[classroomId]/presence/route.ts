@@ -3,7 +3,7 @@ import {
   enterClassroom,
   getClassroomPresence,
   getTeacherClassroom,
-  isParent,
+  isParentOf,
 } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
@@ -61,7 +61,7 @@ export const POST = withAuth(async (req, { params }) => {
     // Check authorization: must be teacher of classroom OR parent of student
     const classroom = await getTeacherClassroom(userId)
     const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(userId, body.playerId)
+    const parentCheck = await isParentOf(userId, body.playerId)
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(

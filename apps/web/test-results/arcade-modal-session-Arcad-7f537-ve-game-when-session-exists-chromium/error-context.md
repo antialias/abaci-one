@@ -1,0 +1,140 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner:
+    - button "☰ T" [ref=e3] [cursor=pointer]:
+      - generic [ref=e4]: ☰
+      - generic:
+        - generic: T
+    - generic [ref=e5]:
+      - generic [ref=e6]: Loading invitations...
+      - generic [ref=e7]:
+        - button "🧮 Abacus Match ▼ 🏆 Tournament Debug-1771639235068's Game Break 👑 You are host" [ref=e9] [cursor=pointer]:
+          - generic [ref=e10]:
+            - generic [ref=e11]:
+              - generic [ref=e12]: 🧮 Abacus Match
+              - generic [ref=e13]: ▼
+            - generic [ref=e14]:
+              - generic [ref=e15]: 🏆
+              - generic [ref=e16]: Tournament
+            - generic [ref=e17]: Debug-1771639235068's Game Break
+            - generic "You're the host" [ref=e18]:
+              - generic [ref=e19]: 👑
+              - generic [ref=e20]: You are host
+        - generic [ref=e21]:
+          - generic [ref=e23] [cursor=pointer]: 😀
+          - generic [ref=e25] [cursor=pointer]: 😎
+          - generic [ref=e27] [cursor=pointer]: 🤠
+          - generic [ref=e29] [cursor=pointer]: 😰
+          - generic [ref=e31] [cursor=pointer]: 🤔
+          - generic [ref=e33] [cursor=pointer]: 😊
+          - generic [ref=e35] [cursor=pointer]: 🌟
+          - generic [ref=e37] [cursor=pointer]: 🏆
+          - generic [ref=e39] [cursor=pointer]: 🎯
+          - generic [ref=e41] [cursor=pointer]: 📚
+          - generic [ref=e43] [cursor=pointer]: 🚀
+          - generic [ref=e45] [cursor=pointer]: 🏆
+          - generic [ref=e47] [cursor=pointer]: 🌱
+          - generic [ref=e49] [cursor=pointer]: 1️⃣
+          - generic [ref=e51] [cursor=pointer]: 📈
+          - generic [ref=e53] [cursor=pointer]: ⚖️
+          - generic [ref=e55] [cursor=pointer]: ⏰
+          - generic [ref=e57] [cursor=pointer]: 💥
+          - generic [ref=e59] [cursor=pointer]: 🧊
+          - generic [ref=e61] [cursor=pointer]: 📉
+          - generic [ref=e63] [cursor=pointer]: 📊
+          - generic [ref=e65] [cursor=pointer]: 📈
+          - generic [ref=e67] [cursor=pointer]: 🏋️
+          - generic [ref=e69] [cursor=pointer]: 🌈
+          - generic [ref=e71] [cursor=pointer]: 🐢
+          - generic [ref=e73] [cursor=pointer]: 🎲
+          - generic [ref=e75] [cursor=pointer]: ⚡
+          - button "+" [ref=e77] [cursor=pointer]
+  - main [ref=e80]:
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]: Game Type
+        - generic [ref=e85]:
+          - button "🧮 ↔️ 🔢 Abacus-Numeral Match visual patterns with numbers" [ref=e86] [cursor=pointer]:
+            - generic [ref=e87]:
+              - generic [ref=e88]:
+                - generic [ref=e89]: 🧮
+                - generic [ref=e90]: ↔️
+                - generic [ref=e91]: 🔢
+              - generic [ref=e92]: Abacus-Numeral
+              - generic [ref=e93]:
+                - text: Match visual patterns
+                - text: with numbers
+          - button "🤝 ➕ 🔟 Complement Pairs Find number friends that add to 5 or 10" [ref=e94] [cursor=pointer]:
+            - generic [ref=e95]:
+              - generic [ref=e96]:
+                - generic [ref=e97]: 🤝
+                - generic [ref=e98]: ➕
+                - generic [ref=e99]: 🔟
+              - generic [ref=e100]: Complement Pairs
+              - generic [ref=e101]:
+                - text: Find number friends
+                - text: that add to 5 or 10
+        - paragraph [ref=e102]: Match abacus representations with their numerical values
+      - generic [ref=e103]:
+        - generic [ref=e104]: Difficulty (6 pairs)
+        - generic [ref=e105]:
+          - button "🌱 6 Beginner Perfect to start!" [ref=e106] [cursor=pointer]:
+            - generic [ref=e107]:
+              - generic [ref=e108]: 🌱
+              - generic [ref=e109]: "6"
+              - generic [ref=e110]: Beginner
+              - generic [ref=e111]: Perfect to start!
+          - button "⚡ 8 Medium Getting spicy!" [ref=e112] [cursor=pointer]:
+            - generic [ref=e113]:
+              - generic [ref=e114]: ⚡
+              - generic [ref=e115]: "8"
+              - generic [ref=e116]: Medium
+              - generic [ref=e117]: Getting spicy!
+          - button "🔥 12 Hard Serious challenge!" [ref=e118] [cursor=pointer]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: 🔥
+              - generic [ref=e121]: "12"
+              - generic [ref=e122]: Hard
+              - generic [ref=e123]: Serious challenge!
+          - button "💀 15 Expert Memory master!" [ref=e124] [cursor=pointer]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: 💀
+              - generic [ref=e127]: "15"
+              - generic [ref=e128]: Expert
+              - generic [ref=e129]: Memory master!
+        - paragraph [ref=e130]: 6 pairs = 12 cards total
+      - generic [ref=e131]:
+        - generic [ref=e132]: Turn Timer
+        - generic [ref=e133]:
+          - button "💨 15s Lightning" [ref=e134] [cursor=pointer]:
+            - generic [ref=e135]:
+              - generic [ref=e136]: 💨
+              - generic [ref=e137]: 15s
+              - generic [ref=e138]: Lightning
+          - button "⚡ 30s Quick" [ref=e139] [cursor=pointer]:
+            - generic [ref=e140]:
+              - generic [ref=e141]: ⚡
+              - generic [ref=e142]: 30s
+              - generic [ref=e143]: Quick
+          - button "🏃 45s Standard" [ref=e144] [cursor=pointer]:
+            - generic [ref=e145]:
+              - generic [ref=e146]: 🏃
+              - generic [ref=e147]: 45s
+              - generic [ref=e148]: Standard
+          - button "🧘 60s Relaxed" [ref=e149] [cursor=pointer]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: 🧘
+              - generic [ref=e152]: 60s
+              - generic [ref=e153]: Relaxed
+        - paragraph [ref=e154]: Time limit for each player's turn
+      - button "🚀 START GAME 🎮" [ref=e156] [cursor=pointer]:
+        - generic [ref=e157]:
+          - generic [ref=e158]: 🚀
+          - generic [ref=e159]: START GAME
+          - generic [ref=e160]: 🎮
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e161]
+```

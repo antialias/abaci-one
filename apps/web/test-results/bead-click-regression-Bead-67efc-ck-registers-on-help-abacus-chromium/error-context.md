@@ -1,0 +1,69 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "Abaci One Screen time that builds real math skills" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: Abaci One
+        - generic [ref=e7]: Screen time that builds real math skills
+      - generic [ref=e8]:
+        - navigation [ref=e9]:
+          - link "Create" [ref=e11] [cursor=pointer]:
+            - /url: /create
+          - link "Practice" [ref=e13] [cursor=pointer]:
+            - /url: /practice
+          - link "Games" [ref=e15] [cursor=pointer]:
+            - /url: /games
+          - link "Blog" [ref=e17] [cursor=pointer]:
+            - /url: /blog
+        - button "☰ T" [ref=e18] [cursor=pointer]:
+          - generic [ref=e19]: ☰
+          - generic:
+            - generic: T
+  - generic [ref=e20]:
+    - navigation [ref=e21]:
+      - generic [ref=e22]:
+        - link "Debug-1771683575789's dashboard" [ref=e23] [cursor=pointer]:
+          - /url: /practice/qrkxzczzcpf1dve1qhttz7cz/dashboard
+          - generic [ref=e24]: 🐛
+        - link "Debug-1771683575789" [ref=e26] [cursor=pointer]:
+          - /url: /practice/qrkxzczzcpf1dve1qhttz7cz/dashboard
+      - generic [ref=e27]:
+        - button "Enter browse mode" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29]: 🔍
+          - generic [ref=e30]: Browse
+        - button "Session controls" [ref=e31] [cursor=pointer]:
+          - generic [ref=e32]: ▶
+          - generic [ref=e33]: ▼
+        - generic [ref=e38]:
+          - generic [ref=e39]: 🧮
+          - button "○" [disabled] [ref=e41]
+        - button "🐢 1 left · ~1m" [ref=e42] [cursor=pointer]:
+          - generic [ref=e43]: 🐢
+          - generic [ref=e44]: 1 left · ~1m
+    - main [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e48]:
+          - generic [ref=e50]: focus
+          - button "Replay problem audio" [ref=e51] [cursor=pointer]:
+            - img [ref=e52]
+          - generic [ref=e59]:
+            - generic [ref=e63]: "3"
+            - generic [ref=e64]:
+              - generic [ref=e66]: "1"
+              - generic [ref=e67]: "2"
+            - generic [ref=e71]: =
+        - generic [ref=e75]:
+          - generic [ref=e76]: Give it a try!
+          - button "skip" [ref=e77] [cursor=pointer]
+        - button "Submit" [disabled] [ref=e80]
+  - generic [ref=e82] [cursor=pointer]:
+    - generic:
+      - generic:
+        - img
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e133]
+```

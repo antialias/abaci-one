@@ -1,6 +1,7 @@
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import type { Preview } from '@storybook/nextjs'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SessionProvider } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl'
 import { ThemeProvider } from '../src/contexts/ThemeContext'
 import tutorialEn from '../src/i18n/locales/tutorial/en.json'
@@ -37,15 +38,17 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <NextIntlClientProvider locale="en" messages={messages}>
-            <AbacusDisplayProvider>
-              <Story />
-            </AbacusDisplayProvider>
-          </NextIntlClientProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <SessionProvider session={null}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <NextIntlClientProvider locale="en" messages={messages}>
+              <AbacusDisplayProvider>
+                <Story />
+              </AbacusDisplayProvider>
+            </NextIntlClientProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </SessionProvider>
     ),
   ],
 }

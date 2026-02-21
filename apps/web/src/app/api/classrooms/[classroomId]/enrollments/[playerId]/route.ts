@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getLinkedParentIds, getTeacherClassroom, isParent, unenrollStudent } from '@/lib/classroom'
+import { getLinkedParentIds, getTeacherClassroom, isParentOf, unenrollStudent } from '@/lib/classroom'
 import { emitStudentUnenrolled } from '@/lib/classroom/socket-emitter'
 import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
@@ -20,7 +20,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
     // Check authorization: must be teacher of classroom OR parent of student
     const classroom = await getTeacherClassroom(userId)
     const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(userId, playerId)
+    const parentCheck = await isParentOf(userId, playerId)
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(

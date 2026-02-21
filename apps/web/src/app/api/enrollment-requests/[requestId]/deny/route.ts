@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { enrollmentRequests } from '@/db/schema'
-import { denyEnrollmentRequest, isParent } from '@/lib/classroom'
+import { denyEnrollmentRequest, isParentOf } from '@/lib/classroom'
 import { emitEnrollmentRequestDenied } from '@/lib/classroom/socket-emitter'
 import { getUserId } from '@/lib/viewer'
 
@@ -28,7 +28,7 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Verify user is a parent of the child in the request
-    const parentCheck = await isParent(userId, request.playerId)
+    const parentCheck = await isParentOf(userId, request.playerId)
     if (!parentCheck) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }

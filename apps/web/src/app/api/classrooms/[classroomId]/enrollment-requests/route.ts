@@ -7,7 +7,7 @@ import {
   getPendingRequestsForClassroom,
   getRequestsAwaitingParentApproval,
   getTeacherClassroom,
-  isParent,
+  isParentOf,
 } from '@/lib/classroom'
 import { getSocketIO } from '@/lib/socket-io'
 import { getUserId } from '@/lib/viewer'
@@ -65,7 +65,7 @@ export const POST = withAuth(async (req, { params }) => {
     // Determine role: is user the teacher or a parent?
     const classroom = await getTeacherClassroom(userId)
     const isTeacher = classroom?.id === classroomId
-    const parentCheck = await isParent(userId, body.playerId)
+    const parentCheck = await isParentOf(userId, body.playerId)
 
     if (!isTeacher && !parentCheck) {
       return NextResponse.json(

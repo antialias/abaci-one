@@ -49,7 +49,7 @@ function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
 }
 
 // Custom hook to calculate proper grid dimensions for consistent r×c layout
-function useGridDimensions(gridConfig: any, totalCards: number) {
+function useGridDimensions(gridConfig: any, totalCards: number, locked: boolean) {
   const [gridDimensions, setGridDimensions] = useState(() => {
     // Calculate optimal rows and columns based on total cards and viewport
     if (typeof window !== 'undefined') {
@@ -63,6 +63,8 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
   })
 
   useEffect(() => {
+    if (locked) return // Don't recalculate during gameplay
+
     const updateGrid = () => {
       if (typeof window === 'undefined') return
 
@@ -73,7 +75,7 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
     updateGrid()
     window.addEventListener('resize', updateGrid)
     return () => window.removeEventListener('resize', updateGrid)
-  }, [gridConfig, totalCards])
+  }, [gridConfig, totalCards, locked])
 
   return gridDimensions
 }
@@ -104,6 +106,9 @@ export interface MemoryGridProps<TCard = any> {
   // Smart dimming (optional) — externalizes game-specific dimming logic
   shouldDimCard?: (card: TCard, firstFlippedCard: TCard) => boolean
 
+  /** Lock grid dimensions to prevent reshuffle during gameplay (default: true) */
+  isLocked?: boolean
+
   // Card rendering
   renderCard: (props: {
     card: TCard
@@ -128,9 +133,10 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
   viewerId,
   gameMode = 'single',
   shouldDimCard,
+  isLocked,
 }: MemoryGridProps<TCard>) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
-  const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
+  const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length, isLocked ?? true)
 
   // Check if it's the local player's turn (for multiplayer mode)
   const isMyTurn = useMemo(() => {

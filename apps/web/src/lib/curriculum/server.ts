@@ -9,13 +9,13 @@
 
 import 'server-only'
 
-import { and, eq, inArray, or } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
-import { getValidParentLinks } from '@/lib/classroom/access-control'
+import { getParentedPlayerIds } from '@/lib/classroom/access-control'
 import { getUserId } from '@/lib/viewer'
 import {
   computeIntervention,
@@ -212,26 +212,22 @@ async function batchGetActiveSessions(
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
   const userId = await getUserId()
 
-  // Get player IDs linked via parent_child table (with guest share expiry applied)
-  const validLinks = await getValidParentLinks(userId)
-  const linkedIds = validLinks.map((link) => link.childPlayerId)
+  // Get all player IDs the user has parent access to (owned + linked, with guest expiry)
+  const parentedIds = await getParentedPlayerIds(userId)
 
-  // Get practice students: created by this user OR linked via parent_child
+  // Get practice students from the parented set
   // Only returns players flagged as practice students (excludes arcade-only players)
   let players: Player[]
-  if (linkedIds.length > 0) {
+  if (parentedIds.length > 0) {
     players = await db.query.players.findMany({
       where: and(
-        or(eq(schema.players.userId, userId), inArray(schema.players.id, linkedIds)),
+        inArray(schema.players.id, parentedIds),
         eq(schema.players.isPracticeStudent, true)
       ),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
     })
   } else {
-    players = await db.query.players.findMany({
-      where: and(eq(schema.players.userId, userId), eq(schema.players.isPracticeStudent, true)),
-      orderBy: (players, { desc }) => [desc(players.createdAt)],
-    })
+    players = []
   }
 
   if (players.length === 0) return []

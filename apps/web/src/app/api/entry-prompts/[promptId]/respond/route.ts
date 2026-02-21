@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { enterClassroom, isParent } from '@/lib/classroom'
+import { enterClassroom, isParentOf } from '@/lib/classroom'
 import { emitEntryPromptAccepted, emitEntryPromptDeclined } from '@/lib/classroom/socket-emitter'
 import { getUserId } from '@/lib/viewer'
 
@@ -52,7 +52,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Verify user is a parent of the player
-    const isParentOfPlayer = await isParent(userId, prompt.playerId)
+    const isParentOfPlayer = await isParentOf(userId, prompt.playerId)
     if (!isParentOfPlayer) {
       return NextResponse.json(
         { error: 'Not authorized. Must be a parent of the student.' },

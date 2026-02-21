@@ -13,14 +13,20 @@ export default defineConfig({
   },
 
   projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    { name: 'auth-setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'tier-setup',
+      testMatch: /tier\.setup\.ts/,
+      use: { storageState: 'e2e/.auth/admin.json' },
+      dependencies: ['auth-setup'],
+    },
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/admin.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['tier-setup'],
     },
   ],
 

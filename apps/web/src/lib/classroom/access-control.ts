@@ -8,8 +8,15 @@
  *
  * Guest sharing rule:
  * Shared (non-owned) students expire for guest accounts after 24 hours.
- * This is enforced centrally via getValidParentLinks() and isValidParentOf().
+ * This is enforced centrally via getParentedPlayerIds() and isParentOf().
  * All access checks and player listings go through these functions.
+ *
+ * Two canonical primitives:
+ * 1. isParentOf(userId, playerId) — THE single-player parent check
+ * 2. getParentedPlayerIds(userId) — THE listing primitive (all player IDs a user has parent access to)
+ *
+ * Higher-level functions (getPlayerAccess, canPerformAction, getAccessiblePlayers)
+ * are built on top of these two primitives.
  */
 
 import { and, eq } from 'drizzle-orm'
@@ -20,7 +27,6 @@ import {
   classrooms,
   parentChild,
   players,
-  type ParentChild,
   type Player,
   users,
 } from '@/db/schema'
@@ -28,47 +34,32 @@ import {
 const GUEST_SHARE_EXPIRY_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 // ---------------------------------------------------------------------------
-// Guest sharing expiry — single source of truth
+// Level 1 (internal): Guest detection
+// ---------------------------------------------------------------------------
+
+/** Check if a user is a guest (not yet authenticated). */
+async function isGuestUser(userId: string): Promise<boolean> {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { upgradedAt: true },
+  })
+  return !user?.upgradedAt
+}
+
+// ---------------------------------------------------------------------------
+// Level 2 (exported): Canonical parent-check primitives
 // ---------------------------------------------------------------------------
 
 /**
- * Get all valid parent_child links for a viewer.
+ * Check if a user is a parent of a player.
  *
- * For authenticated users, all links are valid.
- * For guest users, shared (non-owned) student links expire after 24 hours.
- * Owned students (players.userId === viewerId) are always valid.
+ * THE single-player parent check. Logic:
+ * 1. players.userId === userId → always true (ownership)
+ * 2. parent_child link exists + user is authenticated → true
+ * 3. parent_child link exists + user is guest + link < 24h → true
+ * 4. Otherwise → false
  */
-export async function getValidParentLinks(viewerId: string): Promise<ParentChild[]> {
-  const links = await db.query.parentChild.findMany({
-    where: eq(parentChild.parentUserId, viewerId),
-  })
-  if (links.length === 0) return []
-
-  const isGuest = await isGuestUser(viewerId)
-  if (!isGuest) return links
-
-  // Guest — need to check ownership to apply expiry
-  const childIds = links.map((l) => l.childPlayerId)
-  const linkedPlayers = await db.query.players.findMany({
-    where: (p, { inArray }) => inArray(p.id, childIds),
-    columns: { id: true, userId: true },
-  })
-  const ownerMap = new Map(linkedPlayers.map((p) => [p.id, p.userId]))
-  const cutoff = new Date(Date.now() - GUEST_SHARE_EXPIRY_MS)
-
-  return links.filter((link) => {
-    const isOwner = ownerMap.get(link.childPlayerId) === viewerId
-    if (isOwner) return true // owned — always valid
-    return link.linkedAt >= cutoff // shared — must be within 24h
-  })
-}
-
-/**
- * Check if a viewer has a valid parent link to a specific player.
- *
- * Same expiry rules as getValidParentLinks, but optimized for single-player checks.
- */
-export async function isValidParentOf(viewerId: string, playerId: string): Promise<boolean> {
+export async function isParentOf(viewerId: string, playerId: string): Promise<boolean> {
   // Check if viewer owns the player (always valid, regardless of parent_child links)
   const player = await db.query.players.findFirst({
     where: eq(players.id, playerId),
@@ -90,17 +81,42 @@ export async function isValidParentOf(viewerId: string, playerId: string): Promi
   return link.linkedAt >= cutoff
 }
 
-/** Check if a user is a guest (not yet authenticated). */
-async function isGuestUser(userId: string): Promise<boolean> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { upgradedAt: true },
+/**
+ * Get all player IDs that a user has parent access to.
+ *
+ * THE listing primitive. Returns all player IDs this user can access as a parent:
+ * - All players where players.userId = userId (owned)
+ * - All players linked via parent_child (with guest expiry for non-owned)
+ * - Union, deduplicated
+ */
+export async function getParentedPlayerIds(userId: string): Promise<string[]> {
+  const ownedPlayers = await db.query.players.findMany({
+    where: eq(players.userId, userId),
+    columns: { id: true },
   })
-  return !user?.upgradedAt
+  const ownedIds = new Set(ownedPlayers.map((p) => p.id))
+
+  const links = await db.query.parentChild.findMany({
+    where: eq(parentChild.parentUserId, userId),
+  })
+  const linkedIds = links.map((l) => l.childPlayerId)
+
+  const isGuest = await isGuestUser(userId)
+  if (!isGuest) {
+    return [...new Set([...ownedIds, ...linkedIds])]
+  }
+
+  // Guest: apply 24h expiry to non-owned shared links
+  const cutoff = new Date(Date.now() - GUEST_SHARE_EXPIRY_MS)
+  const validLinkedIds = links
+    .filter((link) => ownedIds.has(link.childPlayerId) || link.linkedAt >= cutoff)
+    .map((l) => l.childPlayerId)
+
+  return [...new Set([...ownedIds, ...validLinkedIds])]
 }
 
 // ---------------------------------------------------------------------------
-// Access levels and player access
+// Level 3 (exported): Access levels and player access
 // ---------------------------------------------------------------------------
 
 /**
@@ -134,7 +150,7 @@ export async function getPlayerAccess(viewerId: string, playerId: string): Promi
 
   // Check parent relationship (with guest expiry)
   let t = performance.now()
-  const isParent = await isValidParentOf(viewerId, playerId)
+  const isParent = await isParentOf(viewerId, playerId)
   timings.parentCheck = performance.now() - t
 
   // Check teacher relationship (enrolled in their classroom)
@@ -249,7 +265,7 @@ export async function canPerformAction(
 }
 
 // ---------------------------------------------------------------------------
-// Accessible players (bulk listing)
+// Level 4 (exported): Accessible players (bulk listing)
 // ---------------------------------------------------------------------------
 
 /**
@@ -276,21 +292,13 @@ export interface AccessiblePlayers {
  * not duplicated in enrolledStudents.
  */
 export async function getAccessiblePlayers(viewerId: string): Promise<AccessiblePlayers> {
-  // Own children: via parent_child links (with guest expiry) + directly owned players
-  const validLinks = await getValidParentLinks(viewerId)
-  const childIds = validLinks.map((l) => l.childPlayerId)
-
-  // Also include players directly owned by the viewer (players.userId)
-  // This covers cases where parent_child links are missing or point to old guest identities
-  const ownedPlayers = await db.query.players.findMany({
-    where: eq(players.userId, viewerId),
-  })
-  const allChildIds = new Set([...childIds, ...ownedPlayers.map((p) => p.id)])
+  // Own children: all players the user has parent access to (via getParentedPlayerIds)
+  const allChildIds = await getParentedPlayerIds(viewerId)
 
   let ownChildren: Player[] = []
-  if (allChildIds.size > 0) {
+  if (allChildIds.length > 0) {
     ownChildren = await db.query.players.findMany({
-      where: (p, { inArray }) => inArray(p.id, [...allChildIds]),
+      where: (p, { inArray }) => inArray(p.id, allChildIds),
     })
   }
   const ownChildIds = new Set(ownChildren.map((c) => c.id))
@@ -327,16 +335,6 @@ export async function getAccessiblePlayers(viewerId: string): Promise<Accessible
   }
 
   return { ownChildren, enrolledStudents, presentStudents }
-}
-
-/**
- * Check if a user is a parent of a player
- */
-export async function isParentOf(userId: string, playerId: string): Promise<boolean> {
-  const link = await db.query.parentChild.findFirst({
-    where: and(eq(parentChild.parentUserId, userId), eq(parentChild.childPlayerId, playerId)),
-  })
-  return !!link
 }
 
 /**
