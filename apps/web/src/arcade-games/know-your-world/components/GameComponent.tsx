@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
+import { useGameLayoutMode } from '@/contexts/GameLayoutContext'
 import { CROP_MODE_EVENT, type CropModeEventDetail } from '../customCrops'
 import { useKnowYourWorld } from '../Provider'
 import { SetupPhase } from './SetupPhase'
@@ -13,6 +14,7 @@ import { ResultsPhase } from './ResultsPhase'
 export function GameComponent() {
   const router = useRouter()
   const { state, exitSession, returnToSetup, endGame } = useKnowYourWorld()
+  const layoutMode = useGameLayoutMode()
 
   // Track crop mode to hide nav (dev only)
   const [cropModeActive, setCropModeActive] = useState(false)
@@ -81,6 +83,22 @@ export function GameComponent() {
 
   // When crop mode is active (dev only), render without nav to allow unobstructed drawing
   if (cropModeActive) {
+    return (
+      <>
+        {state.gamePhase === 'setup' && <SetupPhase />}
+        {state.gamePhase === 'playing' && (
+          <StandardGameLayout>
+            <PlayingPhase />
+          </StandardGameLayout>
+        )}
+        {state.gamePhase === 'results' && <ResultsPhase />}
+      </>
+    )
+  }
+
+  // When in container mode (practice game break), render without PageWithNav
+  // The parent (GameBreakScreen) handles layout and nav
+  if (layoutMode === 'container') {
     return (
       <>
         {state.gamePhase === 'setup' && <SetupPhase />}

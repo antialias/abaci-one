@@ -10,6 +10,8 @@ import {
   useUserId,
 } from '@/lib/arcade/game-sdk'
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
+import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { useGameLayoutMode } from '@/contexts/GameLayoutContext'
 import type { KnowYourWorldState, AssistanceLevel } from './types'
 import type { RegionSize } from './maps'
 import type { FeedbackType } from './utils/hotColdPhrases'
@@ -340,6 +342,20 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     }
   }, [state.currentPrompt])
 
+  // Notify parent when game reaches results phase (for practice game break detection)
+  const onGameComplete = useGameCompletionCallback()
+  const previousPhaseRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (
+      state.gamePhase === 'results' &&
+      previousPhaseRef.current !== 'results' &&
+      onGameComplete
+    ) {
+      onGameComplete(state as unknown as Record<string, unknown>)
+    }
+    previousPhaseRef.current = state.gamePhase
+  }, [state.gamePhase, onGameComplete, state])
+
   // Pass through cursor updates with the provided player ID and userId
   const sendCursorUpdate = useCallback(
     (
@@ -390,6 +406,23 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     state.includeSizes,
     state.assistanceLevel,
   ])
+
+  // Auto-start game when in container mode (practice game break)
+  // The socket server creates sessions in setup phase; we auto-start to skip setup UI
+  const layoutMode = useGameLayoutMode()
+  const autoStartFiredRef = useRef(false)
+  useEffect(() => {
+    if (
+      layoutMode === 'container' &&
+      state.gamePhase === 'setup' &&
+      viewerId &&
+      activePlayers.length > 0 &&
+      !autoStartFiredRef.current
+    ) {
+      autoStartFiredRef.current = true
+      startGame()
+    }
+  }, [layoutMode, state.gamePhase, viewerId, activePlayers.length, startGame])
 
   // Action: Click Region
   const clickRegion = useCallback(

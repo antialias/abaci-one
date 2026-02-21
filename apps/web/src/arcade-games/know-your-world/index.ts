@@ -25,7 +25,73 @@ Choose from multiple maps (World, USA States) and difficulty levels!`,
   gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
   borderColor: 'blue.200',
   available: true,
-  practiceBreakReady: false,
+  practiceBreakReady: true,
+  practiceBreakConfig: {
+    suggestedConfig: {
+      selectedMap: 'world',
+      gameMode: 'cooperative',
+      includeSizes: ['huge', 'large', 'medium'],
+      assistanceLevel: 'helpful',
+      selectedContinent: 'all',
+    },
+    lockedFields: ['gameMode'], // Always cooperative in practice
+    minDurationMinutes: 3,
+    maxDurationMinutes: 10,
+    difficultyPresets: {
+      easy: {
+        selectedMap: 'world',
+        includeSizes: ['huge', 'large'],
+        assistanceLevel: 'guided',
+        selectedContinent: 'all',
+      },
+      medium: {
+        selectedMap: 'world',
+        includeSizes: ['huge', 'large', 'medium'],
+        assistanceLevel: 'helpful',
+        selectedContinent: 'all',
+      },
+      hard: {
+        selectedMap: 'world',
+        includeSizes: ['huge', 'large', 'medium', 'small'],
+        assistanceLevel: 'standard',
+        selectedContinent: 'all',
+      },
+    },
+    fieldConfig: {
+      selectedMap: {
+        label: 'Map',
+        type: 'select',
+        options: [
+          { value: 'world', label: 'World' },
+          { value: 'usa', label: 'USA States' },
+        ],
+      },
+      selectedContinent: {
+        label: 'Region',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'All' },
+          { value: 'africa', label: 'Africa' },
+          { value: 'asia', label: 'Asia' },
+          { value: 'europe', label: 'Europe' },
+          { value: 'north-america', label: 'North America' },
+          { value: 'south-america', label: 'South America' },
+          { value: 'oceania', label: 'Oceania' },
+        ],
+      },
+      assistanceLevel: {
+        label: 'Help Level',
+        type: 'select',
+        options: [
+          { value: 'learning', label: 'Learning' },
+          { value: 'guided', label: 'Guided' },
+          { value: 'helpful', label: 'Helpful' },
+          { value: 'standard', label: 'Standard' },
+          { value: 'none', label: 'Challenge' },
+        ],
+      },
+    },
+  },
 }
 
 const defaultConfig: KnowYourWorldConfig = {

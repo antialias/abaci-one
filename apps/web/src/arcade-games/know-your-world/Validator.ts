@@ -1,4 +1,4 @@
-import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
+import type { GameValidator, ValidationResult, PracticeBreakOptions } from '@/lib/arcade/game-sdk'
 import {
   KnowYourWorldStateSchema,
   type KnowYourWorldConfig,
@@ -71,6 +71,19 @@ async function getFilteredMapDataBySizesLazy(
 ) {
   const { getFilteredMapDataBySizes } = await import('./maps')
   return getFilteredMapDataBySizes(...args)
+}
+
+/**
+ * Sync map loading for client-side use (e.g. getInitialStateForPracticeBreak).
+ * Throws if maps aren't loaded yet (triggers React Suspense in browser).
+ */
+function getFilteredMapDataBySizesSyncLazy(
+  ...args: Parameters<typeof import('./maps').getFilteredMapDataBySizesSync>
+) {
+  // Dynamic require to avoid importing ES modules at module init time
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getFilteredMapDataBySizesSync } = require('./maps') as typeof import('./maps')
+  return getFilteredMapDataBySizesSync(...args)
 }
 
 export class KnowYourWorldValidator
@@ -788,6 +801,64 @@ export class KnowYourWorldValidator
       activePlayers: [],
       activeUserIds: [],
       playerMetadata: {},
+      giveUpReveal: null,
+      giveUpVotes: [],
+      hintsUsed: 0,
+      hintActive: null,
+      nameConfirmationProgress: 0,
+    }
+  }
+
+  getInitialStateForPracticeBreak(
+    config: unknown,
+    options: PracticeBreakOptions
+  ): KnowYourWorldState {
+    const typedConfig = config as Partial<KnowYourWorldConfig>
+
+    const selectedMap = typedConfig?.selectedMap || 'world'
+    const selectedContinent = typedConfig?.selectedContinent || 'all'
+    const includeSizes: RegionSize[] = typedConfig?.includeSizes || ['huge', 'large', 'medium']
+    const assistanceLevel: AssistanceLevel = typedConfig?.assistanceLevel || 'helpful'
+
+    // Shuffle regions using sync map loading (requires maps to be pre-loaded client-side)
+    const mapData = getFilteredMapDataBySizesSyncLazy(selectedMap, selectedContinent, includeSizes)
+    const regionIds = mapData.regions.map((r) => r.id)
+    const shuffledRegions = this.shuffleArray([...regionIds])
+
+    // Limit regions for timed game breaks
+    const maxRegions =
+      options.maxDurationMinutes <= 3 ? 10 : options.maxDurationMinutes <= 5 ? 15 : 25
+    const limitedRegions = shuffledRegions.slice(0, maxRegions)
+
+    const playerId = options.playerId
+    const playerMetadata = {
+      [playerId]: {
+        id: playerId,
+        name: options.playerName || 'Player',
+        emoji: '🌍',
+        userId: playerId,
+      },
+    }
+
+    return {
+      gamePhase: 'playing',
+      selectedMap,
+      gameMode: 'cooperative', // Always cooperative for single-player practice
+      includeSizes,
+      assistanceLevel,
+      selectedContinent,
+      currentPrompt: limitedRegions[0],
+      regionsToFind: limitedRegions.slice(1),
+      regionsFound: [],
+      regionsGivenUp: [],
+      currentPlayer: playerId,
+      scores: { [playerId]: 0 },
+      attempts: { [playerId]: 0 },
+      guessHistory: [],
+      startTime: Date.now(),
+      activePlayers: [playerId],
+      activeUserIds: [playerId],
+      playerMetadata,
       giveUpReveal: null,
       giveUpVotes: [],
       hintsUsed: 0,
