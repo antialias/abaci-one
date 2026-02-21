@@ -55,6 +55,7 @@ jobs:
 
       - name: Post coverage results to API
         if: always()
+        continue-on-error: true
         run: |
           if [ ! -f apps/web/coverage/coverage-summary.json ]; then
             echo "No coverage summary found, skipping"
