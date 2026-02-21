@@ -1,6 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { css } from '../../../styled-system/css'
 import { HoverAvatar } from './HoverAvatar'
 
@@ -46,6 +54,90 @@ function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
   }
 
   return { columns: targetColumns, rows }
+}
+
+// Orientation rotation utilities
+
+export function normalizeAngleDelta(from: number, to: number): 90 | -90 | 180 {
+  const delta = (((to - from) % 360) + 540) % 360 - 180
+  if (delta === 90) return 90
+  if (delta === -90) return -90
+  return 180
+}
+
+/** Counter-clockwise rotation (counters CW device rotation): (c, r) → (cols-1-c)*rows + r */
+export function rotateCCW<T>(items: T[], cols: number, rows: number): T[] {
+  const result = new Array<T>(items.length)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const srcIdx = r * cols + c
+      const dstIdx = (cols - 1 - c) * rows + r
+      result[dstIdx] = items[srcIdx]
+    }
+  }
+  return result
+}
+
+/** Clockwise rotation (counters CCW device rotation): (c, r) → c*rows + (rows-1-r) */
+export function rotateCW<T>(items: T[], cols: number, rows: number): T[] {
+  const result = new Array<T>(items.length)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const srcIdx = r * cols + c
+      const dstIdx = c * rows + (rows - 1 - r)
+      result[dstIdx] = items[srcIdx]
+    }
+  }
+  return result
+}
+
+/** 180° rotation: reverse the array */
+export function rotate180<T>(items: T[]): T[] {
+  return [...items].reverse()
+}
+
+// FLIP animation hook for smooth card position transitions
+function useFlipAnimation(
+  cardRefs: React.RefObject<Map<string, HTMLElement>>,
+  triggerKey: number
+) {
+  const positionsRef = useRef<Map<string, DOMRect>>(new Map())
+
+  const capturePositions = useCallback(() => {
+    const positions = new Map<string, DOMRect>()
+    cardRefs.current?.forEach((el, id) => {
+      positions.set(id, el.getBoundingClientRect())
+    })
+    positionsRef.current = positions
+  }, [cardRefs])
+
+  // Play FLIP animation after state update causes re-render
+  useLayoutEffect(() => {
+    if (triggerKey === 0) return // Skip initial render
+    const oldPositions = positionsRef.current
+    if (oldPositions.size === 0) return
+
+    cardRefs.current?.forEach((el, id) => {
+      const oldRect = oldPositions.get(id)
+      if (!oldRect) return
+
+      const newRect = el.getBoundingClientRect()
+      const dx = oldRect.left - newRect.left
+      const dy = oldRect.top - newRect.top
+
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
+
+      el.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px)` },
+          { transform: 'translate(0, 0)' },
+        ],
+        { duration: 400, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }
+      )
+    })
+  }, [triggerKey, cardRefs])
+
+  return { capturePositions }
 }
 
 // Custom hook to calculate proper grid dimensions for consistent r×c layout
@@ -135,18 +227,187 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
   shouldDimCard,
   isLocked,
 }: MemoryGridProps<TCard>) {
+  const locked = isLocked ?? true
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
-  const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length, isLocked ?? true)
+  const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length, locked)
+
+  // --- Orientation-aware grid rotation state ---
+  const [orientationState, setOrientationState] = useState<{
+    cardOrder: (string | null)[] // Card IDs (null = empty cell spacer)
+    cols: number
+    rows: number
+  } | null>(null)
+  const [rotationCount, setRotationCount] = useState(0)
+  const isOrientationChangeRef = useRef(false)
+  const prevAngleRef = useRef<number | null>(null)
+
+  // FLIP animation
+  const { capturePositions } = useFlipAnimation(cardRefs, rotationCount)
+
+  // --- Scale-to-fit state ---
+  const [scaleFactor, setScaleFactor] = useState(1)
+  const gridContainerRef = useRef<HTMLDivElement>(null)
+  const outerContainerRef = useRef<HTMLDivElement>(null)
+  const naturalSizeRef = useRef<{ w: number; h: number } | null>(null)
 
   // Check if it's the local player's turn (for multiplayer mode)
   const isMyTurn = useMemo(() => {
     if (!enableMultiplayerPresence || gameMode === 'single') return true
-
-    // In local games, all players belong to current user, so always their turn
-    // In room games, check if current player belongs to this user
     const currentPlayerMetadata = state.playerMetadata?.[state.currentPlayer || '']
     return currentPlayerMetadata?.userId === viewerId
   }, [enableMultiplayerPresence, gameMode, state.currentPlayer, state.playerMetadata, viewerId])
+
+  // Build card ID → card lookup for rendering orientation-reordered cards
+  const cardById = useMemo(() => {
+    const map = new Map<string, TCard>()
+    for (const card of state.gameCards) {
+      map.set(card.id, card)
+    }
+    return map
+  }, [state.gameCards])
+
+  // Effective grid dimensions and card order
+  const effectiveCols = orientationState?.cols ?? gridDimensions.columns
+  const effectiveRows = orientationState?.rows ?? gridDimensions.rows
+  const displayOrder: (string | null)[] = useMemo(() => {
+    if (orientationState) return orientationState.cardOrder
+    // Pad with nulls for uneven grids
+    const totalCells = gridDimensions.columns * gridDimensions.rows
+    const order: (string | null)[] = state.gameCards.map((c) => c.id)
+    while (order.length < totalCells) order.push(null)
+    return order
+  }, [orientationState, gridDimensions.columns, gridDimensions.rows, state.gameCards])
+
+  // --- Orientation change listener ---
+  useEffect(() => {
+    if (!locked) return
+    if (typeof screen === 'undefined' || !screen.orientation) return
+
+    const handleOrientationChange = () => {
+      const newAngle = screen.orientation.angle
+      const prevAngle = prevAngleRef.current
+      if (prevAngle === null) {
+        prevAngleRef.current = newAngle
+        return
+      }
+      prevAngleRef.current = newAngle
+
+      const delta = normalizeAngleDelta(prevAngle, newAngle)
+
+      // Suppress scale-to-fit during orientation animation
+      isOrientationChangeRef.current = true
+      // Reset natural size so it recaptures after rotation renders
+      naturalSizeRef.current = null
+      setScaleFactor(1)
+      setTimeout(() => {
+        isOrientationChangeRef.current = false
+      }, 500)
+
+      // Capture current card positions for FLIP
+      capturePositions()
+
+      setOrientationState((prev) => {
+        const currentCols = prev?.cols ?? gridDimensions.columns
+        const currentRows = prev?.rows ?? gridDimensions.rows
+        const totalCells = currentCols * currentRows
+        const currentOrder: (string | null)[] =
+          prev?.cardOrder ?? (() => {
+            const order: (string | null)[] = state.gameCards.map((c) => c.id)
+            while (order.length < totalCells) order.push(null)
+            return order
+          })()
+
+        let newOrder: (string | null)[]
+        let newCols: number
+        let newRows: number
+
+        if (delta === 90) {
+          // Device rotated CW → counter-rotate CCW
+          newOrder = rotateCCW(currentOrder, currentCols, currentRows)
+          newCols = currentRows
+          newRows = currentCols
+        } else if (delta === -90) {
+          // Device rotated CCW → counter-rotate CW
+          newOrder = rotateCW(currentOrder, currentCols, currentRows)
+          newCols = currentRows
+          newRows = currentCols
+        } else {
+          // 180°
+          newOrder = rotate180(currentOrder)
+          newCols = currentCols
+          newRows = currentRows
+        }
+
+        return { cardOrder: newOrder, cols: newCols, rows: newRows }
+      })
+
+      setRotationCount((c) => c + 1)
+    }
+
+    // Initialize angle tracking
+    prevAngleRef.current = screen.orientation.angle
+
+    screen.orientation.addEventListener('change', handleOrientationChange)
+    return () => {
+      screen.orientation.removeEventListener('change', handleOrientationChange)
+    }
+  }, [locked, gridDimensions.columns, gridDimensions.rows, state.gameCards, capturePositions])
+
+  // Reset orientation state when unlocked (game reset)
+  useEffect(() => {
+    if (!locked) {
+      setOrientationState(null)
+      setRotationCount(0)
+      setScaleFactor(1)
+    }
+  }, [locked])
+
+  // Capture the grid's natural size when it first renders locked
+  useLayoutEffect(() => {
+    if (!locked) {
+      naturalSizeRef.current = null
+      return
+    }
+    const grid = gridContainerRef.current
+    if (!grid || naturalSizeRef.current) return
+    naturalSizeRef.current = { w: grid.scrollWidth, h: grid.scrollHeight }
+  }, [locked, effectiveCols, effectiveRows])
+
+  // --- Scale-to-fit on window resize (not orientation change) ---
+  useEffect(() => {
+    if (!locked) {
+      setScaleFactor(1)
+      return
+    }
+
+    const outer = outerContainerRef.current
+    if (!outer) return
+
+    let debounceTimer: ReturnType<typeof setTimeout>
+
+    const computeScale = () => {
+      if (isOrientationChangeRef.current) return
+      const natural = naturalSizeRef.current
+      if (!natural) return
+
+      const availW = outer.clientWidth
+      const availH = outer.clientHeight
+
+      const factor = Math.min(availW / natural.w, availH / natural.h, 1.0)
+      setScaleFactor(factor)
+    }
+
+    const observer = new ResizeObserver(() => {
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(computeScale, 50)
+    })
+
+    observer.observe(outer)
+    return () => {
+      clearTimeout(debounceTimer)
+      observer.disconnect()
+    }
+  }, [locked])
 
   if (!state.gameCards.length) {
     return null
@@ -168,7 +429,7 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
       : null
   }
 
-  // Set card ref callback
+  // Set card ref callback — always populate for FLIP animation
   const setCardRef = (cardId: string) => (element: HTMLDivElement | null) => {
     if (element) {
       cardRefs.current.set(cardId, element)
@@ -179,16 +440,23 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
 
   return (
     <div
+      ref={outerContainerRef}
       className={css({
         padding: { base: '12px', sm: '16px', md: '20px' },
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: { base: '12px', sm: '16px', md: '20px' },
+        // Fill parent so ResizeObserver tracks available space on viewport resize
+        flex: 1,
+        minHeight: 0,
+        width: '100%',
+        overflow: 'hidden',
       })}
     >
       {/* Cards Grid - Consistent r×c Layout */}
       <div
+        ref={gridContainerRef}
         data-element="matching-grid"
         data-game-idle={
           !state.isProcessingMove && !state.showMismatchFeedback && state.flippedCards.length === 0
@@ -205,12 +473,21 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
           maxWidth: '100%',
           margin: '0 auto',
           padding: '0 8px',
-          // Consistent grid ensuring all cards fit in r×c layout
-          gridTemplateColumns: `repeat(${gridDimensions.columns}, 1fr)`,
-          gridTemplateRows: `repeat(${gridDimensions.rows}, 1fr)`,
+          gridTemplateColumns: `repeat(${effectiveCols}, 1fr)`,
+          gridTemplateRows: `repeat(${effectiveRows}, 1fr)`,
+          transform: scaleFactor < 1 ? `scale(${scaleFactor})` : undefined,
+          transformOrigin: 'top center',
         }}
       >
-        {state.gameCards.map((card) => {
+        {displayOrder.map((cardId, idx) => {
+          if (cardId === null) {
+            // Invisible spacer for uneven grid rotation
+            return <div key={`spacer-${idx}`} style={{ visibility: 'hidden' }} />
+          }
+
+          const card = cardById.get(cardId)
+          if (!card) return null
+
           const isFlipped = state.flippedCards.some((c) => c.id === card.id) || card.matched
           const isMatched = card.matched
           const shouldShake =
@@ -229,7 +506,7 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
           return (
             <div
               key={card.id}
-              ref={enableMultiplayerPresence ? setCardRef(card.id) : undefined}
+              ref={setCardRef(card.id)}
               data-component="matching-card"
               data-card-id={card.id}
               data-card-number={(card as any).number}
@@ -238,22 +515,18 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
               data-card-flipped={isFlipped ? 'true' : 'false'}
               className={css({
                 aspectRatio: '3/4',
-                // Fully responsive card sizing - no fixed pixel sizes
                 width: '100%',
                 minWidth: '100px',
                 maxWidth: '200px',
-                // Dimming effect for invalid cards
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none',
                 position: 'relative',
-                // Shake animation for mismatched cards
                 animation: shouldShake ? 'cardShake 0.5s ease-in-out' : 'none',
               })}
               onMouseEnter={
                 enableMultiplayerPresence && hoverCard
                   ? () => {
-                      // Only send hover if it's your turn and card is not matched
                       if (!isMatched && isMyTurn) {
                         hoverCard(card.id)
                       }
@@ -263,7 +536,6 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
               onMouseLeave={
                 enableMultiplayerPresence && hoverCard
                   ? () => {
-                      // Clear hover state when mouse leaves card
                       if (!isMatched && isMyTurn) {
                         hoverCard(null)
                       }
@@ -304,21 +576,15 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
         state.playerHovers &&
         Object.entries(state.playerHovers)
           .filter(([playerId]) => {
-            // Only show hover avatars for REMOTE players (not the current user's own players)
-            // This provides "presence" for opponents without cluttering your own view
             const playerMetadata = state.playerMetadata?.[playerId]
             const isRemotePlayer = playerMetadata?.userId !== viewerId
-            // Also ensure it's the current player's turn (so we only show active hovers)
             const isCurrentPlayer = playerId === state.currentPlayer
             return isRemotePlayer && isCurrentPlayer
           })
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId)
-            // Get card element if player is hovering (cardId might be null)
             const cardElement = cardId ? (cardRefs.current.get(cardId) ?? null) : null
-            // Check if it's this player's turn
             const isPlayersTurn = state.currentPlayer === playerId
-            // Check if the card being hovered is flipped
             const hoveredCard = cardId ? state.gameCards.find((c) => c.id === cardId) : null
             const isCardFlipped = hoveredCard
               ? state.flippedCards.some((c) => c.id === hoveredCard.id) || hoveredCard.matched
@@ -326,10 +592,9 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
 
             if (!playerInfo) return null
 
-            // Render avatar even if no cardElement (it will handle hiding itself)
             return (
               <HoverAvatar
-                key={playerId} // Key by playerId keeps component alive across card changes!
+                key={playerId}
                 playerId={playerId}
                 playerInfo={playerInfo}
                 cardElement={cardElement}
