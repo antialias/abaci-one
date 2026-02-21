@@ -1,9 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useUnlinkParent, useUnenrollFromClassroom } from '@/hooks/useManageConnections'
-import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
+import { useStudentStakeholders, stakeholdersKeys } from '@/hooks/useStudentStakeholders'
+import { useToast } from '@/components/common/ToastContext'
 import type {
   EnrolledClassroomInfo,
   ParentInfo,
@@ -12,7 +14,6 @@ import type {
   ViewerRelationshipSummary,
 } from '@/types/student'
 import { css, cx } from '../../../styled-system/css'
-import { InlineConfirmation } from './InlineConfirmation'
 
 // =============================================================================
 // Types
@@ -31,11 +32,8 @@ interface RelationshipCardProps {
   playerName?: string
 }
 
-/** Tracks which item is being confirmed for removal */
-type ConfirmingItem =
-  | { type: 'parent'; parentUserId: string; parentName: string }
-  | { type: 'classroom'; classroomId: string; classroomName: string }
-  | null
+/** Undo delay in ms — how long the user has to press Undo before the real DELETE fires */
+const UNDO_DELAY_MS = 5000
 
 // =============================================================================
 // Main Component
@@ -63,17 +61,133 @@ export function RelationshipCard({
 }: RelationshipCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const queryClient = useQueryClient()
+  const { showToast, showError } = useToast()
 
   const { data, isLoading } = useStudentStakeholders(playerId)
-
-  // Track which item is showing the inline confirmation
-  const [confirming, setConfirming] = useState<ConfirmingItem>(null)
 
   // Mutations
   const unlinkParent = useUnlinkParent()
   const unenrollFromClassroom = useUnenrollFromClassroom()
 
-  const isPending = unlinkParent.isPending || unenrollFromClassroom.isPending
+  // Track pending undo timers so we can cancel on unmount or undo
+  const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const handleRemoveParent = useCallback(
+    (parent: ParentInfo) => {
+      const queryKey = stakeholdersKeys.player(playerId)
+
+      // Snapshot current cache for rollback
+      const previous = queryClient.getQueryData(queryKey)
+
+      // Optimistically remove the parent from cache
+      queryClient.setQueryData(queryKey, (old: typeof previous) => {
+        if (!old || typeof old !== 'object' || !('stakeholders' in (old as Record<string, unknown>))) return old
+        const typed = old as { stakeholders: { parents: ParentInfo[]; [k: string]: unknown }; [k: string]: unknown }
+        return {
+          ...typed,
+          stakeholders: {
+            ...typed.stakeholders,
+            parents: typed.stakeholders.parents.filter((p) => p.id !== parent.id),
+          },
+        }
+      })
+
+      const timerId = setTimeout(() => {
+        pendingTimers.current.delete(parent.id)
+        unlinkParent.mutate(
+          { playerId, parentUserId: parent.id },
+          {
+            onError: (err) => {
+              // Rollback on server error
+              queryClient.setQueryData(queryKey, previous)
+              showError('Failed to remove', err.message)
+            },
+          }
+        )
+      }, UNDO_DELAY_MS)
+
+      pendingTimers.current.set(parent.id, timerId)
+
+      showToast({
+        type: 'info',
+        title: `Removed ${parent.name}`,
+        description: playerName ? `No longer has access to ${playerName}` : undefined,
+        duration: UNDO_DELAY_MS,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            const timer = pendingTimers.current.get(parent.id)
+            if (timer) {
+              clearTimeout(timer)
+              pendingTimers.current.delete(parent.id)
+            }
+            queryClient.setQueryData(queryKey, previous)
+          },
+        },
+      })
+    },
+    [playerId, playerName, queryClient, unlinkParent, showToast, showError]
+  )
+
+  const handleUnenrollClassroom = useCallback(
+    (classroom: EnrolledClassroomInfo) => {
+      const queryKey = stakeholdersKeys.player(playerId)
+
+      // Snapshot current cache for rollback
+      const previous = queryClient.getQueryData(queryKey)
+
+      // Optimistically remove the classroom from cache
+      queryClient.setQueryData(queryKey, (old: typeof previous) => {
+        if (!old || typeof old !== 'object' || !('stakeholders' in (old as Record<string, unknown>))) return old
+        const typed = old as {
+          stakeholders: { enrolledClassrooms: EnrolledClassroomInfo[]; [k: string]: unknown }
+          [k: string]: unknown
+        }
+        return {
+          ...typed,
+          stakeholders: {
+            ...typed.stakeholders,
+            enrolledClassrooms: typed.stakeholders.enrolledClassrooms.filter((c) => c.id !== classroom.id),
+          },
+        }
+      })
+
+      const timerId = setTimeout(() => {
+        pendingTimers.current.delete(classroom.id)
+        unenrollFromClassroom.mutate(
+          { classroomId: classroom.id, playerId },
+          {
+            onError: (err) => {
+              queryClient.setQueryData(queryKey, previous)
+              showError('Failed to unenroll', err.message)
+            },
+          }
+        )
+      }, UNDO_DELAY_MS)
+
+      pendingTimers.current.set(classroom.id, timerId)
+
+      showToast({
+        type: 'info',
+        title: `Unenrolled from ${classroom.name}`,
+        description: playerName ? `${playerName} removed from classroom` : undefined,
+        duration: UNDO_DELAY_MS,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            const timer = pendingTimers.current.get(classroom.id)
+            if (timer) {
+              clearTimeout(timer)
+              pendingTimers.current.delete(classroom.id)
+            }
+            queryClient.setQueryData(queryKey, previous)
+          },
+        },
+      })
+    },
+    [playerId, playerName, queryClient, unenrollFromClassroom, showToast, showError]
+  )
 
   if (isLoading) {
     return (
@@ -115,21 +229,6 @@ export function RelationshipCard({
   // Only show edit controls when editable and viewer is a parent
   const canEdit = editable && viewerRelationship.type === 'parent'
 
-  const handleConfirmUnlinkParent = () => {
-    if (confirming?.type !== 'parent') return
-    unlinkParent.mutate(
-      { playerId, parentUserId: confirming.parentUserId },
-      { onSuccess: () => setConfirming(null), onError: () => setConfirming(null) }
-    )
-  }
-
-  const handleConfirmUnenroll = () => {
-    if (confirming?.type !== 'classroom') return
-    unenrollFromClassroom.mutate(
-      { classroomId: confirming.classroomId, playerId },
-      { onSuccess: () => setConfirming(null), onError: () => setConfirming(null) }
-    )
-  }
 
   return (
     <div
@@ -163,41 +262,16 @@ export function RelationshipCard({
         {stakeholders.parents.length > 0 && (
           <StakeholderSection title="Parents" icon="👪" isDark={isDark} compact={compact}>
             <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '6px' })}>
-              {stakeholders.parents.map((parent) => {
-                const isConfirmingThis =
-                  confirming?.type === 'parent' && confirming.parentUserId === parent.id
-
-                if (isConfirmingThis) {
-                  return (
-                    <InlineConfirmation
-                      key={parent.id}
-                      message={`Remove ${parent.name}'s access to ${playerName || 'this student'}?`}
-                      onConfirm={handleConfirmUnlinkParent}
-                      onCancel={() => setConfirming(null)}
-                      isPending={isPending}
-                      isDark={isDark}
-                      compact={compact}
-                    />
-                  )
-                }
-
-                return (
-                  <ParentBadge
-                    key={parent.id}
-                    parent={parent}
-                    isDark={isDark}
-                    compact={compact}
-                    showRemove={canEdit && !parent.isMe}
-                    onRemove={() =>
-                      setConfirming({
-                        type: 'parent',
-                        parentUserId: parent.id,
-                        parentName: parent.name,
-                      })
-                    }
-                  />
-                )
-              })}
+              {stakeholders.parents.map((parent) => (
+                <ParentBadge
+                  key={parent.id}
+                  parent={parent}
+                  isDark={isDark}
+                  compact={compact}
+                  showRemove={canEdit && !parent.isMe}
+                  onRemove={() => handleRemoveParent(parent)}
+                />
+              ))}
             </div>
           </StakeholderSection>
         )}
@@ -212,42 +286,17 @@ export function RelationshipCard({
                 gap: '6px',
               })}
             >
-              {stakeholders.enrolledClassrooms.map((classroom) => {
-                const isConfirmingThis =
-                  confirming?.type === 'classroom' && confirming.classroomId === classroom.id
-
-                if (isConfirmingThis) {
-                  return (
-                    <InlineConfirmation
-                      key={classroom.id}
-                      message={`Unenroll ${playerName || 'this student'} from ${classroom.name}?`}
-                      onConfirm={handleConfirmUnenroll}
-                      onCancel={() => setConfirming(null)}
-                      isPending={isPending}
-                      isDark={isDark}
-                      compact={compact}
-                    />
-                  )
-                }
-
-                return (
-                  <ClassroomRow
-                    key={classroom.id}
-                    classroom={classroom}
-                    isPresent={stakeholders.currentPresence?.classroomId === classroom.id}
-                    isDark={isDark}
-                    compact={compact}
-                    showRemove={canEdit}
-                    onRemove={() =>
-                      setConfirming({
-                        type: 'classroom',
-                        classroomId: classroom.id,
-                        classroomName: classroom.name,
-                      })
-                    }
-                  />
-                )
-              })}
+              {stakeholders.enrolledClassrooms.map((classroom) => (
+                <ClassroomRow
+                  key={classroom.id}
+                  classroom={classroom}
+                  isPresent={stakeholders.currentPresence?.classroomId === classroom.id}
+                  isDark={isDark}
+                  compact={compact}
+                  showRemove={canEdit}
+                  onRemove={() => handleUnenrollClassroom(classroom)}
+                />
+              ))}
             </div>
           </StakeholderSection>
         )}

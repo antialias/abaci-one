@@ -3,12 +3,18 @@
 import * as Toast from '@radix-ui/react-toast'
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 export interface ToastMessage {
   id: string
   type: 'success' | 'error' | 'info'
   title: string
   description?: string
   duration?: number
+  action?: ToastAction
 }
 
 interface ToastContextValue {
@@ -135,6 +141,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   >
                     {toast.description}
                   </Toast.Description>
+                )}
+                {toast.action && (
+                  <Toast.Action asChild altText={toast.action.label}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast.action!.onClick()
+                        removeToast(toast.id)
+                      }}
+                      style={{
+                        marginTop: '8px',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {toast.action.label}
+                    </button>
+                  </Toast.Action>
                 )}
               </div>
               <Toast.Close
