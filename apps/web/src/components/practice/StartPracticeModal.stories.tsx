@@ -6,6 +6,9 @@ import type {
   ProgressionMode as ProgressionModeType,
   RemediationMode as RemediationModeType,
 } from '@/lib/curriculum/session-mode'
+import { billingKeys } from '@/lib/queryKeys'
+import { TIER_LIMITS, type TierName } from '@/lib/tier-limits'
+import type { EffectiveTierResponse } from '@/hooks/useTier'
 import { StartPracticeModal } from './StartPracticeModal'
 import { css } from '../../../styled-system/css'
 
@@ -27,15 +30,57 @@ const mockRouter = {
   refresh: () => console.log('Router refresh'),
 }
 
+/** Build an EffectiveTierResponse for the given tier name. */
+function tierResponse(
+  tier: TierName,
+  providedBy: { name: string } | null = null
+): EffectiveTierResponse {
+  const limits = TIER_LIMITS[tier]
+  return {
+    tier,
+    limits: {
+      maxPracticeStudents: limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
+      maxSessionMinutes: limits.maxSessionMinutes,
+      maxSessionsPerWeek: limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
+      maxOfflineParsingPerMonth: limits.maxOfflineParsingPerMonth,
+    },
+    providedBy,
+  }
+}
+
+/**
+ * Create a QueryClient pre-seeded with effective tier data for a student.
+ * When `tier` is omitted the cache is empty (default guest fallback in hook).
+ */
+function createSeededQueryClient(
+  studentId: string,
+  tier?: TierName,
+  providedBy?: { name: string } | null
+) {
+  const qc = createQueryClient()
+  if (tier) {
+    qc.setQueryData(billingKeys.effectiveTier(studentId), tierResponse(tier, providedBy ?? null))
+  }
+  return qc
+}
+
 // Story wrapper with providers
 function StoryWrapper({
   children,
   theme = 'light',
+  tier,
+  providedBy,
+  studentId = 'test-student-1',
 }: {
   children: React.ReactNode
   theme?: 'light' | 'dark'
+  /** Pre-seed the effective tier for the student. Omit for default (guest). */
+  tier?: TierName
+  /** When set, shows "Using [name]'s [tier]" inherited-plan indicator. */
+  providedBy?: { name: string } | null
+  studentId?: string
 }) {
-  const queryClient = createQueryClient()
+  const queryClient = createSeededQueryClient(studentId, tier, providedBy)
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -675,6 +720,153 @@ export const SingleGameWithDifficultyPresetsDark: Story = {
         <StartPracticeModal
           {...defaultProps}
           practiceApprovedGamesOverride={mockSingleGameWithConfig}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+// ================================
+// BILLING TIER STORIES
+// ================================
+
+/**
+ * Guest tier - limited to 5 & 10 min durations, no upgrade link shown
+ *
+ * Guests are anonymous users. The duration selector shows only 5m and 10m
+ * but does NOT show the "Unlock 15 & 20 min" link (guests can't purchase).
+ */
+export const GuestTier: Story = {
+  render: () => (
+    <StoryWrapper tier="guest">
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockGamesWithConfig}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Guest tier - dark mode
+ */
+export const GuestTierDark: Story = {
+  render: () => (
+    <StoryWrapper tier="guest" theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockGamesWithConfig}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Free tier - limited to 5 & 10 min durations, shows "Unlock 15 & 20 min" upgrade link
+ *
+ * Free users have an account but no paid subscription. The duration selector
+ * shows 5m and 10m options plus a purple "Unlock 15 & 20 min" link to /pricing.
+ */
+export const FreeTier: Story = {
+  render: () => (
+    <StoryWrapper tier="free">
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockGamesWithConfig}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Free tier - dark mode
+ */
+export const FreeTierDark: Story = {
+  render: () => (
+    <StoryWrapper tier="free" theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockGamesWithConfig}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Family tier - all duration options (5, 10, 15, 20 min), no upgrade link
+ *
+ * Family subscribers get the full set of duration options with no upsell prompt.
+ */
+export const FamilyTier: Story = {
+  render: () => (
+    <StoryWrapper tier="family">
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockGamesWithConfig}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Family tier - dark mode
+ */
+export const FamilyTierDark: Story = {
+  render: () => (
+    <StoryWrapper tier="family" theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockGamesWithConfig}
+          initialExpanded={true}
+        />
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+// ================================
+// INHERITED PLAN STORIES
+// ================================
+
+/**
+ * Inherited family plan — another parent provides the subscription.
+ *
+ * Dad is free-tier, but Mom has a family plan. The student inherits Mom's plan.
+ * Shows "Using Mom's Family Plan" indicator and unlocks 15 & 20 min durations.
+ */
+export const InheritedFamilyPlan: Story = {
+  render: () => (
+    <StoryWrapper tier="family" providedBy={{ name: 'Mom' }}>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockGamesWithConfig}
+        initialExpanded={true}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Inherited family plan — dark mode
+ */
+export const InheritedFamilyPlanDark: Story = {
+  render: () => (
+    <StoryWrapper tier="family" providedBy={{ name: 'Mom' }} theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockGamesWithConfig}
           initialExpanded={true}
         />
       </div>
