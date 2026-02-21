@@ -20,7 +20,7 @@ import { matchingGame } from './index'
 const MatchingProvider = matchingGame.Provider
 const MatchingGameComponent = matchingGame.GameComponent
 import { generateGameCards } from './utils/cardGeneration'
-import type { MatchingState, PlayerMetadata } from './types'
+import type { Difficulty, MatchingState, PlayerMetadata } from './types'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -140,20 +140,23 @@ const mockPlayerMetadata: Record<string, PlayerMetadata> = {
 }
 
 // Create game cards for different phases
-function createMockMatchingState(phase: 'setup' | 'playing' | 'results'): MatchingState {
-  const cards = generateGameCards('abacus-numeral', 6)
+function createMockMatchingState(
+  phase: 'setup' | 'playing' | 'results',
+  difficulty: Difficulty = 6
+): MatchingState {
+  const cards = generateGameCards('abacus-numeral', difficulty)
 
   const baseState: MatchingState = {
     cards,
     gameCards: cards,
     flippedCards: [],
     gameType: 'abacus-numeral',
-    difficulty: 6,
+    difficulty,
     turnTimer: 30,
     gamePhase: phase,
     currentPlayer: mockStudent.id,
     matchedPairs: 0,
-    totalPairs: 6,
+    totalPairs: difficulty,
     moves: 0,
     scores: { [mockStudent.id]: 0 },
     activePlayers: [mockStudent.id],
@@ -189,15 +192,28 @@ function createMockMatchingState(phase: 'setup' | 'playing' | 'results'): Matchi
       cards: matchedCards,
       gameCards: matchedCards,
       gamePhase: 'results',
-      matchedPairs: 6,
-      scores: { [mockStudent.id]: 6 },
-      moves: 12,
+      matchedPairs: difficulty,
+      scores: { [mockStudent.id]: difficulty },
+      moves: difficulty * 2,
       gameStartTime: Date.now() - 120000, // 2 minutes ago
       gameEndTime: Date.now(),
     }
   }
 
   return baseState
+}
+
+function createMockRoomData(difficulty: Difficulty): RoomData {
+  return {
+    ...mockRoomData,
+    gameConfig: {
+      matching: {
+        gameType: 'abacus-numeral',
+        difficulty,
+        turnTimer: 30,
+      },
+    },
+  }
 }
 
 // =============================================================================
@@ -211,6 +227,8 @@ interface MatchingGameStoryWrapperProps {
   gameBreakDurationMinutes?: number
   /** How much time has already elapsed in the game break (for testing different timer states) */
   elapsedSeconds?: number
+  /** Number of pairs (6, 8, 12, or 15) — total cards = difficulty × 2 */
+  difficulty?: Difficulty
 }
 
 /**
@@ -224,6 +242,7 @@ function MatchingGameStoryWrapper({
   theme = 'light',
   gameBreakDurationMinutes = 5,
   elapsedSeconds = 0,
+  difficulty = 6,
 }: MatchingGameStoryWrapperProps) {
   // Create query client with pre-populated data
   const queryClient = useMemo(() => {
@@ -239,14 +258,14 @@ function MatchingGameStoryWrapper({
     // Pre-populate viewer ID
     client.setQueryData(identityKeys.id(), mockViewerId)
 
-    // Pre-populate room data
-    client.setQueryData(roomKeys.current(), mockRoomData)
+    // Pre-populate room data with correct difficulty
+    client.setQueryData(roomKeys.current(), createMockRoomData(difficulty))
 
     return client
-  }, [])
+  }, [difficulty])
 
   // Create mock matching state for preview mode
-  const mockState = useMemo(() => createMockMatchingState(phase), [phase])
+  const mockState = useMemo(() => createMockMatchingState(phase, difficulty), [phase, difficulty])
 
   // Preview mode context value - this makes useArcadeSession return mock data
   // NOTE: We DON'T wrap the entire page in PreviewModeContext since PageWithNav
@@ -431,9 +450,12 @@ function IsolatedGameWrapper({ phase, theme = 'light' }: IsolatedGameWrapperProp
 // Interactive Story Component (with phase and timer switching)
 // =============================================================================
 
+const DIFFICULTIES: Difficulty[] = [6, 8, 12, 15]
+
 function InteractiveMatchingGame({ theme = 'light' }: { theme?: 'light' | 'dark' }) {
   const [phase, setPhase] = useState<'setup' | 'playing' | 'results'>('playing')
   const [elapsedSeconds, setElapsedSeconds] = useState(60)
+  const [difficulty, setDifficulty] = useState<Difficulty>(6)
 
   return (
     <div className={css({ position: 'relative', width: '100vw', height: '100vh' })}>
@@ -485,6 +507,32 @@ function InteractiveMatchingGame({ theme = 'light' }: { theme?: 'light' | 'dark'
           ))}
         </div>
 
+        {/* Difficulty controls */}
+        <div className={css({ display: 'flex', gap: '0.25rem' })}>
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDifficulty(d)}
+              className={css({
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.625rem',
+                fontWeight: '600',
+                color: difficulty === d ? 'white' : 'gray.400',
+                backgroundColor: difficulty === d ? 'orange.600' : 'gray.700',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              })}
+            >
+              {d * 2}
+            </button>
+          ))}
+        </div>
+        <span className={css({ fontSize: '0.5625rem', color: 'gray.500' })}>
+          {difficulty} pairs ({difficulty * 2} cards)
+        </span>
+
         {/* Timer simulation */}
         <div
           className={css({
@@ -508,7 +556,12 @@ function InteractiveMatchingGame({ theme = 'light' }: { theme?: 'light' | 'dark'
         </div>
       </div>
 
-      <MatchingGameStoryWrapper phase={phase} theme={theme} elapsedSeconds={elapsedSeconds} />
+      <MatchingGameStoryWrapper
+        phase={phase}
+        theme={theme}
+        elapsedSeconds={elapsedSeconds}
+        difficulty={difficulty}
+      />
     </div>
   )
 }
@@ -535,6 +588,30 @@ export const FullContextSetup: Story = {
 export const FullContextResults: Story = {
   name: 'Full Context: Results',
   render: () => <MatchingGameStoryWrapper phase="results" />,
+}
+
+// =============================================================================
+// Stories - Difficulty Levels (card count comparison)
+// =============================================================================
+
+export const Difficulty6Pairs: Story = {
+  name: 'Difficulty: 6 pairs (12 cards)',
+  render: () => <MatchingGameStoryWrapper phase="playing" difficulty={6} />,
+}
+
+export const Difficulty8Pairs: Story = {
+  name: 'Difficulty: 8 pairs (16 cards)',
+  render: () => <MatchingGameStoryWrapper phase="playing" difficulty={8} />,
+}
+
+export const Difficulty12Pairs: Story = {
+  name: 'Difficulty: 12 pairs (24 cards)',
+  render: () => <MatchingGameStoryWrapper phase="playing" difficulty={12} />,
+}
+
+export const Difficulty15Pairs: Story = {
+  name: 'Difficulty: 15 pairs (30 cards)',
+  render: () => <MatchingGameStoryWrapper phase="playing" difficulty={15} />,
 }
 
 // =============================================================================
