@@ -69,17 +69,18 @@ export async function getValidParentLinks(viewerId: string): Promise<ParentChild
  * Same expiry rules as getValidParentLinks, but optimized for single-player checks.
  */
 export async function isValidParentOf(viewerId: string, playerId: string): Promise<boolean> {
-  const link = await db.query.parentChild.findFirst({
-    where: and(eq(parentChild.parentUserId, viewerId), eq(parentChild.childPlayerId, playerId)),
-  })
-  if (!link) return false
-
-  // Check if viewer owns the player (always valid)
+  // Check if viewer owns the player (always valid, regardless of parent_child links)
   const player = await db.query.players.findFirst({
     where: eq(players.id, playerId),
     columns: { userId: true },
   })
   if (player?.userId === viewerId) return true
+
+  // Check parent_child link
+  const link = await db.query.parentChild.findFirst({
+    where: and(eq(parentChild.parentUserId, viewerId), eq(parentChild.childPlayerId, playerId)),
+  })
+  if (!link) return false
 
   // Shared student — check guest expiry
   const isGuest = await isGuestUser(viewerId)
@@ -275,14 +276,21 @@ export interface AccessiblePlayers {
  * not duplicated in enrolledStudents.
  */
 export async function getAccessiblePlayers(viewerId: string): Promise<AccessiblePlayers> {
-  // Own children (via parent_child, with guest expiry applied)
+  // Own children: via parent_child links (with guest expiry) + directly owned players
   const validLinks = await getValidParentLinks(viewerId)
   const childIds = validLinks.map((l) => l.childPlayerId)
 
+  // Also include players directly owned by the viewer (players.userId)
+  // This covers cases where parent_child links are missing or point to old guest identities
+  const ownedPlayers = await db.query.players.findMany({
+    where: eq(players.userId, viewerId),
+  })
+  const allChildIds = new Set([...childIds, ...ownedPlayers.map((p) => p.id)])
+
   let ownChildren: Player[] = []
-  if (childIds.length > 0) {
+  if (allChildIds.size > 0) {
     ownChildren = await db.query.players.findMany({
-      where: (p, { inArray }) => inArray(p.id, childIds),
+      where: (p, { inArray }) => inArray(p.id, [...allChildIds]),
     })
   }
   const ownChildIds = new Set(ownChildren.map((c) => c.id))
