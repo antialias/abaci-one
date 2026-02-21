@@ -254,11 +254,11 @@ export default function DebugPracticePage() {
           comfortByMode={sessionModeData.comfortByMode}
           onClose={() => {
             setDebugPlayer(null)
-            setLoading(null)
+            setActivePreset(null)
           }}
           onStarted={() => {
             setDebugPlayer(null)
-            setLoading(null)
+            setActivePreset(null)
           }}
         />
       )}
