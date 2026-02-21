@@ -8,6 +8,7 @@ import { useStudentStakeholders, stakeholdersKeys } from '@/hooks/useStudentStak
 import { useToast } from '@/components/common/ToastContext'
 import type {
   EnrolledClassroomInfo,
+  FamilyEventInfo,
   ParentInfo,
   PendingEnrollmentInfo,
   PresenceInfo,
@@ -82,8 +83,16 @@ export function RelationshipCard({
 
       // Optimistically remove the parent from cache
       queryClient.setQueryData(queryKey, (old: typeof previous) => {
-        if (!old || typeof old !== 'object' || !('stakeholders' in (old as Record<string, unknown>))) return old
-        const typed = old as { stakeholders: { parents: ParentInfo[]; [k: string]: unknown }; [k: string]: unknown }
+        if (
+          !old ||
+          typeof old !== 'object' ||
+          !('stakeholders' in (old as Record<string, unknown>))
+        )
+          return old
+        const typed = old as {
+          stakeholders: { parents: ParentInfo[]; [k: string]: unknown }
+          [k: string]: unknown
+        }
         return {
           ...typed,
           stakeholders: {
@@ -139,7 +148,12 @@ export function RelationshipCard({
 
       // Optimistically remove the classroom from cache
       queryClient.setQueryData(queryKey, (old: typeof previous) => {
-        if (!old || typeof old !== 'object' || !('stakeholders' in (old as Record<string, unknown>))) return old
+        if (
+          !old ||
+          typeof old !== 'object' ||
+          !('stakeholders' in (old as Record<string, unknown>))
+        )
+          return old
         const typed = old as {
           stakeholders: { enrolledClassrooms: EnrolledClassroomInfo[]; [k: string]: unknown }
           [k: string]: unknown
@@ -148,7 +162,9 @@ export function RelationshipCard({
           ...typed,
           stakeholders: {
             ...typed.stakeholders,
-            enrolledClassrooms: typed.stakeholders.enrolledClassrooms.filter((c) => c.id !== classroom.id),
+            enrolledClassrooms: typed.stakeholders.enrolledClassrooms.filter(
+              (c) => c.id !== classroom.id
+            ),
           },
         }
       })
@@ -228,7 +244,6 @@ export function RelationshipCard({
 
   // Only show edit controls when editable and viewer is a parent
   const canEdit = editable && viewerRelationship.type === 'parent'
-
 
   return (
     <div
@@ -313,6 +328,23 @@ export function RelationshipCard({
             >
               {stakeholders.pendingEnrollments.map((pending) => (
                 <PendingRow key={pending.id} pending={pending} isDark={isDark} compact={compact} />
+              ))}
+            </div>
+          </StakeholderSection>
+        )}
+
+        {/* Recent Activity */}
+        {stakeholders.recentFamilyEvents.length > 0 && (
+          <StakeholderSection title="Activity" icon="📋" isDark={isDark} compact={compact}>
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              })}
+            >
+              {stakeholders.recentFamilyEvents.map((event) => (
+                <FamilyEventRow key={event.id} event={event} isDark={isDark} compact={compact} />
               ))}
             </div>
           </StakeholderSection>
@@ -719,7 +751,14 @@ interface ClassroomRowProps {
   onRemove?: () => void
 }
 
-function ClassroomRow({ classroom, isPresent, isDark, compact, showRemove, onRemove }: ClassroomRowProps) {
+function ClassroomRow({
+  classroom,
+  isPresent,
+  isDark,
+  compact,
+  showRemove,
+  onRemove,
+}: ClassroomRowProps) {
   return (
     <div
       data-element="classroom-row"
@@ -909,6 +948,90 @@ function PendingRow({ pending, isDark, compact }: PendingRowProps) {
       >
         {pending.pendingApproval === 'teacher' ? 'Needs Teacher' : 'Needs Parent'}
       </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// Family Event Row
+// =============================================================================
+
+interface FamilyEventRowProps {
+  event: FamilyEventInfo
+  isDark: boolean
+  compact: boolean
+}
+
+const EVENT_ICONS: Record<FamilyEventInfo['eventType'], string> = {
+  parent_linked: '🔗',
+  parent_unlinked: '🔓',
+  code_regenerated: '🔄',
+}
+
+function formatEventDescription(event: FamilyEventInfo): string {
+  switch (event.eventType) {
+    case 'parent_linked':
+      return `${event.actorName} linked as parent`
+    case 'parent_unlinked':
+      return event.actorName === event.targetName
+        ? `${event.targetName} was unlinked`
+        : `${event.actorName} removed ${event.targetName}`
+    case 'code_regenerated':
+      return `${event.actorName} regenerated family code`
+  }
+}
+
+function formatRelativeTime(isoString: string): string {
+  const now = Date.now()
+  const then = new Date(isoString).getTime()
+  const diffMs = now - then
+
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+
+  const days = Math.floor(hours / 24)
+  if (days === 1) return '1 day ago'
+  return `${days} days ago`
+}
+
+function FamilyEventRow({ event, isDark, compact }: FamilyEventRowProps) {
+  return (
+    <div
+      data-element="family-event-row"
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: compact ? '4px 0' : '4px 0',
+      })}
+    >
+      <span className={css({ fontSize: compact ? '0.75rem' : '0.875rem', flexShrink: 0 })}>
+        {EVENT_ICONS[event.eventType]}
+      </span>
+      <span
+        className={css({
+          fontSize: compact ? '0.6875rem' : '0.75rem',
+          color: isDark ? 'gray.300' : 'gray.600',
+          flex: 1,
+          minWidth: 0,
+        })}
+      >
+        {formatEventDescription(event)}
+      </span>
+      <span
+        className={css({
+          fontSize: compact ? '0.625rem' : '0.6875rem',
+          color: isDark ? 'gray.500' : 'gray.400',
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        })}
+      >
+        {formatRelativeTime(event.createdAt)}
+      </span>
     </div>
   )
 }

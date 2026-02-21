@@ -11,6 +11,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import {
+  familyEvents,
   generateFamilyCode,
   parentChild,
   type Player,
@@ -19,6 +20,9 @@ import {
   type User,
 } from '@/db/schema'
 import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
+
+/** Maximum number of parents that can be linked to a single child */
+export const MAX_PARENTS_PER_CHILD = 4
 
 /**
  * Result of linking a parent to a child
@@ -73,11 +77,27 @@ export async function linkParentToChild(
     return { success: false, error: 'Already linked to this child' }
   }
 
+  // Check parent cap
+  const existingParents = await db.query.parentChild.findMany({
+    where: eq(parentChild.childPlayerId, player.id),
+  })
+  if (existingParents.length >= MAX_PARENTS_PER_CHILD) {
+    return {
+      success: false,
+      error: `This student already has the maximum number of linked parents (${MAX_PARENTS_PER_CHILD})`,
+    }
+  }
+
   // Create link
   await db.insert(parentChild).values({
     parentUserId,
     childPlayerId: player.id,
   })
+
+  // Record event (non-fatal)
+  recordFamilyEvent(player.id, 'parent_linked', parentUserId, parentUserId).catch((err) =>
+    console.error('[family-events] Failed to record parent_linked:', err)
+  )
 
   // Sync to Casbin (non-fatal)
   syncParentLink(parentUserId, player.id).catch((err) =>
@@ -141,7 +161,8 @@ export async function getLinkedChildren(parentUserId: string): Promise<Player[]>
  */
 export async function unlinkParentFromChild(
   parentUserId: string,
-  playerId: string
+  playerId: string,
+  actorUserId?: string
 ): Promise<{ success: boolean; error?: string }> {
   // Check how many parents this child has
   const parentCount = await db.query.parentChild.findMany({
@@ -156,6 +177,11 @@ export async function unlinkParentFromChild(
   await db
     .delete(parentChild)
     .where(and(eq(parentChild.parentUserId, parentUserId), eq(parentChild.childPlayerId, playerId)))
+
+  // Record event (non-fatal)
+  recordFamilyEvent(playerId, 'parent_unlinked', actorUserId ?? parentUserId, parentUserId).catch(
+    (err) => console.error('[family-events] Failed to record parent_unlinked:', err)
+  )
 
   // Sync to Casbin (non-fatal)
   removeParentLink(parentUserId, playerId).catch((err) =>
@@ -193,7 +219,10 @@ export async function getOrCreateFamilyCode(playerId: string): Promise<string | 
  * Use this if a parent wants to invalidate an old code that was shared.
  * Note: This won't affect existing parent-child links.
  */
-export async function regenerateFamilyCode(playerId: string): Promise<string | null> {
+export async function regenerateFamilyCode(
+  playerId: string,
+  userId?: string
+): Promise<string | null> {
   const player = await db.query.players.findFirst({
     where: eq(players.id, playerId),
   })
@@ -204,7 +233,51 @@ export async function regenerateFamilyCode(playerId: string): Promise<string | n
 
   await db.update(players).set({ familyCode: newCode }).where(eq(players.id, playerId))
 
+  // Record event (non-fatal)
+  if (userId) {
+    recordFamilyEvent(playerId, 'code_regenerated', userId).catch((err) =>
+      console.error('[family-events] Failed to record code_regenerated:', err)
+    )
+  }
+
   return newCode
+}
+
+/**
+ * Record a family event for the audit log
+ */
+async function recordFamilyEvent(
+  childPlayerId: string,
+  eventType: 'parent_linked' | 'parent_unlinked' | 'code_regenerated',
+  actorUserId: string,
+  targetUserId?: string
+): Promise<void> {
+  await db.insert(familyEvents).values({
+    childPlayerId,
+    eventType,
+    actorUserId,
+    targetUserId: targetUserId ?? null,
+  })
+}
+
+/**
+ * Get recent family events for a child (last 7 days, max 20)
+ */
+export async function getRecentFamilyEvents(playerId: string) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+  const events = await db.query.familyEvents.findMany({
+    where: and(
+      eq(familyEvents.childPlayerId, playerId)
+      // created_at is stored as unix timestamp in seconds
+      // We need to compare with the timestamp value
+    ),
+    orderBy: (familyEvents, { desc }) => [desc(familyEvents.createdAt)],
+    limit: 20,
+  })
+
+  // Filter by date in JS since drizzle timestamp mode stores as Date
+  return events.filter((e) => e.createdAt >= sevenDaysAgo)
 }
 
 // Re-export the generateFamilyCode function from schema for convenience

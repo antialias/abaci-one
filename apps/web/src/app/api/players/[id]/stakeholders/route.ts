@@ -7,12 +7,14 @@ import {
   canPerformAction,
   getEnrolledClassrooms,
   getLinkedParents,
+  getRecentFamilyEvents,
   getStudentPresence,
   getTeacherClassroom,
 } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 import type {
   EnrolledClassroomInfo,
+  FamilyEventInfo,
   ParentInfo,
   PendingEnrollmentInfo,
   PresenceInfo,
@@ -43,19 +45,26 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Fetch all data in parallel
-    const [linkedParents, enrolledClassroomsList, presence, viewerClassroom, pendingRequests] =
-      await Promise.all([
-        getLinkedParents(playerId),
-        getEnrolledClassrooms(playerId),
-        getStudentPresence(playerId),
-        getTeacherClassroom(viewerId),
-        db.query.enrollmentRequests.findMany({
-          where: and(
-            eq(enrollmentRequests.playerId, playerId),
-            eq(enrollmentRequests.status, 'pending')
-          ),
-        }),
-      ])
+    const [
+      linkedParents,
+      enrolledClassroomsList,
+      presence,
+      viewerClassroom,
+      pendingRequests,
+      recentEvents,
+    ] = await Promise.all([
+      getLinkedParents(playerId),
+      getEnrolledClassrooms(playerId),
+      getStudentPresence(playerId),
+      getTeacherClassroom(viewerId),
+      db.query.enrollmentRequests.findMany({
+        where: and(
+          eq(enrollmentRequests.playerId, playerId),
+          eq(enrollmentRequests.status, 'pending')
+        ),
+      }),
+      getRecentFamilyEvents(playerId),
+    ])
 
     // Get teacher info for enrolled classrooms
     const teacherIds = enrolledClassroomsList.map((c) => c.teacherId)
@@ -152,6 +161,31 @@ export const GET = withAuth(async (_request, { params }) => {
       }
     }
 
+    // Build family events with resolved names
+    const eventUserIds = new Set<string>()
+    for (const event of recentEvents) {
+      eventUserIds.add(event.actorUserId)
+      if (event.targetUserId) eventUserIds.add(event.targetUserId)
+    }
+    const eventUserIdArray = [...eventUserIds]
+    const eventUsers =
+      eventUserIdArray.length > 0
+        ? await db.query.users.findMany({
+            where: inArray(users.id, eventUserIdArray),
+          })
+        : []
+    const eventUserMap = new Map(eventUsers.map((u) => [u.id, u]))
+
+    const recentFamilyEvents: FamilyEventInfo[] = recentEvents.map((event) => ({
+      id: event.id,
+      eventType: event.eventType as FamilyEventInfo['eventType'],
+      actorName: eventUserMap.get(event.actorUserId)?.name ?? 'Unknown',
+      targetName: event.targetUserId
+        ? (eventUserMap.get(event.targetUserId)?.name ?? 'Unknown')
+        : null,
+      createdAt: event.createdAt.toISOString(),
+    }))
+
     // Determine viewer's relationship
     const isMyChild = parents.some((p) => p.isMe)
     const isMyStudent = enrolledClassrooms.some((c) => c.isMyClassroom)
@@ -185,6 +219,7 @@ export const GET = withAuth(async (_request, { params }) => {
       enrolledClassrooms,
       pendingEnrollments,
       currentPresence,
+      recentFamilyEvents,
     }
 
     return NextResponse.json({

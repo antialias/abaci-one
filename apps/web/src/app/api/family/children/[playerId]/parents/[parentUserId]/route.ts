@@ -20,10 +20,7 @@ export const DELETE = withAuth(async (_request, { userId, params }) => {
     // Caller must be a parent of this child
     const callerIsParent = await isParentOf(userId, playerId)
     if (!callerIsParent) {
-      return NextResponse.json(
-        { error: 'You must be a parent of this student' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'You must be a parent of this student' }, { status: 403 })
     }
 
     // Cannot remove yourself via this route (different concept)
@@ -34,7 +31,7 @@ export const DELETE = withAuth(async (_request, { userId, params }) => {
       )
     }
 
-    const result = await unlinkParentFromChild(parentUserId, playerId)
+    const result = await unlinkParentFromChild(parentUserId, playerId, userId)
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 })

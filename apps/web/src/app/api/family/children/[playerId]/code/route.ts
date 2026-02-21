@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getOrCreateFamilyCode, isParentOf, regenerateFamilyCode } from '@/lib/classroom'
+import {
+  getLinkedParentIds,
+  getOrCreateFamilyCode,
+  isParentOf,
+  MAX_PARENTS_PER_CHILD,
+  regenerateFamilyCode,
+} from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -20,13 +26,20 @@ export const GET = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const familyCode = await getOrCreateFamilyCode(playerId)
+    const [familyCode, linkedParentIds] = await Promise.all([
+      getOrCreateFamilyCode(playerId),
+      getLinkedParentIds(playerId),
+    ])
 
     if (!familyCode) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ familyCode })
+    return NextResponse.json({
+      familyCode,
+      linkedParentCount: linkedParentIds.length,
+      maxParents: MAX_PARENTS_PER_CHILD,
+    })
   } catch (error) {
     console.error('Failed to get family code:', error)
     return NextResponse.json({ error: 'Failed to get family code' }, { status: 500 })
@@ -50,7 +63,7 @@ export const POST = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const familyCode = await regenerateFamilyCode(playerId)
+    const familyCode = await regenerateFamilyCode(playerId, userId)
 
     if (!familyCode) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })

@@ -33,6 +33,8 @@ export function FamilyCodeDisplay({
   const isDark = resolvedTheme === 'dark'
 
   const [familyCode, setFamilyCode] = useState<string | null>(null)
+  const [linkedParentCount, setLinkedParentCount] = useState<number>(0)
+  const [maxParents, setMaxParents] = useState<number>(4)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,6 +49,8 @@ export function FamilyCodeDisplay({
         throw new Error(data.error || 'Failed to fetch family code')
       }
       setFamilyCode(data.familyCode)
+      setLinkedParentCount(data.linkedParentCount ?? 0)
+      setMaxParents(data.maxParents ?? 4)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch family code')
     } finally {
@@ -180,6 +184,8 @@ export function FamilyCodeDisplay({
               code={familyCode}
               playerName={playerName}
               onRegenerate={handleRegenerate}
+              linkedParentCount={linkedParentCount}
+              maxParents={maxParents}
             />
           ) : null}
         </Dialog.Content>
@@ -195,10 +201,14 @@ function FamilyCodeContent({
   code,
   playerName,
   onRegenerate,
+  linkedParentCount,
+  maxParents,
 }: {
   code: string
   playerName: string
   onRegenerate: () => Promise<string>
+  linkedParentCount: number
+  maxParents: number
 }) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -208,6 +218,8 @@ function FamilyCodeContent({
     code,
     onRegenerate,
   })
+
+  const atCap = linkedParentCount >= maxParents
 
   return (
     <div data-section="family-code-content">
@@ -225,12 +237,53 @@ function FamilyCodeContent({
         className={css({
           fontSize: '0.875rem',
           color: isDark ? 'gray.400' : 'gray.600',
-          marginBottom: '20px',
+          marginBottom: '12px',
         })}
       >
         Share this code or QR with another parent to give them equal access to {playerName}&apos;s
         practice data.
       </p>
+
+      {/* Parent count */}
+      <div
+        data-element="parent-count"
+        className={css({
+          fontSize: '0.8125rem',
+          textAlign: 'center',
+          marginBottom: '16px',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          backgroundColor: atCap
+            ? isDark
+              ? 'amber.900/40'
+              : 'amber.50'
+            : isDark
+              ? 'gray.800'
+              : 'gray.50',
+          color: atCap ? (isDark ? 'amber.300' : 'amber.700') : isDark ? 'gray.300' : 'gray.600',
+          border: '1px solid',
+          borderColor: atCap
+            ? isDark
+              ? 'amber.700'
+              : 'amber.200'
+            : isDark
+              ? 'gray.700'
+              : 'gray.200',
+        })}
+      >
+        Currently linked: {linkedParentCount} of {maxParents} parents
+        {atCap && (
+          <div
+            className={css({
+              fontSize: '0.75rem',
+              marginTop: '4px',
+              fontWeight: 'medium',
+            })}
+          >
+            Maximum parents reached. Remove a parent before sharing.
+          </div>
+        )}
+      </div>
 
       <ShareCodePanel
         shareCode={shareCode}

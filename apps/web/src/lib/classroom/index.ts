@@ -31,6 +31,7 @@ export {
 // Family Management
 export {
   type LinkResult,
+  MAX_PARENTS_PER_CHILD,
   linkParentToChild,
   getLinkedParents,
   getLinkedParentIds,
@@ -39,6 +40,7 @@ export {
   getOrCreateFamilyCode,
   regenerateFamilyCode,
   generateFamilyCode,
+  getRecentFamilyEvents,
 } from './family-manager'
 
 // Enrollment Management

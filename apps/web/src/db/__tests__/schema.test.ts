@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arcadeSessions, players, userStats, users } from '../schema'
+import { arcadeSessions, familyEvents, players, userStats, users } from '../schema'
 
 describe('Schema validation', () => {
   describe('users table', () => {
@@ -109,6 +109,32 @@ describe('Schema validation', () => {
     it('has correct defaults', () => {
       expect(arcadeSessions.isActive.default).toBeDefined()
       expect(arcadeSessions.version.default).toBeDefined()
+    })
+  })
+
+  describe('family_events table', () => {
+    it('has correct structure', () => {
+      expect(familyEvents.id).toBeDefined()
+      expect(familyEvents.childPlayerId).toBeDefined()
+      expect(familyEvents.eventType).toBeDefined()
+      expect(familyEvents.actorUserId).toBeDefined()
+      expect(familyEvents.targetUserId).toBeDefined()
+      expect(familyEvents.createdAt).toBeDefined()
+    })
+
+    it('has id as primary key', () => {
+      expect(familyEvents.id.primary).toBe(true)
+    })
+
+    it('has required fields as not null', () => {
+      expect(familyEvents.childPlayerId.notNull).toBe(true)
+      expect(familyEvents.eventType.notNull).toBe(true)
+      expect(familyEvents.actorUserId.notNull).toBe(true)
+      expect(familyEvents.createdAt.notNull).toBe(true)
+    })
+
+    it('has targetUserId as nullable', () => {
+      expect(familyEvents.targetUserId.notNull).toBe(false)
     })
   })
 })

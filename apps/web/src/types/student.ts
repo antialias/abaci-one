@@ -212,6 +212,22 @@ export interface PresenceInfo {
 }
 
 /**
+ * A family event for the activity feed
+ */
+export interface FamilyEventInfo {
+  /** Event ID */
+  id: string
+  /** Type of event */
+  eventType: 'parent_linked' | 'parent_unlinked' | 'code_regenerated'
+  /** Name of user who performed the action */
+  actorName: string
+  /** Name of the parent being linked/unlinked (null for code_regenerated) */
+  targetName: string | null
+  /** When the event occurred (ISO string) */
+  createdAt: string
+}
+
+/**
  * Complete stakeholder information for a student
  */
 export interface StudentStakeholders {
@@ -223,6 +239,8 @@ export interface StudentStakeholders {
   pendingEnrollments: PendingEnrollmentInfo[]
   /** Current classroom presence (if any) */
   currentPresence: PresenceInfo | null
+  /** Recent family events (last 7 days) */
+  recentFamilyEvents: FamilyEventInfo[]
 }
 
 /**
