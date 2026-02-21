@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx @pandacss/dev --clean && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch --poll\"",
+    "dev": "npx @pandacss/dev --clean && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && NODE_OPTIONS='--max-old-space-size=8192' concurrently \"node server.js\" \"npx @pandacss/dev --watch --poll\"",
     "build": "node scripts/generate-build-info.js && npx next-openapi-gen generate && npx tsx scripts/generateAllDayIcons.tsx && npx @pandacss/dev && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && npm run build:seed-script && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "npx @biomejs/biome lint . && npx eslint .",

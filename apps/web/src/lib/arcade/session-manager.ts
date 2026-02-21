@@ -47,34 +47,19 @@ export function getGameStateFromSession(
   const gameState = session.gameState as unknown
 
   const isNamespaced = isNamespacedState(gameState)
-  console.log('[getGameStateFromSession]', {
-    gameName,
-    isNamespaced,
-    topLevelKeys: gameState ? Object.keys(gameState as object).slice(0, 10) : [],
-    sessionCurrentGame: session.currentGame,
-    roomId: session.roomId,
-  })
 
   if (isNamespaced) {
     // New format: extract from namespace
-    const extracted = (gameState as NamespacedGameState)[gameName]
-    console.log('[getGameStateFromSession] Extracted namespaced state:', {
-      gameName,
-      hasState: extracted !== undefined,
-      extractedKeys: extracted ? Object.keys(extracted as object).slice(0, 10) : [],
-    })
-    return extracted
+    return (gameState as NamespacedGameState)[gameName]
   }
 
   // Old format: if currentGame matches, return the flat state
   // This provides backward compatibility during migration
   if (session.currentGame === gameName) {
-    console.log('[getGameStateFromSession] Using old format flat state')
     return gameState
   }
 
   // Game mismatch with old format - no state available
-  console.log('[getGameStateFromSession] Old format but game mismatch, returning undefined')
   return undefined
 }
 

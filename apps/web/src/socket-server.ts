@@ -242,8 +242,10 @@ function initializeYjsServer(io: SocketIOServerType) {
   console.log('✅ Yjs over Socket.IO initialized')
 
   // Periodic persistence: sync Y.Doc state to arcade_sessions every 30 seconds
-  setInterval(async () => {
-    await persistAllYjsRooms()
+  setInterval(() => {
+    persistAllYjsRooms().catch((error) => {
+      console.error('Error in periodic Yjs persistence:', error)
+    })
   }, 30000)
 }
 
@@ -284,28 +286,28 @@ export async function loadPersistedYjsState(roomId: string): Promise<void> {
  * Persist Y.Doc cells for a specific room to arcade_sessions
  */
 export async function persistYjsRoom(roomId: string): Promise<void> {
-  const { extractCellsFromDoc } = await import('./lib/arcade/yjs-persistence')
-  const { db, schema } = await import('@/db')
-  const { eq } = await import('drizzle-orm')
-
-  const doc = getYjsDoc(roomId)
-  if (!doc) return
-
-  const session = await getArcadeSessionByRoom(roomId)
-  if (!session) return
-
-  // Extract cells from Y.Doc
-  const cells = extractCellsFromDoc(doc, 'cells')
-
-  // Update the gameState with current cells
-  const currentState = session.gameState as Record<string, any>
-  const updatedGameState = {
-    ...currentState,
-    cells,
-  }
-
-  // Save to database
   try {
+    const { extractCellsFromDoc } = await import('./lib/arcade/yjs-persistence')
+    const { db, schema } = await import('@/db')
+    const { eq } = await import('drizzle-orm')
+
+    const doc = getYjsDoc(roomId)
+    if (!doc) return
+
+    const session = await getArcadeSessionByRoom(roomId)
+    if (!session) return
+
+    // Extract cells from Y.Doc
+    const cells = extractCellsFromDoc(doc, 'cells')
+
+    // Update the gameState with current cells
+    const currentState = session.gameState as Record<string, any>
+    const updatedGameState = {
+      ...currentState,
+      cells,
+    }
+
+    // Save to database
     await db
       .update(schema.arcadeSessions)
       .set({
@@ -355,8 +357,12 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     console.log('[Socket.IO] No Redis available, using default in-memory adapter (single instance)')
   }
 
-  // Initialize Yjs server over Socket.IO
-  initializeYjsServer(io)
+  // Yjs collaborative editing — disabled until implementation is complete.
+  // Was registering extra connection handlers + a 30s setInterval on every socket,
+  // and leaking Y.Doc event listeners on room creation. Enable with ENABLE_YJS=true.
+  if (process.env.ENABLE_YJS === 'true') {
+    initializeYjsServer(io)
+  }
 
   io.on('connection', (socket) => {
     // Track Socket.IO connection metrics

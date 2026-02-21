@@ -44,43 +44,17 @@ runMigrations().then(() => app.prepare()).then(() => {
     }
   })
 
-  // Debug: Check upgrade handlers at each stage
-  console.log('📊 Stage 1 - After server creation:')
-  console.log(`   Upgrade handlers: ${server.listeners('upgrade').length}`)
-
   // Initialize Socket.IO
   let initializeSocketServer
   try {
     const socketServer = require('./dist/socket-server')
     initializeSocketServer = socketServer.initializeSocketServer
-    console.log('✅ Socket server module loaded successfully')
   } catch (error) {
     console.error('❌ Failed to load socket-server module:', error)
     process.exit(1)
   }
 
-  console.log('📊 Stage 2 - Before initializeSocketServer:')
-  console.log(`   Upgrade handlers: ${server.listeners('upgrade').length}`)
-
   initializeSocketServer(server)
-
-  console.log('📊 Stage 3 - After initializeSocketServer:')
-  const allHandlers = server.listeners('upgrade')
-  console.log(`   Upgrade handlers: ${allHandlers.length}`)
-  allHandlers.forEach((handler, i) => {
-    console.log(`   [${i}] ${handler.name || 'anonymous'} (length: ${handler.length} params)`)
-  })
-
-  // Log all upgrade requests to see handler execution order
-  const originalEmit = server.emit.bind(server)
-  server.emit = (event, ...args) => {
-    if (event === 'upgrade') {
-      const req = args[0]
-      console.log(`\n🔄 UPGRADE REQUEST: ${req.url}`)
-      console.log(`   ${allHandlers.length} handlers will be called`)
-    }
-    return originalEmit(event, ...args)
-  }
 
   server
     .once('error', (err) => {

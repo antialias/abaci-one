@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
-import ReactECharts from 'echarts-for-react'
-import type { EChartsInstance } from 'echarts-for-react'
+import { useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { css } from '../../../../../../../styled-system/css'
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false })
 import type { EpochData, InferenceSample } from '../types'
 
 /**
@@ -128,9 +129,6 @@ export function TrainingCard({
   onCancel,
   onStopAndSave,
 }: TrainingCardProps) {
-  // Ref for chart instance to handle cleanup
-  const chartRef = useRef<EChartsInstance>(null)
-
   // Check if this is boundary detector training (has pixel error data)
   const isBoundaryDetector = currentEpoch?.val_pixel_error !== undefined
 

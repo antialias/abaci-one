@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import mermaid from 'mermaid'
 import { css } from '../../../styled-system/css'
 
 interface MermaidViewerProps {
@@ -20,28 +19,30 @@ export function MermaidViewer({ mermaidContent }: MermaidViewerProps) {
   useEffect(() => {
     if (!containerRef.current || !mermaidContent) return
 
-    // Initialize mermaid with basic settings
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'base',
-      themeVariables: {
-        primaryColor: '#e3f2fd',
-        primaryTextColor: '#1a1a1a',
-        primaryBorderColor: '#90caf9',
-        lineColor: '#444444',
-        secondaryColor: '#fff8e1',
-        tertiaryColor: '#e8f5e9',
-      },
-      flowchart: {
-        curve: 'basis',
-        nodeSpacing: 30,
-        rankSpacing: 50,
-        padding: 20,
-      },
-      securityLevel: 'loose',
-    })
-
     const render = async () => {
+      const mermaid = (await import('mermaid')).default
+
+      // Initialize mermaid with basic settings
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#e3f2fd',
+          primaryTextColor: '#1a1a1a',
+          primaryBorderColor: '#90caf9',
+          lineColor: '#444444',
+          secondaryColor: '#fff8e1',
+          tertiaryColor: '#e8f5e9',
+        },
+        flowchart: {
+          curve: 'basis',
+          nodeSpacing: 30,
+          rankSpacing: 50,
+          padding: 20,
+        },
+        securityLevel: 'loose',
+      })
+
       // Generate unique ID for this render
       const id = `mermaid-${Date.now()}`
 
