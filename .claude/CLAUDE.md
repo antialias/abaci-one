@@ -34,6 +34,28 @@ kubectl logs -n abaci -l app=abaci-app --tail=100
 ## CI/CD Pipeline
 
 - **Argo CD Image Updater**: Watches for new container images and auto-deploys
+- **Manifests**: `infra/k8s/abaci-app/` (Kustomize — deployment.yaml, migration-job.yaml)
+- **PreSync hook**: `migration-job.yaml` runs DB migrations before pods roll (Argo CD waits for it)
+
+### Container Registry (ghcr.io) — Public Package, No Auth Needed
+
+**The `ghcr.io/antialias/abaci-one` package is PUBLIC.** Anonymous pulls work. Do NOT add credentials for pulling.
+
+**Critical rules:**
+- **Do NOT add `imagePullSecrets`** to k8s manifests. The package is public and anonymous pulls work. If a pod has `imagePullSecrets` referencing a secret with expired/invalid credentials, ghcr.io returns 403 Forbidden instead of falling back to anonymous access — causing ImagePullBackOff.
+- **Image updater `registries.conf`** (ConfigMap `argocd-image-updater-config` in `argocd` namespace) must NOT have a `credentials:` line for ghcr.io. Anonymous access works for reading tags from public packages. Expired credentials cause "denied: denied" errors.
+- **Legacy `ghcr-registry` secrets** exist in both `argocd` and `abaci` namespaces with expired PATs. These secrets are NOT used and should NOT be referenced. They remain as artifacts from when the package was private.
+
+**How image updates flow:**
+1. CI builds and pushes new image to ghcr.io (tagged `main`)
+2. argocd-image-updater (every 2 min) checks ghcr.io for new digests using anonymous access
+3. Image updater patches the Argo CD Application's kustomize image override
+4. Argo CD auto-sync triggers: runs PreSync migration job, then rolls deployment
+
+**Debugging image pull failures:**
+- Check if `imagePullSecrets` is set on the pod spec — remove it
+- Check `argocd-image-updater-config` ConfigMap for `credentials:` line — remove it
+- Test anonymous pull: `kubectl run test --image=ghcr.io/antialias/abaci-one:main --restart=Never` (no imagePullSecrets = anonymous = works)
 
 ## Application Architecture
 

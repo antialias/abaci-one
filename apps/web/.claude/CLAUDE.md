@@ -107,6 +107,7 @@ Global decorators are in `.storybook/preview.tsx`. It wraps all stories with: `S
 - When a new image is pushed to ghcr.io, argocd-image-updater detects it and triggers a rollout
 - Do NOT manually trigger `kubectl rollout restart` - Argo CD handles this automatically
 - Argo CD runs in the `argocd` namespace
+- **ghcr.io package is PUBLIC — no auth credentials needed.** See root `CLAUDE.md` → "Container Registry (ghcr.io)" for critical rules about imagePullSecrets and registry auth. TL;DR: never add `imagePullSecrets` or registry credentials — expired creds cause 403 instead of falling back to anonymous.
 
 ### Debugging Argo CD
 ```bash
@@ -116,6 +117,11 @@ kubectl logs -n argocd -l app.kubernetes.io/name=argocd-image-updater --tail=50
 # Check Argo CD app status
 kubectl get applications -n argocd
 ```
+
+### Stuck Argo CD Sync (PreSync Hook)
+If the migration job (PreSync hook) fails or is deleted mid-sync, Argo CD gets stuck "waiting for completion of hook batch/Job/db-migrations". To fix:
+1. Patch the application to clear the stuck operation: `kubectl patch applications.argoproj.io abaci-app -n argocd --type merge -p '{"operation": null}'`
+2. This allows auto-sync to trigger a fresh sync cycle
 
 ---
 
