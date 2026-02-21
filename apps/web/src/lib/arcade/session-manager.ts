@@ -3,7 +3,7 @@
  * Handles database operations and validation for arcade sessions
  */
 
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { buildPlayerOwnershipMap, type PlayerOwnershipMap } from './player-ownership'
 import { getValidator, type GameName } from './validators'
@@ -114,12 +114,15 @@ export interface SessionUpdateResult {
 const TTL_HOURS = 24
 
 /**
- * Helper: Get database user ID from guest ID
- * The API uses guestId (from cookies) but database FKs use the internal user.id
+ * Helper: Resolve a client-provided ID to the internal database user.id
+ *
+ * The client sends either a guestId (for guests) or a database user.id
+ * (for authenticated users, after the getViewerId→getDbUserId refactor).
+ * This function handles both cases.
  */
-async function getUserIdFromGuestId(guestId: string): Promise<string | undefined> {
+async function resolveUserId(idFromClient: string): Promise<string | undefined> {
   const user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, guestId),
+    where: or(eq(schema.users.guestId, idFromClient), eq(schema.users.id, idFromClient)),
     columns: { id: true },
   })
   return user?.id
@@ -168,12 +171,15 @@ export async function createArcadeSession(
     return existingRoomSession
   }
 
-  // Find or create user by guest ID
+  // Find user by guestId or database user.id
+  // After the identity refactor, authenticated users send their database user.id
+  // while guests send their guestId
   let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, options.userId),
+    where: or(eq(schema.users.guestId, options.userId), eq(schema.users.id, options.userId)),
   })
 
   if (!user) {
+    // Only create a new user if this is truly a new guest (not an authenticated user)
     const [newUser] = await db
       .insert(schema.users)
       .values({
@@ -229,10 +235,10 @@ export async function createArcadeSession(
  * Get active arcade session for a user
  * NOTE: With the new schema, userId is not the PRIMARY KEY (roomId is)
  * This function finds sessions where the user is associated
- * @param guestId - The guest ID from the cookie (not the database user.id)
+ * @param idFromClient - The guestId or database user.id from the client
  */
-export async function getArcadeSession(guestId: string): Promise<schema.ArcadeSession | undefined> {
-  const userId = await getUserIdFromGuestId(guestId)
+export async function getArcadeSession(idFromClient: string): Promise<schema.ArcadeSession | undefined> {
+  const userId = await resolveUserId(idFromClient)
   if (!userId) return undefined
 
   // Query for sessions where this user is associated
@@ -314,10 +320,10 @@ export async function applyGameMove(
   let internalUserId: string | undefined
   if (session.roomId) {
     try {
-      // Convert guestId to internal userId for ownership comparison
-      internalUserId = await getUserIdFromGuestId(userId)
+      // Convert client-provided ID to internal userId for ownership comparison
+      internalUserId = await resolveUserId(userId)
       if (!internalUserId) {
-        console.error('[SessionManager] Failed to convert guestId to userId:', userId)
+        console.error('[SessionManager] Failed to resolve userId:', userId)
         return {
           success: false,
           error: 'User not found',
