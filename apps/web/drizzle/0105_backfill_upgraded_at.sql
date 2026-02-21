@@ -1,0 +1,1 @@
+UPDATE users SET upgraded_at = created_at WHERE email IS NOT NULL AND upgraded_at IS NULL;

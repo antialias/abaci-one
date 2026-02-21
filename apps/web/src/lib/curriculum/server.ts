@@ -11,11 +11,11 @@ import 'server-only'
 
 import { and, eq, inArray, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { parentChild } from '@/db/schema'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
+import { getValidParentLinks } from '@/lib/classroom/access-control'
 import { getUserId } from '@/lib/viewer'
 import {
   computeIntervention,
@@ -212,11 +212,9 @@ async function batchGetActiveSessions(
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
   const userId = await getUserId()
 
-  // Get player IDs linked via parent_child table
-  const linkedPlayerIds = await db.query.parentChild.findMany({
-    where: eq(parentChild.parentUserId, userId),
-  })
-  const linkedIds = linkedPlayerIds.map((link) => link.childPlayerId)
+  // Get player IDs linked via parent_child table (with guest share expiry applied)
+  const validLinks = await getValidParentLinks(userId)
+  const linkedIds = validLinks.map((link) => link.childPlayerId)
 
   // Get practice students: created by this user OR linked via parent_child
   // Only returns players flagged as practice students (excludes arcade-only players)

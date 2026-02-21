@@ -21,6 +21,7 @@ export const abacisAdapter: Adapter = {
         email: user.email,
         name: user.name ?? null,
         image: user.image ?? null,
+        upgradedAt: user.email ? new Date() : undefined,
       })
       .returning()
     return toAdapterUser(created)
