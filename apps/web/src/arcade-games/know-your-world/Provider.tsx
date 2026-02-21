@@ -294,6 +294,30 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     applyMove: (state) => state, // Server handles all state updates
   })
 
+  // === DEBUG: Track rawState changes from server ===
+  const prevRawStateRef = useRef<KnowYourWorldState | null>(null)
+  useEffect(() => {
+    const prev = prevRawStateRef.current
+    console.log('[KYW-DEBUG] rawState updated:', {
+      gamePhase: rawState.gamePhase,
+      currentPrompt: rawState.currentPrompt,
+      regionsToFindCount: rawState.regionsToFind?.length,
+      regionsFoundCount: rawState.regionsFound?.length,
+      currentPlayer: rawState.currentPlayer,
+      activePlayers: rawState.activePlayers,
+      promptChanged: prev?.currentPrompt !== rawState.currentPrompt,
+      phaseChanged: prev?.gamePhase !== rawState.gamePhase,
+    })
+    prevRawStateRef.current = rawState
+  }, [rawState])
+
+  // === DEBUG: Track lastError ===
+  useEffect(() => {
+    if (lastError) {
+      console.error('[KYW-DEBUG] lastError from server:', lastError)
+    }
+  }, [lastError])
+
   // Detect and log incomplete state from server (backward compatibility with old sessions)
   // This helps us track when the database contains sessions created before certain fields were added
   const state = useMemo<KnowYourWorldState>(() => {
@@ -412,6 +436,13 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   const layoutMode = useGameLayoutMode()
   const autoStartFiredRef = useRef(false)
   useEffect(() => {
+    console.log('[KYW-DEBUG] auto-start check:', {
+      layoutMode,
+      gamePhase: state.gamePhase,
+      viewerId,
+      activePlayersLength: activePlayers.length,
+      autoStartFired: autoStartFiredRef.current,
+    })
     if (
       layoutMode === 'container' &&
       state.gamePhase === 'setup' &&
@@ -419,6 +450,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       activePlayers.length > 0 &&
       !autoStartFiredRef.current
     ) {
+      console.log('[KYW-DEBUG] AUTO-START FIRING! Calling startGame()')
       autoStartFiredRef.current = true
       startGame()
     }
@@ -427,14 +459,21 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   // Action: Click Region
   const clickRegion = useCallback(
     (regionId: string, regionName: string) => {
-      console.log('[CLICK] clickRegion called:', {
+      console.log('[KYW-DEBUG] clickRegion called:', {
         regionId,
         regionName,
         currentPlayer: state.currentPlayer,
         viewerId,
         currentPrompt: state.currentPrompt,
         isCorrect: regionId === state.currentPrompt,
+        regionsToFindCount: state.regionsToFind?.length,
+        gamePhase: state.gamePhase,
       })
+
+      if (!state.currentPlayer) {
+        console.error('[KYW-DEBUG] ERROR: currentPlayer is empty! Cannot send CLICK_REGION.')
+        return
+      }
 
       // Use the current player from game state (PLAYER ID, not USER ID)
       // In turn-based mode, this is the player whose turn it is
@@ -446,9 +485,9 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         data: { regionId, regionName },
       })
 
-      console.log('[CLICK] sendMove dispatched')
+      console.log('[KYW-DEBUG] CLICK_REGION move sent to server')
     },
-    [viewerId, sendMove, state.currentPlayer, state.currentPrompt]
+    [viewerId, sendMove, state.currentPlayer, state.currentPrompt, state.regionsToFind, state.gamePhase]
   )
 
   // Action: Next Round
