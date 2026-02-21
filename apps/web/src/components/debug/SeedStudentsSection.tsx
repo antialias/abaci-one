@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ChevronDown,
@@ -12,6 +12,14 @@ import {
 } from 'lucide-react'
 import { FamilyCodeDisplay } from '@/components/family/FamilyCodeDisplay'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
+import {
+  useSeedProfiles,
+  useEmbeddingStatus,
+  useSeededStudents,
+  useSeedProfileSearch,
+  useRegenerateEmbeddings,
+  useSeedStudents,
+} from '@/hooks/useDebugSeedStudents'
 import type { ProfileInfo } from '@/lib/seed/types'
 import { css } from '../../../styled-system/css'
 
@@ -310,26 +318,31 @@ function ProfileCard({
 }
 
 export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
-  const [profiles, setProfiles] = useState<ProfileInfo[]>([])
-  const [loading, setLoading] = useState(true)
+  // ── Server state via React Query ───────────────────────────────────────────
+  const { data: profilesData, isLoading: profilesLoading, error: profilesError } = useSeedProfiles()
+  const { data: embeddingStatus } = useEmbeddingStatus()
+  const { data: seededData } = useSeededStudents()
+  const regenerateEmbeddings = useRegenerateEmbeddings()
+  const seedMutation = useSeedStudents()
+
+  const profiles = profilesData?.profiles ?? []
+
+  // ── Local UI state ─────────────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expandedProfiles, setExpandedProfiles] = useState<Set<string>>(new Set())
   const [taskId, setTaskId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [studentStatuses, setStudentStatuses] = useState<Map<string, StudentStatus>>(new Map())
   const [classroomCode, setClassroomCode] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Map<string, number> | null>(null)
-  const [searching, setSearching] = useState(false)
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sharePlayer, setSharePlayer] = useState<{ playerId: string; name: string } | null>(null)
-  const [embeddingStatus, setEmbeddingStatus] = useState<{
-    cached: boolean
-    stale: boolean
-    profileCount: number
-    cachedAt: string | null
-  } | null>(null)
-  const [regenerating, setRegenerating] = useState(false)
+
+  // ── Search via React Query with debounced input ────────────────────────────
+  const { data: searchResults, isFetching: searching } = useSeedProfileSearch(debouncedSearchQuery)
+
+  // Show search results when we have a debounced query >= 3 chars
+  const activeSearchResults = debouncedSearchQuery.trim().length >= 3 ? searchResults : null
 
   interface TaskOutput {
     seededCount: number
@@ -346,58 +359,25 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
 
   const { state: taskState } = useBackgroundTask<TaskOutput>(taskId)
 
-  // Fetch profile list, embedding status, and previously-seeded students
+  // ── Populate statuses from previously-seeded data ──────────────────────────
+  const seededDataRef = useRef(seededData)
   useEffect(() => {
-    fetch('/api/debug/seed-students')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then((data) => {
-        setProfiles(data.profiles ?? [])
-        setLoading(false)
-      })
-      .catch((err) => {
-        setError(err.message)
-        setLoading(false)
-      })
-
-    fetch('/api/debug/seed-students/embeddings')
-      .then((r) => r.json())
-      .then((data) => setEmbeddingStatus(data))
-      .catch(() => {})
-
-    fetch('/api/debug/seed-students/seeded')
-      .then((r) => r.json())
-      .then((data) => {
-        const seeded = data.seeded as Record<string, { playerId: string; seededAt: string }>
-        if (!seeded || Object.keys(seeded).length === 0) return
-        const statuses = new Map<string, StudentStatus>()
-        for (const [profileName, info] of Object.entries(seeded)) {
-          statuses.set(profileName, {
-            name: profileName,
-            status: 'completed',
-            playerId: info.playerId,
-            seededAt: new Date(info.seededAt),
-          })
-        }
-        setStudentStatuses(statuses)
-      })
-      .catch(() => {})
-  }, [])
-
-  const handleRegenerateEmbeddings = useCallback(async () => {
-    setRegenerating(true)
-    try {
-      const res = await fetch('/api/debug/seed-students/embeddings', { method: 'POST' })
-      const data = await res.json()
-      setEmbeddingStatus(data)
-    } catch {
-      // ignore
-    } finally {
-      setRegenerating(false)
+    // Only run when seededData first arrives (not on every render)
+    if (seededData && seededData !== seededDataRef.current) {
+      seededDataRef.current = seededData
+      if (Object.keys(seededData).length === 0) return
+      const statuses = new Map<string, StudentStatus>()
+      for (const [profileName, info] of Object.entries(seededData)) {
+        statuses.set(profileName, {
+          name: profileName,
+          status: 'completed',
+          playerId: info.playerId,
+          seededAt: new Date(info.seededAt),
+        })
+      }
+      setStudentStatuses(statuses)
     }
-  }, [])
+  }, [seededData])
 
   // Process task events for per-student status (merge with existing)
   useEffect(() => {
@@ -488,10 +468,14 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
     })
   }, [taskState?.output, taskState?.events])
 
-  const groupedProfiles = PROFILE_GROUPS.map((group) => ({
-    ...group,
-    profiles: profiles.filter(group.match),
-  }))
+  const groupedProfiles = useMemo(
+    () =>
+      PROFILE_GROUPS.map((group) => ({
+        ...group,
+        profiles: profiles.filter(group.match),
+      })),
+    [profiles]
+  )
 
   const toggleSelect = useCallback((name: string) => {
     setSelected((prev) => {
@@ -530,60 +514,36 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     if (query.trim().length < 3) {
-      setSearchResults(null)
-      setSearching(false)
+      setDebouncedSearchQuery('')
       return
     }
 
-    setSearching(true)
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `/api/debug/seed-students/search?q=${encodeURIComponent(query.trim())}`
-        )
-        const data = await res.json()
-        const map = new Map<string, number>()
-        for (const r of data.results ?? []) {
-          map.set(r.name, r.similarity)
-        }
-        setSearchResults(map)
-      } catch {
-        setSearchResults(null)
-      } finally {
-        setSearching(false)
-      }
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(query.trim())
     }, 400)
   }, [])
 
-  const handleSeed = useCallback(async (profileNames: string[]) => {
-    setError(null)
-    setStudentStatuses(new Map())
-    setClassroomCode(null)
+  const handleSeed = useCallback(
+    (profileNames: string[]) => {
+      setStudentStatuses(new Map())
+      setClassroomCode(null)
 
-    try {
-      const res = await fetch('/api/debug/seed-students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profiles: profileNames }),
+      seedMutation.mutate(profileNames, {
+        onSuccess: (data) => {
+          setTaskId(data.taskId)
+        },
       })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || `HTTP ${res.status}`)
-      }
-
-      const data = await res.json()
-      setTaskId(data.taskId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start seeding')
-    }
-  }, [])
+    },
+    [seedMutation]
+  )
 
   const isSeeding = taskState?.status === 'running' || taskState?.status === 'pending'
   const isComplete = taskState?.status === 'completed'
   const isFailed = taskState?.status === 'failed'
 
-  if (loading) {
+  const error = profilesError?.message ?? seedMutation.error?.message ?? null
+
+  if (profilesLoading) {
     return (
       <div
         data-component="seed-students-loading"
@@ -740,8 +700,8 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
           </span>
           <button
             data-action="regenerate-embeddings"
-            onClick={handleRegenerateEmbeddings}
-            disabled={regenerating}
+            onClick={() => regenerateEmbeddings.mutate()}
+            disabled={regenerateEmbeddings.isPending}
             className={css({
               display: 'inline-flex',
               alignItems: 'center',
@@ -751,7 +711,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
               fontSize: '0.75rem',
               fontWeight: '600',
               border: 'none',
-              cursor: regenerating ? 'not-allowed' : 'pointer',
+              cursor: regenerateEmbeddings.isPending ? 'not-allowed' : 'pointer',
               flexShrink: 0,
               backgroundColor: embeddingStatus.stale
                 ? isDark
@@ -761,7 +721,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
                   ? 'blue.700'
                   : 'blue.500',
               color: 'white',
-              _hover: regenerating
+              _hover: regenerateEmbeddings.isPending
                 ? {}
                 : {
                     backgroundColor: embeddingStatus.stale
@@ -776,9 +736,13 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
           >
             <RefreshCw
               size={12}
-              className={regenerating ? css({ animation: 'spin 1s linear infinite' }) : undefined}
+              className={
+                regenerateEmbeddings.isPending
+                  ? css({ animation: 'spin 1s linear infinite' })
+                  : undefined
+              }
             />
-            {regenerating ? 'Regenerating...' : 'Regenerate'}
+            {regenerateEmbeddings.isPending ? 'Regenerating...' : 'Regenerate'}
           </button>
         </div>
       )}
@@ -824,7 +788,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
             <button
               data-action="seed-selected"
               onClick={() => handleSeed(Array.from(selected))}
-              disabled={isSeeding || selected.size === 0}
+              disabled={isSeeding || seedMutation.isPending || selected.size === 0}
               className={css({
                 padding: '10px 20px',
                 backgroundColor:
@@ -876,13 +840,13 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
 
       {/* Profile list — grouped view or search results */}
       <div data-element="profile-list" className={css({ marginBottom: '1rem' })}>
-        {searchResults ? (
+        {activeSearchResults ? (
           /* Search results: flat list ranked by similarity */
           <div
             data-element="search-results"
             className={css({ display: 'flex', flexDirection: 'column', gap: '6px' })}
           >
-            {searchResults.size === 0 && !searching && (
+            {activeSearchResults.size === 0 && !searching && (
               <div
                 className={css({
                   padding: '1rem',
@@ -895,8 +859,11 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
               </div>
             )}
             {profiles
-              .filter((p) => searchResults.has(p.name))
-              .sort((a, b) => (searchResults.get(b.name) ?? 0) - (searchResults.get(a.name) ?? 0))
+              .filter((p) => activeSearchResults.has(p.name))
+              .sort(
+                (a, b) =>
+                  (activeSearchResults.get(b.name) ?? 0) - (activeSearchResults.get(a.name) ?? 0)
+              )
               .map((profile) => (
                 <ProfileCard
                   key={profile.name}
@@ -906,7 +873,7 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
                   isSelected={selected.has(profile.name)}
                   isExpanded={expandedProfiles.has(profile.name)}
                   studentStatus={studentStatuses.get(profile.name)}
-                  similarity={searchResults.get(profile.name)}
+                  similarity={activeSearchResults.get(profile.name)}
                   onToggleSelect={toggleSelect}
                   onToggleExpand={toggleExpand}
                   onShareAccess={(playerId, name) => setSharePlayer({ playerId, name })}

@@ -2,65 +2,41 @@
 
 import { ArrowLeft, CreditCard, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useTier } from '@/hooks/useTier'
-import { billingKeys } from '@/lib/queryKeys'
-import { api } from '@/lib/queryClient'
+import { useBillingSync, useBillingReset } from '@/hooks/useDebugSeedStudents'
 import { css } from '../../../../styled-system/css'
 
 export default function DebugBillingPage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { tier, limits, isLoading: tierLoading } = useTier()
-  const queryClient = useQueryClient()
 
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [syncResult, setSyncResult] = useState<string | null>(null)
-  const [resetStatus, setResetStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [resetResult, setResetResult] = useState<string | null>(null)
+  const syncMutation = useBillingSync()
+  const resetMutation = useBillingReset()
 
-  const handleSync = async () => {
-    setSyncStatus('loading')
-    setSyncResult(null)
-    try {
-      const res = await api('debug/billing-sync', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        setSyncStatus('error')
-        setSyncResult(data.error || `HTTP ${res.status}`)
-        return
-      }
-      setSyncStatus('success')
-      setSyncResult(`Synced session ${data.sessionId}`)
-      queryClient.invalidateQueries({ queryKey: billingKeys.tier() })
-    } catch (err) {
-      setSyncStatus('error')
-      setSyncResult(err instanceof Error ? err.message : 'Unknown error')
-    }
-  }
+  const syncStatus = syncMutation.isPending
+    ? 'loading'
+    : syncMutation.isSuccess
+      ? 'success'
+      : syncMutation.isError
+        ? 'error'
+        : 'idle'
+  const syncResult = syncMutation.isSuccess
+    ? `Synced session ${(syncMutation.data as { sessionId: string }).sessionId}`
+    : syncMutation.error?.message ?? null
 
-  const handleReset = async () => {
-    setResetStatus('loading')
-    setResetResult(null)
-    try {
-      const res = await api('debug/billing-reset', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        setResetStatus('error')
-        setResetResult(data.error || `HTTP ${res.status}`)
-        return
-      }
-      setResetStatus('success')
-      setResetResult('Subscription deleted locally. You are now on the Free tier.')
-      queryClient.invalidateQueries({ queryKey: billingKeys.tier() })
-    } catch (err) {
-      setResetStatus('error')
-      setResetResult(err instanceof Error ? err.message : 'Unknown error')
-    }
-  }
+  const resetStatus = resetMutation.isPending
+    ? 'loading'
+    : resetMutation.isSuccess
+      ? 'success'
+      : resetMutation.isError
+        ? 'error'
+        : 'idle'
+  const resetResult = resetMutation.isSuccess
+    ? 'Subscription deleted locally. You are now on the Free tier.'
+    : resetMutation.error?.message ?? null
 
   return (
     <PageWithNav>
@@ -180,7 +156,7 @@ export default function DebugBillingPage() {
               database. Use this if the post-checkout redirect failed to sync.
             </p>
             <ActionButton
-              onClick={handleSync}
+              onClick={() => syncMutation.mutate()}
               loading={syncStatus === 'loading'}
               icon={<RefreshCw size={14} />}
               isDark={isDark}
@@ -210,7 +186,7 @@ export default function DebugBillingPage() {
               the Stripe subscription — only affects the local database.
             </p>
             <ActionButton
-              onClick={handleReset}
+              onClick={() => resetMutation.mutate()}
               loading={resetStatus === 'loading'}
               icon={<Trash2 size={14} />}
               isDark={isDark}

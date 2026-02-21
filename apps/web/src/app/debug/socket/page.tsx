@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
+import { useBuildInfo } from '@/hooks/useDebugSeedStudents'
 import { css } from '../../../../styled-system/css'
 
 interface LogEntry {
@@ -22,7 +23,7 @@ export default function SocketDebugPage() {
   const [roomInput, setRoomInput] = useState('')
   const [eventInput, setEventInput] = useState('')
   const [dataInput, setDataInput] = useState('{}')
-  const [buildInfo, setBuildInfo] = useState<Record<string, unknown> | null>(null)
+  const { data: buildInfo } = useBuildInfo()
   const logIdRef = useRef(0)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
@@ -35,14 +36,6 @@ export default function SocketDebugPage() {
       data,
     }
     setLogs((prev) => [...prev.slice(-99), entry]) // Keep last 100 entries
-  }, [])
-
-  // Fetch build info on mount
-  useEffect(() => {
-    fetch('/api/build-info')
-      .then((res) => res.json())
-      .then(setBuildInfo)
-      .catch(console.error)
   }, [])
 
   // Auto-scroll logs

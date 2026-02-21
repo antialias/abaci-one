@@ -8,6 +8,7 @@ import { SeedStudentsSection } from '@/components/debug/SeedStudentsSection'
 import { StartPracticeModal } from '@/components/practice/StartPracticeModal'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useCreateDebugPracticeSession } from '@/hooks/useDebugSeedStudents'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { css } from '../../../../styled-system/css'
 
@@ -34,9 +35,8 @@ export default function DebugPracticePage() {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const [loading, setLoading] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [useModal, setUseModal] = useState(true)
+  const createSession = useCreateDebugPracticeSession()
 
   // State for modal flow: stores the debug player created by setupOnly API call
   const [debugPlayer, setDebugPlayer] = useState<{
@@ -50,41 +50,35 @@ export default function DebugPracticePage() {
     !!debugPlayer
   )
 
-  const handlePreset = async (preset: Preset) => {
-    setLoading(preset.id)
-    setError(null)
+  // Track which preset is loading (mutation is shared across presets)
+  const [activePreset, setActivePreset] = useState<string | null>(null)
 
-    try {
-      const res = await fetch('/api/debug/practice-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          preset: preset.id,
-          setupOnly: useModal,
-        }),
-      })
+  const handlePreset = (preset: Preset) => {
+    setActivePreset(preset.id)
+    createSession.reset()
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || `HTTP ${res.status}`)
+    createSession.mutate(
+      { preset: preset.id, setupOnly: useModal },
+      {
+        onSuccess: (data) => {
+          if (data.setupOnly) {
+            setDebugPlayer({ id: data.playerId!, name: data.playerName! })
+          } else {
+            router.push(data.redirectUrl!)
+          }
+        },
+        onSettled: () => {
+          if (!useModal) setActivePreset(null)
+        },
       }
-
-      const data = await res.json()
-
-      if (data.setupOnly) {
-        // Modal flow: store the player and let useSessionMode load
-        setDebugPlayer({ id: data.playerId, name: data.playerName })
-      } else {
-        // Direct flow: navigate to practice
-        router.push(data.redirectUrl)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create debug session')
-      setLoading(null)
-    }
+    )
   }
 
   const showModal = !!debugPlayer && !!sessionModeData && !sessionModeLoading
+  const loading = activePreset && (createSession.isPending || (useModal && !showModal && !createSession.error))
+    ? activePreset
+    : null
+  const error = createSession.error?.message ?? null
 
   return (
     <PageWithNav>

@@ -118,6 +118,16 @@ export const billingKeys = {
   tier: () => [...billingKeys.all, 'tier'] as const,
 }
 
+// Debug / seed students query keys
+export const debugKeys = {
+  all: ['debug'] as const,
+  seedProfiles: () => [...debugKeys.all, 'seed-profiles'] as const,
+  seedEmbeddingStatus: () => [...debugKeys.all, 'seed-embedding-status'] as const,
+  seededStudents: () => [...debugKeys.all, 'seeded-students'] as const,
+  seedSearch: (query: string) => [...debugKeys.all, 'seed-search', query] as const,
+  buildInfo: () => [...debugKeys.all, 'build-info'] as const,
+}
+
 // Feature flag query keys (admin + client feature gating)
 export const featureFlagKeys = {
   all: ['feature-flags'] as const,
