@@ -8,6 +8,7 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useTier } from '@/hooks/useTier'
 import { api } from '@/lib/queryClient'
+import pricing from '../../../../../pricing.json'
 import { css } from '../../../styled-system/css'
 
 type BillingInterval = 'month' | 'year'
@@ -71,9 +72,9 @@ export default function PricingPage() {
   })
 
   const isFamily = tier === 'family'
-  const monthlyPrice = 6
-  const annualPrice = 37.68 // $3.14/mo — pi pricing for a math app
-  const annualMonthly = Math.round((annualPrice / 12) * 100) / 100
+  const monthlyPrice = pricing.family.monthly.display
+  const annualPrice = pricing.family.annual.display
+  const annualMonthly = pricing.family.annual.monthlyEquivalent
 
   return (
     <PageWithNav>

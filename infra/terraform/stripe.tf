@@ -6,6 +6,7 @@
 
 locals {
   stripe_enabled = var.stripe_secret_key != ""
+  pricing        = jsondecode(file("${path.module}/../../pricing.json"))
 }
 
 # ---------------------------------------------------------------------------
@@ -28,7 +29,7 @@ resource "stripe_price" "family_monthly" {
 
   product     = stripe_product.family[0].id
   currency    = "usd"
-  unit_amount = 600 # $6.00
+  unit_amount = local.pricing.family.monthly.amount
 
   recurring {
     interval       = "month"
@@ -41,7 +42,7 @@ resource "stripe_price" "family_annual" {
 
   product     = stripe_product.family[0].id
   currency    = "usd"
-  unit_amount = 5000 # $50.00
+  unit_amount = local.pricing.family.annual.amount
 
   recurring {
     interval       = "year"

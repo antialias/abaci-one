@@ -1,0 +1,6 @@
+{
+  "family": {
+    "monthly": { "amount": 600, "display": 6 },
+    "annual": { "amount": 3768, "display": 37.68, "monthlyEquivalent": 3.14 }
+  }
+}
