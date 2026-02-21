@@ -705,7 +705,7 @@ export function NotesModal({
               isDark={isDark}
             />
           ) : activeTab === 'relationships' ? (
-            <RelationshipsTab playerId={student.id} />
+            <RelationshipsTab playerId={student.id} playerName={student.name} editable />
           ) : (
             <NotesTab
               notes={student.notes ?? null}
@@ -1195,9 +1195,11 @@ function NotesTab({
 
 interface RelationshipsTabProps {
   playerId: string
+  playerName: string
+  editable: boolean
 }
 
-function RelationshipsTab({ playerId }: RelationshipsTabProps) {
+function RelationshipsTab({ playerId, playerName, editable }: RelationshipsTabProps) {
   return (
     <div
       className={css({
@@ -1206,7 +1208,7 @@ function RelationshipsTab({ playerId }: RelationshipsTabProps) {
         overflow: 'auto',
       })}
     >
-      <RelationshipCard playerId={playerId} compact />
+      <RelationshipCard playerId={playerId} playerName={playerName} editable={editable} compact />
     </div>
   )
 }

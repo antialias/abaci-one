@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useUnlinkParent, useUnenrollFromClassroom } from '@/hooks/useManageConnections'
 import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import type {
   EnrolledClassroomInfo,
@@ -11,6 +12,7 @@ import type {
   ViewerRelationshipSummary,
 } from '@/types/student'
 import { css, cx } from '../../../styled-system/css'
+import { InlineConfirmation } from './InlineConfirmation'
 
 // =============================================================================
 // Types
@@ -23,7 +25,17 @@ interface RelationshipCardProps {
   className?: string
   /** Whether to show in compact mode (less padding, smaller text) */
   compact?: boolean
+  /** Whether to show remove/unenroll controls (only in NotesModal, not HoverCard) */
+  editable?: boolean
+  /** Student's display name (used in confirmation messages) */
+  playerName?: string
 }
+
+/** Tracks which item is being confirmed for removal */
+type ConfirmingItem =
+  | { type: 'parent'; parentUserId: string; parentName: string }
+  | { type: 'classroom'; classroomId: string; classroomName: string }
+  | null
 
 // =============================================================================
 // Main Component
@@ -38,12 +50,30 @@ interface RelationshipCardProps {
  * - All enrolled classrooms (with teachers)
  * - Any pending enrollment requests
  * - Current classroom presence
+ *
+ * When `editable` is true and viewer is a parent, shows remove buttons
+ * on other parents and classrooms.
  */
-export function RelationshipCard({ playerId, className, compact = false }: RelationshipCardProps) {
+export function RelationshipCard({
+  playerId,
+  className,
+  compact = false,
+  editable = false,
+  playerName,
+}: RelationshipCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
   const { data, isLoading } = useStudentStakeholders(playerId)
+
+  // Track which item is showing the inline confirmation
+  const [confirming, setConfirming] = useState<ConfirmingItem>(null)
+
+  // Mutations
+  const unlinkParent = useUnlinkParent()
+  const unenrollFromClassroom = useUnenrollFromClassroom()
+
+  const isPending = unlinkParent.isPending || unenrollFromClassroom.isPending
 
   if (isLoading) {
     return (
@@ -82,6 +112,25 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
 
   const { stakeholders, viewerRelationship } = data
 
+  // Only show edit controls when editable and viewer is a parent
+  const canEdit = editable && viewerRelationship.type === 'parent'
+
+  const handleConfirmUnlinkParent = () => {
+    if (confirming?.type !== 'parent') return
+    unlinkParent.mutate(
+      { playerId, parentUserId: confirming.parentUserId },
+      { onSuccess: () => setConfirming(null), onError: () => setConfirming(null) }
+    )
+  }
+
+  const handleConfirmUnenroll = () => {
+    if (confirming?.type !== 'classroom') return
+    unenrollFromClassroom.mutate(
+      { classroomId: confirming.classroomId, playerId },
+      { onSuccess: () => setConfirming(null), onError: () => setConfirming(null) }
+    )
+  }
+
   return (
     <div
       data-component="relationship-card"
@@ -114,9 +163,41 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
         {stakeholders.parents.length > 0 && (
           <StakeholderSection title="Parents" icon="👪" isDark={isDark} compact={compact}>
             <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '6px' })}>
-              {stakeholders.parents.map((parent) => (
-                <ParentBadge key={parent.id} parent={parent} isDark={isDark} compact={compact} />
-              ))}
+              {stakeholders.parents.map((parent) => {
+                const isConfirmingThis =
+                  confirming?.type === 'parent' && confirming.parentUserId === parent.id
+
+                if (isConfirmingThis) {
+                  return (
+                    <InlineConfirmation
+                      key={parent.id}
+                      message={`Remove ${parent.name}'s access to ${playerName || 'this student'}?`}
+                      onConfirm={handleConfirmUnlinkParent}
+                      onCancel={() => setConfirming(null)}
+                      isPending={isPending}
+                      isDark={isDark}
+                      compact={compact}
+                    />
+                  )
+                }
+
+                return (
+                  <ParentBadge
+                    key={parent.id}
+                    parent={parent}
+                    isDark={isDark}
+                    compact={compact}
+                    showRemove={canEdit && !parent.isMe}
+                    onRemove={() =>
+                      setConfirming({
+                        type: 'parent',
+                        parentUserId: parent.id,
+                        parentName: parent.name,
+                      })
+                    }
+                  />
+                )
+              })}
             </div>
           </StakeholderSection>
         )}
@@ -131,15 +212,42 @@ export function RelationshipCard({ playerId, className, compact = false }: Relat
                 gap: '6px',
               })}
             >
-              {stakeholders.enrolledClassrooms.map((classroom) => (
-                <ClassroomRow
-                  key={classroom.id}
-                  classroom={classroom}
-                  isPresent={stakeholders.currentPresence?.classroomId === classroom.id}
-                  isDark={isDark}
-                  compact={compact}
-                />
-              ))}
+              {stakeholders.enrolledClassrooms.map((classroom) => {
+                const isConfirmingThis =
+                  confirming?.type === 'classroom' && confirming.classroomId === classroom.id
+
+                if (isConfirmingThis) {
+                  return (
+                    <InlineConfirmation
+                      key={classroom.id}
+                      message={`Unenroll ${playerName || 'this student'} from ${classroom.name}?`}
+                      onConfirm={handleConfirmUnenroll}
+                      onCancel={() => setConfirming(null)}
+                      isPending={isPending}
+                      isDark={isDark}
+                      compact={compact}
+                    />
+                  )
+                }
+
+                return (
+                  <ClassroomRow
+                    key={classroom.id}
+                    classroom={classroom}
+                    isPresent={stakeholders.currentPresence?.classroomId === classroom.id}
+                    isDark={isDark}
+                    compact={compact}
+                    showRemove={canEdit}
+                    onRemove={() =>
+                      setConfirming({
+                        type: 'classroom',
+                        classroomId: classroom.id,
+                        classroomName: classroom.name,
+                      })
+                    }
+                  />
+                )
+              })}
             </div>
           </StakeholderSection>
         )}
@@ -428,9 +536,11 @@ interface ParentBadgeProps {
   parent: ParentInfo
   isDark: boolean
   compact: boolean
+  showRemove?: boolean
+  onRemove?: () => void
 }
 
-function ParentBadge({ parent, isDark, compact }: ParentBadgeProps) {
+function ParentBadge({ parent, isDark, compact, showRemove, onRemove }: ParentBadgeProps) {
   // Get initials
   const initials = parent.name
     .split(' ')
@@ -511,6 +621,38 @@ function ParentBadge({ parent, isDark, compact }: ParentBadgeProps) {
       >
         {parent.isMe ? 'You' : parent.name}
       </span>
+
+      {/* Remove button */}
+      {showRemove && (
+        <button
+          type="button"
+          data-action="remove-parent"
+          onClick={onRemove}
+          title={`Remove ${parent.name}`}
+          className={css({
+            width: compact ? '16px' : '18px',
+            height: compact ? '16px' : '18px',
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: isDark ? 'gray.600' : 'gray.300',
+            color: isDark ? 'gray.300' : 'gray.600',
+            fontSize: compact ? '0.625rem' : '0.6875rem',
+            lineHeight: 1,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            marginLeft: '2px',
+            _hover: {
+              backgroundColor: isDark ? 'red.700' : 'red.200',
+              color: isDark ? 'red.200' : 'red.700',
+            },
+          })}
+        >
+          ×
+        </button>
+      )}
     </div>
   )
 }
@@ -524,9 +666,11 @@ interface ClassroomRowProps {
   isPresent: boolean
   isDark: boolean
   compact: boolean
+  showRemove?: boolean
+  onRemove?: () => void
 }
 
-function ClassroomRow({ classroom, isPresent, isDark, compact }: ClassroomRowProps) {
+function ClassroomRow({ classroom, isPresent, isDark, compact, showRemove, onRemove }: ClassroomRowProps) {
   return (
     <div
       data-element="classroom-row"
@@ -560,6 +704,8 @@ function ClassroomRow({ classroom, isPresent, isDark, compact }: ClassroomRowPro
           display: 'flex',
           flexDirection: 'column',
           gap: '2px',
+          flex: 1,
+          minWidth: 0,
         })}
       >
         <div
@@ -590,32 +736,64 @@ function ClassroomRow({ classroom, isPresent, isDark, compact }: ClassroomRowPro
         </div>
       </div>
 
-      {isPresent && (
-        <div
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '2px 8px',
-            borderRadius: '9999px',
-            fontSize: '0.625rem',
-            fontWeight: 'medium',
-            backgroundColor: isDark ? 'emerald.800/60' : 'emerald.100',
-            color: isDark ? 'emerald.300' : 'emerald.700',
-          })}
-        >
-          <span
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 })}>
+        {isPresent && (
+          <div
             className={css({
-              width: '5px',
-              height: '5px',
-              borderRadius: '50%',
-              backgroundColor: 'emerald.500',
-              animation: 'pulse 2s ease-in-out infinite',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              fontSize: '0.625rem',
+              fontWeight: 'medium',
+              backgroundColor: isDark ? 'emerald.800/60' : 'emerald.100',
+              color: isDark ? 'emerald.300' : 'emerald.700',
             })}
-          />
-          Present
-        </div>
-      )}
+          >
+            <span
+              className={css({
+                width: '5px',
+                height: '5px',
+                borderRadius: '50%',
+                backgroundColor: 'emerald.500',
+                animation: 'pulse 2s ease-in-out infinite',
+              })}
+            />
+            Present
+          </div>
+        )}
+
+        {showRemove && (
+          <button
+            type="button"
+            data-action="unenroll-classroom"
+            onClick={onRemove}
+            title={`Unenroll from ${classroom.name}`}
+            className={css({
+              width: compact ? '18px' : '20px',
+              height: compact ? '18px' : '20px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: isDark ? 'gray.600' : 'gray.300',
+              color: isDark ? 'gray.300' : 'gray.600',
+              fontSize: compact ? '0.6875rem' : '0.75rem',
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              _hover: {
+                backgroundColor: isDark ? 'red.700' : 'red.200',
+                color: isDark ? 'red.200' : 'red.700',
+              },
+            })}
+          >
+            ×
+          </button>
+        )}
+      </div>
     </div>
   )
 }
