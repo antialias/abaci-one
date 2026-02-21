@@ -4,6 +4,7 @@
  */
 
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
+import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
   MemoryQuizStateSchema,
   DIFFICULTY_LEVELS,
@@ -141,6 +142,7 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       foundNumbers: [],
       guessesRemaining: numbers.length + Math.floor(numbers.length / 2),
       gamePhase: 'display',
+      gameStartTime: Date.now(),
       incorrectGuesses: 0,
       currentInput: '',
       wrongGuessAnimations: [],
@@ -437,6 +439,45 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
   }
 
   getInitialState(config: MemoryQuizConfig): MemoryQuizState {
+    const typedConfig = config as MemoryQuizConfig & { skipSetupPhase?: boolean }
+
+    // Practice break: skip setup, generate cards, start in display phase
+    if (typedConfig.skipSetupPhase) {
+      const numbers = generateQuizNumbers(typedConfig.selectedCount, typedConfig.selectedDifficulty)
+      const quizCards = numbers.map((number) => ({
+        number,
+        svgComponent: null,
+        element: null,
+      }))
+
+      return {
+        cards: quizCards,
+        quizCards,
+        correctAnswers: numbers,
+        currentCardIndex: 0,
+        displayTime: typedConfig.displayTime,
+        selectedCount: typedConfig.selectedCount,
+        selectedDifficulty: typedConfig.selectedDifficulty,
+        foundNumbers: [],
+        guessesRemaining: numbers.length + Math.floor(numbers.length / 2),
+        currentInput: '',
+        incorrectGuesses: 0,
+        activePlayers: [],
+        playerMetadata: {},
+        playerScores: {},
+        playMode: typedConfig.playMode || 'cooperative',
+        numberFoundBy: {},
+        gamePhase: 'display',
+        gameStartTime: Date.now(),
+        prefixAcceptanceTimeout: null,
+        finishButtonsBound: false,
+        wrongGuessAnimations: [],
+        hasPhysicalKeyboard: null,
+        testingMode: false,
+        showOnScreenKeyboard: false,
+      }
+    }
+
     return {
       cards: [],
       quizCards: [],
@@ -457,6 +498,7 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       numberFoundBy: {},
       // UI state
       gamePhase: 'setup',
+      gameStartTime: null,
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
       wrongGuessAnimations: [],
@@ -531,6 +573,7 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       numberFoundBy: {},
       // Start in display phase - skip setup!
       gamePhase: 'display',
+      gameStartTime: Date.now(),
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
       wrongGuessAnimations: [],
@@ -541,5 +584,127 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
   }
 }
 
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes > 0) {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+  return `${seconds}s`
+}
+
 // Singleton instance
-export const memoryQuizGameValidator = new MemoryQuizGameValidator()
+const validator = new MemoryQuizGameValidator()
+
+// Attach getResultsReport as a non-interface method (same pattern as matching-pairs)
+;(validator as any).getResultsReport = (
+  state: MemoryQuizState,
+  _config: MemoryQuizConfig
+): GameResultsReport => {
+  const startedAt = state.gameStartTime ?? Date.now()
+  const endedAt = Date.now()
+  const durationMs = endedAt - startedAt
+
+  const totalCards = state.correctAnswers.length
+  const found = state.foundNumbers.length
+  const totalGuesses = found + state.incorrectGuesses
+  const accuracy = totalGuesses > 0 ? Math.round((found / totalGuesses) * 100) : 0
+
+  const playerResults: PlayerResult[] = state.activePlayers.map((playerId, idx) => {
+    const meta = state.playerMetadata[playerId]
+    const scores = state.playerScores[meta?.userId ?? playerId] ??
+      state.playerScores[playerId] ?? { correct: 0, incorrect: 0 }
+    return {
+      playerId,
+      playerName: meta?.name ?? 'Player',
+      playerEmoji: meta?.emoji ?? '🧠',
+      userId: meta?.userId ?? playerId,
+      score: scores.correct,
+      rank: idx + 1,
+      isWinner: idx === 0,
+      correctCount: scores.correct,
+      incorrectCount: scores.incorrect,
+      totalAttempts: scores.correct + scores.incorrect,
+      accuracy:
+        scores.correct + scores.incorrect > 0
+          ? Math.round((scores.correct / (scores.correct + scores.incorrect)) * 100)
+          : 0,
+    }
+  })
+
+  let headline: string
+  let resultTheme: GameResultsReport['resultTheme']
+  let celebrationType: GameResultsReport['celebrationType']
+
+  if (found === totalCards) {
+    headline = 'Perfect Recall!'
+    resultTheme = 'success'
+    celebrationType = 'confetti'
+  } else if (accuracy >= 80) {
+    headline = 'Great Memory!'
+    resultTheme = 'good'
+    celebrationType = 'stars'
+  } else if (accuracy >= 50) {
+    headline = 'Nice Try!'
+    resultTheme = 'neutral'
+    celebrationType = 'none'
+  } else {
+    headline = 'Keep Practicing!'
+    resultTheme = 'needs-practice'
+    celebrationType = 'none'
+  }
+
+  const customStats: GameResultsReport['customStats'] = [
+    {
+      label: 'Recalled',
+      value: `${found}/${totalCards}`,
+      icon: '🧠',
+      highlight: found === totalCards,
+    },
+    {
+      label: 'Accuracy',
+      value: `${accuracy}%`,
+      icon: '🎯',
+      highlight: accuracy >= 80,
+    },
+    { label: 'Time', value: formatDuration(durationMs), icon: '⏱️' },
+  ]
+
+  if (state.incorrectGuesses > 0) {
+    customStats.push({
+      label: 'Wrong Guesses',
+      value: state.incorrectGuesses,
+      icon: '❌',
+    })
+  }
+
+  return {
+    gameName: 'memory-quiz',
+    gameDisplayName: 'Memory Lightning',
+    gameIcon: '🧠',
+    durationMs,
+    completedNormally: found === totalCards || state.guessesRemaining <= 0,
+    startedAt,
+    endedAt,
+    gameMode: 'single-player',
+    playerCount: playerResults.length,
+    playerResults,
+    winnerId: null,
+    itemsCompleted: found,
+    itemsTotal: totalCards,
+    completionPercent: totalCards > 0 ? Math.round((found / totalCards) * 100) : 0,
+    leaderboardEntry: {
+      normalizedScore: accuracy,
+      category: 'memory',
+      difficulty: state.selectedDifficulty,
+    },
+    customStats,
+    headline,
+    subheadline: `${found} of ${totalCards} numbers in ${formatDuration(durationMs)}`,
+    resultTheme,
+    celebrationType,
+  }
+}
+
+export const memoryQuizGameValidator = validator

@@ -146,6 +146,9 @@ export const MemoryQuizStateSchema = z.object({
   finishButtonsBound: z.boolean(),
   wrongGuessAnimations: z.array(WrongGuessAnimationSchema),
 
+  // Timing
+  gameStartTime: z.number().nullable(),
+
   // Keyboard state
   hasPhysicalKeyboard: z.boolean().nullable(),
   testingMode: z.boolean(),

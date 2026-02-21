@@ -113,10 +113,12 @@ export function clearRegistry(): void {
 import { matchingGame } from '@/arcade-games/matching'
 import { musicMatchingGame } from '@/arcade-games/music-matching'
 import { knowYourWorldGame } from '@/arcade-games/know-your-world'
+import { memoryQuizGame } from '@/arcade-games/memory-quiz'
 
 registerGame(matchingGame)
 registerGame(musicMatchingGame)
 registerGame(knowYourWorldGame)
+registerGame(memoryQuizGame)
 
 // All other games are loaded on demand — only pages that need the full
 // registry (arcade, home, games list) call ensureAllGamesRegistered().
@@ -130,18 +132,16 @@ let _allGamesPromise: Promise<void> | null = null
 export function ensureAllGamesRegistered(): Promise<void> {
   if (!_allGamesPromise) {
     _allGamesPromise = Promise.all([
-      import('@/arcade-games/memory-quiz'),
       import('@/arcade-games/complement-race/index'),
       import('@/arcade-games/card-sorting'),
       import('@/arcade-games/yjs-demo'),
       import('@/arcade-games/rithmomachia'),
     ]).then((modules) => {
       const games: GameDefinition<any, any, any>[] = [
-        modules[0].memoryQuizGame,
-        modules[1].complementRaceGame,
-        modules[2].cardSortingGame,
-        modules[3].yjsDemoGame,
-        modules[4].rithmomachiaGame,
+        modules[0].complementRaceGame,
+        modules[1].cardSortingGame,
+        modules[2].yjsDemoGame,
+        modules[3].rithmomachiaGame,
       ]
       for (const game of games) {
         if (!registry.has(game.manifest.name)) {

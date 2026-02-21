@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
@@ -10,6 +10,7 @@ import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
   buildPlayerOwnershipFromRoomData,
 } from '@/lib/arcade/player-ownership.client'
+import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
 import { TEAM_MOVE } from '@/lib/arcade/validation/types'
 import type { QuizCard, MemoryQuizState, MemoryQuizMove } from './types'
 
@@ -77,6 +78,7 @@ function applyMoveOptimistically(state: MemoryQuizState, move: GameMove): Memory
         foundNumbers: [],
         guessesRemaining: cardCount + Math.floor(cardCount / 2),
         gamePhase: 'display',
+        gameStartTime: Date.now(),
         incorrectGuesses: 0,
         currentInput: '',
         wrongGuessAnimations: [],
@@ -271,6 +273,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
       playMode: 'cooperative',
       numberFoundBy: {},
       gamePhase: 'setup',
+      gameStartTime: null,
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,
       wrongGuessAnimations: [],
@@ -302,6 +305,20 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
     initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
   })
+
+  // Notify parent when game reaches results phase (for practice game break detection)
+  const onGameComplete = useGameCompletionCallback()
+  const previousPhaseRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (
+      state.gamePhase === 'results' &&
+      previousPhaseRef.current !== 'results' &&
+      onGameComplete
+    ) {
+      onGameComplete(state as unknown as Record<string, unknown>)
+    }
+    previousPhaseRef.current = state.gamePhase
+  }, [state.gamePhase, onGameComplete, state])
 
   // Clear local input when game phase changes
   useEffect(() => {

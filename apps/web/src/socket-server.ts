@@ -414,6 +414,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             const gameConfig = await getGameConfig(roomId, currentGameName)
 
             let initialState: Record<string, unknown>
+            let usedPracticeBreakInit = false
 
             // Check if this is a practice break that should skip setup phase
             const typedConfig = gameConfig as Record<string, unknown> | undefined
@@ -422,12 +423,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               validator.getInitialStateForPracticeBreak &&
               roomPlayerIds.length > 0
             ) {
-              // Server-side auto-start: create session directly in playing phase
+              // Server-side auto-start: create session directly in playing/display phase
               initialState = validator.getInitialStateForPracticeBreak(gameConfig, {
                 maxDurationMinutes: (typedConfig.maxDurationMinutes as number) ?? 5,
                 playerId: roomPlayerIds[0],
                 playerName: (typedConfig.playerName as string) ?? 'Player',
               }) as Record<string, unknown>
+              usedPracticeBreakInit = true
             } else {
               initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
             }
@@ -437,8 +439,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             // set them before creating the session. Without this, moves will fail
             // with "playerId is required" errors.
             // Skip this when getInitialStateForPracticeBreak already set up players
-            // (it returns state in 'playing' phase with players initialized)
-            if (initialState.gamePhase !== 'playing' && roomPlayerIds.length > 0) {
+            // (it initializes activePlayers, currentPlayer, and playerMetadata itself)
+            if (!usedPracticeBreakInit && roomPlayerIds.length > 0) {
               initialState.activePlayers = roomPlayerIds
               initialState.currentPlayer = roomPlayerIds[0]
               // Also initialize playerMetadata for the players

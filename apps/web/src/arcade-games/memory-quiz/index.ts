@@ -25,7 +25,7 @@ const manifest: GameManifest = {
   chips: ['👥 Multiplayer', '🧠 Memory', '🧮 Soroban'],
   ...getGameTheme('purple'),
   available: true,
-  practiceBreakReady: false, // Has practiceBreakConfig but UI integration not yet complete
+  practiceBreakReady: true,
   practiceBreakConfig: {
     suggestedConfig: {
       selectedCount: 5,

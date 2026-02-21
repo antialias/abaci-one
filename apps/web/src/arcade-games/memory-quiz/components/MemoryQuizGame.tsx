@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PageWithNav } from '@/components/PageWithNav'
+import { useGameLayoutMode } from '@/contexts/GameLayoutContext'
 import { css } from '../../../../styled-system/css'
 import { useMemoryQuiz } from '../Provider'
 import { DisplayPhase } from './DisplayPhase'
@@ -64,6 +65,58 @@ const globalAnimations = `
 export function MemoryQuizGame() {
   const router = useRouter()
   const { state, exitSession, resetGame } = useMemoryQuiz()
+  const layoutMode = useGameLayoutMode()
+
+  const phaseContent = (
+    <>
+      {state.gamePhase === 'setup' && <SetupPhase />}
+      {state.gamePhase === 'display' && <DisplayPhase />}
+      {state.gamePhase === 'input' && <InputPhase key="input-phase" />}
+      {state.gamePhase === 'results' && <ResultsPhase />}
+    </>
+  )
+
+  // Container mode (practice game break): render without PageWithNav or arcade chrome
+  if (layoutMode === 'container') {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+        }}
+      >
+        <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
+        <div
+          className={css({
+            bg: 'white',
+            rounded: 'xl',
+            shadow: 'xl',
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: 'gray.200',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            m: '2',
+          })}
+        >
+          <div
+            className={css({
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto',
+            })}
+          >
+            {phaseContent}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <PageWithNav
@@ -144,10 +197,7 @@ export function MemoryQuizGame() {
                 overflow: 'auto',
               })}
             >
-              {state.gamePhase === 'setup' && <SetupPhase />}
-              {state.gamePhase === 'display' && <DisplayPhase />}
-              {state.gamePhase === 'input' && <InputPhase key="input-phase" />}
-              {state.gamePhase === 'results' && <ResultsPhase />}
+              {phaseContent}
             </div>
           </div>
         </div>
