@@ -89,6 +89,9 @@ export async function mergeGuestIntoUser(
   await reparent('enrollment_requests', 'requested_by')
   await reparent('enrollment_requests', 'parent_approved_by')
 
+  // Family audit log
+  await reparent('family_events', 'actor_user_id')
+
   // Delete the source user (CASCADE will clean up auth_accounts and any remaining FKs)
   await db.delete(schema.users).where(eq(schema.users.id, sourceUserId))
 
