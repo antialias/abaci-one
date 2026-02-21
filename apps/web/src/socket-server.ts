@@ -412,13 +412,33 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
             // Get game-specific config from database (type-safe)
             const gameConfig = await getGameConfig(roomId, currentGameName)
-            const initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
+
+            let initialState: Record<string, unknown>
+
+            // Check if this is a practice break that should skip setup phase
+            const typedConfig = gameConfig as Record<string, unknown> | undefined
+            if (
+              typedConfig?.skipSetupPhase &&
+              validator.getInitialStateForPracticeBreak &&
+              roomPlayerIds.length > 0
+            ) {
+              // Server-side auto-start: create session directly in playing phase
+              initialState = validator.getInitialStateForPracticeBreak(gameConfig, {
+                maxDurationMinutes: (typedConfig.maxDurationMinutes as number) ?? 5,
+                playerId: roomPlayerIds[0],
+                playerName: (typedConfig.playerName as string) ?? 'Player',
+              }) as Record<string, unknown>
+            } else {
+              initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
+            }
 
             // CRITICAL: Update the game state's activePlayers and currentPlayer
             // The initialState from validator has empty activePlayers, so we need to
             // set them before creating the session. Without this, moves will fail
             // with "playerId is required" errors.
-            if (roomPlayerIds.length > 0) {
+            // Skip this when getInitialStateForPracticeBreak already set up players
+            // (it returns state in 'playing' phase with players initialized)
+            if (initialState.gamePhase !== 'playing' && roomPlayerIds.length > 0) {
               initialState.activePlayers = roomPlayerIds
               initialState.currentPlayer = roomPlayerIds[0]
               // Also initialize playerMetadata for the players

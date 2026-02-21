@@ -182,16 +182,21 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
       return baseConfig
     }
 
-    // Merge skipSetupPhase into each game's config
+    // Merge skipSetupPhase + practice-break metadata into each game's config
+    const practiceBreakMeta = {
+      skipSetupPhase: true,
+      maxDurationMinutes: gameBreakSettings?.maxDurationMinutes ?? 5,
+      playerName: player.name,
+    }
     const mergedConfig: Record<string, Record<string, unknown>> = {}
     for (const [gameName, config] of Object.entries(baseConfig)) {
-      mergedConfig[gameName] = { ...config, skipSetupPhase: true }
+      mergedConfig[gameName] = { ...config, ...practiceBreakMeta }
     }
 
-    // Also add skipSetupPhase for the selected game if not already in config
+    // Also add metadata for the selected game if not already in config
     const selectedGame = gameBreakSettings?.selectedGame
     if (selectedGame && selectedGame !== 'random' && !mergedConfig[selectedGame]) {
-      mergedConfig[selectedGame] = { skipSetupPhase: true }
+      mergedConfig[selectedGame] = { ...practiceBreakMeta }
     }
 
     return mergedConfig
@@ -199,6 +204,8 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     gameBreakSettings?.gameConfig,
     gameBreakSettings?.skipSetupPhase,
     gameBreakSettings?.selectedGame,
+    gameBreakSettings?.maxDurationMinutes,
+    player.name,
   ])
 
   // Compute HUD data from current plan
