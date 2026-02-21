@@ -1,7 +1,7 @@
 import { eq, desc } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -14,7 +14,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 export const GET = withAuth(
   async () => {
     try {
-      const userId = await getDbUserId()
+      const userId = await getUserId()
 
       // Join seed_profile_players with players to get the data we need,
       // filtered to only players owned by this user

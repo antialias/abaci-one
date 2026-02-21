@@ -5,7 +5,7 @@ import { join } from 'path'
 import { db } from '@/db'
 import { worksheetAttempts } from '@/db/schema'
 import { processWorksheetAttempt } from '@/lib/grading/processAttempt'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -32,7 +32,7 @@ function processAttemptInBackground(attemptId: string) {
 export const POST = withAuth(async (request) => {
   try {
     // Get viewer ID from session (works for both authenticated users and guests)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const formData = await request.formData()
     const file = formData.get('image') as File | null

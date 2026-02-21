@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getPendingRequestsForParent } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/enrollment-requests/pending
@@ -14,7 +14,7 @@ import { getDbUserId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const requests = await getPendingRequestsForParent(userId)
 

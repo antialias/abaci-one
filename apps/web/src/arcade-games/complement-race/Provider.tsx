@@ -22,7 +22,7 @@ import {
   useGameMode,
   useRoomData,
   useUpdateGameConfig,
-  useViewerId,
+  useUserId,
 } from '@/lib/arcade/game-sdk'
 import { DEFAULT_COMPLEMENT_RACE_CONFIG } from '@/lib/arcade/game-configs'
 import type { DifficultyTracker } from '@/app/arcade/complement-race/lib/gameTypes'
@@ -203,7 +203,7 @@ function applyMoveOptimistically(state: ComplementRaceState, move: GameMove): Co
  * Complement Race Provider Component
  */
 export function ComplementRaceProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()

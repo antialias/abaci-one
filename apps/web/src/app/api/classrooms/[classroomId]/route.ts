@@ -5,7 +5,7 @@ import {
   updateClassroom,
   regenerateClassroomCode,
 } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -41,7 +41,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const PATCH = withAuth(async (req, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await req.json()
 
     // Handle code regeneration separately
@@ -95,7 +95,7 @@ export const PATCH = withAuth(async (req, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const success = await deleteClassroom(classroomId, userId)
 

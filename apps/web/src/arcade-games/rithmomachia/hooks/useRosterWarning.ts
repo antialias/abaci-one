@@ -2,14 +2,14 @@ import { useMemo } from 'react'
 import type { RosterWarning } from '@/components/nav/GameContextNav'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useDeactivatePlayer, useKickUser, useRoomData } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { useRithmomachia } from '../Provider'
 
 export function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined {
   const { rosterStatus, whitePlayerId, blackPlayerId } = useRithmomachia()
   const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
   const { roomData } = useRoomData()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { mutate: kickUser } = useKickUser()
   const { mutate: deactivatePlayer } = useDeactivatePlayer()
 

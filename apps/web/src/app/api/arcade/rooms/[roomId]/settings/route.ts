@@ -7,7 +7,7 @@ import { recordRoomMemberHistory } from '@/lib/arcade/room-member-history'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { getAllGameConfigs, setGameConfig } from '@/lib/arcade/game-config-helpers'
 import { isValidGameName } from '@/lib/arcade/validators'
 import type { GameName } from '@/lib/arcade/validators'
@@ -32,7 +32,7 @@ import type { GameName } from '@/lib/arcade/validators'
 export const PATCH = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     console.log(

@@ -20,7 +20,7 @@ import { db } from '@/db'
 import { sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 export const GET = withAuth(async (request, { params }) => {
   const routeStart = performance.now()
@@ -40,7 +40,7 @@ export const GET = withAuth(async (request, { params }) => {
 
     // Authorization check
     let t = performance.now()
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     timings.auth = performance.now() - t
 

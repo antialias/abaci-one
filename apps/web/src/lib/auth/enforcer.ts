@@ -64,7 +64,7 @@ p, guest, /api/flowcharts/pdf, *
 p, guest, /api/flowcharts/:id, GET
 p, guest, /api/flowcharts/:id/related, GET
 p, guest, /api/flowcharts/:id/worksheet, GET
-p, guest, /api/viewer, GET
+p, guest, /api/identity, GET
 p, guest, /api/smoke-test-status, GET
 p, guest, /api/smoke-test-results, GET
 p, guest, /api/metrics, GET

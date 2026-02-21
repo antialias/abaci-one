@@ -11,7 +11,7 @@ import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import { PreviewModeContext } from '@/contexts/PreviewModeContext'
 import { GameModeProvider, type RoomData as GameModeRoomData } from '@/contexts/GameModeContext'
 import type { Player as DBPlayer } from '@/db/schema/players'
-import { viewerKeys } from '@/hooks/useViewerId'
+import { identityKeys } from '@/hooks/useUserId'
 import { roomKeys, type RoomData } from '@/hooks/useRoomData'
 import { AppNavBar } from '@/components/AppNavBar'
 import { PracticeSubNav, type GameBreakHudData } from '@/components/practice'
@@ -237,7 +237,7 @@ function MatchingGameStoryWrapper({
     })
 
     // Pre-populate viewer ID
-    client.setQueryData(viewerKeys.id(), mockViewerId)
+    client.setQueryData(identityKeys.id(), mockViewerId)
 
     // Pre-populate room data
     client.setQueryData(roomKeys.current(), mockRoomData)
@@ -375,7 +375,7 @@ function IsolatedGameWrapper({ phase, theme = 'light' }: IsolatedGameWrapperProp
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    client.setQueryData(viewerKeys.id(), mockViewerId)
+    client.setQueryData(identityKeys.id(), mockViewerId)
     client.setQueryData(roomKeys.current(), mockRoomData)
     return client
   }, [])

@@ -2,7 +2,7 @@ import nextDynamic from 'next/dynamic'
 import { notFound, redirect } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import { getActiveSessionPlan, getPracticeStudent } from '@/lib/curriculum/server'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 // Skip SSR for PracticeClient — practice is fully interactive and has hooks
 // (useHasPhysicalKeyboard, useSearchParams) that produce server/client mismatches
@@ -46,7 +46,7 @@ export default async function StudentPracticePage({ params }: StudentPracticePag
   }
 
   // Check authorization - user must have view access to this player
-  const viewerId = await getDbUserId()
+  const viewerId = await getUserId()
   const hasAccess = await canPerformAction(viewerId, studentId, 'view')
   if (!hasAccess) {
     notFound() // Return 404 to avoid leaking existence of player

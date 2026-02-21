@@ -20,7 +20,7 @@ import { db } from '@/db'
 import { practiceAttachments, sessionPlans } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { createId } from '@paralleldrive/cuid2'
 
 export interface SessionAttachment {
@@ -75,7 +75,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const access = await getPlayerAccess(userId, playerId)
     if (access.accessLevel === 'none') {
       const authError = generateAuthorizationError(access, 'view', {
@@ -163,7 +163,7 @@ export const POST = withAuth(async (request, { params }) => {
 
     // Authorization check - require 'view' permission (parent, teacher-enrolled, or teacher-present)
     // Adding photos to an existing session is less sensitive than starting a new session
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const access = await getPlayerAccess(userId, playerId)
     if (access.accessLevel === 'none') {
       console.error(

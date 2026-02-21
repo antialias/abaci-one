@@ -9,9 +9,9 @@ import {
   useRoomData,
 } from '../useRoomData'
 
-// Mock the useViewerId hook
-vi.mock('../useViewerId', () => ({
-  useViewerId: () => ({ data: 'test-user-id' }),
+// Mock the useUserId hook
+vi.mock('../useUserId', () => ({
+  useUserId: () => ({ data: 'test-user-id' }),
 }))
 
 // Mock socket.io-client

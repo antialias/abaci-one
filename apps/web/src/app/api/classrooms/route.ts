@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -11,7 +11,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const classroom = await getTeacherClassroom(userId)
 
@@ -31,7 +31,7 @@ export const GET = withAuth(async () => {
  */
 export const POST = withAuth(async (req) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await req.json()
 
     if (!body.name) {

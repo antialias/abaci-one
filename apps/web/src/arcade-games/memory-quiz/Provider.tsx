@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
   buildPlayerOwnershipFromRoomData,
@@ -235,7 +235,7 @@ export function useMemoryQuiz(): MemoryQuizContextValue {
  * All state changes are sent as moves and validated on the server.
  */
 export function MemoryQuizProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()

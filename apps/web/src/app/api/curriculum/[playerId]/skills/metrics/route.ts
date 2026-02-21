@@ -13,7 +13,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { computeStudentSkillMetrics } from '@/lib/curriculum/skill-metrics'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/curriculum/[playerId]/skills/metrics
@@ -31,7 +31,7 @@ export const GET = withAuth(async (_request, { params }) => {
 
   try {
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

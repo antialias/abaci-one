@@ -9,7 +9,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/arcade/rooms/:roomId/invite
@@ -22,7 +22,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Validate required fields
@@ -117,7 +117,7 @@ export const POST = withAuth(async (request, { params }) => {
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)
@@ -148,7 +148,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Check if there's an invitation for this user
     const invitation = await getInvitation(roomId, userId)

@@ -1,5 +1,5 @@
 import { getPlayersWithSkillData } from '@/lib/curriculum/server'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { PracticeClient } from './PracticeClient'
 
 /**
@@ -15,7 +15,7 @@ export default async function PracticePage() {
   const players = await getPlayersWithSkillData()
 
   // Get database user ID for parent socket notifications and session observation
-  const userId = await getDbUserId()
+  const userId = await getUserId()
 
   return <PracticeClient initialPlayers={players} viewerId={userId} userId={userId} />
 }

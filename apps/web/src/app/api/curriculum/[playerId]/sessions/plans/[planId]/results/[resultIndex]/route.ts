@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getSessionPlan } from '@/lib/curriculum'
 import { updateSessionPlanResults } from '@/lib/curriculum/session-planner'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * PATCH /api/curriculum/[playerId]/sessions/plans/[planId]/results/[resultIndex]
@@ -28,7 +28,7 @@ export const PATCH = withAuth(async (request, { params }) => {
 
   try {
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

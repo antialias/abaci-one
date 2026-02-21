@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getTeacherClassroom } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -11,8 +11,8 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async () => {
   try {
-    // getDbUserId combines getViewerId + getOrCreateUser in one call
-    const userId = await getDbUserId()
+    // getUserId returns the stable database user.id for the current viewer
+    const userId = await getUserId()
     const classroom = await getTeacherClassroom(userId)
 
     if (!classroom) {

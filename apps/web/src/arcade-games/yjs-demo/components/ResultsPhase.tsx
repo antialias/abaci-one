@@ -3,11 +3,11 @@
 import { useMemo } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useYjsDemo } from '../Provider'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 
 export function ResultsPhase() {
   const { state, yjsState, goToSetup } = useYjsDemo()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
 
   // Convert Yjs array to regular array for rendering
   const cells = useMemo(() => {

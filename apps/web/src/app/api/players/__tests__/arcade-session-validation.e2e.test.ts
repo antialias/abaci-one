@@ -89,7 +89,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       body: JSON.stringify({ isActive: true }),
     })
 
-    // Mock getViewerId by setting cookie
+    // Mock getUserId by setting cookie
     const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
     const data = await response.json()
 

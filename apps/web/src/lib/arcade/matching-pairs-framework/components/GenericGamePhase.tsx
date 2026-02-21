@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { MemoryGrid } from '@/components/matching/MemoryGrid'
 import { css } from '../../../../../styled-system/css'
 import { FlipCard } from './FlipCard'
@@ -26,7 +26,7 @@ export function GenericGamePhase<
   TConfig extends BaseMatchingConfig,
 >({ ctx, variant }: GenericGamePhaseProps<TCard, TConfig>) {
   const { state, flipCard, hoverCard, gameMode } = ctx
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
 
   const config = state as unknown as TConfig

@@ -15,7 +15,7 @@ import {
   upsertPlayerCurriculum,
 } from '@/lib/curriculum/progress-manager'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET - Fetch player's full curriculum state
@@ -33,8 +33,8 @@ export const GET = withAuth(async (_request, { params }) => {
 
     // Authorization check
     let t = performance.now()
-    const userId = await getDbUserId()
-    timings.getDbUserId = performance.now() - t
+    const userId = await getUserId()
+    timings.getUserId = performance.now() - t
 
     t = performance.now()
     const canView = await canPerformAction(userId, playerId, 'view')
@@ -95,7 +95,7 @@ export const GET = withAuth(async (_request, { params }) => {
     const total = performance.now() - routeStart
     console.log(
       `[PERF] /api/curriculum/[playerId] GET: ${total.toFixed(1)}ms | ` +
-        `auth=${(timings.getDbUserId + timings.canPerformAction).toFixed(1)}ms, ` +
+        `auth=${(timings.getUserId + timings.canPerformAction).toFixed(1)}ms, ` +
         `dataFetch=${timings.dataFetch.toFixed(1)}ms, ` +
         `compute=${timings.compute.toFixed(1)}ms | ` +
         `sessions=${recentSessions.length}, results=${sessionResults.length}, skills=${rawSkills.length}`
@@ -126,7 +126,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     // Authorization check - stricter than 'view', only parents/present teachers can modify
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

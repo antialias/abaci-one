@@ -57,9 +57,9 @@ export { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 export { useGameMode } from '@/contexts/GameModeContext'
 
 /**
- * Viewer ID hook - get current user's ID
+ * User ID hook - get current user's stable database user.id
  */
-export { useViewerId } from '@/hooks/useViewerId'
+export { useUserId } from '@/hooks/useUserId'
 
 // ============================================================================
 // Utilities

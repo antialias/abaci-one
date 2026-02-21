@@ -8,7 +8,7 @@ import {
   getTeacherClassroom,
 } from '@/lib/classroom'
 import { emitEntryPromptCreated } from '@/lib/classroom/socket-emitter'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -23,7 +23,7 @@ const DEFAULT_EXPIRY_MINUTES = 30
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify user is the teacher of this classroom
     const classroom = await getTeacherClassroom(userId)
@@ -60,7 +60,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withAuth(async (req, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await req.json()
 
     // Validate request body

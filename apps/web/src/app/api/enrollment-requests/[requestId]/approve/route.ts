@@ -8,7 +8,7 @@ import {
   emitEnrollmentCompleted,
   emitEnrollmentRequestApproved,
 } from '@/lib/classroom/socket-emitter'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/enrollment-requests/[requestId]/approve
@@ -19,7 +19,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { requestId } = (await params) as { requestId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Get the request to verify parent owns the child
     const request = await db.query.enrollmentRequests.findFirst({

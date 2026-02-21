@@ -4,7 +4,7 @@ import { db, schema } from '@/db'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { denyJoinRequest } from '@/lib/arcade/room-join-requests'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -14,7 +14,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { roomId, requestId } = (await params) as { roomId: string; requestId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)

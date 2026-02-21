@@ -14,7 +14,7 @@ import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { getLimitsForUser } from '@/lib/subscription'
 import { startSessionPlanGeneration } from '@/lib/tasks/session-plan'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * Serialize a SessionPlan for JSON response.
@@ -39,7 +39,7 @@ export const GET = withAuth(async (_request, { params }) => {
 
   try {
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -77,7 +77,7 @@ export const POST = withAuth(async (request, { params }) => {
 
   try {
     // Authorization check - only parents/present teachers can create sessions
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canCreate = await canPerformAction(userId, playerId, 'start-session')
     if (!canCreate) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

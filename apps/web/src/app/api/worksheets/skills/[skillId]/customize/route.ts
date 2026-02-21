@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { skillCustomizations } from '@/db/schema'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -12,7 +12,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const POST = withAuth(async (request, { params }) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const { skillId } = (await params) as { skillId: string }
     const body = await request.json()
 
@@ -104,7 +104,7 @@ export const POST = withAuth(async (request, { params }) => {
  */
 export const DELETE = withAuth(async (request, { params }) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const { skillId } = (await params) as { skillId: string }
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator') as 'addition' | 'subtraction' | null

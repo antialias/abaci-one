@@ -22,7 +22,7 @@ import {
   startSessionPlan,
   updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * Serialize a SessionPlan for JSON response.
@@ -71,7 +71,7 @@ export const PATCH = withAuth(async (request, { params }) => {
 
   try {
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

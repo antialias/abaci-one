@@ -3,7 +3,7 @@
 import { type ReactNode, useCallback, useMemo, createContext, useContext, useState } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { buildPlayerMetadata as buildPlayerMetadataUtil } from '@/lib/arcade/player-ownership.client'
 import type { GameMove } from '@/lib/arcade/validation'
 import { useGameMode } from '@/contexts/GameModeContext'
@@ -296,7 +296,7 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
  * Card Sorting Provider - Single Player Pattern Recognition Game
  */
 export function CardSortingProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()

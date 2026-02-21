@@ -87,7 +87,7 @@ describe('identity stability across auth transitions', () => {
         .catch(() => {})
     })
 
-    it('player created as guest is found via getDbUserId after upgrade', async () => {
+    it('player created as guest is found via getUserId after upgrade', async () => {
       // Create a player while in guest state
       const [player] = await db
         .insert(schema.players)
@@ -102,8 +102,8 @@ describe('identity stability across auth transitions', () => {
       // Simulate guest viewer
       mockHeadersGet.mockReturnValue(guestId)
 
-      const { getDbUserId } = await import('@/lib/viewer')
-      const guestDbUserId = await getDbUserId()
+      const { getUserId } = await import('@/lib/viewer')
+      const guestDbUserId = await getUserId()
       expect(guestDbUserId).toBe(userId)
 
       // Upgrade guest to authenticated user
@@ -122,7 +122,7 @@ describe('identity stability across auth transitions', () => {
         expires: new Date(Date.now() + 86400000).toISOString(),
       })
 
-      const authDbUserId = await getDbUserId()
+      const authDbUserId = await getUserId()
       expect(authDbUserId).toBe(userId)
 
       // Player should still be accessible under the same user.id
@@ -145,8 +145,8 @@ describe('identity stability across auth transitions', () => {
       // Simulate guest viewer
       mockHeadersGet.mockReturnValue(guestId)
 
-      const { getDbUserId } = await import('@/lib/viewer')
-      const guestDbUserId = await getDbUserId()
+      const { getUserId } = await import('@/lib/viewer')
+      const guestDbUserId = await getUserId()
       expect(guestDbUserId).toBe(userId)
 
       // Upgrade guest to authenticated user
@@ -165,7 +165,7 @@ describe('identity stability across auth transitions', () => {
         expires: new Date(Date.now() + 86400000).toISOString(),
       })
 
-      const authDbUserId = await getDbUserId()
+      const authDbUserId = await getUserId()
       expect(authDbUserId).toBe(userId)
 
       // Settings should still be accessible
@@ -211,7 +211,7 @@ describe('identity stability across auth transitions', () => {
         .catch(() => {})
     })
 
-    it('player created as guest is found via getDbUserId after merge', async () => {
+    it('player created as guest is found via getUserId after merge', async () => {
       // Create player as guest on source device
       const [player] = await db
         .insert(schema.players)
@@ -226,8 +226,8 @@ describe('identity stability across auth transitions', () => {
       // Simulate guest viewer on source device
       mockHeadersGet.mockReturnValue(sourceGuestId)
 
-      const { getDbUserId } = await import('@/lib/viewer')
-      const guestDbUserId = await getDbUserId()
+      const { getUserId } = await import('@/lib/viewer')
+      const guestDbUserId = await getUserId()
       expect(guestDbUserId).toBe(sourceUserId)
 
       // Merge guest into existing auth user (simulating sign-in on new device)
@@ -240,7 +240,7 @@ describe('identity stability across auth transitions', () => {
         expires: new Date(Date.now() + 86400000).toISOString(),
       })
 
-      const authDbUserId = await getDbUserId()
+      const authDbUserId = await getUserId()
       expect(authDbUserId).toBe(targetUserId)
 
       // Player should now belong to target user
@@ -276,8 +276,8 @@ describe('identity stability across auth transitions', () => {
           expires: new Date(Date.now() + 86400000).toISOString(),
         })
 
-        const { getDbUserId } = await import('@/lib/viewer')
-        const authDbUserId = await getDbUserId()
+        const { getUserId } = await import('@/lib/viewer')
+        const authDbUserId = await getUserId()
         expect(authDbUserId).toBe(targetUserId)
 
         // Room should now belong to target user

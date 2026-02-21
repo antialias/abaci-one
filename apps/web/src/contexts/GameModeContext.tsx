@@ -44,7 +44,7 @@ export interface GameModeProviderProps {
   // Room data from useRoomData
   roomData: RoomData | null
   notifyRoomOfPlayerUpdate: () => void
-  // Viewer ID from useViewerId
+  // Viewer ID from useUserId
   viewerId: string | null | undefined
 }
 

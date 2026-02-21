@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getPaginatedSessions } from '@/lib/curriculum/progress-manager'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 export const GET = withAuth(async (request, { params }) => {
   try {
@@ -21,7 +21,7 @@ export const GET = withAuth(async (request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

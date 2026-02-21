@@ -21,7 +21,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getLimitsForUser } from '@/lib/subscription'
 import { startWorksheetParsing } from '@/lib/tasks/worksheet-parse'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST - Start worksheet parsing as a background task
@@ -42,7 +42,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canParse = await canPerformAction(userId, playerId, 'start-session')
     if (!canParse) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -171,7 +171,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

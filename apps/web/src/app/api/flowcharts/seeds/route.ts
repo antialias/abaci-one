@@ -3,7 +3,7 @@ import { eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { FLOWCHART_SEEDS } from '@/lib/flowcharts/definitions'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * Seed Status for a flowchart seed
@@ -84,7 +84,7 @@ export const GET = withAuth(async () => {
 export const POST = withAuth(async (request) => {
   try {
     // Require authentication
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }

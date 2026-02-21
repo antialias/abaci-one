@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { getAllFlowchartEmbeddings, cosineSimilarity } from '@/lib/flowcharts/embedding-search'
 import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
 
@@ -87,7 +87,7 @@ export const GET = withAuth(async (request) => {
     // Get current user ID for ownership checks (optional - doesn't fail if not logged in)
     let currentUserId: string | null = null
     try {
-      currentUserId = await getDbUserId()
+      currentUserId = await getUserId()
     } catch {
       // Not logged in, that's fine
     }

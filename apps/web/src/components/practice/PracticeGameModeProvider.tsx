@@ -5,7 +5,7 @@ import { useMemo, useCallback } from 'react'
 import { GameModeProvider, type RoomData } from '@/contexts/GameModeContext'
 import { GameCompletionProvider } from '@/contexts/GameCompletionContext'
 import type { Player as DBPlayer } from '@/db/schema/players'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 
 interface StudentInfo {
   id: string
@@ -54,7 +54,7 @@ export function PracticeGameModeProvider({
   children,
   onGameComplete,
 }: PracticeGameModeProviderProps) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
 
   // Game completion is now detected via GameCompletionContext.
   // The matching Provider (or any game provider) calls the completion callback

@@ -13,7 +13,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/flowchart-workshop/sessions/[id]/versions
@@ -24,7 +24,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify session ownership
     const session = await db.query.workshopSessions.findFirst({
@@ -68,7 +68,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     const { versionNumber } = body

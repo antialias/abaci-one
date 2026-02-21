@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { recordSkillAttempts } from '@/lib/curriculum/progress-manager'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST - Record multiple skill attempts at once
@@ -22,7 +22,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

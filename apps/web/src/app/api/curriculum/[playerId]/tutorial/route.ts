@@ -20,7 +20,7 @@ import {
   enableSkillForPractice,
 } from '@/lib/curriculum/progress-manager'
 import { getSkillTutorialConfig } from '@/lib/curriculum/skill-unlock'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET - Get tutorial progress for a specific skill
@@ -34,7 +34,7 @@ export const GET = withAuth(async (request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

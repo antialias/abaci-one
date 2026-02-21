@@ -7,7 +7,7 @@ import {
   useGameMode,
   useRoomData,
   useUpdateGameConfig,
-  useViewerId,
+  useUserId,
 } from '@/lib/arcade/game-sdk'
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
 import type { KnowYourWorldState, AssistanceLevel } from './types'
@@ -191,7 +191,7 @@ export function useKnowYourWorld() {
 }
 
 export function KnowYourWorldProvider({ children }: { children: React.ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()

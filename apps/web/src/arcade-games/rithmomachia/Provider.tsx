@@ -7,7 +7,7 @@ import {
   useArcadeSession,
   useRoomData,
   useUpdateGameConfig,
-  useViewerId,
+  useUserId,
 } from '@/lib/arcade/game-sdk'
 import type {
   AmbushContext,
@@ -124,7 +124,7 @@ export function useRithmomachia(): RithmomachiaContextValue {
  * Provider for Rithmomachia game state and actions.
  */
 export function RithmomachiaProvider({ children }: { children: ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()

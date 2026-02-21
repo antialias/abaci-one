@@ -5,7 +5,7 @@ import { generateFamilyCode, parentChild } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getValidParentLinks } from '@/lib/classroom/access-control'
 import { getLimitsForUser } from '@/lib/subscription'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players
@@ -16,7 +16,7 @@ import { getDbUserId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Get valid parent links (applies guest share expiry centrally)
     const validLinks = await getValidParentLinks(userId)
@@ -50,7 +50,7 @@ export const GET = withAuth(async () => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Validate required fields

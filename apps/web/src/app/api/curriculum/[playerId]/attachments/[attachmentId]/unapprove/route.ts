@@ -14,7 +14,7 @@ import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { sessionPlans, type SlotResult } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST - Unapprove/revert a processed worksheet
@@ -28,7 +28,7 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

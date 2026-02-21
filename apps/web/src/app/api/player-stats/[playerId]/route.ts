@@ -6,7 +6,7 @@ import { playerStats } from '@/db/schema/player-stats'
 import { players } from '@/db/schema/players'
 import type { GetPlayerStatsResponse, PlayerStatsData } from '@/lib/arcade/stats/types'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/player-stats/[playerId]
@@ -18,7 +18,7 @@ export const GET = withAuth(async (_request, { params }) => {
     const { playerId } = (await params) as { playerId: string }
 
     // 1. Authenticate user
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

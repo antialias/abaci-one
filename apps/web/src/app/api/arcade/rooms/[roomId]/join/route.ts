@@ -8,7 +8,7 @@ import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
 import { isUserBanned } from '@/lib/arcade/room-moderation'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/arcade/rooms/:roomId/join
@@ -20,7 +20,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json().catch(() => ({}))
 
     console.log(`[Join API] User ${userId} attempting to join room ${roomId}`)

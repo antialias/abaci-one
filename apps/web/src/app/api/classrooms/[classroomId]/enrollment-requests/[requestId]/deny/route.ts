@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { denyEnrollmentRequest, getLinkedParentIds, getTeacherClassroom } from '@/lib/classroom'
 import { emitEnrollmentRequestDenied } from '@/lib/classroom/socket-emitter'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -15,7 +15,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { classroomId, requestId } = (await params) as { classroomId: string; requestId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify user is the teacher of this classroom
     const classroom = await getTeacherClassroom(userId)

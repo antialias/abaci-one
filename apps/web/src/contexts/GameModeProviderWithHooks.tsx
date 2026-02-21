@@ -10,7 +10,7 @@
  * Practice pages don't import this file, so they don't pull in:
  * - useUserPlayers (and its dependencies)
  * - useRoomData (and socket.io client)
- * - useViewerId
+ * - useUserId
  */
 
 import type { ReactNode } from 'react'
@@ -21,7 +21,7 @@ import {
   useUpdatePlayer,
   useUserPlayers,
 } from '@/hooks/useUserPlayers'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { GameModeProvider } from './GameModeContext'
 
 interface GameModeProviderWithHooksProps {
@@ -35,7 +35,7 @@ export function GameModeProviderWithHooks({ children }: GameModeProviderWithHook
   const { mutate: updatePlayerMutation } = useUpdatePlayer()
   const { mutate: deletePlayer } = useDeletePlayer()
   const { roomData, notifyRoomOfPlayerUpdate } = useRoomData()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
 
   return (
     <GameModeProvider

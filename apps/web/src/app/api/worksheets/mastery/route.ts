@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import type { SkillId } from '@/app/create/worksheets/skills'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -18,7 +18,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const { searchParams } = new URL(request.url)
     const operator = searchParams.get('operator')
 
@@ -65,7 +65,7 @@ export const GET = withAuth(async (request) => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     const { skillId, isMastered, totalAttempts, correctAttempts, lastAccuracy } = body

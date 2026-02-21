@@ -15,7 +15,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt/compute-bkt'
 import { BKT_THRESHOLDS } from '@/lib/curriculum/config/bkt-integration'
 import {
@@ -41,7 +41,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authentication check (must be logged in)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }

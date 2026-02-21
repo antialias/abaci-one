@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useRoomData, useSetRoomGame, useCreateRoom } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -29,7 +29,7 @@ import { useAllGames } from '@/hooks/useAllGames'
 export default function RoomPage() {
   const router = useRouter()
   const { roomData, isLoading } = useRoomData()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { mutate: setRoomGame } = useSetRoomGame()
   const { mutate: createRoom, isPending: isCreatingRoom } = useCreateRoom()
   const [permissionError, setPermissionError] = useState<string | null>(null)

@@ -73,28 +73,6 @@ export async function getViewer(): Promise<
 }
 
 /**
- * Get the user ID for the current viewer
- *
- * For guests: returns the guestId
- * For authenticated users: returns the user.id from session
- * For unknown: throws an error
- *
- * @throws Error if no valid viewer found
- */
-export async function getViewerId(): Promise<string> {
-  const viewer = await getViewer()
-
-  switch (viewer.kind) {
-    case 'user':
-      return viewer.session.user!.id
-    case 'guest':
-      return viewer.guestId
-    case 'unknown':
-      throw new Error('No valid viewer session found')
-  }
-}
-
-/**
  * Get or create a user record from a guestId
  *
  * This is the core function for converting a guest session identifier
@@ -118,19 +96,17 @@ async function getOrCreateUserFromGuestId(guestId: string) {
 }
 
 /**
- * Get the database user.id for the current viewer
- *
- * IMPORTANT: This returns the actual database user.id, NOT the guestId.
- * Use this when you need to pass a user ID to authorization functions
- * like canPerformAction(), or any function that expects a database user.id.
+ * Get the stable database user.id for the current viewer
  *
  * For authenticated users: returns session.user.id directly
  * For guests: looks up or creates the user record by guestId, returns user.id
  * For unknown: throws an error
  *
+ * This is the single canonical way to get the current user's ID on the server.
+ *
  * @throws Error if no valid viewer found
  */
-export async function getDbUserId(): Promise<string> {
+export async function getUserId(): Promise<string> {
   const start = performance.now()
   const viewer = await getViewer()
   const viewerTime = performance.now() - start
@@ -139,7 +115,7 @@ export async function getDbUserId(): Promise<string> {
     case 'user':
       // Authenticated users already have a database user.id in their session
       console.log(
-        `[PERF] getDbUserId (user): ${(performance.now() - start).toFixed(1)}ms | getViewer=${viewerTime.toFixed(1)}ms`
+        `[PERF] getUserId (user): ${(performance.now() - start).toFixed(1)}ms | getViewer=${viewerTime.toFixed(1)}ms`
       )
       return viewer.session.user!.id
     case 'guest': {
@@ -148,7 +124,7 @@ export async function getDbUserId(): Promise<string> {
       const user = await getOrCreateUserFromGuestId(viewer.guestId)
       const userLookupTime = performance.now() - t
       console.log(
-        `[PERF] getDbUserId (guest): ${(performance.now() - start).toFixed(1)}ms | getViewer=${viewerTime.toFixed(1)}ms, userLookup=${userLookupTime.toFixed(1)}ms`
+        `[PERF] getUserId (guest): ${(performance.now() - start).toFixed(1)}ms | getViewer=${viewerTime.toFixed(1)}ms, userLookup=${userLookupTime.toFixed(1)}ms`
       )
       return user.id
     }

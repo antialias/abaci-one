@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { getLinkedChildren } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/entry-prompts
@@ -13,7 +13,7 @@ import { getDbUserId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Get children linked to this user (parent)
     const children = await getLinkedChildren(userId)

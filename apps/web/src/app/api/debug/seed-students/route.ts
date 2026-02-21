@@ -5,7 +5,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom/classroom-manager'
 import { createTask } from '@/lib/task-manager'
 import type { SeedStudentsEvent } from '@/lib/tasks/events'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import {
   TEST_PROFILES,
   filterProfiles,
@@ -57,7 +57,7 @@ export const POST = withAuth(
       }
 
       // Get current user
-      const userId = await getDbUserId()
+      const userId = await getUserId()
 
       // Look up user record
       let user = await db.query.users.findFirst({

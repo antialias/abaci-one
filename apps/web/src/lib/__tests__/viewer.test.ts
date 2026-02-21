@@ -180,44 +180,9 @@ describe('viewer', () => {
     })
   })
 
-  describe('getViewerId', () => {
-    it('returns user id for authenticated users', async () => {
-      const { getViewerId } = await import('../viewer')
-
-      const session = {
-        user: { id: 'db-user-id-123' },
-        expires: new Date().toISOString(),
-      }
-      mockAuth.mockResolvedValue(session)
-
-      const id = await getViewerId()
-      expect(id).toBe('db-user-id-123')
-    })
-
-    it('returns guestId for guest viewers', async () => {
-      const { getViewerId } = await import('../viewer')
-
-      mockAuth.mockResolvedValue(null)
-      mockHeadersGet.mockReturnValue('guest-xyz')
-
-      const id = await getViewerId()
-      expect(id).toBe('guest-xyz')
-    })
-
-    it('throws for unknown viewers', async () => {
-      const { getViewerId } = await import('../viewer')
-
-      mockAuth.mockResolvedValue(null)
-      mockHeadersGet.mockReturnValue(null)
-      mockCookiesGet.mockReturnValue(undefined)
-
-      await expect(getViewerId()).rejects.toThrow('No valid viewer session found')
-    })
-  })
-
-  describe('getDbUserId', () => {
+  describe('getUserId', () => {
     it('returns session user.id for authenticated users', async () => {
-      const { getDbUserId } = await import('../viewer')
+      const { getUserId } = await import('../viewer')
 
       const session = {
         user: { id: 'auth-user-id' },
@@ -225,41 +190,41 @@ describe('viewer', () => {
       }
       mockAuth.mockResolvedValue(session)
 
-      const id = await getDbUserId()
+      const id = await getUserId()
       expect(id).toBe('auth-user-id')
     })
 
     it('looks up existing user by guestId for guest viewers', async () => {
-      const { getDbUserId } = await import('../viewer')
+      const { getUserId } = await import('../viewer')
 
       mockAuth.mockResolvedValue(null)
       mockHeadersGet.mockReturnValue('guest-abc')
       mockFindFirst.mockResolvedValue({ id: 'db-user-id-for-guest', guestId: 'guest-abc' })
 
-      const id = await getDbUserId()
+      const id = await getUserId()
       expect(id).toBe('db-user-id-for-guest')
     })
 
     it('creates new user when guest user not found in DB', async () => {
-      const { getDbUserId } = await import('../viewer')
+      const { getUserId } = await import('../viewer')
 
       mockAuth.mockResolvedValue(null)
       mockHeadersGet.mockReturnValue('new-guest')
       mockFindFirst.mockResolvedValue(undefined)
       mockInsertReturning.mockResolvedValue([{ id: 'newly-created-user-id', guestId: 'new-guest' }])
 
-      const id = await getDbUserId()
+      const id = await getUserId()
       expect(id).toBe('newly-created-user-id')
     })
 
     it('throws for unknown viewers', async () => {
-      const { getDbUserId } = await import('../viewer')
+      const { getUserId } = await import('../viewer')
 
       mockAuth.mockResolvedValue(null)
       mockHeadersGet.mockReturnValue(null)
       mockCookiesGet.mockReturnValue(undefined)
 
-      await expect(getDbUserId()).rejects.toThrow('No valid viewer session found')
+      await expect(getUserId()).rejects.toThrow('No valid viewer session found')
     })
   })
 

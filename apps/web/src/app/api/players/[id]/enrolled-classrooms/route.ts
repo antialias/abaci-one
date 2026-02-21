@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getEnrolledClassrooms, canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players/[id]/enrolled-classrooms
@@ -12,7 +12,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { id: playerId } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Check authorization: must have at least view access
     const canView = await canPerformAction(userId, playerId, 'view')

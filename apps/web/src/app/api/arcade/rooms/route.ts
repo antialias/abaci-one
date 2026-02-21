@@ -4,7 +4,7 @@ import { addRoomMember, getRoomMembers, isMember } from '@/lib/arcade/room-membe
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getSocketIO } from '@/lib/socket-io'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { hasValidator, type GameName } from '@/lib/arcade/validators'
 
 /**
@@ -18,7 +18,7 @@ export const GET = withAuth(async (request) => {
     const { searchParams } = new URL(request.url)
     const gameName = searchParams.get('gameName') as GameName | null
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const rooms = await listActiveRooms(gameName || undefined)
 
     // Enrich with member counts, player counts, and membership status
@@ -69,7 +69,7 @@ export const GET = withAuth(async (request) => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Validate game name if provided (gameName is now optional)

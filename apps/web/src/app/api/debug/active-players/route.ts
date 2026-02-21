@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { getActivePlayers } from '@/lib/arcade/player-manager'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export const GET = withAuth(
   async () => {
     try {
-      const userId = await getDbUserId()
+      const userId = await getUserId()
 
       // Get ALL players for this user
       const allPlayers = await db.query.players.findMany({

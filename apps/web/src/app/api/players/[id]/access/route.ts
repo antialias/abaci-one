@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players/[id]/access
@@ -15,11 +15,11 @@ export const GET = withAuth(async (_request, { params }) => {
   try {
     const { id: playerId } = (await params) as { id: string }
 
-    // Use getDbUserId() to get the database user.id, not the guestId
+    // Use getUserId() to get the database user.id, not the guestId
     // This is required because parent_child links to user.id
     let t = performance.now()
-    const viewerId = await getDbUserId()
-    const getDbUserIdTime = performance.now() - t
+    const viewerId = await getUserId()
+    const getUserIdTime = performance.now() - t
 
     t = performance.now()
     const access = await getPlayerAccess(viewerId, playerId)
@@ -27,7 +27,7 @@ export const GET = withAuth(async (_request, { params }) => {
 
     const total = performance.now() - routeStart
     console.log(
-      `[PERF] /api/players/[id]/access: ${total.toFixed(1)}ms | getDbUserId=${getDbUserIdTime.toFixed(1)}ms, getPlayerAccess=${getPlayerAccessTime.toFixed(1)}ms, playerId=${playerId}`
+      `[PERF] /api/players/[id]/access: ${total.toFixed(1)}ms | getUserId=${getUserIdTime.toFixed(1)}ms, getPlayerAccess=${getPlayerAccessTime.toFixed(1)}ms, playerId=${playerId}`
     )
 
     return NextResponse.json({

@@ -7,7 +7,7 @@ import { createSocket } from '@/lib/socket'
 import { css } from '../../../../styled-system/css'
 import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface Room {
@@ -44,7 +44,7 @@ export default function RoomDetailPage() {
   const router = useRouter()
   const { showError } = useToast()
   const roomId = params.roomId as string
-  const { data: guestId } = useViewerId()
+  const { data: userId } = useUserId()
 
   const [room, setRoom] = useState<Room | null>(null)
   const [members, setMembers] = useState<Member[]>([])
@@ -59,7 +59,7 @@ export default function RoomDetailPage() {
   }, [roomId])
 
   useEffect(() => {
-    if (!guestId || !roomId) return
+    if (!userId || !roomId) return
 
     // Connect to socket
     const sock = createSocket()
@@ -68,7 +68,7 @@ export default function RoomDetailPage() {
     sock.on('connect', () => {
       setIsConnected(true)
       // Join the room
-      sock.emit('join-room', { roomId, userId: guestId })
+      sock.emit('join-room', { roomId, userId: userId })
     })
 
     sock.on('disconnect', () => {
@@ -118,23 +118,23 @@ export default function RoomDetailPage() {
     })
 
     return () => {
-      sock.emit('leave-room', { roomId, userId: guestId })
+      sock.emit('leave-room', { roomId, userId: userId })
       sock.disconnect()
     }
-  }, [roomId, guestId])
+  }, [roomId, userId])
 
   // Notify room when window regains focus (user might have changed players in another tab)
   useEffect(() => {
-    if (!socket || !guestId || !roomId) return
+    if (!socket || !userId || !roomId) return
 
     const handleFocus = () => {
       console.log('Window focused, notifying room of potential player changes')
-      socket.emit('players-updated', { roomId, userId: guestId })
+      socket.emit('players-updated', { roomId, userId: userId })
     }
 
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
-  }, [socket, roomId, guestId])
+  }, [socket, roomId, userId])
 
   const fetchRoom = async () => {
     try {
@@ -291,7 +291,7 @@ export default function RoomDetailPage() {
   const onlineMembers = members.filter((m) => m.isOnline)
 
   // Check if current user is a member
-  const isMember = members.some((m) => m.userId === guestId)
+  const isMember = members.some((m) => m.userId === userId)
 
   // Calculate union of all active players in the room
   const allPlayers: Player[] = []

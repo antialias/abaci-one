@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * PATCH /api/players/[id]
@@ -11,7 +11,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const PATCH = withAuth(async (request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Get user record (must exist if player exists)
@@ -57,7 +57,7 @@ export const PATCH = withAuth(async (request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Get user record (must exist if player exists)
     const user = await db.query.users.findFirst({

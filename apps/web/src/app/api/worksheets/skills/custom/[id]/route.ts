@@ -2,7 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { customSkills } from '@/db/schema'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -12,7 +12,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const PUT = withAuth(async (request, { params }) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const { id } = (await params) as { id: string }
     const body = await request.json()
 
@@ -74,7 +74,7 @@ export const PUT = withAuth(async (request, { params }) => {
  */
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const { id } = (await params) as { id: string }
 
     // Verify skill exists and belongs to user

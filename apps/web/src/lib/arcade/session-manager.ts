@@ -3,7 +3,7 @@
  * Handles database operations and validation for arcade sessions
  */
 
-import { eq, and, or } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { buildPlayerOwnershipMap, type PlayerOwnershipMap } from './player-ownership'
 import { getValidator, type GameName } from './validators'
@@ -114,21 +114,6 @@ export interface SessionUpdateResult {
 const TTL_HOURS = 24
 
 /**
- * Helper: Resolve a client-provided ID to the internal database user.id
- *
- * The client sends either a guestId (for guests) or a database user.id
- * (for authenticated users, after the getViewerId→getDbUserId refactor).
- * This function handles both cases.
- */
-async function resolveUserId(idFromClient: string): Promise<string | undefined> {
-  const user = await db.query.users.findFirst({
-    where: or(eq(schema.users.guestId, idFromClient), eq(schema.users.id, idFromClient)),
-    columns: { id: true },
-  })
-  return user?.id
-}
-
-/**
  * Get arcade session by room ID (for room-based multiplayer games)
  * Returns the shared session for all room members
  * @param roomId - The room ID (primary key)
@@ -171,23 +156,13 @@ export async function createArcadeSession(
     return existingRoomSession
   }
 
-  // Find user by guestId or database user.id
-  // After the identity refactor, authenticated users send their database user.id
-  // while guests send their guestId
-  let user = await db.query.users.findFirst({
-    where: or(eq(schema.users.guestId, options.userId), eq(schema.users.id, options.userId)),
+  // Look up user by database user.id (the client always sends users.id now)
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, options.userId),
   })
 
   if (!user) {
-    // Only create a new user if this is truly a new guest (not an authenticated user)
-    const [newUser] = await db
-      .insert(schema.users)
-      .values({
-        guestId: options.userId, // Let id auto-generate via $defaultFn
-        createdAt: now,
-      })
-      .returning()
-    user = newUser
+    throw new Error(`User not found: ${options.userId}`)
   }
 
   // Delete any existing sessions for this user (to handle UNIQUE constraint on userId)
@@ -233,16 +208,9 @@ export async function createArcadeSession(
 
 /**
  * Get active arcade session for a user
- * NOTE: With the new schema, userId is not the PRIMARY KEY (roomId is)
- * This function finds sessions where the user is associated
- * @param idFromClient - The guestId or database user.id from the client
+ * @param userId - The database user.id
  */
-export async function getArcadeSession(idFromClient: string): Promise<schema.ArcadeSession | undefined> {
-  const userId = await resolveUserId(idFromClient)
-  if (!userId) return undefined
-
-  // Query for sessions where this user is associated
-  // Since roomId is PRIMARY KEY, there can be multiple rooms but only one session per room
+export async function getArcadeSession(userId: string): Promise<schema.ArcadeSession | undefined> {
   const [session] = await db
     .select()
     .from(schema.arcadeSessions)
@@ -272,7 +240,7 @@ export async function getArcadeSession(idFromClient: string): Promise<schema.Arc
 
 /**
  * Apply a game move to the session (with validation)
- * @param userId - The guest ID from the cookie
+ * @param userId - The database user.id of the player making the move
  * @param move - The game move to apply
  * @param roomId - Optional room ID for room-based games (enables shared session)
  */
@@ -317,30 +285,17 @@ export async function applyGameMove(
 
   // Fetch player ownership for authorization checks (room-based games)
   let playerOwnership: PlayerOwnershipMap | undefined
-  let internalUserId: string | undefined
   if (session.roomId) {
     try {
-      // Convert client-provided ID to internal userId for ownership comparison
-      internalUserId = await resolveUserId(userId)
-      if (!internalUserId) {
-        console.error('[SessionManager] Failed to resolve userId:', userId)
-        return {
-          success: false,
-          error: 'User not found',
-        }
-      }
-
-      // Use centralized ownership utility
       playerOwnership = await buildPlayerOwnershipMap(session.roomId)
     } catch (error) {
       console.error('[SessionManager] Failed to fetch player ownership:', error)
     }
   }
 
-  // Validate the move with authorization context (use internal userId, not guestId)
-  // Pass the extracted game-specific state, not the full namespaced object
+  // Validate the move with authorization context
   const validationResult = await validator.validateMove(currentGameState, move, {
-    userId: internalUserId || userId, // Use internal userId for room-based games
+    userId,
     playerOwnership,
   })
 
@@ -390,7 +345,7 @@ export async function applyGameMove(
 
       const versionDiff = currentSession ? currentSession.version - session.version : 'unknown'
       console.warn(
-        `[SessionManager] VERSION_CONFLICT room=${session.roomId} game=${session.currentGame} expected_v=${session.version} actual_v=${currentSession?.version} diff=${versionDiff} move=${move.type} user=${internalUserId || userId}`
+        `[SessionManager] VERSION_CONFLICT room=${session.roomId} game=${session.currentGame} expected_v=${session.version} actual_v=${currentSession?.version} diff=${versionDiff} move=${move.type} user=${userId}`
       )
       return {
         success: false,
@@ -422,11 +377,11 @@ export async function deleteArcadeSessionByRoom(roomId: string): Promise<void> {
 
 /**
  * Delete an arcade session by user (finds the user's session first)
- * @param guestId - The guest ID from the cookie (not the database user.id)
+ * @param userId - The database user.id
  */
-export async function deleteArcadeSession(guestId: string): Promise<void> {
+export async function deleteArcadeSession(userId: string): Promise<void> {
   // First find the session to get its roomId
-  const session = await getArcadeSession(guestId)
+  const session = await getArcadeSession(userId)
   if (!session) return
 
   // Delete by roomId (PRIMARY KEY)
@@ -435,11 +390,11 @@ export async function deleteArcadeSession(guestId: string): Promise<void> {
 
 /**
  * Update session activity timestamp (keep-alive)
- * @param guestId - The guest ID from the cookie (not the database user.id)
+ * @param userId - The database user.id
  */
-export async function updateSessionActivity(guestId: string): Promise<void> {
+export async function updateSessionActivity(userId: string): Promise<void> {
   // First find the session to get its roomId
-  const session = await getArcadeSession(guestId)
+  const session = await getArcadeSession(userId)
   if (!session) return
 
   const now = new Date()

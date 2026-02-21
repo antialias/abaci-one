@@ -75,11 +75,10 @@ vi.mock('../validators', async () => {
 })
 
 describe('session-manager', () => {
-  const mockGuestId = '149e3e7e-4006-4a17-9f9f-28b0ec188c28'
   const mockUserId = 'm2rb9gjhhqp2fky171quf1lj'
   const mockUser = {
     id: mockUserId,
-    guestId: mockGuestId,
+    guestId: '149e3e7e-4006-4a17-9f9f-28b0ec188c28',
     name: null,
     createdAt: new Date(),
     upgradedAt: null,
@@ -92,7 +91,7 @@ describe('session-manager', () => {
   })
 
   describe('createArcadeSession', () => {
-    it('should look up user by guestId and use the database user.id for FK', async () => {
+    it('should look up user by userId and use the database user.id for FK', async () => {
       // Mock user lookup
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
 
@@ -101,7 +100,7 @@ describe('session-manager', () => {
         values: vi.fn(() => ({
           returning: vi.fn().mockResolvedValue([
             {
-              userId: mockUserId, // Should use database ID, not guestId
+              userId: mockUserId,
               currentGame: 'matching',
               gameState: {},
               version: 1,
@@ -112,7 +111,7 @@ describe('session-manager', () => {
       vi.mocked(db.insert).mockImplementation(mockInsert as any)
 
       await createArcadeSession({
-        userId: mockGuestId, // Passing guestId
+        userId: mockUserId,
         gameName: 'matching',
         gameUrl: '/arcade/matching',
         initialState: {},
@@ -120,14 +119,14 @@ describe('session-manager', () => {
         roomId: 'test-room-id',
       })
 
-      // Verify user lookup by guestId
+      // Verify user lookup by userId
       expect(db.query.users.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.anything(),
         })
       )
 
-      // Verify session uses database user.id
+      // Verify session was created
       const insertCall = mockInsert.mock.results[0].value
       const valuesCall = insertCall.values.mock.results[0].value
       const returningCall = valuesCall.returning
@@ -135,63 +134,30 @@ describe('session-manager', () => {
       expect(returningCall).toHaveBeenCalled()
     })
 
-    it('should create new user if guestId not found', async () => {
+    it('should throw if user not found', async () => {
       // Mock user not found
       vi.mocked(db.query.users.findFirst).mockResolvedValue(undefined)
 
-      const newUser = { ...mockUser, id: 'new-user-id' }
-
-      // Mock user creation
-      const mockInsertUser = vi.fn(() => ({
-        values: vi.fn(() => ({
-          returning: vi.fn().mockResolvedValue([newUser]),
-        })),
-      }))
-
-      // Mock session creation
-      const mockInsertSession = vi.fn(() => ({
-        values: vi.fn(() => ({
-          returning: vi.fn().mockResolvedValue([
-            {
-              userId: 'new-user-id',
-              currentGame: 'matching',
-              gameState: {},
-              version: 1,
-            },
-          ]),
-        })),
-      }))
-
-      let insertCallCount = 0
-      vi.mocked(db.insert).mockImplementation((() => {
-        insertCallCount++
-        return insertCallCount === 1 ? mockInsertUser() : mockInsertSession()
-      }) as any)
-
-      await createArcadeSession({
-        userId: mockGuestId,
-        gameName: 'matching',
-        gameUrl: '/arcade/matching',
-        initialState: {},
-        activePlayers: ['1'],
-        roomId: 'test-room-id',
-      })
-
-      // Verify user was created
-      expect(db.insert).toHaveBeenCalledTimes(2) // user + session
+      await expect(
+        createArcadeSession({
+          userId: 'nonexistent-user-id',
+          gameName: 'matching',
+          gameUrl: '/arcade/matching',
+          initialState: {},
+          activePlayers: ['1'],
+          roomId: 'test-room-id',
+        })
+      ).rejects.toThrow('User not found: nonexistent-user-id')
     })
   })
 
   describe('getArcadeSession', () => {
-    it('should translate guestId to user.id before querying', async () => {
-      // Mock user lookup
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
-
+    it('should query sessions directly by userId', async () => {
       // Mock room lookup (getArcadeSession verifies room exists)
       vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
         id: 'test-room-id',
         name: 'Test Room',
-        createdBy: mockGuestId,
+        createdBy: mockUserId,
         creatorName: 'Test User',
         gameName: 'matching',
         gameConfig: {},
@@ -220,20 +186,27 @@ describe('session-manager', () => {
         }),
       } as any)
 
-      const session = await getArcadeSession(mockGuestId)
+      const session = await getArcadeSession(mockUserId)
 
-      // Verify user lookup
-      expect(db.query.users.findFirst).toHaveBeenCalled()
+      // No user resolution — queries sessions directly by userId
+      expect(db.query.users.findFirst).not.toHaveBeenCalled()
 
       // Verify session was found
       expect(session).toBeDefined()
       expect(session?.userId).toBe(mockUserId)
     })
 
-    it('should return undefined if user not found', async () => {
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(undefined)
+    it('should return undefined if no session found', async () => {
+      // Mock no session found
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any)
 
-      const session = await getArcadeSession(mockGuestId)
+      const session = await getArcadeSession(mockUserId)
 
       expect(session).toBeUndefined()
     })
@@ -254,15 +227,12 @@ describe('session-manager', () => {
       roomId: 'test-room-id',
     }
 
-    it('should use session.userId (database ID) for update WHERE clause', async () => {
-      // Mock user lookup
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
-
+    it('should use userId directly for validation (no resolution needed)', async () => {
       // Mock room lookup (getArcadeSession verifies room exists)
       vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
         id: 'test-room-id',
         name: 'Test Room',
-        createdBy: mockGuestId,
+        createdBy: mockUserId,
         creatorName: 'Test User',
         gameName: 'matching',
         gameConfig: {},
@@ -307,7 +277,7 @@ describe('session-manager', () => {
         timestamp: Date.now(),
       }
 
-      await applyGameMove(mockGuestId, move)
+      await applyGameMove(mockUserId, move)
 
       // Verify the chain was called
       expect(mockSet).toHaveBeenCalled()
@@ -317,15 +287,12 @@ describe('session-manager', () => {
   })
 
   describe('deleteArcadeSession', () => {
-    it('should translate guestId to user.id before deleting', async () => {
-      // Mock user lookup
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
-
+    it('should find session by userId and delete by roomId', async () => {
       // Mock room lookup (getArcadeSession verifies room exists)
       vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
         id: 'test-room-id',
         name: 'Test Room',
-        createdBy: mockGuestId,
+        createdBy: mockUserId,
         creatorName: 'Test User',
         gameName: 'matching',
         gameConfig: {},
@@ -359,24 +326,31 @@ describe('session-manager', () => {
         where: mockWhere,
       } as any)
 
-      await deleteArcadeSession(mockGuestId)
+      await deleteArcadeSession(mockUserId)
 
-      // Verify user lookup happened
-      expect(db.query.users.findFirst).toHaveBeenCalled()
+      // No user resolution needed
+      expect(db.query.users.findFirst).not.toHaveBeenCalled()
 
       // Verify delete was called
       expect(mockWhere).toHaveBeenCalled()
     })
 
-    it('should do nothing if user not found', async () => {
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(undefined)
+    it('should do nothing if no session found', async () => {
+      // Mock no session found
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any)
 
       const mockWhere = vi.fn()
       vi.mocked(db.delete).mockReturnValue({
         where: mockWhere,
       } as any)
 
-      await deleteArcadeSession(mockGuestId)
+      await deleteArcadeSession(mockUserId)
 
       // Verify delete was NOT called
       expect(mockWhere).not.toHaveBeenCalled()
@@ -384,15 +358,12 @@ describe('session-manager', () => {
   })
 
   describe('updateSessionActivity', () => {
-    it('should translate guestId to user.id before updating', async () => {
-      // Mock user lookup
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser)
-
+    it('should find session by userId and update activity', async () => {
       // Mock room lookup (getArcadeSession verifies room exists)
       vi.mocked(db.query.arcadeRooms.findFirst).mockResolvedValue({
         id: 'test-room-id',
         name: 'Test Room',
-        createdBy: mockGuestId,
+        createdBy: mockUserId,
         creatorName: 'Test User',
         gameName: 'matching',
         gameConfig: {},
@@ -428,17 +399,24 @@ describe('session-manager', () => {
         }),
       } as any)
 
-      await updateSessionActivity(mockGuestId)
+      await updateSessionActivity(mockUserId)
 
-      // Verify user lookup happened
-      expect(db.query.users.findFirst).toHaveBeenCalled()
+      // No user resolution needed
+      expect(db.query.users.findFirst).not.toHaveBeenCalled()
 
       // Verify update was called
       expect(mockWhere).toHaveBeenCalled()
     })
 
-    it('should do nothing if user not found', async () => {
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(undefined)
+    it('should do nothing if no session found', async () => {
+      // Mock no session found
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any)
 
       const mockWhere = vi.fn()
       vi.mocked(db.update).mockReturnValue({
@@ -447,7 +425,7 @@ describe('session-manager', () => {
         }),
       } as any)
 
-      await updateSessionActivity(mockGuestId)
+      await updateSessionActivity(mockUserId)
 
       // Verify update was NOT called
       expect(mockWhere).not.toHaveBeenCalled()

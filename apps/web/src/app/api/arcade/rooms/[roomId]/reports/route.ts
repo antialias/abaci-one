@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAllReports } from '@/lib/arcade/room-moderation'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/rooms/:roomId/reports
@@ -11,7 +11,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Check if user is the host
     const members = await getRoomMembers(roomId)

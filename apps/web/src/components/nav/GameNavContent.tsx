@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import React from 'react'
 import { useGameMode } from '../../contexts/GameModeContext'
 import { useRoomData } from '../../hooks/useRoomData'
-import { useViewerId } from '../../hooks/useViewerId'
+import { useUserId } from '../../hooks/useUserId'
 import { AppNavBar } from '../AppNavBar'
 import type { RosterWarning } from './GameContextNav'
 import type { PlayerBadge } from './types'
@@ -53,7 +53,7 @@ interface GameNavContentProps {
  * GameNavContent - Contains all game-related hooks and navigation
  *
  * This component is lazy-loaded by PageWithNav only when navTitle is provided.
- * It contains the expensive imports: useGameMode, useRoomData, useViewerId
+ * It contains the expensive imports: useGameMode, useRoomData, useUserId
  * which pull in GameModeContext and arcade room dependencies.
  */
 export function GameNavContent({
@@ -82,7 +82,7 @@ export function GameNavContent({
 }: GameNavContentProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
 

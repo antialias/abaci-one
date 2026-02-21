@@ -17,7 +17,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getSessionMode, type SessionMode } from '@/lib/curriculum/session-mode'
 import { getSessionModeComfortLevel } from '@/lib/curriculum/session-mode-comfort'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 export interface SessionModeResponse {
   sessionMode: SessionMode
@@ -37,7 +37,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

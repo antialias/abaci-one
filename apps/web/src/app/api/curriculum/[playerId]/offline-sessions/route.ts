@@ -20,7 +20,7 @@ import type { SessionPart, SessionPartType, SessionSummary } from '@/db/schema/s
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getLimitsForUser } from '@/lib/subscription'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * Build minimal session parts for an offline session.
@@ -90,7 +90,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Authorization check - require 'start-session' permission (parent or present teacher)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canCreate = await canPerformAction(userId, playerId, 'start-session')
     if (!canCreate) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

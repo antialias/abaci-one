@@ -1796,7 +1796,7 @@ async function loadWorksheetSettings(): Promise<
   Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
 > {
   try {
-    const viewerId = await getViewerId()
+    const viewerId = await getUserId()
     const [row] = await db.select()...
 
     if (!row) {

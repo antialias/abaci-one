@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { linkParentToChild } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/family/link
@@ -12,7 +12,7 @@ import { getDbUserId } from '@/lib/viewer'
  */
 export const POST = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     if (!body.familyCode) {

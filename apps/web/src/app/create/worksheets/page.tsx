@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { parseAdditionConfig, defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
 import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
 import { WorksheetErrorBoundary } from './components/WorksheetErrorBoundary'
@@ -25,7 +25,7 @@ async function loadWorksheetSettings(): Promise<
   Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
 > {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Look up user's saved settings
     const [row] = await db

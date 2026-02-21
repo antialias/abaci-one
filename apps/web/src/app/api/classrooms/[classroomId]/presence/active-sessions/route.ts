@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getClassroomPresence, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -42,7 +42,7 @@ interface ActiveSessionInfo {
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify user is the teacher of this classroom
     const classroom = await getTeacherClassroom(userId)

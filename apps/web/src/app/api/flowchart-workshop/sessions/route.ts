@@ -2,7 +2,7 @@ import { and, desc, eq, gt } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/flowchart-workshop/sessions
@@ -12,7 +12,7 @@ import { getDbUserId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const now = new Date()
 
     // Get non-expired sessions
@@ -62,7 +62,7 @@ export const GET = withAuth(async () => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     const now = new Date()

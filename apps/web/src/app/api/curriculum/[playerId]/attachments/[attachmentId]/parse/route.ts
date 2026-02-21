@@ -18,7 +18,7 @@ import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { computeParsingStats, type WorksheetParsingResult } from '@/lib/worksheet-parsing'
 
 /**
@@ -33,7 +33,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -131,7 +131,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

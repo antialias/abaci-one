@@ -10,7 +10,7 @@ import {
   getStudentPresence,
   getTeacherClassroom,
 } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import type {
   EnrolledClassroomInfo,
   ParentInfo,
@@ -34,7 +34,7 @@ import type {
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { id: playerId } = (await params) as { id: string }
-    const viewerId = await getDbUserId()
+    const viewerId = await getUserId()
 
     // Check authorization: must have at least view access
     const canView = await canPerformAction(viewerId, playerId, 'view')

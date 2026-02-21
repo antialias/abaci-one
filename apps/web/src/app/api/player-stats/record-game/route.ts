@@ -13,7 +13,7 @@ import type {
 } from '@/lib/arcade/stats/types'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/player-stats/record-game
@@ -25,7 +25,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const POST = withAuth(async (request) => {
   try {
     // 1. Authenticate user and get database user ID
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

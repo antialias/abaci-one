@@ -16,7 +16,7 @@ import {
 } from '@/lib/curriculum'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-game-list'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * Debug presets for quick session creation
@@ -84,7 +84,7 @@ export const POST = withAuth(
       const config = PRESETS[preset]
 
       // 1. Get current viewer's database user ID
-      const userId = await getDbUserId()
+      const userId = await getUserId()
 
       // 2. Create debug player
       const [player] = await db

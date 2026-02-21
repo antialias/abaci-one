@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { clearDeferral, deferProgression } from '@/lib/curriculum/progression-deferrals'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 export const POST = withAuth(async (request, { params }) => {
   try {
@@ -25,7 +25,7 @@ export const POST = withAuth(async (request, { params }) => {
       return NextResponse.json({ error: 'Player ID and skill ID required' }, { status: 400 })
     }
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canManage = await canPerformAction(userId, playerId, 'start-session')
     if (!canManage) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -49,7 +49,7 @@ export const DELETE = withAuth(async (request, { params }) => {
       return NextResponse.json({ error: 'Player ID and skill ID required' }, { status: 400 })
     }
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canManage = await canPerformAction(userId, playerId, 'start-session')
     if (!canManage) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

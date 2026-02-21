@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getPlayer, getRoomActivePlayers, setPlayerActiveStatus } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -18,7 +18,7 @@ export const POST = withAuth(async (request, { params }) => {
     const { roomId } = (await params) as { roomId: string }
     console.log('[Deactivate Player API] roomId:', roomId)
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     console.log('[Deactivate Player API] userId:', userId)
 
     const body = await request.json()

@@ -19,7 +19,7 @@ Complete AI-powered worksheet grading system using GPT-5 vision for single-pass 
 **API Endpoints**:
 
 - `POST /api/worksheets/upload` - File upload with optional sessionId
-  - Uses `getViewerId()` for authentication (works with guests & users)
+  - Uses `getUserId()` for authentication (works with guests & users)
   - Stores image to `data/uploads/`
   - Triggers background GPT-5 grading
 

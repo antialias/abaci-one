@@ -9,7 +9,7 @@ import {
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getActivePlayers } from '@/lib/arcade/player-manager'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/rooms/:roomId
@@ -18,7 +18,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const room = await getRoomById(roomId)
     if (!room) {
@@ -68,7 +68,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const PATCH = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Check if user is room creator
@@ -115,7 +115,7 @@ export const PATCH = withAuth(async (request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Check if user is room creator
     const isCreator = await isRoomCreator(roomId, userId)

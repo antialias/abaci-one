@@ -14,7 +14,7 @@ import {
   refreshSkillRecency,
   setMasteredSkills,
 } from '@/lib/curriculum/progress-manager'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST - Record a single skill attempt
@@ -29,7 +29,7 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -69,7 +69,7 @@ export const PUT = withAuth(async (request, { params }) => {
     }
 
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -119,7 +119,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

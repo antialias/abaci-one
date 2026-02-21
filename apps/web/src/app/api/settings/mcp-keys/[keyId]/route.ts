@@ -7,7 +7,7 @@
 import { eq, and } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -17,7 +17,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { keyId } = (await params) as { keyId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     if (!keyId) {
       return NextResponse.json({ error: 'Key ID is required' }, { status: 400 })

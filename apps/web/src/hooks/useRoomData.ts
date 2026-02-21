@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
-import { useViewerId } from './useViewerId'
+import { useUserId } from './useUserId'
 
 export interface RoomMember {
   id: string
@@ -234,7 +234,7 @@ export interface ModerationEvent {
  * Returns null if user is not in any room
  */
 export function useRoomData() {
-  const { data: userId } = useViewerId()
+  const { data: userId } = useUserId()
   const queryClient = useQueryClient()
   const [socket, setSocket] = useState<Socket | null>(null)
   const [moderationEvent, setModerationEvent] = useState<ModerationEvent | null>(null)

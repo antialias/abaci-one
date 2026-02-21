@@ -10,7 +10,7 @@ import {
 import { getSessionMode } from '@/lib/curriculum/session-mode'
 import { getSessionModeComfortLevel } from '@/lib/curriculum/session-mode-comfort'
 import { getActiveSessionPlan } from '@/lib/curriculum/session-planner'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { DashboardClient } from './DashboardClient'
 
 // Disable caching for this page - progress data should be fresh
@@ -39,7 +39,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const { tab } = await searchParams
 
   // Get database user ID for authorization and socket notifications
-  const userId = await getDbUserId()
+  const userId = await getUserId()
 
   // Fetch player data in parallel (includes session mode to avoid client-side waterfall)
   const [player, curriculum, skills, recentSessions, activeSession, problemHistory, sessionMode] =

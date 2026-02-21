@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { validateFlowchartStructure } from '@/lib/flowcharts/validator'
 import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
@@ -19,7 +19,7 @@ import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Get the session
     const session = await db.query.workshopSessions.findFirst({

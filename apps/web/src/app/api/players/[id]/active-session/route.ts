@@ -4,7 +4,7 @@ import { db } from '@/db'
 import { sessionPlans, type SessionPart, type SlotResult } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/players/[id]/active-session
@@ -25,7 +25,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authorization: require 'view' permission (parent or teacher)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

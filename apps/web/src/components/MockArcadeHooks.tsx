@@ -13,7 +13,7 @@ import {
 } from './MockArcadeEnvironment'
 
 // Re-export with SDK names
-export const useViewerId = useMockViewerId
+export const useUserId = useMockViewerId
 export const useRoomData = useMockRoomData
 export const useUpdateGameConfig = useMockUpdateGameConfig
 export const useGameMode = useMockGameMode

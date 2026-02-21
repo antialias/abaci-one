@@ -13,7 +13,7 @@ import { db } from '@/db'
 import { practiceAttachments, type ParsingStatus } from '@/db/schema/practice-attachments'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import {
   applyCorrections,
   computeParsingStats,
@@ -40,7 +40,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canReview = await canPerformAction(userId, playerId, 'start-session')
     if (!canReview) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

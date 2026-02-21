@@ -6,7 +6,7 @@ import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useArcadeSocket } from '@/hooks/useArcadeSocket'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useRoomData } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import type { GridCell, YjsDemoState } from './types'
 
 interface YjsDemoContextValue {
@@ -35,7 +35,7 @@ export function useYjsDemo() {
 }
 
 export function YjsDemoProvider({ children }: { children: React.ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds } = useGameMode()
   const [forceUpdate, setForceUpdate] = useState(0)

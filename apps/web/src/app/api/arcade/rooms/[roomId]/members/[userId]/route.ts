@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRoomById, isRoomCreator } from '@/lib/arcade/room-manager'
 import { isMember, removeMember } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * DELETE /api/arcade/rooms/:roomId/members/:userId
@@ -11,7 +11,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { roomId, userId } = (await params) as { roomId: string; userId: string }
-    const currentUserId = await getDbUserId()
+    const currentUserId = await getUserId()
 
     // Get room
     const room = await getRoomById(roomId)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { css } from '../../../../styled-system/css'
 import { gamePlurals } from '@/utils/pluralization'
 import { useMatchingPairs } from '../index'
@@ -11,7 +11,7 @@ interface PlayerStatusBarProps {
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
   const { state } = useMatchingPairs()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
 
   // Get active players from game state (not GameModeContext)
   // This ensures we only show players actually in this game

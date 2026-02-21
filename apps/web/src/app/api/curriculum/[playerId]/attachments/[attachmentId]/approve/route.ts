@@ -13,7 +13,7 @@ import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { sessionPlans, type SlotResult } from '@/db/schema/session-plans'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { convertToSlotResults, computeParsingStats } from '@/lib/worksheet-parsing'
 import { withAuth } from '@/lib/auth/withAuth'
 
@@ -29,7 +29,7 @@ export const POST = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canApprove = await canPerformAction(userId, playerId, 'start-session')
     if (!canApprove) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

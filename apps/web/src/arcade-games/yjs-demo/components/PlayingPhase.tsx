@@ -3,11 +3,11 @@
 import { useMemo } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useYjsDemo } from '../Provider'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 
 export function PlayingPhase() {
   const { state, yjsState, addCell, endGame } = useYjsDemo()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { gridSize } = state
 
   // Convert Yjs array to regular array for rendering

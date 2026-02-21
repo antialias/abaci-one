@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/flowchart-workshop/sessions/[id]
@@ -13,7 +13,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const session = await db.query.workshopSessions.findFirst({
       where: and(eq(schema.workshopSessions.id, id), eq(schema.workshopSessions.userId, userId)),
@@ -72,7 +72,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const PATCH = withAuth(async (request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Verify ownership
@@ -142,7 +142,7 @@ export const PATCH = withAuth(async (request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify ownership
     const existing = await db.query.workshopSessions.findFirst({

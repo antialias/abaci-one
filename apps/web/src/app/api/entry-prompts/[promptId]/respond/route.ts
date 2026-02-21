@@ -4,7 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
 import { enterClassroom, isParent } from '@/lib/classroom'
 import { emitEntryPromptAccepted, emitEntryPromptDeclined } from '@/lib/classroom/socket-emitter'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/entry-prompts/[promptId]/respond
@@ -15,7 +15,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { promptId } = (await params) as { promptId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Validate action

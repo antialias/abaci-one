@@ -2,7 +2,7 @@
 
 import { css } from '@styled/css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useGameMode, useViewerId } from '@/lib/arcade/game-sdk'
+import { useGameMode, useUserId } from '@/lib/arcade/game-sdk'
 import { getAssistanceLevel, getFilteredMapDataBySizesSync } from '../maps'
 import { CROP_UPDATE_EVENT, CROP_MODE_EVENT, type CropModeEventDetail } from '../customCrops'
 import { useKnowYourWorld } from '../Provider'
@@ -19,7 +19,7 @@ export function PlayingPhase() {
     memberPlayers,
     sharedContainerRef,
   } = useKnowYourWorld()
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { activePlayers, players } = useGameMode()
 
   // Find the local player ID (the player that belongs to this viewer)

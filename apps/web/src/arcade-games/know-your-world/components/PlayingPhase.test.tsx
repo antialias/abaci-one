@@ -86,7 +86,7 @@ vi.mock('./GameInfoPanel', () => ({
 }))
 
 vi.mock('@/lib/arcade/game-sdk', () => ({
-  useViewerId: () => ({ data: 'test-viewer-id' }),
+  useUserId: () => ({ data: 'test-viewer-id' }),
   useGameMode: () => ({
     activePlayers: new Set(['player-1']),
     players: new Map([['player-1', { id: 'player-1', name: 'Test Player', isLocal: true }]]),

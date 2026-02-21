@@ -2,7 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useClearRoomGame, useLeaveRoom, useRoomData } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 import { CreateRoomModal } from './CreateRoomModal'
 import { JoinRoomModal } from './JoinRoomModal'
@@ -60,7 +60,7 @@ export function RoomInfo({
   const [pendingReportsCount, setPendingReportsCount] = useState(0)
   const [pendingJoinRequestsCount, setPendingJoinRequestsCount] = useState(0)
   const { getRoomShareUrl, roomData } = useRoomData()
-  const { data: currentUserId } = useViewerId()
+  const { data: currentUserId } = useUserId()
   const { mutateAsync: leaveRoom } = useLeaveRoom()
   const { mutate: clearRoomGame } = useClearRoomGame()
 

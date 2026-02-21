@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { euclidProgress } from '@/db/schema/euclid-progress'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET - Fetch completed proposition IDs for a player
@@ -16,7 +16,7 @@ export const GET = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -46,7 +46,7 @@ export const POST = withAuth(async (request, { params }) => {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canAct = await canPerformAction(userId, playerId, 'start-session')
     if (!canAct) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -13,7 +13,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const flowchart = await db.query.teacherFlowcharts.findFirst({
       where: and(eq(schema.teacherFlowcharts.id, id), eq(schema.teacherFlowcharts.userId, userId)),
@@ -51,7 +51,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const PUT = withAuth(async (request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Find existing flowchart
@@ -137,7 +137,7 @@ export const PUT = withAuth(async (request, { params }) => {
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify ownership
     const existing = await db.query.teacherFlowcharts.findFirst({

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/abacus-settings
@@ -11,7 +11,7 @@ import { getDbUserId } from '@/lib/viewer'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Find or create abacus settings
     let settings = await db.query.abacusSettings.findFirst({
@@ -37,7 +37,7 @@ export const GET = withAuth(async () => {
  */
 export const PATCH = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Handle empty or invalid JSON body gracefully
     let body: Record<string, unknown>

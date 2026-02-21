@@ -1,5 +1,5 @@
 import { useRoomData } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import { ActivePlayersList } from './ActivePlayersList'
 import { AddPlayerButton } from './AddPlayerButton'
 import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
@@ -125,7 +125,7 @@ export function GameContextNav({
   customModeColor,
 }: GameContextNavProps) {
   // Get current user info for moderation
-  const { data: currentUserId } = useViewerId()
+  const { data: currentUserId } = useUserId()
   const { roomData, refetch: refetchRoomData } = useRoomData()
 
   // Check if current user is the host

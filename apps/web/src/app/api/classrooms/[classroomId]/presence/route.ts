@@ -5,7 +5,7 @@ import {
   getTeacherClassroom,
   isParent,
 } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
 
 /**
@@ -17,7 +17,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify user is the teacher of this classroom
     const classroom = await getTeacherClassroom(userId)
@@ -51,7 +51,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withAuth(async (req, { params }) => {
   try {
     const { classroomId } = (await params) as { classroomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await req.json()
 
     if (!body.playerId) {

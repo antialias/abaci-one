@@ -9,7 +9,7 @@ import { db } from '@/db'
 import { gameResults } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { metrics } from '@/lib/metrics'
 import { getCurrentTraceId, recordError } from '@/lib/tracing'
@@ -42,7 +42,7 @@ export const POST = withAuth(async (request) => {
     }
 
     // Authorization check - only the player's parent or teacher can save results
-    const dbUserId = await getDbUserId()
+    const dbUserId = await getUserId()
     const canSave = await canPerformAction(dbUserId, playerId, 'view')
     if (!canSave) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

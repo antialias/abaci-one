@@ -14,7 +14,7 @@ import { db } from '@/db'
 import { sessionPlans, visionProblemVideos } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { generateAuthorizationError, getPlayerAccess } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET - List available problem videos for a session
@@ -28,7 +28,7 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const access = await getPlayerAccess(userId, playerId)
     if (access.accessLevel === 'none') {
       const authError = generateAuthorizationError(access, 'view', {

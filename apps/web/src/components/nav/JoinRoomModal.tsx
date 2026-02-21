@@ -148,18 +148,17 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
 
     let socket: ReturnType<typeof createSocket> | null = null
 
-    // Fetch viewer ID and set up socket
+    // Fetch user ID and set up socket
     const setupSocket = async () => {
       try {
-        // Get current user's viewer ID
-        const res = await fetch('/api/viewer')
+        const res = await fetch('/api/identity')
         if (!res.ok) {
-          console.error('[JoinRoomModal] Failed to get viewer ID')
+          console.error('[JoinRoomModal] Failed to get user ID')
           return
         }
 
-        const { viewerId } = await res.json()
-        console.log('[JoinRoomModal] Got viewer ID:', viewerId)
+        const { userId } = await res.json()
+        console.log('[JoinRoomModal] Got user ID:', userId)
 
         // Connect socket
         socket = createSocket()
@@ -167,7 +166,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
         socket.on('connect', () => {
           console.log('[JoinRoomModal] Socket connected, joining user channel')
           // Join user-specific channel to receive moderation events
-          socket?.emit('join-user-channel', { userId: viewerId })
+          socket?.emit('join-user-channel', { userId })
         })
 
         socket.on('join-request-approved', async (data: { roomId: string; requestId: string }) => {

@@ -105,7 +105,7 @@ vi.mock('@/contexts/VisualDebugContext', () => ({
 }))
 
 vi.mock('@/lib/arcade/game-sdk', () => ({
-  useViewerId: () => ({ data: 'test-viewer-id' }),
+  useUserId: () => ({ data: 'test-viewer-id' }),
 }))
 
 vi.mock('../music', () => ({

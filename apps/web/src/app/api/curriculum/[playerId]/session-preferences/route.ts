@@ -15,7 +15,7 @@ import { playerSessionPreferences } from '@/db/schema/player-session-preferences
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 export const GET = withAuth(async (_request, { params }) => {
   try {
@@ -25,7 +25,7 @@ export const GET = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canView = await canPerformAction(userId, playerId, 'view')
     if (!canView) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -54,7 +54,7 @@ export const PUT = withAuth(async (request, { params }) => {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
     }
 
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canEdit = await canPerformAction(userId, playerId, 'start-session')
     if (!canEdit) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

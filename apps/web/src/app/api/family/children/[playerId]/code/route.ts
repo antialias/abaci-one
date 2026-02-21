@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getOrCreateFamilyCode, isParent, regenerateFamilyCode } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET /api/family/children/[playerId]/code
@@ -12,7 +12,7 @@ import { getDbUserId } from '@/lib/viewer'
 export const GET = withAuth(async (_request, { params }) => {
   try {
     const { playerId } = (await params) as { playerId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify user is a parent of this child
     const parentCheck = await isParent(userId, playerId)
@@ -42,7 +42,7 @@ export const GET = withAuth(async (_request, { params }) => {
 export const POST = withAuth(async (_request, { params }) => {
   try {
     const { playerId } = (await params) as { playerId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     // Verify user is a parent of this child
     const parentCheck = await isParent(userId, playerId)

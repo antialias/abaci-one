@@ -169,7 +169,7 @@ import {
   useArcadeSession,
   useRoomData,
   useGameMode,
-  useViewerId,
+  useUserId,
   useUpdateGameConfig,
 
   // Utilities
@@ -366,7 +366,7 @@ import {
   useArcadeSession,
   useGameMode,
   useRoomData,
-  useViewerId,
+  useUserId,
 } from '@/lib/arcade/game-sdk'
 import type { MyGameState } from './types'
 
@@ -388,7 +388,7 @@ export function useMyGame() {
 }
 
 export function MyGameProvider({ children }: { children: React.ReactNode }) {
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
 

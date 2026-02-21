@@ -4,7 +4,7 @@ import { db } from '@/db'
 import { players, sessionPlans } from '@/db/schema'
 import { canPerformAction } from '@/lib/classroom'
 import { validateSessionShare } from '@/lib/session-share'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { PublicObservationClient } from './PublicObservationClient'
 import { SessionEndedClient } from './SessionEndedClient'
@@ -43,7 +43,7 @@ export default async function PublicObservationPage({ params }: PublicObservatio
     // Session has ended or hasn't started - check if user can view the report
     let sessionReportUrl: string | undefined
     try {
-      const userId = await getDbUserId()
+      const userId = await getUserId()
       if (userId) {
         const canView = await canPerformAction(userId, share.playerId, 'view')
         if (canView) {
@@ -98,7 +98,7 @@ export default async function PublicObservationPage({ params }: PublicObservatio
   // Check if the current user can observe this player directly (without the share link)
   let authenticatedObserveUrl: string | undefined
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (userId) {
       const canObserve = await canPerformAction(userId, share.playerId, 'observe')
       if (canObserve) {

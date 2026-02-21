@@ -32,9 +32,9 @@ vi.mock('../PendingInvitations', () => ({
   PendingInvitations: () => null,
 }))
 
-// Mock useViewerId (used by GameContextNav)
-vi.mock('@/hooks/useViewerId', () => ({
-  useViewerId: () => ({ data: 'test-viewer-id' }),
+// Mock useUserId (used by GameContextNav)
+vi.mock('@/hooks/useUserId', () => ({
+  useUserId: () => ({ data: 'test-viewer-id' }),
 }))
 
 // Mock useRoomData (used by GameContextNav, RoomInfo, AddPlayerButton)

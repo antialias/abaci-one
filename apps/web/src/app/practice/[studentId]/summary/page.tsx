@@ -7,7 +7,7 @@ import {
   getRecentSessionResults,
   getRecentSessions,
 } from '@/lib/curriculum/server'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { SummaryClient } from './SummaryClient'
 
 // Disable caching for this page - session data should be fresh
@@ -54,7 +54,7 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   }
 
   // Check authorization - user must have view access to this player
-  const viewerId = await getDbUserId()
+  const viewerId = await getUserId()
   const hasAccess = await canPerformAction(viewerId, studentId, 'view')
   if (!hasAccess) {
     notFound() // Return 404 to avoid leaking existence of player

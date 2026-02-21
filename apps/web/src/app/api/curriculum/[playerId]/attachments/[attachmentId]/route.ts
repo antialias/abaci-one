@@ -19,7 +19,7 @@ import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * PATCH - Replace the cropped file with a new version
@@ -36,7 +36,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     // Authorization check - require 'start-session' permission (parent or present teacher)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canEdit = await canPerformAction(userId, playerId, 'start-session')
     if (!canEdit) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
@@ -156,7 +156,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
     }
 
     // Authorization check - require 'start-session' permission (parent or present teacher)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const canDelete = await canPerformAction(userId, playerId, 'start-session')
     if (!canDelete) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })

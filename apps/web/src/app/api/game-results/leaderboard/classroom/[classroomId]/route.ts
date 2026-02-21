@@ -9,7 +9,7 @@ import { db } from '@/db'
 import { gameResults, classroomEnrollments, players } from '@/db/schema'
 import { eq, desc, and, inArray, sql } from 'drizzle-orm'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET - Fetch classroom leaderboard
@@ -27,7 +27,7 @@ export const GET = withAuth(async (request, { params }) => {
     }
 
     // Authentication check (must be logged in)
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }

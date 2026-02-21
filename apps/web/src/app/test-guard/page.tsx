@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 
 export default function TestGuardPage() {
-  const { data: viewerId, isLoading } = useViewerId()
+  const { data: viewerId, isLoading } = useUserId()
   const [sessionCreated, setSessionCreated] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

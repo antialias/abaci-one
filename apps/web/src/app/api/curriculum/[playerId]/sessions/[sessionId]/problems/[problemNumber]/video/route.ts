@@ -17,7 +17,7 @@ import { db } from '@/db'
 import { sessionPlans, visionProblemVideos } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { VideoEncoder } from '@/lib/vision/recording/VideoEncoder'
 
 /**
@@ -99,7 +99,7 @@ export const GET = withAuth(async (request, { params }) => {
     const attemptNumber = parseInt(searchParams.get('attempt') ?? '1', 10)
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const access = await getPlayerAccess(userId, playerId)
     if (access.accessLevel === 'none') {
       const authError = generateAuthorizationError(access, 'view', {

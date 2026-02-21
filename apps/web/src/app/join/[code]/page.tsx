@@ -356,18 +356,17 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
 
     let socket: ReturnType<typeof createSocket> | null = null
 
-    // Fetch viewer ID and set up socket
+    // Fetch user ID and set up socket
     const setupSocket = async () => {
       try {
-        // Get current user's viewer ID
-        const res = await fetch('/api/viewer')
+        const res = await fetch('/api/identity')
         if (!res.ok) {
-          console.error('[Join Page] Failed to get viewer ID')
+          console.error('[Join Page] Failed to get user ID')
           return
         }
 
-        const { viewerId } = await res.json()
-        console.log('[Join Page] Got viewer ID:', viewerId)
+        const { userId } = await res.json()
+        console.log('[Join Page] Got user ID:', userId)
 
         // Connect socket
         socket = createSocket()
@@ -375,7 +374,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
         socket.on('connect', () => {
           console.log('[Join Page] Socket connected, joining user channel')
           // Join user-specific channel to receive moderation events
-          socket?.emit('join-user-channel', { userId: viewerId })
+          socket?.emit('join-user-channel', { userId })
         })
 
         socket.on('join-request-approved', (data: { roomId: string; requestId: string }) => {

@@ -16,7 +16,7 @@ import { db } from '@/db'
 import { sessionPlans, visionRecordings } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getPlayerAccess, generateAuthorizationError } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * GET - Stream recording video with Range support
@@ -30,7 +30,7 @@ export const GET = withAuth(async (request, { params }) => {
     }
 
     // Authorization check
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const access = await getPlayerAccess(userId, playerId)
     if (access.accessLevel === 'none') {
       const authError = generateAuthorizationError(access, 'view', {

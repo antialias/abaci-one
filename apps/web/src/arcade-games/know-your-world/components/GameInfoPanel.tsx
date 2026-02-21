@@ -8,7 +8,7 @@ import useMeasure from 'react-use-measure'
 import simplify from 'simplify-js'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import { useViewerId } from '@/lib/arcade/game-sdk'
+import { useUserId } from '@/lib/arcade/game-sdk'
 import { getNthNonSpaceLetter, normalizeToBaseLetter } from '../features/letter-confirmation'
 import {
   DEFAULT_DIFFICULTY_CONFIG,
@@ -114,7 +114,7 @@ export function GameInfoPanel({
   } = state
 
   // Get viewer ID for vote checking
-  const { data: viewerId } = useViewerId()
+  const { data: viewerId } = useUserId()
 
   // Touch device detection for virtual keyboard
   const isTouchDevice = useIsTouchDevice()

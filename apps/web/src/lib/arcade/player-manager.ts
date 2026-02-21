@@ -15,7 +15,7 @@ export {
 
 /**
  * Get all players for a user (regardless of isActive status)
- * @param userId - The database user.id (from getDbUserId())
+ * @param userId - The database user.id (from getUserId())
  */
 export async function getAllPlayers(userId: string): Promise<Player[]> {
   return await db.query.players.findMany({
@@ -27,7 +27,7 @@ export async function getAllPlayers(userId: string): Promise<Player[]> {
 /**
  * Get a user's active players (solo mode)
  * These are the players that will participate when the user joins a solo game
- * @param userId - The database user.id (from getDbUserId())
+ * @param userId - The database user.id (from getUserId())
  */
 export async function getActivePlayers(userId: string): Promise<Player[]> {
   return await db.query.players.findMany({

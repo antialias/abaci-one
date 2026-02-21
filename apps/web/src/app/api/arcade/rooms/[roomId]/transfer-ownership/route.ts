@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
 /**
@@ -15,7 +15,7 @@ import { getSocketIO } from '@/lib/socket-io'
 export const POST = withAuth(async (request, { params }) => {
   try {
     const { roomId } = (await params) as { roomId: string }
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     const body = await request.json()
 
     // Validate required fields

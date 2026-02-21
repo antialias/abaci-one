@@ -18,7 +18,7 @@ import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { startFlowchartRefinement } from '@/lib/tasks/flowchart-refine'
 import { cancelTask, getTaskState } from '@/lib/task-manager'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,7 +31,7 @@ export const POST = withAuth(async (request, { params }) => {
   // Authorization check
   let userId: string
   try {
-    userId = await getDbUserId()
+    userId = await getUserId()
   } catch {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
@@ -106,7 +106,7 @@ export const GET = withAuth(async (_request, { params }) => {
 
   let userId: string
   try {
-    userId = await getDbUserId()
+    userId = await getUserId()
   } catch {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
@@ -148,7 +148,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
 
   let userId: string
   try {
-    userId = await getDbUserId()
+    userId = await getUserId()
   } catch {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }

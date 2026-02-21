@@ -8,7 +8,7 @@
 import { eq, isNull, and } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import { generateApiKey } from '@/lib/mcp/auth'
 import { withAuth } from '@/lib/auth/withAuth'
 
@@ -18,7 +18,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  */
 export const GET = withAuth(async () => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
 
     const keys = await db.query.mcpApiKeys.findMany({
       where: eq(schema.mcpApiKeys.userId, userId),
@@ -48,7 +48,7 @@ export const GET = withAuth(async () => {
  */
 export const POST = withAuth(async (request) => {
   try {
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     console.log('[MCP-KEYS] Got userId:', userId)
 
     const body = await request.json()

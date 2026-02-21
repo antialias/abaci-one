@@ -16,7 +16,7 @@ import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 import {
   computeIntervention,
   computeSkillCategory,
@@ -77,10 +77,10 @@ export async function prefetchPracticeData(playerId: string) {
 /**
  * Get all players for the current viewer (server-side)
  *
- * Uses getDbUserId() to identify the current user and fetches their players.
+ * Uses getUserId() to identify the current user and fetches their players.
  */
 export async function getPlayersForViewer(): Promise<Player[]> {
-  const userId = await getDbUserId()
+  const userId = await getUserId()
 
   // Get all players for this user
   const players = await db.query.players.findMany({
@@ -210,7 +210,7 @@ async function batchGetActiveSessions(
  * - activeSession: Batch-fetched active session info
  */
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
-  const userId = await getDbUserId()
+  const userId = await getUserId()
 
   // Get player IDs linked via parent_child table
   const linkedPlayerIds = await db.query.parentChild.findMany({

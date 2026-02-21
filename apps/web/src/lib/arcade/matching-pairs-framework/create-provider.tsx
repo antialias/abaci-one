@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
-import { useViewerId } from '@/hooks/useViewerId'
+import { useUserId } from '@/hooks/useUserId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
   buildPlayerOwnershipFromRoomData,
@@ -267,7 +267,7 @@ export function createMatchingPairsProvider<
   }
 
   function Provider({ children }: { children: ReactNode }) {
-    const { data: viewerId } = useViewerId()
+    const { data: viewerId } = useUserId()
     const { roomData } = useRoomData()
     const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
     const { mutate: updateGameConfig } = useUpdateGameConfig()

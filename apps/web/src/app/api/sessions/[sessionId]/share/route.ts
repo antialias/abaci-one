@@ -9,7 +9,7 @@ import {
   type ShareDuration,
 } from '@/lib/session-share'
 import { getShareUrl } from '@/lib/share/urls'
-import { getDbUserId } from '@/lib/viewer'
+import { getUserId } from '@/lib/viewer'
 
 /**
  * POST /api/sessions/[sessionId]/share
@@ -23,7 +23,7 @@ export const POST = withAuth(async (request, { params }) => {
 
   try {
     // Get current user
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -73,7 +73,7 @@ export const GET = withAuth(async (_request, { params }) => {
 
   try {
     // Get current user
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -121,7 +121,7 @@ export const DELETE = withAuth(async (request, { params }) => {
 
   try {
     // Get current user
-    const userId = await getDbUserId()
+    const userId = await getUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
