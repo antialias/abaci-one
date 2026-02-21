@@ -4,6 +4,7 @@ import {
   Bug,
   Cable,
   Camera,
+  CreditCard,
   Eye,
   Gamepad2,
   GraduationCap,
@@ -71,6 +72,17 @@ const DEBUG_SECTIONS: DebugSection[] = [
         title: 'Practice Debug',
         description: 'Create debug sessions with presets (game break test, etc.)',
         icon: <GraduationCap size={20} />,
+      },
+    ],
+  },
+  {
+    title: 'Billing',
+    links: [
+      {
+        href: '/debug/billing',
+        title: 'Billing Debug',
+        description: 'View current tier, sync Stripe checkout sessions, reset subscriptions',
+        icon: <CreditCard size={20} />,
       },
     ],
   },

@@ -7,11 +7,8 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 # Optional - AI features (flowchart generation, etc.)
 # openai_api_key    = "sk-..."
 
-# Optional - Stripe billing
-# stripe_secret_key               = "sk_live_..."
-# stripe_family_monthly_price_id  = "price_..."
-# stripe_family_annual_price_id   = "price_..."
-# stripe_webhook_secret           = "whsec_..."
+# Optional - Stripe billing (product, prices, and webhook are auto-created by Terraform)
+# stripe_secret_key = "sk_live_..."
 
 # Optional overrides
 # app_domain        = "abaci.one"

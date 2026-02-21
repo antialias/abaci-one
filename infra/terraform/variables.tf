@@ -168,24 +168,10 @@ variable "stripe_secret_key" {
   default     = ""
 }
 
-variable "stripe_family_monthly_price_id" {
-  description = "Stripe Price ID for Family Plan monthly ($6/mo)"
-  type        = string
-  default     = ""
-}
 
-variable "stripe_family_annual_price_id" {
-  description = "Stripe Price ID for Family Plan annual ($50/yr)"
-  type        = string
-  default     = ""
-}
-
-variable "stripe_webhook_secret" {
-  description = "Stripe webhook signing secret"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
+# Note: stripe_family_monthly_price_id, stripe_family_annual_price_id, and
+# stripe_webhook_secret are managed by Terraform via stripe.tf resources.
+# Only stripe_secret_key needs to be provided manually.
 
 # ArgoCD Configuration
 variable "coverage_api_token" {

@@ -12,6 +12,10 @@ provider "google" {
   project = var.gcp_project
 }
 
+provider "stripe" {
+  api_key = var.stripe_secret_key
+}
+
 # Create namespace for abaci workloads
 resource "kubernetes_namespace" "abaci" {
   metadata {

@@ -29,6 +29,16 @@ output "ingress_info" {
   }
 }
 
+output "stripe_info" {
+  description = "Stripe resource IDs (empty when Stripe is disabled)"
+  value = local.stripe_enabled ? {
+    product_id       = stripe_product.family[0].id
+    monthly_price_id = stripe_price.family_monthly[0].id
+    annual_price_id  = stripe_price.family_annual[0].id
+    webhook_url      = stripe_webhook_endpoint.app[0].url
+  } : null
+}
+
 output "switchover_checklist" {
   description = "Steps to switch traffic from Docker to k8s"
   value       = <<-EOT

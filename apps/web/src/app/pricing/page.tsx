@@ -12,24 +12,38 @@ import { css } from '../../../styled-system/css'
 
 type BillingInterval = 'month' | 'year'
 
-const FEATURES: readonly Feature[] = [
-  { label: 'Students', free: '1', family: 'Unlimited' },
-  { label: 'Session duration', free: 'Up to 10 min', family: 'Up to 20 min' },
-  { label: 'Sessions per week', free: '5', family: 'Unlimited' },
-  { label: 'Worksheet parsing', free: '3/month', family: '30/month' },
-  { label: 'Cross-device sync', free: true, family: true, guestNote: 'requires account' },
-  { label: 'Session history', free: true, family: true, guestNote: 'browser-only for guests' },
-  { label: 'Adaptive practice', free: true, family: true },
-  { label: 'Progress dashboard', free: true, family: true },
-  { label: 'Games & toys', free: true, family: true },
-  { label: 'Observation links', free: true, family: true, guestNote: 'requires account' },
+/** Core practice features — the main product */
+const PRACTICE_FEATURES: readonly PricingFeature[] = [
+  { label: 'Adaptive abacus practice' },
+  { label: 'Skill mastery tracking' },
+  { label: 'Progress dashboard' },
+  { label: 'Session history', guestNote: 'browser-only for guests' },
+  { label: '1 student', isLimit: true },
+  { label: 'Up to 10 min sessions', isLimit: true },
+  { label: '5 sessions per week', isLimit: true },
 ]
 
-interface Feature {
+/** Supplementary features included in all plans */
+const EXTRA_FEATURES: readonly PricingFeature[] = [
+  { label: 'Worksheet parsing', value: '3/month' },
+  { label: 'Arcade games & toys' },
+  { label: 'Live observation links', guestNote: 'requires account' },
+]
+
+/** What the Family plan adds on top of Free */
+const FAMILY_UPGRADES: readonly PricingFeature[] = [
+  { label: 'Unlimited students' },
+  { label: 'Up to 20 min sessions' },
+  { label: 'Unlimited sessions per week' },
+  { label: '30 worksheet parses/month' },
+]
+
+interface PricingFeature {
   label: string
-  free: string | true
-  family: string | true
+  value?: string
   guestNote?: string
+  /** Render with dimmer styling to indicate a limit, not a feature */
+  isLimit?: boolean
 }
 
 async function createCheckout(interval: BillingInterval): Promise<string> {
@@ -255,7 +269,9 @@ export default function PricingPage() {
                 </div>
               )}
 
-              <FeatureList features={FEATURES} column="free" isDark={isDark} showGuestNotes />
+              <FeatureGroup features={PRACTICE_FEATURES} isDark={isDark} showGuestNotes />
+              <SectionDivider label="Also included" isDark={isDark} />
+              <FeatureGroup features={EXTRA_FEATURES} isDark={isDark} showGuestNotes />
             </div>
 
             {/* Family Plan */}
@@ -397,7 +413,17 @@ export default function PricingPage() {
                 </p>
               )}
 
-              <FeatureList features={FEATURES} column="family" isDark={isDark} />
+              <p
+                className={css({
+                  fontSize: '0.8125rem',
+                  fontWeight: '500',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                Everything in Free, plus:
+              </p>
+              <FeatureGroup features={FAMILY_UPGRADES} isDark={isDark} color="purple" />
             </div>
           </div>
 
@@ -425,80 +451,108 @@ export default function PricingPage() {
   )
 }
 
-function FeatureList({
+function FeatureGroup({
   features,
-  column,
   isDark,
   showGuestNotes = false,
+  color = 'green',
 }: {
-  features: readonly Feature[]
-  column: 'free' | 'family'
+  features: readonly PricingFeature[]
   isDark: boolean
   showGuestNotes?: boolean
+  color?: 'green' | 'purple'
 }) {
   return (
     <ul className={css({ listStyle: 'none', padding: 0, margin: 0 })}>
-      {features.map((f) => {
-        const value = f[column]
-        const guestNote = showGuestNotes ? f.guestNote : undefined
-
-        return (
-          <li
-            key={f.label}
+      {features.map((f) => (
+        <li
+          key={f.label}
+          className={css({
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: '0.5rem',
+            padding: '0.375rem 0',
+            fontSize: '0.875rem',
+            color: f.isLimit
+              ? isDark
+                ? 'gray.400'
+                : 'gray.500'
+              : isDark
+                ? 'gray.300'
+                : 'gray.700',
+          })}
+        >
+          <Check
+            size={16}
             className={css({
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: '0.5rem',
-              padding: '0.375rem 0',
-              fontSize: '0.875rem',
-              color: isDark ? 'gray.300' : 'gray.700',
+              color:
+                color === 'purple'
+                  ? isDark
+                    ? 'purple.400'
+                    : 'purple.500'
+                  : isDark
+                    ? 'green.400'
+                    : 'green.500',
+              flexShrink: 0,
+              position: 'relative',
+              top: '2px',
             })}
-          >
-            <Check
-              size={16}
-              className={css({
-                color:
-                  column === 'family'
+          />
+          <span>
+            {f.label}
+            {f.value && (
+              <span
+                className={css({
+                  marginLeft: '0.25rem',
+                  fontWeight: '500',
+                  color: f.isLimit
                     ? isDark
-                      ? 'purple.400'
-                      : 'purple.500'
+                      ? 'gray.400'
+                      : 'gray.500'
                     : isDark
-                      ? 'green.400'
-                      : 'green.500',
-                flexShrink: 0,
-                position: 'relative',
-                top: '2px',
-              })}
-            />
-            <span>
-              {f.label}
-              {typeof value === 'string' && (
-                <span
-                  className={css({
-                    marginLeft: '0.25rem',
-                    fontWeight: '500',
-                    color: isDark ? 'white' : 'gray.900',
-                  })}
-                >
-                  — {value}
-                </span>
-              )}
-              {guestNote && (
-                <span
-                  className={css({
-                    display: 'block',
-                    fontSize: '0.75rem',
-                    color: isDark ? 'gray.500' : 'gray.400',
-                    fontStyle: 'italic',
-                  })}
-                >
-                  {guestNote}
-                </span>
-              )}
-            </span>
-          </li>
-        )
-      })}
+                      ? 'white'
+                      : 'gray.900',
+                })}
+              >
+                — {f.value}
+              </span>
+            )}
+            {showGuestNotes && f.guestNote && (
+              <span
+                className={css({
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  fontStyle: 'italic',
+                })}
+              >
+                {f.guestNote}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
     </ul>
+  )
+}
+
+function SectionDivider({ label, isDark }: { label: string; isDark: boolean }) {
+  return (
+    <div
+      className={css({
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        color: isDark ? 'gray.500' : 'gray.400',
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+        marginTop: '0.75rem',
+        marginBottom: '0.25rem',
+        paddingTop: '0.5rem',
+        borderTop: '1px solid',
+        borderColor: isDark ? 'gray.700' : 'gray.100',
+      })}
+    >
+      {label}
+    </div>
   )
 }
