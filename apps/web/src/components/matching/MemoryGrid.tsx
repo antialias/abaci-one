@@ -9,8 +9,37 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+
 import { css } from '../../../styled-system/css'
 import { HoverAvatar } from './HoverAvatar'
+
+/** Pixel dimensions for a single card, computed from available container space */
+type CardSize = { w: number; h: number }
+
+/**
+ * Compute optimal card pixel size given available container space and grid dimensions.
+ * Respects 3:4 aspect ratio, gap spacing, and min/max constraints.
+ */
+export function computeCardSize(
+  availW: number,
+  availH: number,
+  cols: number,
+  rows: number,
+  gap: number = 6
+): CardSize {
+  const hGaps = (cols - 1) * gap + 16 // 8px padding each side on grid
+  const vGaps = (rows - 1) * gap
+
+  const maxFromWidth = (availW - hGaps) / cols
+  // aspect ratio 3:4 → card height = cardW * 4/3, so cardW = availH_per_row * 3/4
+  const maxFromHeight = ((availH - vGaps) / rows) * (3 / 4)
+
+  let cardW = Math.min(maxFromWidth, maxFromHeight)
+  cardW = Math.max(cardW, 60) // floor: still usable
+  cardW = Math.min(cardW, 200) // ceiling: existing maxWidth
+
+  return { w: cardW, h: cardW * (4 / 3) }
+}
 
 // Grid calculation utilities
 function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
@@ -238,17 +267,15 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
     rows: number
   } | null>(null)
   const [rotationCount, setRotationCount] = useState(0)
-  const isOrientationChangeRef = useRef(false)
   const prevAngleRef = useRef<number | null>(null)
 
   // FLIP animation
   const { capturePositions } = useFlipAnimation(cardRefs, rotationCount)
 
-  // --- Scale-to-fit state ---
-  const [scaleFactor, setScaleFactor] = useState(1)
+  // --- Container-aware card sizing ---
+  const [cardSize, setCardSize] = useState<CardSize | null>(null)
   const gridContainerRef = useRef<HTMLDivElement>(null)
   const outerContainerRef = useRef<HTMLDivElement>(null)
-  const naturalSizeRef = useRef<{ w: number; h: number } | null>(null)
 
   // Check if it's the local player's turn (for multiplayer mode)
   const isMyTurn = useMemo(() => {
@@ -293,15 +320,6 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
       prevAngleRef.current = newAngle
 
       const delta = normalizeAngleDelta(prevAngle, newAngle)
-
-      // Suppress scale-to-fit during orientation animation
-      isOrientationChangeRef.current = true
-      // Reset natural size so it recaptures after rotation renders
-      naturalSizeRef.current = null
-      setScaleFactor(1)
-      setTimeout(() => {
-        isOrientationChangeRef.current = false
-      }, 500)
 
       // Capture current card positions for FLIP
       capturePositions()
@@ -358,56 +376,22 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
     if (!locked) {
       setOrientationState(null)
       setRotationCount(0)
-      setScaleFactor(1)
     }
   }, [locked])
 
-  // Capture the grid's natural size when it first renders locked
-  useLayoutEffect(() => {
-    if (!locked) {
-      naturalSizeRef.current = null
-      return
-    }
-    const grid = gridContainerRef.current
-    if (!grid || naturalSizeRef.current) return
-    naturalSizeRef.current = { w: grid.scrollWidth, h: grid.scrollHeight }
-  }, [locked, effectiveCols, effectiveRows])
-
-  // --- Scale-to-fit on window resize (not orientation change) ---
+  // --- Compute card pixel size from available container space ---
   useEffect(() => {
-    if (!locked) {
-      setScaleFactor(1)
-      return
-    }
-
     const outer = outerContainerRef.current
     if (!outer) return
 
-    let debounceTimer: ReturnType<typeof setTimeout>
-
-    const computeScale = () => {
-      if (isOrientationChangeRef.current) return
-      const natural = naturalSizeRef.current
-      if (!natural) return
-
-      const availW = outer.clientWidth
-      const availH = outer.clientHeight
-
-      const factor = Math.min(availW / natural.w, availH / natural.h, 1.0)
-      setScaleFactor(factor)
+    const onResize = () => {
+      setCardSize(computeCardSize(outer.clientWidth, outer.clientHeight, effectiveCols, effectiveRows))
     }
 
-    const observer = new ResizeObserver(() => {
-      clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(computeScale, 50)
-    })
-
+    const observer = new ResizeObserver(onResize)
     observer.observe(outer)
-    return () => {
-      clearTimeout(debounceTimer)
-      observer.disconnect()
-    }
-  }, [locked])
+    return () => observer.disconnect()
+  }, [effectiveCols, effectiveRows])
 
   if (!state.gameCards.length) {
     return null
@@ -473,10 +457,12 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
           maxWidth: '100%',
           margin: '0 auto',
           padding: '0 8px',
-          gridTemplateColumns: `repeat(${effectiveCols}, 1fr)`,
-          gridTemplateRows: `repeat(${effectiveRows}, 1fr)`,
-          transform: scaleFactor < 1 ? `scale(${scaleFactor})` : undefined,
-          transformOrigin: 'top center',
+          gridTemplateColumns: cardSize
+            ? `repeat(${effectiveCols}, ${cardSize.w}px)`
+            : `repeat(${effectiveCols}, 1fr)`,
+          gridTemplateRows: cardSize
+            ? `repeat(${effectiveRows}, ${cardSize.h}px)`
+            : `repeat(${effectiveRows}, 1fr)`,
         }}
       >
         {displayOrder.map((cardId, idx) => {
@@ -514,10 +500,8 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
               data-card-matched={isMatched ? 'true' : 'false'}
               data-card-flipped={isFlipped ? 'true' : 'false'}
               className={css({
-                aspectRatio: '3/4',
                 width: '100%',
-                minWidth: '100px',
-                maxWidth: '200px',
+                height: '100%',
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none',
