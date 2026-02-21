@@ -1,6 +1,7 @@
 import { eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getLinkedParentIds } from '@/lib/classroom/family-manager'
+import { getParentedPlayerIds } from '@/lib/classroom/access-control'
 import type { TierName, TierLimits } from './tier-limits'
 import { TIER_LIMITS } from './tier-limits'
 
@@ -124,4 +125,51 @@ export async function getEffectiveTierForStudent(
   }
 
   return { tier: bestTier, providedBy: null }
+}
+
+// ---------------------------------------------------------------------------
+// Family coverage: how many of a user's children are covered by another
+// parent's family plan?
+// ---------------------------------------------------------------------------
+
+export interface FamilyCoverage {
+  isCovered: boolean
+  coveredBy: { userId: string; name: string } | null
+  coveredChildCount: number
+  totalChildCount: number
+}
+
+/**
+ * For a given (typically free-tier) user, check whether any of their children
+ * are covered by another parent's family subscription.
+ *
+ * This is used on pricing/settings pages to avoid confusing free-tier parents
+ * who already have coverage through a co-parent.
+ */
+export async function getUserFamilyCoverage(userId: string): Promise<FamilyCoverage> {
+  const playerIds = await getParentedPlayerIds(userId)
+
+  if (playerIds.length === 0) {
+    return { isCovered: false, coveredBy: null, coveredChildCount: 0, totalChildCount: 0 }
+  }
+
+  let coveredCount = 0
+  let firstProvider: { userId: string; name: string } | null = null
+
+  for (const pid of playerIds) {
+    const result = await getEffectiveTierForStudent(pid, userId)
+    if (result.tier === 'family' && result.providedBy !== null) {
+      coveredCount++
+      if (!firstProvider) {
+        firstProvider = result.providedBy
+      }
+    }
+  }
+
+  return {
+    isCovered: coveredCount > 0,
+    coveredBy: firstProvider,
+    coveredChildCount: coveredCount,
+    totalChildCount: playerIds.length,
+  }
 }

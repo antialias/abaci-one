@@ -124,6 +124,7 @@ export const billingKeys = {
   tier: () => [...billingKeys.all, 'tier'] as const,
   prices: () => [...billingKeys.all, 'prices'] as const,
   effectiveTier: (playerId: string) => [...billingKeys.all, 'effective-tier', playerId] as const,
+  coverage: () => [...billingKeys.all, 'coverage'] as const,
 }
 
 // Debug / seed students query keys

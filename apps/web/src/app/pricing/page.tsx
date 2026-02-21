@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useTier } from '@/hooks/useTier'
+import { useFamilyCoverage, useTier } from '@/hooks/useTier'
 import { api } from '@/lib/queryClient'
 import { billingKeys } from '@/lib/queryKeys'
 import { css } from '../../../styled-system/css'
@@ -83,6 +83,7 @@ export default function PricingPage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { tier } = useTier()
+  const { isCovered, coveredBy } = useFamilyCoverage()
   const [interval, setInterval] = useState<BillingInterval>('month')
 
   const { data: pricing = DEFAULT_PRICING } = useQuery({
@@ -139,6 +140,27 @@ export default function PricingPage() {
               upgrade when your family grows.
             </p>
           </div>
+
+          {/* Coverage banner — shown when a co-parent provides family coverage */}
+          {isCovered && tier !== 'family' && coveredBy && (
+            <div
+              data-element="coverage-banner"
+              className={css({
+                backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                border: '1px solid',
+                borderColor: isDark ? 'blue.700' : 'blue.200',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                marginBottom: '1.5rem',
+                fontSize: '0.875rem',
+                color: isDark ? 'blue.300' : 'blue.800',
+                textAlign: 'center',
+              })}
+            >
+              Your children are covered by {coveredBy.name}&apos;s Family Plan. You don&apos;t need
+              to subscribe.
+            </div>
+          )}
 
           {/* Billing toggle */}
           <div
@@ -398,6 +420,56 @@ export default function PricingPage() {
                 >
                   Manage Subscription
                 </Link>
+              ) : isCovered && coveredBy ? (
+                <div className={css({ marginBottom: '1.5rem' })}>
+                  <div
+                    data-element="already-covered"
+                    className={css({
+                      textAlign: 'center',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      backgroundColor: isDark ? 'gray.700/50' : 'gray.100',
+                    })}
+                  >
+                    Already Covered
+                    <span
+                      className={css({
+                        display: 'block',
+                        fontSize: '0.75rem',
+                        fontWeight: '400',
+                        marginTop: '0.125rem',
+                      })}
+                    >
+                      Via {coveredBy.name}&apos;s subscription
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => checkout.mutate(interval)}
+                    disabled={checkout.isPending}
+                    data-action="subscribe-anyway"
+                    className={css({
+                      display: 'block',
+                      width: '100%',
+                      marginTop: '0.5rem',
+                      padding: '0.375rem',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.500' : 'gray.400',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      _hover: {
+                        color: isDark ? 'gray.400' : 'gray.500',
+                      },
+                    })}
+                  >
+                    {checkout.isPending ? 'Redirecting...' : 'Subscribe anyway'}
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"

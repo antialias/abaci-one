@@ -19,7 +19,7 @@ import { LanguageSelector } from '@/components/LanguageSelector'
 import { PageWithNav } from '@/components/PageWithNav'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAudioManager } from '@/hooks/useAudioManager'
-import { useTier } from '@/hooks/useTier'
+import { useFamilyCoverage, useTier } from '@/hooks/useTier'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { billingKeys } from '@/lib/queryKeys'
@@ -395,6 +395,7 @@ function AbacusTab({ isDark }: { isDark: boolean }) {
 
 function BillingTab({ isDark }: { isDark: boolean }) {
   const { tier, limits } = useTier()
+  const { isCovered, coveredBy, coveredChildCount, totalChildCount } = useFamilyCoverage()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const billingResult = searchParams.get('billing')
@@ -476,36 +477,71 @@ function BillingTab({ isDark }: { isDark: boolean }) {
               : '1 student, 10-min sessions, 5 sessions per week'
           }
           isDark={isDark}
-          noBorder={!isFamily}
+          noBorder={!isFamily && !isCovered}
         >
-          <span
-            className={css({
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '9999px',
-              fontSize: '0.8125rem',
-              fontWeight: '600',
-              backgroundColor: isFamily
-                ? isDark
-                  ? 'purple.900/50'
-                  : 'purple.50'
-                : isDark
-                  ? 'gray.700'
-                  : 'gray.100',
-              color: isFamily
-                ? isDark
-                  ? 'purple.300'
-                  : 'purple.700'
-                : isDark
-                  ? 'gray.300'
-                  : 'gray.600',
-            })}
-          >
-            {tierLabel}
-          </span>
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+            <span
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.8125rem',
+                fontWeight: '600',
+                backgroundColor: isFamily
+                  ? isDark
+                    ? 'purple.900/50'
+                    : 'purple.50'
+                  : isDark
+                    ? 'gray.700'
+                    : 'gray.100',
+                color: isFamily
+                  ? isDark
+                    ? 'purple.300'
+                    : 'purple.700'
+                  : isDark
+                    ? 'gray.300'
+                    : 'gray.600',
+              })}
+            >
+              {tierLabel}
+            </span>
+            {isCovered && tier !== 'family' && (
+              <span
+                data-element="covered-badge"
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.8125rem',
+                  fontWeight: '600',
+                  backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                  color: isDark ? 'blue.300' : 'blue.700',
+                })}
+              >
+                Covered
+              </span>
+            )}
+          </div>
         </SettingRow>
+
+        {isCovered && tier !== 'family' && coveredBy && (
+          <SettingRow
+            label="Family Coverage"
+            description={`${coveredChildCount} of ${totalChildCount} student${totalChildCount !== 1 ? 's' : ''} covered by ${coveredBy.name}'s Family Plan`}
+            isDark={isDark}
+            noBorder={!isFamily}
+          >
+            <span
+              className={css({
+                fontSize: '0.8125rem',
+                color: isDark ? 'blue.300' : 'blue.700',
+              })}
+            />
+          </SettingRow>
+        )}
 
         {isFamily ? (
           <SettingRow
@@ -540,6 +576,35 @@ function BillingTab({ isDark }: { isDark: boolean }) {
             >
               {portalMutation.isPending ? 'Opening...' : 'Manage in Stripe'}
             </button>
+          </SettingRow>
+        ) : isCovered && coveredBy ? (
+          <SettingRow
+            label="Upgrade"
+            description={`Your students already have Family-tier access via ${coveredBy.name}`}
+            isDark={isDark}
+            noBorder
+          >
+            <Link
+              href="/pricing"
+              data-action="view-pricing"
+              className={css({
+                display: 'inline-block',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                backgroundColor: 'transparent',
+                border: '1px solid',
+                borderColor: isDark ? 'gray.600' : 'gray.300',
+                color: isDark ? 'gray.400' : 'gray.500',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                textDecoration: 'none',
+                _hover: {
+                  backgroundColor: isDark ? 'gray.700' : 'gray.50',
+                },
+              })}
+            >
+              View Plans
+            </Link>
           </SettingRow>
         ) : (
           <SettingRow

@@ -61,6 +61,59 @@ export function useTier() {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Family coverage hook
+// ---------------------------------------------------------------------------
+
+export interface FamilyCoverageResponse {
+  isCovered: boolean
+  coveredBy: { userId: string; name: string } | null
+  coveredChildCount: number
+  totalChildCount: number
+}
+
+async function fetchFamilyCoverage(): Promise<FamilyCoverageResponse> {
+  const res = await fetch('/api/billing/coverage')
+  if (!res.ok) throw new Error('Failed to fetch family coverage')
+  return res.json()
+}
+
+const DEFAULT_COVERAGE: FamilyCoverageResponse = {
+  isCovered: false,
+  coveredBy: null,
+  coveredChildCount: 0,
+  totalChildCount: 0,
+}
+
+/**
+ * Hook to check whether any of the current user's children are covered
+ * by another parent's family subscription.
+ *
+ * Used on pricing/settings pages to surface inherited coverage.
+ */
+export function useFamilyCoverage() {
+  const { data, isLoading } = useQuery({
+    queryKey: billingKeys.coverage(),
+    queryFn: fetchFamilyCoverage,
+    staleTime: 60_000,
+  })
+
+  return useMemo(
+    () => ({
+      isCovered: data?.isCovered ?? DEFAULT_COVERAGE.isCovered,
+      coveredBy: data?.coveredBy ?? DEFAULT_COVERAGE.coveredBy,
+      coveredChildCount: data?.coveredChildCount ?? DEFAULT_COVERAGE.coveredChildCount,
+      totalChildCount: data?.totalChildCount ?? DEFAULT_COVERAGE.totalChildCount,
+      isLoading,
+    }),
+    [data?.isCovered, data?.coveredBy, data?.coveredChildCount, data?.totalChildCount, isLoading]
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Effective tier hook (per-student)
+// ---------------------------------------------------------------------------
+
 const DEFAULT_EFFECTIVE: EffectiveTierResponse = {
   ...DEFAULT_TIER,
   providedBy: null,
