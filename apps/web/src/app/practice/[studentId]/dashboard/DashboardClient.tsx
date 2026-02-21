@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
@@ -64,7 +64,7 @@ import {
 } from '@/lib/curriculum/skill-readiness'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
-import { curriculumKeys } from '@/lib/queryKeys'
+import { curriculumKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 import { css } from '../../../../../styled-system/css'
 import { ScoreboardTab } from './ScoreboardTab'
@@ -2411,12 +2411,11 @@ function HistoryTab({
   onOpenActiveSession?: () => void
 }) {
   const [showOfflineModal, setShowOfflineModal] = useState(false)
-  const router = useRouter()
+  const queryClient = useQueryClient()
 
   const handleOfflineComplete = useCallback(() => {
-    // Refresh the page to show the new session in the list
-    router.refresh()
-  }, [router])
+    queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(studentId) })
+  }, [queryClient, studentId])
 
   return (
     <div data-tab-content="history">
