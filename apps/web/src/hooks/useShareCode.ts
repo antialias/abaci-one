@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import { type ShareType, getShareUrl } from '@/lib/share/urls'
 
@@ -29,6 +29,14 @@ export interface UseShareCodeReturn {
   copyLink: () => void
   /** Whether the link was recently copied */
   linkCopied: boolean
+
+  // Native share
+  /** Whether the Web Share API is available */
+  canShare: boolean
+  /** Open the native share sheet */
+  share: () => Promise<void>
+  /** Whether a share was recently completed */
+  shared: boolean
 
   // Regeneration
   /** Regenerate the code (if supported) */
@@ -71,6 +79,28 @@ export function useShareCode({
   const { copied: linkCopied, copy: copyLinkToClipboard, reset: resetLinkCopied } = useClipboard()
 
   const [isRegenerating, setIsRegenerating] = useState(false)
+  const [shared, setShared] = useState(false)
+  const shareTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share
+
+  const share = useCallback(async () => {
+    if (!canShare) return
+    try {
+      await navigator.share({
+        title: 'Join on Abaci',
+        text: `Use code ${code} to join`,
+        url: shareUrl,
+      })
+      setShared(true)
+      clearTimeout(shareTimeoutRef.current)
+      shareTimeoutRef.current = setTimeout(() => setShared(false), 1500)
+    } catch (error) {
+      // User cancelled the share sheet — silently ignore
+      if (error instanceof Error && error.name === 'AbortError') return
+      console.error('[useShareCode] Share failed:', error)
+    }
+  }, [canShare, code, shareUrl])
 
   const copyCode = useCallback(() => {
     // Reset link copied state when copying code
@@ -102,6 +132,9 @@ export function useShareCode({
     codeCopied,
     copyLink,
     linkCopied,
+    canShare,
+    share,
+    shared,
     regenerate,
     isRegenerating,
   }

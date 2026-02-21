@@ -31,6 +31,9 @@ export interface ShareCodePanelProps {
   /** Show regenerate button (default: true if regenerate is available) */
   showRegenerate?: boolean
 
+  /** Show native share button when available (default: true) */
+  showShare?: boolean
+
   /** Additional CSS class name */
   className?: string
 }
@@ -68,6 +71,7 @@ export function ShareCodePanel({
   showQR = true,
   showLink = true,
   showRegenerate = true,
+  showShare = true,
   className,
 }: ShareCodePanelProps) {
   const { resolvedTheme } = useTheme()
@@ -79,6 +83,7 @@ export function ShareCodePanel({
         shareCode={shareCode}
         showQR={showQR}
         showLink={showLink}
+        showShare={showShare}
         isDark={isDark}
         className={className}
       />
@@ -93,6 +98,7 @@ export function ShareCodePanel({
       showQR={showQR}
       showLink={showLink}
       showRegenerate={showRegenerate}
+      showShare={showShare}
       isDark={isDark}
       className={className}
     />
@@ -110,13 +116,26 @@ function FullSharePanel({
   showQR,
   showLink,
   showRegenerate,
+  showShare,
   isDark,
   className,
 }: FullSharePanelProps) {
-  const { code, shareUrl, copyCode, codeCopied, copyLink, linkCopied, regenerate, isRegenerating } =
-    shareCode
+  const {
+    code,
+    shareUrl,
+    copyCode,
+    codeCopied,
+    copyLink,
+    linkCopied,
+    canShare,
+    share,
+    shared,
+    regenerate,
+    isRegenerating,
+  } = shareCode
 
   const canRegenerate = showRegenerate && regenerate
+  const showShareButton = showShare && canShare
 
   return (
     <div
@@ -309,6 +328,65 @@ function FullSharePanel({
         </button>
       )}
 
+      {/* Native share button */}
+      {showShareButton && (
+        <button
+          type="button"
+          onClick={share}
+          data-action="native-share"
+          data-status={shared ? 'shared' : 'idle'}
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px 16px',
+            bg: shared
+              ? isDark
+                ? 'green.900/60'
+                : 'green.50'
+              : isDark
+                ? 'teal.900/60'
+                : 'teal.50',
+            border: '1px solid',
+            borderColor: shared
+              ? isDark
+                ? 'green.700'
+                : 'green.300'
+              : isDark
+                ? 'teal.700'
+                : 'teal.300',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            _hover: {
+              bg: shared
+                ? isDark
+                  ? 'green.800/60'
+                  : 'green.100'
+                : isDark
+                  ? 'teal.800/60'
+                  : 'teal.100',
+            },
+          })}
+        >
+          <span
+            className={css({
+              fontSize: '14px',
+              color: shared
+                ? isDark
+                  ? 'green.300'
+                  : 'green.700'
+                : isDark
+                  ? 'teal.300'
+                  : 'teal.700',
+            })}
+          >
+            {shared ? '✓ Shared!' : '↗ Share...'}
+          </span>
+        </button>
+      )}
+
       {/* Regenerate button */}
       {canRegenerate && (
         <button
@@ -352,6 +430,7 @@ interface CompactShareChipProps {
   shareCode: UseShareCodeReturn
   showQR?: boolean
   showLink?: boolean
+  showShare?: boolean
   isDark: boolean
   className?: string
 }
@@ -360,11 +439,14 @@ function CompactShareChip({
   shareCode,
   showQR = true,
   showLink = true,
+  showShare = true,
   isDark,
   className,
 }: CompactShareChipProps) {
   const [open, setOpen] = useState(false)
-  const { code, shareUrl, copyCode, codeCopied, copyLink, linkCopied } = shareCode
+  const { code, shareUrl, copyCode, codeCopied, copyLink, linkCopied, canShare, share, shared } =
+    shareCode
+  const showShareButton = showShare && canShare
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -519,6 +601,7 @@ function CompactShareChip({
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
+                marginBottom: showShareButton ? '8px' : '0',
               })}
             >
               <span
@@ -537,6 +620,57 @@ function CompactShareChip({
                 })}
               >
                 {linkCopied ? '✓ Link copied!' : `🔗 ${shareUrl}`}
+              </span>
+            </button>
+          )}
+
+          {/* Native share button */}
+          {showShareButton && (
+            <button
+              type="button"
+              onClick={share}
+              data-action="native-share"
+              data-status={shared ? 'shared' : 'idle'}
+              className={css({
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                bg: shared
+                  ? isDark
+                    ? 'green.900/60'
+                    : 'green.50'
+                  : isDark
+                    ? 'teal.900/60'
+                    : 'teal.50',
+                border: '1px solid',
+                borderColor: shared
+                  ? isDark
+                    ? 'green.700'
+                    : 'green.300'
+                  : isDark
+                    ? 'teal.700'
+                    : 'teal.300',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: '12px',
+                  color: shared
+                    ? isDark
+                      ? 'green.300'
+                      : 'green.700'
+                    : isDark
+                      ? 'teal.300'
+                      : 'teal.700',
+                })}
+              >
+                {shared ? '✓ Shared!' : '↗ Share...'}
               </span>
             </button>
           )}
