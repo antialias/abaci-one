@@ -52,6 +52,17 @@ vi.mock('@/hooks/useTier', () => ({
     },
     isLoading: false,
   }),
+  useEffectiveTier: () => ({
+    tier: 'pro',
+    limits: {
+      maxPracticeStudents: null,
+      maxSessionMinutes: 20,
+      maxSessionsPerWeek: null,
+      maxOfflineParsingPerMonth: 100,
+    },
+    providedBy: null,
+    isLoading: false,
+  }),
 }))
 
 vi.mock('@/hooks/useSessionPlan', () => ({
