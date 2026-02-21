@@ -112,10 +112,17 @@ export const euclidKeys = {
   progress: (playerId: string) => [...euclidKeys.all, 'progress', playerId] as const,
 }
 
+// Admin pricing query keys (Stripe price management)
+export const pricingKeys = {
+  all: ['admin-pricing'] as const,
+  config: () => [...pricingKeys.all, 'config'] as const,
+}
+
 // Billing/tier query keys (subscription tier + limits)
 export const billingKeys = {
   all: ['billing'] as const,
   tier: () => [...billingKeys.all, 'tier'] as const,
+  prices: () => [...billingKeys.all, 'prices'] as const,
 }
 
 // Debug / seed students query keys

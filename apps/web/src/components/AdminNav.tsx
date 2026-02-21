@@ -72,6 +72,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Feature flags',
   },
   {
+    href: '/admin/pricing',
+    label: 'Pricing',
+    description: 'Stripe prices',
+  },
+  {
     href: '/vision-training',
     label: 'Vision',
     description: 'ML training',

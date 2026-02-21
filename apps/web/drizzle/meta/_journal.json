@@ -743,6 +743,13 @@
       "when": 1772600000000,
       "tag": "0105_backfill_upgraded_at",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "6",
+      "when": 1772700000000,
+      "tag": "0106_strong_titania",
+      "breakpoints": true
     }
   ]
 }

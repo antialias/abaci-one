@@ -1,4 +1,7 @@
 import Stripe from 'stripe'
+import { eq } from 'drizzle-orm'
+import { db } from '@/db'
+import { appSettings, type PricingConfig } from '@/db/schema/app-settings'
 
 let _stripe: Stripe | null = null
 
@@ -25,3 +28,36 @@ export const FAMILY_ANNUAL_PRICE_ID = process.env.STRIPE_FAMILY_ANNUAL_PRICE_ID 
 
 /** Webhook signing secret. */
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? ''
+
+/**
+ * Get active price IDs and amounts, checking DB first then falling back to env vars.
+ *
+ * Returns the pricing config from app_settings if set, otherwise constructs
+ * one from environment variables (amounts default to pricing.json values).
+ */
+export async function getActivePricing(): Promise<PricingConfig> {
+  try {
+    const [settings] = await db
+      .select({ pricing: appSettings.pricing })
+      .from(appSettings)
+      .where(eq(appSettings.id, 'default'))
+      .limit(1)
+
+    if (settings?.pricing) {
+      const parsed = JSON.parse(settings.pricing) as PricingConfig
+      if (parsed.family?.monthly?.priceId && parsed.family?.annual?.priceId) {
+        return parsed
+      }
+    }
+  } catch {
+    console.error('[stripe] Failed to read pricing from DB, falling back to env vars')
+  }
+
+  // Fall back to env vars
+  return {
+    family: {
+      monthly: { amount: 600, priceId: FAMILY_MONTHLY_PRICE_ID },
+      annual: { amount: 3768, priceId: FAMILY_ANNUAL_PRICE_ID },
+    },
+  }
+}

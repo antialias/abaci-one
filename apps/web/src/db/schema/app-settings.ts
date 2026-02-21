@@ -53,6 +53,17 @@ export const appSettings = sqliteTable('app_settings', {
    * floor/ceiling ranges.
    */
   termCountScaling: text('term_count_scaling'),
+
+  /**
+   * Pricing configuration (JSON-encoded).
+   *
+   * Stores active Stripe price IDs and amounts for each billing interval.
+   * When null, falls back to STRIPE_FAMILY_MONTHLY_PRICE_ID / STRIPE_FAMILY_ANNUAL_PRICE_ID env vars.
+   * When set, contains a PricingConfig JSON object with family plan pricing.
+   *
+   * Shape: { family: { monthly: { amount, priceId }, annual: { amount, priceId } } }
+   */
+  pricing: text('pricing'),
 })
 
 export type AppSettings = typeof appSettings.$inferSelect
@@ -67,4 +78,15 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   audioVoice: 'nova',
   voiceChain: JSON.stringify([{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }]),
   termCountScaling: null,
+  pricing: null,
+}
+
+/**
+ * Shape of the pricing JSON stored in app_settings.pricing
+ */
+export interface PricingConfig {
+  family: {
+    monthly: { amount: number; priceId: string }
+    annual: { amount: number; priceId: string }
+  }
 }

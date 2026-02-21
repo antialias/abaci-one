@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -8,7 +8,7 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useTier } from '@/hooks/useTier'
 import { api } from '@/lib/queryClient'
-import pricing from '../../../../../pricing.json'
+import { billingKeys } from '@/lib/queryKeys'
 import { css } from '../../../styled-system/css'
 
 type BillingInterval = 'month' | 'year'
@@ -47,6 +47,27 @@ interface PricingFeature {
   isLimit?: boolean
 }
 
+interface DisplayPricing {
+  family: {
+    monthly: { amount: number; display: number }
+    annual: { amount: number; display: number; monthlyEquivalent: number }
+  }
+}
+
+/** Default display prices (fallback while loading) */
+const DEFAULT_PRICING: DisplayPricing = {
+  family: {
+    monthly: { amount: 600, display: 6 },
+    annual: { amount: 3768, display: 37.68, monthlyEquivalent: 3.14 },
+  },
+}
+
+async function fetchDisplayPricing(): Promise<DisplayPricing> {
+  const res = await api('billing/prices')
+  if (!res.ok) return DEFAULT_PRICING
+  return res.json()
+}
+
 async function createCheckout(interval: BillingInterval): Promise<string> {
   const res = await api('billing/checkout', {
     method: 'POST',
@@ -63,6 +84,12 @@ export default function PricingPage() {
   const isDark = resolvedTheme === 'dark'
   const { tier } = useTier()
   const [interval, setInterval] = useState<BillingInterval>('month')
+
+  const { data: pricing = DEFAULT_PRICING } = useQuery({
+    queryKey: billingKeys.prices(),
+    queryFn: fetchDisplayPricing,
+    staleTime: 5 * 60 * 1000,
+  })
 
   const checkout = useMutation({
     mutationFn: createCheckout,

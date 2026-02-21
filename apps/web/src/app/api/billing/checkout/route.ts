@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getStripe, FAMILY_MONTHLY_PRICE_ID, FAMILY_ANNUAL_PRICE_ID } from '@/lib/stripe'
+import { getStripe, getActivePricing } from '@/lib/stripe'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 
@@ -16,7 +16,9 @@ export const POST = withAuth(
   async (request, { userId, userEmail }) => {
     const { interval = 'month' } = await request.json()
 
-    const priceId = interval === 'year' ? FAMILY_ANNUAL_PRICE_ID : FAMILY_MONTHLY_PRICE_ID
+    const pricing = await getActivePricing()
+    const priceId =
+      interval === 'year' ? pricing.family.annual.priceId : pricing.family.monthly.priceId
     if (!priceId) {
       return NextResponse.json({ error: 'Stripe price not configured' }, { status: 500 })
     }
