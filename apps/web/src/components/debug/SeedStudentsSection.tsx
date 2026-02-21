@@ -349,9 +349,12 @@ export function SeedStudentsSection({ isDark }: { isDark: boolean }) {
   // Fetch profile list, embedding status, and previously-seeded students
   useEffect(() => {
     fetch('/api/debug/seed-students')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((data) => {
-        setProfiles(data.profiles)
+        setProfiles(data.profiles ?? [])
         setLoading(false)
       })
       .catch((err) => {
