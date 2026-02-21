@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useTier } from '@/hooks/useTier'
+import { useEffectiveTier } from '@/hooks/useTier'
 import { estimateSessionProblemCount } from '@/lib/curriculum/time-estimation'
 import { DURATION_OPTIONS } from '@/lib/tier-limits'
 import { css } from '../../../../styled-system/css'
@@ -11,11 +11,11 @@ import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
 export function DurationSelector() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { tier, limits } = useTier()
+  const { studentId, durationMinutes, setDurationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm } =
+    useStartPracticeModal()
+  const { tier, limits } = useEffectiveTier(studentId)
   const availableOptions = DURATION_OPTIONS.filter((d) => d <= limits.maxSessionMinutes)
   const hasLockedOptions = availableOptions.length < DURATION_OPTIONS.length
-  const { durationMinutes, setDurationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm } =
-    useStartPracticeModal()
 
   return (
     <div data-setting="duration">

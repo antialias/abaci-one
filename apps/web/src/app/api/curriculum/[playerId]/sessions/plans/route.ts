@@ -12,7 +12,7 @@ import {
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { getLimitsForUser } from '@/lib/subscription'
+import { getEffectiveTierForStudent, getLimitsForTier } from '@/lib/subscription'
 import { startSessionPlanGeneration } from '@/lib/tasks/session-plan'
 import { getUserId } from '@/lib/viewer'
 
@@ -84,7 +84,9 @@ export const POST = withAuth(async (request, { params }) => {
     }
 
     // Enforce tier limits (duration cap + sessions-per-week)
-    const limits = await getLimitsForUser(userId)
+    // Uses the *best* tier among all linked parents, not just the acting user's tier.
+    const { tier: _effectiveTier } = await getEffectiveTierForStudent(playerId, userId)
+    const limits = getLimitsForTier(_effectiveTier)
 
     const body = await request.json()
     let {

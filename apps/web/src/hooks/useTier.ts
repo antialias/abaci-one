@@ -17,6 +17,11 @@ export interface TierResponse {
   limits: TierLimitsResponse
 }
 
+export interface EffectiveTierResponse extends TierResponse {
+  /** Non-null when a different parent provides the best tier for this student. */
+  providedBy: { name: string } | null
+}
+
 const DEFAULT_TIER: TierResponse = {
   tier: 'guest',
   limits: {
@@ -53,5 +58,41 @@ export function useTier() {
       isLoading,
     }),
     [data?.tier, data?.limits, isLoading]
+  )
+}
+
+const DEFAULT_EFFECTIVE: EffectiveTierResponse = {
+  ...DEFAULT_TIER,
+  providedBy: null,
+}
+
+async function fetchEffectiveTier(playerId: string): Promise<EffectiveTierResponse> {
+  const res = await fetch(`/api/players/${playerId}/effective-tier`)
+  if (!res.ok) throw new Error('Failed to fetch effective tier')
+  return res.json()
+}
+
+/**
+ * Hook to get the effective subscription tier for a *student*,
+ * considering all linked parents' plans (not just the logged-in user).
+ *
+ * Use this in student-scoped UI (StartPracticeModal, DurationSelector)
+ * instead of `useTier()` which only returns the acting user's own tier.
+ */
+export function useEffectiveTier(playerId: string) {
+  const { data, isLoading } = useQuery({
+    queryKey: billingKeys.effectiveTier(playerId),
+    queryFn: () => fetchEffectiveTier(playerId),
+    staleTime: 60_000,
+  })
+
+  return useMemo(
+    () => ({
+      tier: data?.tier ?? DEFAULT_EFFECTIVE.tier,
+      limits: data?.limits ?? DEFAULT_EFFECTIVE.limits,
+      providedBy: data?.providedBy ?? null,
+      isLoading,
+    }),
+    [data?.tier, data?.limits, data?.providedBy, isLoading]
   )
 }

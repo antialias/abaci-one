@@ -34,6 +34,7 @@ import {
   ProblemLengthSelector,
   GameBreakSettings,
   SessionFocusInfo,
+  PlanIndicator,
   ErrorDisplay,
   StartButton,
 } from './start-practice-modal'
@@ -427,6 +428,9 @@ function StartPracticeModalContent({
               >
                 {/* Session focus info (replaces TutorialCTA and RemediationCTA) */}
                 <SessionFocusInfo />
+
+                {/* Plan indicator — shows tier and inherited plan info */}
+                <PlanIndicator />
 
                 {/* Session config card */}
                 <div
