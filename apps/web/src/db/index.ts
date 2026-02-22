@@ -45,28 +45,45 @@ const libsqlAgent = new http.Agent({
  * Custom fetch for @libsql/client that uses our pool-limited HTTP agent.
  * Only applies to HTTP URLs (production libsql); file:// URLs (dev) skip this.
  */
-function libsqlFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+async function libsqlFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+  // Extract URL, method, headers, and body — @libsql/client passes a single
+  // Request object (no init), so we must read everything from it.
+  const isRequest = typeof input === 'object' && !(input instanceof URL) && 'method' in input
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
   // Only intercept HTTP requests to the libsql server
   if (!url.startsWith('http://')) {
     return fetch(input, init)
   }
 
+  const method = init?.method || (isRequest ? (input as Request).method : 'GET')
+  const rawHeaders = init?.headers || (isRequest ? (input as Request).headers : undefined)
+  const headerObj: Record<string, string> = {}
+  if (rawHeaders instanceof Headers) {
+    rawHeaders.forEach((v, k) => { headerObj[k] = v })
+  } else if (rawHeaders && typeof rawHeaders === 'object') {
+    Object.assign(headerObj, rawHeaders)
+  }
+
+  // Read body: prefer init.body, fall back to Request.text()
+  let bodyStr: string | undefined
+  if (init?.body) {
+    bodyStr = String(init.body)
+  } else if (isRequest) {
+    bodyStr = await (input as Request).text()
+  }
+  if (bodyStr) {
+    headerObj['Content-Length'] = Buffer.byteLength(bodyStr).toString()
+  }
+
   return new Promise<Response>((resolve, reject) => {
     const parsedUrl = new URL(url)
-    const bodyStr = init?.body ? String(init.body) : undefined
     const req = http.request(
       {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port || 80,
         path: parsedUrl.pathname + parsedUrl.search,
-        method: init?.method || 'GET',
-        headers: {
-          ...(init?.headers instanceof Headers
-            ? Object.fromEntries(init.headers.entries())
-            : (init?.headers as Record<string, string>) || {}),
-          ...(bodyStr ? { 'Content-Length': Buffer.byteLength(bodyStr).toString() } : {}),
-        },
+        method,
+        headers: headerObj,
         agent: libsqlAgent,
       },
       (res) => {
