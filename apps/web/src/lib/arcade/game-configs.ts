@@ -14,6 +14,7 @@ import type { RithmomachiaConfig } from '@/arcade-games/rithmomachia/types'
 import type { KnowYourWorldConfig } from '@/arcade-games/know-your-world/types'
 import type { ComplementRaceGameConfig } from '@/arcade-games/complement-race/types'
 import type { MusicConfig } from '@/arcade-games/music-matching/types'
+import type { TypeRacerJrConfig } from '@/arcade-games/type-racer-jr/types'
 
 // Re-export all config types
 export type { MemoryQuizConfig as MemoryQuizGameConfig } from '@/arcade-games/memory-quiz/types'
@@ -24,6 +25,7 @@ export type { RithmomachiaConfig as RithmomachiaGameConfig } from '@/arcade-game
 export type { KnowYourWorldConfig } from '@/arcade-games/know-your-world/types'
 export type { ComplementRaceGameConfig } from '@/arcade-games/complement-race/types'
 export type { MusicConfig as MusicMatchingConfig } from '@/arcade-games/music-matching/types'
+export type { TypeRacerJrConfig } from '@/arcade-games/type-racer-jr/types'
 
 // ============================================================================
 // Combined Types
@@ -41,6 +43,7 @@ export type GameConfigByName = {
   'know-your-world': KnowYourWorldConfig
   'complement-race': ComplementRaceGameConfig
   'music-matching': MusicConfig
+  'type-racer-jr': TypeRacerJrConfig
 }
 
 /**
@@ -136,4 +139,10 @@ export const DEFAULT_CONFIGS: Record<string, GameConfigByName[keyof GameConfigBy
   'know-your-world': DEFAULT_KNOW_YOUR_WORLD_CONFIG,
   'complement-race': DEFAULT_COMPLEMENT_RACE_CONFIG,
   'music-matching': DEFAULT_MUSIC_MATCHING_CONFIG,
+  'type-racer-jr': {
+    gameMode: 'free-play',
+    timeLimit: null,
+    startingDifficulty: 'level1',
+    wordCount: 5,
+  } satisfies TypeRacerJrConfig,
 }

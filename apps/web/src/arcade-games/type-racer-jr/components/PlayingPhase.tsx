@@ -1,0 +1,184 @@
+'use client'
+
+import { useCallback } from 'react'
+import { css } from '../../../../styled-system/css'
+import { useTypeRacerJr } from '../Provider'
+import { useKeyboardInput } from '../hooks/useKeyboardInput'
+import { useTypingTTS } from '../hooks/useTypingTTS'
+import { LetterDisplay } from './LetterDisplay'
+import { WordProgress } from './WordProgress'
+import { TimerBar } from './TimerBar'
+import { CelebrationBurst } from './CelebrationBurst'
+import { OnScreenKeyboard } from './OnScreenKeyboard'
+
+export function PlayingPhase() {
+  const {
+    state,
+    localState,
+    currentWord,
+    typeLetter,
+    endGame,
+    dismissCelebration,
+  } = useTypeRacerJr()
+
+  const tts = useTypingTTS()
+
+  // Physical keyboard input
+  const { hasPhysicalKeyboard } = useKeyboardInput({
+    enabled: state.gamePhase === 'playing' && !localState.showCelebration,
+    onKeyPress: typeLetter,
+  })
+
+  const handleTimerUp = useCallback(() => {
+    endGame('timer-expired')
+  }, [endGame])
+
+  const handleTimerWarning = useCallback(() => {
+    tts.speakTimerWarning()
+  }, [tts])
+
+  if (!currentWord && !localState.showCelebration) {
+    return null
+  }
+
+  const wordNumber = state.completedWords.length + 1
+  const totalWords = state.wordQueue.length
+
+  return (
+    <div
+      data-component="PlayingPhase"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '4',
+        p: '4',
+        flex: 1,
+        position: 'relative',
+      })}
+    >
+      {/* Timer bar for beat-the-clock */}
+      {state.gameMode === 'beat-the-clock' &&
+        state.timeLimit &&
+        state.gameStartTime && (
+          <TimerBar
+            totalSeconds={state.timeLimit}
+            startTime={state.gameStartTime}
+            onTimeUp={handleTimerUp}
+            onWarning={handleTimerWarning}
+          />
+        )}
+
+      {/* Score overlay */}
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'space-between',
+          width: '100%',
+          maxWidth: '400px',
+          fontSize: 'sm',
+          color: 'gray.600',
+        })}
+      >
+        <span>
+          Word {wordNumber}/{totalWords}
+        </span>
+        <span>
+          {'⭐'.repeat(Math.min(state.totalStars, 15))}{' '}
+          {state.totalStars > 0 && state.totalStars}
+        </span>
+        {state.bestStreak > 1 && (
+          <span>
+            🔥 {state.bestStreak}
+          </span>
+        )}
+      </div>
+
+      {/* Emoji */}
+      {currentWord && (
+        <div
+          className={css({
+            fontSize: '80px',
+            lineHeight: 1,
+            animation: 'bob 2s ease-in-out infinite',
+            userSelect: 'none',
+          })}
+        >
+          {currentWord.emoji}
+        </div>
+      )}
+
+      {/* Letter display */}
+      {currentWord && (
+        <div
+          className={css({
+            display: 'flex',
+            gap: '2',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            mb: '2',
+          })}
+        >
+          {currentWord.word.split('').map((letter, i) => {
+            let letterState: 'upcoming' | 'current' | 'correct' | 'wrong'
+            if (i < localState.currentLetterIndex) {
+              letterState = 'correct'
+            } else if (i === localState.currentLetterIndex) {
+              // Check if last typed letter at this position was wrong
+              const lastTyped = localState.typedLetters[localState.typedLetters.length - 1]
+              letterState =
+                lastTyped && !lastTyped.correct && i === localState.currentLetterIndex
+                  ? 'wrong'
+                  : 'current'
+            } else {
+              letterState = 'upcoming'
+            }
+            return <LetterDisplay key={i} letter={letter} state={letterState} />
+          })}
+        </div>
+      )}
+
+      {/* Word progress */}
+      {currentWord && (
+        <WordProgress
+          totalLetters={currentWord.word.length}
+          completedLetters={localState.currentLetterIndex}
+        />
+      )}
+
+      {/* Difficulty badge */}
+      <div
+        className={css({
+          fontSize: 'xs',
+          color: 'gray.500',
+          bg: 'gray.100',
+          px: '3',
+          py: '1',
+          borderRadius: 'full',
+        })}
+      >
+        {state.currentDifficulty === 'level1'
+          ? 'Easy'
+          : state.currentDifficulty === 'level2'
+            ? 'Medium'
+            : 'Hard'}
+      </div>
+
+      {/* On-screen keyboard (hidden when physical keyboard detected) */}
+      {!hasPhysicalKeyboard && !localState.showCelebration && currentWord && (
+        <OnScreenKeyboard
+          onKeyPress={typeLetter}
+          highlightedLetter={currentWord.word[localState.currentLetterIndex]}
+        />
+      )}
+
+      {/* Celebration overlay */}
+      {localState.showCelebration && (
+        <CelebrationBurst
+          stars={localState.celebrationStars}
+          onDone={dismissCelebration}
+        />
+      )}
+    </div>
+  )
+}
