@@ -8,17 +8,14 @@ interface OnScreenKeyboardProps {
   highlightedLetter?: string
 }
 
-// ABC alphabetical layout (not QWERTY — 5yo don't know QWERTY)
 const ROWS = [
-  ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
-  ['h', 'i', 'j', 'k', 'l', 'm', 'n'],
-  ['o', 'p', 'q', 'r', 's', 't', 'u'],
-  ['v', 'w', 'x', 'y', 'z'],
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
 ]
 
 /**
- * On-screen ABC keyboard for touch devices.
- * Letters arranged alphabetically, not QWERTY.
+ * On-screen QWERTY keyboard for touch devices.
  */
 export function OnScreenKeyboard({ onKeyPress, highlightedLetter }: OnScreenKeyboardProps) {
   const handlePress = useCallback(
@@ -62,9 +59,10 @@ export function OnScreenKeyboard({ onKeyPress, highlightedLetter }: OnScreenKeyb
                 data-action="type-letter"
                 data-letter={letter}
                 className={css({
-                  minWidth: '44px',
-                  minHeight: '56px',
-                  fontSize: '20px',
+                  flex: '1 1 0',
+                  maxWidth: '44px',
+                  minHeight: '48px',
+                  fontSize: '18px',
                   fontWeight: 'bold',
                   textTransform: 'uppercase',
                   border: '2px solid',
