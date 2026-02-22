@@ -15,6 +15,8 @@ export const playerKeys = {
   enrolledClassrooms: (playerId: string) =>
     [...playerKeys.all, playerId, 'enrolled-classrooms'] as const,
   presence: (playerId: string) => [...playerKeys.all, playerId, 'presence'] as const,
+  observationStats: (playerId: string) =>
+    [...playerKeys.all, playerId, 'observation-stats'] as const,
 }
 
 // Curriculum query keys

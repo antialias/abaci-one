@@ -64,7 +64,7 @@ import {
 } from '@/lib/curriculum/skill-readiness'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import { api } from '@/lib/queryClient'
-import { curriculumKeys, sessionHistoryKeys } from '@/lib/queryKeys'
+import { curriculumKeys, playerKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 import { css } from '../../../../../styled-system/css'
 import { RelationshipsTab } from './RelationshipsTab'
@@ -81,6 +81,7 @@ type TabId =
   | 'history'
   | 'scoreboard'
   | 'notes'
+  | 'observers'
   | 'relationships'
   | 'settings'
 
@@ -497,6 +498,7 @@ function TabNavigation({
     { id: 'history', label: 'History', icon: '📈' },
     { id: 'scoreboard', label: 'Scoreboard', icon: '🏆' },
     { id: 'notes', label: 'Notes', icon: '📝' },
+    { id: 'observers', label: 'Observers', icon: '👁️' },
     { id: 'relationships', label: 'Connections', icon: '👪' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
@@ -2527,6 +2529,428 @@ function HistoryTab({
   )
 }
 
+// ============================================================================
+// Observers Tab Component
+// ============================================================================
+
+interface ObservationStatsResponse {
+  totalShares: number
+  totalViews: number
+  activeShareCount: number
+  subscriberCount: number
+  isParent: boolean
+  sessions: {
+    sessionId: string
+    startedAt: string
+    completedAt: string | null
+    totalViews: number
+    shares: {
+      token: string
+      url: string
+      status: 'active' | 'expired' | 'revoked'
+      viewCount: number
+      lastViewedAt: string | null
+      createdAt: string
+      expiresAt: string
+    }[]
+  }[]
+}
+
+function ObserversTab({ studentId, isDark }: { studentId: string; isDark: boolean }) {
+  const queryClient = useQueryClient()
+  const [copiedToken, setCopiedToken] = useState<string | null>(null)
+  const [revokingToken, setRevokingToken] = useState<string | null>(null)
+
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery<ObservationStatsResponse>({
+    queryKey: playerKeys.observationStats(studentId),
+    queryFn: async () => {
+      const res = await api(`players/${studentId}/observation-stats`)
+      if (!res.ok) throw new Error('Failed to fetch observation stats')
+      return res.json()
+    },
+  })
+
+  const handleCopyLink = useCallback(
+    async (url: string, token: string) => {
+      try {
+        await navigator.clipboard.writeText(url)
+        setCopiedToken(token)
+        setTimeout(() => setCopiedToken(null), 2000)
+      } catch {
+        // Fallback: select text
+      }
+    },
+    []
+  )
+
+  const handleRevoke = useCallback(
+    async (sessionId: string, token: string) => {
+      setRevokingToken(token)
+      try {
+        const res = await api(`sessions/${sessionId}/share?token=${token}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error('Failed to revoke')
+        queryClient.invalidateQueries({ queryKey: playerKeys.observationStats(studentId) })
+      } catch (err) {
+        console.error('Failed to revoke share:', err)
+      } finally {
+        setRevokingToken(null)
+      }
+    },
+    [queryClient, studentId]
+  )
+
+  const cardStyle = css({
+    padding: { base: '1rem', sm: '1.5rem' },
+    borderRadius: '12px',
+    backgroundColor: isDark ? 'gray.800' : 'gray.50',
+    marginBottom: '1rem',
+  })
+
+  const headingStyle = css({
+    fontSize: { base: '1.125rem', sm: '1.25rem' },
+    fontWeight: 'bold',
+    color: isDark ? 'gray.100' : 'gray.900',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  })
+
+  if (isLoading) {
+    return (
+      <div data-tab-content="observers">
+        <div className={cardStyle}>
+          <p className={css({ color: isDark ? 'gray.400' : 'gray.500', textAlign: 'center', padding: '2rem 0' })}>
+            Loading observation stats...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div data-tab-content="observers">
+        <div className={cardStyle}>
+          <p className={css({ color: 'red.400', textAlign: 'center', padding: '2rem 0' })}>
+            Failed to load observation stats.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const activeShares: { sessionId: string; share: ObservationStatsResponse['sessions'][0]['shares'][0] }[] = []
+  for (const session of stats.sessions) {
+    for (const share of session.shares) {
+      if (share.status === 'active') {
+        activeShares.push({ sessionId: session.sessionId, share })
+      }
+    }
+  }
+
+  return (
+    <div data-tab-content="observers">
+      {/* Summary Card */}
+      <div className={cardStyle}>
+        <h2 className={headingStyle}>
+          <span>👁️</span> Observation Summary
+        </h2>
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: { base: '1fr', sm: 'repeat(3, 1fr)' },
+            gap: '1rem',
+          })}
+        >
+          {[
+            { label: 'Share Links (all time)', value: stats.totalShares },
+            { label: 'Total Views', value: stats.totalViews },
+            { label: 'Active Subscribers', value: stats.subscriberCount },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className={css({
+                padding: '1rem',
+                borderRadius: '8px',
+                backgroundColor: isDark ? 'gray.700' : 'white',
+                textAlign: 'center',
+              })}
+            >
+              <div
+                className={css({
+                  fontSize: '1.75rem',
+                  fontWeight: 'bold',
+                  color: isDark ? 'gray.100' : 'gray.900',
+                })}
+              >
+                {stat.value}
+              </div>
+              <div
+                className={css({
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginTop: '0.25rem',
+                })}
+              >
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Active Share Links Card */}
+      <div className={cardStyle}>
+        <h2 className={headingStyle}>
+          <span>🔗</span> Active Share Links
+        </h2>
+        {activeShares.length === 0 ? (
+          <p
+            className={css({
+              color: isDark ? 'gray.400' : 'gray.500',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              padding: '1.5rem 0',
+            })}
+          >
+            No active share links right now
+          </p>
+        ) : (
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}>
+            {activeShares.map(({ sessionId, share }) => {
+              const expiresAt = new Date(share.expiresAt)
+              const msRemaining = expiresAt.getTime() - Date.now()
+              const minsRemaining = Math.max(0, Math.round(msRemaining / 60000))
+              const timeLabel =
+                minsRemaining >= 60
+                  ? `${Math.round(minsRemaining / 60)}h ${minsRemaining % 60}m remaining`
+                  : `${minsRemaining}m remaining`
+
+              return (
+                <div
+                  key={share.token}
+                  data-element="active-share-row"
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    backgroundColor: isDark ? 'gray.700' : 'white',
+                    flexWrap: 'wrap',
+                  })}
+                >
+                  <span
+                    className={css({
+                      fontFamily: 'monospace',
+                      fontSize: '0.875rem',
+                      color: isDark ? 'gray.300' : 'gray.700',
+                    })}
+                  >
+                    ...{share.token.slice(-6)}
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                    })}
+                  >
+                    {timeLabel}
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                    })}
+                  >
+                    {share.viewCount} view{share.viewCount !== 1 ? 's' : ''}
+                  </span>
+                  <div className={css({ marginLeft: 'auto', display: 'flex', gap: '0.5rem' })}>
+                    <button
+                      type="button"
+                      data-action="copy-share-link"
+                      onClick={() => handleCopyLink(share.url, share.token)}
+                      className={css({
+                        padding: '0.375rem 0.75rem',
+                        fontSize: '0.75rem',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        backgroundColor: isDark ? 'gray.600' : 'gray.200',
+                        color: isDark ? 'gray.100' : 'gray.700',
+                        _hover: { backgroundColor: isDark ? 'gray.500' : 'gray.300' },
+                      })}
+                    >
+                      {copiedToken === share.token ? 'Copied!' : 'Copy Link'}
+                    </button>
+                    {stats.isParent && (
+                      <button
+                        type="button"
+                        data-action="revoke-share"
+                        disabled={revokingToken === share.token}
+                        onClick={() => handleRevoke(sessionId, share.token)}
+                        className={css({
+                          padding: '0.375rem 0.75rem',
+                          fontSize: '0.75rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          backgroundColor: 'red.600',
+                          color: 'white',
+                          opacity: revokingToken === share.token ? 0.6 : 1,
+                          _hover: { backgroundColor: 'red.700' },
+                        })}
+                      >
+                        {revokingToken === share.token ? 'Revoking...' : 'Revoke'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Sessions Card */}
+      <div className={cardStyle}>
+        <h2 className={headingStyle}>
+          <span>📋</span> Recent Sessions with Shares
+        </h2>
+        {stats.sessions.length === 0 ? (
+          <p
+            className={css({
+              color: isDark ? 'gray.400' : 'gray.500',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              padding: '1.5rem 0',
+            })}
+          >
+            No sessions with share links yet
+          </p>
+        ) : (
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5rem' })}>
+            {stats.sessions.map((session) => (
+              <details
+                key={session.sessionId}
+                data-element="session-share-details"
+                className={css({
+                  borderRadius: '8px',
+                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  overflow: 'hidden',
+                })}
+              >
+                <summary
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '0.75rem 1rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    color: isDark ? 'gray.200' : 'gray.800',
+                    _hover: { backgroundColor: isDark ? 'gray.650' : 'gray.100' },
+                  })}
+                >
+                  <span>{new Date(session.startedAt).toLocaleDateString()}</span>
+                  <span
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                    })}
+                  >
+                    {session.shares.length} share{session.shares.length !== 1 ? 's' : ''}
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: '0.75rem',
+                      color: isDark ? 'gray.400' : 'gray.500',
+                      marginLeft: 'auto',
+                    })}
+                  >
+                    {session.totalViews} view{session.totalViews !== 1 ? 's' : ''}
+                  </span>
+                </summary>
+                <div className={css({ padding: '0 1rem 0.75rem' })}>
+                  {session.shares.map((share) => (
+                    <div
+                      key={share.token}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.5rem 0',
+                        fontSize: '0.8125rem',
+                        borderTop: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                        flexWrap: 'wrap',
+                      })}
+                    >
+                      <span
+                        className={css({
+                          fontFamily: 'monospace',
+                          color: isDark ? 'gray.300' : 'gray.600',
+                        })}
+                      >
+                        ...{share.token.slice(-6)}
+                      </span>
+                      <span
+                        className={css({
+                          fontSize: '0.6875rem',
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: '999px',
+                          backgroundColor:
+                            share.status === 'active'
+                              ? isDark
+                                ? 'green.900'
+                                : 'green.100'
+                              : share.status === 'revoked'
+                                ? isDark
+                                  ? 'red.900'
+                                  : 'red.100'
+                                : isDark
+                                  ? 'gray.600'
+                                  : 'gray.200',
+                          color:
+                            share.status === 'active'
+                              ? isDark
+                                ? 'green.300'
+                                : 'green.700'
+                              : share.status === 'revoked'
+                                ? isDark
+                                  ? 'red.300'
+                                  : 'red.700'
+                                : isDark
+                                  ? 'gray.300'
+                                  : 'gray.600',
+                        })}
+                      >
+                        {share.status}
+                      </span>
+                      <span className={css({ color: isDark ? 'gray.400' : 'gray.500', fontSize: '0.75rem' })}>
+                        {share.viewCount} view{share.viewCount !== 1 ? 's' : ''}
+                      </span>
+                      {share.lastViewedAt && (
+                        <span className={css({ color: isDark ? 'gray.500' : 'gray.400', fontSize: '0.6875rem' })}>
+                          last viewed {new Date(share.lastViewedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function NotesTab({
   isDark,
   notes,
@@ -3162,6 +3586,10 @@ export function DashboardClient({
                   playerId={player.id}
                   onNotesSaved={setCurrentNotes}
                 />
+              )}
+
+              {activeTab === 'observers' && (
+                <ObserversTab studentId={studentId} isDark={isDark} />
               )}
 
               {activeTab === 'relationships' && (
