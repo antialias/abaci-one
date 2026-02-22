@@ -10,7 +10,27 @@ const PLAYER_ID = 'story-player-1'
 // Fetch mock decorator — intercepts /api/family/children/.../code calls
 // ---------------------------------------------------------------------------
 
-function withMockedFetch(linkedParentCount: number, maxParents: number) {
+interface MockFetchOptions {
+  linkedParentCount: number
+  maxParents: number
+  /** ISO string for when the code expires, or null */
+  expiresAt?: string | null
+  /** ISO string for when the code was generated, or null */
+  generatedAt?: string | null
+}
+
+function withMockedFetch(
+  linkedParentCountOrOpts: number | MockFetchOptions,
+  maxParentsArg?: number
+) {
+  const opts: MockFetchOptions =
+    typeof linkedParentCountOrOpts === 'number'
+      ? {
+          linkedParentCount: linkedParentCountOrOpts,
+          maxParents: maxParentsArg ?? 4,
+        }
+      : linkedParentCountOrOpts
+
   return function MockFetchDecorator({ children }: { children: React.ReactNode }) {
     useEffect(() => {
       const originalFetch = window.fetch
@@ -19,12 +39,29 @@ function withMockedFetch(linkedParentCount: number, maxParents: number) {
 
         if (url.includes('/api/family/children/') && url.endsWith('/code')) {
           const method = init?.method?.toUpperCase() ?? 'GET'
-          if (method === 'GET' || method === 'POST') {
+          if (method === 'POST') {
+            // Regenerate always returns fresh 7-day expiry
+            const now = new Date()
+            const freshExpiry = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
             return new Response(
               JSON.stringify({
-                familyCode: method === 'POST' ? 'NEW-REGEN' : 'FAM-AB12',
-                linkedParentCount,
-                maxParents,
+                familyCode: 'NEW-REGEN',
+                generatedAt: now.toISOString(),
+                expiresAt: freshExpiry.toISOString(),
+                linkedParentCount: opts.linkedParentCount,
+                maxParents: opts.maxParents,
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
+          if (method === 'GET') {
+            return new Response(
+              JSON.stringify({
+                familyCode: 'FAM-AB12',
+                generatedAt: opts.generatedAt ?? null,
+                expiresAt: opts.expiresAt ?? null,
+                linkedParentCount: opts.linkedParentCount,
+                maxParents: opts.maxParents,
               }),
               { status: 200, headers: { 'Content-Type': 'application/json' } }
             )
@@ -156,6 +193,91 @@ export const DarkModeAtCapacity: Story = {
     const MockFetch = withMockedFetch(4, 4)
     return (
       <StoryShell theme="dark">
+        <MockFetch>
+          <FamilyCodeDisplay
+            playerId={PLAYER_ID}
+            playerName="Sonia"
+            isOpen
+            onClose={() => {}}
+          />
+        </MockFetch>
+      </StoryShell>
+    )
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Expiry stories
+// ---------------------------------------------------------------------------
+
+/** Code expires in 5 days — normal countdown. */
+export const ExpiresInFiveDays: Story = {
+  render: () => {
+    const now = new Date()
+    const generatedAt = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+    const expiresAt = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000) // 5 days from now
+    const MockFetch = withMockedFetch({
+      linkedParentCount: 1,
+      maxParents: 4,
+      generatedAt: generatedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    })
+    return (
+      <StoryShell>
+        <MockFetch>
+          <FamilyCodeDisplay
+            playerId={PLAYER_ID}
+            playerName="Sonia"
+            isOpen
+            onClose={() => {}}
+          />
+        </MockFetch>
+      </StoryShell>
+    )
+  },
+}
+
+/** Code expires tomorrow — amber warning. */
+export const ExpiresTomorrow: Story = {
+  render: () => {
+    const now = new Date()
+    const generatedAt = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000) // 6 days ago
+    const expiresAt = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000) // 1 day from now
+    const MockFetch = withMockedFetch({
+      linkedParentCount: 2,
+      maxParents: 4,
+      generatedAt: generatedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    })
+    return (
+      <StoryShell>
+        <MockFetch>
+          <FamilyCodeDisplay
+            playerId={PLAYER_ID}
+            playerName="Sonia"
+            isOpen
+            onClose={() => {}}
+          />
+        </MockFetch>
+      </StoryShell>
+    )
+  },
+}
+
+/** Code has expired — red badge, dimmed code, regenerate prompt. */
+export const Expired: Story = {
+  render: () => {
+    const now = new Date()
+    const generatedAt = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000) // 10 days ago
+    const expiresAt = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
+    const MockFetch = withMockedFetch({
+      linkedParentCount: 1,
+      maxParents: 4,
+      generatedAt: generatedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    })
+    return (
+      <StoryShell>
         <MockFetch>
           <FamilyCodeDisplay
             playerId={PLAYER_ID}
