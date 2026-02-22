@@ -28,8 +28,12 @@ export {
 // Web Push
 export { sendWebPush, type WebPushResult, _resetWebPushConfig } from './web-push'
 
+// Email
+export { sendEmail, type SendEmailParams, _resetEmailTransport } from './email'
+
 // Channels
 export { webPushChannel } from './channels/web-push-channel'
+export { emailChannel } from './channels/email-channel'
 
 // Client-side registration (re-exported for convenience)
 export {
