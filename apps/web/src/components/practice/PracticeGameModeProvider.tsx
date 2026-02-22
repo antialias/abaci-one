@@ -89,6 +89,7 @@ export function PracticeGameModeProvider({
         isPracticeStudent: true,
         age: null,
         familyCode: null,
+        familyCodeGeneratedAt: null,
       },
     ],
     [student, playerId]

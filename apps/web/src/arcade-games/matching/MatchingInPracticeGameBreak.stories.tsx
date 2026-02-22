@@ -92,6 +92,7 @@ const mockDBPlayer: DBPlayer = {
   isArchived: false,
   isPracticeStudent: true,
   familyCode: null,
+  familyCodeGeneratedAt: null,
   age: null,
 }
 

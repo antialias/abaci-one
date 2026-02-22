@@ -22,12 +22,13 @@ export const GET = withAuth(async () => {
     const parentedIds = await getParentedPlayerIds(userId)
 
     // Get all players the user can access
-    const players = parentedIds.length > 0
-      ? await db.query.players.findMany({
-          where: inArray(schema.players.id, parentedIds),
-          orderBy: (players, { desc }) => [desc(players.createdAt)],
-        })
-      : []
+    const players =
+      parentedIds.length > 0
+        ? await db.query.players.findMany({
+            where: inArray(schema.players.id, parentedIds),
+            orderBy: (players, { desc }) => [desc(players.createdAt)],
+          })
+        : []
 
     return NextResponse.json({ players })
   } catch (error) {

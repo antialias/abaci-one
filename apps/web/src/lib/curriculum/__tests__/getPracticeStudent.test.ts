@@ -31,6 +31,7 @@ function makePlayer(
     isPracticeStudent: overrides.isPracticeStudent ?? true,
     age: null,
     familyCode: null,
+    familyCodeGeneratedAt: null,
   }
 }
 

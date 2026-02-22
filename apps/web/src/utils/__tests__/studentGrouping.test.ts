@@ -28,6 +28,7 @@ function makeStudent(overrides: Partial<StudentWithSkillData> = {}): StudentWith
     isPracticeStudent: true,
     age: null,
     familyCode: null,
+    familyCodeGeneratedAt: null,
     practicingSkills: [],
     lastPracticedAt: null,
     skillCategory: null,
