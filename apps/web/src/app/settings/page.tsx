@@ -832,9 +832,10 @@ function HouseholdCard({
   currentUserId?: string
 }) {
   const { data: detail, isLoading } = useHousehold(household.id)
-  const { removeMember, rename, transferOwnership } = useHouseholdMutations()
+  const { addMember, removeMember, rename, transferOwnership } = useHouseholdMutations()
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(household.name)
+  const [addEmail, setAddEmail] = useState('')
   const isOwner = household.role === 'owner'
 
   return (
@@ -1087,6 +1088,153 @@ function HouseholdCard({
             ))}
           </div>
         ) : null}
+
+        {/* Add member by email (owner only) */}
+        {isOwner && (
+          <div
+            data-element="add-member-form"
+            className={css({
+              padding: '1rem 0',
+              borderTop: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+            })}
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const email = addEmail.trim()
+                if (!email) return
+                addMember.mutate(
+                  { householdId: household.id, email },
+                  { onSuccess: () => setAddEmail('') }
+                )
+              }}
+              className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}
+            >
+              <UserPlus size={16} className={css({ color: isDark ? 'gray.500' : 'gray.400', flexShrink: 0 })} />
+              <input
+                type="email"
+                placeholder="Add member by email"
+                value={addEmail}
+                onChange={(e) => setAddEmail(e.target.value)}
+                className={css({
+                  flex: 1,
+                  padding: '0.375rem 0.5rem',
+                  borderRadius: '4px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.800' : 'white',
+                  color: isDark ? 'white' : 'gray.800',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                })}
+              />
+              <button
+                type="submit"
+                disabled={addMember.isPending || !addEmail.trim()}
+                className={css({
+                  padding: '0.375rem 0.75rem',
+                  borderRadius: '4px',
+                  border: 'none',
+                  backgroundColor: isDark ? 'purple.600' : 'purple.500',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  opacity: addMember.isPending || !addEmail.trim() ? 0.5 : 1,
+                  _hover: { backgroundColor: isDark ? 'purple.500' : 'purple.600' },
+                })}
+              >
+                {addMember.isPending ? 'Adding...' : 'Add'}
+              </button>
+            </form>
+            {addMember.isError && (
+              <p className={css({ color: 'red.400', fontSize: '0.75rem', marginTop: '0.375rem', marginLeft: '1.5rem' })}>
+                {addMember.error?.message || 'Failed to add member'}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Suggested members based on shared children */}
+        {isOwner && detail?.suggestions && detail.suggestions.length > 0 && (
+          <div
+            data-element="household-suggestions"
+            className={css({
+              padding: '1rem 0',
+              borderTop: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+            })}
+          >
+            <p className={css({ fontSize: '0.75rem', color: isDark ? 'gray.500' : 'gray.500', marginBottom: '0.5rem' })}>
+              People who share children with your household:
+            </p>
+            {detail.suggestions.map((suggestion) => (
+              <div
+                key={suggestion.userId}
+                data-element="household-suggestion-row"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.5rem 0',
+                })}
+              >
+                <div className={css({ display: 'flex', alignItems: 'center', gap: '0.75rem' })}>
+                  {suggestion.image ? (
+                    <img
+                      src={suggestion.image}
+                      alt=""
+                      className={css({ width: '32px', height: '32px', borderRadius: '50%' })}
+                    />
+                  ) : (
+                    <div
+                      className={css({
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: isDark ? 'gray.600' : 'gray.200',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        color: isDark ? 'gray.400' : 'gray.500',
+                      })}
+                    >
+                      {(suggestion.name || suggestion.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <div className={css({ fontWeight: '500', color: isDark ? 'white' : 'gray.800', fontSize: '0.875rem' })}>
+                      {suggestion.name || suggestion.email || 'Unknown'}
+                    </div>
+                    <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.500' : 'gray.500' })}>
+                      Shares {suggestion.sharedChildren.join(', ')}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  data-action="add-suggested-member"
+                  onClick={() => addMember.mutate({ householdId: household.id, userId: suggestion.userId })}
+                  disabled={addMember.isPending}
+                  className={css({
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'purple.400/50' : 'purple.200',
+                    backgroundColor: 'transparent',
+                    color: isDark ? 'purple.400' : 'purple.600',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    _hover: { backgroundColor: isDark ? 'purple.900/30' : 'purple.50' },
+                  })}
+                >
+                  Add
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Dissolve button for sole owner */}
         {isOwner && household.memberCount === 1 && currentUserId && (

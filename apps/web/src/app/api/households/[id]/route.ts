@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import {
   getHouseholdDetail,
+  getHouseholdSuggestions,
   isHouseholdMember,
   updateHouseholdName,
   transferHouseholdOwnership,
@@ -21,12 +22,15 @@ export const GET = withAuth(async (_request, { userId, params }) => {
     return NextResponse.json({ error: 'Not a member of this household' }, { status: 403 })
   }
 
-  const household = await getHouseholdDetail(householdId)
+  const [household, suggestions] = await Promise.all([
+    getHouseholdDetail(householdId),
+    getHouseholdSuggestions(householdId),
+  ])
   if (!household) {
     return NextResponse.json({ error: 'Household not found' }, { status: 404 })
   }
 
-  return NextResponse.json({ household })
+  return NextResponse.json({ household, suggestions })
 }, { role: 'user' })
 
 /**

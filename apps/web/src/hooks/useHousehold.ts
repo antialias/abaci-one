@@ -33,6 +33,15 @@ interface HouseholdDetail {
   members: HouseholdMember[]
 }
 
+export interface HouseholdSuggestion {
+  userId: string
+  name: string | null
+  email: string | null
+  image: string | null
+  /** Names of shared children */
+  sharedChildren: string[]
+}
+
 // ---------------------------------------------------------------------------
 // API helpers
 // ---------------------------------------------------------------------------
@@ -43,7 +52,7 @@ async function fetchHouseholds(): Promise<{ households: HouseholdSummary[] }> {
   return res.json()
 }
 
-async function fetchHouseholdDetail(id: string): Promise<{ household: HouseholdDetail }> {
+async function fetchHouseholdDetail(id: string): Promise<{ household: HouseholdDetail; suggestions: HouseholdSuggestion[] }> {
   const res = await api(`households/${id}`)
   if (!res.ok) throw new Error('Failed to fetch household')
   return res.json()
@@ -112,13 +121,13 @@ export function useHouseholds() {
   })
 }
 
-/** Get a single household with full member details */
+/** Get a single household with full member details and suggestions */
 export function useHousehold(id: string | undefined) {
   return useQuery({
     queryKey: id ? householdKeys.detail(id) : householdKeys.list(),
     queryFn: () => (id ? fetchHouseholdDetail(id) : Promise.reject('No id')),
     enabled: !!id,
-    select: (data) => data.household,
+    select: (data) => ({ ...data.household, suggestions: data.suggestions }),
   })
 }
 

@@ -6,9 +6,9 @@
  * the owner's subscription covers all household members.
  */
 
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, notInArray, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { households, householdMembers, users } from '@/db/schema'
+import { households, householdMembers, parentChild, players, users } from '@/db/schema'
 import { createId } from '@paralleldrive/cuid2'
 
 /** Maximum number of members in a household */
@@ -123,6 +123,93 @@ export async function isHouseholdMember(householdId: string, userId: string): Pr
     ),
   })
   return !!row
+}
+
+/**
+ * Suggest users who share children with household members but aren't in the household.
+ */
+export async function getHouseholdSuggestions(householdId: string): Promise<Array<{
+  userId: string
+  name: string | null
+  email: string | null
+  image: string | null
+  sharedChildren: string[]
+}>> {
+  // 1. Get current household member IDs
+  const members = await db
+    .select({ userId: householdMembers.userId })
+    .from(householdMembers)
+    .where(eq(householdMembers.householdId, householdId))
+
+  const memberIds = members.map((m) => m.userId)
+  if (memberIds.length === 0) return []
+
+  // 2. Find children of household members
+  const memberChildren = await db
+    .select({
+      parentUserId: parentChild.parentUserId,
+      childPlayerId: parentChild.childPlayerId,
+    })
+    .from(parentChild)
+    .where(inArray(parentChild.parentUserId, memberIds))
+
+  const childIds = [...new Set(memberChildren.map((r) => r.childPlayerId))]
+  if (childIds.length === 0) return []
+
+  // 3. Find other parents of those children who aren't in the household
+  const coParents = await db
+    .select({
+      parentUserId: parentChild.parentUserId,
+      childPlayerId: parentChild.childPlayerId,
+    })
+    .from(parentChild)
+    .where(
+      and(
+        inArray(parentChild.childPlayerId, childIds),
+        notInArray(parentChild.parentUserId, memberIds)
+      )
+    )
+
+  if (coParents.length === 0) return []
+
+  // 4. Group by parent, collect shared child IDs
+  const parentChildMap = new Map<string, Set<string>>()
+  for (const row of coParents) {
+    if (!parentChildMap.has(row.parentUserId)) {
+      parentChildMap.set(row.parentUserId, new Set())
+    }
+    parentChildMap.get(row.parentUserId)!.add(row.childPlayerId)
+  }
+
+  // 5. Look up user details
+  const parentIds = [...parentChildMap.keys()]
+  const parentUsers = await db
+    .select({ id: users.id, name: users.name, email: users.email, image: users.image })
+    .from(users)
+    .where(inArray(users.id, parentIds))
+
+  // 6. Resolve child player names
+  const allChildIds = [...new Set([...parentChildMap.values()].flatMap((s) => [...s]))]
+  const childPlayers = allChildIds.length > 0
+    ? await db
+        .select({ id: players.id, name: players.name })
+        .from(players)
+        .where(inArray(players.id, allChildIds))
+    : []
+  const childNameMap = new Map(childPlayers.map((p) => [p.id, p.name]))
+
+  // Only suggest users with a name or email (skip anonymous guest accounts)
+  return parentUsers
+    .filter((u) => u.name || u.email)
+    .map((u) => ({
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      image: u.image,
+      sharedChildren: [...(parentChildMap.get(u.id) || [])].map(
+        (id) => childNameMap.get(id) || 'Unknown'
+      ),
+    }))
 }
 
 // ---------------------------------------------------------------------------
