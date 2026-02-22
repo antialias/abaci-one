@@ -59,6 +59,7 @@ p, guest, /api/vision/*, *
 p, guest, /api/remote-camera, *
 p, guest, /api/demo/*, *
 p, guest, /api/gameplay/*, *
+p, guest, /api/notifications/*, *
 
 # Guest classroom access (student-side participation only)
 # Guests can view a classroom and participate, but cannot create or manage classrooms

@@ -144,6 +144,13 @@ export const featureFlagKeys = {
   detail: (key: string) => [...featureFlagKeys.all, 'detail', key] as const,
 }
 
+// Notification subscription query keys
+export const notificationSubscriptionKeys = {
+  all: ['notification-subscriptions'] as const,
+  list: (playerId: string) => [...notificationSubscriptionKeys.all, 'list', playerId] as const,
+  detail: (id: string) => [...notificationSubscriptionKeys.all, 'detail', id] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player
