@@ -63,13 +63,24 @@ export default async function PublicObservationPage({ params }: PublicObservatio
       .limit(1)
     const player = playerResults[0]
 
+    // Resolve userId for notification subscription
+    let endedUserId: string | undefined
+    try {
+      endedUserId = await getUserId()
+    } catch {
+      // Not logged in
+    }
+
     // Show a friendly "session ended" page with optional link to report
     return (
       <SessionEndedClient
         studentName={player?.name ?? 'Student'}
         studentEmoji={player?.emoji ?? '👤'}
         sessionCompleted={!!session.completedAt}
+        playerId={share.playerId}
+        shareToken={token}
         sessionReportUrl={sessionReportUrl}
+        userId={endedUserId}
       />
     )
   }
@@ -97,10 +108,12 @@ export default async function PublicObservationPage({ params }: PublicObservatio
 
   // Check if the current user can observe this player directly (without the share link)
   let authenticatedObserveUrl: string | undefined
+  let observeUserId: string | undefined
   try {
-    const userId = await getUserId()
-    if (userId) {
-      const canObserve = await canPerformAction(userId, share.playerId, 'observe')
+    const uid = await getUserId()
+    if (uid) {
+      observeUserId = uid
+      const canObserve = await canPerformAction(uid, share.playerId, 'observe')
       if (canObserve) {
         authenticatedObserveUrl = `/practice/${share.playerId}/observe`
       }
@@ -136,6 +149,7 @@ export default async function PublicObservationPage({ params }: PublicObservatio
         share.expiresAt instanceof Date ? share.expiresAt.getTime() : Number(share.expiresAt)
       }
       authenticatedObserveUrl={authenticatedObserveUrl}
+      userId={observeUserId}
     />
   )
 }

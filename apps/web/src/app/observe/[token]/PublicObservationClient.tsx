@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { SessionObserverView } from '@/components/classroom/SessionObserverModal'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import { SubscribeButton } from '@/components/notifications/SubscribeButton'
 import { css } from '../../../../styled-system/css'
 
 interface PublicObservationClientProps {
@@ -16,6 +17,8 @@ interface PublicObservationClientProps {
   expiresAt: number
   /** If set, the current user can observe this student directly (without share link) */
   authenticatedObserveUrl?: string
+  /** Set if the viewer is authenticated */
+  userId?: string
 }
 
 function formatTimeRemaining(ms: number): string {
@@ -34,6 +37,7 @@ export function PublicObservationClient({
   student,
   expiresAt,
   authenticatedObserveUrl,
+  userId,
 }: PublicObservationClientProps) {
   const [navHeight, setNavHeight] = useState(20) // Minimal padding for public page (no nav)
   const [timeRemaining, setTimeRemaining] = useState(expiresAt - Date.now())
@@ -124,6 +128,28 @@ export function PublicObservationClient({
         <span>👁️ View-only access</span>
         <span>•</span>
         <span>{formatTimeRemaining(timeRemaining)}</span>
+      </div>
+
+      {/* Notification subscribe banner */}
+      <div
+        data-element="subscribe-banner"
+        className={css({
+          padding: '8px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderBottom: '1px solid',
+          borderColor: 'gray.200',
+          _dark: { borderColor: 'gray.700' },
+        })}
+      >
+        <SubscribeButton
+          playerId={session.playerId}
+          playerName={student.name}
+          userId={userId}
+          shareToken={shareToken}
+          variant="subtle"
+        />
       </div>
 
       {/* Main content */}

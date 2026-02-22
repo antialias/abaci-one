@@ -2,20 +2,28 @@
 
 import Link from 'next/link'
 import { css } from '../../../../styled-system/css'
+import { SubscribeButton } from '@/components/notifications/SubscribeButton'
 
 interface SessionEndedClientProps {
   studentName: string
   studentEmoji: string
   sessionCompleted: boolean
+  playerId: string
+  shareToken: string
   /** URL to the session report (only shown if user has access) */
   sessionReportUrl?: string
+  /** Set if the viewer is authenticated */
+  userId?: string
 }
 
 export function SessionEndedClient({
   studentName,
   studentEmoji,
   sessionCompleted,
+  playerId,
+  shareToken,
   sessionReportUrl,
+  userId,
 }: SessionEndedClientProps) {
   return (
     <div
@@ -139,6 +147,24 @@ export function SessionEndedClient({
           >
             Check back once the session has started.
           </p>
+        )}
+
+        {/* Notification subscribe CTA */}
+        {sessionCompleted && (
+          <div
+            data-element="subscribe-cta"
+            className={css({
+              marginBottom: 6,
+            })}
+          >
+            <SubscribeButton
+              playerId={playerId}
+              playerName={studentName}
+              userId={userId}
+              shareToken={shareToken}
+              variant="prominent"
+            />
+          </div>
         )}
 
         <Link
