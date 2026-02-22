@@ -32,36 +32,38 @@ async function runMigrations() {
   }
 }
 
-runMigrations().then(() => app.prepare()).then(() => {
-  const server = createServer(async (req, res) => {
+runMigrations()
+  .then(() => app.prepare())
+  .then(() => {
+    const server = createServer(async (req, res) => {
+      try {
+        const parsedUrl = parse(req.url, true)
+        await handle(req, res, parsedUrl)
+      } catch (err) {
+        console.error('Error occurred handling', req.url, err)
+        res.statusCode = 500
+        res.end('internal server error')
+      }
+    })
+
+    // Initialize Socket.IO
+    let initializeSocketServer
     try {
-      const parsedUrl = parse(req.url, true)
-      await handle(req, res, parsedUrl)
-    } catch (err) {
-      console.error('Error occurred handling', req.url, err)
-      res.statusCode = 500
-      res.end('internal server error')
-    }
-  })
-
-  // Initialize Socket.IO
-  let initializeSocketServer
-  try {
-    const socketServer = require('./dist/socket-server')
-    initializeSocketServer = socketServer.initializeSocketServer
-  } catch (error) {
-    console.error('❌ Failed to load socket-server module:', error)
-    process.exit(1)
-  }
-
-  initializeSocketServer(server)
-
-  server
-    .once('error', (err) => {
-      console.error(err)
+      const socketServer = require('./dist/socket-server')
+      initializeSocketServer = socketServer.initializeSocketServer
+    } catch (error) {
+      console.error('❌ Failed to load socket-server module:', error)
       process.exit(1)
-    })
-    .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`)
-    })
-})
+    }
+
+    initializeSocketServer(server)
+
+    server
+      .once('error', (err) => {
+        console.error(err)
+        process.exit(1)
+      })
+      .listen(port, () => {
+        console.log(`> Ready on http://${hostname}:${port}`)
+      })
+  })
