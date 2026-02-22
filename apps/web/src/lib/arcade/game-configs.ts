@@ -144,5 +144,7 @@ export const DEFAULT_CONFIGS: Record<string, GameConfigByName[keyof GameConfigBy
     timeLimit: null,
     startingDifficulty: 'level1',
     wordCount: 5,
+    keyboardLayout: 'qwerty',
+    showVirtualKeyboard: false,
   } satisfies TypeRacerJrConfig,
 }
