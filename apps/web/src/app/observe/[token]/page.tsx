@@ -4,7 +4,7 @@ import { db } from '@/db'
 import { players, sessionPlans } from '@/db/schema'
 import { canPerformAction } from '@/lib/classroom'
 import { validateSessionShare } from '@/lib/session-share'
-import { getUserId } from '@/lib/viewer'
+import { getUserId, getViewer } from '@/lib/viewer'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { PublicObservationClient } from './PublicObservationClient'
 import { SessionEndedClient } from './SessionEndedClient'
@@ -42,12 +42,13 @@ export default async function PublicObservationPage({ params }: PublicObservatio
   if (session.completedAt || !session.startedAt) {
     // Session has ended or hasn't started - check if user can view the report
     let sessionReportUrl: string | undefined
+    let endedUserId: string | undefined
     try {
-      const userId = await getUserId()
-      if (userId) {
-        const canView = await canPerformAction(userId, share.playerId, 'view')
+      const viewer = await getViewer()
+      if (viewer.kind === 'user' && viewer.session.user?.id) {
+        endedUserId = viewer.session.user.id
+        const canView = await canPerformAction(endedUserId, share.playerId, 'view')
         if (canView) {
-          // User has access to view the student - provide link to the session report
           sessionReportUrl = `/practice/${share.playerId}/session/${session.id}`
         }
       }
@@ -62,14 +63,6 @@ export default async function PublicObservationPage({ params }: PublicObservatio
       .where(eq(players.id, share.playerId))
       .limit(1)
     const player = playerResults[0]
-
-    // Resolve userId for notification subscription
-    let endedUserId: string | undefined
-    try {
-      endedUserId = await getUserId()
-    } catch {
-      // Not logged in
-    }
 
     // Show a friendly "session ended" page with optional link to report
     return (
@@ -110,10 +103,11 @@ export default async function PublicObservationPage({ params }: PublicObservatio
   let authenticatedObserveUrl: string | undefined
   let observeUserId: string | undefined
   try {
-    const uid = await getUserId()
-    if (uid) {
-      observeUserId = uid
-      const canObserve = await canPerformAction(uid, share.playerId, 'observe')
+    const viewer = await getViewer()
+    // Only treat real authenticated users (not guests) as having a userId
+    if (viewer.kind === 'user' && viewer.session.user?.id) {
+      observeUserId = viewer.session.user.id
+      const canObserve = await canPerformAction(observeUserId, share.playerId, 'observe')
       if (canObserve) {
         authenticatedObserveUrl = `/practice/${share.playerId}/observe`
       }

@@ -137,12 +137,7 @@ export const TwoOfFourParents: Story = {
     return (
       <StoryShell>
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )
@@ -156,12 +151,7 @@ export const AtCapacity: Story = {
     return (
       <StoryShell>
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )
@@ -175,12 +165,7 @@ export const SingleParent: Story = {
     return (
       <StoryShell>
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )
@@ -194,12 +179,7 @@ export const DarkModeAtCapacity: Story = {
     return (
       <StoryShell theme="dark">
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )
@@ -225,12 +205,7 @@ export const ExpiresInFiveDays: Story = {
     return (
       <StoryShell>
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )
@@ -252,12 +227,7 @@ export const ExpiresTomorrow: Story = {
     return (
       <StoryShell>
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )
@@ -279,12 +249,7 @@ export const Expired: Story = {
     return (
       <StoryShell>
         <MockFetch>
-          <FamilyCodeDisplay
-            playerId={PLAYER_ID}
-            playerName="Sonia"
-            isOpen
-            onClose={() => {}}
-          />
+          <FamilyCodeDisplay playerId={PLAYER_ID} playerName="Sonia" isOpen onClose={() => {}} />
         </MockFetch>
       </StoryShell>
     )

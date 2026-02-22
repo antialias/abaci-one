@@ -141,9 +141,5 @@ export const emailChannel: NotificationChannel = {
  * Get the application base URL for constructing absolute links.
  */
 function baseUrl(): string {
-  return (
-    process.env.NEXTAUTH_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    'https://abaci.one'
-  )
+  return process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
 }

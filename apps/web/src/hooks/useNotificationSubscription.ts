@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/queryClient'
 import { notificationSubscriptionKeys } from '@/lib/queryKeys'
@@ -27,11 +27,33 @@ interface SubscribeOptions {
   enablePush?: boolean
 }
 
+function getStorageKey(playerId: string) {
+  return `notification-sub:${playerId}`
+}
+
+function readLocalSub(playerId: string): Subscription | null {
+  try {
+    const raw = localStorage.getItem(getStorageKey(playerId))
+    if (!raw) return null
+    return JSON.parse(raw) as Subscription
+  } catch {
+    return null
+  }
+}
+
 export function useNotificationSubscription(
   playerId: string | undefined,
   userId: string | undefined
 ) {
   const queryClient = useQueryClient()
+
+  // Local state for anonymous subscriptions (can't query the API without auth)
+  // Initialize from localStorage so anonymous subs survive page refresh
+  const [localSubscription, setLocalSubscription] = useState<Subscription | null>(() => {
+    if (userId || !playerId) return null
+    if (typeof window === 'undefined') return null
+    return readLocalSub(playerId)
+  })
 
   // Fetch existing subscriptions (authenticated only)
   const subscriptionsQuery = useQuery({
@@ -46,7 +68,9 @@ export function useNotificationSubscription(
     staleTime: 60 * 1000,
   })
 
-  const isSubscribed = (subscriptionsQuery.data?.length ?? 0) > 0
+  const serverSubscriptions = subscriptionsQuery.data ?? []
+  const subscriptions = localSubscription ? [localSubscription] : serverSubscriptions
+  const isSubscribed = subscriptions.length > 0
 
   // Check browser push support
   const pushSupported =
@@ -60,7 +84,6 @@ export function useNotificationSubscription(
       let pushSub: WebPushSubscriptionJson | undefined
 
       if (options.enablePush && pushSupported) {
-        // Request notification permission
         const permission = await Notification.requestPermission()
         if (permission === 'granted') {
           const registration = await registerServiceWorker()
@@ -97,11 +120,23 @@ export function useNotificationSubscription(
 
       return res.json()
     },
-    onSuccess: () => {
-      if (playerId) {
+    onSuccess: (data) => {
+      if (userId && playerId) {
+        // Authenticated: invalidate the server query
         queryClient.invalidateQueries({
           queryKey: notificationSubscriptionKeys.list(playerId),
         })
+      } else if (data?.subscription) {
+        // Anonymous: track locally since we can't query the API
+        setLocalSubscription(data.subscription)
+        // Persist to localStorage so it survives page refresh
+        if (playerId) {
+          try {
+            localStorage.setItem(getStorageKey(playerId), JSON.stringify(data.subscription))
+          } catch {
+            // localStorage may be unavailable
+          }
+        }
       }
     },
   })
@@ -115,7 +150,14 @@ export function useNotificationSubscription(
       return res.json()
     },
     onSuccess: () => {
+      setLocalSubscription(null)
+      // Clear localStorage for anonymous subscriptions
       if (playerId) {
+        try {
+          localStorage.removeItem(getStorageKey(playerId))
+        } catch {
+          // localStorage may be unavailable
+        }
         queryClient.invalidateQueries({
           queryKey: notificationSubscriptionKeys.list(playerId),
         })
@@ -134,7 +176,7 @@ export function useNotificationSubscription(
   )
 
   return {
-    subscriptions: subscriptionsQuery.data ?? [],
+    subscriptions,
     isSubscribed,
     isLoading: subscriptionsQuery.isLoading,
     pushSupported,

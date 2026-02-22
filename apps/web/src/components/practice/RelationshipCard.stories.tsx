@@ -219,10 +219,7 @@ export const Compact: Story = {
 /** Dark mode with activity events. */
 export const DarkMode: Story = {
   render: () => (
-    <Wrapper
-      stakeholders={buildStakeholders({ recentFamilyEvents: mockEvents })}
-      theme="dark"
-    >
+    <Wrapper stakeholders={buildStakeholders({ recentFamilyEvents: mockEvents })} theme="dark">
       <RelationshipCard playerId={PLAYER_ID} editable playerName="Sonia" />
     </Wrapper>
   ),

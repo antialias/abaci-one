@@ -35,6 +35,22 @@ All documentation must be reachable from root README via linked path. Unlinked d
 
 ## Critical Technical Rules
 
+### Identity Model (Viewer / Guest / User)
+**Every visitor has a user ID — even guests.** The identity system has three tiers:
+
+| Tier | `getViewer()` | `getUserId()` | Has DB user record | Has NextAuth session |
+|------|--------------|---------------|-------------------|---------------------|
+| Authenticated | `{ kind: 'user', session }` | Returns `session.user.id` | Yes | Yes |
+| Guest | `{ kind: 'guest', guestId }` | **Creates a user record** and returns its ID | Yes (auto-created) | No |
+| Unknown | `{ kind: 'unknown' }` | Throws | No | No |
+
+**Critical rules:**
+- `getUserId()` returns a valid UUID for **both** authenticated users and guests. NEVER use it to check if someone is "logged in".
+- To check if someone is truly authenticated (not a guest), use `getViewer()` and check `kind === 'user'`.
+- `withAuth()` in API routes provides `userRole` — `'guest'` vs `'user'` vs `'admin'`. Use this to distinguish auth level server-side.
+- `!!userId` is NOT an authentication check. Guests have user IDs.
+- When a component needs to behave differently for guests vs authenticated users (e.g., showing an email input vs one-click action), the server page should use `getViewer()` and only pass `userId` for `kind === 'user'`.
+
 ### Database Migrations
 **Has caused multiple production outages.** See `.claude/procedures/database-migrations.md`
 

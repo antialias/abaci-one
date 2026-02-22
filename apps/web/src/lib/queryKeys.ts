@@ -147,6 +147,7 @@ export const featureFlagKeys = {
 // Notification subscription query keys
 export const notificationSubscriptionKeys = {
   all: ['notification-subscriptions'] as const,
+  mine: () => [...notificationSubscriptionKeys.all, 'mine'] as const,
   list: (playerId: string) => [...notificationSubscriptionKeys.all, 'list', playerId] as const,
   detail: (id: string) => [...notificationSubscriptionKeys.all, 'detail', id] as const,
 }

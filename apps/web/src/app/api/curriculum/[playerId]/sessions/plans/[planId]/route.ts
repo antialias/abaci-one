@@ -206,9 +206,7 @@ async function emitSessionEvents(
     // Fire-and-forget: notify subscribers (web push, email, in-app)
     if (action === 'start') {
       const baseUrl =
-        process.env.NEXTAUTH_URL ??
-        process.env.NEXT_PUBLIC_APP_URL ??
-        'https://abaci.one'
+        process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
 
       import('@/lib/notifications/bootstrap')
         .then(({ bootstrapChannels }) => bootstrapChannels())

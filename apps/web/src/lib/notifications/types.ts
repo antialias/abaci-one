@@ -6,7 +6,10 @@ export interface NotificationChannel {
   /** Check whether this subscription has the data needed for delivery */
   canDeliver(sub: PracticeNotificationSubscription): boolean
   /** Attempt to deliver a notification */
-  deliver(sub: PracticeNotificationSubscription, event: SessionStartedPayload): Promise<DeliveryResult>
+  deliver(
+    sub: PracticeNotificationSubscription,
+    event: SessionStartedPayload
+  ): Promise<DeliveryResult>
 }
 
 export interface SessionStartedPayload {

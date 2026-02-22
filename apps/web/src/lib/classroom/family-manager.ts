@@ -69,7 +69,9 @@ export async function linkParentToChild(
         error: 'This family code has expired. Ask the parent to regenerate it.',
       }
     }
-    const expiresAt = new Date(generatedAt.getTime() + FAMILY_CODE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+    const expiresAt = new Date(
+      generatedAt.getTime() + FAMILY_CODE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    )
     if (new Date() > expiresAt) {
       return {
         success: false,

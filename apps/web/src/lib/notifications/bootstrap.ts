@@ -22,6 +22,8 @@ export function bootstrapChannels(): void {
 
   console.log(
     '[notifications] Bootstrapped channels:',
-    getRegisteredChannels().map((c) => c.name).join(', ')
+    getRegisteredChannels()
+      .map((c) => c.name)
+      .join(', ')
   )
 }

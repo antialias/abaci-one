@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { SessionObserverView } from '@/components/classroom/SessionObserverModal'
+import { SubscribeButton } from '@/components/notifications/SubscribeButton'
 import { PageWithNav } from '@/components/PageWithNav'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { css } from '../../../../../styled-system/css'
@@ -123,6 +124,26 @@ export function ObservationClient({
             </Link>
           </div>
         )}
+        {/* Notification subscribe banner */}
+        <div
+          data-element="subscribe-banner"
+          className={css({
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderBottom: '1px solid',
+            borderColor: 'gray.200',
+            _dark: { borderColor: 'gray.700' },
+          })}
+        >
+          <SubscribeButton
+            playerId={studentId}
+            playerName={student.name}
+            userId={observerId}
+            variant="subtle"
+          />
+        </div>
         <div
           className={css({
             flex: 1,

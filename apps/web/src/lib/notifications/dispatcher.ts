@@ -1,8 +1,13 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { appSettings, type NotificationChannelsConfig, practiceNotificationSubscriptions } from '@/db/schema'
+import {
+  appSettings,
+  type NotificationChannelsConfig,
+  practiceNotificationSubscriptions,
+} from '@/db/schema'
 import type { NotificationChannel, SessionStartedPayload, NotifyResult } from './types'
 import { getActiveSubscriptionsForPlayer, markSubscriptionExpired } from './subscription-manager'
+import { createSessionShare } from '@/lib/session-share'
 
 /** Throttle window: skip notification if lastNotifiedAt is within this many ms */
 const THROTTLE_MS = 5 * 60 * 1000
@@ -61,10 +66,7 @@ async function getGlobalChannelConfig(): Promise<NotificationChannelsConfig | nu
 /**
  * Check whether a channel is enabled in the global config.
  */
-function isChannelEnabled(
-  config: NotificationChannelsConfig,
-  channelName: string
-): boolean {
+function isChannelEnabled(config: NotificationChannelsConfig, channelName: string): boolean {
   const entry = config[channelName as keyof NotificationChannelsConfig]
   return entry?.enabled === true
 }
@@ -78,9 +80,7 @@ function isChannelEnabled(
  * 3. For each subscription: throttle check, then fan out to registered channels
  * 4. Mark expired subscriptions, update lastNotifiedAt on success
  */
-export async function notifySubscribers(
-  event: SessionStartedPayload
-): Promise<NotifyResult> {
+export async function notifySubscribers(event: SessionStartedPayload): Promise<NotifyResult> {
   const result: NotifyResult = {
     subscriptionCount: 0,
     throttled: 0,
@@ -101,12 +101,38 @@ export async function notifySubscribers(
 
   // 3. Process each subscription
   const now = Date.now()
+  // Lazily created share token for anonymous subscribers (created once, reused)
+  let anonymousShareToken: string | null = null
 
   for (const sub of subscriptions) {
     // Throttle check
     if (sub.lastNotifiedAt && now - sub.lastNotifiedAt.getTime() < THROTTLE_MS) {
       result.throttled++
       continue
+    }
+
+    // For anonymous subscribers (no userId), generate a share link URL
+    // so they can actually access the observation page
+    let subEvent = event
+    if (!sub.userId) {
+      if (!anonymousShareToken) {
+        try {
+          const share = await createSessionShare(
+            event.sessionId,
+            event.playerId,
+            'system',
+            '24h'
+          )
+          anonymousShareToken = share.id
+        } catch (err) {
+          console.error('[notifications] Failed to create share token for anonymous sub:', err)
+        }
+      }
+      if (anonymousShareToken) {
+        const baseUrl =
+          process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
+        subEvent = { ...event, observeUrl: `${baseUrl}/observe/${anonymousShareToken}` }
+      }
     }
 
     let deliveredAny = false
@@ -121,7 +147,7 @@ export async function notifySubscribers(
       result.attempted++
 
       try {
-        const delivery = await channel.deliver(sub, event)
+        const delivery = await channel.deliver(sub, subEvent)
 
         if (delivery.success) {
           result.succeeded++
@@ -145,9 +171,7 @@ export async function notifySubscribers(
       db.update(practiceNotificationSubscriptions)
         .set({ lastNotifiedAt: new Date() })
         .where(eq(practiceNotificationSubscriptions.id, sub.id))
-        .catch((err) =>
-          console.error('[notifications] Failed to update lastNotifiedAt:', err)
-        )
+        .catch((err) => console.error('[notifications] Failed to update lastNotifiedAt:', err))
     }
   }
 

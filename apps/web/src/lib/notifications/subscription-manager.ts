@@ -2,6 +2,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import {
+  players,
   practiceNotificationSubscriptions,
   type PracticeNotificationSubscription,
   type SubscriptionChannels,
@@ -126,6 +127,40 @@ export async function updatePushSubscription(
     .update(practiceNotificationSubscriptions)
     .set({ pushSubscription: pushSub })
     .where(eq(practiceNotificationSubscriptions.id, id))
+}
+
+/**
+ * Get all active subscriptions for a user, enriched with player info.
+ */
+export async function getActiveSubscriptionsForUser(
+  userId: string
+): Promise<(PracticeNotificationSubscription & { playerName: string; playerEmoji: string })[]> {
+  const rows = await db
+    .select({
+      id: practiceNotificationSubscriptions.id,
+      userId: practiceNotificationSubscriptions.userId,
+      playerId: practiceNotificationSubscriptions.playerId,
+      email: practiceNotificationSubscriptions.email,
+      pushSubscription: practiceNotificationSubscriptions.pushSubscription,
+      channels: practiceNotificationSubscriptions.channels,
+      status: practiceNotificationSubscriptions.status,
+      label: practiceNotificationSubscriptions.label,
+      createdAt: practiceNotificationSubscriptions.createdAt,
+      expiresAt: practiceNotificationSubscriptions.expiresAt,
+      lastNotifiedAt: practiceNotificationSubscriptions.lastNotifiedAt,
+      playerName: players.name,
+      playerEmoji: players.emoji,
+    })
+    .from(practiceNotificationSubscriptions)
+    .innerJoin(players, eq(practiceNotificationSubscriptions.playerId, players.id))
+    .where(
+      and(
+        eq(practiceNotificationSubscriptions.userId, userId),
+        eq(practiceNotificationSubscriptions.status, 'active')
+      )
+    )
+
+  return rows
 }
 
 /**

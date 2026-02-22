@@ -6,15 +6,23 @@ import { players } from './players'
 export const practiceNotificationSubscriptions = sqliteTable(
   'practice_notification_subscriptions',
   {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
     userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
-    playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+    playerId: text('player_id')
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
     email: text('email'),
     pushSubscription: text('push_subscription', { mode: 'json' }).$type<WebPushSubscriptionJson>(),
     channels: text('channels', { mode: 'json' }).$type<SubscriptionChannels>().notNull(),
-    status: text('status', { enum: ['active', 'paused', 'expired'] }).notNull().default('active'),
+    status: text('status', { enum: ['active', 'paused', 'expired'] })
+      .notNull()
+      .default('active'),
     label: text('label'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
     expiresAt: integer('expires_at', { mode: 'timestamp' }),
     lastNotifiedAt: integer('last_notified_at', { mode: 'timestamp' }),
   },
@@ -37,4 +45,5 @@ export interface SubscriptionChannels {
 }
 
 export type PracticeNotificationSubscription = typeof practiceNotificationSubscriptions.$inferSelect
-export type NewPracticeNotificationSubscription = typeof practiceNotificationSubscriptions.$inferInsert
+export type NewPracticeNotificationSubscription =
+  typeof practiceNotificationSubscriptions.$inferInsert

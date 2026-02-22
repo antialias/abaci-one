@@ -2,12 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 import { withAuth } from '@/lib/auth/withAuth'
 import { db } from '@/db'
-import { practiceNotificationSubscriptions } from '@/db/schema'
+import { practiceNotificationSubscriptions, users } from '@/db/schema'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import { validateSessionShare } from '@/lib/session-share'
 import {
   createSubscription,
   getActiveSubscriptionsForPlayer,
+  getActiveSubscriptionsForUser,
 } from '@/lib/notifications/subscription-manager'
 import type { SubscriptionChannels, WebPushSubscriptionJson } from '@/db/schema'
 
@@ -25,14 +26,7 @@ const ANONYMOUS_EXPIRY_DAYS = 30
 export const POST = withAuth(async (request: NextRequest, { userId, userRole }) => {
   try {
     const body = await request.json()
-    const {
-      playerId,
-      pushSubscription,
-      shareToken,
-      email,
-      label,
-      channels,
-    } = body as {
+    const { playerId, pushSubscription, shareToken, email, label, channels } = body as {
       playerId: string
       pushSubscription?: WebPushSubscriptionJson
       shareToken?: string
@@ -53,13 +47,31 @@ export const POST = withAuth(async (request: NextRequest, { userId, userRole }) 
 
     const isAuthenticated = userRole !== 'guest' && !!userId
 
+    // Check if user has direct access to this player
+    let hasDirectAccess = false
     if (isAuthenticated) {
-      // Authenticated flow: verify access to this player
-      const canView = await canPerformAction(userId, playerId, 'view')
-      if (!canView) {
-        return NextResponse.json({ error: 'Not authorized for this player' }, { status: 403 })
-      }
+      hasDirectAccess = await canPerformAction(userId!, playerId, 'view')
+    }
 
+    // Fall back to share token validation if no direct access
+    if (!hasDirectAccess && shareToken) {
+      const validation = await validateSessionShare(shareToken)
+      if (validation.valid && validation.share?.playerId === playerId) {
+        hasDirectAccess = true
+      }
+    }
+
+    if (!hasDirectAccess) {
+      if (!shareToken) {
+        return NextResponse.json(
+          { error: 'shareToken is required when you do not have direct access to this player' },
+          { status: 400 }
+        )
+      }
+      return NextResponse.json({ error: 'Not authorized for this player' }, { status: 403 })
+    }
+
+    if (isAuthenticated) {
       const result = await createSubscription({
         userId,
         playerId,
@@ -75,32 +87,7 @@ export const POST = withAuth(async (request: NextRequest, { userId, userRole }) 
 
       return NextResponse.json({ subscription: result.subscription }, { status: 201 })
     } else {
-      // Anonymous flow: require share token
-      if (!shareToken) {
-        return NextResponse.json(
-          { error: 'shareToken is required for anonymous subscriptions' },
-          { status: 400 }
-        )
-      }
-
-      // Validate share token
-      const validation = await validateSessionShare(shareToken)
-      if (!validation.valid || !validation.share) {
-        return NextResponse.json(
-          { error: validation.error ?? 'Invalid share token' },
-          { status: 403 }
-        )
-      }
-
-      // Verify the share is for the requested player
-      if (validation.share.playerId !== playerId) {
-        return NextResponse.json(
-          { error: 'Share token does not match playerId' },
-          { status: 403 }
-        )
-      }
-
-      // Require at least one delivery mechanism
+      // Anonymous flow: require at least one delivery mechanism
       if (!pushSubscription && !email) {
         return NextResponse.json(
           { error: 'Anonymous subscriptions require a push subscription or email' },
@@ -108,7 +95,36 @@ export const POST = withAuth(async (request: NextRequest, { userId, userRole }) 
         )
       }
 
-      // Rate limit: max anonymous subs per player
+      // If the email belongs to an existing user, associate the subscription
+      // with their account (no expiry, in-app enabled)
+      if (email) {
+        const [existingUser] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1)
+
+        if (existingUser) {
+          resolvedChannels.inApp = true
+
+          const result = await createSubscription({
+            userId: existingUser.id,
+            playerId,
+            email,
+            pushSubscription,
+            channels: resolvedChannels,
+            label,
+          })
+
+          if (!result.success) {
+            return NextResponse.json({ error: result.error }, { status: 400 })
+          }
+
+          return NextResponse.json({ subscription: result.subscription }, { status: 201 })
+        }
+      }
+
+      // Truly anonymous: rate limit and auto-expire
       const existingAnonymous = await db
         .select({ id: practiceNotificationSubscriptions.id })
         .from(practiceNotificationSubscriptions)
@@ -119,7 +135,6 @@ export const POST = withAuth(async (request: NextRequest, { userId, userRole }) 
           )
         )
 
-      // Count subs without a userId (anonymous)
       const anonymousCount = existingAnonymous.length
       if (anonymousCount >= MAX_ANONYMOUS_SUBS_PER_PLAYER) {
         return NextResponse.json(
@@ -166,8 +181,10 @@ export const GET = withAuth(async (request: NextRequest, { userId, userRole }) =
     const { searchParams } = new URL(request.url)
     const playerId = searchParams.get('playerId')
 
+    // When playerId is omitted, return all active subscriptions for the user
     if (!playerId) {
-      return NextResponse.json({ error: 'playerId query parameter is required' }, { status: 400 })
+      const subscriptions = await getActiveSubscriptionsForUser(userId)
+      return NextResponse.json({ subscriptions })
     }
 
     const canView = await canPerformAction(userId, playerId, 'view')

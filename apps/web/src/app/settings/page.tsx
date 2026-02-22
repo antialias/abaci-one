@@ -3,11 +3,14 @@
 import { useAbacusDisplay } from '@soroban/abacus-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Bell,
   CreditCard,
   Key,
   Languages,
+  Mail,
   Palette,
   Settings as SettingsIcon,
+  Smartphone,
   Volume2,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -22,11 +25,11 @@ import { useAudioManager } from '@/hooks/useAudioManager'
 import { useFamilyCoverage, useTier } from '@/hooks/useTier'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { billingKeys } from '@/lib/queryKeys'
+import { billingKeys, notificationSubscriptionKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 
-type TabId = 'general' | 'abacus' | 'billing' | 'mcp-keys'
+type TabId = 'general' | 'abacus' | 'billing' | 'notifications' | 'mcp-keys'
 
 interface Tab {
   id: TabId
@@ -38,6 +41,7 @@ const TABS: Tab[] = [
   { id: 'general', label: 'General', icon: <SettingsIcon size={16} /> },
   { id: 'abacus', label: 'Abacus Style', icon: <Palette size={16} /> },
   { id: 'billing', label: 'Billing', icon: <CreditCard size={16} /> },
+  { id: 'notifications', label: 'Notifications', icon: <Bell size={16} /> },
   { id: 'mcp-keys', label: 'MCP Keys', icon: <Key size={16} /> },
 ]
 
@@ -154,6 +158,7 @@ export default function SettingsPage() {
           {activeTab === 'general' && <GeneralTab isDark={isDark} />}
           {activeTab === 'abacus' && <AbacusTab isDark={isDark} />}
           {activeTab === 'billing' && <BillingTab isDark={isDark} />}
+          {activeTab === 'notifications' && <NotificationsTab isDark={isDark} />}
           {activeTab === 'mcp-keys' && <McpKeysTab isDark={isDark} />}
         </div>
       </main>
@@ -670,6 +675,212 @@ function BillingTab({ isDark }: { isDark: boolean }) {
           </SettingRow>
         </SectionCard>
       </div>
+    </div>
+  )
+}
+
+// ============================================
+// Notifications Tab - Manage Notification Subscriptions
+// ============================================
+
+interface UserSubscription {
+  id: string
+  playerId: string
+  channels: { webPush?: boolean; email?: boolean; inApp?: boolean }
+  playerName: string
+  playerEmoji: string
+}
+
+function NotificationsTab({ isDark }: { isDark: boolean }) {
+  const queryClient = useQueryClient()
+
+  const { data, isLoading } = useQuery({
+    queryKey: notificationSubscriptionKeys.mine(),
+    queryFn: async (): Promise<UserSubscription[]> => {
+      const res = await api('notifications/subscriptions')
+      if (!res.ok) return []
+      const json = await res.json()
+      return json.subscriptions ?? []
+    },
+  })
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const res = await api(`notifications/subscriptions/${subscriptionId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to unsubscribe')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: notificationSubscriptionKeys.mine(),
+      })
+    },
+  })
+
+  const subscriptions = data ?? []
+
+  return (
+    <div data-section="notifications-tab">
+      <SectionCard isDark={isDark}>
+        <SectionHeader icon={<Bell size={18} />} title="Practice Notifications" isDark={isDark} />
+
+        {isLoading ? (
+          <div className={css({ padding: '1.5rem 0' })}>
+            <p className={css({ color: isDark ? 'gray.500' : 'gray.500' })}>Loading...</p>
+          </div>
+        ) : subscriptions.length === 0 ? (
+          <div className={css({ padding: '1.5rem 0' })}>
+            <p
+              className={css({
+                color: isDark ? 'gray.400' : 'gray.600',
+                fontStyle: 'italic',
+              })}
+            >
+              No notification subscriptions. You can subscribe from any student&apos;s observation
+              page.
+            </p>
+          </div>
+        ) : (
+          <div data-element="subscription-list">
+            {subscriptions.map((sub) => (
+              <div
+                key={sub.id}
+                data-element="subscription-row"
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  padding: '1rem 0',
+                  borderBottom: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.200',
+                  _last: { borderBottom: 'none' },
+                })}
+              >
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    flex: 1,
+                    minWidth: 0,
+                  })}
+                >
+                  <span className={css({ fontSize: '1.5rem', flexShrink: 0 })}>
+                    {sub.playerEmoji}
+                  </span>
+                  <div className={css({ minWidth: 0 })}>
+                    <div
+                      className={css({
+                        fontWeight: '500',
+                        color: isDark ? 'white' : 'gray.800',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      })}
+                    >
+                      {sub.playerName}
+                    </div>
+                    <div
+                      className={css({
+                        display: 'flex',
+                        gap: '0.5rem',
+                        marginTop: '0.25rem',
+                      })}
+                    >
+                      {sub.channels.webPush && (
+                        <span
+                          data-element="channel-badge"
+                          title="Push notifications"
+                          className={css({
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                            color: isDark ? 'blue.300' : 'blue.700',
+                          })}
+                        >
+                          <Smartphone size={12} />
+                          Push
+                        </span>
+                      )}
+                      {sub.channels.email && (
+                        <span
+                          data-element="channel-badge"
+                          title="Email notifications"
+                          className={css({
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            backgroundColor: isDark ? 'green.900/50' : 'green.50',
+                            color: isDark ? 'green.300' : 'green.700',
+                          })}
+                        >
+                          <Mail size={12} />
+                          Email
+                        </span>
+                      )}
+                      {sub.channels.inApp && (
+                        <span
+                          data-element="channel-badge"
+                          title="In-app notifications"
+                          className={css({
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            backgroundColor: isDark ? 'purple.900/50' : 'purple.50',
+                            color: isDark ? 'purple.300' : 'purple.700',
+                          })}
+                        >
+                          <Bell size={12} />
+                          In-app
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  data-action="unsubscribe"
+                  onClick={() => unsubscribeMutation.mutate(sub.id)}
+                  disabled={unsubscribeMutation.isPending}
+                  className={css({
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'red.400/50' : 'red.200',
+                    backgroundColor: 'transparent',
+                    color: isDark ? 'red.400' : 'red.600',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    _hover: {
+                      backgroundColor: isDark ? 'red.900/30' : 'red.50',
+                    },
+                    _disabled: {
+                      opacity: 0.6,
+                      cursor: 'not-allowed',
+                    },
+                  })}
+                >
+                  {unsubscribeMutation.isPending ? 'Removing...' : 'Unsubscribe'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </div>
   )
 }

@@ -179,12 +179,7 @@ function FullSharePanel({
       )}
 
       {/* Code display badge */}
-      <CodeBadge
-        code={code}
-        copied={codeCopied}
-        onCopy={copyCode}
-        isDark={isDark}
-      />
+      <CodeBadge code={code} copied={codeCopied} onCopy={copyCode} isDark={isDark} />
 
       {/* Action bar */}
       <ActionBar
@@ -327,24 +322,12 @@ function CodeBadge({
           alignItems: 'center',
           justifyContent: 'center',
           padding: '8px 16px',
-          bg: copied
-            ? isDark
-              ? 'green.900/60'
-              : 'green.50'
-            : isDark
-              ? 'gray.900'
-              : 'gray.50',
+          bg: copied ? (isDark ? 'green.900/60' : 'green.50') : isDark ? 'gray.900' : 'gray.50',
           border: 'none',
           cursor: 'pointer',
           transition: 'all 0.15s ease',
           _hover: {
-            bg: copied
-              ? isDark
-                ? 'green.800/60'
-                : 'green.100'
-              : isDark
-                ? 'gray.800'
-                : 'gray.100',
+            bg: copied ? (isDark ? 'green.800/60' : 'green.100') : isDark ? 'gray.800' : 'gray.100',
           },
         })}
       >
@@ -354,13 +337,7 @@ function CodeBadge({
             fontFamily: 'monospace',
             fontWeight: 'bold',
             letterSpacing: '0.15em',
-            color: copied
-              ? isDark
-                ? 'green.300'
-                : 'green.700'
-              : isDark
-                ? 'gray.200'
-                : 'gray.700',
+            color: copied ? (isDark ? 'green.300' : 'green.700') : isDark ? 'gray.200' : 'gray.700',
           })}
         >
           {copied ? '✓ Copied!' : code}
@@ -377,42 +354,18 @@ function CodeBadge({
           alignItems: 'center',
           justifyContent: 'center',
           padding: '8px 12px',
-          bg: copied
-            ? isDark
-              ? 'green.900/60'
-              : 'green.50'
-            : isDark
-              ? 'gray.900'
-              : 'gray.50',
+          bg: copied ? (isDark ? 'green.900/60' : 'green.50') : isDark ? 'gray.900' : 'gray.50',
           border: 'none',
           borderLeftWidth: '1px',
           borderLeftStyle: copied ? 'solid' : 'dashed',
           borderLeftColor: borderColor,
           cursor: 'pointer',
           fontSize: '13px',
-          color: copied
-            ? isDark
-              ? 'green.300'
-              : 'green.600'
-            : isDark
-              ? 'gray.400'
-              : 'gray.500',
+          color: copied ? (isDark ? 'green.300' : 'green.600') : isDark ? 'gray.400' : 'gray.500',
           transition: 'all 0.15s ease',
           _hover: {
-            bg: copied
-              ? isDark
-                ? 'green.800/60'
-                : 'green.100'
-              : isDark
-                ? 'gray.800'
-                : 'gray.100',
-            color: copied
-              ? isDark
-                ? 'green.300'
-                : 'green.600'
-              : isDark
-                ? 'gray.300'
-                : 'gray.600',
+            bg: copied ? (isDark ? 'green.800/60' : 'green.100') : isDark ? 'gray.800' : 'gray.100',
+            color: copied ? (isDark ? 'green.300' : 'green.600') : isDark ? 'gray.300' : 'gray.600',
           },
         })}
       >
@@ -559,13 +512,7 @@ function SplitCopyLinkButton({
             border: 'none',
             cursor: 'pointer',
             fontSize: '14px',
-            color: shared
-              ? isDark
-                ? 'green.300'
-                : 'green.600'
-              : isDark
-                ? 'blue.300'
-                : 'blue.700',
+            color: shared ? (isDark ? 'green.300' : 'green.600') : isDark ? 'blue.300' : 'blue.700',
             transition: 'all 0.15s ease',
             _hover: {
               bg: shared
@@ -695,12 +642,7 @@ function CompactShareChip({
 
           {/* Code badge */}
           <div className={css({ marginBottom: '10px' })}>
-            <CodeBadge
-              code={code}
-              copied={codeCopied}
-              onCopy={copyCode}
-              isDark={isDark}
-            />
+            <CodeBadge code={code} copied={codeCopied} onCopy={copyCode} isDark={isDark} />
           </div>
 
           {/* Action bar */}

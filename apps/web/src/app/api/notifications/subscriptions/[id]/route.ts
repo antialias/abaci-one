@@ -19,7 +19,10 @@ async function verifyOwnership(
   subId: string,
   userId: string | undefined,
   isAuthenticated: boolean
-): Promise<{ authorized: boolean; subscription?: typeof practiceNotificationSubscriptions.$inferSelect }> {
+): Promise<{
+  authorized: boolean
+  subscription?: typeof practiceNotificationSubscriptions.$inferSelect
+}> {
   const [sub] = await db
     .select()
     .from(practiceNotificationSubscriptions)
@@ -70,10 +73,7 @@ export const PATCH = withAuth(async (request: NextRequest, { userId, userRole, p
 
     if (status !== undefined) {
       if (status !== 'active' && status !== 'paused') {
-        return NextResponse.json(
-          { error: 'status must be "active" or "paused"' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'status must be "active" or "paused"' }, { status: 400 })
       }
       updates.status = status
     }

@@ -34,10 +34,7 @@ export function usePracticeNotifications(userId: string | undefined): void {
     })
 
     socket.on('practice-notification', (data: PracticeNotificationEvent) => {
-      console.log(
-        '[PracticeNotifications] %s started practicing',
-        data.playerName
-      )
+      console.log('[PracticeNotifications] %s started practicing', data.playerName)
 
       showToast({
         type: 'info',

@@ -132,7 +132,10 @@ describe('Family Manager', () => {
     it('returns error when already linked', async () => {
       mockDb.query.players.findFirst.mockResolvedValue(mockPlayer)
       mockDb.query.users.findFirst.mockResolvedValue(mockOwner)
-      mockDb.query.parentChild.findFirst.mockResolvedValue({ parentUserId: 'parent-1', childPlayerId: 'player-1' })
+      mockDb.query.parentChild.findFirst.mockResolvedValue({
+        parentUserId: 'parent-1',
+        childPlayerId: 'player-1',
+      })
 
       const result = await linkParentToChild('parent-1', 'ABC123')
 

@@ -45,9 +45,7 @@ export async function subscribeToPush(
 /**
  * Convert a browser PushSubscription to the JSON shape stored in the database.
  */
-export function pushSubscriptionToJson(
-  sub: PushSubscription
-): WebPushSubscriptionJson {
+export function pushSubscriptionToJson(sub: PushSubscription): WebPushSubscriptionJson {
   const json = sub.toJSON()
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
     throw new Error('[register-sw] PushSubscription is missing required fields')

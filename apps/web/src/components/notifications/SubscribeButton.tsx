@@ -91,15 +91,14 @@ export function SubscribeButton({
       <div data-component="subscribe-button" data-state="not-subscribed">
         <button
           type="button"
-          onClick={() => subscribe({ enablePush: pushSupported })}
+          onClick={() => subscribe({ enablePush: pushSupported, shareToken })}
           disabled={subscribePending}
           data-action="subscribe"
           className={css({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding:
-              variant === 'subtle' ? '0.375rem 0.75rem' : '0.625rem 1.25rem',
+            padding: variant === 'subtle' ? '0.375rem 0.75rem' : '0.625rem 1.25rem',
             fontSize: variant === 'subtle' ? '0.8125rem' : '0.9375rem',
             fontWeight: '600',
             borderRadius: '8px',
@@ -115,9 +114,7 @@ export function SubscribeButton({
             },
           })}
         >
-          {subscribePending
-            ? 'Subscribing...'
-            : `Notify me when ${playerName} practices`}
+          {subscribePending ? 'Subscribing...' : `Notify me when ${playerName} practices`}
         </button>
         {subscribeError && (
           <p
@@ -146,8 +143,7 @@ export function SubscribeButton({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding:
-              variant === 'subtle' ? '0.375rem 0.75rem' : '0.625rem 1.25rem',
+            padding: variant === 'subtle' ? '0.375rem 0.75rem' : '0.625rem 1.25rem',
             fontSize: variant === 'subtle' ? '0.8125rem' : '0.9375rem',
             fontWeight: '600',
             borderRadius: '8px',

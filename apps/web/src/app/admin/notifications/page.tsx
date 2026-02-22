@@ -119,10 +119,7 @@ export default function AdminNotificationsPage() {
     },
   })
 
-  const hasChanges =
-    config &&
-    localConfig &&
-    JSON.stringify(config) !== JSON.stringify(localConfig)
+  const hasChanges = config && localConfig && JSON.stringify(config) !== JSON.stringify(localConfig)
 
   const handleToggle = useCallback(
     (channel: 'webPush' | 'email' | 'inApp') => {
@@ -167,14 +164,20 @@ export default function AdminNotificationsPage() {
       if (channel === 'webPush') {
         try {
           if (!('Notification' in window)) {
-            setTestResult({ channel, message: 'Failed: Notifications API not supported in this browser' })
+            setTestResult({
+              channel,
+              message: 'Failed: Notifications API not supported in this browser',
+            })
             return
           }
 
           setTestResult({ channel, message: 'Requesting permission...' })
           const permission = await Notification.requestPermission()
           if (permission !== 'granted') {
-            setTestResult({ channel, message: `Failed: Permission ${permission}. Check browser notification settings for this site.` })
+            setTestResult({
+              channel,
+              message: `Failed: Permission ${permission}. Check browser notification settings for this site.`,
+            })
             return
           }
 
@@ -311,11 +314,19 @@ export default function AdminNotificationsPage() {
                               padding: '2px 8px',
                               borderRadius: '9999px',
                               backgroundColor: status.operational
-                                ? isDark ? 'rgba(35, 134, 54, 0.2)' : 'green.50'
-                                : isDark ? 'rgba(218, 54, 51, 0.2)' : 'red.50',
+                                ? isDark
+                                  ? 'rgba(35, 134, 54, 0.2)'
+                                  : 'green.50'
+                                : isDark
+                                  ? 'rgba(218, 54, 51, 0.2)'
+                                  : 'red.50',
                               color: status.operational
-                                ? isDark ? 'green.400' : 'green.700'
-                                : isDark ? 'red.400' : 'red.700',
+                                ? isDark
+                                  ? 'green.400'
+                                  : 'green.700'
+                                : isDark
+                                  ? 'red.400'
+                                  : 'red.700',
                             })}
                           >
                             <span
@@ -324,8 +335,12 @@ export default function AdminNotificationsPage() {
                                 height: '6px',
                                 borderRadius: '50%',
                                 backgroundColor: status.operational
-                                  ? isDark ? 'green.400' : 'green.500'
-                                  : isDark ? 'red.400' : 'red.500',
+                                  ? isDark
+                                    ? 'green.400'
+                                    : 'green.500'
+                                  : isDark
+                                    ? 'red.400'
+                                    : 'red.500',
                               })}
                             />
                             {status.operational ? 'Operational' : 'Not configured'}
@@ -343,11 +358,7 @@ export default function AdminNotificationsPage() {
                           borderRadius: '12px',
                           border: 'none',
                           cursor: 'pointer',
-                          backgroundColor: enabled
-                            ? '#238636'
-                            : isDark
-                              ? '#30363d'
-                              : '#d1d5db',
+                          backgroundColor: enabled ? '#238636' : isDark ? '#30363d' : '#d1d5db',
                           transition: 'background-color 0.2s',
                         })}
                       >
@@ -459,10 +470,7 @@ export default function AdminNotificationsPage() {
                         <button
                           type="button"
                           onClick={() => handleTest(channel)}
-                          disabled={
-                            testMutation.isPending ||
-                            (channel === 'email' && !testEmail)
-                          }
+                          disabled={testMutation.isPending || (channel === 'email' && !testEmail)}
                           data-action={`test-${channel}`}
                           className={css({
                             padding: '0.375rem 0.75rem',
@@ -489,7 +497,9 @@ export default function AdminNotificationsPage() {
                                 ? 'green.500'
                                 : testResult.message.startsWith('Failed')
                                   ? 'red.400'
-                                  : isDark ? 'gray.400' : 'gray.500',
+                                  : isDark
+                                    ? 'gray.400'
+                                    : 'gray.500',
                             })}
                           >
                             {testResult.message}

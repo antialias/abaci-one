@@ -21,9 +21,13 @@ function getChannelStatuses(): Record<string, ChannelStatus> {
   const hasEmailServer = !!process.env.EMAIL_SERVER
 
   return {
-    webPush: hasVapidPublic && hasVapidPrivate
-      ? { operational: true }
-      : { operational: false, reason: `Missing env: ${[!hasVapidPublic && 'NEXT_PUBLIC_VAPID_PUBLIC_KEY', !hasVapidPrivate && 'VAPID_PRIVATE_KEY'].filter(Boolean).join(', ')}` },
+    webPush:
+      hasVapidPublic && hasVapidPrivate
+        ? { operational: true }
+        : {
+            operational: false,
+            reason: `Missing env: ${[!hasVapidPublic && 'NEXT_PUBLIC_VAPID_PUBLIC_KEY', !hasVapidPrivate && 'VAPID_PRIVATE_KEY'].filter(Boolean).join(', ')}`,
+          },
     email: hasEmailServer
       ? { operational: true }
       : { operational: false, reason: 'Missing env: EMAIL_SERVER' },
@@ -85,10 +89,7 @@ export const PATCH = withAuth(
 
       for (const key of ['webPush', 'email', 'inApp'] as const) {
         if (!config[key] || typeof config[key].enabled !== 'boolean') {
-          return NextResponse.json(
-            { error: `${key}.enabled must be a boolean` },
-            { status: 400 }
-          )
+          return NextResponse.json({ error: `${key}.enabled must be a boolean` }, { status: 400 })
         }
       }
 
