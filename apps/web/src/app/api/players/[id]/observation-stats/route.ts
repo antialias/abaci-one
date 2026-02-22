@@ -8,13 +8,13 @@ import { canPerformAction, isParentOf } from '@/lib/classroom'
 import { getShareUrl } from '@/lib/share/urls'
 
 /**
- * GET /api/players/[playerId]/observation-stats
+ * GET /api/players/[id]/observation-stats
  *
  * Returns observation share stats for a player: aggregate metrics,
  * active share links, and per-session share breakdown.
  */
 export const GET = withAuth(async (_request, { userId, params }) => {
-  const { playerId } = (await params) as { playerId: string }
+  const { id: playerId } = (await params) as { id: string }
 
   // Authorization: user must have view access to this player
   const hasAccess = await canPerformAction(userId, playerId, 'view')
