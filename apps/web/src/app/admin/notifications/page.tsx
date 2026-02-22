@@ -6,6 +6,11 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { AdminNav } from '@/components/AdminNav'
 import { useTheme } from '@/contexts/ThemeContext'
 import { api } from '@/lib/queryClient'
+import {
+  registerServiceWorker,
+  subscribeToPush,
+  pushSubscriptionToJson,
+} from '@/lib/notifications/register-sw'
 import { css } from '../../../../styled-system/css'
 
 interface NotificationChannelsConfig {
@@ -43,6 +48,7 @@ async function updateConfig(
 async function sendTest(body: {
   channel: string
   targetEmail?: string
+  pushSubscription?: { endpoint: string; keys: { p256dh: string; auth: string } }
 }): Promise<{ success: boolean; error?: string }> {
   const res = await api('admin/notifications/test', {
     method: 'POST',
@@ -140,8 +146,33 @@ export default function AdminNotificationsPage() {
   }, [config])
 
   const handleTest = useCallback(
-    (channel: 'webPush' | 'email' | 'inApp') => {
+    async (channel: 'webPush' | 'email' | 'inApp') => {
       setTestResult(null)
+
+      if (channel === 'webPush') {
+        try {
+          const permission = await Notification.requestPermission()
+          if (permission !== 'granted') {
+            setTestResult({ channel, message: 'Failed: Notification permission denied' })
+            return
+          }
+          const registration = await registerServiceWorker()
+          if (!registration) {
+            setTestResult({ channel, message: 'Failed: Service worker not supported' })
+            return
+          }
+          const browserSub = await subscribeToPush(registration)
+          const pushSub = pushSubscriptionToJson(browserSub)
+          testMutation.mutate({ channel, pushSubscription: pushSub })
+        } catch (err) {
+          setTestResult({
+            channel,
+            message: `Failed: ${err instanceof Error ? err.message : String(err)}`,
+          })
+        }
+        return
+      }
+
       testMutation.mutate({
         channel,
         targetEmail: channel === 'email' ? testEmail : undefined,
