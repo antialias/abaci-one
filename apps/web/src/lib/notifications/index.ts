@@ -34,6 +34,7 @@ export { sendEmail, type SendEmailParams, _resetEmailTransport } from './email'
 // Channels
 export { webPushChannel } from './channels/web-push-channel'
 export { emailChannel } from './channels/email-channel'
+export { socketIOChannel } from './channels/socketio-channel'
 
 // Client-side registration (re-exported for convenience)
 export {

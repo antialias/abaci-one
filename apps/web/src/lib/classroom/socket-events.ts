@@ -380,6 +380,22 @@ export interface SkillTutorialControlEvent {
 }
 
 // ============================================================================
+// Practice Notification Events (sent to user:${userId} channel)
+// ============================================================================
+
+/**
+ * Sent when a student starts a practice session, to notify subscribed parents.
+ * Delivered via the in-app (Socket.IO) notification channel.
+ */
+export interface PracticeNotificationEvent {
+  sessionId: string
+  playerId: string
+  playerName: string
+  playerEmoji: string
+  observeUrl: string
+}
+
+// ============================================================================
 // Client-Side Event Map (for typed socket.io client)
 // ============================================================================
 
@@ -426,6 +442,9 @@ export interface ClassroomServerToClientEvents {
   // Skill tutorial events (classroom channel - for teacher's observation)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
   'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
+
+  // Practice notification events (user channel - for parent in-app notifications)
+  'practice-notification': (data: PracticeNotificationEvent) => void
 }
 
 /**
