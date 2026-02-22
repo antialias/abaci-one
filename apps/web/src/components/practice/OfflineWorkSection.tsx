@@ -626,11 +626,7 @@ export function OfflineWorkSection({
                           att.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse worksheet'
                         }
                       >
-                        {parsingId === att.id
-                          ? '⏳'
-                          : att.parsingStatus === 'failed'
-                            ? '🔄'
-                            : '🔍'}{' '}
+                        {parsingId === att.id ? '⏳' : att.parsingStatus === 'failed' ? '🔄' : '🔍'}{' '}
                         {att.parsingStatus === 'failed' ? 'Retry' : 'Parse'}
                       </button>
                     )

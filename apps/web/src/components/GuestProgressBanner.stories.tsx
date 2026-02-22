@@ -83,13 +83,7 @@ function SeedLocalStorage({
 }
 
 /** Page-like container to show banner in context */
-function PageShell({
-  children,
-  label,
-}: {
-  children: React.ReactNode
-  label: string
-}) {
+function PageShell({ children, label }: { children: React.ReactNode; label: string }) {
   return (
     <div
       className={css({

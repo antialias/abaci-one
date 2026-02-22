@@ -48,11 +48,7 @@ export function RelationshipsTab({ studentId, studentName, isDark }: Relationshi
         </p>
       </div>
 
-      <RelationshipCard
-        playerId={studentId}
-        playerName={studentName}
-        editable
-      />
+      <RelationshipCard playerId={studentId} playerName={studentName} editable />
     </div>
   )
 }

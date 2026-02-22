@@ -120,7 +120,9 @@ export async function getEffectiveTierForStudent(
     })
     return {
       tier: bestTier,
-      providedBy: provider ? { userId: provider.id, name: provider.name ?? 'Another parent' } : null,
+      providedBy: provider
+        ? { userId: provider.id, name: provider.name ?? 'Another parent' }
+        : null,
     }
   }
 

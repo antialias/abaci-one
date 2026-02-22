@@ -173,7 +173,15 @@ export function GuestProgressBanner({
         }),
       })}
     >
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, flexWrap: 'wrap' })}>
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          flex: 1,
+          flexWrap: 'wrap',
+        })}
+      >
         <span className={css({ color: isDark ? 'blue.300' : 'blue.700' })}>{message.message}</span>
         <Link
           href="/auth/signin"

@@ -72,11 +72,7 @@ async function createOfflineSession(request: APIRequestContext, playerId: string
   return res
 }
 
-async function waitForTask(
-  request: APIRequestContext,
-  taskId: string,
-  timeoutMs = 30_000
-) {
+async function waitForTask(request: APIRequestContext, taskId: string, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const res = await request.get(`/api/admin/tasks?taskId=${taskId}`)
@@ -193,7 +189,10 @@ test.describe('Tier enforcement', () => {
       const player2Res = await request.post('/api/players', {
         data: { name: 'Student Two', emoji: '🧪', color: '#6366f1', isPracticeStudent: true },
       })
-      expect(player2Res.ok(), `2nd student after upgrade failed: ${await player2Res.text()}`).toBeTruthy()
+      expect(
+        player2Res.ok(),
+        `2nd student after upgrade failed: ${await player2Res.text()}`
+      ).toBeTruthy()
       const { player: player2 } = await player2Res.json()
       createdPlayerIds.push(player2.id)
     })
@@ -222,10 +221,9 @@ test.describe('Tier enforcement', () => {
       await enableSkills(request, player.id)
 
       // Request 15 min session
-      const createRes = await request.post(
-        `/api/curriculum/${player.id}/sessions/plans`,
-        { data: { durationMinutes: 15 } }
-      )
+      const createRes = await request.post(`/api/curriculum/${player.id}/sessions/plans`, {
+        data: { durationMinutes: 15 },
+      })
       expect(createRes.status()).toBe(202)
       const { taskId } = await createRes.json()
 
@@ -255,10 +253,9 @@ test.describe('Tier enforcement', () => {
       await enableSkills(request, player.id)
 
       // Request 15 min session
-      const createRes = await request.post(
-        `/api/curriculum/${player.id}/sessions/plans`,
-        { data: { durationMinutes: 15 } }
-      )
+      const createRes = await request.post(`/api/curriculum/${player.id}/sessions/plans`, {
+        data: { durationMinutes: 15 },
+      })
       expect(createRes.status()).toBe(202)
       const { taskId } = await createRes.json()
 
@@ -320,10 +317,9 @@ test.describe('Tier enforcement', () => {
       }
 
       // Online session plan should also be blocked
-      const planRes = await request.post(
-        `/api/curriculum/${player.id}/sessions/plans`,
-        { data: { durationMinutes: 5 } }
-      )
+      const planRes = await request.post(`/api/curriculum/${player.id}/sessions/plans`, {
+        data: { durationMinutes: 5 },
+      })
       expect(planRes.status()).toBe(403)
       const body = await planRes.json()
       expect(body.code).toBe('SESSION_LIMIT_REACHED')
@@ -351,7 +347,10 @@ test.describe('Tier enforcement', () => {
 
       // Now succeeds
       const unlockedRes = await createOfflineSession(request, player.id)
-      expect(unlockedRes.ok(), `6th session after upgrade failed: ${await unlockedRes.text()}`).toBeTruthy()
+      expect(
+        unlockedRes.ok(),
+        `6th session after upgrade failed: ${await unlockedRes.text()}`
+      ).toBeTruthy()
     })
 
     test('family: 6+ sessions allowed', async ({ request }) => {

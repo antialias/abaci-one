@@ -39,7 +39,8 @@ function tierResponse(
   return {
     tier,
     limits: {
-      maxPracticeStudents: limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
+      maxPracticeStudents:
+        limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
       maxSessionMinutes: limits.maxSessionMinutes,
       maxSessionsPerWeek: limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
       maxOfflineParsingPerMonth: limits.maxOfflineParsingPerMonth,

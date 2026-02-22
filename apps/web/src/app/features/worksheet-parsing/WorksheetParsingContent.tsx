@@ -461,8 +461,8 @@ function SkillIntegrationSection() {
               _dark: { color: 'gray.300' },
             })}
           >
-            Parsed worksheet problems feed directly into the Bayesian Knowledge Tracing model.
-            The next adaptive session already knows what your child practiced on paper.
+            Parsed worksheet problems feed directly into the Bayesian Knowledge Tracing model. The
+            next adaptive session already knows what your child practiced on paper.
           </p>
         </div>
 
@@ -532,7 +532,8 @@ function SkillIntegrationSection() {
             fontStyle: 'italic',
           })}
         >
-          The skill model updates in real time — no waiting for the next session to reflect offline work.
+          The skill model updates in real time — no waiting for the next session to reflect offline
+          work.
         </p>
       </div>
     </Section>
@@ -584,7 +585,9 @@ function PlansSection() {
           </p>
         </div>
 
-        <div className={grid({ columns: { base: 1, md: 2 }, gap: '24px', maxW: '2xl', mx: 'auto' })}>
+        <div
+          className={grid({ columns: { base: 1, md: 2 }, gap: '24px', maxW: '2xl', mx: 'auto' })}
+        >
           {plans.map((plan, i) => (
             <div
               key={i}

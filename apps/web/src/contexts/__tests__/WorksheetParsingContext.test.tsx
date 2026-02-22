@@ -218,7 +218,10 @@ describe('WorksheetParsingContext', () => {
 
       // After error, the stream should be removed and error stored
       expect(result.current.state.activeStreams.has('attachment-1')).toBe(false)
-      expect(result.current.state.lastErrors.get('attachment-1')).toEqual({ message: 'Server error', code: undefined })
+      expect(result.current.state.lastErrors.get('attachment-1')).toEqual({
+        message: 'Server error',
+        code: undefined,
+      })
     })
   })
 

@@ -25,7 +25,7 @@ export default function DebugBillingPage() {
         : 'idle'
   const syncResult = syncMutation.isSuccess
     ? `Synced session ${(syncMutation.data as { sessionId: string }).sessionId}`
-    : syncMutation.error?.message ?? null
+    : (syncMutation.error?.message ?? null)
 
   const resetStatus = resetMutation.isPending
     ? 'loading'
@@ -36,7 +36,7 @@ export default function DebugBillingPage() {
         : 'idle'
   const resetResult = resetMutation.isSuccess
     ? 'Subscription deleted locally. You are now on the Free tier.'
-    : resetMutation.error?.message ?? null
+    : (resetMutation.error?.message ?? null)
 
   return (
     <PageWithNav>
@@ -164,10 +164,7 @@ export default function DebugBillingPage() {
               Sync Latest Checkout
             </ActionButton>
             {syncResult && (
-              <StatusMessage
-                type={syncStatus === 'success' ? 'success' : 'error'}
-                isDark={isDark}
-              >
+              <StatusMessage type={syncStatus === 'success' ? 'success' : 'error'} isDark={isDark}>
                 {syncResult}
               </StatusMessage>
             )}
@@ -195,10 +192,7 @@ export default function DebugBillingPage() {
               Reset to Free Tier
             </ActionButton>
             {resetResult && (
-              <StatusMessage
-                type={resetStatus === 'success' ? 'success' : 'error'}
-                isDark={isDark}
-              >
+              <StatusMessage type={resetStatus === 'success' ? 'success' : 'error'} isDark={isDark}>
                 {resetResult}
               </StatusMessage>
             )}
@@ -293,13 +287,7 @@ function ActionButton({
               : 'gray.300',
         backgroundColor: 'transparent',
         color:
-          variant === 'danger'
-            ? isDark
-              ? 'red.400'
-              : 'red.600'
-            : isDark
-              ? 'white'
-              : 'gray.800',
+          variant === 'danger' ? (isDark ? 'red.400' : 'red.600') : isDark ? 'white' : 'gray.800',
         fontSize: '0.875rem',
         fontWeight: '500',
         cursor: 'pointer',
@@ -354,13 +342,7 @@ function StatusMessage({
           : isDark
             ? 'red.900/30'
             : 'red.50',
-        color: isSuccess
-          ? isDark
-            ? 'green.300'
-            : 'green.700'
-          : isDark
-            ? 'red.300'
-            : 'red.700',
+        color: isSuccess ? (isDark ? 'green.300' : 'green.700') : isDark ? 'red.300' : 'red.700',
         border: '1px solid',
         borderColor: isSuccess
           ? isDark

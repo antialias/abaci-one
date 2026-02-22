@@ -47,7 +47,7 @@ export const POST = withAuth(async (request) => {
     }
 
     // Assemble child profile from player data when a playerId is provided
-    let childProfile: ChildProfile | undefined 
+    let childProfile: ChildProfile | undefined
     let profileFailed = false
     if (typeof playerId === 'string' && playerId) {
       const start = Date.now()

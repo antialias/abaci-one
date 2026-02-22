@@ -18,10 +18,7 @@ export const POST = withAuth(async (request, { userId }) => {
   const { tier } = body
 
   if (tier !== 'free' && tier !== 'family') {
-    return NextResponse.json(
-      { error: 'tier must be "free" or "family"' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'tier must be "free" or "family"' }, { status: 400 })
   }
 
   if (tier === 'free') {

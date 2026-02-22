@@ -55,11 +55,7 @@ function getLocalAuthSecret(): string {
  * A256CBC-HS512 encryption. The HKDF info string includes the cookie name,
  * which differs between HTTP and HTTPS environments.
  */
-async function mintAdminJWT(
-  secret: string,
-  cookieName: string,
-  userId: string
-): Promise<string> {
+async function mintAdminJWT(secret: string, cookieName: string, userId: string): Promise<string> {
   const info = `Auth.js Generated Encryption Key (${cookieName})`
   const key = await hkdf('sha256', secret, cookieName, info, 64)
 

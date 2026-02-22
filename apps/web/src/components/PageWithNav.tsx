@@ -146,9 +146,7 @@ export function PageWithNav({
   return (
     <>
       <AppNavBar navSlot={navSlot ?? null} />
-      <div style={{ paddingTop: 'var(--app-nav-height)' }}>
-        {children}
-      </div>
+      <div style={{ paddingTop: 'var(--app-nav-height)' }}>{children}</div>
     </>
   )
 }

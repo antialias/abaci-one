@@ -59,8 +59,7 @@ export const PATCH = withAuth(
       const currentPricing = await getActivePricing()
 
       // Look up the product ID from the current monthly price
-      const currentMonthlyPriceId =
-        currentPricing.family.monthly.priceId || FAMILY_MONTHLY_PRICE_ID
+      const currentMonthlyPriceId = currentPricing.family.monthly.priceId || FAMILY_MONTHLY_PRICE_ID
       if (!currentMonthlyPriceId) {
         return NextResponse.json(
           { error: 'No existing Stripe price found to determine product ID' },
@@ -70,9 +69,7 @@ export const PATCH = withAuth(
 
       const existingPrice = await stripe.prices.retrieve(currentMonthlyPriceId)
       const productId =
-        typeof existingPrice.product === 'string'
-          ? existingPrice.product
-          : existingPrice.product.id
+        typeof existingPrice.product === 'string' ? existingPrice.product : existingPrice.product.id
 
       const newPricing: PricingConfig = {
         family: {

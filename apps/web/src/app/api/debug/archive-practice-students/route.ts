@@ -18,10 +18,7 @@ export const POST = withAuth(async (request, { userId }) => {
   const { archive } = body
 
   if (typeof archive !== 'boolean') {
-    return NextResponse.json(
-      { error: 'archive must be a boolean' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'archive must be a boolean' }, { status: 400 })
   }
 
   const updated = await db

@@ -117,13 +117,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
           // Heal: ensure upgraded_at is set for returning OAuth users
           db.update(schema.users)
             .set({ upgradedAt: new Date() })
-            .where(and(
-              eq(schema.users.id, existingAccount.userId),
-              isNull(schema.users.upgradedAt)
-            ))
-            .catch((err: unknown) =>
-              console.error('[auth] Failed to heal upgraded_at:', err)
+            .where(
+              and(eq(schema.users.id, existingAccount.userId), isNull(schema.users.upgradedAt))
             )
+            .catch((err: unknown) => console.error('[auth] Failed to heal upgraded_at:', err))
         } else if (guestId) {
           // New sign-in with existing guest session → upgrade the guest
           // Non-fatal: if upgrade fails, adapter-created user is used instead

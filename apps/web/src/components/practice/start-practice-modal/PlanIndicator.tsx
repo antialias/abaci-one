@@ -46,9 +46,7 @@ export function PlanIndicator() {
           color: isDark ? '#93c5fd' : '#2563eb',
         }}
       >
-        {isInherited
-          ? `Using ${providedBy.name}'s ${label}`
-          : label}
+        {isInherited ? `Using ${providedBy.name}'s ${label}` : label}
       </div>
     )
   }

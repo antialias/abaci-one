@@ -74,7 +74,10 @@ describe('identity contract: getUserId() always returns users.id', () => {
   })
 
   afterEach(async () => {
-    await db.delete(schema.users).where(eq(schema.users.id, userId)).catch(() => {})
+    await db
+      .delete(schema.users)
+      .where(eq(schema.users.id, userId))
+      .catch(() => {})
   })
 
   it('returns users.id (not guestId) for guest viewers', async () => {

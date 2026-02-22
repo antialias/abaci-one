@@ -75,9 +75,10 @@ export default function DebugPracticePage() {
   }
 
   const showModal = !!debugPlayer && !!sessionModeData && !sessionModeLoading
-  const loading = activePreset && (createSession.isPending || (useModal && !showModal && !createSession.error))
-    ? activePreset
-    : null
+  const loading =
+    activePreset && (createSession.isPending || (useModal && !showModal && !createSession.error))
+      ? activePreset
+      : null
   const error = createSession.error?.message ?? null
 
   return (

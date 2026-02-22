@@ -261,9 +261,9 @@ describe('Access Control', () => {
     })
 
     it("'start-session' on unlinked player → false", async () => {
-      expect(
-        await canPerformAction(authenticatedUser.id, unlinkedPlayer.id, 'start-session')
-      ).toBe(false)
+      expect(await canPerformAction(authenticatedUser.id, unlinkedPlayer.id, 'start-session')).toBe(
+        false
+      )
     })
   })
 

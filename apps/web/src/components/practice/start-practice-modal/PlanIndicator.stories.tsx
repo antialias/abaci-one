@@ -19,7 +19,8 @@ function tierResponse(
   return {
     tier,
     limits: {
-      maxPracticeStudents: limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
+      maxPracticeStudents:
+        limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
       maxSessionMinutes: limits.maxSessionMinutes,
       maxSessionsPerWeek: limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
       maxOfflineParsingPerMonth: limits.maxOfflineParsingPerMonth,
@@ -67,9 +68,10 @@ function Wrapper({
           <div
             className={css({ padding: '2rem', maxWidth: '360px' })}
             style={{
-              background: theme === 'dark'
-                ? 'linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)'
-                : 'linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)',
+              background:
+                theme === 'dark'
+                  ? 'linear-gradient(150deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)'
+                  : 'linear-gradient(150deg, #ffffff 0%, #f8fafc 60%, #f0f9ff 100%)',
             }}
           >
             {children}

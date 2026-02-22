@@ -19,16 +19,8 @@ function LockIcon({ color }: { color: string }) {
       fill="none"
       style={{ position: 'absolute', top: 4, right: 4 }}
     >
-      <path
-        d="M12 7H4a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1z"
-        fill={color}
-      />
-      <path
-        d="M5.5 7V5a2.5 2.5 0 015 0v2"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+      <path d="M12 7H4a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1z" fill={color} />
+      <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   )
 }
@@ -36,8 +28,14 @@ function LockIcon({ color }: { color: string }) {
 export function DurationSelector() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const { studentId, durationMinutes, setDurationMinutes, partWeights, avgTermsPerProblem, secondsPerTerm } =
-    useStartPracticeModal()
+  const {
+    studentId,
+    durationMinutes,
+    setDurationMinutes,
+    partWeights,
+    avgTermsPerProblem,
+    secondsPerTerm,
+  } = useStartPracticeModal()
   const { limits } = useEffectiveTier(studentId)
 
   return (
@@ -97,9 +95,7 @@ export function DurationSelector() {
               data-selected={isSelected}
               data-locked={isLocked || undefined}
               onClick={
-                isLocked
-                  ? () => window.open('/pricing', '_blank')
-                  : () => setDurationMinutes(min)
+                isLocked ? () => window.open('/pricing', '_blank') : () => setDurationMinutes(min)
               }
               className={css({
                 position: 'relative',

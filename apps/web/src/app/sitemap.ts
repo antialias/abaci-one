@@ -4,14 +4,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://abaci.one'
 
   // Main pages
-  const routes = ['', '/arcade', '/create', '/guide', '/about', '/why-abacus', '/for-teachers', '/features/worksheet-parsing'].map(
-    (route) => ({
-      url: `${baseUrl}${route}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: route === '' ? 1 : 0.8,
-    })
-  )
+  const routes = [
+    '',
+    '/arcade',
+    '/create',
+    '/guide',
+    '/about',
+    '/why-abacus',
+    '/for-teachers',
+    '/features/worksheet-parsing',
+  ].map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: route === '' ? 1 : 0.8,
+  }))
 
   // Arcade games
   const games = [

@@ -119,8 +119,8 @@ export default function AdminPricingPage() {
                 marginTop: '0.5rem',
               })}
             >
-              Manage Family plan prices. Changing a price creates a new Stripe Price and archives the
-              old one. Existing subscribers keep their current price until renewal.
+              Manage Family plan prices. Changing a price creates a new Stripe Price and archives
+              the old one. Existing subscribers keep their current price until renewal.
             </p>
           </header>
 

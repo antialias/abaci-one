@@ -75,7 +75,14 @@ import { SettingsTab } from './SettingsTab'
 // Types
 // ============================================================================
 
-type TabId = 'overview' | 'skills' | 'history' | 'scoreboard' | 'notes' | 'relationships' | 'settings'
+type TabId =
+  | 'overview'
+  | 'skills'
+  | 'history'
+  | 'scoreboard'
+  | 'notes'
+  | 'relationships'
+  | 'settings'
 
 /**
  * Reason why BKT classification is unavailable.
@@ -3158,11 +3165,7 @@ export function DashboardClient({
               )}
 
               {activeTab === 'relationships' && (
-                <RelationshipsTab
-                  studentId={studentId}
-                  studentName={player.name}
-                  isDark={isDark}
-                />
+                <RelationshipsTab studentId={studentId} studentName={player.name} isDark={isDark} />
               )}
 
               {activeTab === 'settings' && (

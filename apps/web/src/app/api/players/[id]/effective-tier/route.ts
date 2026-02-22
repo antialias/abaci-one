@@ -35,8 +35,7 @@ export const GET = withAuth(async (_request, { params }) => {
       maxPracticeStudents:
         limits.maxPracticeStudents === Infinity ? null : limits.maxPracticeStudents,
       maxSessionMinutes: limits.maxSessionMinutes,
-      maxSessionsPerWeek:
-        limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
+      maxSessionsPerWeek: limits.maxSessionsPerWeek === Infinity ? null : limits.maxSessionsPerWeek,
       maxOfflineParsingPerMonth: limits.maxOfflineParsingPerMonth,
     },
     providedBy,

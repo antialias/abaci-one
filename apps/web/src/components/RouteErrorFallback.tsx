@@ -43,9 +43,7 @@ export function RouteErrorFallback({
         textAlign: 'center',
       })}
     >
-      <div className={css({ fontSize: '48px', marginBottom: '16px' })}>
-        Something broke
-      </div>
+      <div className={css({ fontSize: '48px', marginBottom: '16px' })}>Something broke</div>
 
       <p
         className={css({

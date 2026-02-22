@@ -349,7 +349,10 @@ describe('parsingReducer', () => {
       // Stream should be removed from activeStreams
       expect(state.activeStreams.has(TEST_ATTACHMENT_ID)).toBe(false)
       // Error should be stored in lastErrors as structured object
-      expect(state.lastErrors.get(TEST_ATTACHMENT_ID)).toEqual({ message: 'Network error occurred', code: undefined })
+      expect(state.lastErrors.get(TEST_ATTACHMENT_ID)).toEqual({
+        message: 'Network error occurred',
+        code: undefined,
+      })
     })
 
     it('should store error code when provided', () => {
@@ -368,7 +371,10 @@ describe('parsingReducer', () => {
 
       expect(state.activeStreams.has(TEST_ATTACHMENT_ID)).toBe(false)
       const error = state.lastErrors.get(TEST_ATTACHMENT_ID)
-      expect(error).toEqual({ message: 'Monthly parsing limit reached', code: 'PARSING_LIMIT_REACHED' })
+      expect(error).toEqual({
+        message: 'Monthly parsing limit reached',
+        code: 'PARSING_LIMIT_REACHED',
+      })
     })
 
     it('should clear previous error on START_STREAMING', () => {

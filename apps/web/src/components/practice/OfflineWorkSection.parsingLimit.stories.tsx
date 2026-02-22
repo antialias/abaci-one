@@ -52,13 +52,7 @@ const unparsedAttachment: OfflineAttachment = {
 // Wrapper with all required providers + no-op handlers
 // =============================================================================
 
-function StoryShell({
-  children,
-  label,
-}: {
-  children: React.ReactNode
-  label: string
-}) {
+function StoryShell({ children, label }: { children: React.ReactNode; label: string }) {
   return (
     <div className={css({ maxWidth: '500px', margin: '0 auto' })}>
       <div
@@ -162,7 +156,10 @@ export const GenericFailure: Story = {
   render: () => (
     <OfflineWorkSectionDemo
       attachments={[failedAttachment]}
-      parsingState={mockParsingStates.error('att-failed', 'Server error: could not parse worksheet')}
+      parsingState={mockParsingStates.error(
+        'att-failed',
+        'Server error: could not parse worksheet'
+      )}
       label="Failed with generic error — shows orange 'Retry' button"
     />
   ),
@@ -182,9 +179,7 @@ export const SideBySide: Story = {
         label="Limit reached → Upgrade Plan"
       />
       <OfflineWorkSectionDemo
-        attachments={[
-          { ...failedAttachment, id: 'att-generic' },
-        ]}
+        attachments={[{ ...failedAttachment, id: 'att-generic' }]}
         parsingState={mockParsingStates.error('att-generic', 'Server error')}
         label="Generic error → Retry"
       />
