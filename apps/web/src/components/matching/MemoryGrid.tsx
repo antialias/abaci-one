@@ -88,7 +88,7 @@ function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
 // Orientation rotation utilities
 
 export function normalizeAngleDelta(from: number, to: number): 90 | -90 | 180 {
-  const delta = (((to - from) % 360) + 540) % 360 - 180
+  const delta = ((((to - from) % 360) + 540) % 360) - 180
   if (delta === 90) return 90
   if (delta === -90) return -90
   return 180
@@ -126,10 +126,7 @@ export function rotate180<T>(items: T[]): T[] {
 }
 
 // FLIP animation hook for smooth card position transitions
-function useFlipAnimation(
-  cardRefs: React.RefObject<Map<string, HTMLElement>>,
-  triggerKey: number
-) {
+function useFlipAnimation(cardRefs: React.RefObject<Map<string, HTMLElement>>, triggerKey: number) {
   const positionsRef = useRef<Map<string, DOMRect>>(new Map())
 
   const capturePositions = useCallback(() => {
@@ -156,13 +153,10 @@ function useFlipAnimation(
 
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
 
-      el.animate(
-        [
-          { transform: `translate(${dx}px, ${dy}px)` },
-          { transform: 'translate(0, 0)' },
-        ],
-        { duration: 400, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' }
-      )
+      el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], {
+        duration: 400,
+        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      })
     })
   }, [triggerKey, cardRefs])
 
@@ -329,7 +323,8 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
         const currentRows = prev?.rows ?? gridDimensions.rows
         const totalCells = currentCols * currentRows
         const currentOrder: (string | null)[] =
-          prev?.cardOrder ?? (() => {
+          prev?.cardOrder ??
+          (() => {
             const order: (string | null)[] = state.gameCards.map((c) => c.id)
             while (order.length < totalCells) order.push(null)
             return order
@@ -385,7 +380,9 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
     if (!outer) return
 
     const onResize = () => {
-      setCardSize(computeCardSize(outer.clientWidth, outer.clientHeight, effectiveCols, effectiveRows))
+      setCardSize(
+        computeCardSize(outer.clientWidth, outer.clientHeight, effectiveCols, effectiveRows)
+      )
     }
 
     const observer = new ResizeObserver(onResize)

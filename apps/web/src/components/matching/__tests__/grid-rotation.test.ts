@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  normalizeAngleDelta,
-  rotateCCW,
-  rotateCW,
-  rotate180,
-} from '../MemoryGrid'
+import { normalizeAngleDelta, rotateCCW, rotateCW, rotate180 } from '../MemoryGrid'
 
 describe('normalizeAngleDelta', () => {
   it('detects CW 90° rotation (0 → 90)', () => {
@@ -46,7 +41,7 @@ describe('rotateCCW', () => {
     // A B C D E
     // F G H I J
     // K L M N O
-    const items = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O']
+    const items = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']
     const result = rotateCCW(items, 5, 3)
 
     // Expected portrait 3 cols × 5 rows:
@@ -55,7 +50,23 @@ describe('rotateCCW', () => {
     // C H M
     // B G L
     // A F K
-    expect(result).toEqual(['E','J','O','D','I','N','C','H','M','B','G','L','A','F','K'])
+    expect(result).toEqual([
+      'E',
+      'J',
+      'O',
+      'D',
+      'I',
+      'N',
+      'C',
+      'H',
+      'M',
+      'B',
+      'G',
+      'L',
+      'A',
+      'F',
+      'K',
+    ])
   })
 
   it('rotates a 2×2 grid CCW', () => {
@@ -110,14 +121,30 @@ describe('rotateCW', () => {
     // C H M
     // B G L
     // A F K
-    const portrait = ['E','J','O','D','I','N','C','H','M','B','G','L','A','F','K']
+    const portrait = ['E', 'J', 'O', 'D', 'I', 'N', 'C', 'H', 'M', 'B', 'G', 'L', 'A', 'F', 'K']
     const result = rotateCW(portrait, 3, 5)
 
     // Expected landscape 5 cols × 3 rows (original):
     // A B C D E
     // F G H I J
     // K L M N O
-    expect(result).toEqual(['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O'])
+    expect(result).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+      'G',
+      'H',
+      'I',
+      'J',
+      'K',
+      'L',
+      'M',
+      'N',
+      'O',
+    ])
   })
 
   it('rotates a 2×2 grid CW', () => {
@@ -158,7 +185,7 @@ describe('rotate180', () => {
 
 describe('rotation round-trips', () => {
   it('four CCW rotations return to original', () => {
-    const original = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O']
+    const original = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']
     let items = original
     let cols = 5
     let rows = 3
@@ -200,7 +227,7 @@ describe('rotation round-trips', () => {
   })
 
   it('two CCW rotations equal one 180°', () => {
-    const original = ['A','B','C','D','E','F']
+    const original = ['A', 'B', 'C', 'D', 'E', 'F']
     const cols = 3
     const rows = 2
     const onceCCW = rotateCCW(original, cols, rows)

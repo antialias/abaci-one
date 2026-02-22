@@ -310,11 +310,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
   const onGameComplete = useGameCompletionCallback()
   const previousPhaseRef = useRef<string | null>(null)
   useEffect(() => {
-    if (
-      state.gamePhase === 'results' &&
-      previousPhaseRef.current !== 'results' &&
-      onGameComplete
-    ) {
+    if (state.gamePhase === 'results' && previousPhaseRef.current !== 'results' && onGameComplete) {
       onGameComplete(state as unknown as Record<string, unknown>)
     }
     previousPhaseRef.current = state.gamePhase

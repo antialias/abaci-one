@@ -369,11 +369,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   const onGameComplete = useGameCompletionCallback()
   const previousPhaseRef = useRef<string | null>(null)
   useEffect(() => {
-    if (
-      state.gamePhase === 'results' &&
-      previousPhaseRef.current !== 'results' &&
-      onGameComplete
-    ) {
+    if (state.gamePhase === 'results' && previousPhaseRef.current !== 'results' && onGameComplete) {
       onGameComplete(state as unknown as Record<string, unknown>)
     }
     previousPhaseRef.current = state.gamePhase
@@ -461,7 +457,14 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
 
       console.log('[KYW-DEBUG] CLICK_REGION move sent to server')
     },
-    [viewerId, sendMove, state.currentPlayer, state.currentPrompt, state.regionsToFind, state.gamePhase]
+    [
+      viewerId,
+      sendMove,
+      state.currentPlayer,
+      state.currentPrompt,
+      state.regionsToFind,
+      state.gamePhase,
+    ]
   )
 
   // Action: Next Round
