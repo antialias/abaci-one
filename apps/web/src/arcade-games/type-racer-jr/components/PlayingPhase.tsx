@@ -14,14 +14,8 @@ import { AbacusScoreCounter } from './AbacusScoreCounter'
 import { StreakEffect } from './StreakEffect'
 
 export function PlayingPhase() {
-  const {
-    state,
-    localState,
-    currentWord,
-    typeLetter,
-    endGame,
-    dismissCelebration,
-  } = useTypeRacerJr()
+  const { state, localState, currentWord, typeLetter, endGame, dismissCelebration } =
+    useTypeRacerJr()
 
   const tts = useTypingTTS()
 
@@ -39,13 +33,16 @@ export function PlayingPhase() {
     prevGamePhaseRef.current = state.gamePhase
   }, [state.gamePhase, tts])
 
-  // TTS: say the word then spell it out when a new word appears
+  // TTS: announce the word when it appears (say it, then spell for first few)
+  // Only update prevWordRef when we actually speak — otherwise celebration
+  // blocking causes us to "see" the word without speaking it, and then
+  // when celebration clears the word is already marked as spoken.
   useEffect(() => {
     const wordText = currentWord?.word ?? null
     if (wordText && wordText !== prevWordRef.current && !localState.showCelebration) {
-      tts.spellBack(wordText)
+      tts.announceWord(wordText)
+      prevWordRef.current = wordText
     }
-    prevWordRef.current = wordText
   }, [currentWord?.word, localState.showCelebration, tts])
 
   // TTS: encourage on word completion
@@ -63,13 +60,6 @@ export function PlayingPhase() {
     }
     prevDifficultyRef.current = state.currentDifficulty
   }, [state.currentDifficulty, tts])
-
-  // Suppress TTS after 3 consecutive clean words
-  useEffect(() => {
-    if (state.consecutiveCleanWords >= 3) {
-      tts.suppressAfterCleanStreak()
-    }
-  }, [state.consecutiveCleanWords, tts])
 
   // Physical keyboard input
   const { hasPhysicalKeyboard } = useKeyboardInput({
@@ -106,16 +96,14 @@ export function PlayingPhase() {
       })}
     >
       {/* Timer bar for beat-the-clock */}
-      {state.gameMode === 'beat-the-clock' &&
-        state.timeLimit &&
-        state.gameStartTime && (
-          <TimerBar
-            totalSeconds={state.timeLimit}
-            startTime={state.gameStartTime}
-            onTimeUp={handleTimerUp}
-            onWarning={handleTimerWarning}
-          />
-        )}
+      {state.gameMode === 'beat-the-clock' && state.timeLimit && state.gameStartTime && (
+        <TimerBar
+          totalSeconds={state.timeLimit}
+          startTime={state.gameStartTime}
+          onTimeUp={handleTimerUp}
+          onWarning={handleTimerWarning}
+        />
+      )}
 
       {/* Score overlay */}
       <div
@@ -136,11 +124,27 @@ export function PlayingPhase() {
           totalStars={state.totalStars}
           celebrate={state.consecutiveCleanWords >= 3}
         />
-        {state.bestStreak > 1 && (
-          <span>
-            🔥 {state.bestStreak}
-          </span>
-        )}
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+          {state.bestStreak > 1 && <span>🔥 {state.bestStreak}</span>}
+          <button
+            data-action="toggle-mute"
+            onClick={tts.toggleMute}
+            className={css({
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'lg',
+              lineHeight: 1,
+              p: '1',
+              borderRadius: 'md',
+              opacity: tts.isMuted ? 0.5 : 1,
+              _hover: { bg: 'gray.100' },
+            })}
+            aria-label={tts.isMuted ? 'Unmute' : 'Mute'}
+          >
+            {tts.isMuted ? '🔇' : '🔊'}
+          </button>
+        </div>
       </div>
 
       {/* Streak-wrapped play area */}
@@ -229,10 +233,7 @@ export function PlayingPhase() {
 
       {/* Celebration overlay */}
       {localState.showCelebration && (
-        <CelebrationBurst
-          stars={localState.celebrationStars}
-          onDone={dismissCelebration}
-        />
+        <CelebrationBurst stars={localState.celebrationStars} onDone={dismissCelebration} />
       )}
     </div>
   )

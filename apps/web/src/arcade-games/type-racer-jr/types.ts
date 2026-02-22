@@ -19,12 +19,7 @@ export type DifficultyLevel = z.infer<typeof DifficultyLevelSchema>
 export const GamePhaseSchema = z.enum(['setup', 'playing', 'results'])
 export type GamePhase = z.infer<typeof GamePhaseSchema>
 
-export const TimeLimitSchema = z.union([
-  z.literal(60),
-  z.literal(90),
-  z.literal(120),
-  z.null(),
-])
+export const TimeLimitSchema = z.union([z.literal(60), z.literal(90), z.literal(120), z.null()])
 export type TimeLimit = z.infer<typeof TimeLimitSchema>
 
 // ============================================================================

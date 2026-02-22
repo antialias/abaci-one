@@ -47,9 +47,12 @@ export function TimerBar({ totalSeconds, startTime, onTimeUp, onWarning }: Timer
   const isWarning = remaining <= 10
 
   let barColor: string
-  if (percent > 60) barColor = '#22c55e' // green
-  else if (percent > 35) barColor = '#eab308' // yellow
-  else if (percent > 15) barColor = '#f97316' // orange
+  if (percent > 60)
+    barColor = '#22c55e' // green
+  else if (percent > 35)
+    barColor = '#eab308' // yellow
+  else if (percent > 15)
+    barColor = '#f97316' // orange
   else barColor = '#ef4444' // red
 
   return (

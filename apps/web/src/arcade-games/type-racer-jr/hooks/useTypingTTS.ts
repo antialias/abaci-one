@@ -1,15 +1,15 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTTS } from '@/hooks/useTTS'
 
 /**
  * Smart TTS for the typing game.
- * Speaks encouragement early on, then goes silent after the kid gets it.
  *
- * Word-speaking and spell-back are subject to suppression after 3 consecutive
- * clean words. Difficulty advances reset suppression so the child hears the
- * new word spoken aloud again.
+ * - `announceWord` says the word aloud, then (for the first few words) spells
+ *   the letters. Chained via await so they don't talk over each other.
+ * - Encouragement messages suppress after repeated use.
+ * - A global mute toggle silences everything.
  */
 export function useTypingTTS() {
   const speak = useTTS({
@@ -17,65 +17,64 @@ export function useTypingTTS() {
     say: { en: 'Type each letter!' },
   })
 
+  const [muted, setMuted] = useState(false)
+
   const instructionCount = useRef(0)
   const suppressedRef = useRef(false)
   const MAX_INSTRUCTIONS = 6
 
-  const speakIfAllowed = useCallback(
-    (text: string) => {
-      if (suppressedRef.current) return
-      if (instructionCount.current >= MAX_INSTRUCTIONS) {
-        suppressedRef.current = true
-        return
+  /**
+   * Announce a new word: say it aloud, then spell the letters (first few only).
+   * Chained sequentially so they don't overlap.
+   */
+  const announceWord = useCallback(
+    async (word: string) => {
+      if (muted) return
+
+      // Always say the word
+      await speak({ say: { en: word } })
+
+      // Spell the letters for the first few words (subject to suppression)
+      if (!suppressedRef.current && instructionCount.current < MAX_INSTRUCTIONS) {
+        instructionCount.current++
+        const spelled = word.toUpperCase().split('').join('. ')
+        await speak({ say: { en: `${spelled}.` } })
       }
-      instructionCount.current++
-      speak({ say: { en: text } })
     },
-    [speak]
+    [speak, muted]
   )
 
-  const speakGameStart = useCallback(() => {
-    speakIfAllowed('Type each letter!')
-  }, [speakIfAllowed])
+  const speakGameStart = useCallback(async () => {
+    if (muted) return
+    await speak({ say: { en: 'Type each letter!' } })
+  }, [speak, muted])
 
-  const speakWordComplete = useCallback(() => {
-    speakIfAllowed('Great job!')
-  }, [speakIfAllowed])
+  const speakWordComplete = useCallback(async () => {
+    if (muted) return
+    if (suppressedRef.current) return
+    if (instructionCount.current >= MAX_INSTRUCTIONS) {
+      suppressedRef.current = true
+      return
+    }
+    instructionCount.current++
+    await speak({ say: { en: 'Great job!' } })
+  }, [speak, muted])
 
-  /** Say the word aloud (e.g. "cat!"). Subject to suppression. */
-  const speakWord = useCallback(
-    (word: string) => {
-      speakIfAllowed(word)
-    },
-    [speakIfAllowed]
-  )
-
-  /** Spell then say: "C. A. T. cat!". Subject to suppression. */
-  const spellBack = useCallback(
-    (word: string) => {
-      const spelled = word
-        .toUpperCase()
-        .split('')
-        .join('. ')
-      speakIfAllowed(`${spelled}. ${word}!`)
-    },
-    [speakIfAllowed]
-  )
-
-  const speakDifficultyAdvance = useCallback(() => {
-    // Always speak on difficulty advance (reset suppression for this)
+  const speakDifficultyAdvance = useCallback(async () => {
+    if (muted) return
+    // Reset suppression so the child hears encouragement again
     instructionCount.current = Math.min(instructionCount.current, MAX_INSTRUCTIONS - 1)
     suppressedRef.current = false
-    speakIfAllowed('Wow, bigger words!')
-  }, [speakIfAllowed])
+    await speak({ say: { en: 'Wow, bigger words!' } })
+  }, [speak, muted])
 
-  const speakTimerWarning = useCallback(() => {
-    speakIfAllowed('Ten seconds left!')
-  }, [speakIfAllowed])
+  const speakTimerWarning = useCallback(async () => {
+    if (muted) return
+    await speak({ say: { en: 'Ten seconds left!' } })
+  }, [speak, muted])
 
-  /** Call after 3 consecutive clean words to suppress further TTS */
-  const suppressAfterCleanStreak = useCallback(() => {
-    suppressedRef.current = true
+  const toggleMute = useCallback(() => {
+    setMuted((prev) => !prev)
   }, [])
 
   const reset = useCallback(() => {
@@ -84,13 +83,13 @@ export function useTypingTTS() {
   }, [])
 
   return {
+    announceWord,
     speakGameStart,
     speakWordComplete,
-    speakWord,
-    spellBack,
     speakDifficultyAdvance,
     speakTimerWarning,
-    suppressAfterCleanStreak,
+    toggleMute,
+    isMuted: muted,
     reset,
   }
 }

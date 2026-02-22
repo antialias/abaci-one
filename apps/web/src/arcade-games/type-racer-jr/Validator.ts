@@ -106,8 +106,7 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
       durationMs: data.durationMs,
     }
 
-    const newConsecutiveClean =
-      data.mistakeCount === 0 ? state.consecutiveCleanWords + 1 : 0
+    const newConsecutiveClean = data.mistakeCount === 0 ? state.consecutiveCleanWords + 1 : 0
     const newBestStreak = Math.max(state.bestStreak, newConsecutiveClean)
     const nextWordIndex = state.currentWordIndex + 1
 
@@ -210,7 +209,10 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
         if (value !== null && ![60, 90, 120].includes(value as number)) {
           return { valid: false, error: 'Invalid time limit' }
         }
-        return { valid: true, newState: { ...state, timeLimit: value as TypeRacerJrState['timeLimit'] } }
+        return {
+          valid: true,
+          newState: { ...state, timeLimit: value as TypeRacerJrState['timeLimit'] },
+        }
 
       case 'startingDifficulty':
         if (!['level1', 'level2', 'level3'].includes(value as string)) {
@@ -350,24 +352,25 @@ const validator = new TypeRacerJrValidator()
   const wordsTyped = state.completedWords.length
   const totalMistakes = state.completedWords.reduce((sum, w) => sum + w.mistakeCount, 0)
   const totalLetters = state.completedWords.reduce((sum, w) => sum + w.word.length, 0)
-  const accuracy = totalLetters > 0
-    ? Math.round(((totalLetters - totalMistakes) / totalLetters) * 100)
-    : 0
+  const accuracy =
+    totalLetters > 0 ? Math.round(((totalLetters - totalMistakes) / totalLetters) * 100) : 0
 
-  const playerResults: PlayerResult[] = [{
-    playerId: state.playerId || 'player',
-    playerName: Object.values(state.playerMetadata)[0]?.name ?? 'Player',
-    playerEmoji: '⌨️',
-    userId: state.playerId || 'player',
-    score: state.totalStars,
-    rank: 1,
-    isWinner: true,
-    correctCount: wordsTyped,
-    incorrectCount: totalMistakes,
-    totalAttempts: wordsTyped,
-    accuracy,
-    bestStreak: state.bestStreak,
-  }]
+  const playerResults: PlayerResult[] = [
+    {
+      playerId: state.playerId || 'player',
+      playerName: Object.values(state.playerMetadata)[0]?.name ?? 'Player',
+      playerEmoji: '⌨️',
+      userId: state.playerId || 'player',
+      score: state.totalStars,
+      rank: 1,
+      isWinner: true,
+      correctCount: wordsTyped,
+      incorrectCount: totalMistakes,
+      totalAttempts: wordsTyped,
+      accuracy,
+      bestStreak: state.bestStreak,
+    },
+  ]
 
   let headline: string
   let resultTheme: GameResultsReport['resultTheme']
@@ -393,7 +396,12 @@ const validator = new TypeRacerJrValidator()
 
   const customStats: GameResultsReport['customStats'] = [
     { label: 'Words', value: wordsTyped, icon: '📝', highlight: wordsTyped >= 5 },
-    { label: 'Stars', value: `${state.totalStars}`, icon: '⭐', highlight: state.totalStars >= wordsTyped * 2 },
+    {
+      label: 'Stars',
+      value: `${state.totalStars}`,
+      icon: '⭐',
+      highlight: state.totalStars >= wordsTyped * 2,
+    },
     { label: 'Accuracy', value: `${accuracy}%`, icon: '🎯', highlight: accuracy >= 90 },
     { label: 'Time', value: formatDuration(durationMs), icon: '⏱️' },
   ]
@@ -416,7 +424,8 @@ const validator = new TypeRacerJrValidator()
     winnerId: null,
     itemsCompleted: wordsTyped,
     itemsTotal: state.wordQueue.length,
-    completionPercent: state.wordQueue.length > 0 ? Math.round((wordsTyped / state.wordQueue.length) * 100) : 0,
+    completionPercent:
+      state.wordQueue.length > 0 ? Math.round((wordsTyped / state.wordQueue.length) * 100) : 0,
     leaderboardEntry: {
       normalizedScore: accuracy,
       category: 'speed',

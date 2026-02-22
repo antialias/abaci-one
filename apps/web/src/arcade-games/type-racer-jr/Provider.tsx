@@ -241,10 +241,8 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
 
     return {
       ...defaultState,
-      gameMode:
-        (savedConfig.gameMode as TypeRacerJrState['gameMode']) ?? defaultState.gameMode,
-      timeLimit:
-        (savedConfig.timeLimit as TypeRacerJrState['timeLimit']) ?? defaultState.timeLimit,
+      gameMode: (savedConfig.gameMode as TypeRacerJrState['gameMode']) ?? defaultState.gameMode,
+      timeLimit: (savedConfig.timeLimit as TypeRacerJrState['timeLimit']) ?? defaultState.timeLimit,
       currentDifficulty:
         (savedConfig.startingDifficulty as DifficultyLevel) ?? defaultState.currentDifficulty,
       wordCount: (savedConfig.wordCount as number | null) ?? defaultState.wordCount,
@@ -291,15 +289,9 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
 
   // ---- Action: Start Game ----
   const startGame = useCallback(() => {
-    const wordCount =
-      state.gameMode === 'free-play'
-        ? state.wordCount ?? 5
-        : 50 // Beat the clock: large pool
+    const wordCount = state.gameMode === 'free-play' ? (state.wordCount ?? 5) : 50 // Beat the clock: large pool
 
-    const words = pickWords(
-      state.currentDifficulty as WordDifficultyLevel,
-      wordCount
-    )
+    const words = pickWords(state.currentDifficulty as WordDifficultyLevel, wordCount)
 
     const playerMetadata = buildPlayerMeta()
 
@@ -313,7 +305,14 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
 
     setLocalState(initialLocalState)
     wordStartTimeRef.current = Date.now()
-  }, [state.gameMode, state.wordCount, state.currentDifficulty, viewerId, sendMove, buildPlayerMeta])
+  }, [
+    state.gameMode,
+    state.wordCount,
+    state.currentDifficulty,
+    viewerId,
+    sendMove,
+    buildPlayerMeta,
+  ])
 
   // ---- Action: Type Letter ----
   const typeLetter = useCallback(
@@ -326,10 +325,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
       const isCorrect = letter === expectedLetter.toLowerCase()
 
       if (isCorrect) {
-        const newTypedLetters = [
-          ...localState.typedLetters,
-          { letter, correct: true },
-        ]
+        const newTypedLetters = [...localState.typedLetters, { letter, correct: true }]
         const newIndex = localState.currentLetterIndex + 1
 
         // Check if word is complete
@@ -355,7 +351,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
             type: 'COMPLETE_WORD',
             playerId: TEAM_MOVE,
             userId: viewerId || '',
-      
+
             data: {
               word: currentWord.word,
               stars,
@@ -378,7 +374,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
                 type: 'ADVANCE_DIFFICULTY',
                 playerId: TEAM_MOVE,
                 userId: viewerId || '',
-          
+
                 data: { newDifficulty: nextDifficulty, newWords },
               })
             }
@@ -395,14 +391,20 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
         setLocalState((prev) => ({
           ...prev,
           currentWordMistakes: prev.currentWordMistakes + 1,
-          typedLetters: [
-            ...prev.typedLetters,
-            { letter, correct: false },
-          ],
+          typedLetters: [...prev.typedLetters, { letter, correct: false }],
         }))
       }
     },
-    [currentWord, state.gamePhase, state.consecutiveCleanWords, state.currentDifficulty, state.usedWords, localState, viewerId, sendMove]
+    [
+      currentWord,
+      state.gamePhase,
+      state.consecutiveCleanWords,
+      state.currentDifficulty,
+      state.usedWords,
+      localState,
+      viewerId,
+      sendMove,
+    ]
   )
 
   // ---- Action: Dismiss Celebration ----
@@ -420,7 +422,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
         type: 'END_GAME',
         playerId: TEAM_MOVE,
         userId: viewerId || '',
-  
+
         data: { reason },
       })
     },
@@ -441,23 +443,19 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
 
   // ---- Action: Set Config ----
   const setConfig = useCallback(
-    (
-      field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount',
-      value: unknown
-    ) => {
+    (field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount', value: unknown) => {
       sendMove({
         type: 'SET_CONFIG',
         playerId: TEAM_MOVE,
         userId: viewerId || '',
-  
+
         data: { field, value },
       })
 
       // Persist to room config
       if (roomData?.id) {
         const currentGameConfig = (roomData.gameConfig as Record<string, unknown>) || {}
-        const currentConfig =
-          (currentGameConfig['type-racer-jr'] as Record<string, unknown>) || {}
+        const currentConfig = (currentGameConfig['type-racer-jr'] as Record<string, unknown>) || {}
 
         updateGameConfig({
           roomId: roomData.id,
@@ -490,9 +488,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
     dismissCelebration,
   }
 
-  return (
-    <TypeRacerJrContext.Provider value={contextValue}>{children}</TypeRacerJrContext.Provider>
-  )
+  return <TypeRacerJrContext.Provider value={contextValue}>{children}</TypeRacerJrContext.Provider>
 }
 
 // ============================================================================

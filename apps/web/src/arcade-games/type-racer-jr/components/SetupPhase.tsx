@@ -48,7 +48,15 @@ export function SetupPhase() {
 
       {/* Game Mode */}
       <div className={css({ width: '100%' })}>
-        <label className={css({ fontSize: 'sm', fontWeight: '600', color: 'gray.600', mb: '2', display: 'block' })}>
+        <label
+          className={css({
+            fontSize: 'sm',
+            fontWeight: '600',
+            color: 'gray.600',
+            mb: '2',
+            display: 'block',
+          })}
+        >
           Game Mode
         </label>
         <div className={css({ display: 'flex', gap: '3' })}>
@@ -116,7 +124,15 @@ export function SetupPhase() {
       {/* Word count (free-play) or Time limit (beat-the-clock) */}
       {state.gameMode === 'free-play' ? (
         <div className={css({ width: '100%' })}>
-          <label className={css({ fontSize: 'sm', fontWeight: '600', color: 'gray.600', mb: '2', display: 'block' })}>
+          <label
+            className={css({
+              fontSize: 'sm',
+              fontWeight: '600',
+              color: 'gray.600',
+              mb: '2',
+              display: 'block',
+            })}
+          >
             How many words?
           </label>
           <div className={css({ display: 'flex', gap: '2', justifyContent: 'center' })}>
@@ -150,7 +166,15 @@ export function SetupPhase() {
         </div>
       ) : (
         <div className={css({ width: '100%' })}>
-          <label className={css({ fontSize: 'sm', fontWeight: '600', color: 'gray.600', mb: '2', display: 'block' })}>
+          <label
+            className={css({
+              fontSize: 'sm',
+              fontWeight: '600',
+              color: 'gray.600',
+              mb: '2',
+              display: 'block',
+            })}
+          >
             Time limit
           </label>
           <div className={css({ display: 'flex', gap: '2', justifyContent: 'center' })}>
@@ -186,7 +210,15 @@ export function SetupPhase() {
 
       {/* Difficulty */}
       <div className={css({ width: '100%' })}>
-        <label className={css({ fontSize: 'sm', fontWeight: '600', color: 'gray.600', mb: '2', display: 'block' })}>
+        <label
+          className={css({
+            fontSize: 'sm',
+            fontWeight: '600',
+            color: 'gray.600',
+            mb: '2',
+            display: 'block',
+          })}
+        >
           Starting difficulty
         </label>
         <div className={css({ display: 'flex', gap: '2' })}>
@@ -218,12 +250,8 @@ export function SetupPhase() {
                 }}
               >
                 <span className={css({ fontSize: '24px' })}>{info.emoji}</span>
-                <span className={css({ fontWeight: 'bold', fontSize: 'sm' })}>
-                  {info.label}
-                </span>
-                <span className={css({ fontSize: 'xs', color: 'gray.500' })}>
-                  {info.desc}
-                </span>
+                <span className={css({ fontWeight: 'bold', fontSize: 'sm' })}>{info.label}</span>
+                <span className={css({ fontSize: 'xs', color: 'gray.500' })}>{info.desc}</span>
               </button>
             )
           })}

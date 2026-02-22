@@ -73,7 +73,10 @@ function validateTypeRacerJrConfig(config: unknown): config is TypeRacerJrConfig
   if (!('gameMode' in c) || !['free-play', 'beat-the-clock'].includes(c.gameMode as string)) {
     return false
   }
-  if (!('startingDifficulty' in c) || !['level1', 'level2', 'level3'].includes(c.startingDifficulty as string)) {
+  if (
+    !('startingDifficulty' in c) ||
+    !['level1', 'level2', 'level3'].includes(c.startingDifficulty as string)
+  ) {
     return false
   }
   if ('timeLimit' in c && c.timeLimit !== null && typeof c.timeLimit !== 'number') {

@@ -10,9 +10,7 @@ export function ResultsPhase() {
   const totalMistakes = state.completedWords.reduce((sum, w) => sum + w.mistakeCount, 0)
   const totalLetters = state.completedWords.reduce((sum, w) => sum + w.word.length, 0)
   const accuracy =
-    totalLetters > 0
-      ? Math.round(((totalLetters - totalMistakes) / totalLetters) * 100)
-      : 0
+    totalLetters > 0 ? Math.round(((totalLetters - totalMistakes) / totalLetters) * 100) : 0
 
   const durationMs = state.gameStartTime ? Date.now() - state.gameStartTime : 0
   const durationSec = Math.floor(durationMs / 1000)
@@ -79,12 +77,7 @@ export function ResultsPhase() {
           value={String(state.totalStars)}
           highlight={state.totalStars >= wordsTyped * 2}
         />
-        <StatCard
-          icon="🎯"
-          label="Accuracy"
-          value={`${accuracy}%`}
-          highlight={accuracy >= 90}
-        />
+        <StatCard icon="🎯" label="Accuracy" value={`${accuracy}%`} highlight={accuracy >= 90} />
         <StatCard
           icon="⏱️"
           label="Time"
@@ -184,11 +177,7 @@ function StatCard({
         border: '1px solid',
         borderColor: highlight ? 'yellow.300' : 'gray.200',
       })}
-      style={
-        highlight
-          ? { backgroundColor: '#fefce8' }
-          : undefined
-      }
+      style={highlight ? { backgroundColor: '#fefce8' } : undefined}
     >
       <span className={css({ fontSize: '20px' })}>{icon}</span>
       <span className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'gray.800' })}>
