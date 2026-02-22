@@ -92,6 +92,10 @@ export async function mergeGuestIntoUser(
   // Family audit log
   await reparent('family_events', 'actor_user_id')
 
+  // Household tables
+  await reparent('household_members', 'user_id')
+  await reparentOrDrop('households', 'owner_id')
+
   // Notification subscriptions
   await reparent('practice_notification_subscriptions', 'user_id')
 

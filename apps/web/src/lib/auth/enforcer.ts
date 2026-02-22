@@ -127,6 +127,8 @@ p, user, /api/teacher-flowcharts/*, *
 p, user, /api/mcp, *
 p, user, /api/billing/checkout, POST
 p, user, /api/billing/portal, POST
+p, user, /api/households, *
+p, user, /api/households/*, *
 
 # Admin-only routes
 p, admin, /api/admin/*, *

@@ -20,6 +20,7 @@ import {
   type User,
 } from '@/db/schema'
 import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
+import { autoFormHousehold } from '@/lib/household'
 
 /** Maximum number of parents that can be linked to a single child */
 export const MAX_PARENTS_PER_CHILD = 4
@@ -126,6 +127,11 @@ export async function linkParentToChild(
   // Sync to Casbin (non-fatal)
   syncParentLink(parentUserId, player.id).catch((err) =>
     console.error('[auth-sync] Failed to sync parent link:', err)
+  )
+
+  // Auto-form household between child owner and linking parent (non-fatal)
+  autoFormHousehold(player.userId, parentUserId).catch((err) =>
+    console.error('[household] Failed to auto-form household:', err)
   )
 
   return { success: true, player }

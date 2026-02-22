@@ -120,6 +120,13 @@ export const pricingKeys = {
   config: () => [...pricingKeys.all, 'config'] as const,
 }
 
+// Household query keys (household membership + management)
+export const householdKeys = {
+  all: ['households'] as const,
+  list: () => [...householdKeys.all, 'list'] as const,
+  detail: (id: string) => [...householdKeys.all, id] as const,
+}
+
 // Billing/tier query keys (subscription tier + limits)
 export const billingKeys = {
   all: ['billing'] as const,

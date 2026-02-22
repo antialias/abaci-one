@@ -4,32 +4,61 @@ import { getLinkedParentIds } from '@/lib/classroom/family-manager'
 import { getParentedPlayerIds } from '@/lib/classroom/access-control'
 import type { TierName, TierLimits } from './tier-limits'
 import { TIER_LIMITS } from './tier-limits'
+import type { Subscription } from '@/db/schema'
 
 /** Tier ranking — higher index = better tier. */
 const TIER_RANK: Record<TierName, number> = { guest: 0, free: 1, family: 2 }
 
+/** Check if a subscription row represents an active family-tier subscription. */
+function isActiveFamilyTier(sub?: Subscription | null): boolean {
+  return (
+    !!sub &&
+    sub.plan === 'family' &&
+    (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due')
+  )
+}
+
 /**
  * Resolve a user's current subscription tier.
  *
+ * Checks two paths:
+ * 1. Direct subscription (user has their own subscription row)
+ * 2. Household-inherited (user belongs to a household whose owner has a subscription)
+ *
  * - No userId → 'guest'
- * - No subscription row or canceled → 'free'
- * - Active/trialing/past_due family subscription → 'family'
+ * - No subscription row or canceled (and no household coverage) → 'free'
+ * - Active/trialing/past_due family subscription (direct or via household) → 'family'
  */
 export async function getTierForUser(userId?: string): Promise<TierName> {
   if (!userId) return 'guest'
 
-  const sub = await db.query.subscriptions.findFirst({
+  // 1. Direct subscription (fast path, unchanged)
+  const directSub = await db.query.subscriptions.findFirst({
     where: eq(schema.subscriptions.userId, userId),
   })
 
-  if (!sub) return 'free'
+  if (isActiveFamilyTier(directSub)) return 'family'
 
-  // past_due still gets access (7-day grace period)
-  if (
-    sub.plan === 'family' &&
-    (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due')
-  ) {
-    return 'family'
+  // 2. Household-inherited tier
+  const memberships = await db
+    .select({ ownerId: schema.households.ownerId })
+    .from(schema.householdMembers)
+    .innerJoin(
+      schema.households,
+      eq(schema.householdMembers.householdId, schema.households.id)
+    )
+    .where(eq(schema.householdMembers.userId, userId))
+
+  if (memberships.length > 0) {
+    const ownerIds = [...new Set(memberships.map((m) => m.ownerId))]
+    // Skip checking our own subscription again
+    const otherOwnerIds = ownerIds.filter((id) => id !== userId)
+    if (otherOwnerIds.length > 0) {
+      const ownerSubs = await db.query.subscriptions.findMany({
+        where: inArray(schema.subscriptions.userId, otherOwnerIds),
+      })
+      if (ownerSubs.some((s) => isActiveFamilyTier(s))) return 'family'
+    }
   }
 
   return 'free'
