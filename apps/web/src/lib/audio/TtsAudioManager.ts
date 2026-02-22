@@ -27,6 +27,8 @@ export interface ManagerSnapshot {
   subtitleBottomOffset: number
   /** Anchor subtitles to top or bottom of viewport. */
   subtitleAnchor: SubtitleAnchor
+  /** Last TTS error message (e.g. API failures). Cleared on next successful speak(). */
+  lastError: string | null
 }
 
 /** Locale -> fallback text map (BCP 47 keys). */
@@ -130,6 +132,9 @@ export class TtsAudioManager {
   private _subtitleTimer: ReturnType<typeof setTimeout> | null = null
   private _subtitleResolve: (() => void) | null = null
 
+  // Last error from TTS generation/playback (surfaced to admin/debug UI)
+  private _lastError: string | null = null
+
   // Cached snapshot for useSyncExternalStore -- must be referentially stable
   private _cachedSnapshot: ManagerSnapshot = {
     isPlaying: false,
@@ -140,6 +145,7 @@ export class TtsAudioManager {
     subtitleDurationMs: 0,
     subtitleBottomOffset: 64,
     subtitleAnchor: 'bottom',
+    lastError: null,
   }
 
   // -- Configuration --
@@ -808,16 +814,33 @@ export class TtsAudioManager {
     try {
       const blob = await source.generate(resolved.clipId, resolved.fallbackText, resolved.tone)
       if (this._isStale(speakId)) return false
-      if (!blob) return false
+      if (!blob) {
+        const voiceName = source instanceof PregeneratedVoice || source instanceof CustomVoice
+          ? source.name : source.type
+        this._lastError = `[TTS] Generation returned empty response (voice: ${voiceName}, clip: ${resolved.clipId})`
+        console.error(this._lastError)
+        this.notify()
+        return false
+      }
       blobUrl = URL.createObjectURL(blob)
       const ok = await this.playMp3(blobUrl)
       if (this._isStale(speakId)) return false
-      if (ok && (source instanceof PregeneratedVoice || source instanceof CustomVoice)) {
-        this.addToPregenCache(source.name, resolved.clipId)
+      if (ok) {
+        // Clear error on success
+        if (this._lastError) {
+          this._lastError = null
+          this.notify()
+        }
+        if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
+          this.addToPregenCache(source.name, resolved.clipId)
+        }
       }
       return ok
     } catch (err) {
-      console.error('[TTS] generateAndPlay error:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      this._lastError = `[TTS] generateAndPlay error: ${msg}`
+      console.error(this._lastError)
+      this.notify()
       return false
     } finally {
       if (blobUrl) URL.revokeObjectURL(blobUrl)
@@ -964,6 +987,7 @@ export class TtsAudioManager {
       subtitleDurationMs: this._currentSubtitleDurationMs,
       subtitleBottomOffset: this._subtitleBottomOffset,
       subtitleAnchor: this._subtitleAnchor,
+      lastError: this._lastError,
     }
     for (const listener of this.listeners) {
       listener()

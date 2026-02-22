@@ -149,6 +149,14 @@ export default function AdminAudioPage() {
         }),
       })
       if (!res.ok) {
+        let detail = `HTTP ${res.status}`
+        try {
+          const body = await res.json()
+          if (body.error) detail = body.error
+        } catch {
+          // response wasn't JSON
+        }
+        setError(`Report-in failed for ${voiceName}: ${detail}`)
         setReportingVoice(null)
         return
       }
@@ -161,11 +169,13 @@ export default function AdminAudioPage() {
         URL.revokeObjectURL(url)
       }
       audio.onerror = () => {
+        setError(`Report-in audio playback failed for ${voiceName}`)
         setReportingVoice(null)
         URL.revokeObjectURL(url)
       }
       audio.play()
-    } catch {
+    } catch (err) {
+      setError(`Report-in network error for ${voiceName}: ${err instanceof Error ? err.message : String(err)}`)
       setReportingVoice(null)
     }
   }, [])

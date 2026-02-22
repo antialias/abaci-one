@@ -31,6 +31,10 @@ function getDb() {
     _client = createClient({
       url: databaseUrl,
       authToken: authToken,
+      // Limit concurrent HTTP requests to the libsql server per pod.
+      // With 3 replicas, this caps total connections at ~60, well within
+      // sqld's SQLD_MAX_CONCURRENT_CONNECTIONS=512.
+      concurrency: 20,
     })
 
     _db = drizzle(_client, { schema })

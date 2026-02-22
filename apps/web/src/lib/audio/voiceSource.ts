@@ -52,10 +52,20 @@ export class PregeneratedVoice extends VoiceSource {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: this.name, clipId, text, tone }),
       })
-      if (!res.ok) return null
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`
+        try {
+          const body = await res.json()
+          if (body.error) detail = body.error
+        } catch {
+          // response wasn't JSON
+        }
+        throw new Error(`generate-clip failed: ${detail}`)
+      }
       return res.blob()
-    } catch {
-      return null
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('generate-clip failed:')) throw err
+      throw new Error(`generate-clip network error: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 }

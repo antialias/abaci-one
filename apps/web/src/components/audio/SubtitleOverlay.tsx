@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { css } from '../../../styled-system/css'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 
 const SPEED_LEVELS = [0.5, 0.75, 1, 1.5, 2] as const
 
@@ -19,9 +20,11 @@ export function SubtitleOverlay() {
     subtitleDurationMultiplier,
     subtitleBottomOffset,
     subtitleAnchor,
+    lastError,
     dismissSubtitle,
     setSubtitleDurationMultiplier,
   } = useAudioManager()
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
 
   const [feedbackLabel, setFeedbackLabel] = useState<string | null>(null)
   const [feedbackKey, setFeedbackKey] = useState(0)
@@ -56,7 +59,8 @@ export function SubtitleOverlay() {
     setFeedbackKey((k) => k + 1)
   }, [effectiveIndex, setSubtitleDurationMultiplier])
 
-  if (!subtitleText) return null
+  // Show error banner when visual debug is on, even without subtitle text
+  if (!subtitleText && !(isVisualDebugEnabled && lastError)) return null
 
   const atMax = effectiveIndex >= SPEED_LEVELS.length - 1
   const atMin = effectiveIndex <= 0
@@ -114,8 +118,30 @@ export function SubtitleOverlay() {
           </div>
         )}
 
+        {/* TTS error banner (visual debug only) */}
+        {isVisualDebugEnabled && lastError && (
+          <div
+            data-element="tts-error-banner"
+            className={css({
+              marginBottom: '8px',
+              padding: '8px 14px',
+              backgroundColor: 'rgba(220, 38, 38, 0.9)',
+              color: 'white',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontFamily: 'mono',
+              lineHeight: 1.4,
+              maxWidth: '80vw',
+              wordBreak: 'break-word',
+              pointerEvents: 'auto',
+            })}
+          >
+            {lastError}
+          </div>
+        )}
+
         {/* Pill */}
-        <div
+        {subtitleText && <div
           role="status"
           aria-live="polite"
           data-element="subtitle-pill"
@@ -217,7 +243,7 @@ export function SubtitleOverlay() {
               }}
             />
           )}
-        </div>
+        </div>}
       </div>
     </>
   )
