@@ -77,6 +77,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Stripe prices',
   },
   {
+    href: '/admin/notifications',
+    label: 'Notifications',
+    description: 'Channel config',
+  },
+  {
     href: '/vision-training',
     label: 'Vision',
     description: 'ML training',
