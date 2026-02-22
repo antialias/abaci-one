@@ -31,7 +31,9 @@ export {
 // Family Management
 export {
   type LinkResult,
+  type FamilyCodeResult,
   MAX_PARENTS_PER_CHILD,
+  FAMILY_CODE_EXPIRY_DAYS,
   linkParentToChild,
   getLinkedParents,
   getLinkedParentIds,

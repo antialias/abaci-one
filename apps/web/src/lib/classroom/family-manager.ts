@@ -24,6 +24,9 @@ import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
 /** Maximum number of parents that can be linked to a single child */
 export const MAX_PARENTS_PER_CHILD = 4
 
+/** Number of days before a family code expires */
+export const FAMILY_CODE_EXPIRY_DAYS = 7
+
 /**
  * Result of linking a parent to a child
  */
@@ -54,6 +57,25 @@ export async function linkParentToChild(
 
   if (!player) {
     return { success: false, error: 'Invalid family code' }
+  }
+
+  // Check if family code has expired (7-day window)
+  if (player.familyCode) {
+    const generatedAt = player.familyCodeGeneratedAt
+    if (!generatedAt) {
+      // Code exists but no timestamp — treat as expired (legacy code without timestamp)
+      return {
+        success: false,
+        error: 'This family code has expired. Ask the parent to regenerate it.',
+      }
+    }
+    const expiresAt = new Date(generatedAt.getTime() + FAMILY_CODE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+    if (new Date() > expiresAt) {
+      return {
+        success: false,
+        error: 'This family code has expired. Ask the parent to regenerate it.',
+      }
+    }
   }
 
   // Only students owned by non-guest (authenticated) users can be shared.
@@ -192,9 +214,17 @@ export async function unlinkParentFromChild(
 }
 
 /**
+ * Result of getting or creating a family code
+ */
+export interface FamilyCodeResult {
+  familyCode: string
+  generatedAt: Date | null
+}
+
+/**
  * Get the family code for a player, generating one if needed
  */
-export async function getOrCreateFamilyCode(playerId: string): Promise<string | null> {
+export async function getOrCreateFamilyCode(playerId: string): Promise<FamilyCodeResult | null> {
   const player = await db.query.players.findFirst({
     where: eq(players.id, playerId),
   })
@@ -202,15 +232,22 @@ export async function getOrCreateFamilyCode(playerId: string): Promise<string | 
   if (!player) return null
 
   if (player.familyCode) {
-    return player.familyCode
+    return {
+      familyCode: player.familyCode,
+      generatedAt: player.familyCodeGeneratedAt ?? null,
+    }
   }
 
   // Generate and save new family code
   const newCode = generateFamilyCode()
+  const now = new Date()
 
-  await db.update(players).set({ familyCode: newCode }).where(eq(players.id, playerId))
+  await db
+    .update(players)
+    .set({ familyCode: newCode, familyCodeGeneratedAt: now })
+    .where(eq(players.id, playerId))
 
-  return newCode
+  return { familyCode: newCode, generatedAt: now }
 }
 
 /**
@@ -231,7 +268,10 @@ export async function regenerateFamilyCode(
 
   const newCode = generateFamilyCode()
 
-  await db.update(players).set({ familyCode: newCode }).where(eq(players.id, playerId))
+  await db
+    .update(players)
+    .set({ familyCode: newCode, familyCodeGeneratedAt: new Date() })
+    .where(eq(players.id, playerId))
 
   // Record event (non-fatal)
   if (userId) {

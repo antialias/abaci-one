@@ -67,8 +67,10 @@ const {
   linkParentToChild,
   unlinkParentFromChild,
   regenerateFamilyCode,
+  getOrCreateFamilyCode,
   getRecentFamilyEvents,
   MAX_PARENTS_PER_CHILD,
+  FAMILY_CODE_EXPIRY_DAYS,
 } = await import('../family-manager')
 
 describe('Family Manager', () => {
@@ -90,11 +92,18 @@ describe('Family Manager', () => {
     })
   })
 
+  describe('FAMILY_CODE_EXPIRY_DAYS', () => {
+    it('is set to 7', () => {
+      expect(FAMILY_CODE_EXPIRY_DAYS).toBe(7)
+    })
+  })
+
   describe('linkParentToChild', () => {
     const mockPlayer = {
       id: 'player-1',
       userId: 'owner-user-1',
       familyCode: 'ABC123',
+      familyCodeGeneratedAt: new Date(), // fresh code, not expired
       name: 'Test Child',
     }
 
@@ -198,6 +207,50 @@ describe('Family Manager', () => {
       // findFirst was called with the normalized code
       expect(mockDb.query.players.findFirst).toHaveBeenCalled()
     })
+
+    it('returns error when family code has expired (>7 days)', async () => {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      mockDb.query.players.findFirst.mockResolvedValue({
+        ...mockPlayer,
+        familyCodeGeneratedAt: eightDaysAgo,
+      })
+
+      const result = await linkParentToChild('parent-1', 'ABC123')
+
+      expect(result).toEqual({
+        success: false,
+        error: 'This family code has expired. Ask the parent to regenerate it.',
+      })
+    })
+
+    it('returns error when family code exists but has no generatedAt (legacy)', async () => {
+      mockDb.query.players.findFirst.mockResolvedValue({
+        ...mockPlayer,
+        familyCodeGeneratedAt: null,
+      })
+
+      const result = await linkParentToChild('parent-1', 'ABC123')
+
+      expect(result).toEqual({
+        success: false,
+        error: 'This family code has expired. Ask the parent to regenerate it.',
+      })
+    })
+
+    it('succeeds when family code is within 7-day window', async () => {
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      mockDb.query.players.findFirst.mockResolvedValue({
+        ...mockPlayer,
+        familyCodeGeneratedAt: threeDaysAgo,
+      })
+      mockDb.query.users.findFirst.mockResolvedValue({ id: 'owner-user-1', upgradedAt: new Date() })
+      mockDb.query.parentChild.findFirst.mockResolvedValue(null)
+      mockDb.query.parentChild.findMany.mockResolvedValue([])
+
+      const result = await linkParentToChild('parent-1', 'ABC123')
+
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('unlinkParentFromChild', () => {
@@ -240,6 +293,54 @@ describe('Family Manager', () => {
     })
   })
 
+  describe('getOrCreateFamilyCode', () => {
+    it('returns null when player not found', async () => {
+      mockDb.query.players.findFirst.mockResolvedValue(null)
+
+      const result = await getOrCreateFamilyCode('nonexistent')
+
+      expect(result).toBeNull()
+    })
+
+    it('returns existing code with generatedAt', async () => {
+      const generatedAt = new Date('2025-01-15T00:00:00Z')
+      mockDb.query.players.findFirst.mockResolvedValue({
+        id: 'player-1',
+        familyCode: 'FAM-EXIST',
+        familyCodeGeneratedAt: generatedAt,
+      })
+
+      const result = await getOrCreateFamilyCode('player-1')
+
+      expect(result).toEqual({
+        familyCode: 'FAM-EXIST',
+        generatedAt,
+      })
+      // Should not have updated the DB
+      expect(mockDb.update).not.toHaveBeenCalled()
+    })
+
+    it('generates new code with familyCodeGeneratedAt when none exists', async () => {
+      mockDb.query.players.findFirst.mockResolvedValue({
+        id: 'player-1',
+        familyCode: null,
+        familyCodeGeneratedAt: null,
+      })
+
+      const result = await getOrCreateFamilyCode('player-1')
+
+      expect(result).toEqual({
+        familyCode: 'NEW-CODE',
+        generatedAt: expect.any(Date),
+      })
+      expect(mockDb.update).toHaveBeenCalled()
+      expect(mockUpdateSet).toHaveBeenCalledWith({
+        familyCode: 'NEW-CODE',
+        familyCodeGeneratedAt: expect.any(Date),
+      })
+    })
+  })
+
   describe('regenerateFamilyCode', () => {
     it('returns null when player not found', async () => {
       mockDb.query.players.findFirst.mockResolvedValue(null)
@@ -249,7 +350,7 @@ describe('Family Manager', () => {
       expect(result).toBeNull()
     })
 
-    it('generates new code and updates player', async () => {
+    it('generates new code and updates player with timestamp', async () => {
       mockDb.query.players.findFirst.mockResolvedValue({
         id: 'player-1',
         familyCode: 'OLD-CODE',
@@ -259,7 +360,10 @@ describe('Family Manager', () => {
 
       expect(result).toBe('NEW-CODE')
       expect(mockDb.update).toHaveBeenCalled()
-      expect(mockUpdateSet).toHaveBeenCalledWith({ familyCode: 'NEW-CODE' })
+      expect(mockUpdateSet).toHaveBeenCalledWith({
+        familyCode: 'NEW-CODE',
+        familyCodeGeneratedAt: expect.any(Date),
+      })
     })
 
     it('records code_regenerated event when userId provided', async () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import {
+  FAMILY_CODE_EXPIRY_DAYS,
   getLinkedParentIds,
   getOrCreateFamilyCode,
   isParentOf,
@@ -26,17 +27,24 @@ export const GET = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const [familyCode, linkedParentIds] = await Promise.all([
+    const [codeResult, linkedParentIds] = await Promise.all([
       getOrCreateFamilyCode(playerId),
       getLinkedParentIds(playerId),
     ])
 
-    if (!familyCode) {
+    if (!codeResult) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
+    const { familyCode, generatedAt } = codeResult
+    const expiresAt = generatedAt
+      ? new Date(generatedAt.getTime() + FAMILY_CODE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+      : null
+
     return NextResponse.json({
       familyCode,
+      generatedAt: generatedAt?.toISOString() ?? null,
+      expiresAt: expiresAt?.toISOString() ?? null,
       linkedParentCount: linkedParentIds.length,
       maxParents: MAX_PARENTS_PER_CHILD,
     })
@@ -69,7 +77,15 @@ export const POST = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ familyCode })
+    // Regeneration always sets a fresh timestamp
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + FAMILY_CODE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+
+    return NextResponse.json({
+      familyCode,
+      generatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    })
   } catch (error) {
     console.error('Failed to regenerate family code:', error)
     return NextResponse.json({ error: 'Failed to regenerate family code' }, { status: 500 })
