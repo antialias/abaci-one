@@ -258,6 +258,73 @@ export function SetupPhase() {
         </div>
       </div>
 
+      {/* Keyboard layout */}
+      <div className={css({ width: '100%' })}>
+        <label
+          className={css({
+            fontSize: 'sm',
+            fontWeight: '600',
+            color: 'gray.600',
+            mb: '2',
+            display: 'block',
+          })}
+        >
+          Keyboard layout
+        </label>
+        <div className={css({ display: 'flex', gap: '2', justifyContent: 'center' })}>
+          {(['qwerty', 'dvorak', 'abc'] as const).map((layout) => {
+            const isSelected = state.keyboardLayout === layout
+            return (
+              <button
+                key={layout}
+                type="button"
+                data-action={`select-layout-${layout}`}
+                onClick={() => setConfig('keyboardLayout', layout)}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  borderRadius: 'lg',
+                  border: '2px solid',
+                  fontSize: 'sm',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  textTransform: 'uppercase',
+                })}
+                style={{
+                  borderColor: isSelected ? '#3b82f6' : '#d1d5db',
+                  backgroundColor: isSelected ? '#eff6ff' : 'white',
+                  color: isSelected ? '#2563eb' : '#6b7280',
+                }}
+              >
+                {layout}
+              </button>
+            )
+          })}
+        </div>
+        <label
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            mt: '3',
+            justifyContent: 'center',
+            fontSize: 'sm',
+            color: 'gray.600',
+            cursor: 'pointer',
+          })}
+        >
+          <input
+            type="checkbox"
+            checked={state.showVirtualKeyboard}
+            onChange={(e) => setConfig('showVirtualKeyboard', e.target.checked)}
+            data-action="toggle-virtual-keyboard"
+            className={css({ cursor: 'pointer' })}
+          />
+          Always show on-screen keyboard
+        </label>
+      </div>
+
       {/* Start button */}
       <button
         type="button"

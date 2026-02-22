@@ -19,6 +19,7 @@ import type {
   DifficultyLevel,
   CompletedWord,
   WordEntry,
+  KeyboardLayout,
 } from './types'
 import { pickWords, type DifficultyLevel as WordDifficultyLevel } from './words'
 import type { GameMove } from '@/lib/arcade/validation'
@@ -60,7 +61,7 @@ export interface TypeRacerJrContextValue {
   endGame: (reason: 'timer-expired' | 'player-quit') => void
   resetGame: () => void
   setConfig: (
-    field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount',
+    field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount' | 'keyboardLayout' | 'showVirtualKeyboard',
     value: unknown
   ) => void
   dismissCelebration: () => void
@@ -222,6 +223,8 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
       gameMode: 'free-play',
       timeLimit: null,
       wordCount: 5,
+      keyboardLayout: 'qwerty',
+      showVirtualKeyboard: false,
       currentDifficulty: 'level1',
       consecutiveCleanWords: 0,
       wordQueue: [],
@@ -246,6 +249,10 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
       currentDifficulty:
         (savedConfig.startingDifficulty as DifficultyLevel) ?? defaultState.currentDifficulty,
       wordCount: (savedConfig.wordCount as number | null) ?? defaultState.wordCount,
+      keyboardLayout:
+        (savedConfig.keyboardLayout as KeyboardLayout) ?? defaultState.keyboardLayout,
+      showVirtualKeyboard:
+        (savedConfig.showVirtualKeyboard as boolean) ?? defaultState.showVirtualKeyboard,
     }
   }, [roomData?.gameConfig])
 
@@ -443,7 +450,16 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
 
   // ---- Action: Set Config ----
   const setConfig = useCallback(
-    (field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount', value: unknown) => {
+    (
+      field:
+        | 'gameMode'
+        | 'timeLimit'
+        | 'startingDifficulty'
+        | 'wordCount'
+        | 'keyboardLayout'
+        | 'showVirtualKeyboard',
+      value: unknown
+    ) => {
       sendMove({
         type: 'SET_CONFIG',
         playerId: TEAM_MOVE,

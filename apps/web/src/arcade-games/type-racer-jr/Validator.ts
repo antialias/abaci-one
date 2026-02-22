@@ -21,6 +21,8 @@ const PRACTICE_BREAK_DEFAULTS: TypeRacerJrConfig = {
   timeLimit: null,
   startingDifficulty: 'level1',
   wordCount: 5,
+  keyboardLayout: 'qwerty',
+  showVirtualKeyboard: false,
 }
 
 function difficultyToWordLevel(d: DifficultyLevel): WordDifficultyLevel {
@@ -267,6 +269,8 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
       gameMode: config.gameMode,
       timeLimit: config.timeLimit,
       wordCount: config.wordCount,
+      keyboardLayout: config.keyboardLayout,
+      showVirtualKeyboard: config.showVirtualKeyboard,
       currentDifficulty: config.startingDifficulty,
       consecutiveCleanWords: 0,
       wordQueue: [],
@@ -310,6 +314,8 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
       gameMode: fullConfig.gameMode,
       timeLimit: fullConfig.timeLimit,
       wordCount: wordCount,
+      keyboardLayout: fullConfig.keyboardLayout,
+      showVirtualKeyboard: fullConfig.showVirtualKeyboard,
       currentDifficulty: fullConfig.startingDifficulty,
       consecutiveCleanWords: 0,
       wordQueue: words,

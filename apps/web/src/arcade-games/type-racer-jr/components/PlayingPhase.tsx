@@ -223,13 +223,16 @@ export function PlayingPhase() {
             : 'Hard'}
       </div>
 
-      {/* On-screen keyboard (hidden when physical keyboard detected) */}
-      {!hasPhysicalKeyboard && !localState.showCelebration && currentWord && (
-        <OnScreenKeyboard
-          onKeyPress={typeLetter}
-          highlightedLetter={currentWord.word[localState.currentLetterIndex]}
-        />
-      )}
+      {/* On-screen keyboard — shown on touch devices, or when user forces it on */}
+      {(state.showVirtualKeyboard || !hasPhysicalKeyboard) &&
+        !localState.showCelebration &&
+        currentWord && (
+          <OnScreenKeyboard
+            onKeyPress={typeLetter}
+            highlightedLetter={currentWord.word[localState.currentLetterIndex]}
+            layout={state.keyboardLayout}
+          />
+        )}
 
       {/* Celebration overlay */}
       {localState.showCelebration && (

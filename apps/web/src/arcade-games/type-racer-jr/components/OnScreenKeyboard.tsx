@@ -2,28 +2,49 @@
 
 import { useCallback } from 'react'
 import { css } from '../../../../styled-system/css'
+import type { KeyboardLayout } from '../types'
 
 interface OnScreenKeyboardProps {
   onKeyPress: (letter: string) => void
   highlightedLetter?: string
+  layout?: KeyboardLayout
 }
 
-const ROWS = [
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
-]
+const LAYOUTS: Record<KeyboardLayout, string[][]> = {
+  qwerty: [
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+  ],
+  dvorak: [
+    ['p', 'y', 'f', 'g', 'c', 'r', 'l'],
+    ['a', 'o', 'e', 'u', 'i', 'd', 'h', 't', 'n', 's'],
+    ['q', 'j', 'k', 'x', 'b', 'm', 'w', 'v', 'z'],
+  ],
+  abc: [
+    ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'],
+    ['j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r'],
+    ['s', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+  ],
+}
 
 /**
- * On-screen QWERTY keyboard for touch devices.
+ * On-screen keyboard for touch devices.
+ * Supports QWERTY, Dvorak, and ABC layouts.
  */
-export function OnScreenKeyboard({ onKeyPress, highlightedLetter }: OnScreenKeyboardProps) {
+export function OnScreenKeyboard({
+  onKeyPress,
+  highlightedLetter,
+  layout = 'qwerty',
+}: OnScreenKeyboardProps) {
   const handlePress = useCallback(
     (letter: string) => {
       onKeyPress(letter)
     },
     [onKeyPress]
   )
+
+  const rows = LAYOUTS[layout]
 
   return (
     <div
@@ -40,7 +61,7 @@ export function OnScreenKeyboard({ onKeyPress, highlightedLetter }: OnScreenKeyb
         width: '100%',
       })}
     >
-      {ROWS.map((row, rowIdx) => (
+      {rows.map((row, rowIdx) => (
         <div
           key={rowIdx}
           className={css({

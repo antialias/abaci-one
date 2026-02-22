@@ -64,6 +64,8 @@ const defaultConfig: TypeRacerJrConfig = {
   timeLimit: null,
   startingDifficulty: 'level1',
   wordCount: 5,
+  keyboardLayout: 'qwerty',
+  showVirtualKeyboard: false,
 }
 
 function validateTypeRacerJrConfig(config: unknown): config is TypeRacerJrConfig {

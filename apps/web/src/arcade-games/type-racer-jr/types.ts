@@ -19,6 +19,9 @@ export type DifficultyLevel = z.infer<typeof DifficultyLevelSchema>
 export const GamePhaseSchema = z.enum(['setup', 'playing', 'results'])
 export type GamePhase = z.infer<typeof GamePhaseSchema>
 
+export const KeyboardLayoutSchema = z.enum(['qwerty', 'dvorak', 'abc'])
+export type KeyboardLayout = z.infer<typeof KeyboardLayoutSchema>
+
 export const TimeLimitSchema = z.union([z.literal(60), z.literal(90), z.literal(120), z.null()])
 export type TimeLimit = z.infer<typeof TimeLimitSchema>
 
@@ -58,6 +61,8 @@ export const TypeRacerJrConfigSchema = z.object({
   timeLimit: TimeLimitSchema,
   startingDifficulty: DifficultyLevelSchema,
   wordCount: z.number().nullable(),
+  keyboardLayout: KeyboardLayoutSchema,
+  showVirtualKeyboard: z.boolean(),
 })
 export type TypeRacerJrConfig = z.infer<typeof TypeRacerJrConfigSchema>
 
@@ -71,6 +76,10 @@ export const TypeRacerJrStateSchema = z.object({
   gameMode: GameModeSchema,
   timeLimit: TimeLimitSchema,
   wordCount: z.number().nullable(),
+
+  // Keyboard
+  keyboardLayout: KeyboardLayoutSchema,
+  showVirtualKeyboard: z.boolean(),
 
   // Difficulty
   currentDifficulty: DifficultyLevelSchema,
@@ -152,7 +161,7 @@ export type TypeRacerJrMove =
       userId: string
       timestamp: number
       data: {
-        field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount'
+        field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount' | 'keyboardLayout' | 'showVirtualKeyboard'
         value: unknown
       }
     }
