@@ -10,6 +10,11 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 # Optional - Stripe billing (product, prices, and webhook are auto-created by Terraform)
 # stripe_secret_key = "sk_live_..."
 
+# Optional - Web Push notifications (VAPID keys)
+# Generate with: npx web-push generate-vapid-keys --json
+# vapid_public_key  = "B..."
+# vapid_private_key = "..."
+
 # Optional overrides
 # app_domain        = "abaci.one"
 # app_image         = "ghcr.io/antialias/soroban-abacus-flashcards:latest"

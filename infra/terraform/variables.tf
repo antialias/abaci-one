@@ -181,6 +181,20 @@ variable "coverage_api_token" {
   default     = ""
 }
 
+# Web Push (VAPID keys)
+variable "vapid_public_key" {
+  description = "VAPID public key for Web Push notifications"
+  type        = string
+  default     = ""
+}
+
+variable "vapid_private_key" {
+  description = "VAPID private key for Web Push notifications"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "argocd_domain" {
   description = "Domain for ArgoCD UI (leave empty to use port-forward only)"
   type        = string

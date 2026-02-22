@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import { css } from '../../../../styled-system/css'
 
 interface CelebrationBurstProps {
@@ -15,12 +16,27 @@ const MESSAGES = ['Nice!', 'Great!', 'Perfect!']
 /**
  * Brief celebration overlay between words.
  * Shows stars and an encouraging message for 1.5s.
+ * Fires a confetti burst on 3-star celebrations.
  */
 export function CelebrationBurst({ stars, onDone }: CelebrationBurstProps) {
   useEffect(() => {
     const timer = setTimeout(onDone, CELEBRATION_DURATION)
     return () => clearTimeout(timer)
   }, [onDone])
+
+  // Fire a small confetti burst for perfect (3-star) words
+  useEffect(() => {
+    if (stars >= 3) {
+      confetti({
+        particleCount: 25,
+        spread: 60,
+        origin: { x: 0.5, y: 0.4 },
+        colors: ['#FFD700', '#FFA500', '#FF6347'],
+        zIndex: 10001,
+        ticks: 50,
+      })
+    }
+  }, [stars])
 
   const message = stars >= 3 ? MESSAGES[2] : stars >= 2 ? MESSAGES[1] : MESSAGES[0]
 

@@ -23,6 +23,7 @@ import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
 import { HeartbeatTracker } from './HeartbeatTracker'
 import { PageTransitionOverlay } from './PageTransitionOverlay'
+import { PracticeNotificationListener } from './PracticeNotificationListener'
 
 // Lazy load MyAbacus - it includes @react-spring/web, AbacusReact, and Vision components
 // Most pages don't need the floating abacus immediately on load
@@ -56,6 +57,7 @@ function InnerProviders({ children }: { children: ReactNode }) {
                         <PageTransitionOverlay />
                         <DeploymentInfo />
                         <HeartbeatTracker />
+                        <PracticeNotificationListener />
                         <MyAbacus />
                       </PageTransitionProvider>
                     </DeploymentInfoProvider>

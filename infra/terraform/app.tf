@@ -24,6 +24,7 @@ resource "kubernetes_secret" "app_env" {
     STRIPE_FAMILY_MONTHLY_PRICE_ID  = local.stripe_enabled ? stripe_price.family_monthly[0].id : ""
     STRIPE_FAMILY_ANNUAL_PRICE_ID   = local.stripe_enabled ? stripe_price.family_annual[0].id : ""
     STRIPE_WEBHOOK_SECRET           = local.stripe_enabled ? stripe_webhook_endpoint.app[0].secret : ""
+    VAPID_PRIVATE_KEY               = var.vapid_private_key
   }
 }
 
@@ -71,6 +72,8 @@ resource "kubernetes_config_map" "app_config" {
     # OpenTelemetry tracing configuration
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://tempo.monitoring.svc.cluster.local:4317"
     OTEL_SERVICE_NAME           = "abaci-app"
+    # Web Push VAPID public key (also baked into client bundle at build time)
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY = var.vapid_public_key
   }
 }
 

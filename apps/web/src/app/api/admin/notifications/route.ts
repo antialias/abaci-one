@@ -10,10 +10,31 @@ const DEFAULT_CONFIG: NotificationChannelsConfig = {
   inApp: { enabled: false },
 }
 
+export interface ChannelStatus {
+  operational: boolean
+  reason?: string
+}
+
+function getChannelStatuses(): Record<string, ChannelStatus> {
+  const hasVapidPublic = !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const hasVapidPrivate = !!process.env.VAPID_PRIVATE_KEY
+  const hasEmailServer = !!process.env.EMAIL_SERVER
+
+  return {
+    webPush: hasVapidPublic && hasVapidPrivate
+      ? { operational: true }
+      : { operational: false, reason: `Missing env: ${[!hasVapidPublic && 'NEXT_PUBLIC_VAPID_PUBLIC_KEY', !hasVapidPrivate && 'VAPID_PRIVATE_KEY'].filter(Boolean).join(', ')}` },
+    email: hasEmailServer
+      ? { operational: true }
+      : { operational: false, reason: 'Missing env: EMAIL_SERVER' },
+    inApp: { operational: true },
+  }
+}
+
 /**
  * GET /api/admin/notifications
  *
- * Returns the current notification channels config from app_settings.
+ * Returns the current notification channels config + operational status.
  */
 export const GET = withAuth(
   async () => {
@@ -24,16 +45,19 @@ export const GET = withAuth(
         .where(eq(appSettings.id, 'default'))
         .limit(1)
 
-      if (!settings?.notificationChannels) {
-        return NextResponse.json(DEFAULT_CONFIG)
+      let config = DEFAULT_CONFIG
+      if (settings?.notificationChannels) {
+        try {
+          config = JSON.parse(settings.notificationChannels) as NotificationChannelsConfig
+        } catch {
+          // use default
+        }
       }
 
-      try {
-        const config = JSON.parse(settings.notificationChannels) as NotificationChannelsConfig
-        return NextResponse.json(config)
-      } catch {
-        return NextResponse.json(DEFAULT_CONFIG)
-      }
+      return NextResponse.json({
+        config,
+        status: getChannelStatuses(),
+      })
     } catch (error) {
       console.error('[admin/notifications] Error fetching config:', error)
       return NextResponse.json({ error: 'Failed to fetch notification config' }, { status: 500 })

@@ -19,12 +19,22 @@ interface NotificationChannelsConfig {
   inApp: { enabled: boolean }
 }
 
+interface ChannelStatus {
+  operational: boolean
+  reason?: string
+}
+
+interface NotificationsApiResponse {
+  config: NotificationChannelsConfig
+  status: Record<string, ChannelStatus>
+}
+
 const configKeys = {
   all: ['admin-notifications'] as const,
   config: () => [...configKeys.all, 'config'] as const,
 }
 
-async function fetchConfig(): Promise<NotificationChannelsConfig> {
+async function fetchNotifications(): Promise<NotificationsApiResponse> {
   const res = await api('admin/notifications')
   if (!res.ok) throw new Error('Failed to fetch notification config')
   return res.json()
@@ -63,11 +73,14 @@ export default function AdminNotificationsPage() {
   const isDark = resolvedTheme === 'dark'
   const queryClient = useQueryClient()
 
-  const { data: config, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: configKeys.config(),
-    queryFn: fetchConfig,
+    queryFn: fetchNotifications,
     staleTime: 5 * 60 * 1000,
   })
+
+  const config = data?.config
+  const channelStatuses = data?.status
 
   // Local form state
   const [localConfig, setLocalConfig] = useState<NotificationChannelsConfig | null>(null)
@@ -82,18 +95,20 @@ export default function AdminNotificationsPage() {
 
   const mutation = useMutation({
     mutationFn: updateConfig,
-    onSuccess: (data) => {
-      queryClient.setQueryData(configKeys.config(), data)
-      setLocalConfig(data)
+    onSuccess: (updatedConfig) => {
+      queryClient.setQueryData(configKeys.config(), (prev: NotificationsApiResponse | undefined) =>
+        prev ? { ...prev, config: updatedConfig } : prev
+      )
+      setLocalConfig(updatedConfig)
     },
   })
 
   const testMutation = useMutation({
     mutationFn: sendTest,
-    onSuccess: (data, variables) => {
+    onSuccess: (result, variables) => {
       setTestResult({
         channel: variables.channel,
-        message: data.success ? 'Test sent!' : `Failed: ${data.error}`,
+        message: result.success ? 'Test sent!' : `Failed: ${result.error}`,
       })
     },
     onError: (err, variables) => {
@@ -151,18 +166,30 @@ export default function AdminNotificationsPage() {
 
       if (channel === 'webPush') {
         try {
-          const permission = await Notification.requestPermission()
-          if (permission !== 'granted') {
-            setTestResult({ channel, message: 'Failed: Notification permission denied' })
+          if (!('Notification' in window)) {
+            setTestResult({ channel, message: 'Failed: Notifications API not supported in this browser' })
             return
           }
+
+          setTestResult({ channel, message: 'Requesting permission...' })
+          const permission = await Notification.requestPermission()
+          if (permission !== 'granted') {
+            setTestResult({ channel, message: `Failed: Permission ${permission}. Check browser notification settings for this site.` })
+            return
+          }
+
+          setTestResult({ channel, message: 'Registering service worker...' })
           const registration = await registerServiceWorker()
           if (!registration) {
             setTestResult({ channel, message: 'Failed: Service worker not supported' })
             return
           }
+
+          setTestResult({ channel, message: 'Subscribing to push...' })
           const browserSub = await subscribeToPush(registration)
           const pushSub = pushSubscriptionToJson(browserSub)
+
+          setTestResult({ channel, message: 'Sending test push...' })
           testMutation.mutate({ channel, pushSubscription: pushSub })
         } catch (err) {
           setTestResult({
@@ -252,6 +279,7 @@ export default function AdminNotificationsPage() {
                 }
                 const { title, desc } = labels[channel]
                 const enabled = localConfig[channel].enabled
+                const status = channelStatuses?.[channel]
 
                 return (
                   <div key={channel} data-element={`channel-${channel}`} className={cardStyle}>
@@ -263,7 +291,47 @@ export default function AdminNotificationsPage() {
                         marginBottom: '0.5rem',
                       })}
                     >
-                      <span className={labelStyle}>{title}</span>
+                      <div
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        })}
+                      >
+                        <span className={labelStyle}>{title}</span>
+                        {status && (
+                          <span
+                            data-element={`status-${channel}`}
+                            className={css({
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.6875rem',
+                              fontWeight: '500',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              backgroundColor: status.operational
+                                ? isDark ? 'rgba(35, 134, 54, 0.2)' : 'green.50'
+                                : isDark ? 'rgba(218, 54, 51, 0.2)' : 'red.50',
+                              color: status.operational
+                                ? isDark ? 'green.400' : 'green.700'
+                                : isDark ? 'red.400' : 'red.700',
+                            })}
+                          >
+                            <span
+                              className={css({
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                backgroundColor: status.operational
+                                  ? isDark ? 'green.400' : 'green.500'
+                                  : isDark ? 'red.400' : 'red.500',
+                              })}
+                            />
+                            {status.operational ? 'Operational' : 'Not configured'}
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleToggle(channel)}
@@ -298,6 +366,21 @@ export default function AdminNotificationsPage() {
                       </button>
                     </div>
                     <p className={secondaryText}>{desc}</p>
+
+                    {/* Show reason when not operational */}
+                    {status && !status.operational && (
+                      <p
+                        data-element={`status-reason-${channel}`}
+                        className={css({
+                          fontSize: '0.75rem',
+                          color: isDark ? 'red.400' : 'red.600',
+                          marginTop: '0.375rem',
+                          fontFamily: 'monospace',
+                        })}
+                      >
+                        {status.reason}
+                      </p>
+                    )}
 
                     {/* Email-specific fields */}
                     {channel === 'email' && enabled && (
@@ -404,7 +487,9 @@ export default function AdminNotificationsPage() {
                               fontSize: '0.8125rem',
                               color: testResult.message.startsWith('Test')
                                 ? 'green.500'
-                                : 'red.400',
+                                : testResult.message.startsWith('Failed')
+                                  ? 'red.400'
+                                  : isDark ? 'gray.400' : 'gray.500',
                             })}
                           >
                             {testResult.message}
