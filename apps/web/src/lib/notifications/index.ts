@@ -31,6 +31,9 @@ export { sendWebPush, type WebPushResult, _resetWebPushConfig } from './web-push
 // Email
 export { sendEmail, type SendEmailParams, _resetEmailTransport } from './email'
 
+// Bootstrap
+export { bootstrapChannels } from './bootstrap'
+
 // Channels
 export { webPushChannel } from './channels/web-push-channel'
 export { emailChannel } from './channels/email-channel'

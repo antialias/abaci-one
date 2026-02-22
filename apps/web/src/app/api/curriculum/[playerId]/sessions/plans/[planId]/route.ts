@@ -202,6 +202,30 @@ async function emitSessionEvents(
         await emitSessionEnded({ sessionId, playerId, playerName, reason }, classroomId)
       }
     }
+
+    // Fire-and-forget: notify subscribers (web push, email, in-app)
+    if (action === 'start') {
+      const baseUrl =
+        process.env.NEXTAUTH_URL ??
+        process.env.NEXT_PUBLIC_APP_URL ??
+        'https://abaci.one'
+
+      import('@/lib/notifications/bootstrap')
+        .then(({ bootstrapChannels }) => bootstrapChannels())
+        .then(() => import('@/lib/notifications/dispatcher'))
+        .then(({ notifySubscribers }) =>
+          notifySubscribers({
+            sessionId,
+            playerId,
+            playerName,
+            playerEmoji: player?.emoji ?? '',
+            observeUrl: `${baseUrl}/practice/${playerId}/observe`,
+          })
+        )
+        .catch((err) => {
+          console.error('[Notifications] Failed to notify subscribers:', err)
+        })
+    }
   } catch (error) {
     // Don't fail the request if socket emission fails
     console.error('[SessionPlan] Failed to emit session event:', error)
