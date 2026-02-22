@@ -109,6 +109,12 @@ export const players = sqliteTable(
      * Format: FAM-XXXXXX (6 alphanumeric chars)
      */
     familyCode: text('family_code').unique(),
+
+    /**
+     * When the current family code was generated.
+     * Codes expire after 7 days — expired codes are rejected at link time.
+     */
+    familyCodeGeneratedAt: integer('family_code_generated_at', { mode: 'timestamp' }),
   },
   (table) => ({
     /** Index for fast lookups by userId */

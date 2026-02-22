@@ -64,6 +64,14 @@ export const appSettings = sqliteTable('app_settings', {
    * Shape: { family: { monthly: { amount, priceId }, annual: { amount, priceId } } }
    */
   pricing: text('pricing'),
+
+  /**
+   * Notification channels configuration (JSON-encoded).
+   *
+   * Controls which notification channels are enabled globally and their settings.
+   * When null, notifications are disabled.
+   */
+  notificationChannels: text('notification_channels'),
 })
 
 export type AppSettings = typeof appSettings.$inferSelect
@@ -79,6 +87,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   voiceChain: JSON.stringify([{ type: 'pregenerated', name: 'nova' }, { type: 'browser-tts' }]),
   termCountScaling: null,
   pricing: null,
+  notificationChannels: null,
 }
 
 /**
@@ -89,4 +98,10 @@ export interface PricingConfig {
     monthly: { amount: number; priceId: string }
     annual: { amount: number; priceId: string }
   }
+}
+
+export interface NotificationChannelsConfig {
+  webPush: { enabled: boolean }
+  email: { enabled: boolean; fromName?: string; replyTo?: string }
+  inApp: { enabled: boolean }
 }
