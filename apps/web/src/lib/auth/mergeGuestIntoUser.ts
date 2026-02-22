@@ -92,6 +92,9 @@ export async function mergeGuestIntoUser(
   // Family audit log
   await reparent('family_events', 'actor_user_id')
 
+  // Notification subscriptions
+  await reparent('practice_notification_subscriptions', 'user_id')
+
   // Delete the source user (CASCADE will clean up auth_accounts and any remaining FKs)
   await db.delete(schema.users).where(eq(schema.users.id, sourceUserId))
 
