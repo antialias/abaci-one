@@ -27,6 +27,7 @@ interface ChannelStatus {
 interface NotificationsApiResponse {
   config: NotificationChannelsConfig
   status: Record<string, ChannelStatus>
+  vapidPublicKey: string | null
 }
 
 const configKeys = {
@@ -189,7 +190,12 @@ export default function AdminNotificationsPage() {
           }
 
           setTestResult({ channel, message: 'Subscribing to push...' })
-          const browserSub = await subscribeToPush(registration)
+          const vapidPublicKey = data?.vapidPublicKey
+          if (!vapidPublicKey) {
+            setTestResult({ channel, message: 'Failed: VAPID public key not configured on server' })
+            return
+          }
+          const browserSub = await subscribeToPush(registration, vapidPublicKey)
           const pushSub = pushSubscriptionToJson(browserSub)
 
           setTestResult({ channel, message: 'Sending test push...' })

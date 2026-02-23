@@ -88,7 +88,10 @@ export function useNotificationSubscription(
         if (permission === 'granted') {
           const registration = await registerServiceWorker()
           if (registration) {
-            const browserSub = await subscribeToPush(registration)
+            const keyRes = await api('notifications/vapid-public-key')
+            const { vapidPublicKey } = await keyRes.json()
+            if (!vapidPublicKey) throw new Error('VAPID public key not configured on server')
+            const browserSub = await subscribeToPush(registration, vapidPublicKey)
             pushSub = pushSubscriptionToJson(browserSub)
           }
         }

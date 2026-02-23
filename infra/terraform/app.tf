@@ -72,8 +72,8 @@ resource "kubernetes_config_map" "app_config" {
     # OpenTelemetry tracing configuration
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://tempo.monitoring.svc.cluster.local:4317"
     OTEL_SERVICE_NAME           = "abaci-app"
-    # Web Push VAPID public key (also baked into client bundle at build time)
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY = var.vapid_public_key
+    # Web Push VAPID public key (served to clients at runtime via API)
+    VAPID_PUBLIC_KEY = var.vapid_public_key
   }
 }
 

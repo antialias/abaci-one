@@ -10,10 +10,10 @@ let configured = false
 function ensureConfigured(): void {
   if (configured) return
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const publicKey = process.env.VAPID_PUBLIC_KEY
   const privateKey = process.env.VAPID_PRIVATE_KEY
   if (!publicKey || !privateKey) {
-    throw new Error('[web-push] NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set')
+    throw new Error('[web-push] VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set')
   }
 
   const subject = process.env.VAPID_SUBJECT ?? 'mailto:hallock@gmail.com'

@@ -16,7 +16,7 @@ export interface ChannelStatus {
 }
 
 function getChannelStatuses(): Record<string, ChannelStatus> {
-  const hasVapidPublic = !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const hasVapidPublic = !!process.env.VAPID_PUBLIC_KEY
   const hasVapidPrivate = !!process.env.VAPID_PRIVATE_KEY
   const hasEmailServer = !!process.env.EMAIL_SERVER
 
@@ -26,7 +26,7 @@ function getChannelStatuses(): Record<string, ChannelStatus> {
         ? { operational: true }
         : {
             operational: false,
-            reason: `Missing env: ${[!hasVapidPublic && 'NEXT_PUBLIC_VAPID_PUBLIC_KEY', !hasVapidPrivate && 'VAPID_PRIVATE_KEY'].filter(Boolean).join(', ')}`,
+            reason: `Missing env: ${[!hasVapidPublic && 'VAPID_PUBLIC_KEY', !hasVapidPrivate && 'VAPID_PRIVATE_KEY'].filter(Boolean).join(', ')}`,
           },
     email: hasEmailServer
       ? { operational: true }
@@ -61,6 +61,7 @@ export const GET = withAuth(
       return NextResponse.json({
         config,
         status: getChannelStatuses(),
+        vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? null,
       })
     } catch (error) {
       console.error('[admin/notifications] Error fetching config:', error)

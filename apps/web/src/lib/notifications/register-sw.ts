@@ -26,14 +26,14 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
 /**
  * Subscribe to push notifications using the browser Push API.
- * Requires a valid VAPID public key in NEXT_PUBLIC_VAPID_PUBLIC_KEY.
+ * The VAPID public key must be fetched from the server and passed in.
  */
 export async function subscribeToPush(
-  registration: ServiceWorkerRegistration
+  registration: ServiceWorkerRegistration,
+  vapidPublicKey: string
 ): Promise<PushSubscription> {
-  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   if (!vapidPublicKey) {
-    throw new Error('[register-sw] NEXT_PUBLIC_VAPID_PUBLIC_KEY is not set')
+    throw new Error('[register-sw] vapidPublicKey is required')
   }
 
   return registration.pushManager.subscribe({
