@@ -161,6 +161,12 @@ export const notificationSubscriptionKeys = {
   detail: (id: string) => [...notificationSubscriptionKeys.all, 'detail', id] as const,
 }
 
+// Session song query keys (AI-generated celebration songs)
+export const sessionSongKeys = {
+  all: ['sessionSongs'] as const,
+  forPlan: (planId: string) => [...sessionSongKeys.all, 'plan', planId] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

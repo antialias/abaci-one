@@ -80,6 +80,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   demo: 2 * 60 * 1000, // 2 minutes
   'demo-refine': 10 * 60 * 1000, // 10 minutes (Claude Code can be slow)
   'session-plan': 2 * 60 * 1000, // 2 minutes
+  'session-song': 5 * 60 * 1000, // 5 minutes (LLM prompt + Suno submission)
 }
 
 const DEFAULT_TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes

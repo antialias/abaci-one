@@ -490,6 +490,17 @@ export type SessionPlanEvent =
   | { type: 'plan_complete'; planId: string; timing: PlanTimingBreakdown }
 
 // ============================================================================
+// Session Song domain events
+// ============================================================================
+
+export type SessionSongEvent =
+  | { type: 'song_extracting_stats' }
+  | { type: 'song_generating_prompt' }
+  | { type: 'song_prompt_ready'; title: string; style: string }
+  | { type: 'song_submitted'; sunoTaskId: string }
+  | { type: 'song_error'; error: string }
+
+// ============================================================================
 // Event type map — maps task type string to its domain event union
 // ============================================================================
 
@@ -509,6 +520,7 @@ export interface TaskEventMap {
   demo: DemoTaskEvent
   'demo-refine': DemoRefineEvent
   'session-plan': SessionPlanEvent
+  'session-song': SessionSongEvent
 }
 
 /**

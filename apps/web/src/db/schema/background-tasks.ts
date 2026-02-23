@@ -132,6 +132,7 @@ export type TaskType =
   | 'demo'
   | 'demo-refine'
   | 'session-plan'
+  | 'session-song'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**
  * Event types are defined per task type in `src/lib/tasks/events.ts`.

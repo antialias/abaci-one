@@ -2,6 +2,8 @@ import nextDynamic from 'next/dynamic'
 import { notFound, redirect } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import { getActiveSessionPlan, getPracticeStudent } from '@/lib/curriculum/server'
+import { isEnabled } from '@/lib/feature-flags'
+import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { getUserId } from '@/lib/viewer'
 
 // Skip SSR for PracticeClient — practice is fully interactive and has hooks
@@ -67,6 +69,20 @@ export default async function StudentPracticePage({ params }: StudentPracticePag
     redirect(`/practice/${studentId}/summary`)
   }
 
+  // Check if session songs are enabled for this student
+  const [songFlagEnabled, tierResult] = await Promise.all([
+    isEnabled('session-song.enabled'),
+    getEffectiveTierForStudent(studentId, viewerId),
+  ])
+  const songEnabled = songFlagEnabled && tierResult.tier === 'family'
+
   // Only state left: in_progress session → show problem
-  return <PracticeClient studentId={studentId} player={player} initialSession={activeSession} />
+  return (
+    <PracticeClient
+      studentId={studentId}
+      player={player}
+      initialSession={activeSession}
+      songEnabled={songEnabled}
+    />
+  )
 }

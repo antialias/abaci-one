@@ -7,6 +7,8 @@ import {
   getRecentSessionResults,
   getRecentSessions,
 } from '@/lib/curriculum/server'
+import { isEnabled } from '@/lib/feature-flags'
+import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { getUserId } from '@/lib/viewer'
 import { SummaryClient } from './SummaryClient'
 
@@ -83,6 +85,13 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
     }
   }
 
+  // Check if session songs are enabled for this student
+  const [songFlagEnabled, tierResult] = await Promise.all([
+    isEnabled('session-song.enabled'),
+    getEffectiveTierForStudent(studentId, viewerId),
+  ])
+  const songEnabled = songFlagEnabled && tierResult.tier === 'family'
+
   return (
     <SummaryClient
       studentId={studentId}
@@ -92,6 +101,7 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
       problemHistory={problemHistory}
       justCompleted={justCompleted}
       previousAccuracy={previousAccuracy}
+      songEnabled={songEnabled}
     />
   )
 }

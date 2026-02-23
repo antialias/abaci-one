@@ -163,10 +163,53 @@ POST /api/admin/feature-flags
 }
 ```
 
+## Seeding New Flags
+
+**Every new feature flag must be seeded via a database migration.** This ensures the flag exists in all environments (dev, staging, production) without manual steps.
+
+### How to seed a flag
+
+1. Create the feature code gated behind `isEnabled('your-flag.key')`
+2. Generate a migration: `npx drizzle-kit generate --custom --name=seed-your-flag`
+3. Write the seed SQL:
+
+```sql
+INSERT OR IGNORE INTO `feature_flags` (`key`, `enabled`, `description`, `created_at`, `updated_at`)
+VALUES ('your-flag.key', 0, 'Human-readable description of what this flag controls', strftime('%s', 'now'), strftime('%s', 'now'));
+```
+
+4. Fix timestamp ordering in `drizzle/meta/_journal.json` if needed (see database migrations doc)
+5. Run `pnpm db:migrate` to apply locally
+6. Commit the migration along with your feature code
+
+### Why migrations?
+
+- **Automatic:** Runs via the PreSync migration job in Argo CD — zero manual steps on deploy
+- **Version controlled:** Flag creation is tied to the PR that adds the feature
+- **Idempotent:** `INSERT OR IGNORE` is safe to re-run
+- **Disabled by default:** Flag ships as `enabled=0` — flip it on via admin UI when ready to launch
+
+### After deploy
+
+- **Local dev:** Enable with `mcp__sqlite__write_query`: `UPDATE feature_flags SET enabled=1 WHERE key='your-flag.key'`
+- **Production:** Enable via admin UI at `/admin/feature-flags` or per-user override for staged rollout
+- **Rollback:** Disable the flag in admin UI — no deploy needed
+
+### Example: session-song.enabled
+
+```
+-- Migration 0112: seed-session-song-flag.sql
+INSERT OR IGNORE INTO `feature_flags` (`key`, `enabled`, `description`, `created_at`, `updated_at`)
+VALUES ('session-song.enabled', 0, 'AI-generated celebration songs for practice sessions (requires family tier)', strftime('%s', 'now'), strftime('%s', 'now'));
+```
+
+Shipped disabled. Enable for yourself first via per-user override, test, then enable globally.
+
 ## Conventions
 
 - **Namespace with dots:** `billing.enabled`, `billing.free_tier_limits`, `beta.new_editor`
 - **Default to disabled:** New flags should be created with `enabled: false`
+- **Seed via migration:** Every flag gets an `INSERT OR IGNORE` migration so it exists in all environments automatically
 - **Use `isEnabled()` server-side, `useFeatureFlag()` client-side** — don't fetch flags manually
 - **Don't cache flag results in component state** — the hooks handle caching
 - **Gate at the boundary:** Check the flag once at the top of a route handler or component, not deep in utility functions

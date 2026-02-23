@@ -62,6 +62,7 @@ import {
 } from '@/hooks/useSessionPlan'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSaveGameResult } from '@/hooks/useGameResults'
+import { useSessionSongTrigger } from '@/hooks/useSessionSongTrigger'
 import { BroadcastDebugPanel } from '@/components/debug/BroadcastDebugPanel'
 import { css } from '../../../../styled-system/css'
 
@@ -69,6 +70,8 @@ interface PracticeClientProps {
   studentId: string
   player: Player
   initialSession: SessionPlan
+  /** Whether session song generation is available (feature flag + family tier) */
+  songEnabled?: boolean
 }
 
 /**
@@ -79,7 +82,12 @@ interface PracticeClientProps {
  *
  * When the session completes, it redirects to /summary.
  */
-export function PracticeClient({ studentId, player, initialSession }: PracticeClientProps) {
+export function PracticeClient({
+  studentId,
+  player,
+  initialSession,
+  songEnabled = false,
+}: PracticeClientProps) {
   const router = useRouter()
   const { showError } = useToast()
   const { setVisionFrameCallback } = useMyAbacus()
@@ -493,6 +501,9 @@ export function PracticeClient({ studentId, player, initialSession }: PracticeCl
     onTeacherPause: setTeacherPauseRequest,
     onTeacherResume: () => setTeacherResumeRequest(true),
   })
+
+  // Session song smart trigger — fires when conditions are met mid-session
+  useSessionSongTrigger({ studentId, plan: currentPlan, songEnabled })
 
   // Track whether we've started vision recording for this session
   const hasStartedRecordingRef = useRef(false)

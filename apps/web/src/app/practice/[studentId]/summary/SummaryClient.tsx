@@ -19,6 +19,7 @@ import { ProblemsToReviewPanel } from '@/components/practice/ProblemsToReviewPan
 import type { ScrollspySection } from '@/components/practice/ScrollspyNav'
 import { ScrollspyNav } from '@/components/practice/ScrollspyNav'
 import { SessionHero } from '@/components/practice/SessionHero'
+import { SessionSongPlayer } from '@/components/practice/SessionSongPlayer'
 import { SkillsPanel } from '@/components/practice/SkillsPanel'
 
 // Dynamic import: StartPracticeModal → SkillTutorialLauncher → TutorialPlayer → @soroban/abacus-react
@@ -112,6 +113,8 @@ interface SummaryClientProps {
   justCompleted?: boolean
   /** Previous session accuracy (0-1) for trend comparison */
   previousAccuracy?: number | null
+  /** Whether session song generation is available (feature flag + family tier) */
+  songEnabled?: boolean
 }
 
 /**
@@ -131,6 +134,7 @@ export function SummaryClient({
   problemHistory,
   justCompleted = false,
   previousAccuracy = null,
+  songEnabled = false,
 }: SummaryClientProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -439,6 +443,15 @@ export function SummaryClient({
                             isDark={isDark}
                           />
                         </div>
+                      )}
+
+                      {/* Session Song Player — AI-generated celebration song */}
+                      {songEnabled && session?.id && (
+                        <SessionSongPlayer
+                          playerId={studentId}
+                          planId={session.id}
+                          triggerFallback={justCompleted}
+                        />
                       )}
 
                       {/* Vision recording playback (if available) */}

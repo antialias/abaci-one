@@ -778,6 +778,20 @@
       "when": 1773100000000,
       "tag": "0110_add_households",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "6",
+      "when": 1773200000000,
+      "tag": "0111_add-session-songs",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "6",
+      "when": 1773300000000,
+      "tag": "0112_seed-session-song-flag",
+      "breakpoints": true
     }
   ]
 }
