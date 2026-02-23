@@ -21,6 +21,7 @@ import {
 } from '@/db/schema'
 import { syncParentLink, removeParentLink } from '@/lib/auth/sync-relationships'
 import { autoFormHousehold } from '@/lib/household'
+import { notifyParentLinked } from '@/lib/notifications/family-link-email'
 
 /** Maximum number of parents that can be linked to a single child */
 export const MAX_PARENTS_PER_CHILD = 4
@@ -132,6 +133,11 @@ export async function linkParentToChild(
   // Auto-form household between child owner and linking parent (non-fatal)
   autoFormHousehold(player.userId, parentUserId).catch((err) =>
     console.error('[household] Failed to auto-form household:', err)
+  )
+
+  // Notify existing parents (non-fatal)
+  notifyParentLinked(player.id, player.name, parentUserId).catch((err) =>
+    console.error('[family-notify] Failed to send parent link notification:', err)
   )
 
   return { success: true, player }

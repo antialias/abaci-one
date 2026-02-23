@@ -4,6 +4,7 @@ import { users } from '@/db/schema'
 import type { PracticeNotificationSubscription } from '@/db/schema'
 import type { NotificationChannel, SessionStartedPayload, DeliveryResult } from '../types'
 import { sendEmail } from '../email'
+import { escapeHtml, baseUrl } from '../email-utils'
 
 /**
  * Resolve the email address for a subscription.
@@ -75,18 +76,6 @@ function buildEmailHtml(
 }
 
 /**
- * Escape HTML special characters to prevent injection.
- */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-/**
  * Email notification channel implementation.
  *
  * Sends an HTML email via the shared Nodemailer transport
@@ -137,9 +126,3 @@ export const emailChannel: NotificationChannel = {
   },
 }
 
-/**
- * Get the application base URL for constructing absolute links.
- */
-function baseUrl(): string {
-  return process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
-}
