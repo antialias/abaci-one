@@ -61,7 +61,13 @@ export interface TypeRacerJrContextValue {
   endGame: (reason: 'timer-expired' | 'player-quit') => void
   resetGame: () => void
   setConfig: (
-    field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount' | 'keyboardLayout' | 'showVirtualKeyboard',
+    field:
+      | 'gameMode'
+      | 'timeLimit'
+      | 'startingDifficulty'
+      | 'wordCount'
+      | 'keyboardLayout'
+      | 'showVirtualKeyboard',
     value: unknown
   ) => void
   dismissCelebration: () => void
@@ -249,8 +255,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
       currentDifficulty:
         (savedConfig.startingDifficulty as DifficultyLevel) ?? defaultState.currentDifficulty,
       wordCount: (savedConfig.wordCount as number | null) ?? defaultState.wordCount,
-      keyboardLayout:
-        (savedConfig.keyboardLayout as KeyboardLayout) ?? defaultState.keyboardLayout,
+      keyboardLayout: (savedConfig.keyboardLayout as KeyboardLayout) ?? defaultState.keyboardLayout,
       showVirtualKeyboard:
         (savedConfig.showVirtualKeyboard as boolean) ?? defaultState.showVirtualKeyboard,
     }

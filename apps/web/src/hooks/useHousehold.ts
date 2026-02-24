@@ -52,13 +52,17 @@ async function fetchHouseholds(): Promise<{ households: HouseholdSummary[] }> {
   return res.json()
 }
 
-async function fetchHouseholdDetail(id: string): Promise<{ household: HouseholdDetail; suggestions: HouseholdSuggestion[] }> {
+async function fetchHouseholdDetail(
+  id: string
+): Promise<{ household: HouseholdDetail; suggestions: HouseholdSuggestion[] }> {
   const res = await api(`households/${id}`)
   if (!res.ok) throw new Error('Failed to fetch household')
   return res.json()
 }
 
-async function createHouseholdApi(name: string): Promise<{ household: { id: string; name: string } }> {
+async function createHouseholdApi(
+  name: string
+): Promise<{ household: { id: string; name: string } }> {
   const res = await api('households', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

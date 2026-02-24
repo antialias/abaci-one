@@ -161,7 +161,13 @@ export type TypeRacerJrMove =
       userId: string
       timestamp: number
       data: {
-        field: 'gameMode' | 'timeLimit' | 'startingDifficulty' | 'wordCount' | 'keyboardLayout' | 'showVirtualKeyboard'
+        field:
+          | 'gameMode'
+          | 'timeLimit'
+          | 'startingDifficulty'
+          | 'wordCount'
+          | 'keyboardLayout'
+          | 'showVirtualKeyboard'
         value: unknown
       }
     }

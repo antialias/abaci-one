@@ -65,7 +65,9 @@ export class PregeneratedVoice extends VoiceSource {
       return res.blob()
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('generate-clip failed:')) throw err
-      throw new Error(`generate-clip network error: ${err instanceof Error ? err.message : String(err)}`)
+      throw new Error(
+        `generate-clip network error: ${err instanceof Error ? err.message : String(err)}`
+      )
     }
   }
 }

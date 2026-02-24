@@ -126,10 +126,8 @@ export const GET = withAuth(async (_request, { userId, params }) => {
               ? s.lastViewedAt.toISOString()
               : String(s.lastViewedAt)
             : null,
-          createdAt:
-            s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
-          expiresAt:
-            s.expiresAt instanceof Date ? s.expiresAt.toISOString() : String(s.expiresAt),
+          createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+          expiresAt: s.expiresAt instanceof Date ? s.expiresAt.toISOString() : String(s.expiresAt),
         })),
       }))
 

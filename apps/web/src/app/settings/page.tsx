@@ -728,16 +728,20 @@ function HouseholdTab({ isDark }: { isDark: boolean }) {
         })}
       >
         <p className={css({ fontSize: '0.875rem', color: isDark ? 'blue.200' : 'blue.800' })}>
-          A household shares a single Family subscription across multiple adults.
-          When parents link to the same children via family codes, they are
-          automatically added to a household.
+          A household shares a single Family subscription across multiple adults. When parents link
+          to the same children via family codes, they are automatically added to a household.
         </p>
       </div>
 
       {/* Existing households */}
       {hasHouseholds ? (
         households.map((h) => (
-          <HouseholdCard key={h.id} household={h} isDark={isDark} currentUserId={currentUserId ?? undefined} />
+          <HouseholdCard
+            key={h.id}
+            household={h}
+            isDark={isDark}
+            currentUserId={currentUserId ?? undefined}
+          />
         ))
       ) : (
         <SectionCard isDark={isDark}>
@@ -753,68 +757,78 @@ function HouseholdTab({ isDark }: { isDark: boolean }) {
       )}
 
       {/* Create household form — only shown if user doesn't already own one */}
-      {!ownsAHousehold && <div className={css({ marginTop: '1.5rem' })}>
-        <SectionCard isDark={isDark}>
-          <SectionHeader icon={<UserPlus size={18} />} title="Create Household" isDark={isDark} />
-          <div
-            className={css({
-              display: 'flex',
-              gap: '0.75rem',
-              padding: '1rem 0',
-            })}
-          >
-            <input
-              type="text"
-              placeholder="Household name (e.g. The Smith Family)"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && createName.trim()) {
-                  create.mutate(createName.trim(), { onSuccess: () => setCreateName('') })
-                }
-              }}
-              data-element="household-name-input"
+      {!ownsAHousehold && (
+        <div className={css({ marginTop: '1.5rem' })}>
+          <SectionCard isDark={isDark}>
+            <SectionHeader icon={<UserPlus size={18} />} title="Create Household" isDark={isDark} />
+            <div
               className={css({
-                flex: 1,
-                padding: '0.75rem',
-                borderRadius: '6px',
-                border: '1px solid',
-                borderColor: isDark ? 'gray.600' : 'gray.300',
-                backgroundColor: isDark ? 'gray.700' : 'white',
-                color: isDark ? 'white' : 'gray.800',
-                _placeholder: { color: isDark ? 'gray.500' : 'gray.400' },
-              })}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (createName.trim()) {
-                  create.mutate(createName.trim(), { onSuccess: () => setCreateName('') })
-                }
-              }}
-              disabled={!createName.trim() || create.isPending}
-              data-action="create-household"
-              className={css({
-                padding: '0.75rem 1.5rem',
-                backgroundColor: createName.trim() ? (isDark ? 'purple.600' : 'purple.500') : isDark ? 'gray.700' : 'gray.300',
-                color: createName.trim() ? 'white' : isDark ? 'gray.500' : 'gray.500',
-                borderRadius: '6px',
-                border: 'none',
-                fontWeight: '600',
-                cursor: createName.trim() ? 'pointer' : 'not-allowed',
-                _hover: createName.trim() ? { backgroundColor: isDark ? 'purple.500' : 'purple.600' } : {},
+                display: 'flex',
+                gap: '0.75rem',
+                padding: '1rem 0',
               })}
             >
-              {create.isPending ? 'Creating...' : 'Create'}
-            </button>
-          </div>
-          {create.isError && (
-            <p className={css({ color: 'red.500', fontSize: '0.875rem', paddingBottom: '1rem' })}>
-              {create.error.message}
-            </p>
-          )}
-        </SectionCard>
-      </div>}
+              <input
+                type="text"
+                placeholder="Household name (e.g. The Smith Family)"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && createName.trim()) {
+                    create.mutate(createName.trim(), { onSuccess: () => setCreateName('') })
+                  }
+                }}
+                data-element="household-name-input"
+                className={css({
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.600' : 'gray.300',
+                  backgroundColor: isDark ? 'gray.700' : 'white',
+                  color: isDark ? 'white' : 'gray.800',
+                  _placeholder: { color: isDark ? 'gray.500' : 'gray.400' },
+                })}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (createName.trim()) {
+                    create.mutate(createName.trim(), { onSuccess: () => setCreateName('') })
+                  }
+                }}
+                disabled={!createName.trim() || create.isPending}
+                data-action="create-household"
+                className={css({
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: createName.trim()
+                    ? isDark
+                      ? 'purple.600'
+                      : 'purple.500'
+                    : isDark
+                      ? 'gray.700'
+                      : 'gray.300',
+                  color: createName.trim() ? 'white' : isDark ? 'gray.500' : 'gray.500',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontWeight: '600',
+                  cursor: createName.trim() ? 'pointer' : 'not-allowed',
+                  _hover: createName.trim()
+                    ? { backgroundColor: isDark ? 'purple.500' : 'purple.600' }
+                    : {},
+                })}
+              >
+                {create.isPending ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+            {create.isError && (
+              <p className={css({ color: 'red.500', fontSize: '0.875rem', paddingBottom: '1rem' })}>
+                {create.error.message}
+              </p>
+            )}
+          </SectionCard>
+        </div>
+      )}
     </div>
   )
 }
@@ -827,7 +841,13 @@ function HouseholdCard({
   isDark,
   currentUserId,
 }: {
-  household: { id: string; name: string; ownerId: string; role: 'owner' | 'member'; memberCount: number }
+  household: {
+    id: string
+    name: string
+    ownerId: string
+    role: 'owner' | 'member'
+    memberCount: number
+  }
   isDark: boolean
   currentUserId?: string
 }) {
@@ -931,11 +951,19 @@ function HouseholdCard({
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
                 backgroundColor: isOwner
-                  ? isDark ? 'purple.900/50' : 'purple.50'
-                  : isDark ? 'gray.700' : 'gray.100',
+                  ? isDark
+                    ? 'purple.900/50'
+                    : 'purple.50'
+                  : isDark
+                    ? 'gray.700'
+                    : 'gray.100',
                 color: isOwner
-                  ? isDark ? 'purple.300' : 'purple.700'
-                  : isDark ? 'gray.300' : 'gray.600',
+                  ? isDark
+                    ? 'purple.300'
+                    : 'purple.700'
+                  : isDark
+                    ? 'gray.300'
+                    : 'gray.600',
               })}
             >
               {isOwner && <Crown size={12} />}
@@ -1044,7 +1072,12 @@ function HouseholdCard({
                       <button
                         type="button"
                         data-action="transfer-ownership"
-                        onClick={() => transferOwnership.mutate({ householdId: household.id, newOwnerId: member.userId })}
+                        onClick={() =>
+                          transferOwnership.mutate({
+                            householdId: household.id,
+                            newOwnerId: member.userId,
+                          })
+                        }
                         disabled={transferOwnership.isPending}
                         title="Transfer ownership"
                         className={css({
@@ -1064,7 +1097,9 @@ function HouseholdCard({
                       <button
                         type="button"
                         data-action="remove-member"
-                        onClick={() => removeMember.mutate({ householdId: household.id, userId: member.userId })}
+                        onClick={() =>
+                          removeMember.mutate({ householdId: household.id, userId: member.userId })
+                        }
                         disabled={removeMember.isPending}
                         title="Remove from household"
                         className={css({
@@ -1111,7 +1146,10 @@ function HouseholdCard({
               }}
               className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}
             >
-              <UserPlus size={16} className={css({ color: isDark ? 'gray.500' : 'gray.400', flexShrink: 0 })} />
+              <UserPlus
+                size={16}
+                className={css({ color: isDark ? 'gray.500' : 'gray.400', flexShrink: 0 })}
+              />
               <input
                 type="email"
                 placeholder="Add member by email"
@@ -1148,7 +1186,14 @@ function HouseholdCard({
               </button>
             </form>
             {addMember.isError && (
-              <p className={css({ color: 'red.400', fontSize: '0.75rem', marginTop: '0.375rem', marginLeft: '1.5rem' })}>
+              <p
+                className={css({
+                  color: 'red.400',
+                  fontSize: '0.75rem',
+                  marginTop: '0.375rem',
+                  marginLeft: '1.5rem',
+                })}
+              >
                 {addMember.error?.message || 'Failed to add member'}
               </p>
             )}
@@ -1165,7 +1210,13 @@ function HouseholdCard({
               borderColor: isDark ? 'gray.700' : 'gray.200',
             })}
           >
-            <p className={css({ fontSize: '0.75rem', color: isDark ? 'gray.500' : 'gray.500', marginBottom: '0.5rem' })}>
+            <p
+              className={css({
+                fontSize: '0.75rem',
+                color: isDark ? 'gray.500' : 'gray.500',
+                marginBottom: '0.5rem',
+              })}
+            >
               People who share children with your household:
             </p>
             {detail.suggestions.map((suggestion) => (
@@ -1204,10 +1255,21 @@ function HouseholdCard({
                     </div>
                   )}
                   <div>
-                    <div className={css({ fontWeight: '500', color: isDark ? 'white' : 'gray.800', fontSize: '0.875rem' })}>
+                    <div
+                      className={css({
+                        fontWeight: '500',
+                        color: isDark ? 'white' : 'gray.800',
+                        fontSize: '0.875rem',
+                      })}
+                    >
                       {suggestion.name || suggestion.email || 'Unknown'}
                     </div>
-                    <div className={css({ fontSize: '0.75rem', color: isDark ? 'gray.500' : 'gray.500' })}>
+                    <div
+                      className={css({
+                        fontSize: '0.75rem',
+                        color: isDark ? 'gray.500' : 'gray.500',
+                      })}
+                    >
                       Shares {suggestion.sharedChildren.join(', ')}
                     </div>
                   </div>
@@ -1215,7 +1277,9 @@ function HouseholdCard({
                 <button
                   type="button"
                   data-action="add-suggested-member"
-                  onClick={() => addMember.mutate({ householdId: household.id, userId: suggestion.userId })}
+                  onClick={() =>
+                    addMember.mutate({ householdId: household.id, userId: suggestion.userId })
+                  }
                   disabled={addMember.isPending}
                   className={css({
                     padding: '0.25rem 0.75rem',
@@ -1238,7 +1302,13 @@ function HouseholdCard({
 
         {/* Dissolve button for sole owner */}
         {isOwner && household.memberCount === 1 && currentUserId && (
-          <div className={css({ padding: '1rem 0', borderTop: '1px solid', borderColor: isDark ? 'gray.700' : 'gray.200' })}>
+          <div
+            className={css({
+              padding: '1rem 0',
+              borderTop: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+            })}
+          >
             <button
               type="button"
               data-action="dissolve-household"
@@ -1270,11 +1340,19 @@ function HouseholdCard({
 
         {/* Leave button for non-owners */}
         {!isOwner && currentUserId && (
-          <div className={css({ padding: '1rem 0', borderTop: '1px solid', borderColor: isDark ? 'gray.700' : 'gray.200' })}>
+          <div
+            className={css({
+              padding: '1rem 0',
+              borderTop: '1px solid',
+              borderColor: isDark ? 'gray.700' : 'gray.200',
+            })}
+          >
             <button
               type="button"
               data-action="leave-household"
-              onClick={() => removeMember.mutate({ householdId: household.id, userId: currentUserId })}
+              onClick={() =>
+                removeMember.mutate({ householdId: household.id, userId: currentUserId })
+              }
               disabled={removeMember.isPending}
               className={css({
                 display: 'flex',

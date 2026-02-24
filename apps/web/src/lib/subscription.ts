@@ -43,10 +43,7 @@ export async function getTierForUser(userId?: string): Promise<TierName> {
   const memberships = await db
     .select({ ownerId: schema.households.ownerId })
     .from(schema.householdMembers)
-    .innerJoin(
-      schema.households,
-      eq(schema.householdMembers.householdId, schema.households.id)
-    )
+    .innerJoin(schema.households, eq(schema.householdMembers.householdId, schema.households.id))
     .where(eq(schema.householdMembers.userId, userId))
 
   if (memberships.length > 0) {

@@ -141,109 +141,111 @@ export function SubtitleOverlay() {
         )}
 
         {/* Pill */}
-        {subtitleText && <div
-          role="status"
-          aria-live="polite"
-          data-element="subtitle-pill"
-          className={css({
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            pointerEvents: 'auto',
-          })}
-        >
-          {/* Slower button */}
-          <button
-            data-action="subtitle-slower"
-            onClick={handleSlower}
-            disabled={atMax}
-            aria-label="Slower subtitles"
+        {subtitleText && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-element="subtitle-pill"
             className={css({
-              flexShrink: 0,
-              width: '32px',
-              height: '32px',
+              position: 'relative',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '18px',
-              padding: 0,
-              opacity: atMax ? 0.3 : 1,
-              pointerEvents: atMax ? 'none' : 'auto',
-              _hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              pointerEvents: 'auto',
             })}
           >
-            {'🐢'}
-          </button>
-
-          {/* Subtitle text — tap to dismiss */}
-          <span
-            data-action="subtitle-dismiss"
-            onClick={dismissSubtitle}
-            className={css({
-              flex: 1,
-              padding: '12px 8px',
-              color: 'white',
-              fontSize: '18px',
-              lineHeight: '1.5',
-              textAlign: 'center',
-              cursor: 'pointer',
-              userSelect: 'none',
-            })}
-          >
-            {subtitleText}
-          </span>
-
-          {/* Faster button */}
-          <button
-            data-action="subtitle-faster"
-            onClick={handleFaster}
-            disabled={atMin}
-            aria-label="Faster subtitles"
-            className={css({
-              flexShrink: 0,
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '18px',
-              padding: 0,
-              opacity: atMin ? 0.3 : 1,
-              pointerEvents: atMin ? 'none' : 'auto',
-              _hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
-            })}
-          >
-            {'🐇'}
-          </button>
-
-          {/* Progress bar */}
-          {subtitleDurationMs > 0 && (
-            <div
-              key={`${subtitleText}-${subtitleDurationMs}`}
-              data-element="subtitle-progress"
+            {/* Slower button */}
+            <button
+              data-action="subtitle-slower"
+              onClick={handleSlower}
+              disabled={atMax}
+              aria-label="Slower subtitles"
               className={css({
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                height: '3px',
-                backgroundColor: 'rgba(255, 255, 255, 0.4)',
-                borderRadius: '0 0 8px 8px',
+                flexShrink: 0,
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: 0,
+                opacity: atMax ? 0.3 : 1,
+                pointerEvents: atMax ? 'none' : 'auto',
+                _hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
               })}
-              style={{
-                animation: `subtitleShrinkBar ${subtitleDurationMs}ms linear forwards`,
-              }}
-            />
-          )}
-        </div>}
+            >
+              {'🐢'}
+            </button>
+
+            {/* Subtitle text — tap to dismiss */}
+            <span
+              data-action="subtitle-dismiss"
+              onClick={dismissSubtitle}
+              className={css({
+                flex: 1,
+                padding: '12px 8px',
+                color: 'white',
+                fontSize: '18px',
+                lineHeight: '1.5',
+                textAlign: 'center',
+                cursor: 'pointer',
+                userSelect: 'none',
+              })}
+            >
+              {subtitleText}
+            </span>
+
+            {/* Faster button */}
+            <button
+              data-action="subtitle-faster"
+              onClick={handleFaster}
+              disabled={atMin}
+              aria-label="Faster subtitles"
+              className={css({
+                flexShrink: 0,
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: 0,
+                opacity: atMin ? 0.3 : 1,
+                pointerEvents: atMin ? 'none' : 'auto',
+                _hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+              })}
+            >
+              {'🐇'}
+            </button>
+
+            {/* Progress bar */}
+            {subtitleDurationMs > 0 && (
+              <div
+                key={`${subtitleText}-${subtitleDurationMs}`}
+                data-element="subtitle-progress"
+                className={css({
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  height: '3px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                  borderRadius: '0 0 8px 8px',
+                })}
+                style={{
+                  animation: `subtitleShrinkBar ${subtitleDurationMs}ms linear forwards`,
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
     </>
   )

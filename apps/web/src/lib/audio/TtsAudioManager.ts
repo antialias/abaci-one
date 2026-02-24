@@ -815,8 +815,10 @@ export class TtsAudioManager {
       const blob = await source.generate(resolved.clipId, resolved.fallbackText, resolved.tone)
       if (this._isStale(speakId)) return false
       if (!blob) {
-        const voiceName = source instanceof PregeneratedVoice || source instanceof CustomVoice
-          ? source.name : source.type
+        const voiceName =
+          source instanceof PregeneratedVoice || source instanceof CustomVoice
+            ? source.name
+            : source.type
         this._lastError = `[TTS] Generation returned empty response (voice: ${voiceName}, clip: ${resolved.clipId})`
         console.error(this._lastError)
         this.notify()

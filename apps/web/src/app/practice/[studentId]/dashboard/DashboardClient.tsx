@@ -2574,18 +2574,15 @@ function ObserversTab({ studentId, isDark }: { studentId: string; isDark: boolea
     },
   })
 
-  const handleCopyLink = useCallback(
-    async (url: string, token: string) => {
-      try {
-        await navigator.clipboard.writeText(url)
-        setCopiedToken(token)
-        setTimeout(() => setCopiedToken(null), 2000)
-      } catch {
-        // Fallback: select text
-      }
-    },
-    []
-  )
+  const handleCopyLink = useCallback(async (url: string, token: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedToken(token)
+      setTimeout(() => setCopiedToken(null), 2000)
+    } catch {
+      // Fallback: select text
+    }
+  }, [])
 
   const handleRevoke = useCallback(
     async (sessionId: string, token: string) => {
@@ -2624,7 +2621,13 @@ function ObserversTab({ studentId, isDark }: { studentId: string; isDark: boolea
     return (
       <div data-tab-content="observers">
         <div className={cardStyle}>
-          <p className={css({ color: isDark ? 'gray.400' : 'gray.500', textAlign: 'center', padding: '2rem 0' })}>
+          <p
+            className={css({
+              color: isDark ? 'gray.400' : 'gray.500',
+              textAlign: 'center',
+              padding: '2rem 0',
+            })}
+          >
             Loading observation stats...
           </p>
         </div>
@@ -2644,7 +2647,10 @@ function ObserversTab({ studentId, isDark }: { studentId: string; isDark: boolea
     )
   }
 
-  const activeShares: { sessionId: string; share: ObservationStatsResponse['sessions'][0]['shares'][0] }[] = []
+  const activeShares: {
+    sessionId: string
+    share: ObservationStatsResponse['sessions'][0]['shares'][0]
+  }[] = []
   for (const session of stats.sessions) {
     for (const share of session.shares) {
       if (share.status === 'active') {
@@ -2931,11 +2937,21 @@ function ObserversTab({ studentId, isDark }: { studentId: string; isDark: boolea
                       >
                         {share.status}
                       </span>
-                      <span className={css({ color: isDark ? 'gray.400' : 'gray.500', fontSize: '0.75rem' })}>
+                      <span
+                        className={css({
+                          color: isDark ? 'gray.400' : 'gray.500',
+                          fontSize: '0.75rem',
+                        })}
+                      >
                         {share.viewCount} view{share.viewCount !== 1 ? 's' : ''}
                       </span>
                       {share.lastViewedAt && (
-                        <span className={css({ color: isDark ? 'gray.500' : 'gray.400', fontSize: '0.6875rem' })}>
+                        <span
+                          className={css({
+                            color: isDark ? 'gray.500' : 'gray.400',
+                            fontSize: '0.6875rem',
+                          })}
+                        >
                           last viewed {new Date(share.lastViewedAt).toLocaleDateString()}
                         </span>
                       )}
@@ -3588,9 +3604,7 @@ export function DashboardClient({
                 />
               )}
 
-              {activeTab === 'observers' && (
-                <ObserversTab studentId={studentId} isDark={isDark} />
-              )}
+              {activeTab === 'observers' && <ObserversTab studentId={studentId} isDark={isDark} />}
 
               {activeTab === 'relationships' && (
                 <RelationshipsTab studentId={studentId} studentName={player.name} isDark={isDark} />

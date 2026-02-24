@@ -59,7 +59,9 @@ async function libsqlFetch(input: string | URL | Request, init?: RequestInit): P
   const rawHeaders = init?.headers || (isRequest ? (input as Request).headers : undefined)
   const headerObj: Record<string, string> = {}
   if (rawHeaders instanceof Headers) {
-    rawHeaders.forEach((v, k) => { headerObj[k] = v })
+    rawHeaders.forEach((v, k) => {
+      headerObj[k] = v
+    })
   } else if (rawHeaders && typeof rawHeaders === 'object') {
     Object.assign(headerObj, rawHeaders)
   }

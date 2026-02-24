@@ -117,12 +117,7 @@ export async function notifySubscribers(event: SessionStartedPayload): Promise<N
     if (!sub.userId) {
       if (!anonymousShareToken) {
         try {
-          const share = await createSessionShare(
-            event.sessionId,
-            event.playerId,
-            'system',
-            '24h'
-          )
+          const share = await createSessionShare(event.sessionId, event.playerId, 'system', '24h')
           anonymousShareToken = share.id
         } catch (err) {
           console.error('[notifications] Failed to create share token for anonymous sub:', err)

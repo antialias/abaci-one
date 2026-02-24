@@ -175,7 +175,9 @@ export default function AdminAudioPage() {
       }
       audio.play()
     } catch (err) {
-      setError(`Report-in network error for ${voiceName}: ${err instanceof Error ? err.message : String(err)}`)
+      setError(
+        `Report-in network error for ${voiceName}: ${err instanceof Error ? err.message : String(err)}`
+      )
       setReportingVoice(null)
     }
   }, [])

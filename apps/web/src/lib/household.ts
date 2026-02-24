@@ -117,10 +117,7 @@ export async function getHouseholdDetail(householdId: string): Promise<Household
  */
 export async function isHouseholdMember(householdId: string, userId: string): Promise<boolean> {
   const row = await db.query.householdMembers.findFirst({
-    where: and(
-      eq(householdMembers.householdId, householdId),
-      eq(householdMembers.userId, userId)
-    ),
+    where: and(eq(householdMembers.householdId, householdId), eq(householdMembers.userId, userId)),
   })
   return !!row
 }
@@ -128,13 +125,15 @@ export async function isHouseholdMember(householdId: string, userId: string): Pr
 /**
  * Suggest users who share children with household members but aren't in the household.
  */
-export async function getHouseholdSuggestions(householdId: string): Promise<Array<{
-  userId: string
-  name: string | null
-  email: string | null
-  image: string | null
-  sharedChildren: string[]
-}>> {
+export async function getHouseholdSuggestions(householdId: string): Promise<
+  Array<{
+    userId: string
+    name: string | null
+    email: string | null
+    image: string | null
+    sharedChildren: string[]
+  }>
+> {
   // 1. Get current household member IDs
   const members = await db
     .select({ userId: householdMembers.userId })
@@ -190,12 +189,13 @@ export async function getHouseholdSuggestions(householdId: string): Promise<Arra
 
   // 6. Resolve child player names
   const allChildIds = [...new Set([...parentChildMap.values()].flatMap((s) => [...s]))]
-  const childPlayers = allChildIds.length > 0
-    ? await db
-        .select({ id: players.id, name: players.name })
-        .from(players)
-        .where(inArray(players.id, allChildIds))
-    : []
+  const childPlayers =
+    allChildIds.length > 0
+      ? await db
+          .select({ id: players.id, name: players.name })
+          .from(players)
+          .where(inArray(players.id, allChildIds))
+      : []
   const childNameMap = new Map(childPlayers.map((p) => [p.id, p.name]))
 
   // Only suggest users with a name or email (skip anonymous guest accounts)
@@ -276,10 +276,7 @@ async function getHouseholdMemberCount(householdId: string): Promise<number> {
  */
 async function addMemberIfNotExists(householdId: string, userId: string): Promise<void> {
   const existing = await db.query.householdMembers.findFirst({
-    where: and(
-      eq(householdMembers.householdId, householdId),
-      eq(householdMembers.userId, userId)
-    ),
+    where: and(eq(householdMembers.householdId, householdId), eq(householdMembers.userId, userId)),
   })
 
   if (existing) return
@@ -307,10 +304,7 @@ export async function addHouseholdMember(
 
   // Check if already a member
   const existing = await db.query.householdMembers.findFirst({
-    where: and(
-      eq(householdMembers.householdId, householdId),
-      eq(householdMembers.userId, userId)
-    ),
+    where: and(eq(householdMembers.householdId, householdId), eq(householdMembers.userId, userId)),
   })
 
   if (existing) {
@@ -360,12 +354,7 @@ export async function removeHouseholdMember(
 
   await db
     .delete(householdMembers)
-    .where(
-      and(
-        eq(householdMembers.householdId, householdId),
-        eq(householdMembers.userId, userId)
-      )
-    )
+    .where(and(eq(householdMembers.householdId, householdId), eq(householdMembers.userId, userId)))
 
   return { success: true }
 }
@@ -424,23 +413,16 @@ export async function transferHouseholdOwnership(
     .update(householdMembers)
     .set({ role: 'owner' })
     .where(
-      and(
-        eq(householdMembers.householdId, householdId),
-        eq(householdMembers.userId, newOwnerId)
-      )
+      and(eq(householdMembers.householdId, householdId), eq(householdMembers.userId, newOwnerId))
     )
 
   return { success: true }
 }
 
-
 /**
  * Update household name.
  */
-export async function updateHouseholdName(
-  householdId: string,
-  name: string
-): Promise<void> {
+export async function updateHouseholdName(householdId: string, name: string): Promise<void> {
   await db
     .update(households)
     .set({ name, updatedAt: new Date() })
@@ -476,9 +458,7 @@ export async function autoFormHousehold(
       where: eq(users.id, childOwnerUserId),
       columns: { name: true },
     })
-    const householdName = owner?.name
-      ? `${owner.name}'s Family`
-      : 'My Family'
+    const householdName = owner?.name ? `${owner.name}'s Family` : 'My Family'
 
     const created = await createHousehold(childOwnerUserId, householdName)
     household = await db.query.households.findFirst({
