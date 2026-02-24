@@ -8,6 +8,8 @@ interface PracticeFeedbackProps {
   isCorrect: boolean
   /** The correct answer (shown when incorrect) */
   correctAnswer: number
+  /** Whether to reveal the correct answer when incorrect */
+  showCorrectAnswer?: boolean
   /** Optional className for additional styling/positioning */
   className?: string
 }
@@ -21,7 +23,12 @@ interface PracticeFeedbackProps {
  *
  * Used by both ActiveSession (student view) and SessionObserverModal (teacher view)
  */
-export function PracticeFeedback({ isCorrect, correctAnswer, className }: PracticeFeedbackProps) {
+export function PracticeFeedback({
+  isCorrect,
+  correctAnswer,
+  showCorrectAnswer = true,
+  className,
+}: PracticeFeedbackProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -46,7 +53,7 @@ export function PracticeFeedback({ isCorrect, correctAnswer, className }: Practi
       data-correct={isCorrect}
       className={cx(baseStyles, className)}
     >
-      {isCorrect ? 'Correct!' : `The answer was ${correctAnswer}`}
+      {isCorrect ? 'Correct!' : showCorrectAnswer ? `The answer was ${correctAnswer}` : 'Not quite.'}
     </div>
   )
 }

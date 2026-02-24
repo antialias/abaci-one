@@ -18,6 +18,8 @@ interface VerticalProblemProps {
   isCompleted?: boolean
   /** The correct answer (shown when completed) */
   correctAnswer?: number
+  /** Whether to reveal correct answer when completed + incorrect */
+  showCorrectAnswerOnIncorrect?: boolean
   /** Size variant */
   size?: 'normal' | 'large'
   /** Index of the term currently being helped with (shows arrow indicator) */
@@ -59,6 +61,7 @@ export function VerticalProblem({
   isFocused = false,
   isCompleted = false,
   correctAnswer,
+  showCorrectAnswerOnIncorrect = true,
   size = 'normal',
   currentHelpTermIndex,
   needHelpTermIndex,
@@ -466,7 +469,9 @@ export function VerticalProblem({
             .map((_, index) => {
               // Determine what to show in this cell
               const displayValue =
-                isCompleted && isIncorrect ? correctAnswer?.toString() || '' : userAnswer
+                isCompleted && isIncorrect && showCorrectAnswerOnIncorrect
+                  ? correctAnswer?.toString() || ''
+                  : userAnswer
               const paddedValue = displayValue.padStart(maxDigits, '')
               const digit = paddedValue[index] || ''
               const isEmpty = digit === ''
@@ -565,7 +570,7 @@ export function VerticalProblem({
       </div>
 
       {/* Show user's incorrect answer below correct answer */}
-      {isCompleted && isIncorrect && (
+      {isCompleted && isIncorrect && showCorrectAnswerOnIncorrect && (
         <div
           data-element="user-answer"
           className={css({

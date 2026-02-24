@@ -434,7 +434,11 @@ export interface UseInteractionPhaseReturn {
   /** Handle submit result (submitting → showingFeedback) */
   completeSubmit: (result: 'correct' | 'incorrect') => void
   /** Start transition to next problem (showingFeedback → transitioning) */
-  startTransition: (nextProblem: GeneratedProblem, nextSlotIndex: number) => void
+  startTransition: (
+    nextProblem: GeneratedProblem,
+    nextSlotIndex: number,
+    nextPartIndex?: number
+  ) => void
   /** Complete transition (transitioning → inputting) */
   completeTransition: () => void
   /** Clear to loading state */
@@ -990,22 +994,26 @@ export function useInteractionPhase(
     )
   }, [])
 
-  const startTransition = useCallback((nextProblem: GeneratedProblem, nextSlotIndex: number) => {
-    setPhase((prev) => {
-      if (prev.phase !== 'showingFeedback') return prev
+  const startTransition = useCallback(
+    (nextProblem: GeneratedProblem, nextSlotIndex: number, nextPartIndex?: number) => {
+      setPhase((prev) => {
+        if (prev.phase !== 'showingFeedback') return prev
 
-      const outgoing: OutgoingAttempt = {
-        key: `${prev.attempt.partIndex}-${prev.attempt.slotIndex}`,
-        problem: prev.attempt.problem,
-        userAnswer: prev.attempt.userAnswer,
-        result: prev.result,
-      }
+        const outgoing: OutgoingAttempt = {
+          key: `${prev.attempt.partIndex}-${prev.attempt.slotIndex}`,
+          problem: prev.attempt.problem,
+          userAnswer: prev.attempt.userAnswer,
+          result: prev.result,
+        }
 
-      const incoming = createAttemptInput(nextProblem, nextSlotIndex, prev.attempt.partIndex)
+        const incomingPartIndex = nextPartIndex ?? prev.attempt.partIndex
+        const incoming = createAttemptInput(nextProblem, nextSlotIndex, incomingPartIndex)
 
-      return { phase: 'transitioning', outgoing, incoming }
-    })
-  }, [])
+        return { phase: 'transitioning', outgoing, incoming }
+      })
+    },
+    []
+  )
 
   const completeTransition = useCallback(() => {
     setPhase((prev) =>

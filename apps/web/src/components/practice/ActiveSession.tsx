@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
+import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
 import type {
   ProblemSlot,
   SessionHealth,
@@ -113,6 +113,13 @@ export interface BroadcastState {
   currentSlotIndex?: number
   /** Accumulated results for progress indicator */
   slotResults?: SlotResult[]
+}
+
+type SubmitAdvanceDestination = 'next-problem-same-lane' | 'state-handoff'
+type SubmitAdvanceIntent = 'slide-to-next-problem' | 'clear-to-loading'
+
+function getSubmitAdvanceIntent(destination: SubmitAdvanceDestination): SubmitAdvanceIntent {
+  return destination === 'next-problem-same-lane' ? 'slide-to-next-problem' : 'clear-to-loading'
 }
 
 interface ActiveSessionProps {
@@ -524,6 +531,12 @@ export function ActiveSession({
 
     return null
   }, [redoState, plan.parts, plan.currentPartIndex, currentProblemInfo])
+  const latestActiveProblemRef = useRef(activeProblem)
+  const latestCurrentProblemInfoRef = useRef(currentProblemInfo)
+  useEffect(() => {
+    latestActiveProblemRef.current = activeProblem
+    latestCurrentProblemInfoRef.current = currentProblemInfo
+  }, [activeProblem, currentProblemInfo])
 
   // Interaction state machine - single source of truth for UI state
   const {
@@ -893,6 +906,8 @@ export function ActiveSession({
   const [helpPanelDismissed, setHelpPanelDismissed] = useState(false)
   // Track when answer is fading out (for dream sequence)
   const [answerFadingOut, setAnswerFadingOut] = useState(false)
+  // Capture reveal policy at submit-time so feedback is stable even if plan advances.
+  const [showCorrectAnswerOnIncorrect, setShowCorrectAnswerOnIncorrect] = useState(true)
 
   // Track pause info for displaying in the modal (single source of truth)
   const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
@@ -1303,6 +1318,17 @@ export function ActiveSession({
     // Subtract accumulated pause time to get actual response time
     const responseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
     const isCorrect = answerNum === attemptData.problem.answer
+    const epochNumberAtSubmit = currentProblemInfo?.epochNumber ?? 0
+    const activeProblemKeyAtSubmit = activeProblem?.key ?? null
+    const redoReturnTarget = currentProblemInfo
+      ? {
+          problem: currentProblemInfo.problem,
+          slotIndex: currentProblemInfo.originalSlotIndex,
+          partIndex: plan.currentPartIndex,
+        }
+      : null
+    const hasRetriesRemaining = epochNumberAtSubmit < MAX_RETRY_EPOCHS
+    setShowCorrectAnswerOnIncorrect(isCorrect || isInRedoMode || !hasRetriesRemaining)
 
     // Notify assistance machine of incorrect answer
     if (!isCorrect) {
@@ -1362,7 +1388,16 @@ export function ActiveSession({
       // After redo feedback, exit redo mode and return to original position
       setTimeout(
         () => {
-          clearToLoading()
+          if (redoReturnTarget) {
+            needsCenteringOffsetRef.current = true
+            startTransition(
+              redoReturnTarget.problem,
+              redoReturnTarget.slotIndex,
+              redoReturnTarget.partIndex
+            )
+          } else {
+            clearToLoading()
+          }
           onRedoComplete?.()
         },
         isCorrect ? 500 : 1500
@@ -1378,21 +1413,54 @@ export function ActiveSession({
     // Wait for feedback display then advance
     setTimeout(
       () => {
+        let transitionTarget:
+          | {
+              problem: SlotResult['problem']
+              slotIndex: number
+              partIndex: number
+            }
+          | null = null
+
         const nextSlotIndex = currentSlotIndex + 1
         const nextSlot = currentPart?.slots[nextSlotIndex]
-
-        if (nextSlot && currentPart && isCorrect) {
-          // Has next problem - animate transition
-          if (!nextSlot.problem) {
-            throw new Error(
-              `Problem not pre-generated for slot ${nextSlotIndex} in part ${currentPartIndex}. ` +
-                'This indicates a bug in session planning - problems should be generated at plan creation time.'
-            )
+        if (nextSlot?.problem && currentPart) {
+          transitionTarget = {
+            problem: nextSlot.problem,
+            slotIndex: nextSlotIndex,
+            partIndex: currentPartIndex,
           }
+        } else {
+          const latestActiveProblem = latestActiveProblemRef.current
+          const latestCurrentProblemInfo = latestCurrentProblemInfoRef.current
+          const hasAdvancedProblem =
+            latestActiveProblem &&
+            activeProblemKeyAtSubmit &&
+            latestActiveProblem.key !== activeProblemKeyAtSubmit
+          const isSamePartAsSubmitted =
+            latestActiveProblem?.partIndex === attemptData.partIndex
+          const latestEpochNumber = latestCurrentProblemInfo?.epochNumber ?? epochNumberAtSubmit
+          const isSameEpochAsSubmitted = latestEpochNumber === epochNumberAtSubmit
+
+          if (hasAdvancedProblem && isSamePartAsSubmitted && isSameEpochAsSubmitted) {
+            transitionTarget = {
+              problem: latestActiveProblem.problem,
+              slotIndex: latestActiveProblem.slotIndex,
+              partIndex: latestActiveProblem.partIndex,
+            }
+          }
+        }
+
+        const advanceDestination: SubmitAdvanceDestination = transitionTarget
+          ? 'next-problem-same-lane'
+          : 'state-handoff'
+        const advanceIntent = getSubmitAdvanceIntent(advanceDestination)
+
+        if (advanceIntent === 'slide-to-next-problem' && transitionTarget) {
+          // Has next problem - animate transition
           // Mark that we need to apply centering offset in useLayoutEffect
           needsCenteringOffsetRef.current = true
 
-          startTransition(nextSlot.problem, nextSlotIndex)
+          startTransition(transitionTarget.problem, transitionTarget.slotIndex)
         } else {
           // End of part or incorrect - clear to loading
           clearToLoading()
@@ -1406,13 +1474,16 @@ export function ActiveSession({
     onRecordRedo,
     student.id,
     plan.id,
+    plan.currentPartIndex,
     currentSlotIndex,
     currentPart,
     currentPartIndex,
+    activeProblem?.key,
     startSubmit,
     completeSubmit,
     startTransition,
     clearToLoading,
+    currentProblemInfo?.epochNumber,
     isDockedByUser,
     prefixSums,
     enterHelpMode,
@@ -1547,6 +1618,7 @@ export function ActiveSession({
     }
 
     // Show the correct answer briefly
+    setShowCorrectAnswerOnIncorrect(true)
     setAnswer(String(attempt.problem.answer))
     startSubmit()
 
@@ -1859,6 +1931,7 @@ export function ActiveSession({
                     isFocused={inputIsFocused}
                     isCompleted={showAsCompleted}
                     correctAnswer={attempt.problem.answer}
+                    showCorrectAnswerOnIncorrect={showCorrectAnswerOnIncorrect}
                     size="large"
                     currentHelpTermIndex={helpContext?.termIndex}
                     needHelpTermIndex={
@@ -2045,7 +2118,11 @@ export function ActiveSession({
 
           {/* Feedback message - only show for incorrect */}
           {showFeedback && (
-            <PracticeFeedback isCorrect={false} correctAnswer={attempt.problem.answer} />
+            <PracticeFeedback
+              isCorrect={false}
+              correctAnswer={attempt.problem.answer}
+              showCorrectAnswer={showCorrectAnswerOnIncorrect}
+            />
           )}
         </div>
 
