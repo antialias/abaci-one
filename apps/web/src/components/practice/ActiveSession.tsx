@@ -393,10 +393,6 @@ export function ActiveSession({
     if (!hasInitializedRemoteSessionRef.current) {
       hasInitializedRemoteSessionRef.current = true
       if (plan.remoteCameraSessionId) {
-        console.log(
-          '[ActiveSession] Syncing remoteCameraSessionId from DB to context:',
-          plan.remoteCameraSessionId
-        )
         setVisionRemoteSession(plan.remoteCameraSessionId)
         lastSyncedRemoteSessionRef.current = plan.remoteCameraSessionId
       }
@@ -406,10 +402,6 @@ export function ActiveSession({
     // After initialization: sync from context to DB when it changes
     const currentRemoteSession = visionConfig.remoteCameraSessionId
     if (currentRemoteSession !== lastSyncedRemoteSessionRef.current) {
-      console.log(
-        '[ActiveSession] Syncing remoteCameraSessionId from context to DB:',
-        currentRemoteSession
-      )
       lastSyncedRemoteSessionRef.current = currentRemoteSession
       setRemoteCameraSessionMutation.mutate({
         playerId: student.id,
@@ -448,7 +440,6 @@ export function ActiveSession({
       // Capture the current column images
       const columns = captureTrainingColumns(columnCount)
       if (!columns || columns.length === 0) {
-        console.log('[VisionTraining] No column images captured')
         return
       }
 
@@ -468,10 +459,10 @@ export function ActiveSession({
           }),
         })
         if (!response.ok) {
-          console.warn('[VisionTraining] Failed to save training data:', response.status)
+          return
         }
-      } catch (error) {
-        console.warn('[VisionTraining] Error saving training data:', error)
+      } catch {
+        return
       }
     },
     [
@@ -797,21 +788,18 @@ export function ActiveSession({
         // Update both the docked abacus value AND the answer input
         setDockedValue(teacherControl.value)
         setAnswer(String(teacherControl.value))
-        console.log('[ActiveSession] Teacher set abacus value to:', teacherControl.value)
         break
       case 'show-abacus':
         // Request dock with animation (triggers MyAbacus to animate into dock)
         if (!isDockedByUser && dock) {
           requestDock()
         }
-        console.log('[ActiveSession] Teacher requested to dock abacus')
         break
       case 'hide-abacus':
         // Undock the MyAbacus
         if (isDockedByUser) {
           undock()
         }
-        console.log('[ActiveSession] Teacher requested to undock abacus')
         break
     }
 
@@ -851,8 +839,6 @@ export function ActiveSession({
     pause()
     onPause?.(newPauseInfo)
 
-    console.log('[ActiveSession] Teacher paused session:', teacherPauseRequest.message)
-
     // Clear the request after handling
     onTeacherPauseHandled?.()
   }, [teacherPauseRequest, pause, onPause, onTeacherPauseHandled])
@@ -873,8 +859,6 @@ export function ActiveSession({
     assistance.onResumed()
     resume()
     onResume?.()
-
-    console.log('[ActiveSession] Teacher resumed session')
 
     // Clear the request after handling
     onTeacherResumeHandled?.()
@@ -898,8 +882,6 @@ export function ActiveSession({
     setPauseInfo(newPauseInfo)
     pause()
     onPause?.(newPauseInfo)
-
-    console.log('[ActiveSession] Manual pause triggered from HUD')
 
     // Clear the request after handling
     onManualPauseHandled?.()
@@ -1076,6 +1058,22 @@ export function ActiveSession({
   const parts = plan.parts
   const currentPartIndex = plan.currentPartIndex
   const currentSlotIndex = plan.currentSlotIndex
+  const gameBreakTraceEnabled =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('debugGameBreakTrace') === '1'
+  const logGameBreakTrace = useCallback(
+    (event: string, details: Record<string, unknown> = {}) => {
+      if (!gameBreakTraceEnabled) return
+      console.log('[GBTRACE][client]', event, {
+        ts: new Date().toISOString(),
+        planId: plan.id,
+        currentPartIndex,
+        currentSlotIndex,
+        ...details,
+      })
+    },
+    [gameBreakTraceEnabled, plan.id, currentPartIndex, currentSlotIndex]
+  )
   const currentPart = parts[currentPartIndex] as SessionPart | undefined
   // Use getCurrentProblemInfo which handles both original slots and retry epochs
   const regularSlot = currentProblemInfo
@@ -1121,7 +1119,7 @@ export function ActiveSession({
   useEffect(() => {
     const prevIndex = prevPartIndexRef.current
 
-    console.log('[ActiveSession] Part transition effect:', {
+    logGameBreakTrace('active-session-part-transition-effect', {
       prevIndex,
       currentPartIndex,
       partsLength: parts.length,
@@ -1133,7 +1131,7 @@ export function ActiveSession({
       const prevPart = prevIndex < parts.length ? parts[prevIndex] : null
       const nextPart = parts[currentPartIndex]
 
-      console.log('[ActiveSession] Triggering part transition screen:', {
+      logGameBreakTrace('active-session-trigger-transition-screen', {
         previousPartType: prevPart?.type ?? null,
         nextPartType: nextPart.type,
       })
@@ -1153,16 +1151,16 @@ export function ActiveSession({
 
     // Update ref for next comparison
     prevPartIndexRef.current = currentPartIndex
-  }, [currentPartIndex, parts, onPartTransition])
+  }, [currentPartIndex, parts, onPartTransition, logGameBreakTrace])
 
   // Handle transition screen completion (countdown finished or user skipped)
   const handleTransitionComplete = useCallback(() => {
-    console.log('[ActiveSession] Part transition complete, calling onPartTransitionComplete')
+    logGameBreakTrace('active-session-transition-complete-callback')
     setIsInPartTransition(false)
     setTransitionData(null)
     // Broadcast transition complete to observers
     onPartTransitionComplete?.()
-  }, [onPartTransitionComplete])
+  }, [onPartTransitionComplete, logGameBreakTrace])
 
   // Detect retry epoch transitions and show retry transition screen
   useEffect(() => {
@@ -1383,15 +1381,6 @@ export function ActiveSession({
         const nextSlotIndex = currentSlotIndex + 1
         const nextSlot = currentPart?.slots[nextSlotIndex]
 
-        console.log('[ActiveSession] Post-feedback timeout fired:', {
-          isCorrect,
-          currentSlotIndex,
-          nextSlotIndex,
-          hasNextSlot: !!nextSlot,
-          hasCurrentPart: !!currentPart,
-          willTransition: !!(nextSlot && currentPart && isCorrect),
-        })
-
         if (nextSlot && currentPart && isCorrect) {
           // Has next problem - animate transition
           if (!nextSlot.problem) {
@@ -1403,11 +1392,9 @@ export function ActiveSession({
           // Mark that we need to apply centering offset in useLayoutEffect
           needsCenteringOffsetRef.current = true
 
-          console.log('[ActiveSession] Starting transition to next problem')
           startTransition(nextSlot.problem, nextSlotIndex)
         } else {
           // End of part or incorrect - clear to loading
-          console.log('[ActiveSession] Calling clearToLoading (end of part or incorrect)')
           clearToLoading()
         }
       },

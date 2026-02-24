@@ -67,28 +67,40 @@ export const GET = withAuth(async (_request, { params }) => {
  * - reason?: string (for 'end_early' action)
  */
 export const PATCH = withAuth(async (request, { params }) => {
-  const perfStart = performance.now()
   const { playerId, planId } = (await params) as { playerId: string; planId: string }
 
   try {
     // Authorization: require 'start-session' permission (parent or teacher-present)
-    const tAuthStart = performance.now()
     const userId = await getUserId()
-    const tAuth = performance.now() - tAuthStart
-    const tAccessStart = performance.now()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
-    const tAccess = performance.now() - tAccessStart
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const tBodyStart = performance.now()
     const body = await request.json()
-    const tBody = performance.now() - tBodyStart
     const { action, result, reason, redoContext, remoteCameraSessionId } = body
 
     let plan
-    const tActionStart = performance.now()
+    const actionStart = Date.now()
+
+    if (action === 'record') {
+      console.log('[GBTRACE][server]', 'patch-record-request', {
+        ts: new Date().toISOString(),
+        playerId,
+        planId,
+        slotIndex: result?.slotIndex,
+        isCorrect: result?.isCorrect,
+      })
+    } else if (action === 'record_redo') {
+      console.log('[GBTRACE][server]', 'patch-record-redo-request', {
+        ts: new Date().toISOString(),
+        playerId,
+        planId,
+        slotIndex: result?.slotIndex,
+        isCorrect: result?.isCorrect,
+        redoContext,
+      })
+    }
 
     switch (action) {
       case 'approve':
@@ -162,13 +174,19 @@ export const PATCH = withAuth(async (request, { params }) => {
         )
     }
 
-    const tAction = performance.now() - tActionStart
-    console.log(
-      `[PERF] PATCH /api/curriculum/.../plans/${planId} action=${action} ` +
-        `total=${(performance.now() - perfStart).toFixed(1)}ms | ` +
-        `getUserId=${tAuth.toFixed(1)}ms, canPerformAction=${tAccess.toFixed(1)}ms, ` +
-        `parseBody=${tBody.toFixed(1)}ms, action=${tAction.toFixed(1)}ms`
-    )
+    if (action === 'record' || action === 'record_redo') {
+      console.log('[GBTRACE][server]', 'patch-record-response', {
+        ts: new Date().toISOString(),
+        playerId,
+        planId,
+        action,
+        durationMs: Date.now() - actionStart,
+        updatedPartIndex: plan.currentPartIndex,
+        updatedSlotIndex: plan.currentSlotIndex,
+        updatedStatus: plan.status,
+        completedAt: plan.completedAt ? String(plan.completedAt) : null,
+      })
+    }
     return NextResponse.json({ plan: serializePlan(plan) })
   } catch (error) {
     console.error('Error updating plan:', error)

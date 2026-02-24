@@ -1191,6 +1191,7 @@ export async function recordSlotResult(
     'timestamp' | 'partNumber' | 'epochNumber' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
   >
 ): Promise<SessionPlan> {
+  const traceStart = Date.now()
   let plan: SessionPlan | null
   try {
     plan = await getSessionPlan(planId)
@@ -1222,6 +1223,18 @@ export async function recordSlotResult(
 
   const currentPart = plan.parts[plan.currentPartIndex]
   if (!currentPart) throw new Error(`Invalid part index: ${plan.currentPartIndex}`)
+
+  console.log('[GBTRACE][server]', 'record-slot-result-start', {
+    ts: new Date().toISOString(),
+    planId,
+    playerId: plan.playerId,
+    currentPartIndex: plan.currentPartIndex,
+    currentSlotIndex: plan.currentSlotIndex,
+    currentPartNumber: currentPart.partNumber,
+    currentPartType: currentPart.type,
+    submittedSlotIndex: result.slotIndex,
+    isCorrect: result.isCorrect,
+  })
 
   // Defensive check: ensure slots array exists
   if (!currentPart.slots || !Array.isArray(currentPart.slots)) {
@@ -1358,6 +1371,9 @@ export async function recordSlotResult(
   // Calculate elapsed time since start
   const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
   const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
+  const partTransitioned = nextPartIndex > plan.currentPartIndex
+  const hasMoreParts = nextPartIndex < plan.parts.length
+  const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
 
   let dbResult
   try {
@@ -1417,6 +1433,23 @@ export async function recordSlotResult(
       console.error(`[recordSlotResult] revokeSharesForSession FAILED:`, shareError)
     }
   }
+
+  console.log('[GBTRACE][server]', 'record-slot-result-finish', {
+    ts: new Date().toISOString(),
+    planId,
+    playerId: plan.playerId,
+    durationMs: Date.now() - traceStart,
+    previousPartIndex: plan.currentPartIndex,
+    previousSlotIndex: plan.currentSlotIndex,
+    nextPartIndex,
+    nextSlotIndex,
+    partTransitioned,
+    hasMoreParts,
+    gameBreakEnabled,
+    inRetryEpoch,
+    isComplete,
+    status: updated.status,
+  })
 
   return updated
 }
