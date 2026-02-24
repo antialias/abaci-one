@@ -90,9 +90,7 @@ export default function AdminPricingPage() {
 
   return (
     <PageWithNav>
-      <div className={css({ paddingTop: '56px' })}>
-        <AdminNav />
-      </div>
+      <AdminNav />
       <main
         data-component="admin-pricing"
         className={css({

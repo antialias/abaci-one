@@ -136,9 +136,7 @@ export function PracticeConfigClient() {
   if (isLoading) {
     return (
       <PageWithNav>
-        <div className={css({ paddingTop: '56px' })}>
-          <AdminNav />
-        </div>
+        <AdminNav />
         <div
           className={css({ padding: '24px', color: textSecondary })}
           data-component="practice-config-loading"
@@ -151,9 +149,7 @@ export function PracticeConfigClient() {
 
   return (
     <PageWithNav>
-      <div className={css({ paddingTop: '56px' })}>
-        <AdminNav />
-      </div>
+      <AdminNav />
       <div
         className={css({
           maxWidth: '900px',

@@ -110,9 +110,7 @@ export function BktSettingsClient({ students }: BktSettingsClientProps) {
 
   return (
     <PageWithNav>
-      <div className={css({ paddingTop: '56px' })}>
-        <AdminNav />
-      </div>
+      <AdminNav />
       <main
         className={css({
           minHeight: 'calc(100vh - 110px)',
