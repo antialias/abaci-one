@@ -67,20 +67,28 @@ export const GET = withAuth(async (_request, { params }) => {
  * - reason?: string (for 'end_early' action)
  */
 export const PATCH = withAuth(async (request, { params }) => {
+  const perfStart = performance.now()
   const { playerId, planId } = (await params) as { playerId: string; planId: string }
 
   try {
     // Authorization: require 'start-session' permission (parent or teacher-present)
+    const tAuthStart = performance.now()
     const userId = await getUserId()
+    const tAuth = performance.now() - tAuthStart
+    const tAccessStart = performance.now()
     const canModify = await canPerformAction(userId, playerId, 'start-session')
+    const tAccess = performance.now() - tAccessStart
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
+    const tBodyStart = performance.now()
     const body = await request.json()
+    const tBody = performance.now() - tBodyStart
     const { action, result, reason, redoContext, remoteCameraSessionId } = body
 
     let plan
+    const tActionStart = performance.now()
 
     switch (action) {
       case 'approve':
@@ -154,6 +162,13 @@ export const PATCH = withAuth(async (request, { params }) => {
         )
     }
 
+    const tAction = performance.now() - tActionStart
+    console.log(
+      `[PERF] PATCH /api/curriculum/.../plans/${planId} action=${action} ` +
+        `total=${(performance.now() - perfStart).toFixed(1)}ms | ` +
+        `getUserId=${tAuth.toFixed(1)}ms, canPerformAction=${tAccess.toFixed(1)}ms, ` +
+        `parseBody=${tBody.toFixed(1)}ms, action=${tAction.toFixed(1)}ms`
+    )
     return NextResponse.json({ plan: serializePlan(plan) })
   } catch (error) {
     console.error('Error updating plan:', error)
