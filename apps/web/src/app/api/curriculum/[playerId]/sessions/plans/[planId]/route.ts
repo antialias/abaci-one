@@ -108,6 +108,18 @@ export const PATCH = withAuth(async (request, { params }) => {
         isCorrect: result?.isCorrect,
         redoContext,
       })
+    } else if (
+      action === 'part_transition_complete' ||
+      action === 'break_finished' ||
+      action === 'break_results_acked'
+    ) {
+      console.log('[GBTRACE][server]', 'patch-flow-request', {
+        ts: new Date().toISOString(),
+        playerId,
+        planId,
+        action,
+        breakFinishReason: breakFinishReason ?? null,
+      })
     }
 
     switch (action) {
@@ -217,6 +229,20 @@ export const PATCH = withAuth(async (request, { params }) => {
         updatedSlotIndex: plan.currentSlotIndex,
         updatedStatus: plan.status,
         completedAt: plan.completedAt ? String(plan.completedAt) : null,
+      })
+    } else if (
+      action === 'part_transition_complete' ||
+      action === 'break_finished' ||
+      action === 'break_results_acked'
+    ) {
+      console.log('[GBTRACE][server]', 'patch-flow-response', {
+        ts: new Date().toISOString(),
+        playerId,
+        planId,
+        action,
+        updatedFlowState: plan.flowState ?? null,
+        updatedBreakStartedAt: plan.breakStartedAt ? String(plan.breakStartedAt) : null,
+        updatedBreakReason: plan.breakReason ?? null,
       })
     }
     return NextResponse.json({ plan: serializePlan(plan) })

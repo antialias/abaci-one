@@ -158,8 +158,10 @@ export function PracticeClient({
   // Fetch active session plan from cache or API with server data as initial
   const { data: fetchedPlan } = useActiveSessionPlan(studentId, initialSession)
 
-  // Current plan - mutations take priority, then fetched/cached data
-  const currentPlan = endEarly.data ?? recordResult.data ?? fetchedPlan ?? initialSession
+  // Current plan should come from the active-session query cache.
+  // Each mutation writes back to this cache on success.
+  // Do not prioritize mutation-local `data`, which can become stale and mask newer flow updates.
+  const currentPlan = fetchedPlan ?? initialSession
   const logGameBreakTrace = useCallback(
     (event: string, details: Record<string, unknown> = {}) => {
       if (!gameBreakTraceEnabled) return
@@ -511,23 +513,49 @@ export function PracticeClient({
         setGameBreakResults(null)
       }
 
-      finishGameBreak.mutate({
-        playerId: studentId,
-        planId: currentPlan.id,
-        breakFinishReason: reason,
-      })
+      void finishGameBreak
+        .mutateAsync({
+          playerId: studentId,
+          planId: currentPlan.id,
+          breakFinishReason: reason,
+        })
+        .then((updatedPlan) => {
+          logGameBreakTrace('game-break-finish-resolved', {
+            reason,
+            updatedFlowState: updatedPlan.flowState,
+            updatedBreakReason: updatedPlan.breakReason,
+          })
+        })
+        .catch((err) => {
+          showError(
+            'Failed to finish game break',
+            err instanceof Error ? err.message : 'Unknown error'
+          )
+        })
     },
-    [saveGameResult, player.id, currentPlan.id, finishGameBreak, studentId]
+    [saveGameResult, player.id, currentPlan.id, finishGameBreak, studentId, logGameBreakTrace, showError]
   )
 
   // Handle results screen completion - return to practice
   const handleGameBreakResultsComplete = useCallback(() => {
     setGameBreakResults(null)
-    acknowledgeGameBreakResults.mutate({
-      playerId: studentId,
-      planId: currentPlan.id,
-    })
-  }, [acknowledgeGameBreakResults, studentId, currentPlan.id])
+    void acknowledgeGameBreakResults
+      .mutateAsync({
+        playerId: studentId,
+        planId: currentPlan.id,
+      })
+      .then((updatedPlan) => {
+        logGameBreakTrace('game-break-results-acked', {
+          updatedFlowState: updatedPlan.flowState,
+        })
+      })
+      .catch((err) => {
+        showError(
+          'Failed to return to practice',
+          err instanceof Error ? err.message : 'Unknown error'
+        )
+      })
+  }, [acknowledgeGameBreakResults, studentId, currentPlan.id, logGameBreakTrace, showError])
 
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
@@ -663,9 +691,13 @@ export function PracticeClient({
     })
     sendPartTransitionComplete()
     try {
-      await completePartTransition.mutateAsync({
+      const updatedPlan = await completePartTransition.mutateAsync({
         playerId: studentId,
         planId: currentPlan.id,
+      })
+      logGameBreakTrace('part-transition-complete-resolved', {
+        updatedFlowState: updatedPlan.flowState,
+        updatedBreakStartedAt: updatedPlan.breakStartedAt,
       })
     } catch (err) {
       showError(
