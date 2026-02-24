@@ -42,11 +42,7 @@ import { DecompositionProvider, DecompositionSection } from '../decomposition'
 import { generateCoachHint } from './coachHintGenerator'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { findMatchedPrefixIndex, useInteractionPhase } from './hooks/useInteractionPhase'
-import { useAudioManager } from '@/hooks/useAudioManager'
-import { AudioHelpButton } from './AudioHelpButton'
-import { usePracticeAudioHelp } from './hooks/usePracticeAudioHelp'
-import { usePracticeAssistanceAudio } from './hooks/usePracticeAssistanceAudio'
-import { usePracticeSoundEffects } from './hooks/usePracticeSoundEffects'
+// Audio disabled for practice sessions (use abacus / visualize)
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeFeedback } from './PracticeFeedback'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
@@ -488,8 +484,6 @@ export function ActiveSession({
     ]
   )
 
-  // Sound effects
-  const { playSound } = usePracticeSoundEffects()
 
   // Compute initial problem from plan for SSR hydration (must be before useInteractionPhase)
   // Uses getCurrentProblemInfo to account for retry epochs
@@ -577,7 +571,6 @@ export function ActiveSession({
   } = useInteractionPhase({
     initialProblem,
     activeProblem,
-    onManualSubmitRequired: () => playSound('womp_womp'),
   })
 
   // Progressive assistance state machine — subsumes auto-pause timer
@@ -647,24 +640,7 @@ export function ActiveSession({
     }
   }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
 
-  // Audio help — reads problems and feedback aloud for non-readers
-  const { isEnabled: audioHelpEnabled, isPlaying: audioHelpIsPlaying } = useAudioManager()
-  const audioHelpIsCorrect = phase.phase === 'showingFeedback' ? phase.result === 'correct' : null
-  const recentCorrectness = useMemo(() => plan.results.map((r) => r.isCorrect), [plan.results])
-  const { replayProblem } = usePracticeAudioHelp({
-    terms: attempt?.problem?.terms ?? null,
-    showingFeedback: showFeedback,
-    isCorrect: audioHelpIsCorrect,
-    correctAnswer: attempt?.problem?.answer ?? null,
-    results: recentCorrectness,
-  })
-
-  // Progressive assistance audio — speaks encouragement/help prompts on state transitions
-  usePracticeAssistanceAudio({
-    assistanceState: assistance.machineState.state,
-    showWrongAnswerSuggestion: assistance.showWrongAnswerSuggestion,
-    replayProblem,
-  })
+  // Audio disabled for practice sessions (use abacus / visualize)
 
   // Calculate total progress across all parts (needed for broadcast state)
   const totalProblems = useMemo(() => {
@@ -1825,11 +1801,6 @@ export function ActiveSession({
               )}
               <PurposeBadge purpose={currentSlot.purpose} slot={currentSlot} />
             </div>
-          )}
-
-          {/* Audio help replay button — only shown when audio help is enabled */}
-          {audioHelpEnabled && (
-            <AudioHelpButton onReplay={replayProblem} isPlaying={audioHelpIsPlaying} />
           )}
 
           {/* Problem display - centered, with help panel positioned outside */}
