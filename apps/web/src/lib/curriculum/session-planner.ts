@@ -32,6 +32,7 @@ import {
   type ProblemSlot,
   type SessionHealth,
   type SessionPart,
+  type SessionFlowState,
   type SessionPartType,
   type SessionPlan,
   type SessionRetryState,
@@ -1173,6 +1174,8 @@ export async function startSessionPlan(planId: string): Promise<SessionPlan> {
     .update(schema.sessionPlans)
     .set({
       status: 'in_progress',
+      flowState: 'practicing',
+      flowUpdatedAt: now,
       startedAt: now,
       sessionHealth: initialHealth,
     })
@@ -1377,6 +1380,12 @@ export async function recordSlotResult(
 
   let dbResult
   try {
+    const nextFlowState: SessionFlowState = isComplete
+      ? 'completed'
+      : partTransitioned && hasMoreParts && gameBreakEnabled
+        ? 'part_transition'
+        : 'practicing'
+    const flowUpdatedAt = new Date()
     dbResult = await db
       .update(schema.sessionPlans)
       .set({
@@ -1386,6 +1395,10 @@ export async function recordSlotResult(
         sessionHealth: updatedHealth,
         retryState: updatedRetryState,
         status: isComplete ? 'completed' : 'in_progress',
+        flowState: nextFlowState,
+        flowUpdatedAt,
+        breakStartedAt: null,
+        breakReason: null,
         completedAt: isComplete ? new Date() : null,
       })
       .where(eq(schema.sessionPlans.id, planId))
@@ -1595,6 +1608,8 @@ export async function completeSessionPlanEarly(
     .update(schema.sessionPlans)
     .set({
       status: 'completed',
+      flowState: 'completed',
+      flowUpdatedAt: new Date(),
       completedAt: new Date(),
       adjustments: [...plan.adjustments, adjustment],
     })
@@ -1619,6 +1634,8 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
     .update(schema.sessionPlans)
     .set({
       status: 'abandoned',
+      flowState: 'abandoned',
+      flowUpdatedAt: new Date(),
       completedAt: new Date(),
     })
     .where(eq(schema.sessionPlans.id, planId))
@@ -1631,6 +1648,64 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
     console.error(`[abandonSessionPlan] revokeSharesForSession FAILED:`, shareError)
   }
 
+  return updated
+}
+
+export async function completePartTransition(planId: string): Promise<SessionPlan> {
+  const plan = await getSessionPlan(planId)
+  if (!plan) throw new Error(`Plan not found: ${planId}`)
+
+  const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
+  const hasMoreParts = plan.currentPartIndex < plan.parts.length
+  const shouldOpenBreak = gameBreakEnabled && hasMoreParts
+
+  const now = new Date()
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set({
+      flowState: shouldOpenBreak ? 'break_active' : 'practicing',
+      flowUpdatedAt: now,
+      breakStartedAt: shouldOpenBreak ? now : null,
+      breakReason: null,
+    })
+    .where(eq(schema.sessionPlans.id, planId))
+    .returning()
+
+  if (!updated) throw new Error(`Failed to complete part transition for plan ${planId}`)
+  return updated
+}
+
+export async function finishGameBreak(
+  planId: string,
+  reason: 'timeout' | 'gameFinished' | 'skipped'
+): Promise<SessionPlan> {
+  const now = new Date()
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set({
+      flowState: reason === 'gameFinished' ? 'break_results' : 'practicing',
+      flowUpdatedAt: now,
+      breakReason: reason,
+    })
+    .where(eq(schema.sessionPlans.id, planId))
+    .returning()
+
+  if (!updated) throw new Error(`Failed to finish game break for plan ${planId}`)
+  return updated
+}
+
+export async function acknowledgeGameBreakResults(planId: string): Promise<SessionPlan> {
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set({
+      flowState: 'practicing',
+      flowUpdatedAt: new Date(),
+      breakReason: null,
+    })
+    .where(eq(schema.sessionPlans.id, planId))
+    .returning()
+
+  if (!updated) throw new Error(`Failed to acknowledge game break results for plan ${planId}`)
   return updated
 }
 

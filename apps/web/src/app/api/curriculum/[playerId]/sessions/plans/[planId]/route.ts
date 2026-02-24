@@ -12,9 +12,12 @@ import {
   emitSessionStartedToPlayer,
 } from '@/lib/classroom/socket-emitter'
 import {
+  acknowledgeGameBreakResults,
   abandonSessionPlan,
   approveSessionPlan,
+  completePartTransition,
   completeSessionPlanEarly,
+  finishGameBreak,
   getSessionPlan,
   type RedoContext,
   recordRedoResult,
@@ -35,6 +38,10 @@ function serializePlan(plan: SessionPlan) {
     approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
     startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
     completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
+    flowUpdatedAt:
+      plan.flowUpdatedAt instanceof Date ? plan.flowUpdatedAt.getTime() : plan.flowUpdatedAt,
+    breakStartedAt:
+      plan.breakStartedAt instanceof Date ? plan.breakStartedAt.getTime() : plan.breakStartedAt,
   }
 }
 
@@ -62,7 +69,8 @@ export const GET = withAuth(async (_request, { params }) => {
  * Update session plan status or record results
  *
  * Body:
- * - action: 'approve' | 'start' | 'record' | 'end_early' | 'abandon'
+ * - action: 'approve' | 'start' | 'record' | 'record_redo' | 'end_early' | 'abandon'
+ *          | 'set_remote_camera' | 'part_transition_complete' | 'break_finished' | 'break_results_acked'
  * - result?: SlotResult (for 'record' action)
  * - reason?: string (for 'end_early' action)
  */
@@ -78,7 +86,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     const body = await request.json()
-    const { action, result, reason, redoContext, remoteCameraSessionId } = body
+    const { action, result, reason, redoContext, remoteCameraSessionId, breakFinishReason } = body
 
     let plan
     const actionStart = Date.now()
@@ -164,11 +172,35 @@ export const PATCH = withAuth(async (request, { params }) => {
         plan = await updateSessionPlanRemoteCamera(planId, remoteCameraSessionId)
         break
 
+      case 'part_transition_complete':
+        plan = await completePartTransition(planId)
+        break
+
+      case 'break_finished':
+        if (
+          breakFinishReason !== 'timeout' &&
+          breakFinishReason !== 'gameFinished' &&
+          breakFinishReason !== 'skipped'
+        ) {
+          return NextResponse.json(
+            {
+              error: 'breakFinishReason is required and must be timeout | gameFinished | skipped',
+            },
+            { status: 400 }
+          )
+        }
+        plan = await finishGameBreak(planId, breakFinishReason)
+        break
+
+      case 'break_results_acked':
+        plan = await acknowledgeGameBreakResults(planId)
+        break
+
       default:
         return NextResponse.json(
           {
             error:
-              'Invalid action. Must be: approve, start, record, record_redo, end_early, abandon, or set_remote_camera',
+              'Invalid action. Must be: approve, start, record, record_redo, end_early, abandon, set_remote_camera, part_transition_complete, break_finished, or break_results_acked',
           },
           { status: 400 }
         )

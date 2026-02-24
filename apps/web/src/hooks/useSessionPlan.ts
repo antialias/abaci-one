@@ -138,17 +138,27 @@ async function updateSessionPlan({
   action,
   result,
   reason,
+  breakFinishReason,
 }: {
   playerId: string
   planId: string
-  action: 'approve' | 'start' | 'record' | 'end_early' | 'abandon'
+  action:
+    | 'approve'
+    | 'start'
+    | 'record'
+    | 'end_early'
+    | 'abandon'
+    | 'part_transition_complete'
+    | 'break_finished'
+    | 'break_results_acked'
   result?: Omit<SlotResult, 'timestamp' | 'partNumber'>
   reason?: string
+  breakFinishReason?: 'timeout' | 'gameFinished' | 'skipped'
 }): Promise<SessionPlan> {
   const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, result, reason }),
+    body: JSON.stringify({ action, result, reason, breakFinishReason }),
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
@@ -392,6 +402,70 @@ export function useEndSessionEarly() {
     },
     onError: (err) => {
       console.error('Failed to end session early:', err.message)
+    },
+  })
+}
+
+/**
+ * Hook: Mark part transition complete and advance flow state.
+ */
+export function useCompletePartTransition() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
+      updateSessionPlan({ playerId, planId, action: 'part_transition_complete' }),
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err) => {
+      console.error('Failed to complete part transition:', err.message)
+    },
+  })
+}
+
+/**
+ * Hook: Persist game break completion and advance flow state.
+ */
+export function useFinishGameBreak() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      playerId,
+      planId,
+      breakFinishReason,
+    }: {
+      playerId: string
+      planId: string
+      breakFinishReason: 'timeout' | 'gameFinished' | 'skipped'
+    }) => updateSessionPlan({ playerId, planId, action: 'break_finished', breakFinishReason }),
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err) => {
+      console.error('Failed to finish game break:', err.message)
+    },
+  })
+}
+
+/**
+ * Hook: Acknowledge game break results screen and return to practicing.
+ */
+export function useAcknowledgeGameBreakResults() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
+      updateSessionPlan({ playerId, planId, action: 'break_results_acked' }),
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err) => {
+      console.error('Failed to acknowledge game break results:', err.message)
     },
   })
 }

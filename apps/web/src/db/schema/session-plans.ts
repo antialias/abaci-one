@@ -303,6 +303,15 @@ export type SessionStatus =
   | 'abandoned'
   | 'recency-refresh'
 
+export type SessionFlowState =
+  | 'practicing'
+  | 'part_transition'
+  | 'break_pending'
+  | 'break_active'
+  | 'break_results'
+  | 'completed'
+  | 'abandoned'
+
 // ============================================================================
 // Game Break Settings
 // ============================================================================
@@ -490,11 +499,25 @@ export const sessionPlans = sqliteTable(
     /** Current status */
     status: text('status').$type<SessionStatus>().notNull().default('draft'),
 
+    /** Authoritative UI flow state for practice lifecycle */
+    flowState: text('flow_state').$type<SessionFlowState>().notNull().default('practicing'),
+
+    /** Last time flow state was updated */
+    flowUpdatedAt: integer('flow_updated_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+
     /** Current part index (0-based: 0=abacus, 1=visualization, 2=linear) */
     currentPartIndex: integer('current_part_index').notNull().default(0),
 
     /** Current problem slot index within the current part (0-based) */
     currentSlotIndex: integer('current_slot_index').notNull().default(0),
+
+    /** When the current game break started */
+    breakStartedAt: integer('break_started_at', { mode: 'timestamp' }),
+
+    /** How the last/active break ended (timeout, skipped, or game finished) */
+    breakReason: text('break_reason'),
 
     /** Real-time health metrics */
     sessionHealth: text('session_health', {

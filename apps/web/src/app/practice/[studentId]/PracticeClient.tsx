@@ -54,6 +54,9 @@ import {
   useSessionBroadcast,
 } from '@/hooks/useSessionBroadcast'
 import {
+  useAcknowledgeGameBreakResults,
+  useCompletePartTransition,
+  useFinishGameBreak,
   sessionPlanKeys,
   useActiveSessionPlan,
   useEndSessionEarly,
@@ -111,27 +114,12 @@ export function PracticeClient({
   const [teacherResumeRequest, setTeacherResumeRequest] = useState(false)
   // Manual pause request from HUD
   const [manualPauseRequest, setManualPauseRequest] = useState(false)
-  // Game break state
-  const [showGameBreak, setShowGameBreak] = useState(false)
+  // Local fallback start time for game break HUD while persisted state catches up
   const [gameBreakStartTime, setGameBreakStartTime] = useState<number>(Date.now())
-  // Track pending game break - set when part transition happens, triggers after transition screen
-  const [pendingGameBreak, setPendingGameBreak] = useState(false)
-  // Transition synchronization state for robust game-break triggering
-  const [isPartTransitionActive, setIsPartTransitionActive] = useState(false)
-  const [transitionCompleteCount, setTransitionCompleteCount] = useState(0)
-  const [pendingBreakRequiredCompletionCount, setPendingBreakRequiredCompletionCount] = useState<
-    number | null
-  >(null)
-  const isPartTransitionActiveRef = useRef(false)
-  const transitionCompleteCountRef = useRef(0)
   // Game break results - captured when game completes to show on interstitial screen
   const [gameBreakResults, setGameBreakResults] = useState<GameResultsReport | null>(null)
-  // Show results interstitial before returning to practice
-  const [showGameBreakResults, setShowGameBreakResults] = useState(false)
   // Track previous part index to detect part transitions
   const previousPartIndexRef = useRef<number>(initialSession.currentPartIndex)
-  // Debug-only timer to intentionally delay game-break queueing for race repro
-  const pendingGameBreakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref to store stopVisionRecording - populated later when useSessionBroadcast is called
   // This allows early-defined callbacks to access the function
   const stopRecordingRef = useRef<(() => void) | undefined>(undefined)
@@ -154,49 +142,15 @@ export function PracticeClient({
   // Redo state - allows students to re-attempt any completed problem
   const [redoState, setRedoState] = useState<RedoState | null>(null)
 
-  // Debug switch for reproducing issue #102 locally:
-  // ?debugGameBreakRace=1&debugGameBreakRaceDelayMs=9000
-  const forceGameBreakRace = searchParams.get('debugGameBreakRace') === '1'
-  const forcedGameBreakDelayMs = useMemo(() => {
-    const value = Number(searchParams.get('debugGameBreakRaceDelayMs') ?? '9000')
-    if (!Number.isFinite(value)) return 9000
-    return Math.max(0, value)
-  }, [searchParams])
-  const gameBreakTraceEnabled = searchParams.get('debugGameBreakTrace') === '1' || forceGameBreakRace
-
-  useEffect(() => {
-    return () => {
-      if (pendingGameBreakTimerRef.current) {
-        clearTimeout(pendingGameBreakTimerRef.current)
-        pendingGameBreakTimerRef.current = null
-      }
-    }
-  }, [])
-
-  // Dev shortcut: Ctrl+Shift+G to trigger game break for testing
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'G') {
-        e.preventDefault()
-        setShowGameBreak((prev) => {
-          if (!prev) {
-            setGameBreakStartTime(Date.now())
-          }
-          return !prev
-        })
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  const gameBreakTraceEnabled = searchParams.get('debugGameBreakTrace') === '1'
 
   // Session plan mutations
   const recordResult = useRecordSlotResult()
   const recordRedo = useRecordRedoResult()
   const endEarly = useEndSessionEarly()
+  const completePartTransition = useCompletePartTransition()
+  const finishGameBreak = useFinishGameBreak()
+  const acknowledgeGameBreakResults = useAcknowledgeGameBreakResults()
 
   // Game results mutation - saves to scoreboard when game break completes
   const saveGameResult = useSaveGameResult()
@@ -219,25 +173,31 @@ export function PracticeClient({
     [gameBreakTraceEnabled, studentId, currentPlan.id]
   )
 
-  const queuePendingGameBreak = useCallback(
-    (source: 'immediate' | 'delayed') => {
-      const requiredCompletionCount = isPartTransitionActiveRef.current
-        ? transitionCompleteCountRef.current + 1
-        : transitionCompleteCountRef.current
-      logGameBreakTrace('queue-pending-break', {
-        source,
-        isPartTransitionActive: isPartTransitionActiveRef.current,
-        transitionCompleteCount: transitionCompleteCountRef.current,
-        requiredCompletionCount,
-      })
-      setPendingBreakRequiredCompletionCount(requiredCompletionCount)
-      setPendingGameBreak(true)
-    },
-    [logGameBreakTrace]
-  )
-
   // Game break settings from the session plan
   const gameBreakSettings = currentPlan.gameBreakSettings as GameBreakSettings | null
+  const flowState = currentPlan.flowState ?? 'practicing'
+  const showGameBreak = flowState === 'break_active'
+  const showGameBreakResults = flowState === 'break_results'
+
+  useEffect(() => {
+    if (showGameBreak && currentPlan.breakStartedAt) {
+      setGameBreakStartTime(new Date(currentPlan.breakStartedAt).getTime())
+    }
+  }, [showGameBreak, currentPlan.breakStartedAt])
+
+  useEffect(() => {
+    if (!showGameBreakResults || gameBreakResults) return
+    acknowledgeGameBreakResults.mutate({
+      playerId: studentId,
+      planId: currentPlan.id,
+    })
+  }, [
+    showGameBreakResults,
+    gameBreakResults,
+    acknowledgeGameBreakResults,
+    studentId,
+    currentPlan.id,
+  ])
 
   // Build game config with skipSetupPhase merged into each game's config
   // This allows games to start immediately without showing their setup screen
@@ -375,7 +335,7 @@ export function PracticeClient({
           return
         }
 
-        // Check for part transition - queue game break to show AFTER transition screen
+        // Check for part transition for trace visibility
         const partTransitioned = updatedPlan.currentPartIndex > previousPartIndex
         const hasMoreParts = updatedPlan.currentPartIndex < updatedPlan.parts.length
         const gameBreakEnabled =
@@ -388,22 +348,6 @@ export function PracticeClient({
             hasMoreParts,
             gameBreakEnabled,
           })
-          // Don't show game break immediately - wait for transition screen to complete.
-          // Debug mode can delay queueing to intentionally recreate the race.
-          if (forceGameBreakRace) {
-            if (pendingGameBreakTimerRef.current) {
-              clearTimeout(pendingGameBreakTimerRef.current)
-            }
-            logGameBreakTrace('delay-pending-game-break', { forcedGameBreakDelayMs })
-            pendingGameBreakTimerRef.current = setTimeout(() => {
-              logGameBreakTrace('set-pending-game-break-delayed')
-              queuePendingGameBreak('delayed')
-              pendingGameBreakTimerRef.current = null
-            }, forcedGameBreakDelayMs)
-          } else {
-            logGameBreakTrace('set-pending-game-break-immediate')
-            queuePendingGameBreak('immediate')
-          }
         } else {
           logGameBreakTrace('no-break-queue-after-answer', {
             partTransitioned,
@@ -429,10 +373,7 @@ export function PracticeClient({
       recordResult,
       router,
       showError,
-      forceGameBreakRace,
-      forcedGameBreakDelayMs,
       logGameBreakTrace,
-      queuePendingGameBreak,
     ]
   )
 
@@ -554,8 +495,6 @@ export function PracticeClient({
   // Handle game break end - show results screen if game finished normally
   const handleGameBreakEnd = useCallback(
     (reason: 'timeout' | 'gameFinished' | 'skipped', results?: GameResultsReport) => {
-      setShowGameBreak(false)
-
       // If game finished normally with results, save to scoreboard and show interstitial
       if (reason === 'gameFinished' && results) {
         // Save result to database for scoreboard
@@ -567,20 +506,28 @@ export function PracticeClient({
         })
 
         setGameBreakResults(results)
-        setShowGameBreakResults(true)
       } else {
         // Timeout or skip - no results to show, return to practice immediately
         setGameBreakResults(null)
       }
+
+      finishGameBreak.mutate({
+        playerId: studentId,
+        planId: currentPlan.id,
+        breakFinishReason: reason,
+      })
     },
-    [saveGameResult, player.id, currentPlan.id]
+    [saveGameResult, player.id, currentPlan.id, finishGameBreak, studentId]
   )
 
   // Handle results screen completion - return to practice
   const handleGameBreakResultsComplete = useCallback(() => {
-    setShowGameBreakResults(false)
     setGameBreakResults(null)
-  }, [])
+    acknowledgeGameBreakResults.mutate({
+      playerId: studentId,
+      planId: currentPlan.id,
+    })
+  }, [acknowledgeGameBreakResults, studentId, currentPlan.id])
 
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
@@ -696,8 +643,6 @@ export function PracticeClient({
       countdownStartTime: number,
       countdownDurationMs: number
     ) => {
-      isPartTransitionActiveRef.current = true
-      setIsPartTransitionActive(true)
       logGameBreakTrace('part-transition-start', {
         previousPartType,
         nextPartType,
@@ -710,32 +655,34 @@ export function PracticeClient({
   )
 
   // Handle part transition complete - called when transition screen finishes
-  // Record completion and let the reconciliation effect decide when to open break.
-  const handlePartTransitionComplete = useCallback(() => {
-    isPartTransitionActiveRef.current = false
-    setIsPartTransitionActive(false)
-    setTransitionCompleteCount((prev) => {
-      const next = prev + 1
-      transitionCompleteCountRef.current = next
-      return next
-    })
+  const handlePartTransitionComplete = useCallback(async () => {
     logGameBreakTrace('part-transition-complete-callback', {
-      pendingGameBreak,
-      isPartTransitionActive,
-      transitionCompleteCount: transitionCompleteCountRef.current + 1,
-      pendingBreakRequiredCompletionCount,
+      flowStateBefore: flowState,
       currentPartIndex: currentPlan.currentPartIndex,
       currentSlotIndex: currentPlan.currentSlotIndex,
     })
     sendPartTransitionComplete()
+    try {
+      await completePartTransition.mutateAsync({
+        playerId: studentId,
+        planId: currentPlan.id,
+      })
+    } catch (err) {
+      showError(
+        'Failed to transition session',
+        err instanceof Error ? err.message : 'Unknown transition error'
+      )
+    }
   }, [
     sendPartTransitionComplete,
-    pendingGameBreak,
-    isPartTransitionActive,
-    pendingBreakRequiredCompletionCount,
+    flowState,
+    completePartTransition,
+    studentId,
+    currentPlan.id,
     currentPlan.currentPartIndex,
     currentPlan.currentSlotIndex,
     logGameBreakTrace,
+    showError,
   ])
 
   // Wire vision frame callback to broadcast vision frames to observers
@@ -757,52 +704,8 @@ export function PracticeClient({
   }, [setVisionFrameCallback, sendVisionFrame, isRecording, startVisionRecording])
 
   useEffect(() => {
-    logGameBreakTrace('pending-game-break-state', { pendingGameBreak })
-  }, [pendingGameBreak, logGameBreakTrace])
-
-  useEffect(() => {
-    logGameBreakTrace('transition-state', {
-      isPartTransitionActive,
-      transitionCompleteCount,
-      pendingBreakRequiredCompletionCount,
-    })
-  }, [
-    isPartTransitionActive,
-    transitionCompleteCount,
-    pendingBreakRequiredCompletionCount,
-    logGameBreakTrace,
-  ])
-
-  useEffect(() => {
-    logGameBreakTrace('show-game-break-state', { showGameBreak })
-  }, [showGameBreak, logGameBreakTrace])
-
-  useEffect(() => {
-    if (!pendingGameBreak || pendingBreakRequiredCompletionCount === null || showGameBreak) return
-
-    if (transitionCompleteCount < pendingBreakRequiredCompletionCount) {
-      logGameBreakTrace('waiting-for-transition-before-break', {
-        transitionCompleteCount,
-        pendingBreakRequiredCompletionCount,
-      })
-      return
-    }
-
-    logGameBreakTrace('opening-game-break-reconciled', {
-      transitionCompleteCount,
-      pendingBreakRequiredCompletionCount,
-    })
-    setGameBreakStartTime(Date.now())
-    setShowGameBreak(true)
-    setPendingGameBreak(false)
-    setPendingBreakRequiredCompletionCount(null)
-  }, [
-    pendingGameBreak,
-    pendingBreakRequiredCompletionCount,
-    transitionCompleteCount,
-    showGameBreak,
-    logGameBreakTrace,
-  ])
+    logGameBreakTrace('flow-state', { flowState, showGameBreak, showGameBreakResults })
+  }, [flowState, showGameBreak, showGameBreakResults, logGameBreakTrace])
 
   // Build session HUD data for PracticeSubNav
   const sessionHud: SessionHudData | undefined = currentPart
