@@ -478,8 +478,7 @@ export function PracticeSubNav({
       data-context={pageContext}
       className={css({
         position: 'sticky',
-        top: '80px', // Stick below the main nav when scrolling
-        marginTop: '80px', // Initial offset to push below fixed nav
+        top: 'var(--app-nav-height)', // Stick below the main nav when scrolling
         zIndex: 90,
         display: 'flex',
         alignItems: 'center',
