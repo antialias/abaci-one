@@ -90,9 +90,14 @@ export function useNotificationSubscription(
           if (registration) {
             const keyRes = await api('notifications/vapid-public-key')
             const { vapidPublicKey } = await keyRes.json()
-            if (!vapidPublicKey) throw new Error('VAPID public key not configured on server')
-            const browserSub = await subscribeToPush(registration, vapidPublicKey)
-            pushSub = pushSubscriptionToJson(browserSub)
+            if (!vapidPublicKey) {
+              console.warn(
+                '[useNotificationSubscription] VAPID public key not configured on server; skipping push subscription'
+              )
+            } else {
+              const browserSub = await subscribeToPush(registration, vapidPublicKey)
+              pushSub = pushSubscriptionToJson(browserSub)
+            }
           }
         }
       }

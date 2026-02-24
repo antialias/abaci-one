@@ -85,37 +85,115 @@ export function SubscribeButton({
     )
   }
 
-  // Authenticated: one-click subscribe
+  // Authenticated: push subscribe + optional email
   if (isAuthenticated) {
     return (
       <div data-component="subscribe-button" data-state="not-subscribed">
-        <button
-          type="button"
-          onClick={() => subscribe({ enablePush: pushSupported, shareToken })}
-          disabled={subscribePending}
-          data-action="subscribe"
-          className={css({
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: variant === 'subtle' ? '0.375rem 0.75rem' : '0.625rem 1.25rem',
-            fontSize: variant === 'subtle' ? '0.8125rem' : '0.9375rem',
-            fontWeight: '600',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            backgroundColor: 'blue.500',
-            color: 'white',
-            transition: 'background-color 0.2s',
-            _hover: { backgroundColor: 'blue.600' },
-            _disabled: {
-              opacity: 0.6,
-              cursor: 'not-allowed',
-            },
-          })}
-        >
-          {subscribePending ? 'Subscribing...' : `Notify me when ${playerName} practices`}
-        </button>
+        {!showEmailInput ? (
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '0.75rem' })}>
+            <button
+              type="button"
+              onClick={() => subscribe({ enablePush: pushSupported, shareToken })}
+              disabled={subscribePending}
+              data-action="subscribe"
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: variant === 'subtle' ? '0.375rem 0.75rem' : '0.625rem 1.25rem',
+                fontSize: variant === 'subtle' ? '0.8125rem' : '0.9375rem',
+                fontWeight: '600',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: 'blue.500',
+                color: 'white',
+                transition: 'background-color 0.2s',
+                _hover: { backgroundColor: 'blue.600' },
+                _disabled: {
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                },
+              })}
+            >
+              {subscribePending ? 'Subscribing...' : `Notify me when ${playerName} practices`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowEmailInput(true)}
+              data-action="show-email-input"
+              className={css({
+                fontSize: variant === 'subtle' ? '0.75rem' : '0.8125rem',
+                color: 'gray.500',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                _hover: { color: 'gray.700', _dark: { color: 'gray.300' } },
+              })}
+            >
+              or by email
+            </button>
+          </div>
+        ) : (
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              maxWidth: '360px',
+            })}
+          >
+            <p className={css({ fontSize: '0.875rem', color: 'text.secondary' })}>
+              Get notified when {playerName} practices:
+            </p>
+            <div className={css({ display: 'flex', gap: '0.5rem' })}>
+              <input
+                type="email"
+                placeholder="Your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                data-element="email-input"
+                className={css({
+                  flex: 1,
+                  padding: '0.5rem 0.75rem',
+                  fontSize: '0.875rem',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: 'gray.300',
+                  _dark: {
+                    borderColor: 'gray.600',
+                    backgroundColor: 'gray.800',
+                    color: 'white',
+                  },
+                })}
+              />
+              <button
+                type="button"
+                onClick={() => subscribe({ email, enablePush: pushSupported, shareToken })}
+                disabled={subscribePending || !email}
+                data-action="subscribe-email"
+                className={css({
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: 'blue.500',
+                  color: 'white',
+                  _hover: { backgroundColor: 'blue.600' },
+                  _disabled: {
+                    opacity: 0.6,
+                    cursor: 'not-allowed',
+                  },
+                })}
+              >
+                {subscribePending ? '...' : 'Subscribe'}
+              </button>
+            </div>
+          </div>
+        )}
         {subscribeError && (
           <p
             className={css({
