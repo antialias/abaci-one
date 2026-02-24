@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import type { SessionPlan, SlotResult, GameBreakSettings } from '@/db/schema/session-plans'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
+import type { SessionFlowEvent } from '@/lib/curriculum/session-flow'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { api } from '@/lib/queryClient'
 import { sessionPlanKeys } from '@/lib/queryKeys'
@@ -163,6 +165,30 @@ async function updateSessionPlan({
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
     throw new Error(error.error || `Failed to ${action} session plan`)
+  }
+  const data = await res.json()
+  return data.plan
+}
+
+async function applySessionFlowEvent({
+  playerId,
+  planId,
+  event,
+  expectedFlowVersion,
+}: {
+  playerId: string
+  planId: string
+  event: SessionFlowEvent
+  expectedFlowVersion?: number
+}): Promise<SessionPlan> {
+  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}/flow-events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, expectedFlowVersion }),
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.error || `Failed to apply flow event: ${event.type}`)
   }
   const data = await res.json()
   return data.plan
@@ -413,8 +439,23 @@ export function useCompletePartTransition() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
-      updateSessionPlan({ playerId, planId, action: 'part_transition_complete' }),
+    mutationFn: ({
+      playerId,
+      planId,
+      expectedFlowVersion,
+      shouldRunBreak,
+    }: {
+      playerId: string
+      planId: string
+      expectedFlowVersion?: number
+      shouldRunBreak: boolean
+    }) =>
+      applySessionFlowEvent({
+        playerId,
+        planId,
+        expectedFlowVersion,
+        event: { type: 'PART_TRANSITION_COMPLETED', shouldRunBreak },
+      }),
     onSuccess: (plan, { playerId }) => {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
@@ -436,11 +477,25 @@ export function useFinishGameBreak() {
       playerId,
       planId,
       breakFinishReason,
+      breakResults,
+      expectedFlowVersion,
     }: {
       playerId: string
       planId: string
       breakFinishReason: 'timeout' | 'gameFinished' | 'skipped'
-    }) => updateSessionPlan({ playerId, planId, action: 'break_finished', breakFinishReason }),
+      breakResults?: GameResultsReport | null
+      expectedFlowVersion?: number
+    }) =>
+      applySessionFlowEvent({
+        playerId,
+        planId,
+        expectedFlowVersion,
+        event: {
+          type: 'BREAK_FINISHED',
+          reason: breakFinishReason,
+          results: breakResults ?? null,
+        },
+      }),
     onSuccess: (plan, { playerId }) => {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
@@ -452,14 +507,61 @@ export function useFinishGameBreak() {
 }
 
 /**
+ * Hook: Mark game break as started and persist selected game.
+ */
+export function useStartGameBreak() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      playerId,
+      planId,
+      game,
+      expectedFlowVersion,
+    }: {
+      playerId: string
+      planId: string
+      game?: string | null
+      expectedFlowVersion?: number
+    }) =>
+      applySessionFlowEvent({
+        playerId,
+        planId,
+        expectedFlowVersion,
+        event: { type: 'BREAK_STARTED', game },
+      }),
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err) => {
+      console.error('Failed to start game break:', err.message)
+    },
+  })
+}
+
+/**
  * Hook: Acknowledge game break results screen and return to practicing.
  */
 export function useAcknowledgeGameBreakResults() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ playerId, planId }: { playerId: string; planId: string }) =>
-      updateSessionPlan({ playerId, planId, action: 'break_results_acked' }),
+    mutationFn: ({
+      playerId,
+      planId,
+      expectedFlowVersion,
+    }: {
+      playerId: string
+      planId: string
+      expectedFlowVersion?: number
+    }) =>
+      applySessionFlowEvent({
+        playerId,
+        planId,
+        expectedFlowVersion,
+        event: { type: 'BREAK_RESULTS_ACKED' },
+      }),
     onSuccess: (plan, { playerId }) => {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)

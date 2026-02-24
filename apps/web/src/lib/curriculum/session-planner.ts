@@ -17,6 +17,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import {
   calculateMasteryWeight,
   calculateSessionHealth,
@@ -80,6 +81,7 @@ import {
   type TermCountScalingConfig,
 } from './config/term-count-scaling'
 import { appSettings } from '@/db/schema'
+import { applyFlowEvent, type SessionFlowEvent } from './session-flow'
 
 // ============================================================================
 // Plan Generation
@@ -1176,6 +1178,7 @@ export async function startSessionPlan(planId: string): Promise<SessionPlan> {
       status: 'in_progress',
       flowState: 'practicing',
       flowUpdatedAt: now,
+      flowVersion: sql`${schema.sessionPlans.flowVersion} + 1`,
       startedAt: now,
       sessionHealth: initialHealth,
     })
@@ -1386,6 +1389,13 @@ export async function recordSlotResult(
         ? 'part_transition'
         : 'practicing'
     const flowUpdatedAt = new Date()
+    const flowStateChanged =
+      (plan.flowState ?? 'practicing') !== nextFlowState ||
+      plan.breakStartedAt !== null ||
+      plan.breakReason !== null ||
+      plan.breakSelectedGame !== null ||
+      plan.breakResults !== null
+    const nextFlowVersion = (plan.flowVersion ?? 0) + (flowStateChanged ? 1 : 0)
     dbResult = await db
       .update(schema.sessionPlans)
       .set({
@@ -1396,9 +1406,12 @@ export async function recordSlotResult(
         retryState: updatedRetryState,
         status: isComplete ? 'completed' : 'in_progress',
         flowState: nextFlowState,
-        flowUpdatedAt,
+        flowUpdatedAt: flowStateChanged ? flowUpdatedAt : plan.flowUpdatedAt ?? flowUpdatedAt,
+        flowVersion: nextFlowVersion,
         breakStartedAt: null,
         breakReason: null,
+        breakSelectedGame: null,
+        breakResults: null,
         completedAt: isComplete ? new Date() : null,
       })
       .where(eq(schema.sessionPlans.id, planId))
@@ -1581,6 +1594,61 @@ export async function recordRedoResult(
   return updated
 }
 
+export class StaleFlowVersionError extends Error {
+  constructor(
+    public readonly expectedFlowVersion: number,
+    public readonly actualFlowVersion: number
+  ) {
+    super(
+      `Stale flow event: expected flowVersion ${expectedFlowVersion}, actual ${actualFlowVersion}`
+    )
+    this.name = 'StaleFlowVersionError'
+  }
+}
+
+export async function applySessionFlowEvent(
+  planId: string,
+  event: SessionFlowEvent,
+  expectedFlowVersion?: number
+): Promise<SessionPlan> {
+  const plan = await getSessionPlan(planId)
+  if (!plan) throw new Error(`Plan not found: ${planId}`)
+
+  if (
+    expectedFlowVersion !== undefined &&
+    expectedFlowVersion !== null &&
+    expectedFlowVersion !== (plan.flowVersion ?? 0)
+  ) {
+    const postCheck = applyFlowEvent(plan, event)
+    if (!postCheck.changed) return plan
+    throw new StaleFlowVersionError(expectedFlowVersion, plan.flowVersion ?? 0)
+  }
+
+  const applied = applyFlowEvent(plan, event)
+  if (!applied.changed) return plan
+
+  const currentFlowVersion = plan.flowVersion ?? 0
+  const [updated] = await db
+    .update(schema.sessionPlans)
+    .set(applied.patch)
+    .where(
+      and(
+        eq(schema.sessionPlans.id, planId),
+        eq(schema.sessionPlans.flowVersion, currentFlowVersion)
+      )
+    )
+    .returning()
+
+  if (updated) return updated
+
+  const latestPlan = await getSessionPlan(planId)
+  if (!latestPlan) throw new Error(`Plan not found after flow update: ${planId}`)
+  const replay = applyFlowEvent(latestPlan, event)
+  if (!replay.changed) return latestPlan
+
+  throw new StaleFlowVersionError(currentFlowVersion, latestPlan.flowVersion ?? 0)
+}
+
 /**
  * Complete a session early (teacher ends it)
  */
@@ -1604,12 +1672,15 @@ export async function completeSessionPlanEarly(
     },
   }
 
+  const flowPlan = await applySessionFlowEvent(planId, { type: 'SESSION_COMPLETED' })
+
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
       status: 'completed',
-      flowState: 'completed',
-      flowUpdatedAt: new Date(),
+      flowState: flowPlan.flowState,
+      flowUpdatedAt: flowPlan.flowUpdatedAt,
+      flowVersion: flowPlan.flowVersion,
       completedAt: new Date(),
       adjustments: [...plan.adjustments, adjustment],
     })
@@ -1630,12 +1701,14 @@ export async function completeSessionPlanEarly(
  * Abandon a session (user navigates away, closes browser, etc.)
  */
 export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
+  const flowPlan = await applySessionFlowEvent(planId, { type: 'SESSION_ABANDONED' })
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
       status: 'abandoned',
-      flowState: 'abandoned',
-      flowUpdatedAt: new Date(),
+      flowState: flowPlan.flowState,
+      flowUpdatedAt: flowPlan.flowUpdatedAt,
+      flowVersion: flowPlan.flowVersion,
       completedAt: new Date(),
     })
     .where(eq(schema.sessionPlans.id, planId))
@@ -1658,55 +1731,26 @@ export async function completePartTransition(planId: string): Promise<SessionPla
   const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
   const hasMoreParts = plan.currentPartIndex < plan.parts.length
   const shouldOpenBreak = gameBreakEnabled && hasMoreParts
-
-  const now = new Date()
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      flowState: shouldOpenBreak ? 'break_active' : 'practicing',
-      flowUpdatedAt: now,
-      breakStartedAt: shouldOpenBreak ? now : null,
-      breakReason: null,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) throw new Error(`Failed to complete part transition for plan ${planId}`)
-  return updated
+  return applySessionFlowEvent(planId, {
+    type: 'PART_TRANSITION_COMPLETED',
+    shouldRunBreak: shouldOpenBreak,
+  })
 }
 
 export async function finishGameBreak(
   planId: string,
-  reason: 'timeout' | 'gameFinished' | 'skipped'
+  reason: 'timeout' | 'gameFinished' | 'skipped',
+  results?: GameResultsReport | null
 ): Promise<SessionPlan> {
-  const now = new Date()
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      flowState: reason === 'gameFinished' ? 'break_results' : 'practicing',
-      flowUpdatedAt: now,
-      breakReason: reason,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) throw new Error(`Failed to finish game break for plan ${planId}`)
-  return updated
+  return applySessionFlowEvent(planId, {
+    type: 'BREAK_FINISHED',
+    reason,
+    results,
+  })
 }
 
 export async function acknowledgeGameBreakResults(planId: string): Promise<SessionPlan> {
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      flowState: 'practicing',
-      flowUpdatedAt: new Date(),
-      breakReason: null,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) throw new Error(`Failed to acknowledge game break results for plan ${planId}`)
-  return updated
+  return applySessionFlowEvent(planId, { type: 'BREAK_RESULTS_ACKED' })
 }
 
 /**

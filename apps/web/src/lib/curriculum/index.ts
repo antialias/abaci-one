@@ -51,6 +51,7 @@ export {
 export {
   ActiveSessionExistsError,
   NoSkillsEnabledError,
+  applySessionFlowEvent,
   abandonSessionPlan,
   acknowledgeGameBreakResults,
   approveSessionPlan,
@@ -65,6 +66,7 @@ export {
   recordRedoResult,
   recordSlotResult,
   finishGameBreak,
+  StaleFlowVersionError,
   startSessionPlan,
   updateSessionPlanRemoteCamera,
   updateSessionPlanResults,

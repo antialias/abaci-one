@@ -23,8 +23,10 @@ import {
   recordRedoResult,
   recordSlotResult,
   startSessionPlan,
+  StaleFlowVersionError,
   updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
+import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -86,7 +88,15 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     const body = await request.json()
-    const { action, result, reason, redoContext, remoteCameraSessionId, breakFinishReason } = body
+    const {
+      action,
+      result,
+      reason,
+      redoContext,
+      remoteCameraSessionId,
+      breakFinishReason,
+      breakResults,
+    } = body
 
     let plan
     const actionStart = Date.now()
@@ -201,7 +211,7 @@ export const PATCH = withAuth(async (request, { params }) => {
             { status: 400 }
           )
         }
-        plan = await finishGameBreak(planId, breakFinishReason)
+        plan = await finishGameBreak(planId, breakFinishReason, breakResults ?? null)
         break
 
       case 'break_results_acked':
@@ -247,10 +257,33 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
     return NextResponse.json({ plan: serializePlan(plan) })
   } catch (error) {
+    if (error instanceof InvalidFlowTransitionError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: 'INVALID_FLOW_TRANSITION',
+          flowState: error.state,
+          eventType: error.eventType,
+        },
+        { status: 409 }
+      )
+    }
+    if (error instanceof StaleFlowVersionError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: 'STALE_FLOW_VERSION',
+          expectedFlowVersion: error.expectedFlowVersion,
+          actualFlowVersion: error.actualFlowVersion,
+        },
+        { status: 409 }
+      )
+    }
     console.error('Error updating plan:', error)
     return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
   }
 })
+
 
 /**
  * Helper to emit session socket events to both:

@@ -57,6 +57,7 @@ import {
   useAcknowledgeGameBreakResults,
   useCompletePartTransition,
   useFinishGameBreak,
+  useStartGameBreak,
   sessionPlanKeys,
   useActiveSessionPlan,
   useEndSessionEarly,
@@ -149,6 +150,7 @@ export function PracticeClient({
   const recordRedo = useRecordRedoResult()
   const endEarly = useEndSessionEarly()
   const completePartTransition = useCompletePartTransition()
+  const startGameBreak = useStartGameBreak()
   const finishGameBreak = useFinishGameBreak()
   const acknowledgeGameBreakResults = useAcknowledgeGameBreakResults()
 
@@ -178,7 +180,7 @@ export function PracticeClient({
   // Game break settings from the session plan
   const gameBreakSettings = currentPlan.gameBreakSettings as GameBreakSettings | null
   const flowState = currentPlan.flowState ?? 'practicing'
-  const showGameBreak = flowState === 'break_active'
+  const showGameBreak = flowState === 'break_pending' || flowState === 'break_active'
   const showGameBreakResults = flowState === 'break_results'
 
   useEffect(() => {
@@ -188,14 +190,26 @@ export function PracticeClient({
   }, [showGameBreak, currentPlan.breakStartedAt])
 
   useEffect(() => {
-    if (!showGameBreakResults || gameBreakResults) return
+    if (!showGameBreakResults) return
+
+    const persistedResults = currentPlan.breakResults ?? null
+    if (persistedResults && !gameBreakResults) {
+      setGameBreakResults(persistedResults)
+      return
+    }
+
+    if (gameBreakResults || persistedResults) return
+
     acknowledgeGameBreakResults.mutate({
       playerId: studentId,
       planId: currentPlan.id,
+      expectedFlowVersion: currentPlan.flowVersion,
     })
   }, [
     showGameBreakResults,
     gameBreakResults,
+    currentPlan.breakResults,
+    currentPlan.flowVersion,
     acknowledgeGameBreakResults,
     studentId,
     currentPlan.id,
@@ -518,6 +532,8 @@ export function PracticeClient({
           playerId: studentId,
           planId: currentPlan.id,
           breakFinishReason: reason,
+          breakResults: results ?? null,
+          expectedFlowVersion: currentPlan.flowVersion,
         })
         .then((updatedPlan) => {
           logGameBreakTrace('game-break-finish-resolved', {
@@ -533,7 +549,35 @@ export function PracticeClient({
           )
         })
     },
-    [saveGameResult, player.id, currentPlan.id, finishGameBreak, studentId, logGameBreakTrace, showError]
+    [
+      saveGameResult,
+      player.id,
+      currentPlan.id,
+      currentPlan.flowVersion,
+      finishGameBreak,
+      studentId,
+      logGameBreakTrace,
+      showError,
+    ]
+  )
+
+  const handleGameBreakStarted = useCallback(
+    (gameName: string) => {
+      void startGameBreak
+        .mutateAsync({
+          playerId: studentId,
+          planId: currentPlan.id,
+          game: gameName,
+          expectedFlowVersion: currentPlan.flowVersion,
+        })
+        .catch((err) => {
+          logGameBreakTrace('game-break-start-failed', {
+            gameName,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        })
+    },
+    [startGameBreak, studentId, currentPlan.id, currentPlan.flowVersion, logGameBreakTrace]
   )
 
   // Handle results screen completion - return to practice
@@ -543,6 +587,7 @@ export function PracticeClient({
       .mutateAsync({
         playerId: studentId,
         planId: currentPlan.id,
+        expectedFlowVersion: currentPlan.flowVersion,
       })
       .then((updatedPlan) => {
         logGameBreakTrace('game-break-results-acked', {
@@ -555,7 +600,14 @@ export function PracticeClient({
           err instanceof Error ? err.message : 'Unknown error'
         )
       })
-  }, [acknowledgeGameBreakResults, studentId, currentPlan.id, logGameBreakTrace, showError])
+  }, [
+    acknowledgeGameBreakResults,
+    studentId,
+    currentPlan.id,
+    currentPlan.flowVersion,
+    logGameBreakTrace,
+    showError,
+  ])
 
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
@@ -691,9 +743,14 @@ export function PracticeClient({
     })
     sendPartTransitionComplete()
     try {
+      const shouldRunBreak =
+        ((currentPlan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false) &&
+        currentPlan.currentPartIndex < currentPlan.parts.length
       const updatedPlan = await completePartTransition.mutateAsync({
         playerId: studentId,
         planId: currentPlan.id,
+        expectedFlowVersion: currentPlan.flowVersion,
+        shouldRunBreak,
       })
       logGameBreakTrace('part-transition-complete-resolved', {
         updatedFlowState: updatedPlan.flowState,
@@ -711,8 +768,11 @@ export function PracticeClient({
     completePartTransition,
     studentId,
     currentPlan.id,
+    currentPlan.flowVersion,
     currentPlan.currentPartIndex,
     currentPlan.currentSlotIndex,
+    currentPlan.parts.length,
+    currentPlan.gameBreakSettings,
     logGameBreakTrace,
     showError,
   ])
@@ -855,6 +915,7 @@ export function PracticeClient({
               selectedGame={gameBreakSettings?.selectedGame ?? null}
               gameConfig={gameBreakGameConfig}
               enabledGames={gameBreakSettings?.enabledGames}
+              onGameSelected={handleGameBreakStarted}
             />
           ) : (
             <ActiveSession

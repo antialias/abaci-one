@@ -1,6 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { PracticeTypeId } from '@/constants/practiceTypes'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import type { TermCountExplanation } from '@/lib/curriculum/config/term-count-scaling'
 import type { SkillSet } from '@/types/tutorial'
 import { players } from './players'
@@ -380,6 +381,8 @@ export interface GameBreakSettings {
   useAdaptiveSelection?: boolean
 }
 
+export type GameBreakEndReason = 'timeout' | 'skipped' | 'gameFinished'
+
 // ============================================================================
 // Retry System Types
 // ============================================================================
@@ -507,6 +510,9 @@ export const sessionPlans = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date()),
 
+    /** Monotonic version for optimistic concurrency on flow events */
+    flowVersion: integer('flow_version').notNull().default(0),
+
     /** Current part index (0-based: 0=abacus, 1=visualization, 2=linear) */
     currentPartIndex: integer('current_part_index').notNull().default(0),
 
@@ -517,7 +523,13 @@ export const sessionPlans = sqliteTable(
     breakStartedAt: integer('break_started_at', { mode: 'timestamp' }),
 
     /** How the last/active break ended (timeout, skipped, or game finished) */
-    breakReason: text('break_reason'),
+    breakReason: text('break_reason').$type<GameBreakEndReason>(),
+
+    /** Selected game for the active/last break (if any) */
+    breakSelectedGame: text('break_selected_game'),
+
+    /** Optional lightweight persisted game-break results payload */
+    breakResults: text('break_results', { mode: 'json' }).$type<GameResultsReport>(),
 
     /** Real-time health metrics */
     sessionHealth: text('session_health', {
