@@ -140,8 +140,28 @@ export function replayConstruction(
           return !hasHigher
         })
       } else if (expected.ofA == null && expected.ofB == null && candidates.length > 0) {
-        // Wildcard intersection (no ofA/ofB specified): pick highest-Y candidate
-        matchingCandidate = candidates.reduce((best, c) => (c.y > best.y ? c : best), candidates[0])
+        // Wildcard intersection (no ofA/ofB specified)
+        if (expected.label === 'C') {
+          const pA = state.elements.find(
+            (e) => e.kind === 'point' && e.id === 'pt-A'
+          ) as { x: number; y: number } | undefined
+          const pB = state.elements.find(
+            (e) => e.kind === 'point' && e.id === 'pt-B'
+          ) as { x: number; y: number } | undefined
+          if (pA && pB) {
+            const abx = pB.x - pA.x
+            const aby = pB.y - pA.y
+            const preferUpper = candidates.filter(
+              (c) => abx * (c.y - pA.y) - aby * (c.x - pA.x) > 0
+            )
+            const pool = preferUpper.length > 0 ? preferUpper : candidates
+            matchingCandidate = pool.reduce((best, c) => (c.y > best.y ? c : best), pool[0])
+          }
+        }
+        if (!matchingCandidate) {
+          // Fallback: pick highest-Y candidate
+          matchingCandidate = candidates.reduce((best, c) => (c.y > best.y ? c : best), candidates[0])
+        }
       }
 
       if (matchingCandidate) {

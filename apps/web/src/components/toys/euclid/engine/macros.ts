@@ -126,8 +126,11 @@ const MACRO_PROP_1: MacroDef = {
     }
     const radius = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2)
     const intersections = circleCircleIntersections(pA.x, pA.y, radius, pB.x, pB.y, radius)
-    // Pick highest-Y intersection (above the line AB)
-    const apex = intersections.reduce((best, p) => (p.y > best.y ? p : best), intersections[0])
+    const abx = pB.x - pA.x
+    const aby = pB.y - pA.y
+    const preferUpper = intersections.filter((p) => abx * (p.y - pA.y) - aby * (p.x - pA.x) > 0)
+    const apexPool = preferUpper.length > 0 ? preferUpper : intersections
+    const apex = apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
     if (!apex) {
       return {
         state: currentState,
