@@ -89,8 +89,6 @@ This is the compass-and-straightedge approach to arithmetic: construct the answe
 
 The pressure to replace it with memorized facts and calculators follows the exact same logic that replaced Euclid with coordinate algebra: more convenient, easier to grade, better aligned with standardized tests. And it produces the same casualty: students who can execute procedures correctly without understanding why those procedures work.
 
-<!-- EMBED: ten-frames-inline "Addition with progressive scaffolding — plain to ten-frames" -->
-
 ## The Cost of Quiet Decisions
 
 We did not deliberately murder logic education. We made a series of individually defensible decisions — fix Euclid's logical gaps, connect geometry to algebra, prepare students for the modern world — and the accumulated result was that the one subject in the standard curriculum that trained proof-construction as a cognitive skill vanished without anyone intending that outcome.
