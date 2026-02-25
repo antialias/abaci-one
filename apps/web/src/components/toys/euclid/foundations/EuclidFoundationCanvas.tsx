@@ -191,9 +191,8 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
     let isMounted = true
 
     const resize = () => {
-      const rect = container.getBoundingClientRect()
-      const width = Math.max(1, Math.round(rect.width))
-      const height = Math.max(1, Math.round(rect.height))
+      const width = Math.max(1, Math.round(container.clientWidth))
+      const height = Math.max(1, Math.round(container.clientHeight))
       const last = lastSizeRef.current
       if (last && Math.abs(last.w - width) < 1 && Math.abs(last.h - height) < 1) {
         return
@@ -209,9 +208,8 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
 
     const draw = (time: number) => {
       if (!isMounted) return
-      const rect = container.getBoundingClientRect()
-      const width = rect.width
-      const height = rect.height
+      const width = container.clientWidth
+      const height = container.clientHeight
       const viewport = computeViewport(state, width, height)
 
       renderConstruction(
@@ -268,9 +266,10 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
         overflow: 'hidden',
         border: '1px solid rgba(203, 213, 225, 0.6)',
         background: '#FAFAF0',
+        boxSizing: 'border-box',
       }}
     >
-      <canvas ref={canvasRef} />
+      <canvas ref={canvasRef} style={{ display: 'block' }} />
     </div>
   )
 }
