@@ -110,6 +110,11 @@ const AUTO_FIT_LERP = 0.12
 const AUTO_FIT_MIN_PPU = 8
 const AUTO_FIT_MAX_PPU = 240
 const AUTO_FIT_DOCK_GAP = 12
+const AUTO_FIT_SOFT_MARGIN = 24
+const AUTO_FIT_SWEEP_LERP_MIN = 0.03
+const AUTO_FIT_POST_SWEEP_MS = 750
+const AUTO_FIT_MAX_CENTER_PX = 2
+const AUTO_FIT_MAX_PPU_DELTA = 1
 
 // ── Viewport centering ──
 
@@ -272,6 +277,39 @@ function getFitRect(
     centerX: (left + right) / 2,
     centerY: (top + bottom) / 2,
   }
+}
+
+function getScreenBounds(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  viewport: EuclidViewportState,
+  cssWidth: number,
+  cssHeight: number
+) {
+  const toScreenX = (x: number) => (x - viewport.center.x) * viewport.pixelsPerUnit + cssWidth / 2
+  const toScreenY = (y: number) => (viewport.center.y - y) * viewport.pixelsPerUnit + cssHeight / 2
+  const sx1 = toScreenX(bounds.minX)
+  const sx2 = toScreenX(bounds.maxX)
+  const sy1 = toScreenY(bounds.minY)
+  const sy2 = toScreenY(bounds.maxY)
+  return {
+    minX: Math.min(sx1, sx2),
+    maxX: Math.max(sx1, sx2),
+    minY: Math.min(sy1, sy2),
+    maxY: Math.max(sy1, sy2),
+  }
+}
+
+function boundsWithinRect(
+  screenBounds: { minX: number; maxX: number; minY: number; maxY: number },
+  rect: { left: number; right: number; top: number; bottom: number },
+  margin: number
+) {
+  return (
+    screenBounds.minX >= rect.left + margin &&
+    screenBounds.maxX <= rect.right - margin &&
+    screenBounds.minY >= rect.top + margin &&
+    screenBounds.maxY <= rect.bottom - margin
+  )
 }
 
 /**
@@ -464,6 +502,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [hoveredFactId, setHoveredFactId] = useState<number | null>(null)
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
   const [autoCompleting, setAutoCompleting] = useState(false)
+  const lastSweepRef = useRef<number>(0)
+  const lastSweepTimeRef = useRef<number>(0)
+  const lastSweepCenterRef = useRef<string | null>(null)
 
   // Combined highlight state: distance keys, angle keys, citation group
   const highlightState = useMemo(() => {
@@ -1422,13 +1463,66 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               const prevCx = v.center.x
               const prevCy = v.center.y
               const prevPpu = v.pixelsPerUnit
-              const targetCenterX =
+              const screenBounds = getScreenBounds(bounds, v, cssWidth, cssHeight)
+              const softOk = boundsWithinRect(
+                screenBounds,
+                { left: fitRect.left, right: fitRect.right, top: fitRect.top, bottom: fitRect.bottom },
+                AUTO_FIT_SOFT_MARGIN
+              )
+
+              const now = performance.now()
+              let sweepSpeed = 0
+              if (compassPhase.tag === 'sweeping') {
+                const lastSweep = lastSweepRef.current
+                const lastTime = lastSweepTimeRef.current || now
+                const dt = Math.max(1, now - lastTime) / 1000
+                sweepSpeed = Math.abs(compassPhase.cumulativeSweep - lastSweep) / dt
+                lastSweepRef.current = compassPhase.cumulativeSweep
+                lastSweepTimeRef.current = now
+                lastSweepCenterRef.current = compassPhase.centerId
+              } else {
+                lastSweepRef.current = 0
+              }
+              const sinceSweepMs = now - (lastSweepTimeRef.current || now)
+              const isPostSweep = sinceSweepMs < AUTO_FIT_POST_SWEEP_MS
+              const sweepLerp =
+                compassPhase.tag === 'sweeping' || isPostSweep
+                  ? Math.max(AUTO_FIT_SWEEP_LERP_MIN, AUTO_FIT_LERP / (1 + sweepSpeed * 0.4))
+                  : AUTO_FIT_LERP
+
+              if (!softOk || targetPpu < v.pixelsPerUnit) {
+                const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
+                const deltaPpu = Math.max(-AUTO_FIT_MAX_PPU_DELTA, Math.min(AUTO_FIT_MAX_PPU_DELTA, nextPpu - v.pixelsPerUnit))
+                v.pixelsPerUnit += deltaPpu
+              }
+
+              let targetCenterX =
                 targetCx - (fitRect.centerX - cssWidth / 2) / targetPpu
-              const targetCenterY =
+              let targetCenterY =
                 targetCy + (fitRect.centerY - cssHeight / 2) / targetPpu
-              v.center.x += (targetCenterX - v.center.x) * AUTO_FIT_LERP
-              v.center.y += (targetCenterY - v.center.y) * AUTO_FIT_LERP
-              v.pixelsPerUnit += (targetPpu - v.pixelsPerUnit) * AUTO_FIT_LERP
+              if (compassPhase.tag === 'sweeping' || isPostSweep) {
+                const anchorCenterId =
+                  compassPhase.tag === 'sweeping'
+                    ? compassPhase.centerId
+                    : lastSweepCenterRef.current
+                const centerPoint = anchorCenterId
+                  ? getPoint(constructionRef.current, anchorCenterId)
+                  : null
+                if (centerPoint) {
+                  const anchorScreenX =
+                    (centerPoint.x - v.center.x) * v.pixelsPerUnit + cssWidth / 2
+                  const anchorScreenY =
+                    (v.center.y - centerPoint.y) * v.pixelsPerUnit + cssHeight / 2
+                  targetCenterX = centerPoint.x - (anchorScreenX - cssWidth / 2) / v.pixelsPerUnit
+                  targetCenterY = centerPoint.y + (anchorScreenY - cssHeight / 2) / v.pixelsPerUnit
+                }
+              }
+              const maxDx = AUTO_FIT_MAX_CENTER_PX / v.pixelsPerUnit
+              const maxDy = AUTO_FIT_MAX_CENTER_PX / v.pixelsPerUnit
+              const dx = (targetCenterX - v.center.x) * sweepLerp
+              const dy = (targetCenterY - v.center.y) * sweepLerp
+              v.center.x += Math.max(-maxDx, Math.min(maxDx, dx))
+              v.center.y += Math.max(-maxDy, Math.min(maxDy, dy))
 
               if (
                 Math.abs(v.center.x - prevCx) > 0.001 ||
