@@ -591,7 +591,6 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const lastSweepRef = useRef<number>(0)
   const lastSweepTimeRef = useRef<number>(0)
   const lastSweepCenterRef = useRef<string | null>(null)
-  const autoFitLogRef = useRef<number>(0)
 
   // Combined highlight state: distance keys, angle keys, citation group
   const highlightState = useMemo(() => {
@@ -1546,10 +1545,13 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               const availableW = Math.max(1, fitRect.width - pad * 2)
               const availableH = Math.max(1, fitRect.height - pad * 2)
               const minPpuNeeded = Math.min(availableW / width, availableH / height)
-              const targetPpu = clampPpuWithMin(
-                Math.min(availableW / width, availableH / height),
-                minPpuNeeded
-              )
+              const fitArea = availableW * availableH
+              const boundsArea = width * height
+              const shouldZoomIn = boundsArea <= fitArea * 0.25
+              const desiredPpu = Math.min(availableW / width, availableH / height)
+              const targetPpu = shouldZoomIn
+                ? clampPpu(desiredPpu)
+                : clampPpuWithMin(desiredPpu, minPpuNeeded)
               const targetCx = (bounds.minX + bounds.maxX) / 2
               const targetCy = (bounds.minY + bounds.maxY) / 2
 
@@ -1584,7 +1586,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                   ? Math.max(AUTO_FIT_SWEEP_LERP_MIN, AUTO_FIT_LERP / (1 + sweepSpeed * 0.4))
                   : AUTO_FIT_LERP
 
-              if (!softOk || targetPpu < v.pixelsPerUnit) {
+              if (!softOk || targetPpu < v.pixelsPerUnit || shouldZoomIn) {
                 const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
                 const deltaPpu = Math.max(
                   -AUTO_FIT_MAX_PPU_DELTA,
@@ -1650,26 +1652,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 needsDrawRef.current = true
               }
 
-              if (isCompleteRef.current) {
-                const nowLog = performance.now()
-                if (nowLog - autoFitLogRef.current > 300) {
-                  autoFitLogRef.current = nowLog
-                  const sb = getScreenBounds(bounds, v, cssWidth, cssHeight)
-                  console.log(
-                    [
-                      '[euclid][autofit-post]',
-                      `bounds=(${bounds.minX.toFixed(2)},${bounds.minY.toFixed(2)})..(${bounds.maxX.toFixed(2)},${bounds.maxY.toFixed(2)})`,
-                      `screen=(${sb.minX.toFixed(1)},${sb.minY.toFixed(1)})..(${sb.maxX.toFixed(1)},${sb.maxY.toFixed(1)})`,
-                      `fit=(${fitRect.left.toFixed(1)},${fitRect.top.toFixed(1)})..(${fitRect.right.toFixed(1)},${fitRect.bottom.toFixed(1)})`,
-                      `pad=${pad}`,
-                      `ppu=${v.pixelsPerUnit.toFixed(2)}`,
-                      `center=(${v.center.x.toFixed(2)},${v.center.y.toFixed(2)})`,
-                      `target=(${targetCenterX.toFixed(2)},${targetCenterY.toFixed(2)})`,
-                      `effPpu=${effectivePpu.toFixed(2)}`,
-                    ].join(' ')
-                  )
-                }
-              }
+              // debug logging removed
+
+              // debug logging removed
             }
           }
 
