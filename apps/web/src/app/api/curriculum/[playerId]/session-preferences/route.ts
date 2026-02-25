@@ -37,8 +37,18 @@ export const GET = withAuth(async (_request, { params }) => {
       .where(eq(playerSessionPreferences.playerId, playerId))
       .get()
 
+    const parsed = row
+      ? (JSON.parse(row.config) as PlayerSessionPreferencesConfig & {
+          euclidLanguageStyle?: PlayerSessionPreferencesConfig['kidLanguageStyle']
+        })
+      : null
+
+    if (parsed && !parsed.kidLanguageStyle && parsed.euclidLanguageStyle) {
+      parsed.kidLanguageStyle = parsed.euclidLanguageStyle
+    }
+
     return NextResponse.json({
-      preferences: row ? (JSON.parse(row.config) as PlayerSessionPreferencesConfig) : null,
+      preferences: parsed,
     })
   } catch (error) {
     console.error('Error fetching session preferences:', error)

@@ -35,10 +35,11 @@ async function saveSessionPreferences(
 /**
  * Hook: Fetch persisted session preferences for a student
  */
-export function usePlayerSessionPreferences(playerId: string) {
+export function usePlayerSessionPreferences(playerId: string | null) {
   return useQuery({
-    queryKey: sessionPreferencesKeys.detail(playerId),
-    queryFn: () => fetchSessionPreferences(playerId),
+    queryKey: sessionPreferencesKeys.detail(playerId ?? 'anonymous'),
+    queryFn: () => fetchSessionPreferences(playerId as string),
+    enabled: Boolean(playerId),
     // Preferences don't change often — keep stale longer
     staleTime: 1000 * 60 * 30,
   })

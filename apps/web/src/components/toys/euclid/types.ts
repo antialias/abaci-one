@@ -1,5 +1,6 @@
 import type { FactStore } from './engine/factStore'
 import type { ProofFact } from './engine/facts'
+import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 
 // ── Byrne-inspired palette ─────────────────────────────────────────
 export const BYRNE = {
@@ -228,12 +229,20 @@ export interface PropositionDef {
   /** Tutorial sub-step generator for guided interaction. Each inner array
    *  corresponds to one proposition step; sub-steps break the gesture into
    *  teachable micro-interactions. */
-  getTutorial?: (isTouch: boolean) => TutorialSubStep[][]
+  getTutorial?: (isTouch: boolean, narration?: EuclidNarrationOptions) => TutorialSubStep[][]
   /** Post-completion exploration narration (intro speech + per-point tips) */
   explorationNarration?: ExplorationNarration
+  /** Optional exploration narration variants keyed by language style */
+  explorationNarrationByStyle?: Partial<Record<KidLanguageStyle, ExplorationNarration>>
+  /** Optional step instruction overrides per language style */
+  stepInstructionsByStyle?: Partial<Record<KidLanguageStyle, string[]>>
   /** Derive conclusion facts when the proposition completes. Mutates the
    *  fact store in place and returns newly derived facts. */
   deriveConclusion?: (store: FactStore, state: ConstructionState, atStep: number) => ProofFact[]
+}
+
+export interface EuclidNarrationOptions {
+  languageStyle?: KidLanguageStyle
 }
 
 // ── Exploration narration (post-completion drag phase) ────────────

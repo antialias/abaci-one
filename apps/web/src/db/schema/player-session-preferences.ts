@@ -17,7 +17,11 @@ export interface PlayerSessionPreferencesConfig {
   gameBreakSelectedGame: string | null
   gameBreakDifficultyPreset: string | null
   gameBreakEnabledGames?: string[]
+  /** Optional narration level for kid-facing explanations. */
+  kidLanguageStyle?: KidLanguageStyle
 }
+
+export type KidLanguageStyle = 'simple' | 'standard' | 'classical'
 
 export const DEFAULT_SESSION_PREFERENCES: PlayerSessionPreferencesConfig = {
   durationMinutes: 10,

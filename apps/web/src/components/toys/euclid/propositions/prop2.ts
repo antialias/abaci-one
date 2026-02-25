@@ -3,27 +3,66 @@ import type {
   ConstructionElement,
   ConstructionState,
   TutorialSubStep,
+  EuclidNarrationOptions,
 } from '../types'
 import { BYRNE } from '../types'
 import type { FactStore } from '../engine/factStore'
 import type { EqualityFact } from '../engine/facts'
 import { distancePair } from '../engine/facts'
 import { addFact, queryEquality } from '../engine/factStore'
+import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 
-function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
+const DEFAULT_LANGUAGE_STYLE: KidLanguageStyle = 'standard'
+
+const PROP_2_STEP_INSTRUCTIONS: Record<KidLanguageStyle, string[]> = {
+  simple: [
+    'Draw a line from A to B',
+    'Build an equilateral triangle on AB (I.1)',
+    'Draw a circle with center B through C',
+    'Mark where the circle crosses line DB, past B',
+    'Draw a circle with center D through E',
+    'Mark where the circle crosses line DA, past A',
+  ],
+  standard: [
+    'Join point A to point B',
+    'Construct equilateral triangle on AB (I.1)',
+    'Draw a circle centered at B through C',
+    'Mark where the circle crosses line DB, past B',
+    'Draw a circle centered at D through E',
+    'Mark where the circle crosses line DA, past A',
+  ],
+  classical: [
+    'Join A to B',
+    'Construct the equilateral triangle on AB (I.1)',
+    'Describe the circle with center B and radius BC',
+    'Mark where the circle cuts DB produced beyond B',
+    'Describe the circle with center D and radius DE',
+    'Mark where the circle cuts DA produced beyond A',
+  ],
+}
+
+function getProp2Tutorial(
+  isTouch: boolean,
+  options?: EuclidNarrationOptions
+): TutorialSubStep[][] {
+  const style = options?.languageStyle ?? DEFAULT_LANGUAGE_STYLE
   const tap = isTouch ? 'Tap' : 'Click'
   const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
   const drag = isTouch ? 'Drag' : 'Drag'
   const sweep = isTouch ? 'Sweep your finger' : 'Move your mouse'
+  const byStyle = (copy: Record<KidLanguageStyle, string>) => copy[style] ?? copy.standard
 
   return [
     // ── Step 0: Join A to B ──
     [
       {
         instruction: `${drag} from A to B`,
-        speech: isTouch
-          ? 'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.'
-          : 'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.',
+        speech: byStyle({
+          simple: 'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.',
+          standard:
+            'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.',
+          classical: 'By Postulate 1, join A to B.',
+        }),
         hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
         advanceOn: null,
       },
@@ -33,16 +72,38 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tap} point A`,
         speech: isTouch
-          ? 'Now use Proposition I.1 to construct an equilateral triangle on AB. Tap A to start.'
-          : 'Now use Proposition I.1 to construct an equilateral triangle on AB. Click A to start.',
+          ? byStyle({
+              simple:
+                'Now use Proposition I.1 to build an equilateral triangle on AB. Tap A to start.',
+              standard:
+                'Now use Proposition I.1 to construct an equilateral triangle on AB. Tap A to start.',
+              classical:
+                'Use Proposition I.1 to construct the equilateral triangle on AB. Tap A to begin.',
+            })
+          : byStyle({
+              simple:
+                'Now use Proposition I.1 to build an equilateral triangle on AB. Click A to start.',
+              standard:
+                'Now use Proposition I.1 to construct an equilateral triangle on AB. Click A to start.',
+              classical:
+                'Use Proposition I.1 to construct the equilateral triangle on AB. Click A to begin.',
+            }),
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select', index: 0 },
       },
       {
         instruction: `${tap} point B`,
         speech: isTouch
-          ? 'Tap B to finish. Because the triangle is equilateral, DA equals DB.'
-          : 'Click B to finish. Because the triangle is equilateral, DA equals DB.',
+          ? byStyle({
+              simple: 'Tap B to finish. In an equilateral triangle, DA equals DB.',
+              standard: 'Tap B to finish. Because the triangle is equilateral, DA equals DB.',
+              classical: 'Tap B to finish. Since the triangle is equilateral, DA equals DB.',
+            })
+          : byStyle({
+              simple: 'Click B to finish. In an equilateral triangle, DA equals DB.',
+              standard: 'Click B to finish. Because the triangle is equilateral, DA equals DB.',
+              classical: 'Click B to finish. Since the triangle is equilateral, DA equals DB.',
+            }),
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: null,
       },
@@ -52,24 +113,46 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point B`,
         speech: isTouch
-          ? 'Now describe a circle with center B and radius BC (Postulate 3). Press and hold on B.'
-          : 'Now describe a circle with center B and radius BC (Postulate 3). Click and hold on B.',
+          ? byStyle({
+              simple:
+                'Now draw a circle with center B and radius BC (Postulate 3). Press and hold on B.',
+              standard:
+                'Now describe a circle with center B and radius BC (Postulate 3). Press and hold on B.',
+              classical: 'By Postulate 3, describe the circle with center B and radius BC.',
+            })
+          : byStyle({
+              simple:
+                'Now draw a circle with center B and radius BC (Postulate 3). Click and hold on B.',
+              standard:
+                'Now describe a circle with center B and radius BC (Postulate 3). Click and hold on B.',
+              classical: 'By Postulate 3, describe the circle with center B and radius BC.',
+            }),
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point C`,
-        speech: isTouch
-          ? 'Drag to C to set the radius. Every point on this circle is BC away from B.'
-          : 'Drag to C to set the radius. Every point on this circle is BC away from B.',
+        speech: byStyle({
+          simple: 'Drag to C to set the radius. Every point on this circle is BC away from B.',
+          standard: 'Drag to C to set the radius. Every point on this circle is BC away from B.',
+          classical: 'Drag to C to set the radius. Every point on this circle is at distance BC from B.',
+        }),
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-C' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around`,
         speech: isTouch
-          ? 'Sweep around to draw the circle centered at B.'
-          : 'Move around to draw the circle centered at B.',
+          ? byStyle({
+              simple: 'Sweep around to draw the circle centered at B.',
+              standard: 'Sweep around to draw the circle centered at B.',
+              classical: 'Carry the circle around.',
+            })
+          : byStyle({
+              simple: 'Move around to draw the circle centered at B.',
+              standard: 'Move around to draw the circle centered at B.',
+              classical: 'Carry the circle around.',
+            }),
         hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-C' },
         advanceOn: null,
       },
@@ -78,8 +161,14 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
     [
       {
         instruction: `${tap} where the circle crosses line DB, past B`,
-        speech:
-          'Extend line DB past B (Postulate 2) and mark where it meets the circle. Call it E. Because E is on the circle centered at B, BE equals BC.',
+        speech: byStyle({
+          simple:
+            'Extend line DB past B (Postulate 2) and tap where it meets the circle. Call it E. Then BE equals BC.',
+          standard:
+            'Extend line DB past B (Postulate 2) and mark where it meets the circle. Call it E. Because E is on the circle centered at B, BE equals BC.',
+          classical:
+            'Produce DB beyond B (Postulate 2) and mark its meeting with the circle at E. Since E is on the circle with center B, BE equals BC.',
+        }),
         hint: {
           type: 'candidates',
           ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
@@ -94,24 +183,42 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point D`,
         speech: isTouch
-          ? 'Now describe a circle with center D and radius DE. Press and hold on D.'
-          : 'Now describe a circle with center D and radius DE. Click and hold on D.',
+          ? byStyle({
+              simple: 'Now draw a circle with center D and radius DE. Press and hold on D.',
+              standard: 'Now describe a circle with center D and radius DE. Press and hold on D.',
+              classical: 'Describe the circle with center D and radius DE.',
+            })
+          : byStyle({
+              simple: 'Now draw a circle with center D and radius DE. Click and hold on D.',
+              standard: 'Now describe a circle with center D and radius DE. Click and hold on D.',
+              classical: 'Describe the circle with center D and radius DE.',
+            }),
         hint: { type: 'point', pointId: 'pt-D' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point E`,
-        speech: isTouch
-          ? 'Drag to E to set the radius. Every point on this circle is DE away from D.'
-          : 'Drag to E to set the radius. Every point on this circle is DE away from D.',
+        speech: byStyle({
+          simple: 'Drag to E to set the radius. Every point on this circle is DE away from D.',
+          standard: 'Drag to E to set the radius. Every point on this circle is DE away from D.',
+          classical: 'Drag to E to set the radius. Every point on this circle is at distance DE from D.',
+        }),
         hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-E' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around`,
         speech: isTouch
-          ? 'Sweep all the way around to draw the circle centered at D.'
-          : 'Move all the way around to draw the circle centered at D.',
+          ? byStyle({
+              simple: 'Sweep around to draw the circle centered at D.',
+              standard: 'Sweep all the way around to draw the circle centered at D.',
+              classical: 'Carry the circle around.',
+            })
+          : byStyle({
+              simple: 'Move around to draw the circle centered at D.',
+              standard: 'Move all the way around to draw the circle centered at D.',
+              classical: 'Carry the circle around.',
+            }),
         hint: { type: 'sweep', centerId: 'pt-D', radiusPointId: 'pt-E' },
         advanceOn: null,
       },
@@ -120,8 +227,14 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
     [
       {
         instruction: `${tap} where the big circle crosses line DA, past A`,
-        speech:
-          'Extend line DA past A (Postulate 2) and mark where it meets the circle. Call it F. Then DF equals DE. Since DA equals DB, subtract equals from equals to get AF = BE, and because BE = BC, AF = BC.',
+        speech: byStyle({
+          simple:
+            'Extend line DA past A (Postulate 2) and tap where it meets the circle. Call it F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
+          standard:
+            'Extend line DA past A (Postulate 2) and mark where it meets the circle. Call it F. Then DF equals DE. Since DA equals DB, subtract equals from equals to get AF = BE, and because BE = BC, AF = BC.',
+          classical:
+            'Produce DA beyond A (Postulate 2) and mark its meeting with the circle at F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
+        }),
         hint: {
           type: 'candidates',
           ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
@@ -167,15 +280,15 @@ function deriveProp2Conclusion(
   if (!queryEquality(store, dpAF, dpBC)) {
     allNewFacts.push(
       ...addFact(
-      store,
-      dpAF,
-      dpBC,
-      { type: 'cn1', via: dpBE },
-      'AF = BC',
-      'C.N.1: Things which equal the same thing also equal one another. Since AF = BE and BE = BC, AF = BC.',
-      atStep
+        store,
+        dpAF,
+        dpBC,
+        { type: 'cn1', via: dpBE },
+        'AF = BC',
+        'C.N.1: Things which equal the same thing also equal one another. Since AF = BE and BE = BC, AF = BC.',
+        atStep
+      )
     )
-  )
   }
 
   return allNewFacts
@@ -319,6 +432,7 @@ export const PROP_2: PropositionDef = {
       citation: 'Def.15',
     },
   ],
+  stepInstructionsByStyle: PROP_2_STEP_INSTRUCTIONS,
   getTutorial: getProp2Tutorial,
   explorationNarration: {
     introSpeech:
@@ -337,6 +451,62 @@ export const PROP_2: PropositionDef = {
         speech: 'BC sets the circle radius at B, so the copied length always matches BC.',
       },
     ],
+  },
+  explorationNarrationByStyle: {
+    simple: {
+      introSpeech:
+        'You copied the length using circles and straight lines. Drag A, B, or C to see AF stay equal to BC.',
+      pointTips: [
+        {
+          pointId: 'pt-A',
+          speech: 'AF stays equal to BC because the construction forces it.',
+        },
+        {
+          pointId: 'pt-B',
+          speech: 'DA = DB and BE = BC still hold, so AF = BC.',
+        },
+        {
+          pointId: 'pt-C',
+          speech: 'BC sets the circle radius at B, so the copy always matches BC.',
+        },
+      ],
+    },
+    standard: {
+      introSpeech:
+        'You copied a distance using only postulates, definitions, and common notions. Drag points A, B, or C to see the equalities still follow by logic.',
+      pointTips: [
+        {
+          pointId: 'pt-A',
+          speech: 'AF always equals BC because the circles and subtractions enforce it, not because of measurement.',
+        },
+        {
+          pointId: 'pt-B',
+          speech: 'The construction moves, but DA = DB and BE = BC still hold, so AF = BC.',
+        },
+        {
+          pointId: 'pt-C',
+          speech: 'BC sets the circle radius at B, so the copied length always matches BC.',
+        },
+      ],
+    },
+    classical: {
+      introSpeech:
+        'You placed a line equal to the given line by postulates and common notions. Drag A, B, or C to see the equalities persist.',
+      pointTips: [
+        {
+          pointId: 'pt-A',
+          speech: 'Because DF = DE and DA = DB, the subtraction gives AF = BE.',
+        },
+        {
+          pointId: 'pt-B',
+          speech: 'Since BE = BC, and AF = BE, we have AF = BC.',
+        },
+        {
+          pointId: 'pt-C',
+          speech: 'BC fixes the radius, so the copied length always equals BC.',
+        },
+      ],
+    },
   },
   deriveConclusion: deriveProp2Conclusion,
 }

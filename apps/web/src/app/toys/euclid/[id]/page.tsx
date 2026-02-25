@@ -6,11 +6,14 @@ import { AppNavBar } from '@/components/AppNavBar'
 import { EuclidCanvas } from '@/components/toys/euclid/EuclidCanvas'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { useEuclidProgress, useMarkEuclidComplete } from '@/hooks/useEuclidProgress'
+import { useUserPlayers } from '@/hooks/useUserPlayers'
+import { usePlayerSessionPreferences } from '@/hooks/usePlayerSessionPreferences'
 import {
   getProposition,
   getUnlockedBy,
   getNextProp,
 } from '@/components/toys/euclid/data/propositionGraph'
+import { resolveKidLanguageStyle } from '@/lib/kidLanguageStyle'
 
 export default function EuclidPropPage() {
   const params = useParams()
@@ -24,6 +27,17 @@ export default function EuclidPropPage() {
   // Player state — initialized from URL search param if present
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(
     searchParams.get('player')
+  )
+
+  const { data: players } = useUserPlayers()
+  const selectedPlayer = useMemo(
+    () => (selectedPlayerId ? players?.find((p) => p.id === selectedPlayerId) : null),
+    [players, selectedPlayerId]
+  )
+  const { data: preferences } = usePlayerSessionPreferences(selectedPlayerId)
+  const languageStyle = useMemo(
+    () => resolveKidLanguageStyle(preferences?.kidLanguageStyle, selectedPlayer?.age),
+    [preferences?.kidLanguageStyle, selectedPlayer?.age]
   )
 
   const { data: completedList } = useEuclidProgress(selectedPlayerId)
@@ -140,6 +154,7 @@ export default function EuclidPropPage() {
         <EuclidCanvas
           propositionId={propId}
           onComplete={handleComplete}
+          languageStyle={languageStyle}
           completionMeta={{
             unlocked,
             nextPropId,

@@ -8,6 +8,8 @@ import {
 } from '@/hooks/usePlayerSessionPreferences'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
+import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
+import { KID_LANGUAGE_STYLES, getRecommendedKidLanguageStyle } from '@/lib/kidLanguageStyle'
 
 // ============================================================================
 // Types
@@ -16,6 +18,7 @@ import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferen
 interface SettingsTabProps {
   studentId: string
   studentName: string
+  studentAge?: number | null
   isDark: boolean
   onManageSkills: () => void
 }
@@ -24,7 +27,13 @@ interface SettingsTabProps {
 // SettingsTab
 // ============================================================================
 
-export function SettingsTab({ studentId, studentName, isDark, onManageSkills }: SettingsTabProps) {
+export function SettingsTab({
+  studentId,
+  studentName,
+  studentAge,
+  isDark,
+  onManageSkills,
+}: SettingsTabProps) {
   const { data: preferences, isLoading } = usePlayerSessionPreferences(studentId)
   const saveMutation = useSavePlayerSessionPreferences(studentId)
 
@@ -51,6 +60,22 @@ export function SettingsTab({ studentId, studentName, isDark, onManageSkills }: 
   )
 
   const enabledCount = enabledGames.length
+  const recommendedLanguageStyle = useMemo(
+    () => getRecommendedKidLanguageStyle(studentAge),
+    [studentAge]
+  )
+  const currentLanguageStyle =
+    (preferences?.kidLanguageStyle ?? recommendedLanguageStyle) as KidLanguageStyle
+
+  const handleSelectLanguageStyle = useCallback(
+    (style: KidLanguageStyle) => {
+      saveMutation.mutate({
+        ...(preferences ?? DEFAULT_SESSION_PREFERENCES),
+        kidLanguageStyle: style,
+      })
+    },
+    [preferences, saveMutation]
+  )
 
   return (
     <div data-component="settings-tab">
@@ -282,6 +307,168 @@ export function SettingsTab({ studentId, studentName, isDark, onManageSkills }: 
             })}
           </div>
         )}
+      </section>
+
+      {/* Kid Communication Style */}
+      <section
+        data-section="kid-communication-style"
+        className={css({
+          marginBottom: '2rem',
+        })}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '0.75rem',
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: '1.125rem',
+              fontWeight: '700',
+              color: isDark ? 'gray.100' : 'gray.800',
+            })}
+          >
+            Kid Communication Style
+          </h3>
+          {studentAge != null && (
+            <span
+              className={css({
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '6px',
+              })}
+              style={{
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                color: isDark ? '#93c5fd' : '#2563eb',
+              }}
+            >
+              Recommended for age {studentAge}
+            </span>
+          )}
+        </div>
+
+        <p
+          className={css({
+            fontSize: '0.8125rem',
+            color: isDark ? 'gray.400' : 'gray.600',
+            marginBottom: '1rem',
+            lineHeight: '1.5',
+          })}
+        >
+          Choose how formal the explanations feel for {studentName}. This applies across the app
+          when kid-facing language is available.
+        </p>
+
+        <div
+          data-element="kid-language-grid"
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: { base: '1fr', sm: 'repeat(3, 1fr)' },
+            gap: '0.75rem',
+          })}
+        >
+          {KID_LANGUAGE_STYLES.map((style) => {
+            const isSelected = currentLanguageStyle === style.id
+            const isRecommended = recommendedLanguageStyle === style.id
+            return (
+              <button
+                key={style.id}
+                type="button"
+                data-language-style={style.id}
+                data-selected={isSelected}
+                onClick={() => handleSelectLanguageStyle(style.id)}
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                  padding: '0.85rem 0.9rem',
+                  textAlign: 'left',
+                  borderRadius: '12px',
+                  border: '2px solid',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  _hover: {
+                    transform: 'translateY(-1px)',
+                  },
+                })}
+                style={{
+                  borderColor: isSelected
+                    ? isDark
+                      ? 'rgba(34, 197, 94, 0.5)'
+                      : 'rgba(34, 197, 94, 0.4)'
+                    : isDark
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(0,0,0,0.08)',
+                  backgroundColor: isSelected
+                    ? isDark
+                      ? 'rgba(34, 197, 94, 0.12)'
+                      : 'rgba(34, 197, 94, 0.08)'
+                    : isDark
+                      ? 'rgba(255,255,255,0.03)'
+                      : 'rgba(0,0,0,0.02)',
+                  color: isSelected
+                    ? isDark
+                      ? '#e5e7eb'
+                      : '#14532d'
+                    : isDark
+                      ? '#9ca3af'
+                      : '#374151',
+                }}
+              >
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                  })}
+                >
+                  <span
+                    className={css({
+                      fontSize: '0.875rem',
+                      fontWeight: '700',
+                    })}
+                  >
+                    {style.label}
+                  </span>
+                  {isRecommended && (
+                    <span
+                      className={css({
+                        fontSize: '0.625rem',
+                        fontWeight: '600',
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: '999px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                      })}
+                      style={{
+                        backgroundColor: isDark
+                          ? 'rgba(148, 163, 184, 0.2)'
+                          : 'rgba(148, 163, 184, 0.25)',
+                        color: isDark ? '#e2e8f0' : '#475569',
+                      }}
+                    >
+                      Recommended
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={css({
+                    fontSize: '0.75rem',
+                    lineHeight: '1.4',
+                    color: isSelected ? (isDark ? '#d1fae5' : '#166534') : undefined,
+                  })}
+                >
+                  {style.description}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </section>
 
       {/* Skills Pane */}

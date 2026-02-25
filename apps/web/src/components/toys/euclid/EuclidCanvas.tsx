@@ -102,6 +102,7 @@ import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
 import { useEuclidMusic } from './audio/useEuclidMusic'
 import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
+import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 
 // ── Keyboard shortcuts ──
 
@@ -550,6 +551,8 @@ interface EuclidCanvasProps {
   onComplete?: (propId: number) => void
   /** Hides proof panel for free-form playground mode */
   playgroundMode?: boolean
+  /** Optional narration style (defaults to standard). */
+  languageStyle?: KidLanguageStyle
   completionMeta?: {
     unlocked: number[]
     nextPropId: number | null
@@ -562,6 +565,7 @@ export function EuclidCanvas({
   propositionId = 1,
   onComplete,
   playgroundMode,
+  languageStyle,
   completionMeta,
 }: EuclidCanvasProps) {
   const isMobile = useIsMobile()
@@ -576,8 +580,26 @@ export function EuclidCanvas({
   }
   const proposition =
     (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
+  const stepInstructionOverrides = useMemo(() => {
+    if (!languageStyle) return null
+    return proposition.stepInstructionsByStyle?.[languageStyle] ?? null
+  }, [languageStyle, proposition])
+  const steps = useMemo(() => {
+    if (!stepInstructionOverrides) return proposition.steps
+    return proposition.steps.map((step, idx) => {
+      const instruction = stepInstructionOverrides[idx]
+      return instruction ? { ...step, instruction } : step
+    })
+  }, [proposition.steps, stepInstructionOverrides])
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = proposition.getTutorial ?? (() => [] as TutorialSubStep[][])
+  const explorationNarration = useMemo(() => {
+    if (!languageStyle) return proposition.explorationNarration
+    return (
+      proposition.explorationNarrationByStyle?.[languageStyle] ??
+      proposition.explorationNarration
+    )
+  }, [languageStyle, proposition])
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -592,8 +614,8 @@ export function EuclidCanvas({
   const snappedPointIdRef = useRef<string | null>(null)
   const candidatesRef = useRef<IntersectionCandidate[]>([])
   const pointerCapturedRef = useRef(false)
-  const activeToolRef = useRef<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
-  const expectedActionRef = useRef<ExpectedAction | null>(proposition.steps[0]?.expected ?? null)
+  const activeToolRef = useRef<ActiveTool>(steps[0]?.tool ?? 'compass')
+  const expectedActionRef = useRef<ExpectedAction | null>(steps[0]?.expected ?? null)
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
   const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
@@ -622,11 +644,11 @@ export function EuclidCanvas({
   const correctionActiveRef = useRef(false)
 
   // React state for UI
-  const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
+  const [activeTool, setActiveTool] = useState<ActiveTool>(steps[0]?.tool ?? 'compass')
   const [currentStep, setCurrentStep] = useState(0)
   const currentStepRef = useRef(0)
   const [completedSteps, setCompletedSteps] = useState<boolean[]>(
-    proposition.steps.map(() => false)
+    steps.map(() => false)
   )
   const [isComplete, setIsComplete] = useState(false)
   const [toolToast, setToolToast] = useState<string | null>(null)
@@ -760,7 +782,10 @@ export function EuclidCanvas({
   const prevCompassTagRef = useRef('idle')
   const prevStraightedgeTagRef = useRef('idle')
 
-  const tutorialSubSteps = useMemo(() => getTutorial(isTouch), [isTouch, getTutorial])
+  const tutorialSubSteps = useMemo(
+    () => getTutorial(isTouch, { languageStyle }),
+    [isTouch, getTutorial, languageStyle]
+  )
   const tutorialSubStepsRef = useRef(tutorialSubSteps)
   tutorialSubStepsRef.current = tutorialSubSteps
 
@@ -794,7 +819,6 @@ export function EuclidCanvas({
     },
     {}
   )
-  const explorationNarration = proposition.explorationNarration
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
@@ -909,11 +933,11 @@ export function EuclidCanvas({
 
   // ── Auto-select tool and sync expected action based on current step ──
   useEffect(() => {
-    if (currentStep >= proposition.steps.length) {
+    if (currentStep >= steps.length) {
       expectedActionRef.current = null
       return
     }
-    const stepDef = proposition.steps[currentStep]
+    const stepDef = steps[currentStep]
     expectedActionRef.current = stepDef.expected
 
     if (stepDef.tool === null) return
@@ -962,7 +986,7 @@ export function EuclidCanvas({
     const newFacts = conclusionFn(
       factStoreRef.current,
       constructionRef.current,
-      proposition.steps.length
+      steps.length
     )
     if (newFacts.length > 0) {
       proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
@@ -977,7 +1001,7 @@ export function EuclidCanvas({
       }
       needsDrawRef.current = true
     }
-  }, [isComplete, proposition.id, proposition.steps.length, proposition.superpositionFlash])
+  }, [isComplete, proposition.id, steps.length, proposition.superpositionFlash])
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
@@ -1002,9 +1026,9 @@ export function EuclidCanvas({
   const checkStep = useCallback(
     (element: ConstructionElement, candidate?: IntersectionCandidate) => {
       const step = currentStepRef.current
-      if (step >= proposition.steps.length) return
+      if (step >= steps.length) return
 
-      const stepDef = proposition.steps[step]
+      const stepDef = steps[step]
       const valid = validateStep(stepDef.expected, constructionRef.current, element, candidate)
       if (valid) {
         // Capture snapshot before advancing — state after this step completes
@@ -1025,7 +1049,7 @@ export function EuclidCanvas({
         })
         const nextStep = step + 1
         currentStepRef.current = nextStep
-        if (nextStep >= proposition.steps.length) {
+        if (nextStep >= steps.length) {
           setIsComplete(true)
           // Recompute candidates with segment extension for post-completion play
           if (!extendSegments) {
@@ -1046,7 +1070,7 @@ export function EuclidCanvas({
         setCurrentStep(nextStep)
       }
     },
-    [proposition.steps, extendSegments]
+    [steps, extendSegments]
   )
 
   // ── Commit handlers ──
@@ -1132,8 +1156,8 @@ export function EuclidCanvas({
       // This prevents wrong taps from creating points that derail subsequent steps.
       const step = currentStepRef.current
       let explicitLabel: string | undefined
-      if (step < proposition.steps.length) {
-        const expected = proposition.steps[step].expected
+      if (step < steps.length) {
+        const expected = steps[step].expected
         if (expected.type === 'intersection') {
           explicitLabel = expected.label
           if (expected.ofA != null && expected.ofB != null) {
@@ -1203,7 +1227,7 @@ export function EuclidCanvas({
       musicRef.current?.notifyIntersection(candidate.x, candidate.y)
       musicRef.current?.notifyChange()
     },
-    [checkStep, requestDraw, proposition.steps]
+    [checkStep, requestDraw, steps]
   )
 
   const handleCommitMacro = useCallback(
@@ -1214,7 +1238,7 @@ export function EuclidCanvas({
       const step = currentStepRef.current
 
       // Get outputLabels from the current step's expected action
-      const expected = step < proposition.steps.length ? proposition.steps[step].expected : null
+      const expected = step < steps.length ? steps[step].expected : null
       const outputLabels = expected?.type === 'macro' ? expected.outputLabels : undefined
 
       // Execute the macro — state is computed all at once
@@ -1264,7 +1288,7 @@ export function EuclidCanvas({
       })
       const nextStep = step + 1
       currentStepRef.current = nextStep
-      if (nextStep >= proposition.steps.length) {
+      if (nextStep >= steps.length) {
         setIsComplete(true)
         // Recompute candidates with segment extension for post-completion play
         if (!extendSegments) {
@@ -1287,7 +1311,7 @@ export function EuclidCanvas({
       requestDraw()
       musicRef.current?.notifyChange()
     },
-    [proposition.steps, extendSegments, requestDraw]
+    [steps, extendSegments, requestDraw]
   )
 
   const handleRewindToStep = useCallback(
@@ -1339,8 +1363,8 @@ export function EuclidCanvas({
       prevStraightedgeTagRef.current = 'idle'
 
       // 7. Sync tool/expectedAction refs for the new current step
-      if (targetStep < proposition.steps.length) {
-        const stepDef = proposition.steps[targetStep]
+      if (targetStep < steps.length) {
+        const stepDef = steps[targetStep]
         expectedActionRef.current = stepDef.expected
         if (stepDef.tool !== null) {
           setActiveTool(stepDef.tool)
@@ -1365,7 +1389,7 @@ export function EuclidCanvas({
 
       requestDraw()
     },
-    [proposition.steps, requestDraw]
+    [steps, requestDraw]
   )
 
   // ── Auto-complete: execute each step on 250ms interval ──
@@ -1374,12 +1398,12 @@ export function EuclidCanvas({
 
     const interval = setInterval(() => {
       const step = currentStepRef.current
-      if (step >= proposition.steps.length) {
+      if (step >= steps.length) {
         setAutoCompleting(false)
         return
       }
 
-      const expected = proposition.steps[step].expected
+      const expected = steps[step].expected
 
       if (expected.type === 'compass') {
         handleCommitCircle(expected.centerId, expected.radiusPointId)
@@ -1421,7 +1445,7 @@ export function EuclidCanvas({
     return () => clearInterval(interval)
   }, [
     autoCompleting,
-    proposition.steps,
+    steps,
     handleCommitCircle,
     handleCommitSegment,
     handleMarkIntersection,
@@ -1776,7 +1800,7 @@ export function EuclidCanvas({
           // Resolve ElementSelectors to runtime IDs for filtering
           const curStep = currentStepRef.current
           const curExpected =
-            curStep < proposition.steps.length ? proposition.steps[curStep].expected : null
+            curStep < steps.length ? steps[curStep].expected : null
           let candFilter: { ofA: string; ofB: string; beyondId?: string } | null = null
           if (
             curExpected?.type === 'intersection' &&
@@ -1789,7 +1813,7 @@ export function EuclidCanvas({
               candFilter = { ofA: resolvedA, ofB: resolvedB, beyondId: curExpected.beyondId }
             }
           }
-          const complete = !playgroundMode && curStep >= proposition.steps.length
+          const complete = !playgroundMode && curStep >= steps.length
 
           // Compute hidden elements during macro animation
           const hiddenIds = getHiddenElementIds(macroAnimationRef.current)
@@ -1911,7 +1935,7 @@ export function EuclidCanvas({
           renderProductionSegments(
             ctx,
             drawState,
-            proposition.steps,
+            steps,
             currentStepRef.current,
             viewportRef.current,
             cssWidth,
@@ -2045,8 +2069,8 @@ export function EuclidCanvas({
     const counts = new Map<string, number>()
     const ordinals = new Map<string, number>()
 
-    for (let i = 0; i < proposition.steps.length; i++) {
-      const step = proposition.steps[i]
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]
       if (step.citation) {
         const n = (counts.get(step.citation) ?? 0) + 1
         counts.set(step.citation, n)
@@ -2061,7 +2085,7 @@ export function EuclidCanvas({
         }
       }
     }
-    for (const fact of factsByStep.get(proposition.steps.length) ?? []) {
+    for (const fact of factsByStep.get(steps.length) ?? []) {
       const cd = citationDefFromFact(fact.citation)
       if (cd) {
         const n = (counts.get(cd.key) ?? 0) + 1
@@ -2070,7 +2094,7 @@ export function EuclidCanvas({
       }
     }
     return ordinals
-  }, [proposition.steps, factsByStep])
+  }, [steps, factsByStep])
 
   // Scroll the proof panel to keep current step visible
   const proofScrollRef = useRef<HTMLDivElement | null>(null)
@@ -2487,7 +2511,7 @@ export function EuclidCanvas({
                 </div>
               )
             })()}
-            {proposition.steps.map((step, i) => {
+            {steps.map((step, i) => {
               const isDone = completedSteps[i]
               const isCurrent = i === currentStep && !isComplete
               const isFuture = !isDone && !isCurrent
@@ -2736,7 +2760,7 @@ export function EuclidCanvas({
 
             {/* Conclusion facts (atStep === steps.length) */}
             {(() => {
-              const conclusionFacts = factsByStep.get(proposition.steps.length) ?? []
+              const conclusionFacts = factsByStep.get(steps.length) ?? []
               if (conclusionFacts.length === 0 && !isComplete) return null
               return conclusionFacts.map((fact) => {
                 const factCit = citationDefFromFact(fact.citation)
@@ -2896,7 +2920,7 @@ export function EuclidCanvas({
                   {(() => {
                     // Render angle conclusion facts as interactive hoverable spans
                     const conclusionAngleFacts = (
-                      factsByStep.get(proposition.steps.length) ?? []
+                      factsByStep.get(steps.length) ?? []
                     ).filter(isAngleFact)
                     if (conclusionAngleFacts.length > 0) {
                       return (
@@ -3218,7 +3242,7 @@ export function EuclidCanvas({
           }}
           formatValue={(v) => v.toFixed(2)}
         />
-        {!isComplete && proposition.steps.length > 0 && (
+        {!isComplete && steps.length > 0 && (
           <button
             data-action="auto-complete"
             onClick={() => setAutoCompleting(true)}

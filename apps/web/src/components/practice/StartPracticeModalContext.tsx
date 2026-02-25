@@ -521,6 +521,7 @@ export function StartPracticeModalProvider({
       gameBreakSelectedGame: gameBreakSelectedGame === 'random' ? null : gameBreakSelectedGame,
       gameBreakDifficultyPreset,
       gameBreakEnabledGames,
+      kidLanguageStyle: savedPreferences?.kidLanguageStyle,
     }
     const configJson = JSON.stringify(config)
 
@@ -546,6 +547,7 @@ export function StartPracticeModalProvider({
     gameBreakSelectedGame,
     gameBreakDifficultyPreset,
     gameBreakEnabledGames,
+    savedPreferences?.kidLanguageStyle,
   ])
 
   // Derive partTimeWeights from partWeights for the API call
