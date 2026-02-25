@@ -10,6 +10,7 @@ import type {
   ActiveTool,
   IntersectionCandidate,
   ConstructionElement,
+  ConstructionPoint,
   TutorialHint,
   TutorialSubStep,
   ExpectedAction,
@@ -26,7 +27,11 @@ import {
   getAllSegments,
   getRadius,
 } from './engine/constructionState'
-import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
+import {
+  findNewIntersections,
+  isCandidateBeyondPoint,
+  circleCircleIntersections,
+} from './engine/intersections'
 import { renderConstruction, renderDragInvitation } from './render/renderConstruction'
 import {
   renderToolOverlay,
@@ -45,6 +50,7 @@ import { validateStep } from './propositions/validation'
 import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTTS } from '@/hooks/useTTS'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import {
@@ -154,7 +160,7 @@ function getConstructionBounds(state: ConstructionState): {
   maxY: number
 } | null {
   const points = state.elements.filter(
-    (e): e is { kind: 'point'; x: number; y: number } => e.kind === 'point'
+    (e): e is ConstructionPoint => e.kind === 'point'
   )
   if (points.length === 0) return null
 
@@ -561,6 +567,14 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const propositionRef = useRef(proposition)
   propositionRef.current = proposition
   const musicRef = useRef<UseEuclidMusicReturn | null>(null)
+  const correctionRef = useRef<{
+    active: boolean
+    startTime: number
+    duration: number
+    from: { x: number; y: number }
+    to: { x: number; y: number }
+  } | null>(null)
+  const correctionActiveRef = useRef(false)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(proposition.steps[0]?.tool ?? 'compass')
@@ -581,6 +595,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
   const [isProofOpen, setIsProofOpen] = useState(false)
   const [isToolDockActive, setIsToolDockActive] = useState(false)
+  const [isCorrectionActive, setIsCorrectionActive] = useState(false)
   const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
   const [ghostBaseOpacityVal, setGhostBaseOpacityVal] = useState(getGhostBaseOpacity)
   const [ghostFalloffCoeff, setGhostFalloffCoeff] = useState(getGhostFalloff)
@@ -738,6 +753,15 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
   // ── TTS integration ──
   const { isEnabled: audioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
+  const sayCorrection = useTTS(
+    {
+      say: {
+        en: 'You chose the lower intersection. I will rotate the triangle into the standard orientation so we can explore it together.',
+      },
+      tone: 'tutorial-instruction',
+    },
+    {}
+  )
   const explorationNarration = proposition.explorationNarration
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
