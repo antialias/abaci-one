@@ -24,24 +24,46 @@ export function EuclidCompletionOverlay({
 }: EuclidCompletionOverlayProps) {
   const [visible, setVisible] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), 800)
     return () => clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   if (dismissed) return null
 
   const prop = getProposition(propositionId)
+  const positionStyle = isMobile
+    ? {
+        top: 'calc(var(--app-nav-height) + 12px)',
+        right: 16,
+        bottom: 'auto',
+        left: 'auto',
+        maxWidth: 280,
+      }
+    : {
+        bottom: 16,
+        left: 16,
+        top: 'auto',
+        right: 'auto',
+        maxWidth: 320,
+      }
 
   return (
     <div
       data-component="euclid-completion-banner"
       style={{
         position: 'absolute',
-        bottom: 16,
-        left: 16,
-        maxWidth: 320,
+        ...positionStyle,
         background: '#fff',
         borderRadius: 12,
         padding: '14px 18px',
