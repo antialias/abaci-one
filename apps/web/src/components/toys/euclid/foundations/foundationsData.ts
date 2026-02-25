@@ -352,8 +352,8 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
         { fromId: 'pt-C', toId: 'pt-A' },
       ],
       [
-        { fromId: 'pt-D', toId: 'pt-E' },
         { fromId: 'pt-D', toId: 'pt-F' },
+        { fromId: 'pt-E', toId: 'pt-F' },
       ],
     ],
   },
