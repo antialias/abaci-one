@@ -176,6 +176,7 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const rafRef = useRef<number | null>(null)
+  const lastSizeRef = useRef<{ w: number; h: number } | null>(null)
 
   const state = useMemo(() => initializeGiven(diagram.elements), [diagram.elements])
 
@@ -191,11 +192,18 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
 
     const resize = () => {
       const rect = container.getBoundingClientRect()
+      const width = Math.max(1, Math.round(rect.width))
+      const height = Math.max(1, Math.round(rect.height))
+      const last = lastSizeRef.current
+      if (last && Math.abs(last.w - width) < 1 && Math.abs(last.h - height) < 1) {
+        return
+      }
+      lastSizeRef.current = { w: width, h: height }
       const dpr = window.devicePixelRatio || 1
-      canvas.width = Math.max(1, Math.floor(rect.width * dpr))
-      canvas.height = Math.max(1, Math.floor(rect.height * dpr))
-      canvas.style.width = `${rect.width}px`
-      canvas.style.height = `${rect.height}px`
+      canvas.width = Math.max(1, Math.floor(width * dpr))
+      canvas.height = Math.max(1, Math.floor(height * dpr))
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
 
