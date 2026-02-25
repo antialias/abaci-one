@@ -272,8 +272,11 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       pt('pt-A', -2, 0, 'A'),
       pt('pt-B', 2, 0, 'B'),
       seg('seg-AB', 'pt-A', 'pt-B', red),
+      seg('seg-OA', 'pt-O', 'pt-A', blue),
+      seg('seg-OB', 'pt-O', 'pt-B', blue),
       circle('cir-1', 'pt-O', 'pt-B', blue),
     ],
+    equalSegmentGroups: [[{ fromId: 'pt-O', toId: 'pt-A' }, { fromId: 'pt-O', toId: 'pt-B' }]],
     arcOverlays: [
       {
         centerId: 'pt-O',
