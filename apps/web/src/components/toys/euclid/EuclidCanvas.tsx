@@ -1586,16 +1586,17 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                   ? Math.max(AUTO_FIT_SWEEP_LERP_MIN, AUTO_FIT_LERP / (1 + sweepSpeed * 0.4))
                   : AUTO_FIT_LERP
 
+              let effectivePpu = v.pixelsPerUnit
               if (!softOk || targetPpu < v.pixelsPerUnit || shouldZoomIn) {
                 const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
                 const deltaPpu = Math.max(
                   -AUTO_FIT_MAX_PPU_DELTA,
                   Math.min(AUTO_FIT_MAX_PPU_DELTA, nextPpu - v.pixelsPerUnit)
                 )
-                v.pixelsPerUnit += deltaPpu
+                effectivePpu = v.pixelsPerUnit + deltaPpu
+                v.pixelsPerUnit = effectivePpu
               }
 
-              const effectivePpu = v.pixelsPerUnit
               let targetCenterX =
                 targetCx - (fitRect.centerX - cssWidth / 2) / effectivePpu
               let targetCenterY =
@@ -1637,8 +1638,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 targetCenterY = clamped.centerY
               }
 
-              const maxDx = AUTO_FIT_MAX_CENTER_PX / v.pixelsPerUnit
-              const maxDy = AUTO_FIT_MAX_CENTER_PX / v.pixelsPerUnit
+              const maxPx = shouldZoomIn ? AUTO_FIT_MAX_CENTER_PX * 3 : AUTO_FIT_MAX_CENTER_PX
+              const maxDx = maxPx / v.pixelsPerUnit
+              const maxDy = maxPx / v.pixelsPerUnit
               const dx = (targetCenterX - v.center.x) * sweepLerp
               const dy = (targetCenterY - v.center.y) * sweepLerp
               v.center.x += Math.max(-maxDx, Math.min(maxDx, dx))
@@ -1651,6 +1653,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               ) {
                 needsDrawRef.current = true
               }
+
+              // debug logging removed
 
               // debug logging removed
 
