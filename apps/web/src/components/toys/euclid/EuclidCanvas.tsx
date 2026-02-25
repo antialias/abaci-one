@@ -127,6 +127,23 @@ const AUTO_FIT_POST_SWEEP_MS = 750
 const AUTO_FIT_MAX_CENTER_PX = 2
 const AUTO_FIT_MAX_PPU_DELTA = 1
 
+function getFoundationIdForCitation(citationKey?: string | null) {
+  if (!citationKey) return null
+  const defMatch = citationKey.match(/^Def\.(\d+)$/)
+  if (defMatch) return `def-${defMatch[1]}`
+  const postMatch = citationKey.match(/^Post\.(\d+)$/)
+  if (postMatch) return `post-${postMatch[1]}`
+  const cnMatch = citationKey.match(/^C\.N\.(\d+)$/)
+  if (cnMatch) return `cn-${cnMatch[1]}`
+  return null
+}
+
+function getFoundationHref(citationKey?: string | null) {
+  const id = getFoundationIdForCitation(citationKey)
+  if (!id) return null
+  return `/toys/euclid/foundations?focus=${encodeURIComponent(id)}`
+}
+
 // ── Viewport centering ──
 
 /** Compute a good initial viewport center for a proposition's given elements. */
@@ -2612,6 +2629,7 @@ export function EuclidCanvas({
                           const ord = citationOrdinals.get(`step-${i}`) ?? 1
                           const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
                           const showText = ord === 1
+                          const foundationHref = getFoundationHref(step.citation)
                           return (
                             <div
                               data-element="citation-text"
@@ -2624,15 +2642,33 @@ export function EuclidCanvas({
                                 fontStyle: 'italic',
                               }}
                             >
-                              <span
-                                style={{
-                                  fontWeight: 600,
-                                  fontStyle: 'normal',
-                                  fontSize: proofFont.citation,
-                                }}
-                              >
-                                {label}
-                              </span>
+                              {foundationHref ? (
+                                <a
+                                  href={foundationHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    fontWeight: 600,
+                                    fontStyle: 'normal',
+                                    fontSize: proofFont.citation,
+                                    color: 'inherit',
+                                    textDecoration: 'underline',
+                                    textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                  }}
+                                >
+                                  {label}
+                                </a>
+                              ) : (
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    fontStyle: 'normal',
+                                    fontSize: proofFont.citation,
+                                  }}
+                                >
+                                  {label}
+                                </span>
+                              )}
                               {showText && cit?.text && (
                                 <span style={{ marginLeft: 4 }}>— {cit.text}</span>
                               )}
@@ -2671,6 +2707,7 @@ export function EuclidCanvas({
                                 ? factCit.label
                                 : factCit.key
                               : null
+                            const foundationHref = factCit ? getFoundationHref(factCit.key) : null
                             const showText = ord === 1 && factCit
                             const explanation = fact.justification.replace(
                               /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
@@ -2705,22 +2742,43 @@ export function EuclidCanvas({
                                       fontFamily: 'Georgia, serif',
                                     }}
                                   >
-                                    {fact.statement}
-                                  </span>
-                                  {citLabel && (
-                                    <span
-                                      style={{
-                                        color: '#94a3b8',
-                                        fontFamily: 'Georgia, serif',
-                                        fontSize: proofFont.citation,
-                                        fontWeight: 600,
-                                        marginLeft: 6,
-                                      }}
-                                    >
-                                      [{citLabel}]
-                                    </span>
-                                  )}
-                                </div>
+                                  {fact.statement}
+                                </span>
+                                {citLabel && (
+                                  <>
+                                    {foundationHref ? (
+                                      <a
+                                        href={foundationHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          color: '#94a3b8',
+                                          fontFamily: 'Georgia, serif',
+                                          fontSize: proofFont.citation,
+                                          fontWeight: 600,
+                                          marginLeft: 6,
+                                          textDecoration: 'underline',
+                                          textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                        }}
+                                      >
+                                        [{citLabel}]
+                                      </a>
+                                    ) : (
+                                      <span
+                                        style={{
+                                          color: '#94a3b8',
+                                          fontFamily: 'Georgia, serif',
+                                          fontSize: proofFont.citation,
+                                          fontWeight: 600,
+                                          marginLeft: 6,
+                                        }}
+                                      >
+                                        [{citLabel}]
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                                 {showText && factCit?.text && (
                                   <div
                                     style={{

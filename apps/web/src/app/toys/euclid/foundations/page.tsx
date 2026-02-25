@@ -16,6 +16,7 @@ export default function EuclidFoundationsPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(
     searchParams.get('player')
   )
+  const focusId = searchParams.get('focus')
   const { data: players } = useUserPlayers()
 
   const selectedPlayer = useMemo(
@@ -87,7 +88,7 @@ export default function EuclidFoundationsPage() {
         })}
       >
         <div className={css({ maxWidth: '1100px', margin: '0 auto' })}>
-          <FoundationsDeck languageStyle={languageStyle} />
+          <FoundationsDeck languageStyle={languageStyle} focusId={focusId} />
         </div>
       </main>
     </div>

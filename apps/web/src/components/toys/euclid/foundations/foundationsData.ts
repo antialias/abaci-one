@@ -23,6 +23,14 @@ export interface FoundationDiagram {
     | { type: 'line-draw'; fromId: string; toId: string; durationMs?: number }
     | { type: 'circle-sweep'; centerId: string; radiusPointId: string; durationMs?: number }
     | { type: 'pulse-point'; pointIds: string[]; durationMs?: number }
+    | {
+        type: 'line-draw-then-pulse'
+        fromId: string
+        toId: string
+        pointIds: string[]
+        durationMs?: number
+        drawRatio?: number
+      }
 }
 
 export interface FoundationItem {
@@ -95,16 +103,38 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
     id: 'def-2',
     title: 'Line',
     elements: [pt('pt-A', -2, 0, 'A'), pt('pt-B', 2, 0, 'B'), seg('seg-AB', 'pt-A', 'pt-B')],
+    animation: { type: 'line-draw', fromId: 'pt-A', toId: 'pt-B', durationMs: 2200 },
   },
   'def-3': {
     id: 'def-3',
     title: 'Ends of a Line',
     elements: [pt('pt-A', -2, 0, 'A', red), pt('pt-B', 2, 0, 'B', red), seg('seg-AB', 'pt-A', 'pt-B')],
+    animation: {
+      type: 'line-draw-then-pulse',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      pointIds: ['pt-A', 'pt-B'],
+      durationMs: 2600,
+      drawRatio: 0.55,
+    },
   },
   'def-4': {
     id: 'def-4',
     title: 'Straight Line',
-    elements: [pt('pt-A', -2, 0, 'A'), pt('pt-B', 2, 0, 'B'), seg('seg-AB', 'pt-A', 'pt-B', blue)],
+    elements: [
+      pt('pt-A', -2, 0, 'A'),
+      pt('pt-C', 0, 0, 'C'),
+      pt('pt-B', 2, 0, 'B'),
+      seg('seg-AB', 'pt-A', 'pt-B', blue),
+    ],
+    animation: {
+      type: 'line-draw-then-pulse',
+      fromId: 'pt-A',
+      toId: 'pt-B',
+      pointIds: ['pt-C'],
+      durationMs: 2800,
+      drawRatio: 0.6,
+    },
   },
   'def-5': {
     id: 'def-5',

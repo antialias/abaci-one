@@ -170,6 +170,73 @@ function drawAnimatedOverlay(
       ctx.restore()
     }
   }
+
+  if (animation.type === 'line-draw-then-pulse') {
+    const from = getPoint(state, animation.fromId)
+    const to = getPoint(state, animation.toId)
+    if (!from || !to) return
+    const duration = animation.durationMs ?? 2400
+    const drawRatio = animation.drawRatio ?? 0.6
+    const t = (timeMs % duration) / duration
+    const drawT = Math.min(1, t / drawRatio)
+
+    const x = from.x + (to.x - from.x) * drawT
+    const y = from.y + (to.y - from.y) * drawT
+    const start = worldToScreen2D(
+      from.x,
+      from.y,
+      viewport.center.x,
+      viewport.center.y,
+      viewport.pixelsPerUnit,
+      viewport.pixelsPerUnit,
+      width,
+      height
+    )
+    const end = worldToScreen2D(
+      x,
+      y,
+      viewport.center.x,
+      viewport.center.y,
+      viewport.pixelsPerUnit,
+      viewport.pixelsPerUnit,
+      width,
+      height
+    )
+    ctx.save()
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.stroke()
+    ctx.restore()
+
+    if (t >= drawRatio) {
+      const pulseT = (t - drawRatio) / (1 - drawRatio)
+      const alpha = 0.2 + 0.35 * Math.sin(pulseT * Math.PI * 2)
+      for (const id of animation.pointIds) {
+        const pt = getPoint(state, id)
+        if (!pt) continue
+        const sp = worldToScreen2D(
+          pt.x,
+          pt.y,
+          viewport.center.x,
+          viewport.center.y,
+          viewport.pixelsPerUnit,
+          viewport.pixelsPerUnit,
+          width,
+          height
+        )
+        ctx.save()
+        ctx.strokeStyle = `rgba(16, 185, 129, ${alpha})`
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(sp.x, sp.y, 13 + 5 * Math.max(0, alpha), 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
+  }
 }
 
 function drawArcOverlays(

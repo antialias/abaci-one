@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import { EuclidFoundationCanvas } from './EuclidFoundationCanvas'
 import {
@@ -13,15 +13,24 @@ import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 
 interface FoundationsDeckProps {
   languageStyle: KidLanguageStyle
+  focusId?: string | null
 }
 
-export function FoundationsDeck({ languageStyle }: FoundationsDeckProps) {
+export function FoundationsDeck({ languageStyle, focusId }: FoundationsDeckProps) {
   const [category, setCategory] = useState<FoundationCategory>('definitions')
   const items = useMemo(
     () => FOUNDATION_ITEMS.filter((item) => item.category === category),
     [category]
   )
   const [selectedId, setSelectedId] = useState(items[0]?.id ?? FOUNDATION_ITEMS[0]?.id)
+
+  useEffect(() => {
+    if (!focusId) return
+    const found = FOUNDATION_ITEMS.find((item) => item.id === focusId)
+    if (!found) return
+    setCategory(found.category)
+    setSelectedId(found.id)
+  }, [focusId])
 
   const selected = useMemo(() => {
     const found = FOUNDATION_ITEMS.find((item) => item.id === selectedId)
