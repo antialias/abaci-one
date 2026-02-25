@@ -27,19 +27,36 @@ Check what's actually running using **both** of these methods (run in parallel):
 
 **Match criteria:** HEAD matches prod when the build-info endpoint's `git.commit` equals `git rev-parse HEAD`. If they don't match, proceed to Step 2.
 
-## Step 2: Check CI pipeline
+## Step 2: Check CI pipeline history
 
 ```bash
-# Recent workflow runs
-gh run list --limit 5
-
-# Check if the latest run on main succeeded
-gh run list --branch main --limit 3
+# Get enough history to see the pattern — not just the latest run
+gh run list --branch main --limit 15 --json headSha,displayTitle,status,conclusion,createdAt,databaseId,name
 ```
 
-- **If a build is in progress**: Report "build in progress" with the run URL and estimated time (~13min for full build). Stop and let the user decide whether to wait.
-- **If the latest build succeeded**: Argo CD image updater should pick it up within a few minutes. Check if the image updater has seen it (see Step 4).
-- **If the latest build failed**: Go to Step 3.
+Look at the **full picture** across recent runs:
+
+- **If the latest build succeeded AND prod is close behind**: Argo CD image updater should pick it up within a few minutes. Check Step 4.
+- **If a build is in progress**: Don't stop here. Look at the history of prior `Build and Deploy` runs:
+  - **If prior builds were all succeeding**: The current in-progress build is likely fine. Report status and wait.
+  - **If prior builds were failing**: The current in-progress build will almost certainly fail with the same error. Investigate the failures immediately (go to Step 2a) rather than waiting.
+- **If the latest completed build failed**: Go to Step 2a immediately.
+
+**Key insight:** A single "build in progress" is only reassuring if recent history is clean. Multiple consecutive failures mean the current build is broken and needs fixing now, not after it fails again.
+
+## Step 2a: Diagnose build failures
+
+When `Build and Deploy` runs have been failing, fetch the failure logs:
+
+```bash
+gh run view <run-id> --log-failed
+```
+
+Use the most recently *completed* (failed) `Build and Deploy` run ID. Look for the actual error — TypeScript errors, test failures, Docker build errors, etc.
+
+- **Fix the code error** if it's a straightforward compile/type error. Commit and push the fix.
+- **If fixbot has already opened a PR**: Review it (Step 3).
+- **If the error needs judgment**: Explain what's failing and what fix is needed.
 
 ## Step 3: Check fixbot activity
 
