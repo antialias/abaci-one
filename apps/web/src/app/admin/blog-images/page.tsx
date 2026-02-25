@@ -480,9 +480,17 @@ export default function BlogImagesAdmin() {
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/blog-images/status')
-      if (!res.ok) throw new Error('Failed to fetch status')
+      if (!res.ok) {
+        const msg =
+          res.status === 403
+            ? 'Access denied (403) — is your email in ADMIN_EMAILS?'
+            : `Failed to load status: ${res.status} ${res.statusText}`
+        setError(msg)
+        return
+      }
       const data: StatusResponse = await res.json()
       setStatus(data)
+      setError(null)
 
       // Auto-select first available provider
       if (!selectedValue && data.providers.length > 0) {
@@ -492,7 +500,7 @@ export default function BlogImagesAdmin() {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch blog image status:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load status')
     }
   }, [selectedValue])
 
