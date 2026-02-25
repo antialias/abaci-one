@@ -77,13 +77,15 @@ The modern geometry student learns to verify conclusions they already believe. T
 
 We build math education software, so it's worth being direct about why this history matters to us.
 
-The abacus is often dismissed as a historical curiosity — a calculator that predates calculators. This misses what it actually is. An abacus is not fast; a calculator is faster. What an abacus does that a calculator cannot is make the *structure* of arithmetic visible and physically manipulable.
+The abacus is often dismissed as a historical curiosity — a calculator that predates calculators. This misses what it actually is. Skilled soroban operators routinely outpace electronic calculators in competition: because each bead movement is simultaneously input and computation, there is no separate entry-then-operate step. The abacus is not a slower predecessor to the calculator. It is a different kind of tool entirely.
+
+What a calculator cannot do is make the *structure* of arithmetic visible and physically manipulable. A calculator is a black box: you feed it numbers, it returns answers, and nothing about the process teaches you anything about why the answer is what it is.
 
 When a child uses an abacus to add 27 and 14, they're not retrieving a fact from memory. They're moving beads according to the rules of place value and regrouping, step by step, seeing concretely why carrying works — not just that it does. The ones column fills past ten, beads are exchanged for a single bead in the tens column, and the logic of base-10 becomes something you can touch and reason about, not merely execute.
 
-This is the compass-and-straightedge approach to arithmetic: construct the answer from first principles, making every step of the reasoning explicit and visible, rather than applying a formula to retrieve a result. It is less efficient. It is not meant to be efficient. It is meant to build structural understanding — the kind that transfers, that you can reason from, that doesn't collapse the moment a problem looks slightly different from the ones you practiced.
+This is the compass-and-straightedge approach to arithmetic: construct the answer from first principles, making every step of the reasoning explicit and visible, rather than invoking an opaque procedure. The value is not efficiency — though the efficiency is real — it is structural understanding. The kind that transfers. The kind that doesn't collapse the moment a problem looks slightly different from the ones you practiced.
 
-The pressure to replace it with memorized facts and calculators follows the exact same logic that replaced Euclid with coordinate algebra: faster, more practical, better preparation for modern computation. And it produces the same casualty: students who can execute procedures correctly without understanding why those procedures work.
+The pressure to replace it with memorized facts and calculators follows the exact same logic that replaced Euclid with coordinate algebra: more convenient, easier to grade, better aligned with standardized tests. And it produces the same casualty: students who can execute procedures correctly without understanding why those procedures work.
 
 ## The Cost of Quiet Decisions
 
