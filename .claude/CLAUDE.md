@@ -118,6 +118,22 @@ Fixbot automatically detects CI failures on main, diagnoses them, and opens fix 
 - **Implementation** lives in `.github/fixbot/` (workflows + prompts)
 - **Full reference**: See `.claude/FIXBOT.md` for how to interact with fixbot, the "ensure main is on prod" procedure, and what NOT to do
 
+## Blog System
+
+Posts live at `apps/web/content/blog/{slug}.md` with YAML frontmatter.
+
+**To write a post:** use `/write-blog-post` — it covers the full workflow.
+
+**Quick reference:**
+- Required frontmatter: `title`, `description`, `author`, `publishedAt`, `updatedAt`, `tags`
+- Hero types: `component` (pre-built React), `generated` (AI image), `storybook` (screenshot), `html` (raw HTML file)
+- Hero components: `ten-frames`, `multi-digit`, `subtraction-scaffolding`, `blame-distribution`, `difficulty-plot-mastery`, `readiness-all-variants`, `vision-before-after`, `vision-showcase`
+- Inline embeds: `<!-- EMBED: id "desc" -->` marker in markdown + `content/blog/embeds/{slug}.json` config
+- Embed types: `component` (from inline registry) or `html` (file at `content/blog/embed-html/{slug}/{id}.html`)
+- HTML embed files (especially worksheet previews) are populated via the admin snapshot capture tool, NOT by hand
+- Admin panel: `/admin/blog-images` — manages hero images, prompts, crop, Storybook capture, HTML editors, embed configs
+- Registries: `src/lib/blog/heroComponentRegistry.tsx`, `src/lib/blog/inlineComponentRegistry.tsx`
+
 ## Euclid's Elements Interactive (Toys)
 
 Interactive compass-and-straightedge exploration of Euclid's Elements Book I. Inspired by Byrne's 1847 color-coded edition.
