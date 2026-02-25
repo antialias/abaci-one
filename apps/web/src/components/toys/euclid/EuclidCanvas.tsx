@@ -22,7 +22,9 @@ import {
   addCircle,
   addSegment,
   getPoint,
+  getAllCircles,
   getAllSegments,
+  getRadius,
 } from './engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction, renderDragInvitation } from './render/renderConstruction'
@@ -102,6 +104,12 @@ const SHORTCUTS: ShortcutEntry[] = [
 ]
 
 const MOBILE_STEP_STRIP_HEIGHT = 180
+const AUTO_FIT_PAD_PX = 56
+const AUTO_FIT_PAD_PX_MOBILE = 72
+const AUTO_FIT_LERP = 0.12
+const AUTO_FIT_MIN_PPU = 8
+const AUTO_FIT_MAX_PPU = 240
+const AUTO_FIT_DOCK_GAP = 12
 
 // ── Viewport centering ──
 
@@ -124,6 +132,146 @@ function computeInitialViewport(
   const cy = (minY + maxY) / 2 + 1.5
 
   return { center: { x: cx, y: cy }, pixelsPerUnit: 50 }
+}
+
+function clampPpu(ppu: number): number {
+  return Math.max(AUTO_FIT_MIN_PPU, Math.min(AUTO_FIT_MAX_PPU, ppu))
+}
+
+function getConstructionBounds(state: ConstructionState): {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+} | null {
+  const points = state.elements.filter(
+    (e): e is { kind: 'point'; x: number; y: number } => e.kind === 'point'
+  )
+  if (points.length === 0) return null
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const pt of points) {
+    minX = Math.min(minX, pt.x)
+    minY = Math.min(minY, pt.y)
+    maxX = Math.max(maxX, pt.x)
+    maxY = Math.max(maxY, pt.y)
+  }
+
+  for (const circle of getAllCircles(state)) {
+    const r = getRadius(state, circle.id)
+    const centerPoint = getPoint(state, circle.centerId)
+    if (!centerPoint || r <= 0) continue
+    minX = Math.min(minX, centerPoint.x - r)
+    minY = Math.min(minY, centerPoint.y - r)
+    maxX = Math.max(maxX, centerPoint.x + r)
+    maxY = Math.max(maxY, centerPoint.y + r)
+  }
+
+  return { minX, minY, maxX, maxY }
+}
+
+function expandBounds(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  x: number,
+  y: number,
+  r: number
+) {
+  bounds.minX = Math.min(bounds.minX, x - r)
+  bounds.minY = Math.min(bounds.minY, y - r)
+  bounds.maxX = Math.max(bounds.maxX, x + r)
+  bounds.maxY = Math.max(bounds.maxY, y + r)
+}
+
+function normalizeAngle(angle: number): number {
+  const twoPi = Math.PI * 2
+  let a = angle % twoPi
+  if (a < 0) a += twoPi
+  return a
+}
+
+function isAngleOnArc(start: number, end: number, angle: number, ccw: boolean): boolean {
+  if (ccw) {
+    if (end >= start) return angle >= start && angle <= end
+    return angle >= start || angle <= end
+  }
+  if (end <= start) return angle <= start && angle >= end
+  return angle <= start || angle >= end
+}
+
+function expandBoundsForArc(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  cx: number,
+  cy: number,
+  r: number,
+  startAngle: number,
+  sweep: number
+) {
+  if (r <= 0) return
+  const ccw = sweep >= 0
+  const start = normalizeAngle(startAngle)
+  const end = normalizeAngle(startAngle + sweep)
+
+  const candidates = [start, end, 0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]
+  for (const a of candidates) {
+    const ang = normalizeAngle(a)
+    if (!isAngleOnArc(start, end, ang, ccw)) continue
+    const x = cx + Math.cos(ang) * r
+    const y = cy + Math.sin(ang) * r
+    bounds.minX = Math.min(bounds.minX, x)
+    bounds.minY = Math.min(bounds.minY, y)
+    bounds.maxX = Math.max(bounds.maxX, x)
+    bounds.maxY = Math.max(bounds.maxY, y)
+  }
+}
+
+function getFitRect(
+  cssWidth: number,
+  cssHeight: number,
+  canvasRect: DOMRect | null,
+  dockRect: DOMRect | null,
+  pad: number,
+  dockGap: number
+) {
+  let left = 0
+  let right = cssWidth
+  let top = 0
+  let bottom = cssHeight
+
+  if (canvasRect && dockRect) {
+    const dockLeft = dockRect.left - canvasRect.left
+    const dockRight = dockRect.right - canvasRect.left
+    const dockTop = dockRect.top - canvasRect.top
+    const dockBottom = dockRect.bottom - canvasRect.top
+    const overlapsY = dockBottom > 0 && dockTop < cssHeight
+    const overlapsX = dockRight > 0 && dockLeft < cssWidth
+
+    if (overlapsX && overlapsY) {
+      if (dockLeft >= cssWidth / 2) {
+        right = Math.min(right, dockLeft - dockGap)
+      } else if (dockRight <= cssWidth / 2) {
+        left = Math.max(left, dockRight + dockGap)
+      } else if (dockTop >= cssHeight / 2) {
+        bottom = Math.min(bottom, dockTop - dockGap)
+      } else {
+        top = Math.max(top, dockBottom + dockGap)
+      }
+    }
+  }
+
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+    centerX: (left + right) / 2,
+    centerY: (top + bottom) / 2,
+  }
 }
 
 /**
@@ -259,6 +407,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const toolDockRef = useRef<HTMLDivElement | null>(null)
 
   // Core refs (performance-critical, not React state)
   const viewportRef = useRef<EuclidViewportState>(computeInitialViewport(proposition.givenElements))
@@ -1228,6 +1377,69 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           ctx.save()
           ctx.scale(dpr, dpr)
 
+          const compassPhase = compassPhaseRef.current
+          const allowAutoFit =
+            !panZoomEnabled &&
+            (!pointerCapturedRef.current ||
+              compassPhase.tag === 'radius-set' ||
+              compassPhase.tag === 'sweeping')
+          const pad = isMobile ? AUTO_FIT_PAD_PX_MOBILE : AUTO_FIT_PAD_PX
+          const canvasRect = canvas.getBoundingClientRect()
+          const dockRect = toolDockRef.current?.getBoundingClientRect() ?? null
+          const fitRect = getFitRect(
+            cssWidth,
+            cssHeight,
+            canvasRect,
+            dockRect,
+            pad,
+            AUTO_FIT_DOCK_GAP
+          )
+          if (allowAutoFit) {
+            const bounds = getConstructionBounds(constructionRef.current)
+            if (bounds) {
+              if (compassPhase.tag === 'sweeping') {
+                const centerPoint = getPoint(constructionRef.current, compassPhase.centerId)
+                if (centerPoint && compassPhase.radius > 0) {
+                  expandBoundsForArc(
+                    bounds,
+                    centerPoint.x,
+                    centerPoint.y,
+                    compassPhase.radius,
+                    compassPhase.startAngle,
+                    compassPhase.cumulativeSweep
+                  )
+                }
+              }
+              const width = Math.max(1, bounds.maxX - bounds.minX)
+              const height = Math.max(1, bounds.maxY - bounds.minY)
+              const availableW = Math.max(1, fitRect.width - pad * 2)
+              const availableH = Math.max(1, fitRect.height - pad * 2)
+              const targetPpu = clampPpu(Math.min(availableW / width, availableH / height))
+              const targetCx = (bounds.minX + bounds.maxX) / 2
+              const targetCy = (bounds.minY + bounds.maxY) / 2
+
+              const v = viewportRef.current
+              const prevCx = v.center.x
+              const prevCy = v.center.y
+              const prevPpu = v.pixelsPerUnit
+              const targetCenterX =
+                targetCx - (fitRect.centerX - cssWidth / 2) / targetPpu
+              const targetCenterY =
+                targetCy + (fitRect.centerY - cssHeight / 2) / targetPpu
+              v.center.x += (targetCenterX - v.center.x) * AUTO_FIT_LERP
+              v.center.y += (targetCenterY - v.center.y) * AUTO_FIT_LERP
+              v.pixelsPerUnit += (targetPpu - v.pixelsPerUnit) * AUTO_FIT_LERP
+
+              if (
+                Math.abs(v.center.x - prevCx) > 0.001 ||
+                Math.abs(v.center.y - prevCy) > 0.001 ||
+                Math.abs(v.pixelsPerUnit - prevPpu) > 0.01
+              ) {
+                needsDrawRef.current = true
+              }
+            }
+          }
+
           // Derive candidate filter from current step's expected intersection
           // Resolve ElementSelectors to runtime IDs for filtering
           const curStep = currentStepRef.current
@@ -1536,6 +1748,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
         <div
           data-element="tool-selector"
+          ref={toolDockRef}
           onMouseEnter={() => setIsToolDockActive(true)}
           onMouseLeave={() => setIsToolDockActive(false)}
           onTouchStart={() => setIsToolDockActive(true)}
