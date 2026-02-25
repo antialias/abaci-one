@@ -172,6 +172,51 @@ function drawAnimatedOverlay(
   }
 }
 
+function drawArcOverlays(
+  ctx: CanvasRenderingContext2D,
+  state: ConstructionState,
+  viewport: EuclidViewportState,
+  width: number,
+  height: number,
+  diagram: FoundationDiagram
+) {
+  if (!diagram.arcOverlays || diagram.arcOverlays.length === 0) return
+
+  for (const overlay of diagram.arcOverlays) {
+    const center = getPoint(state, overlay.centerId)
+    const radiusPoint = getPoint(state, overlay.radiusPointId)
+    if (!center || !radiusPoint) continue
+    const radius = Math.hypot(radiusPoint.x - center.x, radiusPoint.y - center.y)
+    if (radius <= 0) continue
+
+    const sc = worldToScreen2D(
+      center.x,
+      center.y,
+      viewport.center.x,
+      viewport.center.y,
+      viewport.pixelsPerUnit,
+      viewport.pixelsPerUnit,
+      width,
+      height
+    )
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.strokeStyle = overlay.color ?? 'rgba(78, 121, 167, 0.8)'
+    ctx.lineWidth = overlay.lineWidth ?? 2
+    ctx.arc(
+      sc.x,
+      sc.y,
+      radius * viewport.pixelsPerUnit,
+      overlay.startAngle,
+      overlay.endAngle,
+      overlay.counterClockwise ?? false
+    )
+    ctx.stroke()
+    ctx.restore()
+  }
+}
+
 interface EuclidFoundationCanvasProps {
   diagram: FoundationDiagram
 }
@@ -261,6 +306,8 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
         false,
         undefined
       )
+
+      drawArcOverlays(ctx, state, viewport, width, height, diagram)
 
       if (diagram.equalSegmentGroups && diagram.equalSegmentGroups.length > 0) {
         renderEqualityMarks(ctx, state, viewport, width, height, factStore)

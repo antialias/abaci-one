@@ -10,6 +10,15 @@ export interface FoundationDiagram {
   equalSegmentGroups?: Array<Array<{ fromId: string; toId: string }>>
   givenAngles?: Array<{ spec: AngleSpec; color: string }>
   equalAngles?: Array<[AngleSpec, AngleSpec]>
+  arcOverlays?: Array<{
+    centerId: string
+    radiusPointId: string
+    startAngle: number
+    endAngle: number
+    color?: string
+    lineWidth?: number
+    counterClockwise?: boolean
+  }>
   animation?:
     | { type: 'line-draw'; fromId: string; toId: string; durationMs?: number }
     | { type: 'circle-sweep'; centerId: string; radiusPointId: string; durationMs?: number }
@@ -265,6 +274,17 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-AB', 'pt-A', 'pt-B', red),
       circle('cir-1', 'pt-O', 'pt-B', blue),
     ],
+    arcOverlays: [
+      {
+        centerId: 'pt-O',
+        radiusPointId: 'pt-B',
+        startAngle: Math.PI,
+        endAngle: 0,
+        counterClockwise: true,
+        color: blue,
+        lineWidth: 2.5,
+      },
+    ],
   },
   'def-19': {
     id: 'def-19',
@@ -324,6 +344,17 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-GH', 'pt-G', 'pt-H', blue),
       seg('seg-HI', 'pt-H', 'pt-I', red),
       seg('seg-IG', 'pt-I', 'pt-G', yellow),
+    ],
+    equalSegmentGroups: [
+      [
+        { fromId: 'pt-A', toId: 'pt-B' },
+        { fromId: 'pt-B', toId: 'pt-C' },
+        { fromId: 'pt-C', toId: 'pt-A' },
+      ],
+      [
+        { fromId: 'pt-D', toId: 'pt-E' },
+        { fromId: 'pt-D', toId: 'pt-F' },
+      ],
     ],
   },
   'def-21': {
@@ -393,6 +424,44 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-NO', 'pt-N', 'pt-O', ink),
       seg('seg-OP', 'pt-O', 'pt-P', ink),
       seg('seg-PM', 'pt-P', 'pt-M', ink),
+    ],
+    equalSegmentGroups: [
+      [
+        { fromId: 'pt-A', toId: 'pt-B' },
+        { fromId: 'pt-B', toId: 'pt-C' },
+        { fromId: 'pt-C', toId: 'pt-D' },
+        { fromId: 'pt-D', toId: 'pt-A' },
+      ],
+      [
+        { fromId: 'pt-I', toId: 'pt-J' },
+        { fromId: 'pt-J', toId: 'pt-K' },
+        { fromId: 'pt-K', toId: 'pt-L' },
+        { fromId: 'pt-L', toId: 'pt-I' },
+      ],
+      [
+        { fromId: 'pt-M', toId: 'pt-N' },
+        { fromId: 'pt-O', toId: 'pt-P' },
+      ],
+      [
+        { fromId: 'pt-N', toId: 'pt-O' },
+        { fromId: 'pt-P', toId: 'pt-M' },
+      ],
+    ],
+    givenAngles: [
+      { spec: { vertex: 'pt-A', ray1End: 'pt-B', ray2End: 'pt-D' }, color: blue },
+      { spec: { vertex: 'pt-B', ray1End: 'pt-C', ray2End: 'pt-A' }, color: blue },
+      { spec: { vertex: 'pt-E', ray1End: 'pt-F', ray2End: 'pt-H' }, color: red },
+      { spec: { vertex: 'pt-F', ray1End: 'pt-G', ray2End: 'pt-E' }, color: red },
+    ],
+    equalAngles: [
+      [
+        { vertex: 'pt-A', ray1End: 'pt-B', ray2End: 'pt-D' },
+        { vertex: 'pt-B', ray1End: 'pt-C', ray2End: 'pt-A' },
+      ],
+      [
+        { vertex: 'pt-E', ray1End: 'pt-F', ray2End: 'pt-H' },
+        { vertex: 'pt-F', ray1End: 'pt-G', ray2End: 'pt-E' },
+      ],
     ],
   },
   'def-23': {
