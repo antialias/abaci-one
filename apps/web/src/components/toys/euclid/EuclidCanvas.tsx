@@ -107,7 +107,7 @@ const MOBILE_STEP_STRIP_HEIGHT = 180
 const AUTO_FIT_PAD_PX = 56
 const AUTO_FIT_PAD_PX_MOBILE = 72
 const AUTO_FIT_LERP = 0.12
-const AUTO_FIT_MIN_PPU = 8
+const AUTO_FIT_MIN_PPU = 0.2
 const AUTO_FIT_MAX_PPU = 240
 const AUTO_FIT_DOCK_GAP = 12
 const AUTO_FIT_SOFT_MARGIN = 24
@@ -141,6 +141,10 @@ function computeInitialViewport(
 
 function clampPpu(ppu: number): number {
   return Math.max(AUTO_FIT_MIN_PPU, Math.min(AUTO_FIT_MAX_PPU, ppu))
+}
+
+function clampPpuWithMin(ppu: number, minPpu: number): number {
+  return Math.max(minPpu, Math.min(AUTO_FIT_MAX_PPU, ppu))
 }
 
 function getConstructionBounds(state: ConstructionState): {
@@ -239,12 +243,13 @@ function getFitRect(
   canvasRect: DOMRect | null,
   dockRect: DOMRect | null,
   pad: number,
-  dockGap: number
+  dockGap: number,
+  reservedBottom: number
 ) {
   let left = 0
   let right = cssWidth
   let top = 0
-  let bottom = cssHeight
+  let bottom = Math.max(0, cssHeight - reservedBottom)
 
   if (canvasRect && dockRect) {
     const dockLeft = dockRect.left - canvasRect.left
@@ -310,6 +315,87 @@ function boundsWithinRect(
     screenBounds.minY >= rect.top + margin &&
     screenBounds.maxY <= rect.bottom - margin
   )
+}
+
+function clampViewportToRect(
+  viewport: EuclidViewportState,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  rect: { left: number; right: number; top: number; bottom: number },
+  margin: number,
+  cssWidth: number,
+  cssHeight: number
+) {
+  const screenBounds = getScreenBounds(bounds, viewport, cssWidth, cssHeight)
+  let shiftX = 0
+  let shiftY = 0
+  if (screenBounds.minX < rect.left + margin) {
+    shiftX = rect.left + margin - screenBounds.minX
+  } else if (screenBounds.maxX > rect.right - margin) {
+    shiftX = rect.right - margin - screenBounds.maxX
+  }
+  if (screenBounds.minY < rect.top + margin) {
+    shiftY = rect.top + margin - screenBounds.minY
+  } else if (screenBounds.maxY > rect.bottom - margin) {
+    shiftY = rect.bottom - margin - screenBounds.maxY
+  }
+
+  if (shiftX !== 0) {
+    viewport.center.x -= shiftX / viewport.pixelsPerUnit
+  }
+  if (shiftY !== 0) {
+    viewport.center.y += shiftY / viewport.pixelsPerUnit
+  }
+}
+
+function getScreenBoundsForViewport(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  centerX: number,
+  centerY: number,
+  ppu: number,
+  cssWidth: number,
+  cssHeight: number
+) {
+  const toScreenX = (x: number) => (x - centerX) * ppu + cssWidth / 2
+  const toScreenY = (y: number) => (centerY - y) * ppu + cssHeight / 2
+  const sx1 = toScreenX(bounds.minX)
+  const sx2 = toScreenX(bounds.maxX)
+  const sy1 = toScreenY(bounds.minY)
+  const sy2 = toScreenY(bounds.maxY)
+  return {
+    minX: Math.min(sx1, sx2),
+    maxX: Math.max(sx1, sx2),
+    minY: Math.min(sy1, sy2),
+    maxY: Math.max(sy1, sy2),
+  }
+}
+
+function clampCenterToRect(
+  centerX: number,
+  centerY: number,
+  ppu: number,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  rect: { left: number; right: number; top: number; bottom: number },
+  margin: number,
+  cssWidth: number,
+  cssHeight: number
+) {
+  const screenBounds = getScreenBoundsForViewport(bounds, centerX, centerY, ppu, cssWidth, cssHeight)
+  let shiftX = 0
+  let shiftY = 0
+  if (screenBounds.minX < rect.left + margin) {
+    shiftX = rect.left + margin - screenBounds.minX
+  } else if (screenBounds.maxX > rect.right - margin) {
+    shiftX = rect.right - margin - screenBounds.maxX
+  }
+  if (screenBounds.minY < rect.top + margin) {
+    shiftY = rect.top + margin - screenBounds.minY
+  } else if (screenBounds.maxY > rect.bottom - margin) {
+    shiftY = rect.bottom - margin - screenBounds.maxY
+  }
+  return {
+    centerX: centerX - shiftX / ppu,
+    centerY: centerY + shiftY / ppu,
+  }
 }
 
 /**
@@ -505,6 +591,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const lastSweepRef = useRef<number>(0)
   const lastSweepTimeRef = useRef<number>(0)
   const lastSweepCenterRef = useRef<string | null>(null)
+  const autoFitLogRef = useRef<number>(0)
 
   // Combined highlight state: distance keys, angle keys, citation group
   const highlightState = useMemo(() => {
@@ -1427,13 +1514,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           const pad = isMobile ? AUTO_FIT_PAD_PX_MOBILE : AUTO_FIT_PAD_PX
           const canvasRect = canvas.getBoundingClientRect()
           const dockRect = toolDockRef.current?.getBoundingClientRect() ?? null
+          const reservedBottom =
+            isMobile && !isProofOpen && isCompleteRef.current ? MOBILE_STEP_STRIP_HEIGHT : 0
           const fitRect = getFitRect(
             cssWidth,
             cssHeight,
             canvasRect,
             dockRect,
             pad,
-            AUTO_FIT_DOCK_GAP
+            AUTO_FIT_DOCK_GAP,
+            reservedBottom
           )
           if (allowAutoFit) {
             const bounds = getConstructionBounds(constructionRef.current)
@@ -1455,7 +1545,11 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               const height = Math.max(1, bounds.maxY - bounds.minY)
               const availableW = Math.max(1, fitRect.width - pad * 2)
               const availableH = Math.max(1, fitRect.height - pad * 2)
-              const targetPpu = clampPpu(Math.min(availableW / width, availableH / height))
+              const minPpuNeeded = Math.min(availableW / width, availableH / height)
+              const targetPpu = clampPpuWithMin(
+                Math.min(availableW / width, availableH / height),
+                minPpuNeeded
+              )
               const targetCx = (bounds.minX + bounds.maxX) / 2
               const targetCy = (bounds.minY + bounds.maxY) / 2
 
@@ -1492,14 +1586,18 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
 
               if (!softOk || targetPpu < v.pixelsPerUnit) {
                 const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
-                const deltaPpu = Math.max(-AUTO_FIT_MAX_PPU_DELTA, Math.min(AUTO_FIT_MAX_PPU_DELTA, nextPpu - v.pixelsPerUnit))
+                const deltaPpu = Math.max(
+                  -AUTO_FIT_MAX_PPU_DELTA,
+                  Math.min(AUTO_FIT_MAX_PPU_DELTA, nextPpu - v.pixelsPerUnit)
+                )
                 v.pixelsPerUnit += deltaPpu
               }
 
+              const effectivePpu = v.pixelsPerUnit
               let targetCenterX =
-                targetCx - (fitRect.centerX - cssWidth / 2) / targetPpu
+                targetCx - (fitRect.centerX - cssWidth / 2) / effectivePpu
               let targetCenterY =
-                targetCy + (fitRect.centerY - cssHeight / 2) / targetPpu
+                targetCy + (fitRect.centerY - cssHeight / 2) / effectivePpu
               if (compassPhase.tag === 'sweeping' || isPostSweep) {
                 const anchorCenterId =
                   compassPhase.tag === 'sweeping'
@@ -1513,10 +1611,30 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                     (centerPoint.x - v.center.x) * v.pixelsPerUnit + cssWidth / 2
                   const anchorScreenY =
                     (v.center.y - centerPoint.y) * v.pixelsPerUnit + cssHeight / 2
-                  targetCenterX = centerPoint.x - (anchorScreenX - cssWidth / 2) / v.pixelsPerUnit
-                  targetCenterY = centerPoint.y + (anchorScreenY - cssHeight / 2) / v.pixelsPerUnit
+                  targetCenterX = centerPoint.x - (anchorScreenX - cssWidth / 2) / effectivePpu
+                  targetCenterY = centerPoint.y + (anchorScreenY - cssHeight / 2) / effectivePpu
                 }
               }
+              if (isCompleteRef.current) {
+                const clamped = clampCenterToRect(
+                  targetCenterX,
+                  targetCenterY,
+                  effectivePpu,
+                  bounds,
+                  {
+                    left: fitRect.left,
+                    right: fitRect.right,
+                    top: fitRect.top,
+                    bottom: fitRect.bottom,
+                  },
+                  pad,
+                  cssWidth,
+                  cssHeight
+                )
+                targetCenterX = clamped.centerX
+                targetCenterY = clamped.centerY
+              }
+
               const maxDx = AUTO_FIT_MAX_CENTER_PX / v.pixelsPerUnit
               const maxDy = AUTO_FIT_MAX_CENTER_PX / v.pixelsPerUnit
               const dx = (targetCenterX - v.center.x) * sweepLerp
@@ -1530,6 +1648,27 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
                 Math.abs(v.pixelsPerUnit - prevPpu) > 0.01
               ) {
                 needsDrawRef.current = true
+              }
+
+              if (isCompleteRef.current) {
+                const nowLog = performance.now()
+                if (nowLog - autoFitLogRef.current > 300) {
+                  autoFitLogRef.current = nowLog
+                  const sb = getScreenBounds(bounds, v, cssWidth, cssHeight)
+                  console.log(
+                    [
+                      '[euclid][autofit-post]',
+                      `bounds=(${bounds.minX.toFixed(2)},${bounds.minY.toFixed(2)})..(${bounds.maxX.toFixed(2)},${bounds.maxY.toFixed(2)})`,
+                      `screen=(${sb.minX.toFixed(1)},${sb.minY.toFixed(1)})..(${sb.maxX.toFixed(1)},${sb.maxY.toFixed(1)})`,
+                      `fit=(${fitRect.left.toFixed(1)},${fitRect.top.toFixed(1)})..(${fitRect.right.toFixed(1)},${fitRect.bottom.toFixed(1)})`,
+                      `pad=${pad}`,
+                      `ppu=${v.pixelsPerUnit.toFixed(2)}`,
+                      `center=(${v.center.x.toFixed(2)},${v.center.y.toFixed(2)})`,
+                      `target=(${targetCenterX.toFixed(2)},${targetCenterY.toFixed(2)})`,
+                      `effPpu=${effectivePpu.toFixed(2)}`,
+                    ].join(' ')
+                  )
+                }
               }
             }
           }
