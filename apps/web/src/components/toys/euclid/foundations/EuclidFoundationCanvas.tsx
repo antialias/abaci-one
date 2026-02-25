@@ -5,7 +5,11 @@ import type { FoundationDiagram } from './foundationsData'
 import type { ConstructionState, EuclidViewportState, CompassPhase, StraightedgePhase } from '../types'
 import { initializeGiven, getAllCircles, getPoint, getRadius } from '../engine/constructionState'
 import { renderConstruction } from '../render/renderConstruction'
+import { renderEqualityMarks } from '../render/renderEqualityMarks'
+import { renderAngleArcs } from '../render/renderAngleArcs'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
+import { createFactStore, addFact } from '../engine/factStore'
+import { distancePair } from '../engine/facts'
 
 const IDLE_COMPASS: CompassPhase = { tag: 'idle' }
 const IDLE_STRAIGHTEDGE: StraightedgePhase = { tag: 'idle' }
@@ -179,6 +183,32 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
   const lastSizeRef = useRef<{ w: number; h: number } | null>(null)
 
   const state = useMemo(() => initializeGiven(diagram.elements), [diagram.elements])
+  const { factStore, angleSpecs, equalAngles } = useMemo(() => {
+    const store = createFactStore()
+    if (diagram.equalSegmentGroups) {
+      for (const group of diagram.equalSegmentGroups) {
+        const base = group[0]
+        if (!base) continue
+        for (let i = 1; i < group.length; i++) {
+          const next = group[i]
+          addFact(
+            store,
+            distancePair(base.fromId, base.toId),
+            distancePair(next.fromId, next.toId),
+            { type: 'given' },
+            `${base.fromId.replace('pt-', '')}${base.toId.replace('pt-', '')} = ${next.fromId.replace('pt-', '')}${next.toId.replace('pt-', '')}`,
+            'Given equality for foundation diagram.',
+            0
+          )
+        }
+      }
+    }
+    return {
+      factStore: store,
+      angleSpecs: diagram.givenAngles ?? [],
+      equalAngles: diagram.equalAngles ?? [],
+    }
+  }, [diagram])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -231,6 +261,14 @@ export function EuclidFoundationCanvas({ diagram }: EuclidFoundationCanvasProps)
         false,
         undefined
       )
+
+      if (diagram.equalSegmentGroups && diagram.equalSegmentGroups.length > 0) {
+        renderEqualityMarks(ctx, state, viewport, width, height, factStore)
+      }
+
+      if (angleSpecs.length > 0) {
+        renderAngleArcs(ctx, state, viewport, width, height, angleSpecs, equalAngles)
+      }
 
       drawAnimatedOverlay(ctx, state, viewport, width, height, diagram, time)
 

@@ -1,4 +1,4 @@
-import type { ConstructionElement } from '../types'
+import type { ConstructionElement, AngleSpec } from '../types'
 import { BYRNE } from '../types'
 
 export type FoundationCategory = 'definitions' | 'postulates' | 'common-notions'
@@ -7,6 +7,9 @@ export interface FoundationDiagram {
   id: string
   title: string
   elements: ConstructionElement[]
+  equalSegmentGroups?: Array<Array<{ fromId: string; toId: string }>>
+  givenAngles?: Array<{ spec: AngleSpec; color: string }>
+  equalAngles?: Array<[AngleSpec, AngleSpec]>
   animation?:
     | { type: 'line-draw'; fromId: string; toId: string; durationMs?: number }
     | { type: 'circle-sweep'; centerId: string; radiusPointId: string; durationMs?: number }
@@ -448,6 +451,16 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-DE', 'pt-D', 'pt-E', red),
       seg('seg-DF', 'pt-D', 'pt-F', red),
     ],
+    givenAngles: [
+      { spec: { vertex: 'pt-A', ray1End: 'pt-B', ray2End: 'pt-C' }, color: blue },
+      { spec: { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' }, color: red },
+    ],
+    equalAngles: [
+      [
+        { vertex: 'pt-A', ray1End: 'pt-B', ray2End: 'pt-C' },
+        { vertex: 'pt-D', ray1End: 'pt-E', ray2End: 'pt-F' },
+      ],
+    ],
   },
   'post-5': {
     id: 'post-5',
@@ -478,6 +491,16 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-CD', 'pt-C', 'pt-D', blue),
       seg('seg-DE', 'pt-D', 'pt-E', blue),
     ],
+    equalSegmentGroups: [
+      [
+        { fromId: 'pt-A', toId: 'pt-B' },
+        { fromId: 'pt-C', toId: 'pt-D' },
+      ],
+      [
+        { fromId: 'pt-B', toId: 'pt-C' },
+        { fromId: 'pt-D', toId: 'pt-E' },
+      ],
+    ],
   },
   'cn-2': {
     id: 'cn-2',
@@ -494,6 +517,16 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-DE', 'pt-D', 'pt-E', blue),
       seg('seg-EF', 'pt-E', 'pt-F', red),
     ],
+    equalSegmentGroups: [
+      [
+        { fromId: 'pt-A', toId: 'pt-B' },
+        { fromId: 'pt-D', toId: 'pt-E' },
+      ],
+      [
+        { fromId: 'pt-B', toId: 'pt-C' },
+        { fromId: 'pt-E', toId: 'pt-F' },
+      ],
+    ],
   },
   'cn-3': {
     id: 'cn-3',
@@ -509,6 +542,16 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       pt('pt-F', 6.5, 0, 'F'),
       seg('seg-DE', 'pt-D', 'pt-E', blue),
       seg('seg-EF', 'pt-E', 'pt-F', red),
+    ],
+    equalSegmentGroups: [
+      [
+        { fromId: 'pt-A', toId: 'pt-B' },
+        { fromId: 'pt-D', toId: 'pt-E' },
+      ],
+      [
+        { fromId: 'pt-B', toId: 'pt-C' },
+        { fromId: 'pt-E', toId: 'pt-F' },
+      ],
     ],
   },
   'cn-4': {
