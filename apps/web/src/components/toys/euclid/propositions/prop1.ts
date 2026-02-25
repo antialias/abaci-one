@@ -13,24 +13,24 @@ function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point A`,
         speech: isTouch
-          ? "Let's draw a circle! Press and hold on point A. That's where your compass goes."
-          : "Let's draw a circle! Click and hold on point A. That's where your compass goes.",
+          ? 'Postulate 3 says we may describe a circle with any center and radius. Press and hold on A to set the center.'
+          : 'Postulate 3 says we may describe a circle with any center and radius. Click and hold on A to set the center.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point B`,
         speech: isTouch
-          ? 'Now drag your finger over to point B. This sets how big the circle will be.'
-          : 'Now drag over to point B while holding the button. This sets the circle size.',
+          ? 'Drag to B to set the radius. Every point on this circle will be exactly AB away from A.'
+          : 'Drag to B to set the radius. Every point on this circle will be exactly AB away from A.',
         hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} all the way around`,
         speech: isTouch
-          ? 'Now sweep your finger all the way around to draw the circle. Just like a real compass!'
-          : 'Now move your mouse all the way around in a big circle. Just like a real compass!',
+          ? 'Sweep all the way around to draw the circle centered at A with radius AB.'
+          : 'Move all the way around to draw the circle centered at A with radius AB.',
         hint: { type: 'sweep', centerId: 'pt-A', radiusPointId: 'pt-B' },
         advanceOn: null,
       },
@@ -40,20 +40,24 @@ function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point B`,
         speech: isTouch
-          ? "Great! Now let's make another circle. This time, press and hold on point B."
-          : "Great! Now let's make another circle. This time, click and hold on point B.",
+          ? 'Now do the same with center B. Press and hold on B.'
+          : 'Now do the same with center B. Click and hold on B.',
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point A`,
-        speech: isTouch ? 'Drag over to point A.' : 'Drag over to point A.',
+        speech: isTouch
+          ? 'Drag to A to make the radius BA. Every point on this circle is BA away from B.'
+          : 'Drag to A to make the radius BA. Every point on this circle is BA away from B.',
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-A' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around again`,
-        speech: isTouch ? 'Sweep all the way around again!' : 'Move all the way around again!',
+        speech: isTouch
+          ? 'Sweep all the way around to draw the second circle.'
+          : 'Move all the way around to draw the second circle.',
         hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-A' },
         advanceOn: null,
       },
@@ -62,7 +66,8 @@ function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
     [
       {
         instruction: `${tap} where the circles cross`,
-        speech: 'See where the two circles cross each other? Tap on that point to mark it.',
+        speech:
+          'Mark a point where the circles meet. That point is on both circles, so it is the same distance from A as from B.',
         hint: { type: 'candidates' },
         advanceOn: null,
       },
@@ -72,8 +77,8 @@ function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${drag} from C to A`,
         speech: isTouch
-          ? "Now we'll draw straight lines to finish the triangle. Put your finger on point C and drag it to point A."
-          : "Now we'll draw straight lines to finish the triangle. Click point C and drag to point A.",
+          ? 'Postulate 1 lets us draw a straight line from any point to any point. Draw the line from C to A.'
+          : 'Postulate 1 lets us draw a straight line from any point to any point. Draw the line from C to A.',
         hint: { type: 'arrow', fromId: 'pt-C', toId: 'pt-A' },
         advanceOn: null,
       },
@@ -83,8 +88,8 @@ function getProp1Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${drag} from C to B`,
         speech: isTouch
-          ? 'One more line! Drag from C to B to complete the triangle.'
-          : 'One more line! Click C and drag to B to finish.',
+          ? 'Draw the line from C to B. Now CA = AB and CB = AB, so the triangle is equilateral.'
+          : 'Draw the line from C to B. Now CA = AB and CB = AB, so the triangle is equilateral.',
         hint: { type: 'arrow', fromId: 'pt-C', toId: 'pt-B' },
         advanceOn: null,
       },
@@ -174,16 +179,16 @@ export const PROP_1: PropositionDef = {
   getTutorial: getProp1Tutorial,
   explorationNarration: {
     introSpeech:
-      'You built an equilateral triangle! Now try dragging point A or B to see that the construction always makes a perfect equilateral triangle, no matter where the points are.',
+      'You built an equilateral triangle by definition: C lies on both circles, so CA = AB and CB = AB. Drag A or B to see the logic still forces those equalities.',
     pointTips: [
       {
         pointId: 'pt-A',
         speech:
-          'See how all three sides stay equal? The triangle changes, but it always stays equilateral.',
+          'No matter where A moves, C stays on both circles, so CA and AB remain equal.',
       },
       {
         pointId: 'pt-B',
-        speech: 'Watch the triangle get bigger and smaller. It always stays equilateral!',
+        speech: 'C stays the same distance from B as A is from B, so the triangle stays equilateral.',
       },
     ],
   },

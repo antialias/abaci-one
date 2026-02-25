@@ -22,8 +22,8 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${drag} from A to B`,
         speech: isTouch
-          ? 'First, we need to connect point A to one end of the given line. Put your finger on A and drag it to B.'
-          : 'First, we need to connect point A to one end of the given line. Click A and drag to B.',
+          ? 'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.'
+          : 'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.',
         hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
         advanceOn: null,
       },
@@ -33,16 +33,16 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tap} point A`,
         speech: isTouch
-          ? "Now we'll build an equilateral triangle on line AB — just like Proposition One! Tap point A first."
-          : "Now we'll build an equilateral triangle on line AB — just like Proposition One! Click point A first.",
+          ? 'Now use Proposition I.1 to construct an equilateral triangle on AB. Tap A to start.'
+          : 'Now use Proposition I.1 to construct an equilateral triangle on AB. Click A to start.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select', index: 0 },
       },
       {
         instruction: `${tap} point B`,
         speech: isTouch
-          ? 'Now tap point B to complete the triangle construction.'
-          : 'Now click point B to complete the triangle construction.',
+          ? 'Tap B to finish. Because the triangle is equilateral, DA equals DB.'
+          : 'Click B to finish. Because the triangle is equilateral, DA equals DB.',
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: null,
       },
@@ -52,22 +52,24 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point B`,
         speech: isTouch
-          ? "Here's the clever part. We need to copy the length of line BC. Press and hold on B."
-          : "Here's the clever part. We need to copy the length of line BC. Click and hold on B.",
+          ? 'Now describe a circle with center B and radius BC (Postulate 3). Press and hold on B.'
+          : 'Now describe a circle with center B and radius BC (Postulate 3). Click and hold on B.',
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point C`,
         speech: isTouch
-          ? 'Drag to C — this makes the circle the same size as the given line.'
-          : 'Drag to C — this makes the circle match the given line.',
+          ? 'Drag to C to set the radius. Every point on this circle is BC away from B.'
+          : 'Drag to C to set the radius. Every point on this circle is BC away from B.',
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-C' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around`,
-        speech: isTouch ? 'Sweep around to draw the circle!' : 'Move around to draw the circle!',
+        speech: isTouch
+          ? 'Sweep around to draw the circle centered at B.'
+          : 'Move around to draw the circle centered at B.',
         hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-C' },
         advanceOn: null,
       },
@@ -77,7 +79,7 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tap} where the circle crosses line DB, past B`,
         speech:
-          'See where the new circle crosses the line from D through B? Tap the point on the far side of B — past B, away from D. That intersection captures the length we want to transfer.',
+          'Extend line DB past B (Postulate 2) and mark where it meets the circle. Call it E. Because E is on the circle centered at B, BE equals BC.',
         hint: {
           type: 'candidates',
           ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
@@ -92,22 +94,24 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tapHold} point D`,
         speech: isTouch
-          ? 'Almost there! Now we use point D as a compass center. Press and hold on D.'
-          : 'Almost there! Now we use point D as a compass center. Click and hold on D.',
+          ? 'Now describe a circle with center D and radius DE. Press and hold on D.'
+          : 'Now describe a circle with center D and radius DE. Click and hold on D.',
         hint: { type: 'point', pointId: 'pt-D' },
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
         instruction: `${drag} to point E`,
-        speech: isTouch ? 'Drag to the point E we just marked.' : 'Drag to point E.',
+        speech: isTouch
+          ? 'Drag to E to set the radius. Every point on this circle is DE away from D.'
+          : 'Drag to E to set the radius. Every point on this circle is DE away from D.',
         hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-E' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
       },
       {
         instruction: `${sweep} around`,
         speech: isTouch
-          ? 'Sweep all the way around. This is the big circle that transfers the distance!'
-          : 'Move all the way around. This big circle transfers the distance!',
+          ? 'Sweep all the way around to draw the circle centered at D.'
+          : 'Move all the way around to draw the circle centered at D.',
         hint: { type: 'sweep', centerId: 'pt-D', radiusPointId: 'pt-E' },
         advanceOn: null,
       },
@@ -117,7 +121,7 @@ function getProp2Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tap} where the big circle crosses line DA, past A`,
         speech:
-          'See where the big circle crosses the line from D through A? Tap the point past A — on the far side from D. The line from A to that new point is exactly the same length as BC!',
+          'Extend line DA past A (Postulate 2) and mark where it meets the circle. Call it F. Then DF equals DE. Since DA equals DB, subtract equals from equals to get AF = BE, and because BE = BC, AF = BC.',
         hint: {
           type: 'candidates',
           ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
@@ -154,7 +158,7 @@ function deriveProp2Conclusion(
       dpBE,
       { type: 'cn3', whole: dpDF, part: dpDA },
       'AF = BE',
-      'C.N.3: DF − DA = DE − DB (since DA = DB)',
+      'C.N.3: If equals are subtracted from equals, the remainders are equal. Since DF = DE and DA = DB, AF = BE.',
       atStep
     )
   )
@@ -163,15 +167,15 @@ function deriveProp2Conclusion(
   if (!queryEquality(store, dpAF, dpBC)) {
     allNewFacts.push(
       ...addFact(
-        store,
-        dpAF,
-        dpBC,
-        { type: 'cn1', via: dpBE },
-        'AF = BC',
-        'C.N.1: AF = BE and BE = BC',
-        atStep
-      )
+      store,
+      dpAF,
+      dpBC,
+      { type: 'cn1', via: dpBE },
+      'AF = BC',
+      'C.N.1: Things which equal the same thing also equal one another. Since AF = BE and BE = BC, AF = BC.',
+      atStep
     )
+  )
   }
 
   return allNewFacts
@@ -318,19 +322,19 @@ export const PROP_2: PropositionDef = {
   getTutorial: getProp2Tutorial,
   explorationNarration: {
     introSpeech:
-      'You copied a distance! Now drag the points around to prove this construction always works, no matter where the points are.',
+      'You copied a distance using only postulates, definitions, and common notions. Drag points A, B, or C to see the equalities still follow by logic.',
     pointTips: [
       {
         pointId: 'pt-A',
-        speech: 'See how AF always equals BC? The copy works wherever A ends up.',
+        speech: 'AF always equals BC because the circles and subtractions enforce it, not because of measurement.',
       },
       {
         pointId: 'pt-B',
-        speech: 'Watch the equilateral triangle and circles all shift. The copy still works!',
+        speech: 'The construction moves, but DA = DB and BE = BC still hold, so AF = BC.',
       },
       {
         pointId: 'pt-C',
-        speech: 'See AF changing to match? It always copies the exact length of BC.',
+        speech: 'BC sets the circle radius at B, so the copied length always matches BC.',
       },
     ],
   },
