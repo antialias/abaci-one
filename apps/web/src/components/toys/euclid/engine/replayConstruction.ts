@@ -121,24 +121,38 @@ export function replayConstruction(
 
       let matchingCandidate: IntersectionCandidate | undefined
       if (resolvedA && resolvedB) {
-        matchingCandidate = candidates.find((c) => {
-          const matches =
+        const matching = candidates.filter(
+          (c) =>
             (c.ofA === resolvedA && c.ofB === resolvedB) ||
             (c.ofA === resolvedB && c.ofB === resolvedA)
-          if (!matches) return false
+        )
+        if (matching.length > 0) {
           if (expected.beyondId) {
-            return isCandidateBeyondPoint(c, expected.beyondId, c.ofA, c.ofB, state)
+            matchingCandidate = matching.find((c) =>
+              isCandidateBeyondPoint(c, expected.beyondId!, c.ofA, c.ofB, state)
+            )
+          } else if (expected.label === 'C') {
+            const pA = state.elements.find(
+              (e) => e.kind === 'point' && e.id === 'pt-A'
+            ) as { x: number; y: number } | undefined
+            const pB = state.elements.find(
+              (e) => e.kind === 'point' && e.id === 'pt-B'
+            ) as { x: number; y: number } | undefined
+            if (pA && pB) {
+              const abx = pB.x - pA.x
+              const aby = pB.y - pA.y
+              const preferUpper = matching.filter(
+                (c) => abx * (c.y - pA.y) - aby * (c.x - pA.x) > 0
+              )
+              matchingCandidate =
+                preferUpper.length > 0 ? preferUpper[0] : matching[0]
+            }
           }
-          // When no beyondId, pick highest-Y candidate (matches convention)
-          const hasHigher = candidates.some(
-            (other) =>
-              other !== c &&
-              ((other.ofA === resolvedA && other.ofB === resolvedB) ||
-                (other.ofA === resolvedB && other.ofB === resolvedA)) &&
-              other.y > c.y
-          )
-          return !hasHigher
-        })
+          if (!matchingCandidate) {
+            // When no beyondId, pick highest-Y candidate for stability.
+            matchingCandidate = matching.reduce((best, c) => (c.y > best.y ? c : best), matching[0])
+          }
+        }
       } else if (expected.ofA == null && expected.ofB == null && candidates.length > 0) {
         // Wildcard intersection (no ofA/ofB specified)
         if (expected.label === 'C') {
@@ -154,8 +168,7 @@ export function replayConstruction(
             const preferUpper = candidates.filter(
               (c) => abx * (c.y - pA.y) - aby * (c.x - pA.x) > 0
             )
-            const pool = preferUpper.length > 0 ? preferUpper : candidates
-            matchingCandidate = pool.reduce((best, c) => (c.y > best.y ? c : best), pool[0])
+            matchingCandidate = preferUpper.length > 0 ? preferUpper[0] : candidates[0]
           }
         }
         if (!matchingCandidate) {

@@ -130,7 +130,8 @@ const MACRO_PROP_1: MacroDef = {
     const aby = pB.y - pA.y
     const preferUpper = intersections.filter((p) => abx * (p.y - pA.y) - aby * (p.x - pA.x) > 0)
     const apexPool = preferUpper.length > 0 ? preferUpper : intersections
-    const apex = apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
+    const apex =
+      apexPool.length > 1 ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0]) : apexPool[0]
     if (!apex) {
       return {
         state: currentState,
