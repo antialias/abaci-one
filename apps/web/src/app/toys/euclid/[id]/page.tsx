@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback, useRef } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { AppNavBar } from '@/components/AppNavBar'
 import { EuclidCanvas } from '@/components/toys/euclid/EuclidCanvas'
-import { EuclidCompletionOverlay } from '@/components/toys/euclid/EuclidCompletionOverlay'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { useEuclidProgress, useMarkEuclidComplete } from '@/hooks/useEuclidProgress'
 import {
@@ -36,26 +35,22 @@ export default function EuclidPropPage() {
 
   const completed = useMemo(() => new Set(completedList ?? []), [completedList])
 
-  // Completion overlay state
-  const [showOverlay, setShowOverlay] = useState(false)
-
   // Stable callback — uses refs to avoid depending on mutation object
   const handleComplete = useCallback(
     (completedPropId: number) => {
       markCompleteRef.current.mutate(completedPropId)
-      setTimeout(() => setShowOverlay(true), 1500)
     },
     [] // stable — reads current values from refs
   )
-
-  // Compute unlocked props and next prop for the overlay
-  const unlocked = useMemo(() => getUnlockedBy(propId, completed), [propId, completed])
 
   const afterCompletion = useMemo(() => {
     const after = new Set(completed)
     after.add(propId)
     return after
   }, [completed, propId])
+
+  // Compute unlocked props and next prop for the overlay
+  const unlocked = useMemo(() => getUnlockedBy(propId, afterCompletion), [propId, afterCompletion])
 
   const nextPropId = useMemo(
     () => unlocked[0] ?? getNextProp(afterCompletion),
@@ -85,15 +80,50 @@ export default function EuclidPropPage() {
       <AppNavBar
         navSlot={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span
+            <button
+              type="button"
+              onClick={() => navigateWithPlayer('/toys/euclid')}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 10px',
+                borderRadius: 10,
+                border: '1px solid rgba(203, 213, 225, 0.8)',
+                background: 'rgba(255, 255, 255, 0.9)',
+                color: 'rgba(55, 65, 81, 1)',
                 fontSize: '14px',
                 fontWeight: 600,
-                color: 'rgba(55, 65, 81, 1)',
+                cursor: 'pointer',
               }}
+              aria-label="Open Euclid map"
             >
               {title}
-            </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  opacity: 0.5,
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+              </span>
+            </button>
             <PlayerPicker selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} />
           </div>
         }
@@ -107,18 +137,16 @@ export default function EuclidPropPage() {
           position: 'relative',
         }}
       >
-        <EuclidCanvas propositionId={propId} onComplete={handleComplete} />
-
-        {/* Completion overlay */}
-        {showOverlay && (
-          <EuclidCompletionOverlay
-            propositionId={propId}
-            unlocked={unlocked}
-            nextPropId={nextPropId}
-            onNavigateNext={(id) => navigateWithPlayer(`/toys/euclid/${id}`)}
-            onNavigateMap={() => navigateWithPlayer('/toys/euclid')}
-          />
-        )}
+        <EuclidCanvas
+          propositionId={propId}
+          onComplete={handleComplete}
+          completionMeta={{
+            unlocked,
+            nextPropId,
+            onNavigateNext: (id) => navigateWithPlayer(`/toys/euclid/${id}`),
+            onNavigateMap: () => navigateWithPlayer('/toys/euclid'),
+          }}
+        />
       </div>
     </div>
   )
