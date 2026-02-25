@@ -326,7 +326,7 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       // equilateral
       pt('pt-A', -4, -1, 'A'),
       pt('pt-B', -2, -1, 'B'),
-      pt('pt-C', -3, 1, 'C'),
+      pt('pt-C', -3, 0.732, 'C'),
       seg('seg-AB', 'pt-A', 'pt-B', blue),
       seg('seg-BC', 'pt-B', 'pt-C', blue),
       seg('seg-CA', 'pt-C', 'pt-A', blue),
