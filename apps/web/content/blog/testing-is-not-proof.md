@@ -53,6 +53,8 @@ So testing won. Not because testing is epistemologically adequate — Dijkstra e
 
 This is a rational industrial policy. It is also a profound epistemic compromise that we rarely call by its name.
 
+<!-- EMBED: testing-coverage-gap "Diagram showing the gap between tested behaviors and all program states" -->
+
 ## Where the Culture Came From
 
 Here's the part that goes beyond economics.

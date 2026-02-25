@@ -1,0 +1,10 @@
+{
+  "euclid-prop-1": {
+    "type": "component",
+    "componentId": "euclid-prop-1"
+  },
+  "ten-frames-inline": {
+    "type": "component",
+    "componentId": "ten-frames-inline"
+  }
+}

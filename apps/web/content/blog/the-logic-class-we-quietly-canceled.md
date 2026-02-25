@@ -39,6 +39,8 @@ Here's what that means concretely. Proposition 1 of Book I — the very first th
 
 That's what a proof is: an argument so tight that the conclusion is forced. Not suggested. Forced.
 
+<!-- EMBED: euclid-prop-1 "Interactive Euclid Book I Proposition 1 construction" -->
+
 Euclid's system runs on this logic for thirteen books. Every proof is a deductive chain. Every step cites a previous result, an axiom, or a definition. You cannot skip steps. You cannot say "clearly." You cannot gesture at a diagram and say "you can see that these are equal." Visual intuition is explicitly not allowed — because visual intuition can be wrong, and because the point was never to convince you of something obvious. It was to build the cognitive infrastructure for recognizing when a conclusion is truly unavoidable.
 
 This is what Lincoln understood, and what millions of educated people understood for two millennia: *Elements* was not about geometry. It was about the architecture of argument.
@@ -86,6 +88,8 @@ When a child uses an abacus to add 27 and 14, they're not retrieving a fact from
 This is the compass-and-straightedge approach to arithmetic: construct the answer from first principles, making every step of the reasoning explicit and visible, rather than invoking an opaque procedure. The value is not efficiency — though the efficiency is real — it is structural understanding. The kind that transfers. The kind that doesn't collapse the moment a problem looks slightly different from the ones you practiced.
 
 The pressure to replace it with memorized facts and calculators follows the exact same logic that replaced Euclid with coordinate algebra: more convenient, easier to grade, better aligned with standardized tests. And it produces the same casualty: students who can execute procedures correctly without understanding why those procedures work.
+
+<!-- EMBED: ten-frames-inline "Addition with progressive scaffolding — plain to ten-frames" -->
 
 ## The Cost of Quiet Decisions
 

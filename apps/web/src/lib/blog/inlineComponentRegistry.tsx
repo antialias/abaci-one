@@ -15,6 +15,40 @@ export interface InlineComponentEntry {
  * loaded when actually rendered.
  */
 export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
+  'euclid-prop-1': {
+    label: 'Euclid I.1 — Equilateral Triangle Construction',
+    description: 'Interactive Euclidean construction of an equilateral triangle (Proposition I.1)',
+    component: dynamic(
+      () =>
+        import('@/components/blog/inlineComponents/EuclidProp1Embed').then(
+          (m) => m.EuclidProp1Embed
+        ),
+      { ssr: false }
+    ),
+  },
+  'ten-frames-inline': {
+    label: 'Ten-Frames Addition (27 + 14)',
+    description: 'Three-panel triptych showing 27+14 from plain format to ten-frame scaffolding',
+    component: dynamic(
+      () =>
+        import('@/components/blog/inlineComponents/TenFramesInline').then(
+          (m) => m.TenFramesInline
+        ),
+      { ssr: false }
+    ),
+  },
+  'testing-coverage-gap': {
+    label: 'Testing vs. Proof — Coverage Gap Diagram',
+    description:
+      'SVG diagram showing the gap between what tests cover and all possible program states',
+    component: dynamic(
+      () =>
+        import('@/components/blog/inlineComponents/TestingCoverageGap').then(
+          (m) => m.TestingCoverageGap
+        ),
+      { ssr: false }
+    ),
+  },
   'evidence-quality-charts': {
     label: 'Evidence Quality Charts',
     description: 'Charts showing evidence weighting by help level and response time',
