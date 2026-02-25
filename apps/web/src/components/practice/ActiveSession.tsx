@@ -117,6 +117,18 @@ export interface BroadcastState {
 
 type SubmitAdvanceDestination = 'next-problem-same-lane' | 'state-handoff'
 type SubmitAdvanceIntent = 'slide-to-next-problem' | 'clear-to-loading'
+type SubmitMode = 'practice' | 'redo'
+type TransitionTarget = {
+  problem: SlotResult['problem']
+  slotIndex: number
+  partIndex: number
+}
+
+type SubmitAdvanceResolution = {
+  destination: SubmitAdvanceDestination
+  intent: SubmitAdvanceIntent
+  transitionTarget: TransitionTarget | null
+}
 
 function getSubmitAdvanceIntent(destination: SubmitAdvanceDestination): SubmitAdvanceIntent {
   return destination === 'next-problem-same-lane' ? 'slide-to-next-problem' : 'clear-to-loading'
@@ -1282,6 +1294,150 @@ export function ActiveSession({
     [setAnswer]
   )
 
+  const resolvePracticeTransitionTarget = useCallback(
+    ({
+      submittedPartIndex,
+      submittedSlotIndex,
+      submittedEpochNumber,
+      activeProblemKeyAtSubmit,
+    }: {
+      submittedPartIndex: number
+      submittedSlotIndex: number
+      submittedEpochNumber: number
+      activeProblemKeyAtSubmit: string | null
+    }): TransitionTarget | null => {
+      // Original lane progression can be derived synchronously from part slots.
+      if (submittedEpochNumber === 0) {
+        const submittedPart = plan.parts[submittedPartIndex]
+        const nextSlot = submittedPart?.slots[submittedSlotIndex + 1]
+        if (submittedPart && nextSlot?.problem) {
+          return {
+            problem: nextSlot.problem,
+            slotIndex: submittedSlotIndex + 1,
+            partIndex: submittedPartIndex,
+          }
+        }
+      }
+
+      // Retry and async mutation paths rely on the latest active problem snapshot.
+      const latestActiveProblem = latestActiveProblemRef.current
+      const latestCurrentProblemInfo = latestCurrentProblemInfoRef.current
+      const hasAdvancedProblem =
+        latestActiveProblem &&
+        activeProblemKeyAtSubmit &&
+        latestActiveProblem.key !== activeProblemKeyAtSubmit
+      const isSamePartAsSubmitted = latestActiveProblem?.partIndex === submittedPartIndex
+      const latestEpochNumber = latestCurrentProblemInfo?.epochNumber ?? submittedEpochNumber
+      const isSameEpochAsSubmitted = latestEpochNumber === submittedEpochNumber
+
+      if (hasAdvancedProblem && isSamePartAsSubmitted && isSameEpochAsSubmitted) {
+        return {
+          problem: latestActiveProblem.problem,
+          slotIndex: latestActiveProblem.slotIndex,
+          partIndex: latestActiveProblem.partIndex,
+        }
+      }
+
+      return null
+    },
+    [plan.parts]
+  )
+
+  const enactSubmitAdvance = useCallback(
+    ({ intent, transitionTarget }: SubmitAdvanceResolution) => {
+      if (intent === 'slide-to-next-problem' && transitionTarget) {
+        needsCenteringOffsetRef.current = true
+        startTransition(
+          transitionTarget.problem,
+          transitionTarget.slotIndex,
+          transitionTarget.partIndex
+        )
+        return
+      }
+      clearToLoading()
+    },
+    [startTransition, clearToLoading]
+  )
+
+  const resolveSubmitAdvanceWithWait = useCallback(
+    ({
+      mode,
+      submittedPartIndex,
+      submittedSlotIndex,
+      submittedEpochNumber,
+      activeProblemKeyAtSubmit,
+      redoReturnTarget,
+    }: {
+      mode: SubmitMode
+      submittedPartIndex: number
+      submittedSlotIndex: number
+      submittedEpochNumber: number
+      activeProblemKeyAtSubmit: string | null
+      redoReturnTarget: TransitionTarget | null
+    }): Promise<SubmitAdvanceResolution> =>
+      new Promise((resolve) => {
+        if (mode === 'redo') {
+          const destination: SubmitAdvanceDestination = redoReturnTarget
+            ? 'next-problem-same-lane'
+            : 'state-handoff'
+          resolve({
+            destination,
+            intent: getSubmitAdvanceIntent(destination),
+            transitionTarget: redoReturnTarget,
+          })
+          return
+        }
+
+        const maxWaitMs = 500
+        const pollIntervalMs = 50
+        const startedAt = Date.now()
+
+        const settle = () => {
+          const transitionTarget = resolvePracticeTransitionTarget({
+            submittedPartIndex,
+            submittedSlotIndex,
+            submittedEpochNumber,
+            activeProblemKeyAtSubmit,
+          })
+          const destination: SubmitAdvanceDestination = transitionTarget
+            ? 'next-problem-same-lane'
+            : 'state-handoff'
+          resolve({
+            destination,
+            intent: getSubmitAdvanceIntent(destination),
+            transitionTarget,
+          })
+        }
+
+        const tick = () => {
+          const transitionTarget = resolvePracticeTransitionTarget({
+            submittedPartIndex,
+            submittedSlotIndex,
+            submittedEpochNumber,
+            activeProblemKeyAtSubmit,
+          })
+          if (transitionTarget) {
+            resolve({
+              destination: 'next-problem-same-lane',
+              intent: 'slide-to-next-problem',
+              transitionTarget,
+            })
+            return
+          }
+
+          if (Date.now() - startedAt >= maxWaitMs) {
+            settle()
+            return
+          }
+
+          setTimeout(tick, pollIntervalMs)
+        }
+
+        tick()
+      }),
+    [resolvePracticeTransitionTarget]
+  )
+
   // Handle submit
   const handleSubmit = useCallback(async () => {
     // Allow submitting from inputting, awaitingDisambiguation, or helpMode
@@ -1355,8 +1511,10 @@ export function ActiveSession({
         phase.phase === 'helpMode' || assistance.machineState.context.helpedTermIndices.size > 0,
     }
 
-    // Handle redo mode differently - use onRecordRedo which doesn't advance session position
-    if (isInRedoMode && redoState) {
+    const submitMode: SubmitMode = isInRedoMode && redoState ? 'redo' : 'practice'
+
+    // Handle redo recording separately - return path is still unified through submit advance resolver.
+    if (submitMode === 'redo' && redoState) {
       // Only record if the original problem was incorrect
       // (Original correct = pure practice, no recording to avoid unintentional penalty)
       if (!redoOriginalWasCorrect && onRecordRedo) {
@@ -1382,89 +1540,30 @@ export function ActiveSession({
         })
       }
 
-      // Complete submit with result
-      completeSubmit(isCorrect ? 'correct' : 'incorrect')
-
-      // After redo feedback, exit redo mode and return to original position
-      setTimeout(
-        () => {
-          if (redoReturnTarget) {
-            needsCenteringOffsetRef.current = true
-            startTransition(
-              redoReturnTarget.problem,
-              redoReturnTarget.slotIndex,
-              redoReturnTarget.partIndex
-            )
-          } else {
-            clearToLoading()
-          }
-          onRedoComplete?.()
-        },
-        isCorrect ? 500 : 1500
-      )
-      return
+      // Continue into unified completion path below.
+    } else {
+      await onAnswer(result)
     }
-
-    await onAnswer(result)
 
     // Complete submit with result
     completeSubmit(isCorrect ? 'correct' : 'incorrect')
 
-    // Wait for feedback display then advance
+    // Wait for feedback display then resolve-and-enact the shared advance policy.
     setTimeout(
       () => {
-        let transitionTarget:
-          | {
-              problem: SlotResult['problem']
-              slotIndex: number
-              partIndex: number
-            }
-          | null = null
-
-        const nextSlotIndex = currentSlotIndex + 1
-        const nextSlot = currentPart?.slots[nextSlotIndex]
-        if (nextSlot?.problem && currentPart) {
-          transitionTarget = {
-            problem: nextSlot.problem,
-            slotIndex: nextSlotIndex,
-            partIndex: currentPartIndex,
+        void resolveSubmitAdvanceWithWait({
+          mode: submitMode,
+          submittedPartIndex: attemptData.partIndex,
+          submittedSlotIndex: attemptData.slotIndex,
+          submittedEpochNumber: epochNumberAtSubmit,
+          activeProblemKeyAtSubmit,
+          redoReturnTarget,
+        }).then((resolution) => {
+          enactSubmitAdvance(resolution)
+          if (submitMode === 'redo') {
+            onRedoComplete?.()
           }
-        } else {
-          const latestActiveProblem = latestActiveProblemRef.current
-          const latestCurrentProblemInfo = latestCurrentProblemInfoRef.current
-          const hasAdvancedProblem =
-            latestActiveProblem &&
-            activeProblemKeyAtSubmit &&
-            latestActiveProblem.key !== activeProblemKeyAtSubmit
-          const isSamePartAsSubmitted =
-            latestActiveProblem?.partIndex === attemptData.partIndex
-          const latestEpochNumber = latestCurrentProblemInfo?.epochNumber ?? epochNumberAtSubmit
-          const isSameEpochAsSubmitted = latestEpochNumber === epochNumberAtSubmit
-
-          if (hasAdvancedProblem && isSamePartAsSubmitted && isSameEpochAsSubmitted) {
-            transitionTarget = {
-              problem: latestActiveProblem.problem,
-              slotIndex: latestActiveProblem.slotIndex,
-              partIndex: latestActiveProblem.partIndex,
-            }
-          }
-        }
-
-        const advanceDestination: SubmitAdvanceDestination = transitionTarget
-          ? 'next-problem-same-lane'
-          : 'state-handoff'
-        const advanceIntent = getSubmitAdvanceIntent(advanceDestination)
-
-        if (advanceIntent === 'slide-to-next-problem' && transitionTarget) {
-          // Has next problem - animate transition
-          // Mark that we need to apply centering offset in useLayoutEffect
-          needsCenteringOffsetRef.current = true
-
-          startTransition(transitionTarget.problem, transitionTarget.slotIndex)
-        } else {
-          // End of part or incorrect - clear to loading
-          clearToLoading()
-        }
+        })
       },
       isCorrect ? 500 : 1500
     )
@@ -1475,14 +1574,11 @@ export function ActiveSession({
     student.id,
     plan.id,
     plan.currentPartIndex,
-    currentSlotIndex,
-    currentPart,
-    currentPartIndex,
     activeProblem?.key,
     startSubmit,
     completeSubmit,
-    startTransition,
-    clearToLoading,
+    enactSubmitAdvance,
+    resolveSubmitAdvanceWithWait,
     currentProblemInfo?.epochNumber,
     isDockedByUser,
     prefixSums,
