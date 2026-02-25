@@ -30,6 +30,8 @@ interface UseDragGivenPointsOptions {
   pointerCapturedRef: React.MutableRefObject<boolean>
   candidatesRef: React.MutableRefObject<IntersectionCandidate[]>
   postCompletionActionsRef: React.MutableRefObject<PostCompletionAction[]>
+  /** When true, drag interactions are suppressed (e.g. during correction animations) */
+  interactionLockedRef?: React.MutableRefObject<boolean>
   /** Called when construction state is replaced during drag */
   onReplayResult: (result: ReplayResult) => void
   /** Called once when a drag gesture starts on a given point */
@@ -54,6 +56,7 @@ export function useDragGivenPoints({
   pointerCapturedRef,
   candidatesRef,
   postCompletionActionsRef,
+  interactionLockedRef,
   onReplayResult,
   onDragStart,
 }: UseDragGivenPointsOptions): void {
@@ -144,6 +147,7 @@ export function useDragGivenPoints({
     function handlePointerDown(e: PointerEvent) {
       if (!isCompleteRef.current || activeToolRef.current !== 'move') return
       if (pointerCapturedRef.current) return
+      if (interactionLockedRef?.current) return
 
       const prop = propositionRef.current
       if (!prop.draggablePointIds || prop.draggablePointIds.length === 0) return
