@@ -44,6 +44,7 @@ import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import {
   createFactStore,
   addFact,
@@ -99,6 +100,8 @@ const SHORTCUTS: ShortcutEntry[] = [
   { key: 'V', description: 'Toggle pan/zoom (disabled by default)' },
   { key: '?', description: 'Toggle this help' },
 ]
+
+const MOBILE_STEP_STRIP_HEIGHT = 180
 
 // ── Viewport centering ──
 
@@ -248,6 +251,7 @@ interface EuclidCanvasProps {
 }
 
 export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: EuclidCanvasProps) {
+  const isMobile = useIsMobile()
   const proposition =
     (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
@@ -302,6 +306,8 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   ])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
+  const [isProofOpen, setIsProofOpen] = useState(false)
+  const [isToolDockActive, setIsToolDockActive] = useState(false)
   const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
   const [ghostBaseOpacityVal, setGhostBaseOpacityVal] = useState(getGhostBaseOpacity)
   const [ghostFalloffCoeff, setGhostFalloffCoeff] = useState(getGhostFalloff)
@@ -386,6 +392,16 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     // proofFacts in deps so we re-derive after conclusion facts are added
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete, proofFacts, proposition.resultSegments])
+
+  const showProofPanel = !isMobile || isProofOpen
+
+  const togglePanZoom = useCallback(() => {
+    setPanZoomEnabled((prev) => {
+      const next = !prev
+      panZoomDisabledRef.current = !next
+      return next
+    })
+  }, [])
 
   // Sync isCompleteRef with state + record completion time
   if (isComplete && !isCompleteRef.current) {
@@ -588,17 +604,13 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         setShowShortcuts((prev) => !prev)
       } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
-        setPanZoomEnabled((prev) => {
-          const next = !prev
-          panZoomDisabledRef.current = !next
-          return next
-        })
+        togglePanZoom()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [togglePanZoom])
 
   // ── Step validation (uses ref to avoid stale closures) ──
 
@@ -1453,7 +1465,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         width: '100%',
         height: '100%',
         display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
       {/* ── Left pane: Canvas ── */}
@@ -1463,6 +1477,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         style={{
           flex: 1,
           minWidth: 0,
+          minHeight: 0,
           position: 'relative',
           touchAction: 'none',
         }}
@@ -1470,6 +1485,15 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         <canvas
           ref={canvasRef}
           data-element="euclid-canvas"
+          onPointerDown={() => {
+            if (isMobile) setIsToolDockActive(true)
+          }}
+          onPointerUp={() => {
+            if (isMobile) setIsToolDockActive(false)
+          }}
+          onPointerCancel={() => {
+            if (isMobile) setIsToolDockActive(false)
+          }}
           style={{
             display: 'block',
             width: '100%',
@@ -1489,7 +1513,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             data-element="tool-toast"
             style={{
               position: 'absolute',
-              bottom: 84,
+              bottom: isMobile
+                ? `calc(${MOBILE_STEP_STRIP_HEIGHT + 56}px + env(safe-area-inset-bottom))`
+                : 84,
               left: '50%',
               transform: 'translateX(-50%)',
               padding: '5px 14px',
@@ -1508,17 +1534,39 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           </div>
         )}
 
-        {/* Tool selector */}
         <div
           data-element="tool-selector"
+          onMouseEnter={() => setIsToolDockActive(true)}
+          onMouseLeave={() => setIsToolDockActive(false)}
+          onTouchStart={() => setIsToolDockActive(true)}
+          onTouchEnd={() => setIsToolDockActive(false)}
+          onPointerDown={() => setIsToolDockActive(true)}
+          onPointerUp={() => setIsToolDockActive(false)}
           style={{
             position: 'absolute',
-            bottom: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
             display: 'flex',
             gap: 8,
             zIndex: 10,
+            ...(isMobile
+              ? {
+                  top: '50%',
+                  right: 12,
+                  transform: 'translateY(-50%)',
+                  flexDirection: 'column',
+                  padding: '8px 6px',
+                  borderRadius: 16,
+                  background: 'rgba(255, 255, 255, 0.85)',
+                  border: '1px solid rgba(203, 213, 225, 0.8)',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                  backdropFilter: 'blur(8px)',
+                  opacity: isToolDockActive ? 1 : 0.55,
+                  transition: 'opacity 0.2s ease',
+                }
+              : {
+                  bottom: 24,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                }),
           }}
         >
           {isComplete && proposition.draggablePointIds && (
@@ -1543,6 +1591,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               }
               active={activeTool === 'move'}
               onClick={() => setActiveTool('move')}
+              size={isMobile ? 44 : 48}
             />
           )}
           <ToolButton
@@ -1566,6 +1615,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             }
             active={activeTool === 'compass'}
             onClick={() => setActiveTool('compass')}
+            size={isMobile ? 44 : 48}
           />
           <ToolButton
             label="Straightedge"
@@ -1585,7 +1635,33 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             }
             active={activeTool === 'straightedge'}
             onClick={() => setActiveTool('straightedge')}
+            size={isMobile ? 44 : 48}
           />
+          {isMobile && (
+            <ToolButton
+              label="Pan"
+              icon={
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M7 11V5a2 2 0 0 1 4 0v6" />
+                  <path d="M11 10V4a2 2 0 0 1 4 0v6" />
+                  <path d="M15 11V7a2 2 0 0 1 4 0v4" />
+                  <path d="M7 11v5a6 6 0 0 0 6 6h2a6 6 0 0 0 6-6" />
+                </svg>
+              }
+            active={panZoomEnabled}
+            onClick={togglePanZoom}
+            size={isMobile ? 44 : 48}
+          />
+          )}
         </div>
 
         {/* Audio toggle */}
@@ -1636,22 +1712,23 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           </svg>
         </button>
 
-        {/* Subtle "?" hint */}
-        <div
-          data-element="shortcuts-hint"
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: 12,
-            fontSize: 12,
-            color: 'rgba(100, 116, 139, 0.5)',
-            pointerEvents: 'none',
-            userSelect: 'none',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          Press ? for shortcuts
-        </div>
+        {!isMobile && (
+          <div
+            data-element="shortcuts-hint"
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              fontSize: 12,
+              color: 'rgba(100, 116, 139, 0.5)',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              fontFamily: 'system-ui, sans-serif',
+            }}
+          >
+            Press ? for shortcuts
+          </div>
+        )}
 
         {/* Keyboard shortcuts overlay */}
         {showShortcuts && (
@@ -1663,18 +1740,123 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         )}
       </div>
 
+      {isMobile && !playgroundMode && !isProofOpen && (
+        <div
+          data-element="mobile-step-strip"
+          style={{
+            height: MOBILE_STEP_STRIP_HEIGHT,
+            padding: '10px 14px',
+            paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+            boxSizing: 'border-box',
+            background: 'rgba(250, 250, 240, 0.98)',
+            borderTop: '1px solid rgba(203, 213, 225, 0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#64748b',
+                fontFamily: 'system-ui, sans-serif',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Step {Math.min(currentStep + 1, proposition.steps.length)} of{' '}
+              {proposition.steps.length}
+            </div>
+            <button
+              data-action="open-proof-panel"
+              onClick={() => setIsProofOpen(true)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: '1px solid rgba(203, 213, 225, 0.9)',
+                background: 'rgba(255, 255, 255, 0.9)',
+                color: '#334155',
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: 'system-ui, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              All steps
+            </button>
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#1e293b',
+              fontFamily: 'Georgia, serif',
+              lineHeight: 1.4,
+            }}
+          >
+            {proposition.steps[currentStep]?.instruction}
+          </div>
+          {currentInstruction && (
+            <div
+              style={{
+                fontSize: 12,
+                color: '#4E79A7',
+                fontFamily: 'system-ui, sans-serif',
+                lineHeight: 1.4,
+              }}
+            >
+              {currentInstruction}
+            </div>
+          )}
+          {isComplete && completionResult && (
+            <div
+              style={{
+                fontSize: 12,
+                color: completionResult.status === 'proven' ? '#0f766e' : '#b91c1c',
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                lineHeight: 1.3,
+              }}
+            >
+              {completionResult.status === 'proven'
+                ? `Conclusion: ${
+                    completionResult.statement ?? 'Construction complete'
+                  } • ${proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}`
+                : `Proof incomplete: ${completionResult.statement ?? ''}`}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Right pane: Proof panel (hidden in playground mode) ── */}
-      {!playgroundMode && (
+      {!playgroundMode && showProofPanel && (
         <div
           data-element="proof-panel"
           style={{
-            width: 340,
-            minWidth: 340,
+            width: isMobile ? '100%' : 340,
+            minWidth: isMobile ? 0 : 340,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
             background: '#FAFAF0',
-            borderLeft: '1px solid rgba(203, 213, 225, 0.6)',
+            borderLeft: isMobile ? undefined : '1px solid rgba(203, 213, 225, 0.6)',
+            borderTop: isMobile ? '1px solid rgba(203, 213, 225, 0.6)' : undefined,
+            position: isMobile ? 'absolute' : 'relative',
+            left: isMobile ? 0 : undefined,
+            right: isMobile ? 0 : undefined,
+            bottom: isMobile ? 0 : undefined,
+            height: isMobile ? '60dvh' : '100%',
+            boxShadow: isMobile ? '0 -10px 24px rgba(0,0,0,0.12)' : undefined,
+            zIndex: isMobile ? 20 : undefined,
           }}
         >
           {/* Proposition header */}
@@ -1683,33 +1865,72 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             style={{
               padding: '16px 20px 12px',
               borderBottom: '1px solid rgba(203, 213, 225, 0.5)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 12,
             }}
           >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#94a3b8',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: 4,
-                fontFamily: 'system-ui, sans-serif',
-              }}
-            >
-              Proposition I.{proposition.id}
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: 4,
+                  fontFamily: 'system-ui, sans-serif',
+                }}
+              >
+                Proposition I.{proposition.id}
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: '#334155',
+                  fontFamily: 'Georgia, serif',
+                  fontStyle: 'italic',
+                  lineHeight: 1.4,
+                }}
+              >
+                {proposition.title}
+              </div>
             </div>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#334155',
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-                lineHeight: 1.4,
-              }}
-            >
-              {proposition.title}
-            </div>
+            {isMobile && (
+              <button
+                data-action="close-proof-panel"
+                onClick={() => setIsProofOpen(false)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: '1px solid rgba(203, 213, 225, 0.8)',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+                aria-label="Close steps panel"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Scrollable steps + proof chain */}
@@ -2351,17 +2572,18 @@ interface ToolButtonProps {
   icon: React.ReactNode
   active: boolean
   onClick: () => void
+  size?: number
 }
 
-function ToolButton({ label, icon, active, onClick }: ToolButtonProps) {
+function ToolButton({ label, icon, active, onClick, size = 48 }: ToolButtonProps) {
   return (
     <button
       data-action={`tool-${label.toLowerCase()}`}
       onClick={onClick}
       title={label}
       style={{
-        width: 48,
-        height: 48,
+        width: size,
+        height: size,
         borderRadius: 12,
         border: active ? '2px solid #4E79A7' : '1px solid rgba(203, 213, 225, 0.8)',
         background: active ? 'rgba(78, 121, 167, 0.1)' : 'rgba(255, 255, 255, 0.9)',
