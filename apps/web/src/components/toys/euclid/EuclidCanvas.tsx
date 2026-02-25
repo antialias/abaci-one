@@ -46,6 +46,7 @@ import { useEuclidTouch } from './interaction/useEuclidTouch'
 import { useToolInteraction } from './interaction/useToolInteraction'
 import { useDragGivenPoints } from './interaction/useDragGivenPoints'
 import type { PostCompletionAction, ReplayResult } from './engine/replayConstruction'
+import { replayConstruction } from './engine/replayConstruction'
 import { validateStep } from './propositions/validation'
 import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
@@ -114,7 +115,10 @@ const AUTO_FIT_PAD_PX = 56
 const AUTO_FIT_PAD_PX_MOBILE = 72
 const AUTO_FIT_LERP = 0.12
 const AUTO_FIT_MIN_PPU = 0.2
-const AUTO_FIT_MAX_PPU = 240
+const AUTO_FIT_MIN_WORLD_HIT_RADIUS = 0.08
+const AUTO_FIT_MAX_PPU_HEADROOM = 1.1
+const AUTO_FIT_HIT_RADIUS_TOUCH = 44
+const AUTO_FIT_HIT_RADIUS_MOUSE = 30
 const AUTO_FIT_DOCK_GAP = 12
 const AUTO_FIT_SOFT_MARGIN = 24
 const AUTO_FIT_SWEEP_LERP_MIN = 0.03
@@ -145,12 +149,17 @@ function computeInitialViewport(
   return { center: { x: cx, y: cy }, pixelsPerUnit: 50 }
 }
 
-function clampPpu(ppu: number): number {
-  return Math.max(AUTO_FIT_MIN_PPU, Math.min(AUTO_FIT_MAX_PPU, ppu))
+function getAutoFitMaxPpu(isTouch: boolean): number {
+  const hitRadius = isTouch ? AUTO_FIT_HIT_RADIUS_TOUCH : AUTO_FIT_HIT_RADIUS_MOUSE
+  return (hitRadius / AUTO_FIT_MIN_WORLD_HIT_RADIUS) * AUTO_FIT_MAX_PPU_HEADROOM
 }
 
-function clampPpuWithMin(ppu: number, minPpu: number): number {
-  return Math.max(minPpu, Math.min(AUTO_FIT_MAX_PPU, ppu))
+function clampPpu(ppu: number, maxPpu: number): number {
+  return Math.max(AUTO_FIT_MIN_PPU, Math.min(maxPpu, ppu))
+}
+
+function clampPpuWithMin(ppu: number, minPpu: number, maxPpu: number): number {
+  return Math.max(minPpu, Math.min(maxPpu, ppu))
 }
 
 function getConstructionBounds(state: ConstructionState): {
@@ -404,6 +413,21 @@ function clampCenterToRect(
   }
 }
 
+function rotatePoint(
+  pt: { x: number; y: number },
+  center: { x: number; y: number },
+  angle: number
+) {
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  const dx = pt.x - center.x
+  const dy = pt.y - center.y
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
+  }
+}
+
 /**
  * Compute a citation group key for cross-type hover highlighting.
  * Facts from the same derivation (e.g., same I.4 triangle congruence) share a group.
@@ -571,8 +595,9 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     active: boolean
     startTime: number
     duration: number
-    from: { x: number; y: number }
-    to: { x: number; y: number }
+    center: { x: number; y: number }
+    fromAngle: number
+    toAngle: number
   } | null>(null)
   const correctionActiveRef = useRef(false)
 
@@ -700,18 +725,6 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   }
   isCompleteRef.current = isComplete
 
-  // ── Fire onComplete callback and auto-select Move tool ──
-  useEffect(() => {
-    if (isComplete) {
-      if (onComplete) onComplete(propositionId)
-      if (proposition.draggablePointIds) {
-        setActiveTool('move')
-        activeToolRef.current = 'move'
-      }
-      musicRef.current?.notifyCompletion()
-    }
-  }, [isComplete, onComplete, propositionId, proposition.draggablePointIds])
-
   // ── Input mode detection ──
   const [isTouch, setIsTouch] = useState(true) // mobile-first default
   useEffect(() => {
@@ -756,7 +769,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
   const sayCorrection = useTTS(
     {
       say: {
-        en: 'You chose the lower intersection. I will rotate the triangle into the standard orientation so we can explore it together.',
+        en: 'You chose the lower intersection. I will rotate the triangle 180 degrees around the midpoint of AB. That swaps A and B, so I will relabel them so A stays on the left. Then we can explore.',
       },
       tone: 'tutorial-instruction',
     },
@@ -772,6 +785,59 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
         : 'Construction complete!',
     explorationNarration,
   })
+
+  // ── Fire onComplete callback and auto-select Move tool ──
+  useEffect(() => {
+    if (isComplete) {
+      if (onComplete) onComplete(propositionId)
+      if (proposition.id === 1) {
+        const state = constructionRef.current
+        const pA = getPoint(state, 'pt-A')
+        const pB = getPoint(state, 'pt-B')
+        const pC = getPoint(state, 'pt-C')
+        if (pA && pB && pC) {
+          const abx = pB.x - pA.x
+          const aby = pB.y - pA.y
+          const cross = abx * (pC.y - pA.y) - aby * (pC.x - pA.x)
+          if (cross < 0) {
+            const center = { x: (pA.x + pB.x) / 2, y: (pA.y + pB.y) / 2 }
+            if (center) {
+              correctionRef.current = {
+                active: true,
+                startTime: performance.now(),
+                duration: 900,
+                center,
+                fromAngle: 0,
+                toAngle: Math.PI,
+              }
+              correctionActiveRef.current = true
+              setIsCorrectionActive(true)
+              if (audioEnabled) {
+                sayCorrection()
+              }
+            }
+          }
+        }
+      }
+      if (proposition.draggablePointIds && !correctionActiveRef.current) {
+        setActiveTool('move')
+        activeToolRef.current = 'move'
+      }
+      musicRef.current?.notifyCompletion()
+    } else {
+      correctionRef.current = null
+      correctionActiveRef.current = false
+      setIsCorrectionActive(false)
+    }
+  }, [
+    isComplete,
+    onComplete,
+    propositionId,
+    proposition.draggablePointIds,
+    proposition.id,
+    audioEnabled,
+    sayCorrection,
+  ])
 
   const requestDraw = useCallback(() => {
     needsDrawRef.current = true
@@ -1404,6 +1470,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
     pointerCapturedRef,
     candidatesRef,
     postCompletionActionsRef,
+    interactionLockedRef: correctionActiveRef,
     onReplayResult: handleDragReplay,
     onDragStart: handleDragStart,
   })
@@ -1573,9 +1640,10 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
               const boundsArea = width * height
               const shouldZoomIn = boundsArea <= fitArea * 0.25
               const desiredPpu = Math.min(availableW / width, availableH / height)
+              const maxPpu = getAutoFitMaxPpu(isTouch)
               const targetPpu = shouldZoomIn
-                ? clampPpu(desiredPpu)
-                : clampPpuWithMin(desiredPpu, minPpuNeeded)
+                ? clampPpu(desiredPpu, maxPpu)
+                : clampPpuWithMin(desiredPpu, minPpuNeeded, maxPpu)
               const targetCx = (bounds.minX + bounds.maxX) / 2
               const targetCy = (bounds.minY + bounds.maxY) / 2
 
@@ -1720,9 +1788,90 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             }
           }
 
+          let drawState = constructionRef.current
+          if (correctionRef.current?.active) {
+            const correction = correctionRef.current
+            const t = Math.min(1, (performance.now() - correction.startTime) / correction.duration)
+            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+            const angle =
+              correction.fromAngle + (correction.toAngle - correction.fromAngle) * ease
+            const state = constructionRef.current
+            const updatedElements = state.elements.map((el) => {
+              if (el.kind === 'point') {
+                const rotated = rotatePoint({ x: el.x, y: el.y }, correction.center, angle)
+                return { ...el, x: rotated.x, y: rotated.y }
+              }
+              return el
+            })
+            drawState = { ...state, elements: updatedElements }
+            needsDrawRef.current = true
+            if (t >= 1) {
+              correctionRef.current = null
+              correctionActiveRef.current = false
+              setIsCorrectionActive(false)
+              if (propositionRef.current.draggablePointIds) {
+                setActiveTool('move')
+                activeToolRef.current = 'move'
+              }
+              // Apply final rotation to actual state via replay for geometric consistency
+              const prop = propositionRef.current
+              const center = correction.center
+              const angleFinal = correction.toAngle
+              let givenElements: ConstructionElement[]
+              if (prop.computeGivenElements) {
+                const positions = new Map<string, { x: number; y: number }>()
+                for (const el of constructionRef.current.elements) {
+                  if (el.kind === 'point' && el.origin === 'given') {
+                    const rotated = rotatePoint({ x: el.x, y: el.y }, center, angleFinal)
+                    positions.set(el.id, rotated)
+                  }
+                }
+                const pA = positions.get('pt-A')
+                const pB = positions.get('pt-B')
+                if (pA && pB && pA.x > pB.x) {
+                  positions.set('pt-A', pB)
+                  positions.set('pt-B', pA)
+                }
+                givenElements = prop.computeGivenElements(positions)
+              } else {
+                const rotatedPoints = new Map<string, { x: number; y: number }>()
+                for (const el of prop.givenElements) {
+                  if (el.kind === 'point') {
+                    const rotated = rotatePoint({ x: el.x, y: el.y }, center, angleFinal)
+                    rotatedPoints.set(el.id, rotated)
+                  }
+                }
+                const pA = rotatedPoints.get('pt-A')
+                const pB = rotatedPoints.get('pt-B')
+                if (pA && pB && pA.x > pB.x) {
+                  rotatedPoints.set('pt-A', pB)
+                  rotatedPoints.set('pt-B', pA)
+                }
+                givenElements = prop.givenElements.map((el) => {
+                  if (el.kind === 'point' && rotatedPoints.has(el.id)) {
+                    const rotated = rotatedPoints.get(el.id)!
+                    return { ...el, x: rotated.x, y: rotated.y }
+                  }
+                  return el
+                })
+              }
+              const result = replayConstruction(
+                givenElements,
+                prop.steps,
+                prop,
+                postCompletionActionsRef.current
+              )
+              constructionRef.current = result.state
+              factStoreRef.current = result.factStore
+              candidatesRef.current = result.candidates
+              proofFactsRef.current = result.proofFacts
+              setProofFacts(result.proofFacts)
+            }
+          }
+
           renderConstruction(
             ctx,
-            constructionRef.current,
+            drawState,
             viewportRef.current,
             cssWidth,
             cssHeight,
@@ -1731,7 +1880,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             pointerWorldRef.current,
             snappedPointIdRef.current,
             candidatesRef.current,
-            constructionRef.current.nextColorIndex,
+            drawState.nextColorIndex,
             candFilter,
             complete,
             complete ? proposition.resultSegments : undefined,
@@ -1743,7 +1892,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           // Render Post.2 production segments (extensions to intersection points)
           renderProductionSegments(
             ctx,
-            constructionRef.current,
+            drawState,
             proposition.steps,
             currentStepRef.current,
             viewportRef.current,
@@ -1771,7 +1920,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           if (factStoreRef.current.facts.length > 0) {
             renderEqualityMarks(
               ctx,
-              constructionRef.current,
+              drawState,
               viewportRef.current,
               cssWidth,
               cssHeight,
@@ -1785,7 +1934,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           if (proposition.givenAngles) {
             renderAngleArcs(
               ctx,
-              constructionRef.current,
+              drawState,
               viewportRef.current,
               cssWidth,
               cssHeight,
@@ -1799,7 +1948,7 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
             const stillAnimating = renderSuperpositionFlash(
               ctx,
               superpositionFlashRef.current,
-              constructionRef.current,
+              drawState,
               viewportRef.current,
               cssWidth,
               cssHeight,
@@ -2122,6 +2271,28 @@ export function EuclidCanvas({ propositionId = 1, onComplete, playgroundMode }: 
           />
           )}
         </div>
+
+        {isCorrectionActive && (
+          <div
+            data-element="orientation-correction"
+            style={{
+              position: 'absolute',
+              bottom: isMobile ? MOBILE_STEP_STRIP_HEIGHT + 16 : 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: 'rgba(15, 23, 42, 0.82)',
+              color: '#f8fafc',
+              fontSize: 12,
+              fontFamily: 'system-ui, sans-serif',
+              boxShadow: '0 6px 18px rgba(0,0,0,0.2)',
+              zIndex: 11,
+            }}
+          >
+            Rotating to the standard orientation…
+          </div>
+        )}
 
         {/* Audio toggle */}
         <button
