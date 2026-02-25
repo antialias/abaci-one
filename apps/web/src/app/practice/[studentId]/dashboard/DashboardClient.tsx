@@ -3614,7 +3614,7 @@ export function DashboardClient({
                 <SettingsTab
                   studentId={studentId}
                   studentName={player.name}
-                  studentAge={selectedStudent.age ?? null}
+                  studentAge={player.age ?? null}
                   isDark={isDark}
                   onManageSkills={() => setShowManualSkillModal(true)}
                 />
