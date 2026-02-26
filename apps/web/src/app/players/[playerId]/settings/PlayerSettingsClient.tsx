@@ -10,7 +10,7 @@ import { useUpdatePlayer, useUserPlayers } from '@/hooks/useUserPlayers'
 import { SettingsTab } from '@/app/practice/[studentId]/dashboard/SettingsTab'
 import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
 import { usePlayerCurriculumQuery, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
-import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import { formatBirthdayForInput, getAgeFromBirthday, normalizeBirthdayInput } from '@/lib/playerAge'
 
 const AVAILABLE_COLORS = [
   '#FFB3BA',
@@ -44,15 +44,15 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
   const [localName, setLocalName] = useState('')
-  const [localAge, setLocalAge] = useState('')
-  const [ageError, setAgeError] = useState<string | null>(null)
+  const [localBirthday, setLocalBirthday] = useState('')
+  const [birthdayError, setBirthdayError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!player) return
     setLocalName(player.name)
-    setLocalAge(player.age != null ? String(player.age) : '')
-    setAgeError(null)
-  }, [player?.id, player?.name, player?.age])
+    setLocalBirthday(formatBirthdayForInput(player.birthday))
+    setBirthdayError(null)
+  }, [player?.id, player?.name, player?.birthday])
 
   const handleSaveName = useCallback(() => {
     if (!player) return
@@ -61,27 +61,25 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
     updatePlayer.mutate({ id: player.id, updates: { name: trimmed } })
   }, [localName, player, updatePlayer])
 
-  const handleSaveAge = useCallback(() => {
+  const handleSaveBirthday = useCallback(() => {
     if (!player) return
-    const trimmed = localAge.trim()
-    if (!trimmed) {
-      if (player.age !== null) {
-        updatePlayer.mutate({ id: player.id, updates: { age: null } })
+    const normalized = normalizeBirthdayInput(localBirthday)
+    if (!localBirthday.trim()) {
+      if (player.birthday !== null) {
+        updatePlayer.mutate({ id: player.id, updates: { birthday: null } })
       }
-      setAgeError(null)
+      setBirthdayError(null)
       return
     }
-    const parsed = Number(trimmed)
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 120) {
-      setLocalAge(player.age != null ? String(player.age) : '')
-      setAgeError('Please enter a number between 1 and 120.')
+    if (!normalized) {
+      setLocalBirthday(formatBirthdayForInput(player.birthday))
+      setBirthdayError('Enter a valid birthday (YYYY-MM-DD, not in the future).')
       return
     }
-    const nextAge = Math.floor(parsed)
-    if (nextAge === player.age) return
-    setAgeError(null)
-    updatePlayer.mutate({ id: player.id, updates: { age: nextAge } })
-  }, [localAge, player, updatePlayer])
+    if (normalized === player.birthday) return
+    setBirthdayError(null)
+    updatePlayer.mutate({ id: player.id, updates: { birthday: normalized } })
+  }, [localBirthday, player, updatePlayer])
 
   const handleSelectEmoji = useCallback(
     (emoji: string) => {
@@ -101,7 +99,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
   )
 
   const skillMasteryData = useMemo(
-    () => (curriculumQuery.data?.skills ?? []) as PlayerSkillMastery[],
+    () => curriculumQuery.data?.skills ?? [],
     [curriculumQuery.data?.skills]
   )
 
@@ -406,21 +404,21 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
                       letterSpacing: '0.05em',
                     })}
                   >
-                    Age (optional)
+                    Birthday (optional)
                   </label>
                   <input
-                    value={localAge}
+                    type="date"
+                    value={localBirthday}
                     onChange={(e) => {
-                      setLocalAge(e.target.value)
-                      if (ageError) setAgeError(null)
+                      setLocalBirthday(e.target.value)
+                      if (birthdayError) setBirthdayError(null)
                     }}
-                    onBlur={handleSaveAge}
+                    onBlur={handleSaveBirthday}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.currentTarget.blur()
                       }
                     }}
-                    inputMode="numeric"
                     className={css({
                       width: '100%',
                       maxWidth: '200px',
@@ -428,7 +426,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
                       fontSize: '0.95rem',
                       borderRadius: '10px',
                       border: '1px solid',
-                      borderColor: ageError
+                      borderColor: birthdayError
                         ? isDark
                           ? 'red.400'
                           : 'red.500'
@@ -443,10 +441,22 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
                     className={css({
                       marginTop: '0.4rem',
                       fontSize: '0.75rem',
-                      color: ageError ? (isDark ? 'red.300' : 'red.600') : isDark ? 'gray.400' : 'gray.500',
+                      color: birthdayError
+                        ? isDark
+                          ? 'red.300'
+                          : 'red.600'
+                        : isDark
+                          ? 'gray.400'
+                          : 'gray.500',
                     })}
                   >
-                    {ageError ?? 'Used to recommend the right communication style.'}
+                    {birthdayError ??
+                      (() => {
+                        const age = getAgeFromBirthday(player.birthday)
+                        return age != null
+                          ? `Currently ${age} years old.`
+                          : 'Used to recommend the right communication style.'
+                      })()}
                   </p>
                 </div>
 
@@ -508,7 +518,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
             <SettingsTab
               studentId={player.id}
               studentName={player.name}
-              studentAge={player.age}
+              studentBirthday={player.birthday}
               isDark={isDark}
               onManageSkills={() => {
                 setShowManualSkillModal(true)

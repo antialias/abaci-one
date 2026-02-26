@@ -8,7 +8,6 @@ import useMeasure from 'react-use-measure'
 import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { MasteryClassification, SkillBktResult } from '@/lib/curriculum/bkt/types'
 import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
@@ -379,7 +378,7 @@ export interface ManualSkillSelectorProps {
   /** Currently mastered skill IDs (deprecated, use skillMasteryData instead) */
   currentMasteredSkills?: string[]
   /** Full skill mastery data including lastPracticedAt for recency display */
-  skillMasteryData?: PlayerSkillMastery[]
+  skillMasteryData?: { skillId: string; isPracticing: boolean; lastPracticedAt: Date | null }[]
   /** Callback when save is clicked */
   onSave: (masteredSkillIds: string[]) => Promise<void>
   /** BKT results map for showing skill mastery status */
