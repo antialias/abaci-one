@@ -339,7 +339,6 @@ function MenuContent({
               {renderNavLink('/create', '✏️', 'Create')}
               {renderNavLink('/practice', '📚', 'Practice')}
               {renderNavLink('/my-stuff', '⭐', 'My Stuff')}
-              {renderNavLink('/players', '🧑', 'Players')}
               {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
               {renderNavLink('/games', '🎮', 'Games')}
               {renderNavLink('/toys', '🧸', 'Toys')}
@@ -713,7 +712,6 @@ function MenuContent({
           {renderNavLink('/create', '✏️', 'Create')}
           {renderNavLink('/practice', '📚', 'Practice')}
           {renderNavLink('/my-stuff', '⭐', 'My Stuff')}
-          {renderNavLink('/players', '🧑', 'Players')}
           {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
           {renderNavLink('/games', '🎮', 'Games')}
           {renderNavLink('/toys', '🧸', 'Toys')}
