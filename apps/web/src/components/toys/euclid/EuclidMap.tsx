@@ -680,7 +680,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          {isVisualDebugEnabled && onSelectPlayground && (
+          {onSelectPlayground && (
             <button
               type="button"
               data-action="open-playground"
