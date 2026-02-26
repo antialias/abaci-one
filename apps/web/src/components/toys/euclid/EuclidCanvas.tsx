@@ -103,6 +103,8 @@ import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
 import { useEuclidMusic } from './audio/useEuclidMusic'
 import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
+import { CitationPopover } from './foundations/CitationPopover'
+import { getFoundationHref } from './foundations/citationUtils'
 
 // ── Keyboard shortcuts ──
 
@@ -127,22 +129,6 @@ const AUTO_FIT_POST_SWEEP_MS = 750
 const AUTO_FIT_MAX_CENTER_PX = 2
 const AUTO_FIT_MAX_PPU_DELTA = 1
 
-function getFoundationIdForCitation(citationKey?: string | null) {
-  if (!citationKey) return null
-  const defMatch = citationKey.match(/^Def\.(\d+)$/)
-  if (defMatch) return `def-${defMatch[1]}`
-  const postMatch = citationKey.match(/^Post\.(\d+)$/)
-  if (postMatch) return `post-${postMatch[1]}`
-  const cnMatch = citationKey.match(/^C\.N\.(\d+)$/)
-  if (cnMatch) return `cn-${cnMatch[1]}`
-  return null
-}
-
-function getFoundationHref(citationKey?: string | null) {
-  const id = getFoundationIdForCitation(citationKey)
-  if (!id) return null
-  return `/toys/euclid/foundations?focus=${encodeURIComponent(id)}`
-}
 
 // ── Viewport centering ──
 
@@ -508,7 +494,7 @@ function deriveCompletionResult(
     return { status: 'proven', statement: null, segments: [] }
   }
 
-  const label = (id: string) => getPoint(state, id)?.label ?? id
+  const label = (id: string) => getPoint(state, id)?.label ?? id.replace(/^pt-/, '')
   const segLabel = (fromId: string, toId: string) => `${label(fromId)}${label(toId)}`
 
   // Collect all result segment distance pairs
@@ -685,6 +671,10 @@ export function EuclidCanvas({
   const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
   const [hoveredFactId, setHoveredFactId] = useState<number | null>(null)
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
+  const [activeCitation, setActiveCitation] = useState<{ key: string; rect: DOMRect } | null>(null)
+  const citationShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const citationHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const popoverHoveredRef = useRef(false)
   const [autoCompleting, setAutoCompleting] = useState(false)
   const lastSweepRef = useRef<number>(0)
   const lastSweepTimeRef = useRef<number>(0)
@@ -728,6 +718,49 @@ export function EuclidCanvas({
   }, [hoveredProofDp, hoveredFactId, proofFacts])
 
   /** Check if a proof fact should be highlighted given the current hover state */
+  // Citation popover handlers
+  const handleCitationPointerEnter = useCallback(
+    (key: string, e: React.PointerEvent) => {
+      if (isMobile) return
+      if (citationHideTimerRef.current) clearTimeout(citationHideTimerRef.current)
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      citationShowTimerRef.current = setTimeout(() => {
+        setActiveCitation({ key, rect })
+      }, 200)
+    },
+    [isMobile]
+  )
+
+  const handleCitationPointerLeave = useCallback(() => {
+    if (isMobile) return
+    if (citationShowTimerRef.current) clearTimeout(citationShowTimerRef.current)
+    citationHideTimerRef.current = setTimeout(() => {
+      if (!popoverHoveredRef.current) setActiveCitation(null)
+    }, 300)
+  }, [isMobile])
+
+  const handleCitationPointerDown = useCallback(
+    (key: string, e: React.PointerEvent) => {
+      if (!isMobile) return
+      e.preventDefault()
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      setActiveCitation({ key, rect })
+    },
+    [isMobile]
+  )
+
+  // Mobile: dismiss popover when press ends anywhere
+  useEffect(() => {
+    if (!isMobile) return
+    const dismiss = () => setActiveCitation(null)
+    window.addEventListener('pointerup', dismiss)
+    window.addEventListener('pointercancel', dismiss)
+    return () => {
+      window.removeEventListener('pointerup', dismiss)
+      window.removeEventListener('pointercancel', dismiss)
+    }
+  }, [isMobile])
+
   const isFactHighlighted = useCallback(
     (fact: ProofFact): boolean => {
       const { dpKeys, angleKeys, citGroup } = highlightState
@@ -2642,11 +2675,14 @@ export function EuclidCanvas({
                                 fontStyle: 'italic',
                               }}
                             >
-                              {foundationHref ? (
+                              {foundationHref || step.citation.match(/^I\./) ? (
                                 <a
-                                  href={foundationHref}
+                                  href={foundationHref ?? `/toys/euclid/${step.citation.replace('I.', '')}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onPointerEnter={(e) => handleCitationPointerEnter(step.citation!, e)}
+                                  onPointerLeave={handleCitationPointerLeave}
+                                  onPointerDown={(e) => handleCitationPointerDown(step.citation!, e)}
                                   style={{
                                     fontWeight: 600,
                                     fontStyle: 'normal',
@@ -2654,6 +2690,7 @@ export function EuclidCanvas({
                                     color: 'inherit',
                                     textDecoration: 'underline',
                                     textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                    cursor: 'pointer',
                                   }}
                                 >
                                   {label}
@@ -2744,13 +2781,16 @@ export function EuclidCanvas({
                                   >
                                   {fact.statement}
                                 </span>
-                                {citLabel && (
+                                {citLabel && factCit && (
                                   <>
-                                    {foundationHref ? (
+                                    {foundationHref || factCit.key.match(/^I\./) ? (
                                       <a
-                                        href={foundationHref}
+                                        href={foundationHref ?? `/toys/euclid/${factCit.key.replace('I.', '')}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
+                                        onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
+                                        onPointerLeave={handleCitationPointerLeave}
+                                        onPointerDown={(e) => handleCitationPointerDown(factCit.key, e)}
                                         style={{
                                           color: '#94a3b8',
                                           fontFamily: 'Georgia, serif',
@@ -2759,6 +2799,7 @@ export function EuclidCanvas({
                                           marginLeft: 6,
                                           textDecoration: 'underline',
                                           textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                          cursor: 'pointer',
                                         }}
                                       >
                                         [{citLabel}]
@@ -2826,6 +2867,7 @@ export function EuclidCanvas({
                 const citLabel = factCit ? (ord <= 2 ? factCit.label : factCit.key) : null
                 const showText = ord === 1 && factCit
                 const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
+                const foundationHref = factCit ? getFoundationHref(factCit.key) : null
                 const highlighted = isFactHighlighted(fact)
                 return (
                   <div
@@ -2861,18 +2903,43 @@ export function EuclidCanvas({
                         >
                           {fact.statement}
                         </span>
-                        {citLabel && (
-                          <span
-                            style={{
-                              color: '#94a3b8',
-                              fontFamily: 'Georgia, serif',
-                              fontSize: proofFont.citation,
-                              fontWeight: 600,
-                              marginLeft: 6,
-                            }}
-                          >
-                            [{citLabel}]
-                          </span>
+                        {citLabel && factCit && (
+                          <>
+                            {foundationHref || factCit.key.match(/^I\./) ? (
+                              <a
+                                href={foundationHref ?? `/toys/euclid/${factCit.key.replace('I.', '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
+                                onPointerLeave={handleCitationPointerLeave}
+                                onPointerDown={(e) => handleCitationPointerDown(factCit.key, e)}
+                                style={{
+                                  color: '#94a3b8',
+                                  fontFamily: 'Georgia, serif',
+                                  fontSize: proofFont.citation,
+                                  fontWeight: 600,
+                                  marginLeft: 6,
+                                  textDecoration: 'underline',
+                                  textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                [{citLabel}]
+                              </a>
+                            ) : (
+                              <span
+                                style={{
+                                  color: '#94a3b8',
+                                  fontFamily: 'Georgia, serif',
+                                  fontSize: proofFont.citation,
+                                  fontWeight: 600,
+                                  marginLeft: 6,
+                                }}
+                              >
+                                [{citLabel}]
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                       {showText && factCit?.text && (
@@ -3254,6 +3321,23 @@ export function EuclidCanvas({
             </div>
           )}
         </div>
+      )}
+
+      {/* Citation popover — rendered at root so position:fixed works cleanly */}
+      {activeCitation && (
+        <CitationPopover
+          citationKey={activeCitation.key}
+          anchorRect={activeCitation.rect}
+          onClose={() => setActiveCitation(null)}
+          onMouseEnter={() => {
+            popoverHoveredRef.current = true
+            if (citationHideTimerRef.current) clearTimeout(citationHideTimerRef.current)
+          }}
+          onMouseLeave={() => {
+            popoverHoveredRef.current = false
+            setActiveCitation(null)
+          }}
+        />
       )}
 
       <ToyDebugPanel title="Euclid">
