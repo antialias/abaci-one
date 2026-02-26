@@ -24,6 +24,7 @@ import {
   addCircle,
   addSegment,
   getPoint,
+  getAllPoints,
   getAllCircles,
   getAllSegments,
   getRadius,
@@ -51,6 +52,7 @@ import { replayConstruction } from './engine/replayConstruction'
 import { validateStep } from './propositions/validation'
 import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
+import { PlaygroundCreationsPanel } from './PlaygroundCreationsPanel'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useTTS } from '@/hooks/useTTS'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
@@ -565,6 +567,10 @@ interface EuclidCanvasProps {
     onNavigateNext: (propId: number) => void
     onNavigateMap: () => void
   }
+  /** Pre-populate playground with a saved creation's actions */
+  initialActions?: import('./engine/replayConstruction').PostCompletionAction[]
+  /** Override given point positions for loaded creations */
+  initialGivenPoints?: Array<{ id: string; x: number; y: number }>
 }
 
 const WRONG_MOVE_PHRASES = [
@@ -580,6 +586,8 @@ export function EuclidCanvas({
   playgroundMode,
   languageStyle,
   completionMeta,
+  initialActions,
+  initialGivenPoints,
 }: EuclidCanvasProps) {
   const isMobile = useIsMobile()
   const proofFont = {
@@ -591,8 +599,23 @@ export function EuclidCanvas({
     citation: isMobile ? 9 : 10,
     conclusion: isMobile ? 12 : 15,
   }
-  const proposition =
+  const propositionBase =
     (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
+  const proposition = useMemo(() => {
+    if (!initialGivenPoints || initialGivenPoints.length === 0) return propositionBase
+    const overrideMap = new Map(initialGivenPoints.map((p) => [p.id, p]))
+    return {
+      ...propositionBase,
+      givenElements: propositionBase.givenElements.map((el) => {
+        if (el.kind === 'point' && overrideMap.has(el.id)) {
+          const pos = overrideMap.get(el.id)!
+          return { ...el, x: pos.x, y: pos.y }
+        }
+        return el
+      }),
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propositionId])
   const stepInstructionOverrides = useMemo(() => {
     if (!languageStyle) return null
     return proposition.stepInstructionsByStyle?.[languageStyle] ?? null
@@ -644,13 +667,14 @@ export function EuclidCanvas({
   const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
   const [macroPhase, setMacroPhase] = useState<MacroPhase>({ tag: 'idle' })
   const macroAnimationRef = useRef<MacroAnimation | null>(null)
+  const wiggleCancelRef = useRef<(() => void) | null>(null)
   const factStoreRef = useRef<FactStore>(createFactStore())
   const panZoomDisabledRef = useRef(true)
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
   const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
   const isCompleteRef = useRef(false)
   const completionTimeRef = useRef<number>(0)
-  const postCompletionActionsRef = useRef<PostCompletionAction[]>([])
+  const postCompletionActionsRef = useRef<PostCompletionAction[]>(initialActions ?? [])
   const ghostLayersRef = useRef<GhostLayer[]>([])
   const hoveredMacroStepRef = useRef<number | null>(null)
   const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
@@ -670,13 +694,15 @@ export function EuclidCanvas({
   const wrongMoveCounterRef = useRef(0)
 
   // React state for UI
-  const [activeTool, setActiveTool] = useState<ActiveTool>(steps[0]?.tool ?? 'compass')
+  const [activeTool, setActiveTool] = useState<ActiveTool>(
+    playgroundMode ? 'move' : (steps[0]?.tool ?? 'compass')
+  )
   const [currentStep, setCurrentStep] = useState(0)
   const currentStepRef = useRef(0)
   const [completedSteps, setCompletedSteps] = useState<boolean[]>(
     steps.map(() => false)
   )
-  const [isComplete, setIsComplete] = useState(false)
+  const [isComplete, setIsComplete] = useState(playgroundMode ? true : false)
   const [toolToast, setToolToast] = useState<string | null>(null)
   const toolToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ceremonyLabel, setCeremonyLabel] = useState<string | null>(null)
@@ -961,7 +987,7 @@ export function EuclidCanvas({
   // ── Fire onComplete callback and auto-select Move tool ──
   useEffect(() => {
     if (isComplete) {
-      if (onComplete) onComplete(propositionId)
+      if (onComplete && !playgroundMode) onComplete(propositionId)
       if (proposition.id === 1) {
         const state = constructionRef.current
         const pA = getPoint(state, 'pt-A')
@@ -991,11 +1017,11 @@ export function EuclidCanvas({
           }
         }
       }
-      if (proposition.draggablePointIds && !correctionActiveRef.current) {
+      if (!playgroundMode && proposition.draggablePointIds && !correctionActiveRef.current) {
         setActiveTool('move')
         activeToolRef.current = 'move'
       }
-      musicRef.current?.notifyCompletion()
+      if (!playgroundMode) musicRef.current?.notifyCompletion()
     } else {
       correctionRef.current = null
       correctionActiveRef.current = false
@@ -1014,6 +1040,121 @@ export function EuclidCanvas({
   const requestDraw = useCallback(() => {
     needsDrawRef.current = true
   }, [])
+
+  // ── Completion wiggle — invite kids to drag given points ──
+  useEffect(() => {
+    if (!isComplete) return
+    if (playgroundMode) return // no wiggle in freeform playground
+    if (!proposition.draggablePointIds || proposition.draggablePointIds.length === 0) return
+
+    const draggableIds = proposition.draggablePointIds
+    const computeFn = proposition.computeGivenElements
+
+    // Snapshot initial world positions of every draggable given point
+    const initialPositions = new Map<string, { x: number; y: number }>()
+    for (const el of constructionRef.current.elements) {
+      if (el.kind === 'point' && el.origin === 'given' && draggableIds.includes(el.id)) {
+        initialPositions.set(el.id, { x: el.x, y: el.y })
+      }
+    }
+    if (initialPositions.size === 0) return
+
+    // Per-point random sinusoid parameters
+    const params = [...initialPositions.keys()].map((ptId) => {
+      const canvas = canvasRef.current
+      const cssMin = canvas
+        ? Math.min(canvas.getBoundingClientRect().width, canvas.getBoundingClientRect().height)
+        : 600
+      const ppu = viewportRef.current.pixelsPerUnit
+      const amp = ((0.0025 + Math.random() * 0.00375) * cssMin) / ppu // 0.25–0.625 % of viewport
+      return {
+        ptId,
+        ax: amp * (0.6 + Math.random() * 0.8),
+        ay: amp * (0.6 + Math.random() * 0.8),
+        freqX: (2 + Math.random() * 2) * ((2 * Math.PI) / 1000), // 2–4 Hz
+        freqY: (2 + Math.random() * 2) * ((2 * Math.PI) / 1000),
+        phaseX: Math.random() * 2 * Math.PI,
+        phaseY: Math.random() * 2 * Math.PI,
+      }
+    })
+
+    const DURATION_MS = 1500
+    let frameId = 0
+    let cancelled = false
+
+    function applyPositions(positions: Map<string, { x: number; y: number }>) {
+      let givenElements: ConstructionElement[]
+      if (computeFn) {
+        givenElements = computeFn(positions)
+      } else {
+        givenElements = proposition.givenElements.map((el) => {
+          if (el.kind === 'point' && positions.has(el.id)) {
+            const pos = positions.get(el.id)!
+            return { ...el, x: pos.x, y: pos.y }
+          }
+          return el
+        })
+      }
+      const result = replayConstruction(
+        givenElements,
+        proposition.steps,
+        proposition,
+        postCompletionActionsRef.current
+      )
+      constructionRef.current = result.state
+      candidatesRef.current = result.candidates
+      ghostLayersRef.current = result.ghostLayers
+      factStoreRef.current = result.factStore
+    }
+
+    function frame(now: number) {
+      if (cancelled) return
+      const t = now - startMs
+      if (t >= DURATION_MS) {
+        applyPositions(initialPositions)
+        needsDrawRef.current = true
+        return
+      }
+      // Sine envelope: eases in and out for a smooth wiggle feel
+      const envelope = Math.sin((t / DURATION_MS) * Math.PI)
+      const positions = new Map(initialPositions)
+      for (const p of params) {
+        const orig = initialPositions.get(p.ptId)!
+        positions.set(p.ptId, {
+          x: orig.x + envelope * p.ax * Math.sin(p.freqX * t + p.phaseX),
+          y: orig.y + envelope * p.ay * Math.sin(p.freqY * t + p.phaseY),
+        })
+      }
+      applyPositions(positions)
+      needsDrawRef.current = true
+      frameId = requestAnimationFrame(frame)
+    }
+
+    let startMs = 0
+    // Short delay so the completion moment has time to render first
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        startMs = performance.now()
+        frameId = requestAnimationFrame(frame)
+      }
+    }, 400)
+
+    const cancel = () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+      cancelAnimationFrame(frameId)
+      // Snap back to original so no stale offset remains
+      applyPositions(initialPositions)
+      needsDrawRef.current = true
+    }
+    wiggleCancelRef.current = cancel
+
+    return () => {
+      cancel()
+      wiggleCancelRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComplete, proposition.id])
 
   // ── Load given facts into the fact store (for theorems like I.4) ──
   useEffect(() => {
@@ -1052,6 +1193,23 @@ export function EuclidCanvas({
       proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
       setProofFacts(proofFactsRef.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Replay initial creation state (for loaded playground creations) ──
+  useEffect(() => {
+    if (!initialActions || initialActions.length === 0) return
+    const result = replayConstruction(
+      proposition.givenElements,
+      proposition.steps,
+      proposition,
+      initialActions
+    )
+    constructionRef.current = result.state
+    candidatesRef.current = result.candidates
+    proofFactsRef.current = result.proofFacts
+    ghostLayersRef.current = result.ghostLayers
+    needsDrawRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1602,6 +1760,101 @@ export function EuclidCanvas({
     [steps, extendSegments, requestDraw, triggerCorrection]
   )
 
+  // ── Save / share / new / panel (playground mode only) ──
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [savedId, setSavedId] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [showCreationsPanel, setShowCreationsPanel] = useState(false)
+
+  const handleNewCanvas = useCallback(() => {
+    constructionRef.current = initializeGiven(proposition.givenElements)
+    candidatesRef.current = []
+    postCompletionActionsRef.current = []
+    ghostLayersRef.current = []
+    proofFactsRef.current = []
+    compassPhaseRef.current = { tag: 'idle' }
+    straightedgePhaseRef.current = { tag: 'idle' }
+    const idlePhase: MacroPhase = { tag: 'idle' }
+    macroPhaseRef.current = idlePhase
+    setMacroPhase(idlePhase)
+    setSaveState('idle')
+    setSavedId(null)
+    setLinkCopied(false)
+    needsDrawRef.current = true
+  }, [proposition.givenElements])
+
+  const handleSave = useCallback(async () => {
+    if (saveState === 'saving') return
+    setSaveState('saving')
+
+    // Capture thumbnail: draw main canvas onto a small offscreen canvas
+    let thumbnail: string | undefined
+    const srcCanvas = canvasRef.current
+    if (srcCanvas) {
+      const THUMB_W = 400
+      const THUMB_H = 300
+      const off = document.createElement('canvas')
+      off.width = THUMB_W
+      off.height = THUMB_H
+      const ctx = off.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(srcCanvas, 0, 0, THUMB_W, THUMB_H)
+        thumbnail = off.toDataURL('image/jpeg', 0.75)
+      }
+    }
+
+    // Collect given point positions
+    const givenPoints = getAllPoints(constructionRef.current)
+      .filter((pt) => pt.origin === 'given')
+      .map((pt) => ({ id: pt.id, x: pt.x, y: pt.y }))
+
+    const data = {
+      givenPoints,
+      actions: postCompletionActionsRef.current,
+    }
+
+    try {
+      const res = await fetch('/api/euclid/creations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, thumbnail, isPublic: true }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        setSavedId(json.id)
+        setSaveState('saved')
+      } else {
+        setSaveState('idle')
+      }
+    } catch {
+      setSaveState('idle')
+    }
+  }, [saveState])
+
+  const handleCopyLink = useCallback(() => {
+    if (!savedId) return
+    const url = `${window.location.origin}/toys/euclid/creations/${savedId}`
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
+  }, [savedId])
+
+  const handlePlaceFreePoint = useCallback(
+    (worldX: number, worldY: number) => {
+      if (!isCompleteRef.current) return
+      const result = addPoint(constructionRef.current, worldX, worldY, 'free')
+      constructionRef.current = result.state
+      // Record action for replay during drag
+      postCompletionActionsRef.current = [
+        ...postCompletionActionsRef.current,
+        { type: 'free-point' as const, id: result.point.id, label: result.point.label, x: worldX, y: worldY },
+      ]
+      requestDraw()
+    },
+    [requestDraw]
+  )
+
   const handleRewindToStep = useCallback(
     (targetStep: number) => {
       const snapshot = snapshotStackRef.current[targetStep]
@@ -1773,6 +2026,7 @@ export function EuclidCanvas({
     macroPhaseRef,
     onCommitMacro: handleCommitMacro,
     onMacroPhaseChange: handleMacroPhaseChange,
+    onPlaceFreePoint: handlePlaceFreePoint,
     disabledRef: correctionActiveRef,
   })
 
@@ -1809,7 +2063,11 @@ export function EuclidCanvas({
     postCompletionActionsRef,
     interactionLockedRef: correctionActiveRef,
     onReplayResult: handleDragReplay,
-    onDragStart: handleDragStart,
+    onDragStart: useCallback((pointId: string) => {
+      wiggleCancelRef.current?.()
+      wiggleCancelRef.current = null
+      handleDragStart(pointId)
+    }, [handleDragStart]),
   })
 
   // ── Construction music ──
@@ -2637,7 +2895,7 @@ export function EuclidCanvas({
                 }),
           }}
         >
-          {isComplete && proposition.draggablePointIds && (
+          {(playgroundMode || (isComplete && proposition.draggablePointIds)) && (
             <ToolButton
               label="Move"
               icon={
@@ -2729,7 +2987,191 @@ export function EuclidCanvas({
               size={isMobile ? 44 : 48}
             />
           )}
+          {playgroundMode && (
+            <ToolButton
+              label="Point"
+              icon={
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+                  <line x1="12" y1="2" x2="12" y2="6" />
+                  <line x1="12" y1="18" x2="12" y2="22" />
+                  <line x1="2" y1="12" x2="6" y2="12" />
+                  <line x1="18" y1="12" x2="22" y2="12" />
+                </svg>
+              }
+              active={activeTool === 'point'}
+              onClick={() => {
+                setActiveTool('point')
+                activeToolRef.current = 'point'
+              }}
+              size={isMobile ? 44 : 48}
+            />
+          )}
         </div>
+
+        {/* Top-right bar — audio toggle (propositions) OR playground controls */}
+        <div
+          data-element="top-right-bar"
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            zIndex: 12,
+          }}
+        >
+          {playgroundMode ? (
+            <>
+              {/* New */}
+              <button
+                onClick={handleNewCanvas}
+                title="New canvas"
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(203,213,225,0.9)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#374151',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                + New
+              </button>
+
+              {/* Share / Copy link */}
+              {saveState === 'saved' && savedId ? (
+                <button
+                  onClick={handleCopyLink}
+                  style={{
+                    padding: '7px 13px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: linkCopied ? '#10b981' : '#4E79A7',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: 'system-ui, sans-serif',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  {linkCopied ? '✓ Copied!' : '🔗 Copy link'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleSave}
+                  disabled={saveState === 'saving'}
+                  style={{
+                    padding: '7px 13px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: saveState === 'saving' ? 'rgba(78,121,167,0.6)' : '#4E79A7',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: 'system-ui, sans-serif',
+                    cursor: saveState === 'saving' ? 'wait' : 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  {saveState === 'saving' ? 'Saving…' : '↑ Share'}
+                </button>
+              )}
+
+              {/* My creations */}
+              <button
+                onClick={() => setShowCreationsPanel(true)}
+                title="My creations"
+                style={{
+                  width: 36,
+                  height: 36,
+                  padding: 0,
+                  borderRadius: 8,
+                  border: '1px solid rgba(203,213,225,0.9)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#374151',
+                  fontSize: 16,
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ⊞
+              </button>
+            </>
+          ) : (
+            /* Audio toggle — proposition mode */
+            <button
+              data-action="toggle-audio"
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              title={audioEnabled ? 'Mute narration' : 'Enable narration'}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                border: '1px solid rgba(203, 213, 225, 0.8)',
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(8px)',
+                color: audioEnabled ? '#4E79A7' : '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                transition: 'all 0.15s ease',
+                padding: 0,
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                {audioEnabled ? (
+                  <>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                  </>
+                ) : (
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                )}
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {showCreationsPanel && (
+          <PlaygroundCreationsPanel
+            onClose={() => setShowCreationsPanel(false)}
+            currentId={savedId}
+          />
+        )}
 
         {/* Proposition picker panel — shown when macro tool is active */}
         {activeTool === 'macro' && macroPhase.tag !== 'idle' && (
@@ -2763,54 +3205,6 @@ export function EuclidCanvas({
             Rotating to the standard orientation…
           </div>
         )}
-
-        {/* Audio toggle */}
-        <button
-          data-action="toggle-audio"
-          onClick={() => setAudioEnabled(!audioEnabled)}
-          title={audioEnabled ? 'Mute narration' : 'Enable narration'}
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            border: '1px solid rgba(203, 213, 225, 0.8)',
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(8px)',
-            color: audioEnabled ? '#4E79A7' : '#94a3b8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.15s ease',
-            zIndex: 10,
-            padding: 0,
-          }}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            {audioEnabled ? (
-              <>
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </>
-            ) : (
-              <line x1="23" y1="9" x2="17" y2="15" />
-            )}
-          </svg>
-        </button>
 
         {!isMobile && (
           <div

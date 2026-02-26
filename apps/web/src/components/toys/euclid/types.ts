@@ -23,7 +23,7 @@ export interface EuclidViewportState {
 
 // ── Geometric elements ─────────────────────────────────────────────
 
-export type ElementOrigin = 'given' | 'compass' | 'straightedge' | 'intersection'
+export type ElementOrigin = 'given' | 'compass' | 'straightedge' | 'intersection' | 'free'
 
 export interface ConstructionPoint {
   kind: 'point'
@@ -100,7 +100,7 @@ export type CompassPhase =
 
 export type StraightedgePhase = { tag: 'idle' } | { tag: 'from-set'; fromId: string }
 
-export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move'
+export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move' | 'point'
 
 export type MacroPhase =
   | { tag: 'idle' }

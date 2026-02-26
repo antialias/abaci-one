@@ -39,6 +39,8 @@ interface UseToolInteractionOptions {
   onCommitMacro: (propId: number, inputPointIds: string[]) => void
   /** Called whenever macroPhaseRef.current changes, so React state can stay in sync. */
   onMacroPhaseChange?: (phase: MacroPhase) => void
+  /** Called when the 'point' tool places a free point at a world coordinate. */
+  onPlaceFreePoint?: (worldX: number, worldY: number) => void
   /** When true, all tool gestures are disabled (e.g. during given-setup mode in editor) */
   disabledRef?: React.MutableRefObject<boolean>
 }
@@ -72,6 +74,7 @@ export function useToolInteraction({
   macroPhaseRef,
   onCommitMacro,
   onMacroPhaseChange,
+  onPlaceFreePoint,
   disabledRef,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
@@ -161,6 +164,16 @@ export function useToolInteraction({
           pointerCapturedRef.current = false
           return
         }
+      }
+
+      // ── Point tool: place a free point at cursor position ──
+      if (tool === 'point') {
+        if (!hitPt) {
+          e.stopPropagation()
+          onPlaceFreePoint?.(world.x, world.y)
+          requestDraw()
+        }
+        return
       }
 
       // ── Tool gestures ──
@@ -507,6 +520,7 @@ export function useToolInteraction({
     macroPhaseRef,
     onCommitMacro,
     onMacroPhaseChange,
+    onPlaceFreePoint,
     getCanvasRect,
   ])
 }

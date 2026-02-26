@@ -33,6 +33,8 @@ export type PostCompletionAction =
   | { type: 'segment'; fromId: string; toId: string }
   | { type: 'intersection'; ofA: string; ofB: string; which: number }
   | { type: 'macro'; propId: number; inputPointIds: string[]; atStep: number }
+  /** A user-placed free point (playground mode). Dragging updates x/y in place. */
+  | { type: 'free-point'; id: string; label: string; x: number; y: number }
 
 export interface ReplayResult {
   state: ConstructionState
@@ -307,6 +309,9 @@ export function replayConstruction(
             ghostLayers.push({ ...gl, atStep: action.atStep })
           }
         }
+      } else if (action.type === 'free-point') {
+        const result = addPoint(state, action.x, action.y, 'free', action.label)
+        state = result.state
       }
     }
   }

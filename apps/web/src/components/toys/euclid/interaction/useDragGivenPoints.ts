@@ -99,19 +99,18 @@ export function useDragGivenPoints({
       isTouch: boolean
     ): ConstructionPoint | null {
       const prop = propositionRef.current
-      if (!prop.draggablePointIds || prop.draggablePointIds.length === 0) return null
-
       const threshold = isTouch ? HIT_RADIUS_TOUCH : HIT_RADIUS_MOUSE
       const state = constructionRef.current
       const viewport = viewportRef.current
       const { w, h } = getCSSSize()
-      const draggableSet = new Set(prop.draggablePointIds)
+      const draggableSet = new Set(prop.draggablePointIds ?? [])
 
       let best: ConstructionPoint | null = null
       let bestDist = Infinity
 
       for (const pt of getAllPoints(state)) {
-        if (!draggableSet.has(pt.id)) continue
+        // Include given draggable points and user-placed free points
+        if (!draggableSet.has(pt.id) && pt.origin !== 'free') continue
         const s = worldToScreen2D(
           pt.x,
           pt.y,
@@ -149,9 +148,6 @@ export function useDragGivenPoints({
       if (pointerCapturedRef.current) return
       if (interactionLockedRef?.current) return
 
-      const prop = propositionRef.current
-      if (!prop.draggablePointIds || prop.draggablePointIds.length === 0) return
-
       const rect = getCanvasRect()
       if (!rect) return
       const sx = e.clientX - rect.left
@@ -174,7 +170,6 @@ export function useDragGivenPoints({
       if (!isCompleteRef.current || activeToolRef.current !== 'move') return
 
       const prop = propositionRef.current
-      if (!prop.draggablePointIds || prop.draggablePointIds.length === 0) return
 
       const rect = getCanvasRect()
       if (!rect) return
@@ -188,8 +183,26 @@ export function useDragGivenPoints({
         e.stopPropagation()
         e.preventDefault()
         const world = toWorld(sx, sy, w, h)
+
+        // Check if the dragged point is a user-placed free point
+        const draggedPt = getAllPoints(constructionRef.current).find((pt) => pt.id === dragPointId)
+        let actions = postCompletionActionsRef.current
+
+        if (draggedPt?.origin === 'free') {
+          // Update the free-point action coordinates in place
+          actions = actions.map((a) =>
+            a.type === 'free-point' && a.id === dragPointId
+              ? { ...a, x: world.x, y: world.y }
+              : a
+          )
+          postCompletionActionsRef.current = actions
+        }
+
+        // Collect current given point positions (unchanged for free point drag)
         const positions = collectCurrentPositions()
-        positions.set(dragPointId, world)
+        if (draggedPt?.origin !== 'free') {
+          positions.set(dragPointId, world)
+        }
 
         // Compute fresh given elements
         const computeFn = prop.computeGivenElements
@@ -197,7 +210,6 @@ export function useDragGivenPoints({
         if (computeFn) {
           givenElements = computeFn(positions)
         } else {
-          // Simple case: just update the point position directly in the given elements
           givenElements = prop.givenElements.map((el) => {
             if (el.kind === 'point' && positions.has(el.id)) {
               const pos = positions.get(el.id)!
@@ -208,12 +220,7 @@ export function useDragGivenPoints({
         }
 
         // Replay the full construction + any post-completion user actions
-        const result = replayConstruction(
-          givenElements,
-          prop.steps,
-          prop,
-          postCompletionActionsRef.current
-        )
+        const result = replayConstruction(givenElements, prop.steps, prop, actions)
         constructionRef.current = result.state
         factStoreRef.current = result.factStore
         candidatesRef.current = result.candidates
