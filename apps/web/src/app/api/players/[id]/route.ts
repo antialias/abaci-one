@@ -13,6 +13,10 @@ export const PATCH = withAuth(async (request, { params }) => {
     const { id } = (await params) as { id: string }
     const userId = await getUserId()
     const body = await request.json()
+    const normalizedAge =
+      body.age === null || (typeof body.age === 'number' && Number.isFinite(body.age))
+        ? body.age
+        : undefined
 
     // Get user record (must exist if player exists)
     const user = await db.query.users.findFirst({
@@ -34,6 +38,7 @@ export const PATCH = withAuth(async (request, { params }) => {
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         ...(body.isArchived !== undefined && { isArchived: body.isArchived }),
         ...(body.notes !== undefined && { notes: body.notes }),
+        ...(normalizedAge !== undefined && { age: normalizedAge }),
         // userId is explicitly NOT included - it comes from session
       })
       .where(and(eq(schema.players.id, id), eq(schema.players.userId, user.id)))

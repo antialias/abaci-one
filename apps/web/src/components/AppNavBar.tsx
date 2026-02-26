@@ -338,6 +338,7 @@ function MenuContent({
               {renderNavLink('/', '🧮', 'Home')}
               {renderNavLink('/create', '✏️', 'Create')}
               {renderNavLink('/practice', '📚', 'Practice')}
+              {renderNavLink('/players', '🧑', 'Players')}
               {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
               {renderNavLink('/games', '🎮', 'Games')}
               {renderNavLink('/toys', '🧸', 'Toys')}
@@ -710,6 +711,7 @@ function MenuContent({
           {renderNavLink('/', '🧮', 'Home')}
           {renderNavLink('/create', '✏️', 'Create')}
           {renderNavLink('/practice', '📚', 'Practice')}
+          {renderNavLink('/players', '🧑', 'Players')}
           {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
           {renderNavLink('/games', '🎮', 'Games')}
           {renderNavLink('/toys', '🧸', 'Toys')}

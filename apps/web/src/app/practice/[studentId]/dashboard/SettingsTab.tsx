@@ -309,9 +309,9 @@ export function SettingsTab({
         )}
       </section>
 
-      {/* Kid Communication Style */}
+      {/* Communication Style */}
       <section
-        data-section="kid-communication-style"
+        data-section="player-communication-style"
         className={css({
           marginBottom: '2rem',
         })}
@@ -331,7 +331,7 @@ export function SettingsTab({
               color: isDark ? 'gray.100' : 'gray.800',
             })}
           >
-            Kid Communication Style
+            Communication Style
           </h3>
           {studentAge != null && (
             <span
@@ -360,7 +360,7 @@ export function SettingsTab({
           })}
         >
           Choose how formal the explanations feel for {studentName}. This applies across the app
-          when kid-facing language is available.
+          when player-facing language is available.
         </p>
 
         <div

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -41,8 +42,8 @@ interface EditingStudent {
 }
 
 /**
- * Students management page
- * Allows creating, editing, and deleting students (players)
+ * Players management page
+ * Allows creating, editing, and deleting players
  */
 export default function StudentsPage() {
   const { resolvedTheme } = useTheme()
@@ -134,7 +135,7 @@ export default function StudentsPage() {
   // Delete a student
   const handleDelete = useCallback(
     (id: string) => {
-      if (!window.confirm('Are you sure you want to delete this student? This cannot be undone.')) {
+      if (!window.confirm('Are you sure you want to delete this player? This cannot be undone.')) {
         return
       }
       deletePlayer.mutate(id, {
@@ -190,7 +191,7 @@ export default function StudentsPage() {
                 marginBottom: '0.5rem',
               })}
             >
-              Manage Students
+              Manage Players
             </h1>
             <p
               className={css({
@@ -198,7 +199,7 @@ export default function StudentsPage() {
                 color: isDark ? 'gray.400' : 'gray.600',
               })}
             >
-              Add, edit, or remove students for practice sessions
+              Add, edit, or remove players across practice, Euclid, and number line
             </p>
           </header>
 
@@ -213,7 +214,7 @@ export default function StudentsPage() {
                     color: 'gray.500',
                   })}
                 >
-                  Loading students...
+                  Loading players...
                 </div>
               ) : players.length === 0 ? (
                 <div
@@ -242,7 +243,7 @@ export default function StudentsPage() {
                       marginBottom: '0.5rem',
                     })}
                   >
-                    No students yet
+                    No players yet
                   </h2>
                   <p
                     className={css({
@@ -250,7 +251,7 @@ export default function StudentsPage() {
                       marginBottom: '1.5rem',
                     })}
                   >
-                    Add your first student to get started with practice sessions.
+                    Add your first player to get started across the app.
                   </p>
                   <button
                     type="button"
@@ -268,12 +269,12 @@ export default function StudentsPage() {
                       _hover: { backgroundColor: 'green.600' },
                     })}
                   >
-                    Add Student
+                    Add Player
                   </button>
                 </div>
               ) : (
                 <>
-                  {/* Student cards */}
+                  {/* Player cards */}
                   <div
                     className={css({
                       display: 'grid',
@@ -336,8 +337,28 @@ export default function StudentsPage() {
                           className={css({
                             display: 'flex',
                             gap: '0.5rem',
+                            flexWrap: 'wrap',
                           })}
                         >
+                          <Link
+                            href={`/players/${player.id}/settings`}
+                            data-action="open-settings"
+                            className={css({
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.875rem',
+                              color: isDark ? 'emerald.200' : 'emerald.700',
+                              backgroundColor: isDark ? 'emerald.900/40' : 'emerald.50',
+                              borderRadius: '6px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              textDecoration: 'none',
+                              _hover: {
+                                backgroundColor: isDark ? 'emerald.900/60' : 'emerald.100',
+                              },
+                            })}
+                          >
+                            Settings
+                          </Link>
                           <button
                             type="button"
                             data-action="edit-student"
@@ -410,7 +431,7 @@ export default function StudentsPage() {
                         _hover: { backgroundColor: 'green.600' },
                       })}
                     >
-                      Add Student
+                      Add Player
                     </button>
                     <button
                       type="button"
@@ -457,7 +478,7 @@ export default function StudentsPage() {
                   textAlign: 'center',
                 })}
               >
-                {viewMode === 'create' ? 'Add New Student' : 'Edit Student'}
+                {viewMode === 'create' ? 'Add New Player' : 'Edit Player'}
               </h2>
 
               {/* Preview */}
@@ -498,14 +519,14 @@ export default function StudentsPage() {
                     marginBottom: '0.5rem',
                   })}
                 >
-                  Name
+                  Player Name
                 </label>
                 <input
                   id="student-name"
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Enter student name"
+                  placeholder="Enter player name"
                   className={css({
                     width: '100%',
                     padding: '0.75rem',
@@ -669,7 +690,7 @@ export default function StudentsPage() {
                     },
                   })}
                 >
-                  {isPending ? 'Saving...' : viewMode === 'create' ? 'Add Student' : 'Save Changes'}
+                  {isPending ? 'Saving...' : viewMode === 'create' ? 'Add Player' : 'Save Changes'}
                 </button>
               </div>
             </div>

@@ -12,13 +12,13 @@ export const KID_LANGUAGE_STYLES: Array<{
   },
   {
     id: 'standard',
-    label: 'Standard',
+    label: 'Clear',
     description: 'Clear terms with brief explanations.',
   },
   {
     id: 'classical',
-    label: 'Classical',
-    description: 'Close to traditional translations and formal phrasing.',
+    label: 'Formal',
+    description: 'Closest to traditional translations and formal phrasing.',
   },
 ]
 
