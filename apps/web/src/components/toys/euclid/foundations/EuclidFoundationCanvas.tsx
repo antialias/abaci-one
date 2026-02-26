@@ -60,7 +60,7 @@ function computeViewport(state: ConstructionState, width: number, height: number
     y: (bounds.minY + bounds.maxY) / 2,
   }
 
-  return { center, pixelsPerUnit: Math.max(18, Math.min(80, ppu)) }
+  return { center, pixelsPerUnit: Math.max(4, ppu) }
 }
 
 function drawAnimatedOverlay(
