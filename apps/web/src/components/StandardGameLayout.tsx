@@ -79,7 +79,7 @@ export function StandardGameLayout({ children, className }: StandardGameLayoutPr
 
         // Transparent background - themes will be applied at nav level
         background: 'transparent',
-      })} ${className || ''}`}
+      })} no-text-select ${className || ''}`}
       style={{
         // Dynamic padding based on measured nav height (only in viewport mode)
         paddingTop: isContainerMode ? '4px' : `${navHeight}px`,

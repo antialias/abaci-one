@@ -23,6 +23,27 @@
   padding-top: var(--app-nav-height, 80px);
 }
 
+/* Prevent unwanted text selection in interactive surfaces */
+.no-text-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.no-text-select input,
+.no-text-select textarea {
+  -webkit-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+.allow-text-select {
+  -webkit-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 /* Custom global styles */
 body {
   font-family:

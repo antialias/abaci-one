@@ -864,7 +864,8 @@ export function PracticeClient({
 
       <main
         data-component="practice-page"
-        className={css({
+        className={`${css({
+          userSelect: 'none',
           // Fixed positioning to precisely control bounds
           position: 'fixed',
           // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop)
@@ -876,7 +877,7 @@ export function PracticeClient({
           // Landscape mobile handled via media query below
           bottom: { base: '48px', md: 0 },
           overflow: 'hidden', // Prevent scrolling during practice
-        })}
+        })} no-text-select`}
       >
         {/* Landscape mobile: keypad is on right (100px) instead of bottom */}
         <style
