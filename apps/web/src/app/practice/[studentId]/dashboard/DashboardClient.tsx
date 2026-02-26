@@ -69,7 +69,6 @@ import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 import { css } from '../../../../../styled-system/css'
 import { RelationshipsTab } from './RelationshipsTab'
 import { ScoreboardTab } from './ScoreboardTab'
-import { SettingsTab } from './SettingsTab'
 
 // ============================================================================
 // Types
@@ -83,7 +82,6 @@ type TabId =
   | 'notes'
   | 'observers'
   | 'relationships'
-  | 'settings'
 
 /**
  * Reason why BKT classification is unavailable.
@@ -500,7 +498,6 @@ function TabNavigation({
     { id: 'notes', label: 'Notes', icon: '📝' },
     { id: 'observers', label: 'Observers', icon: '👁️' },
     { id: 'relationships', label: 'Connections', icon: '👪' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
 
   return (
@@ -3610,15 +3607,6 @@ export function DashboardClient({
                 <RelationshipsTab studentId={studentId} studentName={player.name} isDark={isDark} />
               )}
 
-              {activeTab === 'settings' && (
-                <SettingsTab
-                  studentId={studentId}
-                  studentName={player.name}
-                  studentBirthday={player.birthday ?? null}
-                  isDark={isDark}
-                  onManageSkills={() => setShowManualSkillModal(true)}
-                />
-              )}
             </div>
 
             {/* Modals */}

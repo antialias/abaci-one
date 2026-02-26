@@ -1,7 +1,7 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import * as HoverCard from '@radix-ui/react-hover-card'
+import * as Popover from '@radix-ui/react-popover'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { NavBannerSlot } from './BannerSlots'
@@ -273,7 +273,7 @@ function GameBreakCountdownBadge({
  *
  * A sticky sub-navigation bar that appears below the main nav on all
  * student-scoped practice pages. Features:
- * - Student avatar + name with persistent link to dashboard
+ * - Student avatar link + name popover with context links
  * - Session HUD controls when in an active session
  * - Consistent visual identity across all practice pages
  */
@@ -554,125 +554,241 @@ export function PracticeSubNav({
             flex: 1,
           })}
         >
-          {/* Name - links to dashboard */}
-          <Link
-            href={`/practice/${student.id}/dashboard`}
-            className={css({
-              textDecoration: 'none',
-              fontSize: '0.9375rem',
-              fontWeight: '600',
-              color: isDark ? 'gray.100' : 'gray.800',
-              lineHeight: '1.2',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              width: 'fit-content',
-              _hover: {
-                textDecoration: 'underline',
-                color: isDark ? 'blue.300' : 'blue.600',
-              },
-            })}
-            aria-current={isOnDashboard ? 'page' : undefined}
-          >
-            {student.name}
-          </Link>
-
-          {/* Relationship summary with hover tooltip */}
-          {!sessionHud &&
-            (viewerRelationship && viewerRelationship.type !== 'none' ? (
-              <HoverCard.Root openDelay={200} closeDelay={100}>
-                <HoverCard.Trigger asChild>
-                  <button
-                    type="button"
-                    className={css({
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      cursor: 'help',
-                      background: 'none',
-                      border: 'none',
-                      padding: '2px 0',
-                      textAlign: 'left',
-                      width: 'fit-content',
-                      borderRadius: '4px',
-                      transition: 'background-color 0.15s ease',
-                      _hover: {
-                        backgroundColor: isDark ? 'gray.700/50' : 'gray.100',
-                      },
-                    })}
-                    aria-label="View relationship details"
-                  >
-                    <RelationshipSummary
-                      type={viewerRelationship.type}
-                      classroomName={viewerRelationship.classroomName}
-                      otherStakeholders={
-                        hasOtherStakeholders
-                          ? {
-                              parents: stakeholders?.parents.filter((p) => !p.isMe).length ?? 0,
-                              teachers: stakeholders?.enrolledClassrooms.length ?? 0,
-                            }
-                          : undefined
-                      }
-                      className={css({
-                        fontSize: '0.6875rem !important',
-                        opacity: 0.8,
-                      })}
-                    />
-                    {/* Info icon to indicate hover for more */}
-                    <span
-                      className={css({
-                        fontSize: '0.625rem',
-                        opacity: 0.5,
-                        marginLeft: '2px',
-                      })}
-                      aria-hidden="true"
-                    >
-                      ⓘ
-                    </span>
-                  </button>
-                </HoverCard.Trigger>
-
-                {/* Relationship tooltip content */}
-                <HoverCard.Portal>
-                  <HoverCard.Content
-                    data-component="relationship-tooltip"
-                    side="bottom"
-                    align="start"
-                    sideOffset={8}
-                    className={css({
-                      width: '320px',
-                      maxWidth: 'calc(100vw - 32px)',
-                      padding: '12px',
-                      borderRadius: '12px',
-                      backgroundColor: isDark ? 'gray.800' : 'white',
-                      border: '1px solid',
-                      borderColor: isDark ? 'gray.700' : 'gray.200',
-                      boxShadow: 'lg',
-                      zIndex: Z_INDEX.POPOVER,
-                      animation: 'fadeIn 0.15s ease',
-                    })}
-                  >
-                    <RelationshipCard playerId={student.id} compact />
-                    <HoverCard.Arrow
-                      className={css({
-                        fill: isDark ? 'gray.800' : 'white',
-                      })}
-                    />
-                  </HoverCard.Content>
-                </HoverCard.Portal>
-              </HoverCard.Root>
-            ) : (
-              <span
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
                 className={css({
-                  fontSize: '0.6875rem',
-                  color: isDark ? 'gray.500' : 'gray.500',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '2px',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  minWidth: 0,
+                })}
+                aria-label={`Open ${student.name} menu`}
+              >
+                <span
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.9375rem',
+                    fontWeight: '600',
+                    color: isDark ? 'gray.100' : 'gray.800',
+                    lineHeight: '1.2',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  })}
+                >
+                  {student.name}
+                  <span
+                    className={css({
+                      fontSize: '0.75rem',
+                      opacity: 0.6,
+                    })}
+                    aria-hidden="true"
+                  >
+                    ▾
+                  </span>
+                </span>
+
+                {!sessionHud && viewerRelationship && viewerRelationship.type !== 'none' ? (
+                  <RelationshipSummary
+                    type={viewerRelationship.type}
+                    classroomName={viewerRelationship.classroomName}
+                    otherStakeholders={
+                      hasOtherStakeholders
+                        ? {
+                            parents: stakeholders?.parents.filter((p) => !p.isMe).length ?? 0,
+                            teachers: stakeholders?.enrolledClassrooms.length ?? 0,
+                          }
+                        : undefined
+                    }
+                    className={css({
+                      fontSize: '0.6875rem !important',
+                      opacity: 0.75,
+                    })}
+                  />
+                ) : (
+                  <span
+                    className={css({
+                      fontSize: '0.6875rem',
+                      color: isDark ? 'gray.500' : 'gray.500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    })}
+                  >
+                    {isOnDashboard ? 'Dashboard' : 'Back to dashboard'}
+                  </span>
+                )}
+              </button>
+            </Popover.Trigger>
+
+            <Popover.Portal>
+              <Popover.Content
+                data-component="student-context-popover"
+                side="bottom"
+                align="start"
+                sideOffset={8}
+                className={css({
+                  width: '260px',
+                  maxWidth: 'calc(100vw - 24px)',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  backgroundColor: isDark ? 'gray.800' : 'white',
+                  border: '1px solid',
+                  borderColor: isDark ? 'gray.700' : 'gray.200',
+                  boxShadow: 'lg',
+                  zIndex: Z_INDEX.POPOVER,
+                  animation: 'fadeIn 0.15s ease',
                 })}
               >
-                {isOnDashboard ? 'Dashboard' : 'Back to dashboard'}
-              </span>
-            ))}
+                <div
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem',
+                  })}
+                >
+                  <div
+                    className={css({
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.1rem',
+                      flexShrink: 0,
+                    })}
+                    style={{ backgroundColor: student.color }}
+                  >
+                    {student.emoji}
+                  </div>
+                  <div className={css({ minWidth: 0 })}>
+                    <div
+                      className={css({
+                        fontSize: '0.95rem',
+                        fontWeight: '600',
+                        color: isDark ? 'gray.100' : 'gray.800',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      })}
+                    >
+                      {student.name}
+                    </div>
+                    <div
+                      className={css({
+                        fontSize: '0.75rem',
+                        color: isDark ? 'gray.400' : 'gray.500',
+                      })}
+                    >
+                      Player context
+                    </div>
+                  </div>
+                </div>
+
+                <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.35rem' })}>
+                  <Link
+                    href={`/practice/${student.id}/dashboard`}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '0.85rem',
+                      color: isDark ? 'gray.200' : 'gray.700',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      },
+                    })}
+                  >
+                    <span>📊</span>
+                    <span>Practice dashboard</span>
+                  </Link>
+                  <Link
+                    href={`/practice/${student.id}/dashboard?tab=skills`}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '0.85rem',
+                      color: isDark ? 'gray.200' : 'gray.700',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      },
+                    })}
+                  >
+                    <span>🧭</span>
+                    <span>Skills overview</span>
+                  </Link>
+                  <Link
+                    href={`/practice/${student.id}/dashboard?tab=notes`}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '0.85rem',
+                      color: isDark ? 'gray.200' : 'gray.700',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      },
+                    })}
+                  >
+                    <span>📝</span>
+                    <span>Notes</span>
+                  </Link>
+                  <Link
+                    href={`/players/${student.id}/settings`}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '0.85rem',
+                      color: isDark ? 'gray.200' : 'gray.700',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      },
+                    })}
+                  >
+                    <span>⚙️</span>
+                    <span>Player settings</span>
+                  </Link>
+                </div>
+
+                {viewerRelationship && viewerRelationship.type !== 'none' && (
+                  <div className={css({ marginTop: '0.75rem' })}>
+                    <RelationshipCard playerId={student.id} compact />
+                  </div>
+                )}
+
+                <Popover.Arrow
+                  className={css({
+                    fill: isDark ? 'gray.800' : 'white',
+                  })}
+                />
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
         </div>
 
         {/* Zone 3: Actions menu button - separate, clearly clickable */}

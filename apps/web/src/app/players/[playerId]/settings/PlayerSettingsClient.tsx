@@ -181,7 +181,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
               This player may have been removed or is no longer accessible.
             </p>
             <Link
-              href="/players"
+              href="/practice"
               className={css({
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -195,7 +195,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
                 _hover: { backgroundColor: 'blue.600' },
               })}
             >
-              Back to Players
+              Back to Practice
             </Link>
           </div>
         </main>
@@ -245,22 +245,6 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
             })}
           >
             <div>
-              <Link
-                href="/players"
-                className={css({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  color: isDark ? 'gray.300' : 'gray.600',
-                  textDecoration: 'none',
-                  marginBottom: '0.5rem',
-                  _hover: { color: isDark ? 'gray.100' : 'gray.800' },
-                })}
-              >
-                ← Back to Players
-              </Link>
               <h1
                 className={css({
                   fontSize: '2rem',

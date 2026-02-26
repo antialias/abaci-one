@@ -81,7 +81,24 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       activeSession={activeSession}
       currentPracticingSkillIds={currentPracticingSkillIds}
       problemHistory={problemHistory}
-      initialTab={tab as 'overview' | 'skills' | 'history' | 'observers' | 'settings' | undefined}
+      initialTab={
+        tab === 'overview' ||
+        tab === 'skills' ||
+        tab === 'history' ||
+        tab === 'scoreboard' ||
+        tab === 'notes' ||
+        tab === 'observers' ||
+        tab === 'relationships'
+          ? (tab as
+              | 'overview'
+              | 'skills'
+              | 'history'
+              | 'scoreboard'
+              | 'notes'
+              | 'observers'
+              | 'relationships')
+          : undefined
+      }
       userId={userId}
       initialSessionMode={{
         sessionMode,
