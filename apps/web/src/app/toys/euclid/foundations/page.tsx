@@ -93,7 +93,13 @@ export default function EuclidFoundationsPage() {
         })}
       >
         <div className={css({ maxWidth: '1100px', margin: '0 auto' })}>
-          <FoundationsDeck languageStyle={languageStyle} focusId={focusId} />
+          <FoundationsDeck
+            languageStyle={languageStyle}
+            focusId={focusId}
+            onFocusChange={(id) =>
+              router.replace(`/toys/euclid/foundations?focus=${id}`, { scroll: false })
+            }
+          />
         </div>
       </main>
     </div>

@@ -14,9 +14,10 @@ import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 interface FoundationsDeckProps {
   languageStyle: KidLanguageStyle
   focusId?: string | null
+  onFocusChange?: (id: string) => void
 }
 
-export function FoundationsDeck({ languageStyle, focusId }: FoundationsDeckProps) {
+export function FoundationsDeck({ languageStyle, focusId, onFocusChange }: FoundationsDeckProps) {
   const [category, setCategory] = useState<FoundationCategory>('definitions')
   const items = useMemo(
     () => FOUNDATION_ITEMS.filter((item) => item.category === category),
@@ -79,7 +80,9 @@ export function FoundationsDeck({ languageStyle, focusId }: FoundationsDeckProps
               onClick={() => {
                 setCategory(tab.id)
                 const nextItems = FOUNDATION_ITEMS.filter((item) => item.category === tab.id)
-                setSelectedId(nextItems[0]?.id ?? FOUNDATION_ITEMS[0]?.id)
+                const nextId = nextItems[0]?.id ?? FOUNDATION_ITEMS[0]?.id
+                setSelectedId(nextId)
+                if (nextId) onFocusChange?.(nextId)
               }}
               className={css({
                 padding: '0.45rem 0.9rem',
@@ -117,7 +120,10 @@ export function FoundationsDeck({ languageStyle, focusId }: FoundationsDeckProps
                 key={item.id}
                 type="button"
                 data-selected={isSelected}
-                onClick={() => setSelectedId(item.id)}
+                onClick={() => {
+                  setSelectedId(item.id)
+                  onFocusChange?.(item.id)
+                }}
                 className={css({
                   textAlign: 'left',
                   padding: '0.85rem',
