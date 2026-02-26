@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { BYRNE } from '../types'
 import { CITATIONS } from '../engine/citations'
 import { PROP_REGISTRY } from '../propositions/registry'
-import { buildFinalState } from '../render/buildFinalStates'
+import { usePropPreviews } from '../render/usePropPreviews'
 import { FOUNDATION_ITEMS, FOUNDATION_DIAGRAMS } from './foundationsData'
 import { EuclidFoundationCanvas } from './EuclidFoundationCanvas'
 import { getFoundationIdForCitation, getFoundationHref, getPropositionHref, getPropIdForCitation } from './citationUtils'
@@ -49,24 +49,11 @@ export function CitationPopover({
   const propId = propMatch ? parseInt(propMatch[1], 10) : null
   const propDef = propId != null ? PROP_REGISTRY[propId] : null
 
-  // Build the completed construction state (falls back to givenElements if not yet implemented)
-  const propFinalElements = useMemo(() => {
-    if (propId == null) return null
-    const finalState = buildFinalState(propId)
-    return finalState?.elements ?? null
-  }, [propId])
+  // Pre-rendered proposition previews (same rendering path as the Euclid map)
+  const propPreviews = usePropPreviews()
+  const propPreviewSrc = propId != null ? (propPreviews.get(propId) ?? null) : null
 
-  // Synthetic diagram from completed proposition elements (for mini canvas)
-  const propDiagram =
-    propDef && !diagram
-      ? {
-          id: `prop-${propId}`,
-          title: citDef?.label ?? citationKey,
-          elements: propFinalElements ?? propDef.givenElements,
-        }
-      : null
-
-  const activeDiagram = diagram ?? propDiagram ?? null
+  const activeDiagram = diagram ?? null
   const foundationHref = getFoundationHref(citationKey)
   const propositionHref = getPropIdForCitation(citationKey) != null ? getPropositionHref(citationKey) : null
 
@@ -158,10 +145,34 @@ export function CitationPopover({
         )}
       </div>
 
-      {/* Mini canvas */}
+      {/* Foundation diagram (Def, Post, C.N.) */}
       {activeDiagram && (
         <div style={{ width: '100%', height: 140 }}>
           <EuclidFoundationCanvas diagram={activeDiagram} />
+        </div>
+      )}
+
+      {/* Proposition preview — same rendering as the Euclid map */}
+      {propPreviewSrc && (
+        <div
+          style={{
+            width: '100%',
+            height: 140,
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid rgba(203, 213, 225, 0.6)',
+            background: '#FAFAF0',
+            boxSizing: 'border-box',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <img
+            src={propPreviewSrc}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
         </div>
       )}
 
