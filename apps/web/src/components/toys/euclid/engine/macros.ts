@@ -368,10 +368,15 @@ const MACRO_PROP_2: MacroDef = {
         segFrom.y,
         abRadius
       )
-      const apexD = apexCandidates.reduce(
-        (best, p) => (p.y > best.y ? p : best),
-        apexCandidates[0]
-      ) ?? { x: target.x, y: target.y + (abRadius * Math.sqrt(3)) / 2 }
+      // Use chirality (left of A→B) for consistent triangle orientation, matching MACRO_PROP_1
+      const abx = segFrom.x - target.x
+      const aby = segFrom.y - target.y
+      const upperD = apexCandidates.filter((p) => abx * (p.y - target.y) - aby * (p.x - target.x) > 0)
+      const apexPool = upperD.length > 0 ? upperD : apexCandidates
+      const apexD =
+        (apexPool.length > 1
+          ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
+          : apexPool[0]) ?? { x: target.x, y: target.y + (abRadius * Math.sqrt(3)) / 2 }
 
       // Ghost point D + segments DA, DB
       ghostElements.push({
