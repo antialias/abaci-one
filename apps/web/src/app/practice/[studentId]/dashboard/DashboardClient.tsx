@@ -1766,12 +1766,91 @@ function OverviewTab({
   currentPhase,
   skillHealth,
   onStartPractice,
+  hasCompletedSessions,
 }: {
   student: StudentWithProgress
   currentPhase?: CurrentPhaseInfo
   skillHealth?: SkillHealthSummary
   onStartPractice: () => void
+  hasCompletedSessions: boolean
 }) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  if (!hasCompletedSessions) {
+    return (
+      <div
+        data-component="overview-get-started"
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1.25rem',
+          padding: '3rem 1.5rem',
+          maxWidth: '420px',
+          margin: '0 auto',
+          textAlign: 'center',
+        })}
+      >
+        <div
+          className={css({
+            width: '72px',
+            height: '72px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2rem',
+          })}
+          style={{ backgroundColor: student.color ?? '#BAFFC9' }}
+        >
+          {student.emoji}
+        </div>
+        <h2
+          className={css({
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: isDark ? 'gray.100' : 'gray.800',
+            margin: 0,
+          })}
+        >
+          Ready to start practicing
+        </h2>
+        <p
+          className={css({
+            fontSize: '0.9375rem',
+            lineHeight: '1.5',
+            color: isDark ? 'gray.400' : 'gray.500',
+            margin: 0,
+          })}
+        >
+          {student.name}&rsquo;s first session will begin with a short tutorial, then adaptive practice.
+        </p>
+        <button
+          type="button"
+          data-action="start-first-session"
+          onClick={onStartPractice}
+          className={css({
+            padding: '14px 32px',
+            bg: isDark ? 'green.700' : 'green.500',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '1rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'background 0.15s ease',
+            _hover: {
+              bg: isDark ? 'green.600' : 'green.600',
+            },
+          })}
+        >
+          Start first practice session
+        </button>
+      </div>
+    )
+  }
+
   return (
     <ProgressDashboard
       student={student}
@@ -3560,6 +3639,7 @@ export function DashboardClient({
                   currentPhase={currentPhase}
                   skillHealth={skillHealth}
                   onStartPractice={handleStartPractice}
+                  hasCompletedSessions={recentSessions.length > 0}
                 />
               )}
 

@@ -57,6 +57,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
+  // Redirect authenticated users from home page to practice
+  if (hasAuthSession && request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/practice', request.url))
+  }
+
   // Guest cookie handling: skip for authenticated users
   let existing = request.cookies.get(GUEST_COOKIE_NAME)?.value
   let guestId: string | null = null

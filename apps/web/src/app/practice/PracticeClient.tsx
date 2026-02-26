@@ -1339,69 +1339,6 @@ function ViewEmptyState({
       )
 
     case 'my-children':
-      return (
-        <div
-          data-element="empty-state"
-          data-reason="no-children"
-          className={css({
-            textAlign: 'center',
-            padding: '3rem',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '16px',
-          })}
-        >
-          <div
-            className={css({
-              fontSize: '3rem',
-            })}
-          >
-            👶
-          </div>
-          <div>
-            <h3
-              className={css({
-                fontSize: '1.25rem',
-                fontWeight: 'semibold',
-                color: isDark ? 'gray.200' : 'gray.700',
-                marginBottom: '8px',
-              })}
-            >
-              No children added yet
-            </h3>
-            <p
-              className={css({
-                color: isDark ? 'gray.400' : 'gray.500',
-                marginBottom: '16px',
-              })}
-            >
-              Add a student to get started with daily practice
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onAddStudent}
-            data-action="add-first-student"
-            className={css({
-              padding: '12px 24px',
-              bg: isDark ? 'green.700' : 'green.500',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'medium',
-              cursor: 'pointer',
-              _hover: {
-                bg: isDark ? 'green.600' : 'green.600',
-              },
-            })}
-          >
-            + Add Your First Student
-          </button>
-        </div>
-      )
-
     case 'all':
     default:
       return (
@@ -1410,33 +1347,55 @@ function ViewEmptyState({
           data-reason="no-students"
           className={css({
             textAlign: 'center',
-            padding: '3rem',
+            padding: '4rem 2rem',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '16px',
+            gap: '20px',
+            maxWidth: '420px',
+            margin: '0 auto',
           })}
         >
-          <span className={css({ color: isDark ? 'gray.400' : 'gray.500' })}>No students yet.</span>
+          <h2
+            className={css({
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: isDark ? 'gray.100' : 'gray.800',
+              margin: 0,
+            })}
+          >
+            Welcome to Abaci
+          </h2>
+          <p
+            className={css({
+              fontSize: '1rem',
+              lineHeight: '1.5',
+              color: isDark ? 'gray.400' : 'gray.500',
+              margin: 0,
+            })}
+          >
+            Add a student to get started with adaptive math practice.
+          </p>
           <button
             type="button"
             onClick={onAddStudent}
             data-action="add-first-student"
             className={css({
-              padding: '12px 24px',
+              padding: '14px 32px',
               bg: isDark ? 'green.700' : 'green.500',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'medium',
+              borderRadius: '12px',
+              fontSize: '1rem',
+              fontWeight: '600',
               cursor: 'pointer',
+              transition: 'background 0.15s ease',
               _hover: {
                 bg: isDark ? 'green.600' : 'green.600',
               },
             })}
           >
-            + Add Your First Student
+            Add a student
           </button>
         </div>
       )
