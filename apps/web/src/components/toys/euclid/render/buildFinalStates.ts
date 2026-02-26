@@ -1,4 +1,4 @@
-import { initializeGiven, addCircle, addSegment, addPoint } from '../engine/constructionState'
+import { initializeGiven, addCircle, addSegment, addPoint, getPoint } from '../engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from '../engine/intersections'
 import { resolveSelector } from '../engine/selectors'
 import { MACRO_REGISTRY } from '../engine/macros'
@@ -29,8 +29,16 @@ export function buildProp1FinalState(): ConstructionState {
   state = cir2.state
   candidates = [...candidates, ...findNewIntersections(state, cir2.circle, candidates, false)]
 
-  // Step 2: Mark intersection C (highest Y = apex of triangle)
-  const topCandidate = candidates.reduce((best, c) => (c.y > best.y ? c : best), candidates[0])
+  // Step 2: Mark intersection C — use chirality (left of AB) for consistency with macros/replay
+  const pA = getPoint(state, 'pt-A')!
+  const pB = getPoint(state, 'pt-B')!
+  const abx = pB.x - pA.x
+  const aby = pB.y - pA.y
+  const preferUpper = candidates.filter((c) => abx * (c.y - pA.y) - aby * (c.x - pA.x) > 0)
+  const apexPool = preferUpper.length > 0 ? preferUpper : candidates
+  const topCandidate = apexPool.length > 1
+    ? apexPool.reduce((best, c) => (c.y > best.y ? c : best), apexPool[0])
+    : apexPool[0]
   const ptC = addPoint(state, topCandidate.x, topCandidate.y, 'intersection', 'C')
   state = ptC.state
 
