@@ -1,5 +1,5 @@
 PRAGMA foreign_keys=OFF;
-
+--> statement-breakpoint
 CREATE TABLE `__new_players` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE `__new_players` (
 	`family_code_generated_at` integer,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
-
+--> statement-breakpoint
 INSERT INTO `__new_players` (
   `id`,
   `user_id`,
@@ -50,10 +50,13 @@ SELECT
   `family_code`,
   `family_code_generated_at`
 FROM `players`;
-
+--> statement-breakpoint
 DROP TABLE `players`;
+--> statement-breakpoint
 ALTER TABLE `__new_players` RENAME TO `players`;
+--> statement-breakpoint
 CREATE UNIQUE INDEX `players_family_code_unique` ON `players` (`family_code`);
+--> statement-breakpoint
 CREATE INDEX `players_user_id_idx` ON `players` (`user_id`);
-
+--> statement-breakpoint
 PRAGMA foreign_keys=ON;
