@@ -18,15 +18,17 @@ export default function EuclidPlaygroundPage() {
     >
       <AppNavBar
         navSlot={
-          <span
+          <a
+            href="/toys/euclid"
             style={{
               fontSize: '14px',
               fontWeight: 600,
               color: 'rgba(55, 65, 81, 1)',
+              textDecoration: 'none',
             }}
           >
-            Construction Playground
-          </span>
+            ← Euclid&apos;s Elements
+          </a>
         }
       />
       <div
