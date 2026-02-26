@@ -34,7 +34,7 @@ function makePlayer(
     notes: null,
     isArchived: false,
     isPracticeStudent: true,
-    age: null,
+    birthday: null,
     familyCode: null,
     familyCodeGeneratedAt: null,
     ...overrides,

@@ -30,7 +30,7 @@ describe('useUserPlayers hooks', () => {
     createdAt: new Date('2024-01-01'),
     helpSettings: null,
     notes: null,
-    age: null,
+    birthday: null,
     familyCode: 'FAM-123456',
     familyCodeGeneratedAt: null,
   }
@@ -75,7 +75,7 @@ describe('useUserPlayers hooks', () => {
       createdAt: new Date('2024-01-20'),
       helpSettings: null,
       notes: null,
-      age: null,
+      birthday: null,
       familyCode: 'FAM-NEW123',
       familyCodeGeneratedAt: null,
     }

@@ -6,6 +6,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { getParentedPlayerIds } from '@/lib/classroom/access-control'
 import { getLimitsForUser } from '@/lib/subscription'
 import { getUserId } from '@/lib/viewer'
+import { normalizeBirthdayInput } from '@/lib/playerAge'
 
 /**
  * GET /api/players
@@ -84,6 +85,16 @@ export const POST = withAuth(async (request) => {
       }
     }
 
+    let normalizedBirthday: string | null | undefined = undefined
+    if (body.birthday === null) {
+      normalizedBirthday = null
+    } else if (typeof body.birthday === 'string') {
+      normalizedBirthday = normalizeBirthdayInput(body.birthday)
+      if (normalizedBirthday === null) {
+        return NextResponse.json({ error: 'Invalid birthday' }, { status: 400 })
+      }
+    }
+
     // Generate a unique family code for the new player
     const familyCode = generateFamilyCode()
 
@@ -98,6 +109,7 @@ export const POST = withAuth(async (request) => {
         isActive: body.isActive ?? false,
         isPracticeStudent,
         familyCode,
+        ...(normalizedBirthday !== undefined && { birthday: normalizedBirthday }),
       })
       .returning()
 

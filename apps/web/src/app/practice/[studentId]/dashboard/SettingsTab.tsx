@@ -10,6 +10,7 @@ import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { KID_LANGUAGE_STYLES, getRecommendedKidLanguageStyle } from '@/lib/kidLanguageStyle'
+import { getAgeFromBirthday } from '@/lib/playerAge'
 
 // ============================================================================
 // Types
@@ -18,7 +19,7 @@ import { KID_LANGUAGE_STYLES, getRecommendedKidLanguageStyle } from '@/lib/kidLa
 interface SettingsTabProps {
   studentId: string
   studentName: string
-  studentAge?: number | null
+  studentBirthday?: string | null
   isDark: boolean
   onManageSkills: () => void
 }
@@ -30,7 +31,7 @@ interface SettingsTabProps {
 export function SettingsTab({
   studentId,
   studentName,
-  studentAge,
+  studentBirthday,
   isDark,
   onManageSkills,
 }: SettingsTabProps) {
@@ -60,9 +61,10 @@ export function SettingsTab({
   )
 
   const enabledCount = enabledGames.length
+  const resolvedAge = useMemo(() => getAgeFromBirthday(studentBirthday), [studentBirthday])
   const recommendedLanguageStyle = useMemo(
-    () => getRecommendedKidLanguageStyle(studentAge),
-    [studentAge]
+    () => getRecommendedKidLanguageStyle(resolvedAge),
+    [resolvedAge]
   )
   const currentLanguageStyle =
     (preferences?.kidLanguageStyle ?? recommendedLanguageStyle) as KidLanguageStyle
@@ -333,7 +335,7 @@ export function SettingsTab({
           >
             Communication Style
           </h3>
-          {studentAge != null && (
+          {resolvedAge != null && (
             <span
               className={css({
                 fontSize: '0.75rem',
@@ -346,7 +348,7 @@ export function SettingsTab({
                 color: isDark ? '#93c5fd' : '#2563eb',
               }}
             >
-              Recommended for age {studentAge}
+              Recommended for age {resolvedAge}
             </span>
           )}
         </div>

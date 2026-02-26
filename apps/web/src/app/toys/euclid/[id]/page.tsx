@@ -14,6 +14,7 @@ import {
   getNextProp,
 } from '@/components/toys/euclid/data/propositionGraph'
 import { resolveKidLanguageStyle } from '@/lib/kidLanguageStyle'
+import { getAgeFromBirthday } from '@/lib/playerAge'
 
 export default function EuclidPropPage() {
   const params = useParams()
@@ -36,8 +37,12 @@ export default function EuclidPropPage() {
   )
   const { data: preferences } = usePlayerSessionPreferences(selectedPlayerId)
   const languageStyle = useMemo(
-    () => resolveKidLanguageStyle(preferences?.kidLanguageStyle, selectedPlayer?.age),
-    [preferences?.kidLanguageStyle, selectedPlayer?.age]
+    () =>
+      resolveKidLanguageStyle(
+        preferences?.kidLanguageStyle,
+        getAgeFromBirthday(selectedPlayer?.birthday)
+      ),
+    [preferences?.kidLanguageStyle, selectedPlayer?.birthday]
   )
 
   const { data: completedList } = useEuclidProgress(selectedPlayerId)

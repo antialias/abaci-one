@@ -93,7 +93,7 @@ const mockDBPlayer: DBPlayer = {
   isPracticeStudent: true,
   familyCode: null,
   familyCodeGeneratedAt: null,
-  age: null,
+  birthday: null,
 }
 
 const mockRoomData: RoomData = {

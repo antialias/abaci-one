@@ -99,10 +99,10 @@ export const players = sqliteTable(
     isPracticeStudent: integer('is_practice_student', { mode: 'boolean' }).notNull().default(true),
 
     /**
-     * Child's age in years (optional, set by parent/teacher)
-     * Used to adapt voice agent conversations to appropriate level
+     * Child's birthday (YYYY-MM-DD, optional, set by parent/teacher)
+     * Used to compute age for adaptive experiences.
      */
-    age: integer('age'),
+    birthday: text('birthday'),
 
     /**
      * Family code for sharing access to this player with other parents

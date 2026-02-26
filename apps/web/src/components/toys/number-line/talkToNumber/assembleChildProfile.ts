@@ -8,6 +8,7 @@ import { getPhaseDisplayInfo } from '@/lib/curriculum/definitions'
 import { getSkillDisplayName } from '@/lib/curriculum/skill-tutorial-config'
 import type { ChildProfile, SkillSnapshot, GameSnapshot } from './childProfile'
 import type { GameStatsBreakdown } from '@/db/schema/player-stats'
+import { getAgeFromBirthday } from '@/lib/playerAge'
 
 /** Static map — avoids importing game manifests which pull in React. */
 const GAME_DISPLAY_NAMES: Record<string, string> = {
@@ -77,7 +78,7 @@ export async function assembleChildProfile(
 
     const profile: ChildProfile = {
       name: player.name,
-      age: player.age ?? undefined,
+      age: getAgeFromBirthday(player.birthday) ?? undefined,
       emoji: player.emoji || undefined,
     }
 

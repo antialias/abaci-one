@@ -29,7 +29,7 @@ function makePlayer(
     notes: null,
     isArchived: false,
     isPracticeStudent: overrides.isPracticeStudent ?? true,
-    age: null,
+    birthday: null,
     familyCode: null,
     familyCodeGeneratedAt: null,
   }

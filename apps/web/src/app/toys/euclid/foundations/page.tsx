@@ -7,6 +7,7 @@ import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { usePlayerSessionPreferences } from '@/hooks/usePlayerSessionPreferences'
 import { resolveKidLanguageStyle } from '@/lib/kidLanguageStyle'
+import { getAgeFromBirthday } from '@/lib/playerAge'
 import { FoundationsDeck } from '@/components/toys/euclid/foundations/FoundationsDeck'
 import { css } from '../../../../../styled-system/css'
 
@@ -26,8 +27,12 @@ export default function EuclidFoundationsPage() {
 
   const { data: preferences } = usePlayerSessionPreferences(selectedPlayerId)
   const languageStyle = useMemo(
-    () => resolveKidLanguageStyle(preferences?.kidLanguageStyle, selectedPlayer?.age),
-    [preferences?.kidLanguageStyle, selectedPlayer?.age]
+    () =>
+      resolveKidLanguageStyle(
+        preferences?.kidLanguageStyle,
+        getAgeFromBirthday(selectedPlayer?.birthday)
+      ),
+    [preferences?.kidLanguageStyle, selectedPlayer?.birthday]
   )
 
   return (

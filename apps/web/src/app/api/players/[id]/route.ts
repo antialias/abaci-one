@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { getUserId } from '@/lib/viewer'
+import { normalizeBirthdayInput } from '@/lib/playerAge'
 
 /**
  * PATCH /api/players/[id]
@@ -13,10 +14,15 @@ export const PATCH = withAuth(async (request, { params }) => {
     const { id } = (await params) as { id: string }
     const userId = await getUserId()
     const body = await request.json()
-    const normalizedAge =
-      body.age === null || (typeof body.age === 'number' && Number.isFinite(body.age))
-        ? body.age
-        : undefined
+    let normalizedBirthday: string | null | undefined = undefined
+    if (body.birthday === null) {
+      normalizedBirthday = null
+    } else if (typeof body.birthday === 'string') {
+      normalizedBirthday = normalizeBirthdayInput(body.birthday)
+      if (normalizedBirthday === null) {
+        return NextResponse.json({ error: 'Invalid birthday' }, { status: 400 })
+      }
+    }
 
     // Get user record (must exist if player exists)
     const user = await db.query.users.findFirst({
@@ -38,7 +44,7 @@ export const PATCH = withAuth(async (request, { params }) => {
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         ...(body.isArchived !== undefined && { isArchived: body.isArchived }),
         ...(body.notes !== undefined && { notes: body.notes }),
-        ...(normalizedAge !== undefined && { age: normalizedAge }),
+        ...(normalizedBirthday !== undefined && { birthday: normalizedBirthday }),
         // userId is explicitly NOT included - it comes from session
       })
       .where(and(eq(schema.players.id, id), eq(schema.players.userId, user.id)))
