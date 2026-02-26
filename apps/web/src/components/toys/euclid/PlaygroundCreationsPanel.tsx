@@ -1,15 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-
-type Tab = 'mine' | 'published' | 'seen'
-
-interface CreationMeta {
-  id: string
-  thumbnail: string | null
-  isPublic: boolean
-  createdAt: Date
-}
+import { useState } from 'react'
+import { useEuclidCreations, type CreationsTab } from '@/hooks/useEuclidCreations'
 
 interface Props {
   onClose: () => void
@@ -17,50 +9,11 @@ interface Props {
   playerId?: string | null
 }
 
-async function fetchCreations(tab: Tab, playerId?: string | null): Promise<CreationMeta[]> {
-  let url = '/api/euclid/creations?limit=60'
-
-  if (tab === 'mine') {
-    url += '&mine=true'
-    if (playerId) url += `&playerId=${encodeURIComponent(playerId)}`
-  } else if (tab === 'published') {
-    url += '&mine=true&isPublic=true'
-    if (playerId) url += `&playerId=${encodeURIComponent(playerId)}`
-  } else {
-    // seen: read from localStorage, then fetch by IDs
-    try {
-      const stored = localStorage.getItem('euclid_seen_ids')
-      const ids: string[] = stored ? JSON.parse(stored) : []
-      if (ids.length === 0) return []
-      url = `/api/euclid/creations?ids=${ids.join(',')}`
-    } catch {
-      return []
-    }
-  }
-
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const json = await res.json()
-  return json.creations ?? []
-}
-
 export function PlaygroundCreationsPanel({ onClose, currentId, playerId }: Props) {
-  const [tab, setTab] = useState<Tab>('mine')
-  const [creations, setCreations] = useState<CreationMeta[]>([])
-  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<CreationsTab>('mine')
+  const { data: creations = [], isLoading } = useEuclidCreations(tab, playerId)
 
-  const load = useCallback(async (t: Tab) => {
-    setLoading(true)
-    const results = await fetchCreations(t, playerId)
-    setCreations(results)
-    setLoading(false)
-  }, [playerId])
-
-  useEffect(() => {
-    load(tab)
-  }, [tab, load])
-
-  const tabStyle = (t: Tab) => ({
+  const tabStyle = (t: CreationsTab) => ({
     padding: '6px 14px',
     borderRadius: 8,
     border: 'none',
@@ -159,7 +112,7 @@ export function PlaygroundCreationsPanel({ onClose, currentId, playerId }: Props
             padding: 12,
           }}
         >
-          {loading ? (
+          {isLoading ? (
             <div
               style={{
                 padding: 40,

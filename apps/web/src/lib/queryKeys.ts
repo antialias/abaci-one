@@ -132,6 +132,8 @@ export const euclidKeys = {
   all: ["euclid"] as const,
   progress: (playerId: string) =>
     [...euclidKeys.all, "progress", playerId] as const,
+  creations: (tab: string, playerId?: string | null) =>
+    [...euclidKeys.all, "creations", tab, playerId ?? "none"] as const,
 };
 
 // Admin pricing query keys (Stripe price management)
