@@ -6,7 +6,7 @@ import { CITATIONS } from '../engine/citations'
 import { PROP_REGISTRY } from '../propositions/registry'
 import { FOUNDATION_ITEMS, FOUNDATION_DIAGRAMS } from './foundationsData'
 import { EuclidFoundationCanvas } from './EuclidFoundationCanvas'
-import { getFoundationIdForCitation, getFoundationHref, getPropositionHref } from './citationUtils'
+import { getFoundationIdForCitation, getFoundationHref, getPropositionHref, getPropIdForCitation } from './citationUtils'
 
 const POPOVER_WIDTH = 248
 
@@ -59,7 +59,8 @@ export function CitationPopover({
       : null
 
   const activeDiagram = diagram ?? propDiagram ?? null
-  const fullPageHref = getFoundationHref(citationKey) ?? getPropositionHref(citationKey)
+  const foundationHref = getFoundationHref(citationKey)
+  const propositionHref = getPropIdForCitation(citationKey) != null ? getPropositionHref(citationKey) : null
 
   // Positioning: prefer left of anchor (into canvas), fall back to above/below
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -187,10 +188,10 @@ export function CitationPopover({
         </div>
       )}
 
-      {/* Full page link */}
-      {fullPageHref && (
+      {/* Foundation page link (opens in new tab) */}
+      {foundationHref && (
         <a
-          href={fullPageHref}
+          href={foundationHref}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -208,6 +209,28 @@ export function CitationPopover({
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'none')}
         >
           Open full page →
+        </a>
+      )}
+
+      {/* Proposition page link (navigates in-page) */}
+      {propositionHref && (
+        <a
+          href={propositionHref}
+          style={{
+            fontSize: '0.72rem',
+            color: '#10b981',
+            fontFamily: 'system-ui, sans-serif',
+            fontWeight: 600,
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            paddingTop: 2,
+          }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'underline')}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'none')}
+        >
+          Open proposition →
         </a>
       )}
     </div>

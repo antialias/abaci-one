@@ -22,10 +22,17 @@ export function getFoundationHref(citationKey?: string | null): string | null {
   return `/toys/euclid/foundations?focus=${encodeURIComponent(id)}`
 }
 
-/** Returns the proposition page href for I.N citations, or null for others. */
-export function getPropositionHref(citationKey?: string | null): string | null {
+/** Returns the proposition number for I.N citations, or null for others. */
+export function getPropIdForCitation(citationKey?: string | null): number | null {
   if (!citationKey) return null
   const propMatch = citationKey.match(/^I\.(\d+)$/)
   if (!propMatch) return null
-  return `/toys/euclid/${propMatch[1]}`
+  return parseInt(propMatch[1], 10)
+}
+
+/** Returns the proposition page href for I.N citations, or null for others. */
+export function getPropositionHref(citationKey?: string | null): string | null {
+  const propId = getPropIdForCitation(citationKey)
+  if (propId == null) return null
+  return `/toys/euclid/${propId}`
 }
