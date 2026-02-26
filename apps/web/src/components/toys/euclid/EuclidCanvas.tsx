@@ -571,6 +571,8 @@ interface EuclidCanvasProps {
   initialActions?: import('./engine/replayConstruction').PostCompletionAction[]
   /** Override given point positions for loaded creations */
   initialGivenPoints?: Array<{ id: string; x: number; y: number }>
+  /** Active player ID — stored with saved creations so they belong to the kid, not the account */
+  playerId?: string | null
 }
 
 const WRONG_MOVE_PHRASES = [
@@ -588,6 +590,7 @@ export function EuclidCanvas({
   completionMeta,
   initialActions,
   initialGivenPoints,
+  playerId,
 }: EuclidCanvasProps) {
   const isMobile = useIsMobile()
   const proofFont = {
@@ -1817,7 +1820,7 @@ export function EuclidCanvas({
       const res = await fetch('/api/euclid/creations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, thumbnail, isPublic: true }),
+        body: JSON.stringify({ data, thumbnail, isPublic: true, playerId: playerId ?? null }),
       })
       const json = await res.json()
       if (res.ok) {
@@ -3170,6 +3173,7 @@ export function EuclidCanvas({
           <PlaygroundCreationsPanel
             onClose={() => setShowCreationsPanel(false)}
             currentId={savedId}
+            playerId={playerId}
           />
         )}
 

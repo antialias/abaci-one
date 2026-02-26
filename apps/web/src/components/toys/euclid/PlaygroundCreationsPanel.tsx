@@ -14,15 +14,18 @@ interface CreationMeta {
 interface Props {
   onClose: () => void
   currentId?: string | null
+  playerId?: string | null
 }
 
-async function fetchCreations(tab: Tab): Promise<CreationMeta[]> {
+async function fetchCreations(tab: Tab, playerId?: string | null): Promise<CreationMeta[]> {
   let url = '/api/euclid/creations?limit=60'
 
   if (tab === 'mine') {
     url += '&mine=true'
+    if (playerId) url += `&playerId=${encodeURIComponent(playerId)}`
   } else if (tab === 'published') {
     url += '&mine=true&isPublic=true'
+    if (playerId) url += `&playerId=${encodeURIComponent(playerId)}`
   } else {
     // seen: read from localStorage, then fetch by IDs
     try {
@@ -41,17 +44,17 @@ async function fetchCreations(tab: Tab): Promise<CreationMeta[]> {
   return json.creations ?? []
 }
 
-export function PlaygroundCreationsPanel({ onClose, currentId }: Props) {
+export function PlaygroundCreationsPanel({ onClose, currentId, playerId }: Props) {
   const [tab, setTab] = useState<Tab>('mine')
   const [creations, setCreations] = useState<CreationMeta[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async (t: Tab) => {
     setLoading(true)
-    const results = await fetchCreations(t)
+    const results = await fetchCreations(t, playerId)
     setCreations(results)
     setLoading(false)
-  }, [])
+  }, [playerId])
 
   useEffect(() => {
     load(tab)

@@ -1,9 +1,13 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { AppNavBar } from '@/components/AppNavBar'
 import { EuclidCanvas } from '@/components/toys/euclid/EuclidCanvas'
 
 export default function EuclidPlaygroundPage() {
+  const searchParams = useSearchParams()
+  const playerId = searchParams.get('player') || null
+
   return (
     <div
       data-component="euclid-playground-page"
@@ -40,7 +44,7 @@ export default function EuclidPlaygroundPage() {
           position: 'relative',
         }}
       >
-        <EuclidCanvas propositionId={0} playgroundMode />
+        <EuclidCanvas propositionId={0} playgroundMode playerId={playerId} />
       </div>
     </div>
   )

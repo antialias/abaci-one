@@ -21,6 +21,9 @@ export const euclidCreations = sqliteTable(
     /** User who created this (guests included — every visitor has a userId) */
     userId: text('user_id'),
 
+    /** Player (kid) who created this — null when playing without a selected player */
+    playerId: text('player_id'),
+
     /** Serialized construction state */
     data: text('data', { mode: 'json' }).$type<CreationData>().notNull(),
 

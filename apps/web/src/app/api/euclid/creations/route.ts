@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { getUserId } from '@/lib/viewer'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
-import { eq, desc, and, inArray } from 'drizzle-orm'
+import { eq, desc, and, inArray, isNull } from 'drizzle-orm'
 import type { CreationData } from '@/db/schema/euclid-creations'
 
 /** POST /api/euclid/creations — save a new playground creation */
@@ -12,10 +12,11 @@ export const POST = withAuth(async (request: NextRequest) => {
     const userId = await getUserId()
     const body = await request.json()
 
-    const { data, thumbnail, isPublic } = body as {
+    const { data, thumbnail, isPublic, playerId } = body as {
       data: CreationData
       thumbnail?: string
       isPublic?: boolean
+      playerId?: string | null
     }
 
     if (!data || !data.actions) {
@@ -24,7 +25,13 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     const [creation] = await db
       .insert(schema.euclidCreations)
-      .values({ userId, data, thumbnail: thumbnail ?? null, isPublic: isPublic ?? false })
+      .values({
+        userId,
+        playerId: playerId ?? null,
+        data,
+        thumbnail: thumbnail ?? null,
+        isPublic: isPublic ?? false,
+      })
       .returning()
 
     return NextResponse.json({ id: creation.id }, { status: 201 })
@@ -38,15 +45,18 @@ export const POST = withAuth(async (request: NextRequest) => {
  * GET /api/euclid/creations
  *
  * Query params:
- *   ?mine=true          — only this user's creations (requires auth)
- *   ?isPublic=true      — filter to public only (combine with mine=true for "my published")
- *   ?ids=id1,id2,...    — fetch specific IDs (for "seen" tab)
- *   ?limit=N            — max results (default 50, max 100)
+ *   ?mine=true            — scoped to current user/player (requires auth)
+ *   ?playerId=<id>        — filter to a specific player (combine with mine=true)
+ *                           if mine=true and no playerId, returns user-level creations (null player)
+ *   ?isPublic=true        — filter to public only (combine with mine=true for "my published")
+ *   ?ids=id1,id2,...      — fetch specific IDs (for "seen" tab)
+ *   ?limit=N              — max results (default 50, max 100)
  */
 export const GET = withAuth(async (request: NextRequest) => {
   try {
     const url = new URL(request.url)
     const mine = url.searchParams.get('mine') === 'true'
+    const playerIdParam = url.searchParams.get('playerId')
     const isPublicFilter = url.searchParams.get('isPublic')
     const idsParam = url.searchParams.get('ids')
     const limit = Math.min(Number(url.searchParams.get('limit') ?? '50'), 100)
@@ -70,11 +80,20 @@ export const GET = withAuth(async (request: NextRequest) => {
       return NextResponse.json({ creations })
     }
 
-    // Fetch by user (mine) or public gallery
-    const userId = mine ? await getUserId() : null
-
     const conditions = []
-    if (userId) conditions.push(eq(schema.euclidCreations.userId, userId))
+
+    if (mine) {
+      if (playerIdParam) {
+        // Player-scoped: show this player's creations
+        conditions.push(eq(schema.euclidCreations.playerId, playerIdParam))
+      } else {
+        // User-scoped (no player selected): show user's creations with no player
+        const userId = await getUserId()
+        conditions.push(eq(schema.euclidCreations.userId, userId))
+        conditions.push(isNull(schema.euclidCreations.playerId))
+      }
+    }
+
     if (isPublicFilter !== null) {
       conditions.push(eq(schema.euclidCreations.isPublic, isPublicFilter === 'true'))
     } else if (!mine) {
