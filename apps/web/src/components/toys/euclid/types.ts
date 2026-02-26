@@ -104,6 +104,8 @@ export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move'
 
 export type MacroPhase =
   | { tag: 'idle' }
+  /** Macro tool active, proposition not yet chosen — picker is open */
+  | { tag: 'choosing' }
   | { tag: 'selecting'; propId: number; inputLabels: string[]; selectedPointIds: string[] }
 
 // ── Element selectors ─────────────────────────────────────────────
@@ -296,6 +298,46 @@ export interface GhostLayer {
   depth: number // 1 = direct dependency, 2 = dependency's dependency, etc.
   elements: GhostElement[]
   atStep: number // construction step index that produced this layer
+  /**
+   * Ordered groups of element indices for the macro reveal ceremony.
+   * Each inner array is revealed together; groups are shown sequentially.
+   * If absent, all elements reveal at once.
+   */
+  revealGroups?: number[][]
+  /**
+   * TTS narration spoken when this layer finishes its reveal ceremony.
+   * Only meaningful on depth-1 layers (the top-level macro result).
+   */
+  keyNarration?: string
+}
+
+/** State driving the macro reveal ceremony in the RAF loop */
+export interface MacroCeremonyState {
+  /** Ordered list of (layerKey, groupIndex) to reveal, deepest-depth first */
+  sequence: Array<{ layerKey: string; groupIndex: number; msDelay: number }>
+  /** How many sequence entries have been revealed so far */
+  revealed: number
+  /** Timestamp (performance.now()) when the last reveal fired */
+  lastRevealMs: number
+  /** Narration text to speak when all groups are shown */
+  narrationText: string
+  narrationFired: boolean
+  /** Timestamp when all groups were shown (null = not yet complete) */
+  allShownMs: number | null
+  /** ms after allShownMs before advancing the step */
+  postNarrationDelayMs: number
+  /** The deferred step-advance closure */
+  advanceStep: () => void
+  /**
+   * Per-element draw animation state.
+   * Key = `${layerKey}:${elementIdx}`. Populated when each group is revealed.
+   */
+  elementAnims: Map<string, { startMs: number; durationMs: number }>
+  /**
+   * IDs of construction elements added by the macro that must stay hidden
+   * until the ceremony completes. Cleared when `advanceStep` fires.
+   */
+  hiddenElementIds: Set<string>
 }
 
 /**

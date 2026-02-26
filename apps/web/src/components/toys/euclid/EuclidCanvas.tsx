@@ -15,6 +15,7 @@ import type {
   TutorialSubStep,
   ExpectedAction,
   GhostLayer,
+  MacroCeremonyState,
 } from './types'
 import { needsExtendedSegments, BYRNE_CYCLE } from './types'
 import {
@@ -105,6 +106,7 @@ import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { CitationPopover } from './foundations/CitationPopover'
 import { getFoundationHref } from './foundations/citationUtils'
+import { MacroToolPanel } from './MacroToolPanel'
 
 // ── Keyboard shortcuts ──
 
@@ -128,6 +130,7 @@ const AUTO_FIT_SWEEP_LERP_MIN = 0.03
 const AUTO_FIT_POST_SWEEP_MS = 750
 const AUTO_FIT_MAX_CENTER_PX = 2
 const AUTO_FIT_MAX_PPU_DELTA = 1
+const AUTO_FIT_CEREMONY_PPU_DELTA = 4
 
 
 // ── Viewport centering ──
@@ -564,6 +567,13 @@ interface EuclidCanvasProps {
   }
 }
 
+const WRONG_MOVE_PHRASES = [
+  "Not quite. Let's try that step again.",
+  "Hmm, that's not right. Try again.",
+  "That's not it. Here's the step one more time:",
+  "Oops! Let me remind you:",
+]
+
 export function EuclidCanvas({
   propositionId = 1,
   onComplete,
@@ -596,6 +606,16 @@ export function EuclidCanvas({
   }, [proposition.steps, stepInstructionOverrides])
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = proposition.getTutorial ?? (() => [] as TutorialSubStep[][])
+  // All prior propositions that have applicable macros
+  const availableMacros = useMemo(() => {
+    return Object.entries(MACRO_REGISTRY)
+      .filter(([key]) => Number(key) < propositionId)
+      .map(([, def]) => ({
+        propId: def.propId,
+        def,
+        title: PROP_REGISTRY[def.propId]?.title ?? '',
+      }))
+  }, [propositionId])
   const explorationNarration = useMemo(() => {
     if (!languageStyle) return proposition.explorationNarration
     return (
@@ -622,6 +642,7 @@ export function EuclidCanvas({
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
   const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
+  const [macroPhase, setMacroPhase] = useState<MacroPhase>({ tag: 'idle' })
   const macroAnimationRef = useRef<MacroAnimation | null>(null)
   const factStoreRef = useRef<FactStore>(createFactStore())
   const panZoomDisabledRef = useRef(true)
@@ -633,6 +654,7 @@ export function EuclidCanvas({
   const ghostLayersRef = useRef<GhostLayer[]>([])
   const hoveredMacroStepRef = useRef<number | null>(null)
   const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
+  const macroRevealRef = useRef<MacroCeremonyState | null>(null)
   const propositionRef = useRef(proposition)
   propositionRef.current = proposition
   const musicRef = useRef<UseEuclidMusicReturn | null>(null)
@@ -645,6 +667,7 @@ export function EuclidCanvas({
     toAngle: number
   } | null>(null)
   const correctionActiveRef = useRef(false)
+  const wrongMoveCounterRef = useRef(0)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(steps[0]?.tool ?? 'compass')
@@ -656,6 +679,7 @@ export function EuclidCanvas({
   const [isComplete, setIsComplete] = useState(false)
   const [toolToast, setToolToast] = useState<string | null>(null)
   const toolToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [ceremonyLabel, setCeremonyLabel] = useState<string | null>(null)
   const [proofFacts, setProofFacts] = useState<ProofFact[]>([])
   const proofFactsRef = useRef<ProofFact[]>([])
   const snapshotStackRef = useRef<ProofSnapshot[]>([
@@ -788,6 +812,50 @@ export function EuclidCanvas({
     [highlightState]
   )
 
+  // ── Macro tool handlers ──
+
+  /** propId required by the current guided step, or null if not a macro step */
+  const guidedPropId = useMemo(() => {
+    if (currentStep >= steps.length) return null
+    const expected = steps[currentStep].expected
+    return expected.type === 'macro' ? expected.propId : null
+  }, [currentStep, steps])
+
+  const handleMacroPhaseChange = useCallback((phase: MacroPhase) => {
+    setMacroPhase(phase)
+  }, [])
+
+  const handleMacroToolClick = useCallback(() => {
+    setActiveTool('macro')
+    activeToolRef.current = 'macro'
+    // If there's only one macro available, skip the picker and go straight to selecting
+    if (availableMacros.length === 1) {
+      const { propId, def } = availableMacros[0]
+      const phase: MacroPhase = { tag: 'selecting', propId, inputLabels: def.inputLabels, selectedPointIds: [] }
+      macroPhaseRef.current = phase
+      setMacroPhase(phase)
+    } else {
+      const choosingPhase: MacroPhase = { tag: 'choosing' }
+      macroPhaseRef.current = choosingPhase
+      setMacroPhase(choosingPhase)
+    }
+  }, [availableMacros])
+
+  const handleMacroPropositionSelect = useCallback((propId: number) => {
+    const macroDef = MACRO_REGISTRY[propId]
+    console.log('[macro-debug] handleMacroPropositionSelect propId=%d macroDef=%o', propId, macroDef)
+    if (!macroDef) return
+    const phase: MacroPhase = {
+      tag: 'selecting',
+      propId,
+      inputLabels: macroDef.inputLabels,
+      selectedPointIds: [],
+    }
+    console.log('[macro-debug] setting macroPhaseRef to', phase)
+    macroPhaseRef.current = phase
+    setMacroPhase(phase)
+  }, [])
+
   // ── Completion result derived from proof ──
   const completionResult = useMemo(() => {
     if (!isComplete) return null
@@ -860,6 +928,10 @@ export function EuclidCanvas({
 
   // ── TTS integration ──
   const { isEnabled: audioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
+  const audioEnabledRef = useRef(audioEnabled)
+  audioEnabledRef.current = audioEnabled
+  const currentSpeechRef = useRef(currentSpeech)
+  currentSpeechRef.current = currentSpeech
   const sayCorrection = useTTS(
     {
       say: {
@@ -869,6 +941,13 @@ export function EuclidCanvas({
     },
     {}
   )
+  const sayMacroReveal = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
+  const sayMacroRevealRef = useRef(sayMacroReveal)
+  sayMacroRevealRef.current = sayMacroReveal
+  // Generic correction speaker — called with dynamic text for wrong-move feedback
+  const speakStepCorrection = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
+  const speakStepCorrectionRef = useRef(speakStepCorrection)
+  speakStepCorrectionRef.current = speakStepCorrection
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
@@ -992,16 +1071,20 @@ export function EuclidCanvas({
 
     if (stepDef.tool === null) return
 
-    // Initialize macro phase when entering a macro step (regardless of tool change)
+    // In guided mode, auto-select the required proposition so the user can
+    // immediately tap canvas points. The panel will appear showing the
+    // active proposition with point-selection progress.
     if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
       const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
       if (macroDef) {
-        macroPhaseRef.current = {
+        const phase: MacroPhase = {
           tag: 'selecting',
           propId: stepDef.expected.propId,
           inputLabels: macroDef.inputLabels,
           selectedPointIds: [],
         }
+        macroPhaseRef.current = phase
+        setMacroPhase(phase)
       }
     }
 
@@ -1071,6 +1154,56 @@ export function EuclidCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [togglePanZoom])
 
+  // ── Wrong-move correction ──
+
+  const triggerCorrection = useCallback(
+    (step: number) => {
+      const snapshot = snapshotStackRef.current[step]
+      if (!snapshot) return
+
+      // Revert construction state to what it was before the wrong action
+      constructionRef.current = snapshot.construction
+      candidatesRef.current = snapshot.candidates
+      proofFactsRef.current = snapshot.proofFacts
+      setProofFacts(snapshot.proofFacts)
+      ghostLayersRef.current = snapshot.ghostLayers
+      factStoreRef.current = rebuildFactStore(snapshot.proofFacts)
+
+      // Clear any ongoing draw animations
+      straightedgeDrawAnimRef.current = null
+      macroAnimationRef.current = null
+      macroRevealRef.current = null
+
+      // Reset tool phases so no in-flight gesture survives the revert
+      compassPhaseRef.current = { tag: 'idle' }
+      straightedgePhaseRef.current = { tag: 'idle' }
+      macroPhaseRef.current = { tag: 'idle' }
+      setMacroPhase({ tag: 'idle' })
+
+      // Lock all tool interactions for the duration of the correction narration
+      correctionActiveRef.current = true
+
+      const phrase =
+        WRONG_MOVE_PHRASES[wrongMoveCounterRef.current++ % WRONG_MOVE_PHRASES.length]
+      const instruction = currentSpeechRef.current || steps[step].instruction
+
+      const unlock = () => {
+        correctionActiveRef.current = false
+      }
+
+      if (audioEnabledRef.current) {
+        speakStepCorrectionRef.current({ say: { en: phrase } })
+          .then(() => speakStepCorrectionRef.current({ say: { en: instruction } }))
+          .finally(unlock)
+      } else {
+        setTimeout(unlock, 1200)
+      }
+
+      requestDraw()
+    },
+    [steps, requestDraw, setProofFacts, setMacroPhase]
+  )
+
   // ── Step validation (uses ref to avoid stale closures) ──
 
   const checkStep = useCallback(
@@ -1118,9 +1251,11 @@ export function EuclidCanvas({
           }
         }
         setCurrentStep(nextStep)
+      } else {
+        triggerCorrection(step)
       }
     },
-    [steps, extendSegments]
+    [steps, extendSegments, triggerCorrection]
   )
 
   // ── Commit handlers ──
@@ -1218,6 +1353,11 @@ export function EuclidCanvas({
               (candidate.ofA === resolvedA && candidate.ofB === resolvedB) ||
               (candidate.ofA === resolvedB && candidate.ofB === resolvedA)
             if (!matches) {
+              if (!correctionActiveRef.current && audioEnabledRef.current) {
+                speakStepCorrectionRef.current({
+                  say: { en: "That's not the intersection we need. Try a different one." },
+                })
+              }
               return
             }
             // If beyondId is specified, reject candidates on the wrong side
@@ -1286,10 +1426,13 @@ export function EuclidCanvas({
       if (!macroDef) return
 
       const step = currentStepRef.current
-
-      // Get outputLabels from the current step's expected action
       const expected = step < steps.length ? steps[step].expected : null
-      const outputLabels = expected?.type === 'macro' ? expected.outputLabels : undefined
+
+      // A macro application is "guided" when the current step expects this exact proposition.
+      // In guided mode: full flow with snapshot, ceremony, and step advancement.
+      // In free mode: apply elements immediately, reopen picker for another application.
+      const isGuidedStep = expected?.type === 'macro' && expected.propId === propId
+      const outputLabels = isGuidedStep && expected?.type === 'macro' ? expected.outputLabels : undefined
 
       // Execute the macro — state is computed all at once
       const result = macroDef.execute(
@@ -1304,20 +1447,51 @@ export function EuclidCanvas({
 
       constructionRef.current = result.state
       candidatesRef.current = result.candidates
-      // factStore is mutated in place by the macro — no reassignment needed
       if (result.newFacts.length > 0) {
         proofFactsRef.current = [...proofFactsRef.current, ...result.newFacts]
         setProofFacts(proofFactsRef.current)
       }
 
+      if (!isGuidedStep) {
+        if (!isCompleteRef.current) {
+          // ── Wrong macro during guided steps ──────────────────────────
+          // The user applied a macro that doesn't match the expected action.
+          // Revert and narrate.
+          triggerCorrection(step)
+          return
+        }
+        // ── Free-form path (post-completion) ─────────────────────────
+        // Apply elements immediately without ceremony or step advancement.
+        // Record action so drag replay can reconstruct these elements.
+        postCompletionActionsRef.current = [
+          ...postCompletionActionsRef.current,
+          { type: 'macro' as const, propId, inputPointIds, atStep: step },
+        ]
+        // Add ghost layers immediately (no ceremony in free-form)
+        const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: step }))
+        ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
+        macroAnimationRef.current = createMacroAnimation(result)
+        if (availableMacros.length === 1) {
+          const { propId: mpId, def: mDef } = availableMacros[0]
+          const nextPhase: MacroPhase = { tag: 'selecting', propId: mpId, inputLabels: mDef.inputLabels, selectedPointIds: [] }
+          macroPhaseRef.current = nextPhase
+          setMacroPhase(nextPhase)
+        } else {
+          const choosingPhase: MacroPhase = { tag: 'choosing' }
+          macroPhaseRef.current = choosingPhase
+          setMacroPhase(choosingPhase)
+        }
+        requestDraw()
+        musicRef.current?.notifyChange()
+        return
+      }
+
+      // ── Guided path ───────────────────────────────────────────────
       // Collect ghost layers produced by the macro itself
       const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: step }))
       if (macroGhosts.length > 0) {
         ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
       }
-
-      // Start animation
-      macroAnimationRef.current = createMacroAnimation(result)
 
       // Capture snapshot before advancing — state after this step completes
       snapshotStackRef.current = [
@@ -1330,38 +1504,102 @@ export function EuclidCanvas({
         ),
       ]
 
-      // Directly advance the step (macro validation is handled here, not in validateStep)
-      setCompletedSteps((prev) => {
-        const next = [...prev]
-        next[step] = true
-        return next
-      })
-      const nextStep = step + 1
-      currentStepRef.current = nextStep
-      if (nextStep >= steps.length) {
-        setIsComplete(true)
-        // Recompute candidates with segment extension for post-completion play
-        if (!extendSegments) {
-          let updatedCandidates = [...candidatesRef.current]
-          for (const el of constructionRef.current.elements) {
-            if (el.kind === 'point') continue
-            const additional = findNewIntersections(
-              constructionRef.current,
-              el,
-              updatedCandidates,
-              true
-            )
-            updatedCandidates = [...updatedCandidates, ...additional]
+      // Check if any ghost layers have revealGroups (ceremony needed)
+      const hasCeremony = macroGhosts.some(
+        (gl) => gl.revealGroups && gl.revealGroups.length > 0
+      )
+
+      // Build the step-advance closure.
+      // For ceremony: also starts macroAnimation so construction elements appear
+      // after the ghost reveal rather than racing with it.
+      const stepToAdvance = step
+      const doAdvanceStep = () => {
+        setCompletedSteps((prev) => {
+          const next = [...prev]
+          next[stepToAdvance] = true
+          return next
+        })
+        const nextSt = stepToAdvance + 1
+        currentStepRef.current = nextSt
+        if (nextSt >= steps.length) {
+          setIsComplete(true)
+          // Recompute candidates with segment extension for post-completion play
+          if (!extendSegments) {
+            let updatedCandidates = [...candidatesRef.current]
+            for (const el of constructionRef.current.elements) {
+              if (el.kind === 'point') continue
+              const additional = findNewIntersections(
+                constructionRef.current,
+                el,
+                updatedCandidates,
+                true
+              )
+              updatedCandidates = [...updatedCandidates, ...additional]
+            }
+            candidatesRef.current = updatedCandidates
           }
-          candidatesRef.current = updatedCandidates
         }
+        setCurrentStep(nextSt)
+        // Start macro animation now — elements appear after ghost ceremony
+        macroAnimationRef.current = createMacroAnimation(result)
+        setCeremonyLabel(null)
+        musicRef.current?.notifyChange()
       }
-      setCurrentStep(nextStep)
+
+      if (hasCeremony) {
+        // Animation durations by element type
+        const elemAnimDurationMs = (el: GhostLayer['elements'][number]): number => {
+          if (el.kind === 'circle') return 700
+          if (el.kind === 'segment') return 400
+          return 0
+        }
+
+        // Sort layers deepest-first so dependencies are shown before the result
+        const sorted = [...macroGhosts].sort((a, b) => b.depth - a.depth)
+        const sequence: Array<{ layerKey: string; groupIndex: number; msDelay: number }> = []
+        let lastGroupMaxDurationMs = 0 // draw duration of the previous group, for timing
+        for (const layer of sorted) {
+          const key = `${layer.atStep}:${layer.depth}`
+          const groupCount = layer.revealGroups?.length ?? 1
+          for (let g = 0; g < groupCount; g++) {
+            // First group: initial pause before anything appears
+            // Subsequent groups: wait for previous group to finish drawing + small pause
+            const msDelay = sequence.length === 0 ? 400 : lastGroupMaxDurationMs + 200
+            sequence.push({ layerKey: key, groupIndex: g + 1, msDelay })
+            // Compute this group's max draw duration for the next group's delay
+            const group = layer.revealGroups?.[g]
+            lastGroupMaxDurationMs = group
+              ? Math.max(0, ...group.map((idx) => elemAnimDurationMs(layer.elements[idx])))
+              : 400
+          }
+        }
+        const depth1Layer = macroGhosts.find((gl) => gl.depth === 1)
+        const narrationText = depth1Layer?.keyNarration ?? ''
+        const propTitle = PROP_REGISTRY[propId]?.title ?? ''
+        setCeremonyLabel(`Applying I.${propId}${propTitle ? ` · ${propTitle}` : ''}`)
+        macroRevealRef.current = {
+          sequence,
+          revealed: 0,
+          lastRevealMs: performance.now(),
+          narrationText,
+          narrationFired: false,
+          allShownMs: null,
+          postNarrationDelayMs: 1200,
+          advanceStep: doAdvanceStep,
+          elementAnims: new Map(),
+          // Keep macro output elements hidden until ceremony completes so the
+          // ghost construction is revealed before the solid result appears
+          hiddenElementIds: new Set(result.addedElements.map((e) => e.id)),
+        }
+      } else {
+        // No ceremony — advance step and start animation immediately
+        macroAnimationRef.current = createMacroAnimation(result)
+        doAdvanceStep()
+      }
 
       requestDraw()
-      musicRef.current?.notifyChange()
     },
-    [steps, extendSegments, requestDraw]
+    [steps, extendSegments, requestDraw, triggerCorrection]
   )
 
   const handleRewindToStep = useCallback(
@@ -1373,7 +1611,9 @@ export function EuclidCanvas({
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
       macroPhaseRef.current = { tag: 'idle' }
+      setMacroPhase({ tag: 'idle' })
       macroAnimationRef.current = null
+      macroRevealRef.current = null
       superpositionFlashRef.current = null
       pointerCapturedRef.current = false
       postCompletionActionsRef.current = []
@@ -1420,16 +1660,18 @@ export function EuclidCanvas({
           setActiveTool(stepDef.tool)
           activeToolRef.current = stepDef.tool
 
-          // Initialize macro phase when rewinding to a macro step
+          // In guided mode, auto-select the required proposition on rewind
           if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
             const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
             if (macroDef) {
-              macroPhaseRef.current = {
+              const phase: MacroPhase = {
                 tag: 'selecting',
                 propId: stepDef.expected.propId,
                 inputLabels: macroDef.inputLabels,
                 selectedPointIds: [],
               }
+              macroPhaseRef.current = phase
+              setMacroPhase(phase)
             }
           }
         }
@@ -1530,6 +1772,8 @@ export function EuclidCanvas({
     expectedActionRef,
     macroPhaseRef,
     onCommitMacro: handleCommitMacro,
+    onMacroPhaseChange: handleMacroPhaseChange,
+    disabledRef: correctionActiveRef,
   })
 
   // ── Hook up drag interaction for post-completion play ──
@@ -1647,6 +1891,64 @@ export function EuclidCanvas({
         }
       }
 
+      // ── Tick macro reveal ceremony ──
+      const ceremony = macroRevealRef.current
+      if (ceremony) {
+        const now = performance.now()
+        if (ceremony.revealed < ceremony.sequence.length) {
+          // Still revealing groups — check if the next one is due
+          const entry = ceremony.sequence[ceremony.revealed]
+          if (now - ceremony.lastRevealMs >= entry.msDelay) {
+            ceremony.revealed++
+            ceremony.lastRevealMs = now
+            needsDrawRef.current = true
+            // Start draw animations for each element in this newly revealed group
+            const revealedEntry = ceremony.sequence[ceremony.revealed - 1]
+            const layer = ghostLayersRef.current.find(
+              (gl) => `${gl.atStep}:${gl.depth}` === revealedEntry.layerKey
+            )
+            if (layer?.revealGroups) {
+              const group = layer.revealGroups[revealedEntry.groupIndex - 1]
+              if (group) {
+                for (const idx of group) {
+                  const el = layer.elements[idx]
+                  if (!el) continue
+                  const durationMs =
+                    el.kind === 'circle' ? 700 : el.kind === 'segment' ? 400 : 0
+                  ceremony.elementAnims.set(`${revealedEntry.layerKey}:${idx}`, {
+                    startMs: now,
+                    durationMs,
+                  })
+                }
+              }
+            }
+            if (ceremony.revealed >= ceremony.sequence.length) {
+              ceremony.allShownMs = now
+            }
+          } else {
+            // Not yet due — keep animating so we check again next frame
+            needsDrawRef.current = true
+          }
+        } else if (ceremony.allShownMs !== null) {
+          // All groups shown — fire narration once, then advance step after delay
+          if (!ceremony.narrationFired) {
+            ceremony.narrationFired = true
+            if (ceremony.narrationText) {
+              sayMacroRevealRef.current({
+                say: { en: ceremony.narrationText },
+                tone: 'tutorial-instruction',
+              })
+            }
+          }
+          if (now - ceremony.allShownMs >= ceremony.postNarrationDelayMs) {
+            ceremony.advanceStep()
+            macroRevealRef.current = null
+          } else {
+            needsDrawRef.current = true
+          }
+        }
+      }
+
       // ── Track macro phase for tutorial advancement ──
       const macroPhase = macroPhaseRef.current
       if (macroPhase.tag === 'selecting' && macroPhase.selectedPointIds.length > 0) {
@@ -1723,6 +2025,27 @@ export function EuclidCanvas({
                   )
                 }
               }
+              // During ceremony: expand bounds to include ghost geometry so the
+              // viewport zooms out to frame the full dependency construction.
+              const cer = macroRevealRef.current
+              const inCeremony = cer != null
+              if (inCeremony) {
+                const ceremonyLayerKeys = new Set(cer.sequence.map((e) => e.layerKey))
+                for (const layer of ghostLayersRef.current) {
+                  const key = `${layer.atStep}:${layer.depth}`
+                  if (!ceremonyLayerKeys.has(key)) continue
+                  for (const el of layer.elements) {
+                    if (el.kind === 'circle') {
+                      expandBounds(bounds, el.cx, el.cy, el.r)
+                    } else if (el.kind === 'segment') {
+                      expandBounds(bounds, el.x1, el.y1, 0)
+                      expandBounds(bounds, el.x2, el.y2, 0)
+                    } else if (el.kind === 'point') {
+                      expandBounds(bounds, el.x, el.y, 0)
+                    }
+                  }
+                }
+              }
               const width = Math.max(1, bounds.maxX - bounds.minX)
               const height = Math.max(1, bounds.maxY - bounds.minY)
               const availableW = Math.max(1, fitRect.width - pad * 2)
@@ -1730,7 +2053,8 @@ export function EuclidCanvas({
               const minPpuNeeded = Math.min(availableW / width, availableH / height)
               const fitArea = availableW * availableH
               const boundsArea = width * height
-              const shouldZoomIn = boundsArea <= fitArea * 0.25
+              // Suppress zoom-in during ceremony — ghost geometry should only zoom out
+              const shouldZoomIn = !inCeremony && boundsArea <= fitArea * 0.25
               const desiredPpu = Math.min(availableW / width, availableH / height)
               const maxPpu = getAutoFitMaxPpu(isTouch)
               const targetPpu = shouldZoomIn
@@ -1773,9 +2097,10 @@ export function EuclidCanvas({
               let effectivePpu = v.pixelsPerUnit
               if (!softOk || targetPpu < v.pixelsPerUnit || shouldZoomIn) {
                 const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
+                const ppuDeltaCap = inCeremony ? AUTO_FIT_CEREMONY_PPU_DELTA : AUTO_FIT_MAX_PPU_DELTA
                 const deltaPpu = Math.max(
-                  -AUTO_FIT_MAX_PPU_DELTA,
-                  Math.min(AUTO_FIT_MAX_PPU_DELTA, nextPpu - v.pixelsPerUnit)
+                  -ppuDeltaCap,
+                  Math.min(ppuDeltaCap, nextPpu - v.pixelsPerUnit)
                 )
                 effectivePpu = v.pixelsPerUnit + deltaPpu
                 v.pixelsPerUnit = effectivePpu
@@ -1867,6 +2192,12 @@ export function EuclidCanvas({
 
           // Compute hidden elements during macro animation
           const hiddenIds = getHiddenElementIds(macroAnimationRef.current)
+          // Also hide macro output elements while the ceremony is playing —
+          // the solid result should appear only after the ghost reveal finishes
+          const ceremonyHidden = macroRevealRef.current?.hiddenElementIds
+          if (ceremonyHidden) {
+            for (const id of ceremonyHidden) hiddenIds.add(id)
+          }
 
           // Handle straightedge drawing animation — hide the segment while it's being progressively drawn
           const drawAnim = straightedgeDrawAnimRef.current
@@ -1994,6 +2325,16 @@ export function EuclidCanvas({
 
           // Render ghost geometry (dependency scaffolding from macros)
           if (ghostLayersRef.current.length > 0) {
+            // Build ceremony reveal counts map for the current frame
+            const cer = macroRevealRef.current
+            let ceremonyRevealCounts: Map<string, number> | null = null
+            if (cer) {
+              ceremonyRevealCounts = new Map<string, number>()
+              for (let i = 0; i < cer.revealed; i++) {
+                const entry = cer.sequence[i]
+                ceremonyRevealCounts.set(entry.layerKey, entry.groupIndex)
+              }
+            }
             const ghostAnimating = renderGhostGeometry(
               ctx,
               ghostLayersRef.current,
@@ -2001,7 +2342,10 @@ export function EuclidCanvas({
               cssWidth,
               cssHeight,
               hoveredMacroStepRef.current,
-              ghostOpacitiesRef.current
+              ghostOpacitiesRef.current,
+              ceremonyRevealCounts,
+              cer?.elementAnims ?? null,
+              cer ? performance.now() : undefined
             )
             if (ghostAnimating || hoveredMacroStepRef.current !== null) {
               needsDrawRef.current = true
@@ -2231,6 +2575,32 @@ export function EuclidCanvas({
           </div>
         )}
 
+        {/* Macro reveal ceremony label */}
+        {ceremonyLabel && (
+          <div
+            data-element="ceremony-label"
+            style={{
+              position: 'absolute',
+              bottom: 84,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '5px 14px',
+              borderRadius: 8,
+              background: 'rgba(240, 199, 94, 0.15)',
+              color: '#b08a1a',
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: 'system-ui, sans-serif',
+              pointerEvents: 'none',
+              zIndex: 10,
+              whiteSpace: 'nowrap',
+              letterSpacing: '0.03em',
+            }}
+          >
+            {ceremonyLabel}
+          </div>
+        )}
+
         <div
           data-element="tool-selector"
           ref={toolDockRef}
@@ -2335,7 +2705,42 @@ export function EuclidCanvas({
             onClick={() => setActiveTool('straightedge')}
             size={isMobile ? 44 : 48}
           />
+          {availableMacros.length > 0 && (
+            <ToolButton
+              label="Proposition"
+              icon={
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {/* Two overlapping circles — evokes prior constructions */}
+                  <circle cx="9" cy="12" r="5" />
+                  <circle cx="15" cy="12" r="5" />
+                </svg>
+              }
+              active={activeTool === 'macro'}
+              onClick={handleMacroToolClick}
+              size={isMobile ? 44 : 48}
+            />
+          )}
         </div>
+
+        {/* Proposition picker panel — shown when macro tool is active */}
+        {activeTool === 'macro' && macroPhase.tag !== 'idle' && (
+          <MacroToolPanel
+            macros={availableMacros}
+            macroPhase={macroPhase}
+            guidedPropId={guidedPropId}
+            onSelect={handleMacroPropositionSelect}
+            isMobile={isMobile}
+          />
+        )}
 
         {isCorrectionActive && (
           <div

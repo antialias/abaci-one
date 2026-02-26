@@ -37,6 +37,8 @@ interface UseToolInteractionOptions {
   expectedActionRef: React.MutableRefObject<ExpectedAction | null>
   macroPhaseRef: React.MutableRefObject<MacroPhase>
   onCommitMacro: (propId: number, inputPointIds: string[]) => void
+  /** Called whenever macroPhaseRef.current changes, so React state can stay in sync. */
+  onMacroPhaseChange?: (phase: MacroPhase) => void
   /** When true, all tool gestures are disabled (e.g. during given-setup mode in editor) */
   disabledRef?: React.MutableRefObject<boolean>
 }
@@ -69,6 +71,7 @@ export function useToolInteraction({
   expectedActionRef,
   macroPhaseRef,
   onCommitMacro,
+  onMacroPhaseChange,
   disabledRef,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
@@ -161,6 +164,7 @@ export function useToolInteraction({
       }
 
       // ── Tool gestures ──
+      console.log('[macro-debug] pointerdown tool=%s hitPt=%s macroPhase=%o', tool, hitPt?.id ?? 'none', macroPhaseRef.current)
       if (!hitPt) {
         requestDraw()
         return
@@ -190,33 +194,24 @@ export function useToolInteraction({
 
       if (tool === 'macro') {
         const macro = macroPhaseRef.current
+        console.log('[macro-debug] macro branch: tag=%s', macro.tag)
         if (macro.tag === 'selecting') {
           e.stopPropagation()
 
-          // In guided mode, validate against expected input points
-          const expected = expectedActionRef.current
-          if (expected?.type === 'macro') {
-            const nextIdx = macro.selectedPointIds.length
-            if (nextIdx < expected.inputPointIds.length) {
-              if (hitPt.id !== expected.inputPointIds[nextIdx]) {
-                // Wrong point — ignore
-                requestDraw()
-                return
-              }
-            }
-          }
-
           const newSelected = [...macro.selectedPointIds, hitPt.id]
+          console.log('[macro-debug] selecting: newSelected=%o inputLabels=%o', newSelected, macro.inputLabels)
           if (newSelected.length >= macro.inputLabels.length) {
             // All inputs collected — commit
-            macroPhaseRef.current = { tag: 'idle' }
+            console.log('[macro-debug] committing macro propId=%d inputs=%o', macro.propId, newSelected)
+            const idlePhase: MacroPhase = { tag: 'idle' }
+            macroPhaseRef.current = idlePhase
+            onMacroPhaseChange?.(idlePhase)
             pointerCapturedRef.current = false
             onCommitMacro(macro.propId, newSelected)
           } else {
-            macroPhaseRef.current = {
-              ...macro,
-              selectedPointIds: newSelected,
-            }
+            const nextPhase: MacroPhase = { ...macro, selectedPointIds: newSelected }
+            macroPhaseRef.current = nextPhase
+            onMacroPhaseChange?.(nextPhase)
           }
           requestDraw()
           return
@@ -472,7 +467,9 @@ export function useToolInteraction({
     function handlePointerCancel() {
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
-      macroPhaseRef.current = { tag: 'idle' }
+      const idlePhase: MacroPhase = { tag: 'idle' }
+      macroPhaseRef.current = idlePhase
+      onMacroPhaseChange?.(idlePhase)
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
@@ -509,6 +506,7 @@ export function useToolInteraction({
     expectedActionRef,
     macroPhaseRef,
     onCommitMacro,
+    onMacroPhaseChange,
     getCanvasRect,
   ])
 }

@@ -221,6 +221,10 @@ const MACRO_PROP_1: MacroDef = {
           { kind: 'circle', cx: pA.x, cy: pA.y, r: radius, color: BYRNE_CYCLE[0] },
           { kind: 'circle', cx: pB.x, cy: pB.y, r: radius, color: BYRNE_CYCLE[1] },
         ],
+        // Reveal ceremony: show each circle in turn so the kid sees them intersect
+        revealGroups: [[0], [1]],
+        keyNarration:
+          `${apexLabel}${aLabel} equals ${apexLabel}${bLabel} — the triangle is equilateral. That is what Proposition one gives us.`,
       })
     }
 
@@ -414,6 +418,8 @@ const MACRO_PROP_2: MacroDef = {
           { kind: 'circle', cx: target.x, cy: target.y, r: abRadius, color: BYRNE_CYCLE[0] },
           { kind: 'circle', cx: segFrom.x, cy: segFrom.y, r: abRadius, color: BYRNE_CYCLE[1] },
         ],
+        // Reveal quickly — the I.1 sub-step inside I.2
+        revealGroups: [[0], [1]],
       })
 
       // Step 3: Circle at B through C
@@ -512,7 +518,21 @@ const MACRO_PROP_2: MacroDef = {
 
     const ghostLayers: GhostLayer[] = []
     if (ghostElements.length > 0) {
-      ghostLayers.push({ propId: 2, depth: 1, atStep: 0, elements: ghostElements })
+      ghostLayers.push({
+        propId: 2,
+        depth: 1,
+        atStep: 0,
+        elements: ghostElements,
+        // Reveal groups (non-degenerate path has 10 elements; degenerate has 1):
+        // [0]=seg AB, [1]=pt D, [2]=seg DA, [3]=seg DB,
+        // [4]=cir(B,C), [5]=pt E, [6]=seg BE, [7]=cir(D,E), [8]=pt F, [9]=seg AF
+        revealGroups:
+          ghostElements.length >= 10
+            ? [[0], [1, 2, 3], [4], [5, 6], [7], [8, 9]]
+            : [[0]],
+        keyNarration:
+          `The segment at ${targetLabel} now equals ${segFromLabel}${segToLabel} — that is what Proposition two proves.`,
+      })
     }
     ghostLayers.push(...childGhostLayers)
 
@@ -690,7 +710,16 @@ const MACRO_PROP_3: MacroDef = {
 
     const ghostLayers: GhostLayer[] = []
     if (ghostElements.length > 0) {
-      ghostLayers.push({ propId: 3, depth: 1, atStep: 0, elements: ghostElements })
+      ghostLayers.push({
+        propId: 3,
+        depth: 1,
+        atStep: 0,
+        elements: ghostElements,
+        // [0]=pt (I.2 output), [1]=seg (I.2 output), [2]=cir at cut, [3]=result pt
+        revealGroups: [[0, 1], [2], [3]],
+        keyNarration:
+          `The circle marks the cut — ${cutLabel}${resultLabel} equals ${segFromLabel}${segToLabel}. That is what Proposition three proves.`,
+      })
     }
     ghostLayers.push(...childGhostLayers)
 

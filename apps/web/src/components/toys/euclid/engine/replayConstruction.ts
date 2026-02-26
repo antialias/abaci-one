@@ -32,6 +32,7 @@ export type PostCompletionAction =
   | { type: 'circle'; centerId: string; radiusPointId: string }
   | { type: 'segment'; fromId: string; toId: string }
   | { type: 'intersection'; ofA: string; ofB: string; which: number }
+  | { type: 'macro'; propId: number; inputPointIds: string[]; atStep: number }
 
 export interface ReplayResult {
   state: ConstructionState
@@ -287,6 +288,24 @@ export function replayConstruction(
         } else {
           // Advance label/color indices so subsequent point labels stay stable
           state = skipPointLabel(state)
+        }
+      } else if (action.type === 'macro') {
+        const macroDef = MACRO_REGISTRY[action.propId]
+        if (macroDef) {
+          const macroResult = macroDef.execute(
+            state,
+            action.inputPointIds,
+            candidates,
+            factStore,
+            action.atStep,
+            true // extendSegments: always true for post-completion free-form
+          )
+          state = macroResult.state
+          candidates = macroResult.candidates
+          proofFacts.push(...macroResult.newFacts)
+          for (const gl of macroResult.ghostLayers) {
+            ghostLayers.push({ ...gl, atStep: action.atStep })
+          }
         }
       }
     }
