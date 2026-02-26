@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { BYRNE } from '../types'
 import { CITATIONS } from '../engine/citations'
 import { PROP_REGISTRY } from '../propositions/registry'
+import { buildFinalState } from '../render/buildFinalStates'
 import { FOUNDATION_ITEMS, FOUNDATION_DIAGRAMS } from './foundationsData'
 import { EuclidFoundationCanvas } from './EuclidFoundationCanvas'
 import { getFoundationIdForCitation, getFoundationHref, getPropositionHref, getPropIdForCitation } from './citationUtils'
@@ -48,13 +49,20 @@ export function CitationPopover({
   const propId = propMatch ? parseInt(propMatch[1], 10) : null
   const propDef = propId != null ? PROP_REGISTRY[propId] : null
 
-  // Synthetic diagram from proposition's given elements (for mini canvas)
+  // Build the completed construction state (falls back to givenElements if not yet implemented)
+  const propFinalElements = useMemo(() => {
+    if (propId == null) return null
+    const finalState = buildFinalState(propId)
+    return finalState?.elements ?? null
+  }, [propId])
+
+  // Synthetic diagram from completed proposition elements (for mini canvas)
   const propDiagram =
     propDef && !diagram
       ? {
           id: `prop-${propId}`,
           title: citDef?.label ?? citationKey,
-          elements: propDef.givenElements,
+          elements: propFinalElements ?? propDef.givenElements,
         }
       : null
 
