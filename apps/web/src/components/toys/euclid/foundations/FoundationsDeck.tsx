@@ -189,7 +189,7 @@ export function FoundationsDeck({ languageStyle, focusId, onFocusChange }: Found
           flexDirection: 'column',
           gap: '1rem',
           position: { base: 'static', lg: 'sticky' },
-          top: { lg: 'calc(var(--app-nav-height) + 1rem)' },
+          top: { lg: 'calc(var(--app-nav-height) + 16px + 1rem)' },
         })}
       >
         <div

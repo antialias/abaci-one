@@ -87,9 +87,10 @@ export default function EuclidFoundationsPage() {
         className={css({
           flex: 1,
           minHeight: 0,
-          paddingTop: 'var(--app-nav-height)',
           overflowY: 'auto',
-          padding: { base: '1rem', md: '1.5rem' },
+          paddingTop: { base: 'calc(var(--app-nav-height) + 16px)' },
+          paddingX: { base: '1rem', md: '1.5rem' },
+          paddingBottom: { base: '1rem', md: '1.5rem' },
         })}
       >
         <div className={css({ maxWidth: '1100px', margin: '0 auto' })}>
