@@ -38,14 +38,28 @@ const PRESETS: Preset[] = [
 function CleanupSection({ isDark }: { isDark: boolean }) {
   const [showPreview, setShowPreview] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [lastResult, setLastResult] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
   const preview = useCleanupPreview(showPreview)
   const cleanup = useCleanupDebugPlayers()
 
   const handleDelete = () => {
     cleanup.mutate(undefined, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setConfirming(false)
         setShowPreview(false)
+        setLastResult({
+          type: 'success',
+          message: `Deleted ${data.deleted} player${data.deleted !== 1 ? 's' : ''} and all related data.`,
+        })
+      },
+      onError: (err) => {
+        setLastResult({
+          type: 'error',
+          message: err.message,
+        })
       },
     })
   }
@@ -72,14 +86,43 @@ function CleanupSection({ isDark }: { isDark: boolean }) {
           marginBottom: '1rem',
         })}
       >
-        Remove debug and seed players. Only players matching Debug-* naming or tracked seed entries
-        are affected — your real student profiles are safe.
+        Remove debug, seed, and e2e test players. Matches Debug-* naming, seed entries, and * Test
+        Child naming. Your real student profiles are safe.
       </p>
+
+      {lastResult && !showPreview && (
+        <div
+          data-element={`cleanup-${lastResult.type}`}
+          className={css({
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            border: '1px solid',
+            ...(lastResult.type === 'success'
+              ? {
+                  backgroundColor: isDark ? 'green.900/30' : 'green.50',
+                  color: isDark ? 'green.300' : 'green.700',
+                  borderColor: isDark ? 'green.800' : 'green.200',
+                }
+              : {
+                  backgroundColor: isDark ? 'red.900/30' : 'red.50',
+                  color: isDark ? 'red.300' : 'red.700',
+                  borderColor: isDark ? 'red.800' : 'red.200',
+                }),
+          })}
+        >
+          {lastResult.message}
+        </div>
+      )}
 
       {!showPreview && (
         <button
           data-action="preview-cleanup"
-          onClick={() => setShowPreview(true)}
+          onClick={() => {
+            setLastResult(null)
+            setShowPreview(true)
+          }}
           className={css({
             display: 'inline-flex',
             alignItems: 'center',
@@ -307,38 +350,6 @@ function CleanupSection({ isDark }: { isDark: boolean }) {
             </>
           )}
 
-          {cleanup.isSuccess && (
-            <div
-              data-element="cleanup-success"
-              className={css({
-                padding: '0.75rem 1.25rem',
-                backgroundColor: isDark ? 'green.900/30' : 'green.50',
-                color: isDark ? 'green.300' : 'green.700',
-                fontSize: '0.8125rem',
-                borderTop: '1px solid',
-                borderColor: isDark ? 'green.800' : 'green.200',
-              })}
-            >
-              Deleted {cleanup.data.deleted} player{cleanup.data.deleted !== 1 ? 's' : ''} and all
-              related data.
-            </div>
-          )}
-
-          {cleanup.error && (
-            <div
-              data-element="cleanup-error"
-              className={css({
-                padding: '0.75rem 1.25rem',
-                backgroundColor: isDark ? 'red.900/30' : 'red.50',
-                color: isDark ? 'red.300' : 'red.700',
-                fontSize: '0.8125rem',
-                borderTop: '1px solid',
-                borderColor: isDark ? 'red.800' : 'red.200',
-              })}
-            >
-              {cleanup.error.message}
-            </div>
-          )}
         </div>
       )}
     </section>

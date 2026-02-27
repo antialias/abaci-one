@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
@@ -6,11 +6,15 @@ import { seedProfilePlayers } from '@/db/schema/seed-profile-players'
 import { getUserId } from '@/lib/viewer'
 
 /**
- * Find all debug/seed players owned by the current user.
+ * Find all expungeable players owned by the current user.
  *
- * A player is considered a debug/seed player if:
- * 1. It has an entry in seed_profile_players (was created by the seeder), OR
- * 2. Its name matches the Debug-{timestamp} pattern AND emoji is 🐛
+ * Players are expungeable when `is_expungeable = true`, which is set at
+ * creation time by debug endpoints, seed tools, and e2e tests.
+ *
+ * As a fallback for players created before the flag existed, also matches:
+ * - Debug-{timestamp} name + 🐛 emoji (debug hub)
+ * - * Test Child name suffix (e2e tests)
+ * - Entries in seed_profile_players (seed tool)
  *
  * Only returns players owned by the requesting user (via parent_child).
  */
@@ -24,7 +28,7 @@ async function findCleanupCandidates(userId: string) {
   const ownedIds = ownedRelations.map((r) => r.playerId)
   if (ownedIds.length === 0) return []
 
-  // Find seed players (tracked in seed_profile_players)
+  // Find seed players (tracked in seed_profile_players) for source annotation
   const seedEntries = await db
     .select({ playerId: seedProfilePlayers.playerId, profileId: seedProfilePlayers.profileId })
     .from(seedProfilePlayers)
@@ -32,7 +36,7 @@ async function findCleanupCandidates(userId: string) {
 
   const seedPlayerIds = new Set(seedEntries.map((e) => e.playerId))
 
-  // Find debug players by naming convention (Debug-* + 🐛 emoji)
+  // Fetch all owned players
   const allOwned = await db
     .select({
       id: schema.players.id,
@@ -40,28 +44,34 @@ async function findCleanupCandidates(userId: string) {
       emoji: schema.players.emoji,
       color: schema.players.color,
       createdAt: schema.players.createdAt,
+      isExpungeable: schema.players.isExpungeable,
     })
     .from(schema.players)
     .where(inArray(schema.players.id, ownedIds))
 
   const candidates = allOwned.filter((p) => {
-    // Seed player
+    // Primary: flag set at creation time
+    if (p.isExpungeable) return true
+    // Fallback: legacy patterns for players created before the flag existed
     if (seedPlayerIds.has(p.id)) return true
-    // Debug player (name pattern + emoji)
     if (p.name.startsWith('Debug-') && p.emoji === '🐛') return true
+    if (p.name.endsWith(' Test Child')) return true
     return false
   })
 
   // Annotate with source
   return candidates.map((p) => {
     const seedEntry = seedEntries.find((e) => e.playerId === p.id)
+    let source: string = 'debug'
+    if (seedEntry) source = `seed:${seedEntry.profileId}`
+    else if (p.name.endsWith(' Test Child')) source = 'e2e'
     return {
       id: p.id,
       name: p.name,
       emoji: p.emoji,
       color: p.color,
       createdAt: p.createdAt,
-      source: seedEntry ? (`seed:${seedEntry.profileId}` as const) : ('debug' as const),
+      source,
     }
   })
 }
@@ -69,7 +79,7 @@ async function findCleanupCandidates(userId: string) {
 /**
  * GET /api/debug/cleanup
  *
- * Preview: returns the list of debug/seed players that would be deleted.
+ * Preview: returns the list of expungeable players that would be deleted.
  */
 export const GET = withAuth(
   async () => {
@@ -95,7 +105,7 @@ export const GET = withAuth(
 /**
  * DELETE /api/debug/cleanup
  *
- * Deletes all debug/seed players owned by the current user.
+ * Deletes all expungeable players owned by the current user.
  * All related data (sessions, skills, enrollments, etc.) cascades automatically.
  */
 export const DELETE = withAuth(

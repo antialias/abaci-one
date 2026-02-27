@@ -108,6 +108,7 @@ export const POST = withAuth(async (request) => {
         color: body.color,
         isActive: body.isActive ?? false,
         isPracticeStudent,
+        isExpungeable: body.isExpungeable ?? false,
         familyCode,
         ...(normalizedBirthday !== undefined && { birthday: normalizedBirthday }),
       })

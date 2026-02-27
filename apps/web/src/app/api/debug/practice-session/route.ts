@@ -95,6 +95,7 @@ export const POST = withAuth(
           emoji: '🐛',
           color: '#ff6b6b',
           isActive: false,
+          isExpungeable: true,
           familyCode: generateFamilyCode(),
         })
         .returning()

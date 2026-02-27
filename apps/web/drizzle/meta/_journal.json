@@ -848,6 +848,13 @@
       "when": 1774100000000,
       "tag": "0120_add_player_id_to_euclid_creations",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "6",
+      "when": 1774200000000,
+      "tag": "0121_add_is_expungeable_to_players",
+      "breakpoints": true
     }
   ]
 }

@@ -105,6 +105,12 @@ export const players = sqliteTable(
     birthday: text('birthday'),
 
     /**
+     * Whether this player can be bulk-deleted by the debug cleanup tool.
+     * Set to true for debug players, seed players, and e2e test players.
+     */
+    isExpungeable: integer('is_expungeable', { mode: 'boolean' }).notNull().default(false),
+
+    /**
      * Family code for sharing access to this player with other parents
      * Format: FAM-XXXXXX (6 alphanumeric chars)
      */

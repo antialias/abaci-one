@@ -64,6 +64,7 @@ export async function createTestStudent(
     emoji: profile.emoji,
     color: profile.color,
     isActive: true,
+    isExpungeable: true,
     notes: profile.intentionNotes,
   })
 
