@@ -307,6 +307,9 @@ export function filterStudentsByView(
 
 /**
  * Compute view counts from unified students
+ *
+ * Excludes archived students so counts match the default display
+ * (archived students are hidden unless explicitly toggled on).
  */
 export function computeViewCounts(
   students: UnifiedStudent[],
@@ -323,6 +326,8 @@ export function computeViewCounts(
     number
   >
 > {
+  const active = students.filter((s) => !s.isArchived)
+
   const counts: Partial<
     Record<
       | 'all'
@@ -335,18 +340,18 @@ export function computeViewCounts(
       number
     >
   > = {
-    all: students.length,
-    'needs-attention': students.filter((s) => s.intervention != null && !s.isArchived).length,
-    'my-children': students.filter((s) => s.relationship.isMyChild).length,
-    'my-children-active': students.filter(
+    all: active.length,
+    'needs-attention': active.filter((s) => s.intervention != null).length,
+    'my-children': active.filter((s) => s.relationship.isMyChild).length,
+    'my-children-active': active.filter(
       (s) => s.relationship.isMyChild && s.activity?.status === 'practicing'
     ).length,
   }
 
   if (isTeacher) {
-    counts.enrolled = students.filter((s) => s.relationship.isEnrolled).length
-    counts['in-classroom'] = students.filter((s) => s.relationship.isPresent).length
-    counts['in-classroom-active'] = students.filter(
+    counts.enrolled = active.filter((s) => s.relationship.isEnrolled).length
+    counts['in-classroom'] = active.filter((s) => s.relationship.isPresent).length
+    counts['in-classroom-active'] = active.filter(
       (s) => s.relationship.isPresent && s.activity?.status === 'practicing'
     ).length
   }
