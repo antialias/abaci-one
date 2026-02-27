@@ -54,6 +54,8 @@ All documentation must be reachable from root README via linked path. Unlinked d
 ### Database Migrations
 **Has caused multiple production outages.** See `.claude/procedures/database-migrations.md`
 
+**NEVER run `drizzle-kit push`.** It applies schema changes to the local DB without creating migration records, so the next `pnpm dev` crashes trying to re-apply migrations that already exist. Always use the `/db-migrate` skill for all schema changes — no exceptions, no "quick iteration" shortcuts.
+
 Quick rules: Never modify schema directly, never modify deployed migrations, always use `npx drizzle-kit generate --custom`, always add `--> statement-breakpoint` between statements, **always commit entire `drizzle/` directory** (includes meta files required for migration to run).
 
 ### Production Dependencies
