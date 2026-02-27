@@ -2814,6 +2814,8 @@ export function EuclidCanvas({
         flexDirection: isMobile ? 'column' : 'row',
         overflow: 'hidden',
         position: 'relative',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
     >
       {/* ── Left pane: Canvas ── */}
