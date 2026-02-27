@@ -91,7 +91,7 @@ interface ViewSelectorProps {
   /** Views to show (filtered by user type) */
   availableViews: StudentView[]
   /** Counts per view (e.g., { all: 5, 'my-children': 3 }) */
-  viewCounts?: Partial<Record<StudentView, number>>
+  viewCounts?: Partial<Record<StudentView, number>> & { allTotal?: number }
   /** Hide the teacher compound chip (when rendered externally in a card) */
   hideTeacherCompound?: boolean
   /** Optional classroom card to render inline (for teachers) */
@@ -187,12 +187,17 @@ export function ViewSelector({
         }
 
         // Otherwise render as simple chip
+        const allTotal =
+          viewId === 'all' && viewCounts.allTotal !== undefined && viewCounts.allTotal !== parentCount
+            ? viewCounts.allTotal
+            : undefined
         return (
           <SimpleChip
             key={viewId}
             config={config}
             isActive={isParentActive}
             count={parentCount}
+            totalCount={allTotal}
             onClick={() => onViewChange(viewId)}
             isDark={isDark}
           />
@@ -220,11 +225,13 @@ interface SimpleChipProps {
   config: ViewConfig
   isActive: boolean
   count?: number
+  /** Total including archived — shown subtly when it differs from count */
+  totalCount?: number
   onClick: () => void
   isDark: boolean
 }
 
-function SimpleChip({ config, isActive, count, onClick, isDark }: SimpleChipProps) {
+function SimpleChip({ config, isActive, count, totalCount, onClick, isDark }: SimpleChipProps) {
   // Needs-attention uses orange/red to indicate urgency
   const isAttention = config.id === 'needs-attention'
   const colorScheme = isAttention ? 'orange' : 'blue'
@@ -307,6 +314,18 @@ function SimpleChip({ config, isActive, count, onClick, isDark }: SimpleChipProp
           })}
         >
           {count}
+          {totalCount !== undefined && (
+            <span
+              data-element="total-count"
+              className={css({
+                fontWeight: 'normal',
+                opacity: 0.5,
+                fontSize: '10px',
+              })}
+            >
+              /{totalCount}
+            </span>
+          )}
         </span>
       )}
     </button>

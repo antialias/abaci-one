@@ -306,10 +306,10 @@ export function filterStudentsByView(
 }
 
 /**
- * Compute view counts from unified students
+ * Compute view counts from unified students.
  *
- * Excludes archived students so counts match the default display
- * (archived students are hidden unless explicitly toggled on).
+ * Primary counts exclude archived students (matching the default display).
+ * Also returns `allTotal` so the UI can subtly indicate the full roster size.
  */
 export function computeViewCounts(
   students: UnifiedStudent[],
@@ -325,7 +325,7 @@ export function computeViewCounts(
     | 'needs-attention',
     number
   >
-> {
+> & { allTotal?: number } {
   const active = students.filter((s) => !s.isArchived)
 
   const counts: Partial<
@@ -339,8 +339,9 @@ export function computeViewCounts(
       | 'needs-attention',
       number
     >
-  > = {
+  > & { allTotal?: number } = {
     all: active.length,
+    allTotal: students.length,
     'needs-attention': active.filter((s) => s.intervention != null).length,
     'my-children': active.filter((s) => s.relationship.isMyChild).length,
     'my-children-active': active.filter(
