@@ -87,6 +87,7 @@ export function PracticeGameModeProvider({
         notes: null,
         isArchived: false,
         isPracticeStudent: true,
+        isExpungeable: false,
         birthday: null,
         familyCode: null,
         familyCodeGeneratedAt: null,
