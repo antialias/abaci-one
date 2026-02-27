@@ -35,6 +35,12 @@ Abraham Lincoln taught himself Euclid's *Elements* by candlelight in a log cabin
 
 He was right about what *Elements* was. Euclid's *Elements* is not, at its core, a geometry textbook. It is a logic machine dressed in geometric clothing. The triangles and circles are the medium; the lesson is how to think.
 
+John Stuart Mill — who began Euclid at eight under his father's tutoring — articulated what that training was actually for, in his 1867 Inaugural Address at the University of St. Andrews, in terms nobody has improved on since:
+
+> "Our first studies in geometry teach us two invaluable lessons. One is, to lay down at the beginning, in express and clear terms, all the premises from which we intend to reason. The other is, to keep every step in the reasoning distinct and separate from all the other steps, and to make each step safe before proceeding to another; expressly stating to ourselves, at every joint in the reasoning, what new premise we there introduce."
+
+Not a description of how to find the area of a triangle. A description of how to think.
+
 Here's what that means concretely. Proposition 1 of Book I — the very first thing Euclid proves — shows how to construct an equilateral triangle using only a blank straightedge and a compass. No numbers. No measurements. No algebra. You draw two circles, each centered at one endpoint of a line segment, each with the radius of that segment. They intersect at a point. Connect that point to each endpoint. Done. And because of what a circle *is* — all points equidistant from a center — those three sides must be equal. Not probably equal. Not equal within measurement error. Necessarily, inescapably equal.
 
 That's what a proof is: an argument so tight that the conclusion is forced. Not suggested. Forced.
@@ -74,6 +80,12 @@ But here is what was quietly discarded: the experience of being genuinely uncert
 Euclid taught students to distrust their visual intuition and work only from what they could logically demonstrate. Modern geometry taught students to check their work by computing it twice. These are different skills. We kept one and discarded the other — and the one we discarded was the one that transfers.
 
 The modern geometry student learns to verify conclusions they already believe. The Euclidean student learns to discover conclusions that the logic makes unavoidable. The first is useful. The second changes how you think about everything.
+
+Which makes it worth sitting with something Mill wrote in the same period. In his *Examination of Sir William Hamilton's Philosophy* (1865), he called the application of algebra to geometry "the greatest single step ever made in the progress of the exact sciences" — praising Descartes for the precise transformation we've been describing as a loss.
+
+Mill is not contradicting himself. He understood exactly what Euclidean proof teaches, and he also recognized that Descartes' algebraic breakthrough was genuinely extraordinary. Both things are true. The people who most clearly saw what was being lost also celebrated what replaced it — because the replacement really was that powerful.
+
+That's not a story about ignorance. It's a story about a trade that everyone involved understood perfectly well. Which makes what happened to the curriculum not a mistake, exactly, but a choice — one with consequences that took sixty more years to fully arrive.
 
 ## The Abacus Parallel
 
