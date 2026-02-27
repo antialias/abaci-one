@@ -573,6 +573,12 @@ interface EuclidCanvasProps {
   initialGivenPoints?: Array<{ id: string; x: number; y: number }>
   /** Active player ID — stored with saved creations so they belong to the kid, not the account */
   playerId?: string | null
+  /**
+   * Start with audio disabled and manage it locally (independent of the global audio manager).
+   * Useful when embedding the canvas in a context where auto-play narration would be disruptive
+   * (e.g. a blog post). The user can still toggle audio on via the speaker button.
+   */
+  disableAudio?: boolean
 }
 
 const WRONG_MOVE_PHRASES = [
@@ -591,6 +597,7 @@ export function EuclidCanvas({
   initialActions,
   initialGivenPoints,
   playerId,
+  disableAudio,
 }: EuclidCanvasProps) {
   const isMobile = useIsMobile()
   const proofFont = {
@@ -956,7 +963,11 @@ export function EuclidCanvas({
   }, [proofFacts])
 
   // ── TTS integration ──
-  const { isEnabled: audioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
+  const { isEnabled: globalAudioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
+  // When disableAudio is set, manage audio state locally so we don't auto-play on mount
+  // (useful for blog embeds). The user can still toggle it on via the speaker button.
+  const [localAudioEnabled, setLocalAudioEnabled] = useState(false)
+  const audioEnabled = disableAudio ? localAudioEnabled : globalAudioEnabled
   const audioEnabledRef = useRef(audioEnabled)
   audioEnabledRef.current = audioEnabled
   const currentSpeechRef = useRef(currentSpeech)
@@ -985,6 +996,7 @@ export function EuclidCanvas({
         ? completionResult.statement
         : 'Construction complete!',
     explorationNarration,
+    enabledOverride: disableAudio ? audioEnabled : undefined,
   })
 
   // ── Fire onComplete callback and auto-select Move tool ──
@@ -2751,14 +2763,21 @@ export function EuclidCanvas({
     return ordinals
   }, [steps, factsByStep])
 
-  // Scroll the proof panel to keep current step visible
+  // Scroll the proof panel to keep current step visible.
+  // Uses container-local scrollTop to avoid scrollIntoView triggering page-level scroll.
   const proofScrollRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const container = proofScrollRef.current
     if (!container) return
     const active = container.querySelector('[data-step-current="true"]') as HTMLElement | null
-    if (active) {
-      active.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    if (!active) return
+    const pad = 8
+    const top = active.offsetTop
+    const bottom = top + active.offsetHeight
+    if (top < container.scrollTop + pad) {
+      container.scrollTop = top - pad
+    } else if (bottom > container.scrollTop + container.clientHeight - pad) {
+      container.scrollTop = bottom - container.clientHeight + pad
     }
   }, [currentStep])
 
@@ -3126,7 +3145,9 @@ export function EuclidCanvas({
             /* Audio toggle — proposition mode */
             <button
               data-action="toggle-audio"
-              onClick={() => setAudioEnabled(!audioEnabled)}
+              onClick={() =>
+                disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)
+              }
               title={audioEnabled ? 'Mute narration' : 'Enable narration'}
               style={{
                 width: 36,

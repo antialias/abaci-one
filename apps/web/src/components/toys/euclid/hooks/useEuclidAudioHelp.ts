@@ -22,6 +22,12 @@ interface UseEuclidAudioHelpOptions {
   celebrationText?: string
   /** Proposition-specific exploration narration (intro + per-point tips) */
   explorationNarration?: ExplorationNarration
+  /**
+   * Override the enabled state from the global audio manager.
+   * When provided, this value takes precedence over the manager's isEnabled.
+   * Useful when the canvas manages its own audio state (e.g. disableAudio prop).
+   */
+  enabledOverride?: boolean
 }
 
 export function useEuclidAudioHelp({
@@ -29,8 +35,10 @@ export function useEuclidAudioHelp({
   isComplete,
   celebrationText = 'Construction complete! Well done!',
   explorationNarration,
+  enabledOverride,
 }: UseEuclidAudioHelpOptions) {
-  const { isEnabled, stop } = useAudioManager()
+  const { isEnabled: globalIsEnabled, stop } = useAudioManager()
+  const isEnabled = enabledOverride !== undefined ? enabledOverride : globalIsEnabled
 
   const sayInstruction = useTTS(instruction, { tone: INSTRUCTION_TONE })
   const sayCelebration = useTTS(isComplete ? celebrationText : '', { tone: CELEBRATION_TONE })

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import dynamic from 'next/dynamic'
 
 const EuclidCanvas = dynamic(
@@ -28,8 +27,6 @@ const EuclidCanvas = dynamic(
 )
 
 export function EuclidProp1Embed() {
-  const [active, setActive] = useState(false)
-
   return (
     <figure
       style={{
@@ -41,54 +38,8 @@ export function EuclidProp1Embed() {
       }}
     >
       <div style={{ width: '100%', height: 520, position: 'relative' }}>
-        {active ? (
-          <EuclidCanvas propositionId={1} />
-        ) : (
-          <button
-            onClick={() => setActive(true)}
-            style={{
-              width: '100%',
-              height: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '1rem',
-              padding: 0,
-            }}
-          >
-            {/* Decorative SVG: compass arcs suggesting Prop 1 */}
-            <svg
-              viewBox="0 0 160 120"
-              width="160"
-              height="120"
-              style={{ opacity: 0.35 }}
-              aria-hidden="true"
-            >
-              <circle cx="52" cy="80" r="44" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="4 3" />
-              <circle cx="108" cy="80" r="44" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4 3" />
-              <line x1="52" y1="80" x2="108" y2="80" stroke="#e5e7eb" strokeWidth="1.5" />
-              <circle cx="52" cy="80" r="3" fill="#60a5fa" />
-              <circle cx="108" cy="80" r="3" fill="#f59e0b" />
-              <circle cx="80" cy="42" r="3" fill="#34d399" />
-              <line x1="52" y1="80" x2="80" y2="42" stroke="#34d399" strokeWidth="1.5" strokeOpacity="0.6" />
-              <line x1="108" y1="80" x2="80" y2="42" stroke="#34d399" strokeWidth="1.5" strokeOpacity="0.6" />
-            </svg>
-            <span
-              style={{
-                color: '#9ca3af',
-                fontSize: 14,
-                fontFamily: 'system-ui, sans-serif',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Try the construction
-            </span>
-          </button>
-        )}
+        {/* disableAudio prevents auto-play narration on page load; user can enable via speaker button */}
+        <EuclidCanvas propositionId={1} disableAudio />
       </div>
       <figcaption
         style={{
