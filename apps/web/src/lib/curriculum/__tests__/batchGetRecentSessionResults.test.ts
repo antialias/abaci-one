@@ -66,6 +66,7 @@ function makeSessionPart(
     format: type === 'linear' ? 'linear' : 'vertical',
     useAbacus: type === 'abacus',
     slots: Array.from({ length: slotCount }, (_, i) => ({
+      slotId: `test-${i}`,
       slotIndex: i,
       skillId: 'basic.directAddition',
       terms: [1, 2],

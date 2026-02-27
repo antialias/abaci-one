@@ -86,7 +86,7 @@ function createPart(overrides: Partial<SessionPart> = {}): SessionPart {
     type: 'abacus',
     format: 'vertical',
     useAbacus: true,
-    slots: [{ index: 0, purpose: 'focus', constraints: {} }],
+    slots: [{ slotId: 'test', index: 0, purpose: 'focus', constraints: {} }],
     estimatedMinutes: 5,
     ...overrides,
   }

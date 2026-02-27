@@ -60,6 +60,7 @@ function createMockSlots(
 ): ProblemSlot[] {
   const baseSkills = createBasicSkillSet()
   return Array.from({ length: count }, (_, i) => ({
+    slotId: crypto.randomUUID(),
     index: i,
     purpose: purposes[i % purposes.length],
     constraints: {

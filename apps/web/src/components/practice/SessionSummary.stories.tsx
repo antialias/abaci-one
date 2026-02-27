@@ -135,6 +135,7 @@ function createCompletedSessionPlan(config: {
 
   const createSlots = (count: number): ProblemSlot[] =>
     Array.from({ length: count }, (_, i) => ({
+      slotId: crypto.randomUUID(),
       index: i,
       purpose: 'focus' as const,
       constraints: {

@@ -73,6 +73,7 @@ describe('formatSkillName', () => {
 describe('extractTargetSkillName', () => {
   it('returns null when no targetSkills', () => {
     const slot: ProblemSlot = {
+      slotId: 'test',
       index: 0,
       purpose: 'focus',
       constraints: {},
@@ -82,6 +83,7 @@ describe('extractTargetSkillName', () => {
 
   it('returns null when targetSkills is empty', () => {
     const slot: ProblemSlot = {
+      slotId: 'test',
       index: 0,
       purpose: 'focus',
       constraints: { targetSkills: {} },
@@ -91,6 +93,7 @@ describe('extractTargetSkillName', () => {
 
   it('extracts single basic skill name', () => {
     const slot: ProblemSlot = {
+      slotId: 'test',
       index: 0,
       purpose: 'reinforce',
       constraints: {
@@ -104,6 +107,7 @@ describe('extractTargetSkillName', () => {
 
   it('returns null when multiple skills in a category', () => {
     const slot: ProblemSlot = {
+      slotId: 'test',
       index: 0,
       purpose: 'reinforce',
       constraints: {
@@ -170,6 +174,7 @@ describe('PurposeBadge', () => {
 
   it('shows targeting skill name for reinforce when slot has targetSkills', () => {
     const slot: ProblemSlot = {
+      slotId: 'test',
       index: 0,
       purpose: 'reinforce',
       constraints: {
@@ -204,6 +209,7 @@ describe('PurposeBadge', () => {
 
   it('shows complexity section when slot has generation trace', () => {
     const slot: ProblemSlot = {
+      slotId: 'test',
       index: 0,
       purpose: 'focus',
       constraints: {},

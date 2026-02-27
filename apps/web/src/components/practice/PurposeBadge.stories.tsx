@@ -55,6 +55,7 @@ function createMockSlot(
   termCountExplanation?: TermCountExplanation
 ): ProblemSlot {
   const baseSlot: ProblemSlot = {
+    slotId: crypto.randomUUID(),
     index: 0,
     purpose,
     constraints: {

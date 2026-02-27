@@ -36,6 +36,7 @@ vi.mock('../AllProblemsSection', () => ({
 // Helper to create minimal test data
 function createTestSlot(overrides: Partial<ProblemSlot> = {}): ProblemSlot {
   return {
+    slotId: crypto.randomUUID(),
     index: 0,
     purpose: 'focus',
     constraints: {},

@@ -73,6 +73,7 @@ function createProblem(terms: number[] = [3, 4]): GeneratedProblem {
 
 function createSlot(overrides: Partial<ProblemSlot> = {}): ProblemSlot {
   return {
+    slotId: crypto.randomUUID(),
     index: 0,
     purpose: 'focus',
     constraints: {},

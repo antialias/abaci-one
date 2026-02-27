@@ -300,96 +300,110 @@ export function PracticeClient({
     setIsPaused(false)
   }, [])
 
+  // Mutation queue: each server mutation chains off the previous one so they
+  // execute in order. The UI can advance optimistically while mutations queue.
+  const pendingMutationRef = useRef<Promise<void>>(Promise.resolve())
+
   // Handle recording an answer
   const handleAnswer = useCallback(
-    async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<void> => {
-      try {
-        // Send problem marker for timeline sync (before mutation so it captures the submit moment)
-        const currentProblemNumber = currentPlan.currentSlotIndex + 1
-        const retryContext = getRetryContext(
-          currentPlan.currentPartIndex,
-          currentPlan.currentSlotIndex
-        )
-        sendProblemMarkerRef.current?.(
-          currentProblemNumber,
-          currentPlan.currentPartIndex,
-          'answer-submitted',
-          result.isCorrect,
-          retryContext
-        )
-        logGameBreakTrace('answer-submit-start', {
-          currentProblemNumber,
-          currentPartIndex: currentPlan.currentPartIndex,
-          currentSlotIndex: currentPlan.currentSlotIndex,
-          isCorrect: result.isCorrect,
-        })
+    (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<void> => {
+      // Synchronous work: problem markers + trace logging happen immediately
+      const currentProblemNumber = currentPlan.currentSlotIndex + 1
+      const retryContext = getRetryContext(
+        currentPlan.currentPartIndex,
+        currentPlan.currentSlotIndex
+      )
+      sendProblemMarkerRef.current?.(
+        currentProblemNumber,
+        currentPlan.currentPartIndex,
+        'answer-submitted',
+        result.isCorrect,
+        retryContext
+      )
+      logGameBreakTrace('answer-submit-start', {
+        currentProblemNumber,
+        currentPartIndex: currentPlan.currentPartIndex,
+        currentSlotIndex: currentPlan.currentSlotIndex,
+        isCorrect: result.isCorrect,
+      })
 
-        const previousPartIndex = previousPartIndexRef.current
-        const updatedPlan = await recordResult.mutateAsync({
-          playerId: studentId,
-          planId: currentPlan.id,
-          result,
-        })
-        logGameBreakTrace('answer-submit-resolved', {
-          previousPartIndex,
-          updatedPartIndex: updatedPlan.currentPartIndex,
-          updatedSlotIndex: updatedPlan.currentSlotIndex,
-          updatedStatus: updatedPlan.status,
-          completedAt: updatedPlan.completedAt ? String(updatedPlan.completedAt) : null,
-        })
+      // Capture values that the mutation closure needs
+      const capturedPreviousPartIndex = previousPartIndexRef.current
 
-        // Update previous part index tracking
-        previousPartIndexRef.current = updatedPlan.currentPartIndex
-
-        // If session just completed, redirect to summary with completed flag
-        if (updatedPlan.completedAt) {
-          // Stop vision recording if it was started
-          stopRecordingRef.current?.()
-          router.push(`/practice/${studentId}/summary?completed=1`, {
-            scroll: false,
+      // Chain this mutation onto the queue so mutations execute in order
+      const mutationPromise = pendingMutationRef.current.then(async () => {
+        try {
+          const updatedPlan = await recordResult.mutateAsync({
+            playerId: studentId,
+            planId: currentPlan.id,
+            result,
           })
-          return
-        }
-
-        // Check for part transition for trace visibility
-        const partTransitioned = updatedPlan.currentPartIndex > previousPartIndex
-        const hasMoreParts = updatedPlan.currentPartIndex < updatedPlan.parts.length
-        const gameBreakEnabled =
-          (updatedPlan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
-
-        if (partTransitioned && hasMoreParts && gameBreakEnabled) {
-          logGameBreakTrace('queue-break-after-part-transition', {
-            previousPartIndex,
+          logGameBreakTrace('answer-submit-resolved', {
+            previousPartIndex: capturedPreviousPartIndex,
             updatedPartIndex: updatedPlan.currentPartIndex,
-            hasMoreParts,
-            gameBreakEnabled,
+            updatedSlotIndex: updatedPlan.currentSlotIndex,
+            updatedStatus: updatedPlan.status,
+            completedAt: updatedPlan.completedAt ? String(updatedPlan.completedAt) : null,
           })
-        } else {
-          logGameBreakTrace('no-break-queue-after-answer', {
-            partTransitioned,
-            hasMoreParts,
-            gameBreakEnabled,
-          })
+
+          // Update previous part index tracking
+          previousPartIndexRef.current = updatedPlan.currentPartIndex
+
+          // If session just completed, redirect to summary with completed flag
+          if (updatedPlan.completedAt) {
+            stopRecordingRef.current?.()
+            router.push(`/practice/${studentId}/summary?completed=1`, {
+              scroll: false,
+            })
+            return
+          }
+
+          // Check for part transition for trace visibility
+          const partTransitioned = updatedPlan.currentPartIndex > capturedPreviousPartIndex
+          const hasMoreParts = updatedPlan.currentPartIndex < updatedPlan.parts.length
+          const gameBreakEnabled =
+            (updatedPlan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
+
+          if (partTransitioned && hasMoreParts && gameBreakEnabled) {
+            logGameBreakTrace('queue-break-after-part-transition', {
+              previousPartIndex: capturedPreviousPartIndex,
+              updatedPartIndex: updatedPlan.currentPartIndex,
+              hasMoreParts,
+              gameBreakEnabled,
+            })
+          } else {
+            logGameBreakTrace('no-break-queue-after-answer', {
+              partTransitioned,
+              hasMoreParts,
+              gameBreakEnabled,
+            })
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          if (message.includes('Not authorized')) {
+            showError(
+              'Not authorized',
+              'Only parents or teachers with the student present in their classroom can record answers.'
+            )
+          } else {
+            showError('Failed to record answer', message)
+          }
         }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        if (message.includes('Not authorized')) {
-          showError(
-            'Not authorized',
-            'Only parents or teachers with the student present in their classroom can record answers.'
-          )
-        } else {
-          showError('Failed to record answer', message)
-        }
-      }
+      })
+
+      pendingMutationRef.current = mutationPromise
+      return mutationPromise
     },
     [
       studentId,
       currentPlan.id,
+      currentPlan.currentPartIndex,
+      currentPlan.currentSlotIndex,
       recordResult,
       router,
       showError,
       logGameBreakTrace,
+      getRetryContext,
     ]
   )
 

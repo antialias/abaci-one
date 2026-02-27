@@ -1294,6 +1294,7 @@ export async function recordSlotResult(
       if (retryState.currentEpoch < MAX_RETRY_EPOCHS) {
         const currentRetryItem = retryState.currentEpochItems[retryState.currentRetryIndex]
         retryState.pendingRetries.push({
+          slotId: currentRetryItem.slotId,
           originalSlotIndex: currentRetryItem.originalSlotIndex,
           problem: currentRetryItem.problem,
           epochNumber: retryState.currentEpoch + 1,
@@ -1307,6 +1308,7 @@ export async function recordSlotResult(
       updatedRetryState[partIndex] = retryState
       const slot = currentPart.slots[plan.currentSlotIndex]
       retryState.pendingRetries.push({
+        slotId: slot.slotId,
         originalSlotIndex: plan.currentSlotIndex,
         problem: slot.problem!,
         epochNumber: 1,
@@ -1995,6 +1997,7 @@ function createSlot(
 
   // Problem is generated later in buildSessionPart after shuffling
   return {
+    slotId: crypto.randomUUID(),
     index,
     purpose,
     constraints,

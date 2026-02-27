@@ -25,6 +25,7 @@ vi.mock('../autoPauseCalculator', () => ({
 
 function createSlot(overrides: Partial<ProblemSlot> = {}): ProblemSlot {
   return {
+    slotId: crypto.randomUUID(),
     index: 0,
     purpose: 'focus',
     constraints: {

@@ -49,6 +49,7 @@ const mockStudentLongName = {
 
 function createMockSlots(count: number, purpose: ProblemSlot['purpose']): ProblemSlot[] {
   return Array.from({ length: count }, (_, i) => ({
+    slotId: crypto.randomUUID(),
     index: i,
     purpose,
     constraints: {},

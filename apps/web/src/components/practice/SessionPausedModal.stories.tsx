@@ -27,6 +27,7 @@ type Story = StoryObj<typeof SessionPausedModal>
  */
 function createMockSlots(count: number, purpose: ProblemSlot['purpose']): ProblemSlot[] {
   return Array.from({ length: count }, (_, i) => ({
+    slotId: crypto.randomUUID(),
     index: i,
     purpose,
     constraints: {},

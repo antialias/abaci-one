@@ -35,6 +35,7 @@ type Story = StoryObj<typeof SessionProgressIndicator>
 // Helper to create slots
 function createSlots(count: number): SessionPart['slots'] {
   return Array.from({ length: count }, (_, i) => ({
+    slotId: crypto.randomUUID(),
     index: i,
     purpose: 'focus' as const,
     constraints: {

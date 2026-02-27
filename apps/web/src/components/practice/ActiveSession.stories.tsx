@@ -127,6 +127,7 @@ function createMockSlotsWithProblems(
     } as ProblemSlot['constraints']['allowedSkills']
 
     return {
+      slotId: crypto.randomUUID(),
       index: i,
       purpose: purposes[i % purposes.length],
       constraints: {

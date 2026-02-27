@@ -198,6 +198,7 @@ export async function createTestStudent(
         const sessionEndTime = new Date(sessionStartTime.getTime() + orderedResults.length * 10000)
 
         const slots = orderedResults.map((r, idx) => ({
+          slotId: crypto.randomUUID(),
           index: idx,
           purpose: 'focus' as const,
           constraints: {},

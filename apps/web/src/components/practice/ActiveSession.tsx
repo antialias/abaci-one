@@ -1105,6 +1105,7 @@ export function ActiveSession({
   // Use getCurrentProblemInfo which handles both original slots and retry epochs
   const regularSlot = currentProblemInfo
     ? {
+        slotId: currentProblemInfo.slotId ?? '',
         index: currentProblemInfo.originalSlotIndex,
         purpose: currentProblemInfo.purpose,
         problem: currentProblemInfo.problem,
@@ -1499,6 +1500,7 @@ export function ActiveSession({
 
     // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
+      slotId: currentProblemInfo?.slotId,
       slotIndex: attemptData.slotIndex,
       problem: attemptData.problem,
       studentAnswer: answerNum,
@@ -1519,9 +1521,12 @@ export function ActiveSession({
       // (Original correct = pure practice, no recording to avoid unintentional penalty)
       if (!redoOriginalWasCorrect && onRecordRedo) {
         // Add retry tracking fields
+        const redoSlotId =
+          plan.parts[redoState.originalPartIndex]?.slots[redoState.originalSlotIndex]?.slotId
         const redoResult: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
           ...result,
-          // Override slotIndex with the original slot index from the redo
+          // Override slotId + slotIndex with the original slot from the redo
+          slotId: redoSlotId,
           slotIndex: redoState.originalSlotIndex,
           isRetry: true,
           epochNumber: (redoState.originalResult.epochNumber ?? 0) + 1,
@@ -1542,7 +1547,18 @@ export function ActiveSession({
 
       // Continue into unified completion path below.
     } else {
-      await onAnswer(result)
+      // Optimistic submit: for epoch 0 mid-part, advance immediately without
+      // waiting for the server. The mutation queue in PracticeClient serializes
+      // the actual server writes.
+      const nextSlotExists =
+        !!plan.parts[attemptData.partIndex]?.slots[attemptData.slotIndex + 1]?.problem
+      const canAdvanceOptimistically = epochNumberAtSubmit === 0 && nextSlotExists
+
+      if (canAdvanceOptimistically) {
+        void onAnswer(result)
+      } else {
+        await onAnswer(result)
+      }
     }
 
     // Complete submit with result
@@ -1701,6 +1717,7 @@ export function ActiveSession({
     // Record as incorrect with help
     const responseTimeMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
+      slotId: currentProblemInfo?.slotId,
       slotIndex: attempt.slotIndex,
       problem: attempt.problem,
       studentAnswer: attempt.problem.answer, // Record the correct answer
@@ -1718,7 +1735,9 @@ export function ActiveSession({
     setAnswer(String(attempt.problem.answer))
     startSubmit()
 
-    await onAnswer(result)
+    // Fire-and-forget: mutation enters the queue, 1500ms feedback delay
+    // + clearToLoading provides enough time for the cache to update
+    void onAnswer(result)
 
     completeSubmit('incorrect')
 
@@ -1731,6 +1750,7 @@ export function ActiveSession({
     isInRedoMode,
     onCancelRedo,
     onAnswer,
+    currentProblemInfo,
     setAnswer,
     startSubmit,
     completeSubmit,
