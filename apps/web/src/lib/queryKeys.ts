@@ -182,6 +182,7 @@ export const debugKeys = {
   seedSearch: (query: string) =>
     [...debugKeys.all, "seed-search", query] as const,
   buildInfo: () => [...debugKeys.all, "build-info"] as const,
+  cleanupPreview: () => [...debugKeys.all, "cleanup-preview"] as const,
 };
 
 // Feature flag query keys (admin + client feature gating)

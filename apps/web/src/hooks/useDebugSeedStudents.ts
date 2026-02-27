@@ -126,6 +126,61 @@ export function useSeedStudents() {
   })
 }
 
+// ── Cleanup ─────────────────────────────────────────────────────────────────
+
+interface CleanupCandidate {
+  id: string
+  name: string
+  emoji: string
+  color: string
+  createdAt: string
+  source: string
+}
+
+interface CleanupPreviewResponse {
+  players: CleanupCandidate[]
+  count: number
+}
+
+interface CleanupDeleteResponse {
+  deleted: number
+  players: { id: string; name: string; source: string }[]
+}
+
+/** Preview debug/seed players that would be deleted */
+export function useCleanupPreview(enabled: boolean) {
+  return useQuery({
+    queryKey: debugKeys.cleanupPreview(),
+    queryFn: async (): Promise<CleanupPreviewResponse> => {
+      const res = await api('debug/cleanup')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    },
+    enabled,
+  })
+}
+
+/** Delete all debug/seed players */
+export function useCleanupDebugPlayers() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<CleanupDeleteResponse> => {
+      const res = await api('debug/cleanup', { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || `HTTP ${res.status}`)
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: debugKeys.cleanupPreview() })
+      queryClient.invalidateQueries({ queryKey: debugKeys.seededStudents() })
+      // Also invalidate the players list so the practice page refreshes
+      queryClient.invalidateQueries({ queryKey: ['players'] })
+    },
+  })
+}
+
 /** Create a debug practice session */
 export function useCreateDebugPracticeSession() {
   return useMutation({
