@@ -12,6 +12,7 @@ import {
   addSegment,
   addCircle,
   addPoint,
+  getPoint,
   skipPointLabel,
 } from './constructionState'
 import { createFactStore, addFact, addAngleFact } from './factStore'
@@ -208,6 +209,35 @@ export function replayConstruction(
       } else {
         // Advance label/color indices so subsequent point labels stay stable
         state = skipPointLabel(state, expected.label)
+      }
+    } else if (expected.type === 'extend') {
+      // Extend a line from baseId through throughId by a given distance
+      const basePt = getPoint(state, expected.baseId)
+      const throughPt = getPoint(state, expected.throughId)
+      if (basePt && throughPt) {
+        const dx = throughPt.x - basePt.x
+        const dy = throughPt.y - basePt.y
+        const len = Math.sqrt(dx * dx + dy * dy)
+        if (len > 0.001) {
+          const dirX = dx / len
+          const dirY = dy / len
+          const newX = throughPt.x + dirX * expected.distance
+          const newY = throughPt.y + dirY * expected.distance
+
+          // Create the new point
+          const ptResult = addPoint(state, newX, newY, 'intersection', expected.label)
+          state = ptResult.state
+
+          // Create the extension segment
+          const segResult = addSegment(state, expected.throughId, ptResult.point.id)
+          state = segResult.state
+
+          // Find intersections for both
+          const ptCands = findNewIntersections(state, ptResult.point, candidates, extendSegments)
+          const segCands = findNewIntersections(state, segResult.segment, [...candidates, ...ptCands], extendSegments)
+          candidates = [...candidates, ...ptCands, ...segCands]
+          stepSucceeded = true
+        }
       }
     } else if (expected.type === 'macro') {
       const macroDef = MACRO_REGISTRY[expected.propId]

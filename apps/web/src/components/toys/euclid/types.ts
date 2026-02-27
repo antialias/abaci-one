@@ -100,7 +100,12 @@ export type CompassPhase =
 
 export type StraightedgePhase = { tag: 'idle' } | { tag: 'from-set'; fromId: string }
 
-export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move' | 'point'
+export type ExtendPhase =
+  | { tag: 'idle' }
+  | { tag: 'base-set'; baseId: string }
+  | { tag: 'extending'; baseId: string; throughId: string }
+
+export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move' | 'point' | 'extend'
 
 export type MacroPhase =
   | { tag: 'idle' }
@@ -166,6 +171,7 @@ export type ExpectedAction =
       label?: string
     }
   | { type: 'straightedge'; fromId: string; toId: string }
+  | { type: 'extend'; baseId: string; throughId: string; distance: number; label: string }
   | {
       type: 'macro'
       propId: number
@@ -396,6 +402,7 @@ export type SerializedAction =
       outputLabels?: Record<string, string>
     }
   | { type: 'fact-only' }
+  | { type: 'extend'; baseId: string; throughId: string; distance: number; label: string }
 
 export interface SerializedIntersection {
   x: number

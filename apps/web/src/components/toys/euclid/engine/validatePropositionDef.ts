@@ -59,6 +59,11 @@ function referencedPointIds(expected: ExpectedAction): { field: string; pointId:
         refs.push({ field: 'inputPointIds', pointId: id })
       }
       break
+
+    case 'extend':
+      refs.push({ field: 'baseId', pointId: expected.baseId })
+      refs.push({ field: 'throughId', pointId: expected.throughId })
+      break
   }
 
   return refs
@@ -73,6 +78,9 @@ function introducedPointIds(expected: ExpectedAction): string[] {
   }
   if (expected.type === 'macro' && expected.outputLabels) {
     return Object.values(expected.outputLabels).map((label) => `pt-${label}`)
+  }
+  if (expected.type === 'extend') {
+    return [`pt-${expected.label}`]
   }
   return []
 }

@@ -70,6 +70,11 @@ export function validateStep(
     )
   }
 
+  // Extend steps: verify new point + segment beyond throughId
+  if (expected.type === 'extend' && lastElement.kind === 'point' && lastElement.origin === 'intersection') {
+    return lastElement.label === expected.label
+  }
+
   // Macro steps are validated and advanced directly by handleCommitMacro
   // in EuclidCanvas.tsx, not through this function.
 

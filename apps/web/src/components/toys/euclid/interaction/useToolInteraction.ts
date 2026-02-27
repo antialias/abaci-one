@@ -43,6 +43,11 @@ interface UseToolInteractionOptions {
   onPlaceFreePoint?: (worldX: number, worldY: number) => void
   /** When true, all tool gestures are disabled (e.g. during given-setup mode in editor) */
   disabledRef?: React.MutableRefObject<boolean>
+  /** When true, blocks construction tool gestures (but not intersection taps).
+   *  Used in editor authoring mode when no citation is selected. */
+  requiresCitationRef?: React.MutableRefObject<boolean>
+  /** Called when a tool gesture is blocked because requiresCitationRef is true. */
+  onToolBlocked?: () => void
 }
 
 function normalizeAngle(angle: number): number {
@@ -76,6 +81,8 @@ export function useToolInteraction({
   onMacroPhaseChange,
   onPlaceFreePoint,
   disabledRef,
+  requiresCitationRef,
+  onToolBlocked,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -116,8 +123,8 @@ export function useToolInteraction({
     function handlePointerDown(e: PointerEvent) {
       // Disable all tool gestures when disabled (e.g. given-setup mode)
       if (disabledRef?.current) return
-      // Disable tool gestures when Move tool is active (drag interaction takes over)
-      if (activeToolRef.current === 'move') return
+      // Disable tool gestures when Move or Extend tool is active (their own handlers take over)
+      if (activeToolRef.current === 'move' || activeToolRef.current === 'extend') return
 
       const rect = getCanvasRect()
       if (!rect) return
@@ -164,6 +171,12 @@ export function useToolInteraction({
           pointerCapturedRef.current = false
           return
         }
+      }
+
+      // Block construction tool gestures when citation is required (editor authoring mode)
+      if (requiresCitationRef?.current) {
+        onToolBlocked?.()
+        return
       }
 
       // ── Point tool: place a free point at cursor position ──
@@ -522,5 +535,6 @@ export function useToolInteraction({
     onMacroPhaseChange,
     onPlaceFreePoint,
     getCanvasRect,
+    onToolBlocked,
   ])
 }

@@ -688,6 +688,9 @@ export function renderToolOverlay(
 ): void {
   const ppu = viewport.pixelsPerUnit
 
+  // Extend tool handles its own preview rendering in the editor RAF loop
+  if (activeTool === 'extend') return
+
   // ── Straightedge drawing animation (takes priority over everything) ──
 
   if (straightedgeDrawAnim) {
@@ -814,6 +817,65 @@ export function renderToolOverlay(
       const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
       const bob = Math.sin(performance.now() / 600) * 2
       renderCompass(ctx, sp.x, sp.y + bob, sp.x + COMPASS_IDLE_SPREAD, sp.y + bob, 0.4, nextColor)
+    }
+    return
+  }
+
+  // ── Point tool crosshair ──
+
+  if (activeTool === 'point') {
+    // Clear straightedge physics when switching tools
+    sePhysics.initialized = false
+
+    if (pointerWorld) {
+      const sp = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
+      const bob = Math.sin(performance.now() / 600) * 2
+      const cx = sp.x
+      const cy = sp.y + bob
+
+      const dotR = 3.5
+      const crossGap = 6
+      const crossLen = 12
+
+      ctx.save()
+      ctx.globalAlpha = 0.55
+
+      // Filled center dot
+      ctx.beginPath()
+      ctx.arc(cx, cy, dotR, 0, Math.PI * 2)
+      ctx.fillStyle = '#404040'
+      ctx.fill()
+
+      // Four crosshair lines
+      ctx.strokeStyle = '#404040'
+      ctx.lineWidth = 1.5
+      ctx.lineCap = 'round'
+
+      // Top
+      ctx.beginPath()
+      ctx.moveTo(cx, cy - crossGap)
+      ctx.lineTo(cx, cy - crossLen)
+      ctx.stroke()
+
+      // Bottom
+      ctx.beginPath()
+      ctx.moveTo(cx, cy + crossGap)
+      ctx.lineTo(cx, cy + crossLen)
+      ctx.stroke()
+
+      // Left
+      ctx.beginPath()
+      ctx.moveTo(cx - crossGap, cy)
+      ctx.lineTo(cx - crossLen, cy)
+      ctx.stroke()
+
+      // Right
+      ctx.beginPath()
+      ctx.moveTo(cx + crossGap, cy)
+      ctx.lineTo(cx + crossLen, cy)
+      ctx.stroke()
+
+      ctx.restore()
     }
     return
   }

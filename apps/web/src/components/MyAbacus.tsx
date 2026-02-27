@@ -243,6 +243,10 @@ export function MyAbacus() {
   // The workshop has its own UI/UX and the floating abacus gets in the way
   const isOnWorkshopRoute = pathname?.startsWith('/flowchart/workshop/')
 
+  // Admin pages are dev-only tools — the floating abacus is student-facing only
+  const isOnAdminRoute =
+    pathname?.startsWith('/admin') || pathname?.startsWith('/flowchart/admin')
+
   // Sync local button ref with context's buttonRef
   useEffect(() => {
     if (buttonRef && localButtonRef.current) {
@@ -443,7 +447,7 @@ export function MyAbacus() {
     !isOpen &&
     !isDocked &&
     !isAnimating &&
-    (isHidden || (isOnGameRoute && !showInGame) || isOnWorkshopRoute)
+    (isHidden || (isOnGameRoute && !showInGame) || isOnWorkshopRoute || isOnAdminRoute)
   ) {
     return null
   }

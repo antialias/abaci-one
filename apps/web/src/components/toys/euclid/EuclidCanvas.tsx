@@ -1997,6 +1997,29 @@ export function EuclidCanvas({
             handleMarkIntersection(match)
           }
         }
+      } else if (expected.type === 'extend') {
+        // Auto-complete extend steps: compute position and commit
+        const basePt = getPoint(constructionRef.current, expected.baseId)
+        const throughPt = getPoint(constructionRef.current, expected.throughId)
+        if (basePt && throughPt) {
+          const dx = throughPt.x - basePt.x
+          const dy = throughPt.y - basePt.y
+          const len = Math.sqrt(dx * dx + dy * dy)
+          if (len > 0.001) {
+            const dirX = dx / len
+            const dirY = dy / len
+            const newX = throughPt.x + dirX * expected.distance
+            const newY = throughPt.y + dirY * expected.distance
+            const ptResult = addPoint(constructionRef.current, newX, newY, 'intersection', expected.label)
+            constructionRef.current = ptResult.state
+            const segResult = addSegment(constructionRef.current, expected.throughId, ptResult.point.id)
+            constructionRef.current = segResult.state
+            const ptCands = findNewIntersections(constructionRef.current, ptResult.point, candidatesRef.current, extendSegments)
+            const segCands = findNewIntersections(constructionRef.current, segResult.segment, [...candidatesRef.current, ...ptCands], extendSegments)
+            candidatesRef.current = [...candidatesRef.current, ...ptCands, ...segCands]
+            checkStep(ptResult.point)
+          }
+        }
       } else if (expected.type === 'macro') {
         handleCommitMacro(expected.propId, expected.inputPointIds)
       }
