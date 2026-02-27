@@ -1,18 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { AppNavBar } from '@/components/AppNavBar'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
-import { FlowchartCard } from '@/components/flowcharts/FlowchartCard'
-import {
-  useMyFlowcharts,
-  usePublishFlowchart,
-  useUnpublishFlowchart,
-  useDeleteFlowchart,
-  useEditFlowchart,
-} from '@/hooks/useTeacherFlowcharts'
+import { useMyFlowcharts } from '@/hooks/useTeacherFlowcharts'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -32,21 +24,9 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 }
 
 export default function MyStuffPage() {
-  const router = useRouter()
   const { data: players = [], isLoading: playersLoading } = useUserPlayers()
   const { data: creations = [], isLoading: creationsLoading } = useEuclidCreations('mine', null)
   const { data: flowcharts = [], isLoading: flowchartsLoading } = useMyFlowcharts()
-  const publish = usePublishFlowchart()
-  const unpublish = useUnpublishFlowchart()
-  const deleteChart = useDeleteFlowchart()
-  const edit = useEditFlowchart()
-
-  const isFlowchartPending = (id: string) =>
-    (publish.isPending && publish.variables === id) ||
-    (unpublish.isPending && unpublish.variables === id) ||
-    (deleteChart.isPending && deleteChart.variables === id) ||
-    (edit.isPending && edit.variables === id)
-
   const visibleFlowcharts = flowcharts.filter((f) => f.status !== 'archived')
 
   const visiblePlayers = players.filter((p) => !p.isArchived)
@@ -288,21 +268,18 @@ export default function MyStuffPage() {
         <section data-section="flowcharts">
           <div className={hstack({ justifyContent: 'space-between', alignItems: 'baseline', mb: '12px' })}>
             <SectionHeader>My Flowcharts</SectionHeader>
-            <button
-              onClick={() => router.push('/flowchart/workshop')}
+            <Link
+              href="/flowchart/my-flowcharts"
               className={css({
                 fontSize: '13px',
                 fontWeight: '600',
                 color: 'blue.600',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '0',
+                textDecoration: 'none',
                 _hover: { textDecoration: 'underline' },
               })}
             >
-              + Create new
-            </button>
+              Manage →
+            </Link>
           </div>
           {flowchartsLoading ? (
             <p className={css({ color: 'gray.400', fontSize: '14px' })}>Loading…</p>
@@ -320,8 +297,8 @@ export default function MyStuffPage() {
               <p className={css({ color: 'gray.500', fontSize: '14px' })}>
                 No flowcharts yet. Create one to guide students through a skill.
               </p>
-              <button
-                onClick={() => router.push('/flowchart/workshop')}
+              <Link
+                href="/flowchart/workshop"
                 className={css({
                   px: '14px',
                   py: '8px',
@@ -330,30 +307,50 @@ export default function MyStuffPage() {
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer',
+                  textDecoration: 'none',
                   _hover: { bg: 'blue.700' },
                 })}
               >
                 Create a flowchart
-              </button>
+              </Link>
             </div>
           ) : (
-            <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
+            <div className={vstack({ gap: '2', alignItems: 'stretch' })}>
               {visibleFlowcharts.map((f) => (
-                <FlowchartCard
+                <Link
                   key={f.id}
-                  flowchart={f}
-                  isLoading={isFlowchartPending(f.id)}
-                  onEdit={() => edit.mutate(f.id)}
-                  onPublish={() => publish.mutate(f.id)}
-                  onUnpublish={() => unpublish.mutate(f.id)}
-                  onDelete={() => {
-                    if (confirm('Archive this flowchart? It will no longer be visible to others.'))
-                      deleteChart.mutate(f.id)
-                  }}
-                  onUse={() => router.push(`/flowchart/${f.id}`)}
-                />
+                  href={f.status === 'published' ? `/flowchart/${f.id}` : `/flowchart/my-flowcharts`}
+                  className={hstack({
+                    gap: '12px',
+                    p: '14px 16px',
+                    bg: 'white',
+                    borderRadius: '10px',
+                    border: '1px solid token(colors.gray.200)',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                    textDecoration: 'none',
+                    alignItems: 'center',
+                    _hover: { borderColor: 'blue.300', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+                  })}
+                >
+                  <span className={css({ fontSize: '22px', flexShrink: '0' })}>{f.emoji || '📊'}</span>
+                  <span className={css({ fontSize: '14px', fontWeight: '600', color: 'gray.800', flex: '1' })}>
+                    {f.title}
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      px: '8px',
+                      py: '2px',
+                      borderRadius: 'full',
+                      bg: f.status === 'published' ? 'green.100' : 'gray.100',
+                      color: f.status === 'published' ? 'green.700' : 'gray.500',
+                      flexShrink: '0',
+                    })}
+                  >
+                    {f.status}
+                  </span>
+                </Link>
               ))}
             </div>
           )}
