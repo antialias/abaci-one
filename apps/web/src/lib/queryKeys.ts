@@ -136,6 +136,12 @@ export const euclidKeys = {
     [...euclidKeys.all, "creations", tab, playerId ?? "none"] as const,
 };
 
+// Teacher flowchart query keys
+export const flowchartKeys = {
+  all: ["teacher-flowcharts"] as const,
+  mine: () => [...flowchartKeys.all, "mine"] as const,
+};
+
 // Admin pricing query keys (Stripe price management)
 export const pricingKeys = {
   all: ["admin-pricing"] as const,

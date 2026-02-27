@@ -1,9 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { AppNavBar } from '@/components/AppNavBar'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
+import { FlowchartCard } from '@/components/flowcharts/FlowchartCard'
+import {
+  useMyFlowcharts,
+  usePublishFlowchart,
+  useUnpublishFlowchart,
+  useDeleteFlowchart,
+  useEditFlowchart,
+} from '@/hooks/useTeacherFlowcharts'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 
@@ -23,8 +32,22 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 }
 
 export default function MyStuffPage() {
+  const router = useRouter()
   const { data: players = [], isLoading: playersLoading } = useUserPlayers()
   const { data: creations = [], isLoading: creationsLoading } = useEuclidCreations('mine', null)
+  const { data: flowcharts = [], isLoading: flowchartsLoading } = useMyFlowcharts()
+  const publish = usePublishFlowchart()
+  const unpublish = useUnpublishFlowchart()
+  const deleteChart = useDeleteFlowchart()
+  const edit = useEditFlowchart()
+
+  const isFlowchartPending = (id: string) =>
+    (publish.isPending && publish.variables === id) ||
+    (unpublish.isPending && unpublish.variables === id) ||
+    (deleteChart.isPending && deleteChart.variables === id) ||
+    (edit.isPending && edit.variables === id)
+
+  const visibleFlowcharts = flowcharts.filter((f) => f.status !== 'archived')
 
   const visiblePlayers = players.filter((p) => !p.isArchived)
 
@@ -263,33 +286,77 @@ export default function MyStuffPage() {
 
         {/* ── My Flowcharts ── */}
         <section data-section="flowcharts">
-          <SectionHeader>My Flowcharts</SectionHeader>
-          <Link
-            href="/flowchart/my-flowcharts"
-            data-action="view-my-flowcharts"
-            className={hstack({
-              gap: '16px',
-              p: '20px',
-              bg: 'white',
-              borderRadius: '12px',
-              border: '1px solid token(colors.gray.200)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-              textDecoration: 'none',
-              transition: 'box-shadow 0.15s, border-color 0.15s',
-              _hover: { boxShadow: '0 4px 12px rgba(0,0,0,0.1)', borderColor: 'blue.300' },
-            })}
-          >
-            <span className={css({ fontSize: '32px' })}>🗺️</span>
-            <div className={vstack({ alignItems: 'flex-start', gap: '2px' })}>
-              <span className={css({ fontSize: '15px', fontWeight: '700', color: 'gray.800' })}>
-                My Flowcharts
-              </span>
-              <span className={css({ fontSize: '13px', color: 'gray.500' })}>
-                View, publish, and manage your teaching flowcharts
-              </span>
+          <div className={hstack({ justifyContent: 'space-between', alignItems: 'baseline', mb: '12px' })}>
+            <SectionHeader>My Flowcharts</SectionHeader>
+            <button
+              onClick={() => router.push('/flowchart/workshop')}
+              className={css({
+                fontSize: '13px',
+                fontWeight: '600',
+                color: 'blue.600',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0',
+                _hover: { textDecoration: 'underline' },
+              })}
+            >
+              + Create new
+            </button>
+          </div>
+          {flowchartsLoading ? (
+            <p className={css({ color: 'gray.400', fontSize: '14px' })}>Loading…</p>
+          ) : visibleFlowcharts.length === 0 ? (
+            <div
+              className={vstack({
+                alignItems: 'flex-start',
+                gap: '12px',
+                p: '24px',
+                bg: 'white',
+                borderRadius: '12px',
+                border: '1px solid token(colors.gray.200)',
+              })}
+            >
+              <p className={css({ color: 'gray.500', fontSize: '14px' })}>
+                No flowcharts yet. Create one to guide students through a skill.
+              </p>
+              <button
+                onClick={() => router.push('/flowchart/workshop')}
+                className={css({
+                  px: '14px',
+                  py: '8px',
+                  bg: 'blue.600',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.700' },
+                })}
+              >
+                Create a flowchart
+              </button>
             </div>
-            <span className={css({ ml: 'auto', color: 'gray.400', fontSize: '18px' })}>→</span>
-          </Link>
+          ) : (
+            <div className={vstack({ gap: '3', alignItems: 'stretch' })}>
+              {visibleFlowcharts.map((f) => (
+                <FlowchartCard
+                  key={f.id}
+                  flowchart={f}
+                  isLoading={isFlowchartPending(f.id)}
+                  onEdit={() => edit.mutate(f.id)}
+                  onPublish={() => publish.mutate(f.id)}
+                  onUnpublish={() => unpublish.mutate(f.id)}
+                  onDelete={() => {
+                    if (confirm('Archive this flowchart? It will no longer be visible to others.'))
+                      deleteChart.mutate(f.id)
+                  }}
+                  onUse={() => router.push(`/flowchart/${f.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </div>
