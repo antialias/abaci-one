@@ -982,7 +982,7 @@ export function EuclidCanvas({
   }, [proofFacts])
 
   // ── TTS integration ──
-  const { isEnabled: globalAudioEnabled, setEnabled: setAudioEnabled } = useAudioManager()
+  const { isEnabled: globalAudioEnabled, setEnabled: setAudioEnabled, stop: stopAudio } = useAudioManager()
   // When disableAudio is set, manage audio state locally so we don't auto-play on mount
   // (useful for blog embeds). The user can still toggle it on via the speaker button.
   const [localAudioEnabled, setLocalAudioEnabled] = useState(false)
@@ -1007,18 +1007,7 @@ export function EuclidCanvas({
   const speakStepCorrection = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
   const speakStepCorrectionRef = useRef(speakStepCorrection)
   speakStepCorrectionRef.current = speakStepCorrection
-  const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
-    instruction: currentSpeech,
-    isComplete,
-    celebrationText:
-      completionResult?.status === 'proven' && completionResult.statement
-        ? completionResult.statement
-        : 'Construction complete!',
-    explorationNarration,
-    enabledOverride: disableAudio ? audioEnabled : undefined,
-  })
-
-  // ── Call Euclid voice ──
+  // ── Call Euclid voice (before audio help so we can mute narration during calls) ──
   const euclidVoice = useEuclidVoice({
     canvasRef,
     constructionRef,
@@ -1038,6 +1027,24 @@ export function EuclidCanvas({
     macroPhaseRef,
     dragPointIdRef,
     steps,
+  })
+
+  // Mute TTS narration while a voice call is active, and stop any playing audio
+  const euclidCallActive = euclidVoice.state !== 'idle'
+  useEffect(() => {
+    if (euclidCallActive) stopAudio()
+  }, [euclidCallActive, stopAudio])
+  const narrationEnabled = disableAudio ? audioEnabled : euclidCallActive ? false : undefined
+
+  const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
+    instruction: currentSpeech,
+    isComplete,
+    celebrationText:
+      completionResult?.status === 'proven' && completionResult.statement
+        ? completionResult.statement
+        : 'Construction complete!',
+    explorationNarration,
+    enabledOverride: narrationEnabled,
   })
 
   // ── Fire onComplete callback and auto-select Move tool ──
