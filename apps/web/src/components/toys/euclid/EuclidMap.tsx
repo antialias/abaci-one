@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IMPLEMENTED_PROPS,
   getNodeStatus,
@@ -508,7 +508,13 @@ function rectBorderPoint(cx: number, cy: number, w: number, h: number, px: numbe
  * Trim edge endpoints to node borders using ray-rect intersection.
  * Handles edges exiting/entering from any side of the node.
  */
-function trimToBorders(pts: Pt[], srcX: number, srcY: number, tgtX: number, tgtY: number): Pt[] {
+function trimToBorders(
+  pts: Pt[],
+  srcX: number,
+  srcY: number,
+  tgtX: number,
+  tgtY: number
+): Pt[] {
   if (pts.length < 2) return pts
   const result = pts.map((p) => ({ ...p }))
 
@@ -517,14 +523,7 @@ function trimToBorders(pts: Pt[], srcX: number, srcY: number, tgtX: number, tgtY
 
   // Trim end → target border (ray from center toward prev point)
   const last = result.length - 1
-  result[last] = rectBorderPoint(
-    tgtX,
-    tgtY,
-    NODE_W,
-    RENDER_H,
-    result[last - 1].x,
-    result[last - 1].y
-  )
+  result[last] = rectBorderPoint(tgtX, tgtY, NODE_W, RENDER_H, result[last - 1].x, result[last - 1].y)
 
   return result
 }
@@ -594,7 +593,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     return { nodes: scaledNodes, edges: scaledEdges }
   }, [visibleIds])
 
-  // Compute SVG viewBox
+  // Compute SVG viewBox (static — used for normal map page)
   const viewBox = useMemo(() => {
     if (layout.size === 0) return '0 0 400 300'
     let minX = Infinity,
@@ -602,10 +601,12 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       minY = Infinity,
       maxY = -Infinity
     for (const pos of layout.values()) {
-      minX = Math.min(minX, pos.x - NODE_W / 2)
-      maxX = Math.max(maxX, pos.x + NODE_W / 2)
-      minY = Math.min(minY, pos.y - RENDER_H / 2)
-      maxY = Math.max(maxY, pos.y + RENDER_H / 2)
+      const halfW = NODE_W / 2
+      const halfH = RENDER_H / 2
+      minX = Math.min(minX, pos.x - halfW)
+      maxX = Math.max(maxX, pos.x + halfW)
+      minY = Math.min(minY, pos.y - halfH)
+      maxY = Math.max(maxY, pos.y + halfH)
     }
     // Also account for edge routing points
     for (const edge of edges) {
@@ -625,6 +626,141 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     return `${offsetX} ${minY - padY} ${w} ${contentH}`
   }, [layout, edges])
 
+  // -------------------------------------------------------------------------
+  // Scroll-driven viewport (foundations page only)
+  // The SVG is sticky in the viewport; scrolling pans/zooms through the graph.
+  // -------------------------------------------------------------------------
+
+  // Per-row metadata for scroll-driven viewport
+  const rowMeta = useMemo(() => {
+    if (!hideHeader || layout.size === 0) return null
+    const byY = new Map<number, number[]>()
+    for (const [, pos] of layout) {
+      let xs = byY.get(pos.y)
+      if (!xs) { xs = []; byY.set(pos.y, xs) }
+      xs.push(pos.x)
+    }
+    const rows: { y: number; centerX: number; width: number }[] = []
+    for (const [y, xs] of byY) {
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      rows.push({ y, centerX: (minX + maxX) / 2, width: maxX - minX + NODE_W })
+    }
+    rows.sort((a, b) => a.y - b.y)
+
+    // Global center X for horizontal panning
+    let gMinX = Infinity, gMaxX = -Infinity
+    for (const pos of layout.values()) {
+      gMinX = Math.min(gMinX, pos.x)
+      gMaxX = Math.max(gMaxX, pos.x)
+    }
+    return { rows, globalCenterX: (gMinX + gMaxX) / 2 }
+  }, [layout, hideHeader])
+
+  const stickyRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLElement | null>(null)
+  const [scrollViewBox, setScrollViewBox] = useState<string | null>(null)
+
+  const updateScrollViewBox = useCallback(() => {
+    const container = containerRef.current
+    const sticky = stickyRef.current
+    if (!container || !sticky || !rowMeta || rowMeta.rows.length === 0) return
+
+    const stickyH = sticky.clientHeight
+    const stickyW = sticky.clientWidth
+    if (stickyH === 0 || stickyW === 0) return
+
+    // Compute scroll progress using the container's position relative to the scroll parent
+    const scrollParent = scrollContainerRef.current
+    let scrollTop: number
+    if (scrollParent) {
+      // Container's offset within the scroll parent minus current scroll position
+      const containerTop = container.offsetTop - scrollParent.offsetTop
+      const scrolled = scrollParent.scrollTop - containerTop
+      scrollTop = Math.max(0, scrolled)
+    } else {
+      scrollTop = Math.max(0, -container.getBoundingClientRect().top)
+    }
+    const scrollRange = container.scrollHeight - stickyH
+    const progress = scrollRange > 0 ? Math.min(1, scrollTop / scrollRange) : 0
+
+    const { rows, globalCenterX } = rowMeta
+    const firstY = rows[0].y
+    const lastY = rows[rows.length - 1].y
+    const currentY = firstY + progress * (lastY - firstY)
+
+    // Find the segment [i, i+1] that currentY falls in
+    const PAD = 140 // padding around row content
+    const MIN_VB_W = 280 // minimum viewBox width (for single-node rows)
+    const rowWidths = rows.map((r) => Math.max(MIN_VB_W, r.width + PAD))
+    const rowCenters = rows.map((r) => r.centerX)
+
+    let segIdx = 0
+    for (let i = 0; i < rows.length - 1; i++) {
+      if (rows[i].y <= currentY && rows[i + 1].y > currentY) {
+        segIdx = i
+        break
+      }
+      if (i === rows.length - 2) segIdx = i // clamp to last segment
+    }
+    const t =
+      rows[segIdx + 1].y === rows[segIdx].y
+        ? 0
+        : (currentY - rows[segIdx].y) / (rows[segIdx + 1].y - rows[segIdx].y)
+
+    // Catmull-Rom interpolation through all row waypoints for smooth zoom/pan
+    // Uses 4 control points: P0 (prev), P1 (current), P2 (next), P3 (next-next)
+    // Clamp at boundaries by repeating endpoints
+    const catmullRom = (values: number[], idx: number, u: number) => {
+      const p0 = values[Math.max(0, idx - 1)]
+      const p1 = values[idx]
+      const p2 = values[Math.min(values.length - 1, idx + 1)]
+      const p3 = values[Math.min(values.length - 1, idx + 2)]
+      const u2 = u * u
+      const u3 = u2 * u
+      return 0.5 * (
+        2 * p1 +
+        (-p0 + p2) * u +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * u3
+      )
+    }
+
+    const vbW = catmullRom(rowWidths, segIdx, t)
+    const centerX = catmullRom(rowCenters, segIdx, t)
+
+    // ViewBox height proportional to width (matching container aspect ratio)
+    const aspect = stickyW / stickyH
+    const vbH = vbW / aspect
+
+    setScrollViewBox(`${centerX - vbW / 2} ${currentY - vbH / 2} ${vbW} ${vbH}`)
+  }, [rowMeta])
+
+  // Find the actual scroll container and attach scroll listener
+  useEffect(() => {
+    if (!hideHeader || !rowMeta) return
+    // Walk up from the container to find the scrollable ancestor
+    let el: HTMLElement | null = containerRef.current
+    while (el) {
+      const style = getComputedStyle(el)
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        scrollContainerRef.current = el
+        break
+      }
+      el = el.parentElement
+    }
+    const scrollTarget = scrollContainerRef.current ?? window
+    scrollTarget.addEventListener('scroll', updateScrollViewBox, { passive: true } as EventListenerOptions)
+    window.addEventListener('resize', updateScrollViewBox, { passive: true })
+    // Initial computation
+    updateScrollViewBox()
+    return () => {
+      scrollTarget.removeEventListener('scroll', updateScrollViewBox)
+      window.removeEventListener('resize', updateScrollViewBox)
+    }
+  }, [hideHeader, rowMeta, updateScrollViewBox])
+
   // Tooltip info for hovered locked node
   const hoveredInfo = useMemo(() => {
     if (hoveredNode === null) return null
@@ -634,6 +770,198 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const missing = deps.filter((d) => !completed.has(d))
     return { propId: hoveredNode, missing }
   }, [hoveredNode, completed])
+
+  // SVG content shared between scroll-driven and static viewport modes
+  const svgContent = (
+    <>
+      {/* Arrowhead marker */}
+      <defs>
+        <marker
+          id="arrowhead"
+          markerWidth="4"
+          markerHeight="3"
+          refX="3.5"
+          refY="1.5"
+          orient="auto"
+        >
+          <polygon points="0 0, 4 1.5, 0 3" fill="#cbd5e1" fillOpacity={0.6} />
+        </marker>
+      </defs>
+
+      {/* Edges — simplified, trimmed, with arrowheads */}
+      {edges.map((edge) => {
+        const srcPos = layout.get(edge.from)
+        const tgtPos = layout.get(edge.to)
+        if (!srcPos || !tgtPos) return null
+
+        const trimmed = trimToBorders(
+          edge.points,
+          srcPos.x, srcPos.y,
+          tgtPos.x, tgtPos.y
+        )
+        const simplified = simplifyPoints(trimmed, 4)
+        const d = pointsToPath(simplified)
+        if (!d) return null
+
+        return (
+          <path
+            key={`${edge.from}-${edge.to}`}
+            data-element="map-edge"
+            d={d}
+            fill="none"
+            stroke="#cbd5e1"
+            strokeWidth={3}
+            strokeOpacity={0.4}
+            markerEnd="url(#arrowhead)"
+          />
+        )
+      })}
+
+      {/* Nodes */}
+      {visibleIds.map((id) => {
+        const pos = layout.get(id)
+        if (!pos) return null
+        const status = getNodeStatus(id, completed)
+        const style = STATUS_STYLES[status]
+        const prop = getProposition(id)
+        const isClickable = status === 'completed' || status === 'available'
+        const titleLines = prop ? wrapTitle(prop.title, 20) : []
+
+        // Vertical layout: thumbnail | number | title lines
+        const topY = pos.y - RENDER_H / 2
+        const thumbCenterY = topY + 5 // top of thumbnail area
+        const thumbH = previews.has(id) ? PREVIEW_THUMB_H : ICON_SIZE
+        const numberY = topY + thumbH + 12
+        const titleStartY = numberY + 13
+
+        return (
+          <g
+            key={id}
+            data-element="map-node"
+            data-prop-id={id}
+            data-status={status}
+            style={{
+              cursor: isClickable ? 'pointer' : 'default',
+              opacity: status === 'coming-soon' ? comingSoonOpacity : style.opacity,
+            }}
+            onClick={() => isClickable && onSelectProp(id)}
+            onMouseEnter={() => setHoveredNode(id)}
+            onMouseLeave={() => setHoveredNode(null)}
+          >
+            {/* Opaque background so edges are occluded behind node */}
+            <rect
+              x={pos.x - NODE_W / 2}
+              y={topY}
+              width={NODE_W}
+              height={RENDER_H}
+              rx={NODE_RX}
+              fill="#FAFAF0"
+            />
+            <rect
+              x={pos.x - NODE_W / 2}
+              y={topY}
+              width={NODE_W}
+              height={RENDER_H}
+              rx={NODE_RX}
+              fill={style.fill}
+              stroke={style.stroke}
+              strokeWidth={status === 'available' ? 2 : 1.5}
+              strokeDasharray={style.strokeDash}
+            />
+
+            {/* Geometric thumbnail — real construction preview or generic icon */}
+            {prop &&
+              (previews.get(id) ? (
+                <image
+                  href={previews.get(id)}
+                  x={pos.x - PREVIEW_THUMB_W / 2}
+                  y={thumbCenterY}
+                  width={PREVIEW_THUMB_W}
+                  height={PREVIEW_THUMB_H}
+                  preserveAspectRatio="xMidYMid meet"
+                />
+              ) : (
+                <g transform={`translate(${pos.x - ICON_SIZE / 2}, ${thumbCenterY})`}>
+                  <PropThumbnail propId={id} block={prop.block} color={style.textColor} />
+                </g>
+              ))}
+
+            {/* Type badge (P = Problem/construction, T = Theorem) */}
+            {prop && (
+              <g data-element="type-badge">
+                <rect
+                  x={pos.x - NODE_W / 2 + 4}
+                  y={topY + 4}
+                  width={14}
+                  height={14}
+                  rx={3}
+                  fill={prop.type === 'construction' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'}
+                />
+                <text
+                  x={pos.x - NODE_W / 2 + 11}
+                  y={topY + 11}
+                  fontSize={8}
+                  fontWeight={700}
+                  fontFamily="system-ui, sans-serif"
+                  fill={prop.type === 'construction' ? '#d97706' : '#4f46e5'}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                >
+                  {prop.type === 'construction' ? 'P' : 'T'}
+                </text>
+              </g>
+            )}
+
+            {/* Checkmark for completed */}
+            {status === 'completed' && (
+              <text
+                x={pos.x + NODE_W / 2 - 14}
+                y={topY + 10}
+                fontSize={11}
+                fill="#10b981"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontWeight={700}
+              >
+                ✓
+              </text>
+            )}
+
+            {/* Prop number */}
+            <text
+              x={pos.x}
+              y={numberY}
+              fontSize={12}
+              fontWeight={700}
+              fontFamily="Georgia, serif"
+              fill={style.textColor}
+              textAnchor="middle"
+              dominantBaseline="central"
+            >
+              I.{id}
+            </text>
+
+            {/* Wrapped title (up to 3 lines) */}
+            {titleLines.map((line, i, arr) => (
+              <text
+                key={i}
+                x={pos.x}
+                y={titleStartY + i * 10}
+                fontSize={8}
+                fontFamily="Georgia, serif"
+                fill={style.textColor}
+                textAnchor="middle"
+                dominantBaseline="central"
+                opacity={0.65}
+              >
+                {i === arr.length - 1 && line.length >= 20 ? line.slice(0, 19) + '…' : line}
+              </text>
+            ))}
+          </g>
+        )
+      })}
+    </>
+  )
 
   return (
     <div
@@ -762,208 +1090,51 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       )}
 
       {/* SVG map */}
-      <div
-        data-element="map-viewport"
-        style={{
-          ...(hideHeader ? {} : { flex: 1, minHeight: 0, overflow: 'auto' }),
-          padding: '24px 20px',
-        }}
-      >
-        <svg
-          data-element="map-svg"
-          viewBox={viewBox}
-          style={{
-            display: 'block',
-            width: '100%',
-            maxWidth: 900,
-            margin: '0 auto',
-          }}
+      {hideHeader ? (
+        /* Scroll-driven viewport: sticky SVG + scroll spacer */
+        <div
+          ref={containerRef}
+          data-element="map-viewport-scroll"
+          style={{ position: 'relative' }}
         >
-          {/* Arrowhead marker */}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="4"
-              markerHeight="3"
-              refX="3.5"
-              refY="1.5"
-              orient="auto"
+          <div
+            ref={stickyRef}
+            style={{
+              position: 'sticky',
+              top: 'calc(var(--app-nav-height, 0px) + 3rem)',
+              height: 'calc(100vh - var(--app-nav-height, 0px) - 3rem)',
+            }}
+          >
+            <svg
+              data-element="map-svg"
+              viewBox={scrollViewBox ?? viewBox}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ display: 'block', width: '100%', height: '100%', overflow: 'visible' }}
             >
-              <polygon points="0 0, 4 1.5, 0 3" fill="#cbd5e1" fillOpacity={0.6} />
-            </marker>
-          </defs>
+              {svgContent}
+            </svg>
+          </div>
+          {/* Spacer creates scroll range — height proportional to graph extent */}
+          <div style={{ height: rowMeta ? (rowMeta.rows[rowMeta.rows.length - 1].y - rowMeta.rows[0].y) * 1.5 : 0 }} />
+        </div>
+      ) : (
+        /* Normal scrollable map */
+        <div
+          data-element="map-viewport"
+          style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '24px 20px' }}
+        >
+          <svg
+            data-element="map-svg"
+            viewBox={viewBox}
+            style={{ display: 'block', width: '100%', maxWidth: 900, margin: '0 auto' }}
+          >
+            {svgContent}
+          </svg>
+        </div>
+      )}
 
-          {/* Edges — simplified, trimmed, with arrowheads */}
-          {edges.map((edge) => {
-            const srcPos = layout.get(edge.from)
-            const tgtPos = layout.get(edge.to)
-            if (!srcPos || !tgtPos) return null
-
-            const trimmed = trimToBorders(edge.points, srcPos.x, srcPos.y, tgtPos.x, tgtPos.y)
-            const simplified = simplifyPoints(trimmed, 4)
-            const d = pointsToPath(simplified)
-            if (!d) return null
-
-            return (
-              <path
-                key={`${edge.from}-${edge.to}`}
-                data-element="map-edge"
-                d={d}
-                fill="none"
-                stroke="#cbd5e1"
-                strokeWidth={3}
-                strokeOpacity={0.4}
-                markerEnd="url(#arrowhead)"
-              />
-            )
-          })}
-
-          {/* Nodes */}
-          {visibleIds.map((id) => {
-            const pos = layout.get(id)
-            if (!pos) return null
-            const status = getNodeStatus(id, completed)
-            const style = STATUS_STYLES[status]
-            const prop = getProposition(id)
-            const isClickable = status === 'completed' || status === 'available'
-            const titleLines = prop ? wrapTitle(prop.title, 20) : []
-
-            // Vertical layout: thumbnail | number | title lines
-            const topY = pos.y - RENDER_H / 2
-            const thumbCenterY = topY + 5 // top of thumbnail area
-            const thumbH = previews.has(id) ? PREVIEW_THUMB_H : ICON_SIZE
-            const numberY = topY + thumbH + 12
-            const titleStartY = numberY + 13
-
-            return (
-              <g
-                key={id}
-                data-element="map-node"
-                data-prop-id={id}
-                data-status={status}
-                style={{
-                  cursor: isClickable ? 'pointer' : 'default',
-                  opacity: status === 'coming-soon' ? comingSoonOpacity : style.opacity,
-                }}
-                onClick={() => isClickable && onSelectProp(id)}
-                onMouseEnter={() => setHoveredNode(id)}
-                onMouseLeave={() => setHoveredNode(null)}
-              >
-                {/* Opaque background so edges are occluded behind node */}
-                <rect
-                  x={pos.x - NODE_W / 2}
-                  y={topY}
-                  width={NODE_W}
-                  height={RENDER_H}
-                  rx={NODE_RX}
-                  fill="#FAFAF0"
-                />
-                <rect
-                  x={pos.x - NODE_W / 2}
-                  y={topY}
-                  width={NODE_W}
-                  height={RENDER_H}
-                  rx={NODE_RX}
-                  fill={style.fill}
-                  stroke={style.stroke}
-                  strokeWidth={status === 'available' ? 2 : 1.5}
-                  strokeDasharray={style.strokeDash}
-                />
-
-                {/* Geometric thumbnail — real construction preview or generic icon */}
-                {prop &&
-                  (previews.get(id) ? (
-                    <image
-                      href={previews.get(id)}
-                      x={pos.x - PREVIEW_THUMB_W / 2}
-                      y={thumbCenterY}
-                      width={PREVIEW_THUMB_W}
-                      height={PREVIEW_THUMB_H}
-                      preserveAspectRatio="xMidYMid meet"
-                    />
-                  ) : (
-                    <g transform={`translate(${pos.x - ICON_SIZE / 2}, ${thumbCenterY})`}>
-                      <PropThumbnail propId={id} block={prop.block} color={style.textColor} />
-                    </g>
-                  ))}
-
-                {/* Type badge (P = Problem/construction, T = Theorem) */}
-                {prop && (
-                  <g data-element="type-badge">
-                    <rect
-                      x={pos.x - NODE_W / 2 + 4}
-                      y={topY + 4}
-                      width={14}
-                      height={14}
-                      rx={3}
-                      fill={prop.type === 'construction' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'}
-                    />
-                    <text
-                      x={pos.x - NODE_W / 2 + 11}
-                      y={topY + 11}
-                      fontSize={8}
-                      fontWeight={700}
-                      fontFamily="system-ui, sans-serif"
-                      fill={prop.type === 'construction' ? '#d97706' : '#4f46e5'}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                    >
-                      {prop.type === 'construction' ? 'P' : 'T'}
-                    </text>
-                  </g>
-                )}
-
-                {/* Checkmark for completed */}
-                {status === 'completed' && (
-                  <text
-                    x={pos.x + NODE_W / 2 - 14}
-                    y={topY + 10}
-                    fontSize={11}
-                    fill="#10b981"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontWeight={700}
-                  >
-                    ✓
-                  </text>
-                )}
-
-                {/* Prop number */}
-                <text
-                  x={pos.x}
-                  y={numberY}
-                  fontSize={12}
-                  fontWeight={700}
-                  fontFamily="Georgia, serif"
-                  fill={style.textColor}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                >
-                  I.{id}
-                </text>
-
-                {/* Wrapped title (up to 3 lines) */}
-                {titleLines.map((line, i, arr) => (
-                  <text
-                    key={i}
-                    x={pos.x}
-                    y={titleStartY + i * 10}
-                    fontSize={8}
-                    fontFamily="Georgia, serif"
-                    fill={style.textColor}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    opacity={0.65}
-                  >
-                    {i === arr.length - 1 && line.length >= 20 ? line.slice(0, 19) + '…' : line}
-                  </text>
-                ))}
-              </g>
-            )
-          })}
-        </svg>
-
-        {/* Legend — type badges */}
+      {/* Legend — type badges */}
+      {!hideHeader && (
         <div
           data-element="map-legend"
           style={{
@@ -1015,7 +1186,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
             Theorem
           </span>
         </div>
-      </div>
+      )}
 
       {/* Tooltip for locked nodes */}
       {hoveredInfo && (
