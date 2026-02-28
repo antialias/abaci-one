@@ -44,7 +44,8 @@ function drawArc(
   startAngle: number,
   endAngle: number,
   color: string,
-  tickCount: number
+  tickCount: number,
+  radius: number
 ) {
   // Ensure we draw the shorter arc
   let start = normalizeAngle(startAngle)
@@ -59,7 +60,7 @@ function drawArc(
   }
 
   ctx.beginPath()
-  ctx.arc(cx, cy, ARC_RADIUS_PX, start, start + sweep)
+  ctx.arc(cx, cy, radius, start, start + sweep)
   ctx.strokeStyle = color
   ctx.lineWidth = ARC_LINE_WIDTH
   ctx.stroke()
@@ -73,11 +74,11 @@ function drawArc(
     for (let t = 0; t < tickCount; t++) {
       const offset = -totalWidth / 2 + t * tickSpacing
       // Offset along the arc by converting pixel offset to angle offset
-      const angleOffset = offset / ARC_RADIUS_PX
+      const angleOffset = offset / radius
       const tickAngle = midAngle + angleOffset
 
-      const innerR = ARC_RADIUS_PX - TICK_LENGTH_PX
-      const outerR = ARC_RADIUS_PX + TICK_LENGTH_PX
+      const innerR = radius - TICK_LENGTH_PX
+      const outerR = radius + TICK_LENGTH_PX
 
       ctx.beginPath()
       ctx.moveTo(cx + innerR * Math.cos(tickAngle), cy + innerR * Math.sin(tickAngle))
@@ -98,7 +99,7 @@ export function renderAngleArcs(
   viewport: EuclidViewportState,
   w: number,
   h: number,
-  givenAngles?: Array<{ spec: AngleSpec; color: string }>,
+  givenAngles?: Array<{ spec: AngleSpec; color: string; radiusPx?: number }>,
   equalAngles?: Array<[AngleSpec, AngleSpec]>
 ) {
   if (!givenAngles || givenAngles.length === 0) return
@@ -115,7 +116,7 @@ export function renderAngleArcs(
     }
   }
 
-  for (const { spec, color } of givenAngles) {
+  for (const { spec, color, radiusPx } of givenAngles) {
     const vertex = getPoint(state, spec.vertex)
     const ray1 = getPoint(state, spec.ray1End)
     const ray2 = getPoint(state, spec.ray2End)
@@ -131,6 +132,6 @@ export function renderAngleArcs(
     const key = `${spec.vertex}|${spec.ray1End}|${spec.ray2End}`
     const ticks = tickCounts.get(key) ?? 0
 
-    drawArc(ctx, vs.sx, vs.sy, angle1, angle2, color, ticks)
+    drawArc(ctx, vs.sx, vs.sy, angle1, angle2, color, ticks, radiusPx ?? ARC_RADIUS_PX)
   }
 }

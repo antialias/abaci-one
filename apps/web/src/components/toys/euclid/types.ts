@@ -211,6 +211,8 @@ export interface PropositionDef {
   givenAngles?: Array<{
     spec: AngleSpec
     color: string
+    /** Per-angle arc radius in pixels (defaults to 18) */
+    radiusPx?: number
   }>
   /** Pairs of equal angles — matching tick marks on arcs (visual only) */
   equalAngles?: Array<[AngleSpec, AngleSpec]>
@@ -223,6 +225,8 @@ export interface PropositionDef {
   }>
   /** Text conclusion for theorems (bypasses fact-store derivation display) */
   theoremConclusion?: string
+  /** Dynamic conclusion computed from current construction state (for position-dependent proofs) */
+  computeTheoremConclusion?: (state: ConstructionState) => string
   /** Superposition flash configuration for C.N.4 visual */
   superpositionFlash?: {
     pairs: Array<{ src: string; tgt: string }>

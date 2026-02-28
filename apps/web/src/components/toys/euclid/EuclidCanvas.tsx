@@ -110,6 +110,8 @@ import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { CitationPopover } from './foundations/CitationPopover'
 import { getFoundationHref } from './foundations/citationUtils'
 import { MacroToolPanel } from './MacroToolPanel'
+import { useEuclidVoice } from './voice/useEuclidVoice'
+import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
 
 // ── Keyboard shortcuts ──
 
@@ -1013,6 +1015,21 @@ export function EuclidCanvas({
         : 'Construction complete!',
     explorationNarration,
     enabledOverride: disableAudio ? audioEnabled : undefined,
+  })
+
+  // ── Call Euclid voice ──
+  const euclidVoice = useEuclidVoice({
+    canvasRef,
+    constructionRef,
+    factStoreRef,
+    proofFactsRef,
+    currentStepRef,
+    propositionId,
+    propositionTitle: proposition.title,
+    propositionKind: proposition.kind ?? 'construction',
+    totalSteps: steps.length,
+    isComplete,
+    playgroundMode: !!playgroundMode,
   })
 
   // ── Fire onComplete callback and auto-select Move tool ──
@@ -3423,7 +3440,65 @@ export function EuclidCanvas({
               </svg>
             </button>
           )}
+
+          {/* Call Euclid phone button */}
+          {!playgroundMode && euclidVoice.state === 'idle' && (
+            <button
+              data-action="call-euclid"
+              onClick={euclidVoice.dial}
+              title="Call Euclid"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                border: '1px solid rgba(203, 213, 225, 0.8)',
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(8px)',
+                color: '#4E79A7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                transition: 'all 0.15s ease',
+                padding: 0,
+                fontSize: 16,
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+            </button>
+          )}
         </div>
+
+        {/* Phone call overlay for Call Euclid */}
+        {euclidVoice.state !== 'idle' && (
+          <PhoneCallOverlay
+            callerLabel="Euclid"
+            callerIcon="\u03B5" // lowercase epsilon — Greek feel
+            state={euclidVoice.state}
+            timeRemaining={euclidVoice.timeRemaining}
+            error={euclidVoice.error}
+            errorCode={euclidVoice.errorCode}
+            isSpeaking={euclidVoice.isSpeaking}
+            onHangUp={euclidVoice.hangUp}
+            onRetry={euclidVoice.dial}
+            onDismiss={euclidVoice.hangUp}
+            isDark={false}
+            containerWidth={containerRef.current?.clientWidth ?? 600}
+            containerHeight={containerRef.current?.clientHeight ?? 400}
+          />
+        )}
 
         {showCreationsPanel && (
           <PlaygroundCreationsPanel
@@ -4122,59 +4197,62 @@ export function EuclidCanvas({
                       const conclusionAngleFacts = (factsByStep.get(steps.length) ?? []).filter(
                         isAngleFact
                       )
-                      if (conclusionAngleFacts.length > 0) {
-                        return (
-                          <div
-                            style={{
-                              color: '#10b981',
-                              fontSize: proofFont.stepText,
-                              fontFamily: 'Georgia, serif',
-                              fontStyle: 'italic',
-                              marginTop: 0,
-                              width: '100%',
-                            }}
-                          >
-                            {conclusionAngleFacts.map((fact, idx) => (
-                              <span key={fact.id}>
-                                {idx > 0 && ', '}
-                                <span
-                                  data-element="conclusion-angle"
-                                  onMouseEnter={() => setHoveredFactId(fact.id)}
-                                  onMouseLeave={() => setHoveredFactId(null)}
-                                  style={{
-                                    cursor: 'default',
-                                    borderBottom: isFactHighlighted(fact)
-                                      ? '2px solid #10b981'
-                                      : '2px solid transparent',
-                                    transition: 'border-color 0.15s ease',
-                                  }}
-                                >
-                                  {fact.statement}
+                      // Dynamic conclusion takes precedence over static
+                      const conclusionText = proposition.computeTheoremConclusion
+                        ? proposition.computeTheoremConclusion(constructionRef.current)
+                        : proposition.theoremConclusion
+
+                      return (
+                        <>
+                          {conclusionAngleFacts.length > 0 && (
+                            <div
+                              style={{
+                                color: '#10b981',
+                                fontSize: proofFont.stepText,
+                                fontFamily: 'Georgia, serif',
+                                fontStyle: 'italic',
+                                marginTop: 0,
+                                width: '100%',
+                              }}
+                            >
+                              {conclusionAngleFacts.map((fact, idx) => (
+                                <span key={fact.id}>
+                                  {idx > 0 && ', '}
+                                  <span
+                                    data-element="conclusion-angle"
+                                    onMouseEnter={() => setHoveredFactId(fact.id)}
+                                    onMouseLeave={() => setHoveredFactId(null)}
+                                    style={{
+                                      cursor: 'default',
+                                      borderBottom: isFactHighlighted(fact)
+                                        ? '2px solid #10b981'
+                                        : '2px solid transparent',
+                                      transition: 'border-color 0.15s ease',
+                                    }}
+                                  >
+                                    {fact.statement}
+                                  </span>
                                 </span>
-                              </span>
-                            ))}
-                          </div>
-                        )
-                      }
-                      // Fall back to static theorem conclusion text
-                      if (proposition.theoremConclusion) {
-                        return (
-                          <div
-                            style={{
-                              color: '#10b981',
-                              fontSize: proofFont.stepText,
-                              fontFamily: 'Georgia, serif',
-                              fontStyle: 'italic',
-                              marginTop: 0,
-                              width: '100%',
-                              whiteSpace: 'pre-line',
-                            }}
-                          >
-                            {proposition.theoremConclusion}
-                          </div>
-                        )
-                      }
-                      return null
+                              ))}
+                            </div>
+                          )}
+                          {conclusionText && (
+                            <div
+                              style={{
+                                color: '#10b981',
+                                fontSize: proofFont.stepText,
+                                fontFamily: 'Georgia, serif',
+                                fontStyle: 'italic',
+                                marginTop: 0,
+                                width: '100%',
+                                whiteSpace: 'pre-line',
+                              }}
+                            >
+                              {conclusionText}
+                            </div>
+                          )}
+                        </>
+                      )
                     })()}
                     <span
                       style={{
