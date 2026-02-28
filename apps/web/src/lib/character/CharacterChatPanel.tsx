@@ -180,92 +180,112 @@ export function CharacterChatPanel<TEntityRef>({
             {character.chat.emptyPrompt}
           </div>
         )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            data-element={`chat-message-${msg.role}`}
-            style={{
-              display: 'flex',
-              flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-              alignItems: 'flex-start',
-              gap: 6,
-            }}
-          >
-            {msg.role === 'assistant' && (
-              <img
-                src={character.profileImage}
-                alt=""
+        {messages.map((msg) => {
+          // Error messages render as centered system notices, not character speech
+          if (msg.isError) {
+            return (
+              <div
+                key={msg.id}
+                data-element="chat-message-error"
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  flexShrink: 0,
-                  marginTop: 2,
+                  textAlign: 'center',
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  color: '#94a3b8',
+                  fontStyle: 'italic',
                 }}
-              />
-            )}
+              >
+                {msg.content}
+              </div>
+            )
+          }
+          return (
             <div
+              key={msg.id}
+              data-element={`chat-message-${msg.role}`}
               style={{
-                maxWidth: '85%',
-                padding: '6px 10px',
-                borderRadius:
-                  msg.role === 'user'
-                    ? '10px 10px 2px 10px'
-                    : '10px 10px 10px 2px',
-                background:
-                  msg.role === 'user'
-                    ? 'rgba(78, 121, 167, 0.12)'
-                    : 'rgba(248, 250, 252, 0.9)',
-                border:
-                  msg.role === 'user'
-                    ? '1px solid rgba(78, 121, 167, 0.2)'
-                    : '1px solid rgba(203, 213, 225, 0.4)',
-                fontSize: 13,
-                lineHeight: 1.45,
-                color: '#1e293b',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
+                display: 'flex',
+                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                alignItems: 'flex-start',
+                gap: 6,
               }}
             >
-              {msg.role === 'assistant' && msg.content && entityMarkers && onHighlight ? (
-                <MarkedText
-                  text={msg.content}
-                  markers={entityMarkers}
-                  onHighlight={onHighlight}
-                />
-              ) : (
-                msg.content
-              )}
-              {msg.via && (
-                <span
-                  title={msg.via === 'voice' ? 'Spoken' : 'Typed during call'}
+              {msg.role === 'assistant' && (
+                <img
+                  src={character.profileImage}
+                  alt=""
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    marginLeft: 4,
-                    verticalAlign: 'middle',
-                    opacity: 0.45,
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                    marginTop: 2,
                   }}
-                >
-                  {msg.via === 'voice' ? (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                      <line x1="12" y1="19" x2="12" y2="23" />
-                      <line x1="8" y1="23" x2="16" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
-                      <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
-                    </svg>
-                  )}
-                </span>
+                />
               )}
+              <div
+                style={{
+                  maxWidth: '85%',
+                  padding: '6px 10px',
+                  borderRadius:
+                    msg.role === 'user'
+                      ? '10px 10px 2px 10px'
+                      : '10px 10px 10px 2px',
+                  background:
+                    msg.role === 'user'
+                      ? 'rgba(78, 121, 167, 0.12)'
+                      : 'rgba(248, 250, 252, 0.9)',
+                  border:
+                    msg.role === 'user'
+                      ? '1px solid rgba(78, 121, 167, 0.2)'
+                      : '1px solid rgba(203, 213, 225, 0.4)',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                  color: '#1e293b',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {msg.role === 'assistant' && msg.content && entityMarkers && onHighlight ? (
+                  <MarkedText
+                    text={msg.content}
+                    markers={entityMarkers}
+                    onHighlight={onHighlight}
+                  />
+                ) : (
+                  msg.content
+                )}
+                {msg.via && (
+                  <span
+                    title={msg.via === 'voice' ? 'Spoken' : 'Typed during call'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      marginLeft: 4,
+                      verticalAlign: 'middle',
+                      opacity: 0.45,
+                    }}
+                  >
+                    {msg.via === 'voice' ? (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+                        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+                      </svg>
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {isStreaming &&
           messages.length > 0 &&
           !messages[messages.length - 1].content && (

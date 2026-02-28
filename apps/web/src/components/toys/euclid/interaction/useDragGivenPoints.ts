@@ -38,6 +38,8 @@ interface UseDragGivenPointsOptions {
   onDragStart?: (pointId: string) => void
   /** Ref updated with the currently dragged point ID (null when not dragging) */
   dragPointIdRef?: React.MutableRefObject<string | null>
+  /** Called when a drag gesture ends */
+  onDragEnd?: () => void
 }
 
 /**
@@ -62,6 +64,7 @@ export function useDragGivenPoints({
   onReplayResult,
   onDragStart,
   dragPointIdRef,
+  onDragEnd,
 }: UseDragGivenPointsOptions): void {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -252,6 +255,7 @@ export function useDragGivenPoints({
       pointerCapturedRef.current = false
       canvas!.style.cursor = hoveredDraggableId ? 'grab' : ''
       needsDrawRef.current = true
+      onDragEnd?.()
     }
 
     function handlePointerCancel() {
@@ -292,5 +296,6 @@ export function useDragGivenPoints({
     onDragStart,
     dragPointIdRef,
     getCanvasRect,
+    onDragEnd,
   ])
 }

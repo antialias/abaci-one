@@ -202,6 +202,7 @@ ${EUCLID_DIAGRAM_QUESTION}`
   }
 
   // Call the Responses API with streaming
+  console.log('[euclid-chat-api] calling OpenAI Responses API, messageCount=%d, hasScreenshot=%s', messages.length, !!screenshot)
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -218,9 +219,10 @@ ${EUCLID_DIAGRAM_QUESTION}`
     }),
   })
 
+  console.log('[euclid-chat-api] OpenAI response status: %d', response.status)
   if (!response.ok) {
     const errText = await response.text()
-    console.error('[euclid-chat] API error:', response.status, errText)
+    console.error('[euclid-chat-api] API error:', response.status, errText)
     return new Response(JSON.stringify({ error: 'Could not reach Euclid right now.' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
@@ -264,6 +266,18 @@ ${EUCLID_DIAGRAM_QUESTION}`
               if (event.type === 'response.output_text.delta' && event.delta) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ text: event.delta })}\n\n`)
+                )
+              } else if (event.type === 'error') {
+                // Surface in-stream errors to the client as error events
+                const errMsg = event.error?.message || 'An error occurred'
+                const errCode = event.error?.code || 'unknown'
+                console.error('[euclid-chat-api] stream error: %s — %s', errCode, errMsg)
+                const isQuota = /quota/i.test(errCode)
+                const userMessage = isQuota
+                  ? 'Euclid is unavailable right now. Try again later.'
+                  : `Something went wrong. Try again later.`
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ error: userMessage })}\n\n`)
                 )
               }
             } catch {

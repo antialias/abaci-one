@@ -55,6 +55,8 @@ interface UseToolInteractionOptions {
   extendPreviewRef?: React.MutableRefObject<{ x: number; y: number } | null>
   /** Called when the extend tool commits (3rd click). */
   onCommitExtend?: (baseId: string, throughId: string, projX: number, projY: number) => void
+  /** Called on discrete tool phase transitions (compass idle→center-set, etc.) */
+  onToolStateChange?: () => void
 }
 
 function normalizeAngle(angle: number): number {
@@ -93,6 +95,7 @@ export function useToolInteraction({
   extendPhaseRef,
   extendPreviewRef,
   onCommitExtend,
+  onToolStateChange,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -207,6 +210,7 @@ export function useToolInteraction({
           if (hitPt) {
             e.stopPropagation()
             extendPhaseRef.current = { tag: 'base-set', baseId: hitPt.id }
+            onToolStateChange?.()
             requestDraw()
           }
           return
@@ -216,6 +220,7 @@ export function useToolInteraction({
           if (hitPt && hitPt.id !== extPhase.baseId) {
             e.stopPropagation()
             extendPhaseRef.current = { tag: 'extending', baseId: extPhase.baseId, throughId: hitPt.id }
+            onToolStateChange?.()
             requestDraw()
           }
           return
@@ -229,6 +234,7 @@ export function useToolInteraction({
           }
           extendPhaseRef.current = { tag: 'idle' }
           extendPreviewRef.current = null
+          onToolStateChange?.()
           requestDraw()
           return
         }
@@ -253,6 +259,7 @@ export function useToolInteraction({
           e.stopPropagation()
           pointerCapturedRef.current = true
           compassPhaseRef.current = { tag: 'center-set', centerId: hitPt.id }
+          onToolStateChange?.()
           requestDraw()
           return
         }
@@ -264,6 +271,7 @@ export function useToolInteraction({
           e.stopPropagation()
           pointerCapturedRef.current = true
           straightedgePhaseRef.current = { tag: 'from-set', fromId: hitPt.id }
+          onToolStateChange?.()
           requestDraw()
           return
         }
@@ -293,10 +301,12 @@ export function useToolInteraction({
             onMacroPhaseChange?.(idlePhase)
             pointerCapturedRef.current = false
             onCommitMacro(macro.propId, newSelected)
+            onToolStateChange?.()
           } else {
             const nextPhase: MacroPhase = { ...macro, selectedPointIds: newSelected }
             macroPhaseRef.current = nextPhase
             onMacroPhaseChange?.(nextPhase)
+            onToolStateChange?.()
           }
           requestDraw()
           return
@@ -352,6 +362,7 @@ export function useToolInteraction({
               radius,
               enterTime: performance.now(),
             }
+            onToolStateChange?.()
           }
         }
         requestDraw()
@@ -441,6 +452,7 @@ export function useToolInteraction({
             onCommitCircle(compass.centerId, compass.radiusPointId)
             compassPhaseRef.current = { tag: 'idle' }
             pointerCapturedRef.current = false
+            onToolStateChange?.()
           }
         }
         requestDraw()
@@ -563,6 +575,7 @@ export function useToolInteraction({
         }
         straightedgePhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
+        onToolStateChange?.()
         requestDraw()
         return
       }
@@ -627,5 +640,6 @@ export function useToolInteraction({
     extendPhaseRef,
     extendPreviewRef,
     onCommitExtend,
+    onToolStateChange,
   ])
 }

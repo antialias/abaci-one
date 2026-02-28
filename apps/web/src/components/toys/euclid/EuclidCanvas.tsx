@@ -111,6 +111,8 @@ import { CitationPopover } from './foundations/CitationPopover'
 import { getFoundationHref } from './foundations/citationUtils'
 import { MacroToolPanel } from './MacroToolPanel'
 import { useEuclidVoice } from './voice/useEuclidVoice'
+import { useConstructionNotifier } from './voice/useConstructionNotifier'
+import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
 import { useEuclidChat } from './chat/useEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
@@ -1012,6 +1014,9 @@ export function EuclidCanvas({
   const speakStepCorrection = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
   const speakStepCorrectionRef = useRef(speakStepCorrection)
   speakStepCorrectionRef.current = speakStepCorrection
+  // ── Pending action ref — shared between notifier, voice, and chat ──
+  const pendingActionRef = useRef<string | null>(null)
+
   // ── Text chat (must come before voice so transcript callbacks can reference addMessage) ──
   const euclidChat = useEuclidChat({
     canvasRef,
@@ -1028,6 +1033,7 @@ export function EuclidCanvas({
     macroPhaseRef,
     dragPointIdRef,
     steps,
+    pendingActionRef,
   })
 
   // Keep a ref to chat messages for voice session context injection
@@ -1068,14 +1074,35 @@ export function EuclidCanvas({
     onChildSpeech: handleChildSpeech,
   })
 
+  // ── Push-based construction notifier ──
+  const notifierRef = useConstructionNotifier({
+    canvasRef,
+    constructionRef,
+    proofFactsRef,
+    currentStepRef,
+    steps,
+    isComplete,
+    activeToolRef,
+    compassPhaseRef,
+    straightedgePhaseRef,
+    extendPhaseRef,
+    macroPhaseRef,
+    dragPointIdRef,
+    voiceCallRef: euclidVoice.voiceCallRef,
+    pendingActionRef,
+  })
+
   // ── Unified send handler: routes to voice session or SSE chat ──
   const handleChatSend = useCallback((text: string) => {
+    console.log('[euclid] handleChatSend: voiceState=%s, text=%s', euclidVoice.state, text.slice(0, 50))
     if (euclidVoice.state === 'active') {
       // Send to voice session + add to shared message history
+      console.log('[euclid] routing to voice session')
       euclidVoice.sendUserText(text)
       euclidChat.addMessage({ id: generateId(), role: 'user', content: text, timestamp: Date.now(), via: 'typed-during-call' })
     } else {
       // Normal SSE chat — sendMessage adds to history + streams response
+      console.log('[euclid] routing to SSE chat')
       euclidChat.sendMessage(text)
     }
   }, [euclidVoice.state, euclidVoice.sendUserText, euclidChat.addMessage, euclidChat.sendMessage])
@@ -1594,6 +1621,13 @@ export function EuclidCanvas({
       checkStep(result.circle)
       requestDraw()
       musicRef.current?.notifyChange()
+
+      const cLabel = getPoint(result.state, centerId)?.label ?? centerId.replace(/^pt-/, '')
+      const rLabel = getPoint(result.state, radiusPointId)?.label ?? radiusPointId.replace(/^pt-/, '')
+      notifierRef.current.notifyConstruction({
+        action: `Drew circle centered at ${cLabel} through ${rLabel}`,
+        shouldPrompt: true,
+      })
     },
     [checkStep, requestDraw, extendSegments]
   )
@@ -1641,6 +1675,13 @@ export function EuclidCanvas({
       checkStep(result.segment)
       requestDraw()
       musicRef.current?.notifyChange()
+
+      const fLabel = getPoint(result.state, fromId)?.label ?? fromId.replace(/^pt-/, '')
+      const tLabel = getPoint(result.state, toId)?.label ?? toId.replace(/^pt-/, '')
+      notifierRef.current.notifyConstruction({
+        action: `Drew segment from ${fLabel} to ${tLabel}`,
+        shouldPrompt: true,
+      })
     },
     [checkStep, requestDraw, extendSegments]
   )
@@ -1699,6 +1740,13 @@ export function EuclidCanvas({
 
       checkStep(ptResult.point)
       requestDraw()
+
+      const throughLabel = getPoint(constructionRef.current, expected.throughId)?.label ?? expected.throughId.replace(/^pt-/, '')
+      const newLabel = ptResult.point.label
+      notifierRef.current.notifyConstruction({
+        action: `Extended line through ${throughLabel} to new point ${newLabel}`,
+        shouldPrompt: true,
+      })
     },
     [steps, checkStep, requestDraw, extendSegments]
   )
@@ -1784,6 +1832,11 @@ export function EuclidCanvas({
       requestDraw()
       musicRef.current?.notifyIntersection(candidate.x, candidate.y)
       musicRef.current?.notifyChange()
+
+      notifierRef.current.notifyConstruction({
+        action: `Marked intersection point ${result.point.label}`,
+        shouldPrompt: true,
+      })
     },
     [checkStep, requestDraw, steps]
   )
@@ -1820,6 +1873,11 @@ export function EuclidCanvas({
         proofFactsRef.current = [...proofFactsRef.current, ...result.newFacts]
         setProofFacts(proofFactsRef.current)
       }
+
+      notifierRef.current.notifyConstruction({
+        action: `Applied Proposition I.${propId}`,
+        shouldPrompt: true,
+      })
 
       if (!isGuidedStep) {
         if (!isCompleteRef.current) {
@@ -2131,6 +2189,11 @@ export function EuclidCanvas({
         },
       ]
       requestDraw()
+
+      notifierRef.current.notifyConstruction({
+        action: `Placed free point ${result.point.label}`,
+        shouldPrompt: false,
+      })
     },
     [requestDraw]
   )
@@ -2354,6 +2417,9 @@ export function EuclidCanvas({
     extendPhaseRef,
     extendPreviewRef,
     onCommitExtend: handleCommitExtend,
+    onToolStateChange: useCallback(() => {
+      notifierRef.current.notifyToolState()
+    }, []),
   })
 
   // ── Hook up drag interaction for post-completion play ──
@@ -2398,6 +2464,9 @@ export function EuclidCanvas({
       },
       [handleDragStart]
     ),
+    onDragEnd: useCallback(() => {
+      notifierRef.current.notifyDragEnd()
+    }, []),
   })
 
   // ── Construction music ──
@@ -4804,6 +4873,25 @@ export function EuclidCanvas({
           }}
         />
       )}
+
+      <EuclidContextDebugPanel
+        constructionRef={constructionRef}
+        proofFactsRef={proofFactsRef}
+        currentStepRef={currentStepRef}
+        steps={steps}
+        isComplete={isComplete}
+        activeToolRef={activeToolRef}
+        compassPhaseRef={compassPhaseRef}
+        straightedgePhaseRef={straightedgePhaseRef}
+        extendPhaseRef={extendPhaseRef}
+        macroPhaseRef={macroPhaseRef}
+        dragPointIdRef={dragPointIdRef}
+        pendingActionRef={pendingActionRef}
+        voiceState={euclidVoice.state}
+        isSpeaking={euclidVoice.isSpeaking}
+        notifierRef={notifierRef}
+        chatMessageCount={euclidChat.messages.length}
+      />
 
       <ToyDebugPanel title="Euclid">
         <DebugCheckbox

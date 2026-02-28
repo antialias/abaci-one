@@ -29,6 +29,8 @@ export interface ChatMessage {
   timestamp: number
   /** How this message was created — absent for normal typed SSE chat. */
   via?: 'voice' | 'typed-during-call'
+  /** True when this message is a system error, not a character response. */
+  isError?: boolean
 }
 
 /**

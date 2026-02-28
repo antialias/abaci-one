@@ -508,6 +508,10 @@ export function useVoiceCall<TContext>(
       dc.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
+          // Log all data channel events for debugging
+          if (msg.type) {
+            console.log('[voice] dc event: %s', msg.type)
+          }
 
           // ── session.created ──
           if (msg.type === 'session.created') {
@@ -525,6 +529,8 @@ export function useVoiceCall<TContext>(
             console.error('[voice] server error:', JSON.stringify(msg.error))
             const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
             const isRateLimit = /rate_limit/i.test(errCode)
+            // Set stateRef BEFORE cleanup so dc.onclose doesn't trigger hangUp
+            stateRef.current = 'error'
             cleanup()
             if (isQuota) {
               setError('Phone calls are taking a break right now. Try again later!')
@@ -547,6 +553,35 @@ export function useVoiceCall<TContext>(
 
           // ── response.done — mode transitions ──
           if (msg.type === 'response.done') {
+            // Log full response for debugging
+            const respStatus = msg.response?.status
+            if (respStatus && respStatus !== 'completed') {
+              console.warn('[voice] response.done status=%s, full response:', respStatus, JSON.stringify(msg.response, null, 2))
+            }
+            // Check for failed responses with a recognized error code
+            // Realtime API nests errors under status_details.error
+            const failError = msg.response?.status_details?.error ?? msg.response?.error
+            if (respStatus === 'failed' && failError?.code) {
+              const errCode = failError.code || failError.type || 'unknown'
+              console.error('[voice] response.done FAILED: %s — %s', errCode, failError.message)
+              const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
+              const isRateLimit = /rate_limit/i.test(errCode)
+              // Set stateRef BEFORE cleanup so dc.onclose doesn't trigger hangUp
+              stateRef.current = 'error'
+              cleanup()
+              if (isQuota) {
+                setError('Phone calls are taking a break right now. Try again later!')
+                setErrorCode('quota_exceeded')
+              } else if (isRateLimit) {
+                setError('Line is busy right now. Try again in a moment!')
+                setErrorCode('rate_limited')
+              } else {
+                setError(failError.message || 'Something went wrong during the call.')
+                setErrorCode(errCode)
+              }
+              setState('error')
+              return
+            }
             // Raw handler first (for deferred exploration start etc.)
             configRef.current.onResponseDoneRaw?.(dc, msg, activeModeRef.current)
             // Then mode-transition handler

@@ -10,9 +10,9 @@
  *  - Async think_hard tool (GPT-5.2 via Responses API)
  */
 
-import { useCallback, useEffect, useRef, useMemo } from 'react'
+import { useCallback, useRef, useMemo } from 'react'
 import { useVoiceCall } from '@/lib/voice/useVoiceCall'
-import type { VoiceSessionConfig, ToolCallResult, CallState } from '@/lib/voice/types'
+import type { VoiceSessionConfig, ToolCallResult, CallState, UseVoiceCallReturn } from '@/lib/voice/types'
 import { sendSystemMessage } from '@/lib/voice/toolCallHelpers'
 import { captureScreenshot } from '@/lib/character/captureScreenshot'
 import type { ChatMessage } from '@/lib/character/types'
@@ -32,14 +32,7 @@ import type { EuclidModeContext } from './types'
 import { greetingMode } from './modes/greetingMode'
 import { conversingMode } from './modes/conversingMode'
 import { thinkingMode } from './modes/thinkingMode'
-import {
-  serializeFullProofState,
-  serializeConstructionGraph,
-  serializeProofFacts,
-  serializeToolState,
-  toolStateFingerprint,
-  type ToolStateInfo,
-} from './serializeProofState'
+import { serializeFullProofState } from './serializeProofState'
 
 interface UseEuclidVoiceOptions {
   /** Canvas ref for screenshot capture */
@@ -101,6 +94,8 @@ export interface UseEuclidVoiceReturn {
   voiceHighlightRef: React.RefObject<GeometricEntityRef | null>
   /** Send a user text message to the active voice session */
   sendUserText: (text: string) => void
+  /** Ref to the underlying voice call — needed by the construction notifier */
+  voiceCallRef: React.RefObject<UseVoiceCallReturn | null>
 }
 
 /**
@@ -130,7 +125,6 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
   const {
     canvasRef,
     constructionRef,
-    factStoreRef,
     proofFactsRef,
     currentStepRef,
     propositionId,
@@ -139,12 +133,6 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     totalSteps,
     isComplete,
     playgroundMode,
-    activeToolRef,
-    compassPhaseRef,
-    straightedgePhaseRef,
-    extendPhaseRef,
-    macroPhaseRef,
-    dragPointIdRef,
     steps,
   } = options
 
@@ -280,7 +268,9 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
       playgroundMode,
     }),
     onSessionEstablished: (dc) => {
+      console.log('[euclid-voice] session established, dc readyState=%s', dc.readyState)
       const msgs = options.chatMessagesRef.current
+      console.log('[euclid-voice] prior chat messages: %d', msgs?.length ?? 0)
       if (msgs && msgs.length > 0) {
         const lines = msgs.map((m) => `${m.role === 'user' ? 'Student' : 'Euclid'}: ${m.content}`).join('\n')
         sendSystemMessage(dc, `[Prior conversation with this student — you already discussed this, continue naturally without repeating yourself:]\n${lines}`)
@@ -347,106 +337,15 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
   const voiceCallRef = useRef(voiceCall)
   voiceCallRef.current = voiceCall
 
-  // ── Live context update polling (construction + tool state) ──
-  const lastConstructionFpRef = useRef<string>('')
-  const lastToolFpRef = useRef<string>('')
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  /** Read current tool state from refs */
-  const readToolState = useCallback((): ToolStateInfo => ({
-    activeTool: activeToolRef.current ?? 'compass',
-    compassPhase: compassPhaseRef.current ?? { tag: 'idle' },
-    straightedgePhase: straightedgePhaseRef.current ?? { tag: 'idle' },
-    extendPhase: extendPhaseRef.current ?? { tag: 'idle' },
-    macroPhase: macroPhaseRef.current ?? { tag: 'idle' },
-    dragPointId: dragPointIdRef.current ?? null,
-  }), [activeToolRef, compassPhaseRef, straightedgePhaseRef, extendPhaseRef, macroPhaseRef, dragPointIdRef])
-
-  useEffect(() => {
-    if (voiceCall.state !== 'active') {
-      // Reset on call end
-      lastConstructionFpRef.current = ''
-      lastToolFpRef.current = ''
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-        debounceTimerRef.current = null
-      }
-      // Clear voice highlight
-      voiceHighlightRef.current = null
-      if (highlightTimerRef.current) {
-        clearTimeout(highlightTimerRef.current)
-        highlightTimerRef.current = null
-      }
-      return
+  // Expose voiceCallRef for the construction notifier (created in EuclidCanvas)
+  // Clear voice highlight when call ends
+  if (voiceCall.state !== 'active') {
+    voiceHighlightRef.current = null
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = null
     }
-
-    // Initialize fingerprints to current state (skip update on call start)
-    if (!lastConstructionFpRef.current) {
-      const emptyState = { elements: [], nextLabelIndex: 0, nextColorIndex: 0 } as ConstructionState
-      lastConstructionFpRef.current = constructionFingerprint(constructionRef.current ?? emptyState)
-      lastToolFpRef.current = toolStateFingerprint(readToolState())
-    }
-
-    const interval = setInterval(() => {
-      const emptyState = { elements: [], nextLabelIndex: 0, nextColorIndex: 0 } as ConstructionState
-      const current = constructionRef.current ?? emptyState
-      const cFp = constructionFingerprint(current)
-      const tInfo = readToolState()
-      const tFp = toolStateFingerprint(tInfo)
-
-      const constructionChanged = cFp !== lastConstructionFpRef.current
-      const toolChanged = tFp !== lastToolFpRef.current
-
-      if (!constructionChanged && !toolChanged) return
-
-      // Debounce: tool-only changes fire fast (300ms), construction changes need 1.5s
-      const debounceMs = constructionChanged ? 1500 : 300
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-
-      debounceTimerRef.current = setTimeout(() => {
-        debounceTimerRef.current = null
-        const state = constructionRef.current ?? emptyState
-        const facts = proofFactsRef.current ?? []
-        const toolInfo = readToolState()
-        const step = currentStepRef.current ?? 0
-
-        const graph = serializeConstructionGraph(state)
-        const factsText = serializeProofFacts(facts)
-        const toolText = serializeToolState(toolInfo, state, step, steps, isComplete)
-
-        // Only capture screenshot for construction changes (expensive)
-        const includeScreenshot = cFp !== lastConstructionFpRef.current
-        const screenshot = includeScreenshot && canvasRef.current
-          ? captureScreenshot(canvasRef.current)
-          : null
-
-        // Prompt a response when the construction itself changed (new elements, moved points)
-        // so Euclid can react proactively. Tool-only changes (selecting compass, etc.) stay silent.
-        const shouldPrompt = cFp !== lastConstructionFpRef.current
-        const prefix = shouldPrompt
-          ? '[CONSTRUCTION CHANGED — acknowledge briefly what the student did and guide them on what to do next. Keep it to 1-2 sentences.]'
-          : '[TOOL STATE UPDATE — do not speak, just update your understanding silently]'
-        const text = `${prefix}\n\n${toolText}\n\n${graph}\n\n=== Proven Facts ===\n${factsText}`
-        voiceCallRef.current.sendContextUpdate(text, screenshot, shouldPrompt)
-
-        lastConstructionFpRef.current = constructionFingerprint(state)
-        lastToolFpRef.current = toolStateFingerprint(toolInfo)
-
-        console.log('[euclid-voice] sent context update (construction=%s, tool=%s)',
-          includeScreenshot ? 'changed' : 'same',
-          tFp !== lastToolFpRef.current ? 'changed' : 'same'
-        )
-      }, debounceMs)
-    }, 500)
-
-    return () => {
-      clearInterval(interval)
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-        debounceTimerRef.current = null
-      }
-    }
-  }, [voiceCall.state, constructionRef, proofFactsRef, canvasRef, currentStepRef, steps, isComplete, readToolState])
+  }
 
   return {
     state: voiceCall.state,
@@ -459,27 +358,6 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     isThinking: voiceCall.modeDebug.current === 'thinking',
     voiceHighlightRef,
     sendUserText: voiceCall.sendUserText,
+    voiceCallRef,
   }
-}
-
-/**
- * Fingerprint a construction state for change detection.
- * Encodes element counts + point coordinates.
- */
-function constructionFingerprint(state: ConstructionState): string {
-  let pts = 0
-  let segs = 0
-  let circs = 0
-  const coords: string[] = []
-  for (const el of state.elements) {
-    if (el.kind === 'point') {
-      pts++
-      coords.push(`${el.x.toFixed(3)},${el.y.toFixed(3)}`)
-    } else if (el.kind === 'segment') {
-      segs++
-    } else if (el.kind === 'circle') {
-      circs++
-    }
-  }
-  return `${pts}p${segs}s${circs}c:${coords.join(';')}`
 }

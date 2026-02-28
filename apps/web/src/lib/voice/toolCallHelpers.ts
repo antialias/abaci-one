@@ -51,6 +51,7 @@ export function sendContextUpdate(
   base64DataUrl?: string | null,
   promptResponse = false
 ) {
+  console.log('[voice-helpers] sendContextUpdate: textLen=%d, hasImage=%s, promptResponse=%s, dc.readyState=%s', text.length, !!base64DataUrl, promptResponse, dc.readyState)
   const content: Array<Record<string, string>> = [
     { type: 'input_text', text },
   ]
@@ -69,6 +70,7 @@ export function sendContextUpdate(
 
 /** Send a user text message to the voice session and prompt a model response. */
 export function sendUserText(dc: RTCDataChannel, text: string) {
+  console.log('[voice-helpers] sendUserText: textLen=%d, dc.readyState=%s', text.length, dc.readyState)
   dc.send(
     JSON.stringify({
       type: 'conversation.item.create',

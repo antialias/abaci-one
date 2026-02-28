@@ -101,8 +101,12 @@ export function useCharacterChat(
 
       const body = buildRequestBody(apiMessages, screenshot)
 
+      console.log('[character-chat] sendMessage: endpoint=%s, messageCount=%d, hasScreenshot=%s', chatEndpoint, apiMessages.length, !!screenshot)
+      console.log('[character-chat] request body keys:', Object.keys(body).join(', '))
+
       const fetchStream = async () => {
         try {
+          console.log('[character-chat] fetching stream...')
           const res = await fetch(chatEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -110,8 +114,11 @@ export function useCharacterChat(
             signal: abortController.signal,
           })
 
+          console.log('[character-chat] response status: %d, ok: %s', res.status, res.ok)
+
           if (!res.ok) {
             const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+            console.error('[character-chat] API error:', err)
             setMessages((prev) => {
               const updated = [...prev]
               const last = updated[updated.length - 1]
@@ -129,9 +136,11 @@ export function useCharacterChat(
 
           const reader = res.body?.getReader()
           if (!reader) {
+            console.error('[character-chat] no reader from response body')
             setIsStreaming(false)
             return
           }
+          console.log('[character-chat] got reader, starting stream...')
 
           const decoder = new TextDecoder()
           let buffer = ''
@@ -150,8 +159,23 @@ export function useCharacterChat(
               if (data === '[DONE]') continue
 
               try {
-                const event = JSON.parse(data) as { text?: string }
-                if (event.text) {
+                const event = JSON.parse(data) as { text?: string; error?: string }
+                console.log('[character-chat] SSE event:', data.slice(0, 100))
+                if (event.error) {
+                  // Server-side error — mark message as error
+                  setMessages((prev) => {
+                    const updated = [...prev]
+                    const last = updated[updated.length - 1]
+                    if (last.id === assistantMsg.id) {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        content: event.error!,
+                        isError: true,
+                      }
+                    }
+                    return updated
+                  })
+                } else if (event.text) {
                   setMessages((prev) => {
                     const updated = [...prev]
                     const last = updated[updated.length - 1]

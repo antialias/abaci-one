@@ -46,6 +46,8 @@ export interface UseEuclidChatOptions {
   macroPhaseRef: React.RefObject<MacroPhase>
   dragPointIdRef: React.RefObject<string | null>
   steps: PropositionStep[]
+  /** Ref holding a pending action description (set by push notifier, consumed on send) */
+  pendingActionRef?: React.RefObject<string | null>
 }
 
 export type UseEuclidChatReturn = UseCharacterChatReturn
@@ -66,6 +68,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     macroPhaseRef,
     dragPointIdRef,
     steps,
+    pendingActionRef,
   } = options
 
   const readToolState = useCallback((): ToolStateInfo => ({
@@ -105,7 +108,10 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         stepList = `Step ${step + 1} of ${steps.length}:\n${stepLines.join('\n')}`
       }
 
-      return {
+      // Read pending action (not cleared — the notifier overwrites it on next event)
+      const recentAction = pendingActionRef?.current ?? null
+
+      const body = {
         messages,
         propositionId,
         currentStep: step,
@@ -116,9 +122,12 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         proofFacts: proofFactsText,
         stepList,
         screenshot,
+        ...(recentAction ? { recentAction } : {}),
       }
+      console.log('[euclid-chat] buildRequestBody: step=%d, isComplete=%s, recentAction=%s, messageCount=%d', step, isComplete, recentAction, messages.length)
+      return body
     },
-    [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState],
+    [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState, pendingActionRef],
   )
 
   return useCharacterChat({
