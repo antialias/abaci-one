@@ -299,10 +299,10 @@ export function useVoiceCall<TContext>(
     sendImageContextHelper(dc, base64DataUrl)
   }, [])
 
-  const sendContextUpdate = useCallback((text: string, base64DataUrl?: string | null) => {
+  const sendContextUpdate = useCallback((text: string, base64DataUrl?: string | null, promptResponse?: boolean) => {
     const dc = dcRef.current
     if (!dc || dc.readyState !== 'open') return
-    sendContextUpdateHelper(dc, text, base64DataUrl)
+    sendContextUpdateHelper(dc, text, base64DataUrl, promptResponse)
   }, [])
 
   // ── Dial ──

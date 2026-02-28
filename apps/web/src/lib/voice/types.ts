@@ -160,8 +160,8 @@ export interface UseVoiceCallReturn {
   sendSystemMessage: (text: string, promptResponse?: boolean) => void
   /** Send an image to the conversation */
   sendImageContext: (base64DataUrl: string) => void
-  /** Send a combined text+image context update (silent, no response prompt) */
-  sendContextUpdate: (text: string, base64DataUrl?: string | null) => void
+  /** Send a combined text+image context update, optionally prompting a response */
+  sendContextUpdate: (text: string, base64DataUrl?: string | null, promptResponse?: boolean) => void
   /** The current system instructions (for debug panel) */
   currentInstructions: string | null
   /** Debug info for mode state machine */

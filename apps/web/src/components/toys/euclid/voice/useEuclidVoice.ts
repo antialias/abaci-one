@@ -369,8 +369,14 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
           ? captureScreenshot(canvasRef.current)
           : null
 
-        const text = `[CONSTRUCTION UPDATE — do not read back, just update your understanding]\n\n${toolText}\n\n${graph}\n\n=== Proven Facts ===\n${factsText}`
-        voiceCallRef.current.sendContextUpdate(text, screenshot)
+        // Prompt a response when the construction itself changed (new elements, moved points)
+        // so Euclid can react proactively. Tool-only changes (selecting compass, etc.) stay silent.
+        const shouldPrompt = cFp !== lastConstructionFpRef.current
+        const prefix = shouldPrompt
+          ? '[CONSTRUCTION CHANGED — acknowledge briefly what the student did and guide them on what to do next. Keep it to 1-2 sentences.]'
+          : '[TOOL STATE UPDATE — do not speak, just update your understanding silently]'
+        const text = `${prefix}\n\n${toolText}\n\n${graph}\n\n=== Proven Facts ===\n${factsText}`
+        voiceCallRef.current.sendContextUpdate(text, screenshot, shouldPrompt)
 
         lastConstructionFpRef.current = constructionFingerprint(state)
         lastToolFpRef.current = toolStateFingerprint(toolInfo)
