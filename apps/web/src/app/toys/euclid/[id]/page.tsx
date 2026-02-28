@@ -143,26 +143,6 @@ export default function EuclidPropPage() {
                 </svg>
               </span>
             </button>
-            <button
-              type="button"
-              onClick={() => navigateWithPlayer('/toys/euclid/foundations')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 10px',
-                borderRadius: 10,
-                border: '1px solid rgba(203, 213, 225, 0.8)',
-                background: 'rgba(255, 255, 255, 0.9)',
-                color: 'rgba(55, 65, 81, 1)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-              aria-label="Open Euclid foundations"
-            >
-              Foundations
-            </button>
             <PlayerPicker selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} />
           </div>
         }

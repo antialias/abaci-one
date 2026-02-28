@@ -16,6 +16,32 @@ export const TOOL_HANG_UP: RealtimeTool = {
   },
 }
 
+export const TOOL_HIGHLIGHT: RealtimeTool = {
+  type: 'function',
+  name: 'highlight',
+  description:
+    'Visually highlight a geometric entity on the student\'s canvas with a golden glow. ' +
+    'Use this while speaking to direct the student\'s attention. ' +
+    'The highlight appears for a few seconds then fades. Call again to highlight something new.',
+  parameters: {
+    type: 'object',
+    properties: {
+      entity_type: {
+        type: 'string',
+        enum: ['point', 'segment', 'triangle', 'angle'],
+        description: 'The type of geometric entity to highlight.',
+      },
+      labels: {
+        type: 'string',
+        description:
+          'Point labels defining the entity. ' +
+          'Point: "A". Segment: "AB". Triangle/angle: "ABC" (for angle, middle letter is vertex).',
+      },
+    },
+    required: ['entity_type', 'labels'],
+  },
+}
+
 export const TOOL_THINK_HARD: RealtimeTool = {
   type: 'function',
   name: 'think_hard',

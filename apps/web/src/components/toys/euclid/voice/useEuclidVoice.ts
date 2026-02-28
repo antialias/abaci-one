@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react'
 import { useVoiceCall } from '@/lib/voice/useVoiceCall'
 import type { VoiceSessionConfig, ToolCallResult, CallState } from '@/lib/voice/types'
+import { captureScreenshot } from '@/lib/character/captureScreenshot'
 import type {
   ConstructionState,
   ActiveTool,
@@ -23,6 +24,7 @@ import type {
   PropositionStep,
 } from '../types'
 import type { ProofFact } from '../engine/facts'
+import type { GeometricEntityRef } from '../chat/parseGeometricEntities'
 import type { FactStore } from '../engine/factStore'
 import type { EuclidModeContext } from './types'
 import { greetingMode } from './modes/greetingMode'
@@ -87,24 +89,30 @@ export interface UseEuclidVoiceReturn {
   isSpeaking: boolean
   /** True while Euclid is consulting his scrolls (think_hard in progress) */
   isThinking: boolean
+  /** Ref holding the currently voice-highlighted entity (or null) */
+  voiceHighlightRef: React.RefObject<GeometricEntityRef | null>
 }
 
 /**
- * Capture a screenshot from the canvas, scaled down for transmission.
+ * Build a GeometricEntityRef from voice tool params (entity_type + labels).
+ * Returns null if the combination is invalid.
  */
-function captureScreenshot(canvas: HTMLCanvasElement): string | null {
-  try {
-    const targetWidth = 512
-    const targetHeight = 384
-    const offscreen = document.createElement('canvas')
-    offscreen.width = targetWidth
-    offscreen.height = targetHeight
-    const ctx = offscreen.getContext('2d')
-    if (!ctx) return null
-    ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight)
-    return offscreen.toDataURL('image/png')
-  } catch {
-    return null
+function buildEntityFromVoice(entityType: string, labels: string): GeometricEntityRef | null {
+  switch (entityType) {
+    case 'point':
+      if (labels.length === 1) return { type: 'point', label: labels[0] }
+      return null
+    case 'segment':
+      if (labels.length === 2) return { type: 'segment', from: labels[0], to: labels[1] }
+      return null
+    case 'triangle':
+      if (labels.length === 3) return { type: 'triangle', vertices: [labels[0], labels[1], labels[2]] }
+      return null
+    case 'angle':
+      if (labels.length === 3) return { type: 'angle', points: [labels[0], labels[1], labels[2]] }
+      return null
+    default:
+      return null
   }
 }
 
@@ -132,6 +140,10 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
 
   // Track whether the child has spoken (for greeting → conversing transition)
   const childHasSpokenRef = useRef(false)
+
+  // Voice highlight state — set by the highlight tool, auto-clears after 4s
+  const voiceHighlightRef = useRef<GeometricEntityRef | null>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const buildContext = useCallback((): EuclidModeContext => {
     const screenshot = canvasRef.current ? captureScreenshot(canvasRef.current) : null
@@ -166,6 +178,19 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     (name: string, args: Record<string, unknown>, ctx: EuclidModeContext): ToolCallResult | null => {
       if (name === 'hang_up') {
         return { output: { success: true }, isHangUp: true }
+      }
+
+      if (name === 'highlight') {
+        const entity = buildEntityFromVoice(String(args.entity_type), String(args.labels))
+        if (!entity) return { output: { success: false, error: 'Invalid entity' }, promptResponse: false }
+
+        voiceHighlightRef.current = entity
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+        highlightTimerRef.current = setTimeout(() => {
+          voiceHighlightRef.current = null
+        }, 4000)
+
+        return { output: { success: true }, promptResponse: false }
       }
 
       if (name === 'think_hard') {
@@ -326,6 +351,12 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
         clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null
       }
+      // Clear voice highlight
+      voiceHighlightRef.current = null
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current)
+        highlightTimerRef.current = null
+      }
       return
     }
 
@@ -406,6 +437,7 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     timeRemaining: voiceCall.timeRemaining,
     isSpeaking: voiceCall.isSpeaking,
     isThinking: voiceCall.modeDebug.current === 'thinking',
+    voiceHighlightRef,
   }
 }
 

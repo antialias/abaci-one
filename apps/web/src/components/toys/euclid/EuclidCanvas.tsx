@@ -1057,17 +1057,6 @@ export function EuclidCanvas({
     needsDrawRef.current = true
   }, [])
 
-  // Derive known point labels for the chat entity parser
-  const chatPointLabels = useMemo(() => {
-    const labels = new Set<string>()
-    for (const el of constructionRef.current.elements) {
-      if (el.kind === 'point' && el.label) labels.add(el.label)
-    }
-    return labels
-    // Re-derive when step changes (proxy for construction changes)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, isComplete])
-
   // Mute TTS narration while a voice call is active, and stop any playing audio
   const euclidCallActive = euclidVoice.state !== 'idle'
   useEffect(() => {
@@ -1960,6 +1949,66 @@ export function EuclidCanvas({
   const [savedId, setSavedId] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const [showCreationsPanel, setShowCreationsPanel] = useState(false)
+
+  // Drag state for euclid-quad (draggable by avatar)
+  const quadRef = useRef<HTMLDivElement>(null)
+  const quadDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const [quadOffset, setQuadOffset] = useState({ x: 0, y: 0 })
+
+  const [quadDragging, setQuadDragging] = useState(false)
+
+  const handleQuadPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const el = e.currentTarget
+    el.setPointerCapture(e.pointerId)
+    quadDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: quadOffset.x,
+      origY: quadOffset.y,
+    }
+    setQuadDragging(true)
+  }, [quadOffset])
+
+  const handleQuadPointerMove = useCallback((e: React.PointerEvent) => {
+    const drag = quadDragRef.current
+    if (!drag) return
+    e.preventDefault()
+    const dx = e.clientX - drag.startX
+    const dy = e.clientY - drag.startY
+    setQuadOffset({ x: drag.origX + dx, y: drag.origY + dy })
+  }, [])
+
+  const handleQuadPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!quadDragRef.current) return
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    quadDragRef.current = null
+    setQuadDragging(false)
+  }, [])
+
+  // Chat open/close animation — grow from avatar position
+  const chatShouldBeOpen = euclidChat.isOpen && euclidVoice.state === 'idle'
+  const [chatMounted, setChatMounted] = useState(false)
+  const [chatExpanded, setChatExpanded] = useState(false)
+
+  useEffect(() => {
+    if (chatShouldBeOpen) {
+      setChatMounted(true)
+      // Double-rAF: mount first, then trigger CSS transition next frame
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setChatExpanded(true))
+      })
+      return () => cancelAnimationFrame(raf)
+    } else {
+      setChatExpanded(false)
+      if (chatMounted) {
+        const timer = setTimeout(() => setChatMounted(false), 250)
+        return () => clearTimeout(timer)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatShouldBeOpen])
 
   const handleNewCanvas = useCallback(() => {
     constructionRef.current = initializeGiven(proposition.givenElements)
@@ -2981,6 +3030,19 @@ export function EuclidCanvas({
             needsDrawRef.current = true
           }
 
+          // Render voice highlight (golden glow from voice tool calls)
+          if (euclidVoice.voiceHighlightRef.current) {
+            renderChatHighlight(
+              ctx,
+              drawState,
+              euclidVoice.voiceHighlightRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight
+            )
+            needsDrawRef.current = true
+          }
+
           // Render tool overlay (geometric previews + physical tool body)
           const nextColor = BYRNE_CYCLE[constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
           renderToolOverlay(
@@ -3360,109 +3422,154 @@ export function EuclidCanvas({
           )}
         </div>
 
-        {/* Top-right bar — audio toggle (propositions) OR playground controls */}
-        <div
-          data-element="top-right-bar"
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            zIndex: 12,
-          }}
-        >
-          {playgroundMode ? (
-            <>
-              {/* New */}
+        {/* Top-right bar — playground controls only */}
+        {playgroundMode && (
+          <div
+            data-element="top-right-bar"
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              zIndex: 12,
+            }}
+          >
+            {/* New */}
+            <button
+              onClick={handleNewCanvas}
+              title="New canvas"
+              style={{
+                padding: '7px 13px',
+                borderRadius: 8,
+                border: '1px solid rgba(203,213,225,0.9)',
+                background: 'rgba(255,255,255,0.9)',
+                color: '#374151',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'system-ui, sans-serif',
+                cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
+              + New
+            </button>
+
+            {/* Share / Copy link */}
+            {saveState === 'saved' && savedId ? (
               <button
-                onClick={handleNewCanvas}
-                title="New canvas"
+                onClick={handleCopyLink}
                 style={{
                   padding: '7px 13px',
                   borderRadius: 8,
-                  border: '1px solid rgba(203,213,225,0.9)',
-                  background: 'rgba(255,255,255,0.9)',
-                  color: '#374151',
+                  border: 'none',
+                  background: linkCopied ? '#10b981' : '#4E79A7',
+                  color: '#fff',
                   fontSize: 13,
                   fontWeight: 600,
                   fontFamily: 'system-ui, sans-serif',
                   cursor: 'pointer',
-                  backdropFilter: 'blur(8px)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  transition: 'background 0.2s',
                 }}
               >
-                + New
+                {linkCopied ? '✓ Copied!' : '🔗 Copy link'}
               </button>
-
-              {/* Share / Copy link */}
-              {saveState === 'saved' && savedId ? (
-                <button
-                  onClick={handleCopyLink}
-                  style={{
-                    padding: '7px 13px',
-                    borderRadius: 8,
-                    border: 'none',
-                    background: linkCopied ? '#10b981' : '#4E79A7',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    fontFamily: 'system-ui, sans-serif',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    transition: 'background 0.2s',
-                  }}
-                >
-                  {linkCopied ? '✓ Copied!' : '🔗 Copy link'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleSave}
-                  disabled={saveState === 'saving'}
-                  style={{
-                    padding: '7px 13px',
-                    borderRadius: 8,
-                    border: 'none',
-                    background: saveState === 'saving' ? 'rgba(78,121,167,0.6)' : '#4E79A7',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    fontFamily: 'system-ui, sans-serif',
-                    cursor: saveState === 'saving' ? 'wait' : 'pointer',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  {saveState === 'saving' ? 'Saving…' : '↑ Share'}
-                </button>
-              )}
-
-              {/* My creations */}
+            ) : (
               <button
-                onClick={() => setShowCreationsPanel(true)}
-                title="My creations"
+                onClick={handleSave}
+                disabled={saveState === 'saving'}
                 style={{
-                  width: 36,
-                  height: 36,
-                  padding: 0,
+                  padding: '7px 13px',
                   borderRadius: 8,
-                  border: '1px solid rgba(203,213,225,0.9)',
-                  background: 'rgba(255,255,255,0.9)',
-                  color: '#374151',
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(8px)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  border: 'none',
+                  background: saveState === 'saving' ? 'rgba(78,121,167,0.6)' : '#4E79A7',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor: saveState === 'saving' ? 'wait' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                 }}
               >
-                ⊞
+                {saveState === 'saving' ? 'Saving…' : '↑ Share'}
               </button>
-            </>
-          ) : (
-            /* Euclid quad: avatar (TL), mute (TR), call (BL), chat (BR) */
+            )}
+
+            {/* My creations */}
+            <button
+              onClick={() => setShowCreationsPanel(true)}
+              title="My creations"
+              style={{
+                width: 36,
+                height: 36,
+                padding: 0,
+                borderRadius: 8,
+                border: '1px solid rgba(203,213,225,0.9)',
+                background: 'rgba(255,255,255,0.9)',
+                color: '#374151',
+                fontSize: 16,
+                cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ⊞
+            </button>
+          </div>
+        )}
+
+        {/* Euclid assembly — quad + chat, positioned at bottom-right */}
+        {!playgroundMode && (
+          <div
+            ref={quadRef}
+            data-component="euclid-assembly"
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              right: 12,
+              zIndex: 12,
+              transform: `translate(${quadOffset.x}px, ${quadOffset.y}px)`,
+            }}
+          >
+            {/* Chat panel — absolutely positioned, BR corner covers the avatar cell */}
+            {chatMounted && (
+              <div
+                data-element="chat-anim-wrapper"
+                style={{
+                  position: 'absolute',
+                  bottom: 38,
+                  right: 38,
+                  zIndex: 1,
+                  transformOrigin: '100% 100%',
+                  transform: chatExpanded ? 'scale(1)' : 'scale(0)',
+                  opacity: chatExpanded ? 1 : 0,
+                  transition: chatExpanded
+                    ? 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease'
+                    : 'transform 0.2s ease-in, opacity 0.15s ease-in',
+                  willChange: 'transform, opacity',
+                }}
+              >
+                <EuclidChatPanel
+                  messages={euclidChat.messages}
+                  isStreaming={euclidChat.isStreaming}
+                  onSend={euclidChat.sendMessage}
+                  onClose={euclidChat.close}
+                  onHighlight={handleChatHighlight}
+                  onDragPointerDown={handleQuadPointerDown}
+                  onDragPointerMove={handleQuadPointerMove}
+                  onDragPointerUp={handleQuadPointerUp}
+                  isDragging={quadDragging}
+                  squareBottomRight
+                />
+              </div>
+            )}
+            {/* Quad: avatar (TL), mute (TR), call (BL), chat (BR) */}
             <div
               data-component="euclid-quad"
               style={{
@@ -3482,7 +3589,7 @@ export function EuclidCanvas({
               {/* Cross dividers */}
               <div style={{ position: 'absolute', left: '50%', top: 6, bottom: 6, width: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', top: '50%', left: 6, right: 6, height: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
-              {/* TL: Euclid avatar with popover */}
+              {/* TL: Euclid avatar with popover — drag handle when chat is closed */}
               <div
                 data-element="euclid-avatar"
                 style={{
@@ -3490,10 +3597,18 @@ export function EuclidCanvas({
                   alignItems: 'center',
                   justifyContent: 'center',
                   position: 'relative',
-                  cursor: 'default',
+                  cursor: !chatExpanded
+                    ? (quadDragging ? 'grabbing' : 'grab')
+                    : 'default',
                   borderRadius: '9px 0 0 0',
+                  touchAction: 'none',
                 }}
+                onPointerDown={!chatExpanded ? handleQuadPointerDown : undefined}
+                onPointerMove={!chatExpanded ? handleQuadPointerMove : undefined}
+                onPointerUp={!chatExpanded ? handleQuadPointerUp : undefined}
+                onPointerCancel={!chatExpanded ? handleQuadPointerUp : undefined}
                 onMouseEnter={(e) => {
+                  if (euclidChat.isOpen) return
                   const popover = e.currentTarget.querySelector('[data-element="euclid-popover"]') as HTMLElement
                   if (popover) popover.style.opacity = '1'
                 }}
@@ -3514,53 +3629,55 @@ export function EuclidCanvas({
                     display: 'block',
                   }}
                 />
-                {/* Popover */}
-                <div
-                  data-element="euclid-popover"
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: -38,
-                    marginTop: 8,
-                    width: 220,
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(203, 213, 225, 0.8)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                    opacity: 0,
-                    transition: 'opacity 0.15s ease',
-                    pointerEvents: 'none',
-                    zIndex: 20,
-                    fontSize: 12,
-                    lineHeight: 1.45,
-                    color: '#374151',
-                    fontFamily: 'system-ui, sans-serif',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  <div style={{ fontWeight: 600, fontStyle: 'normal', marginBottom: 4, fontSize: 13 }}>Εὐκλείδης</div>
-                  <div style={{ marginBottom: 6 }}>&ldquo;I am here if you need guidance. You may call upon me by voice, or write to me if you prefer. I can also narrate your progress as you work.&rdquo;</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontStyle: 'normal', fontSize: 11, color: '#6b7280' }}>
-                    <span><strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me directly</span>
-                    <span><strong style={{ color: '#4E79A7' }}>💬 Chat</strong> — write to me</span>
-                    <span><strong style={{ color: '#4E79A7' }}>🔊 Sound</strong> — toggle my narration</span>
+                {/* Popover — only when chat is closed */}
+                {!chatExpanded && (
+                  <div
+                    data-element="euclid-popover"
+                    style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      right: -38,
+                      marginBottom: 8,
+                      width: 220,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(203, 213, 225, 0.8)',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                      opacity: 0,
+                      transition: 'opacity 0.15s ease',
+                      pointerEvents: 'none',
+                      zIndex: 20,
+                      fontSize: 12,
+                      lineHeight: 1.45,
+                      color: '#374151',
+                      fontFamily: 'system-ui, sans-serif',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontStyle: 'normal', marginBottom: 4, fontSize: 13 }}>Εὐκλείδης</div>
+                    <div style={{ marginBottom: 6 }}>&ldquo;I am here if you need guidance. You may call upon me by voice, or write to me if you prefer. I can also narrate your progress as you work.&rdquo;</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontStyle: 'normal', fontSize: 11, color: '#6b7280' }}>
+                      <span><strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me directly</span>
+                      <span><strong style={{ color: '#4E79A7' }}>💬 Chat</strong> — write to me</span>
+                      <span><strong style={{ color: '#4E79A7' }}>🔊 Sound</strong> — toggle my narration</span>
+                    </div>
+                    {/* Arrow */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: -5,
+                      left: 24,
+                      width: 10,
+                      height: 10,
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid rgba(203, 213, 225, 0.8)',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      transform: 'rotate(45deg)',
+                    }} />
                   </div>
-                  {/* Arrow */}
-                  <div style={{
-                    position: 'absolute',
-                    top: -5,
-                    left: 24,
-                    width: 10,
-                    height: 10,
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid rgba(203, 213, 225, 0.8)',
-                    borderBottom: 'none',
-                    borderRight: 'none',
-                    transform: 'rotate(45deg)',
-                  }} />
-                </div>
+                )}
               </div>
               {/* TR: Mute/unmute */}
               <button
@@ -3642,8 +3759,8 @@ export function EuclidCanvas({
                 </svg>
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Phone call overlay for Call Euclid */}
         {euclidVoice.state !== 'idle' && (
@@ -3662,18 +3779,6 @@ export function EuclidCanvas({
             isDark={false}
             containerWidth={containerRef.current?.clientWidth ?? 600}
             containerHeight={containerRef.current?.clientHeight ?? 400}
-          />
-        )}
-
-        {/* Text chat panel for Chat with Euclid */}
-        {euclidChat.isOpen && euclidVoice.state === 'idle' && (
-          <EuclidChatPanel
-            messages={euclidChat.messages}
-            isStreaming={euclidChat.isStreaming}
-            onSend={euclidChat.sendMessage}
-            onClose={euclidChat.close}
-            knownLabels={chatPointLabels}
-            onHighlight={handleChatHighlight}
           />
         )}
 

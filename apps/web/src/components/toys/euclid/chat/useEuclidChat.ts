@@ -1,10 +1,16 @@
 'use client'
 
 /**
- * Euclid text chat hook — manages chat state, context serialization, and SSE streaming.
+ * Euclid text chat hook — thin wrapper around useCharacterChat.
+ *
+ * Provides Euclid-specific context serialization (construction graph,
+ * proof facts, tool state, step list) while delegating SSE streaming,
+ * message state, and open/close to the generic hook.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useCallback } from 'react'
+import { useCharacterChat } from '@/lib/character/useCharacterChat'
+import type { UseCharacterChatReturn } from '@/lib/character/useCharacterChat'
 import type {
   ConstructionState,
   ActiveTool,
@@ -22,12 +28,8 @@ import {
   type ToolStateInfo,
 } from '../voice/serializeProofState'
 
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: number
-}
+// Re-export ChatMessage from the generic types for backward compatibility
+export type { ChatMessage } from '@/lib/character/types'
 
 export interface UseEuclidChatOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
@@ -46,38 +48,7 @@ export interface UseEuclidChatOptions {
   steps: PropositionStep[]
 }
 
-export interface UseEuclidChatReturn {
-  messages: ChatMessage[]
-  isStreaming: boolean
-  sendMessage: (text: string) => void
-  isOpen: boolean
-  open: () => void
-  close: () => void
-}
-
-let nextId = 0
-function generateId(): string {
-  return `msg-${Date.now()}-${nextId++}`
-}
-
-/**
- * Capture a screenshot from the canvas, scaled down for transmission.
- */
-function captureScreenshot(canvas: HTMLCanvasElement): string | null {
-  try {
-    const targetWidth = 512
-    const targetHeight = 384
-    const offscreen = document.createElement('canvas')
-    offscreen.width = targetWidth
-    offscreen.height = targetHeight
-    const ctx = offscreen.getContext('2d')
-    if (!ctx) return null
-    ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight)
-    return offscreen.toDataURL('image/png')
-  } catch {
-    return null
-  }
-}
+export type UseEuclidChatReturn = UseCharacterChatReturn
 
 export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatReturn {
   const {
@@ -97,14 +68,6 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     steps,
   } = options
 
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
-  const abortRef = useRef<AbortController | null>(null)
-
-  const open = useCallback(() => setIsOpen(true), [])
-  const close = useCallback(() => setIsOpen(false), [])
-
   const readToolState = useCallback((): ToolStateInfo => ({
     activeTool: activeToolRef.current ?? 'compass',
     compassPhase: compassPhaseRef.current ?? { tag: 'idle' },
@@ -114,36 +77,11 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     dragPointId: dragPointIdRef.current ?? null,
   }), [activeToolRef, compassPhaseRef, straightedgePhaseRef, extendPhaseRef, macroPhaseRef, dragPointIdRef])
 
-  const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim() || isStreaming) return
-
-      // Abort any in-flight request
-      if (abortRef.current) {
-        abortRef.current.abort()
-      }
-
-      const userMsg: ChatMessage = {
-        id: generateId(),
-        role: 'user',
-        content: text.trim(),
-        timestamp: Date.now(),
-      }
-
-      const assistantMsg: ChatMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      }
-
-      setMessages((prev) => [...prev, userMsg, assistantMsg])
-      setIsStreaming(true)
-
-      const abortController = new AbortController()
-      abortRef.current = abortController
-
-      // Serialize current state
+  const buildRequestBody = useCallback(
+    (
+      messages: Array<{ role: string; content: string }>,
+      screenshot: string | undefined,
+    ): Record<string, unknown> => {
       const emptyState = { elements: [], nextLabelIndex: 0, nextColorIndex: 0 } as ConstructionState
       const state = constructionRef.current ?? emptyState
       const facts = proofFactsRef.current ?? []
@@ -167,129 +105,25 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         stepList = `Step ${step + 1} of ${steps.length}:\n${stepLines.join('\n')}`
       }
 
-      // Capture screenshot
-      const screenshot = canvasRef.current ? captureScreenshot(canvasRef.current) : undefined
-
-      // Build message history for API (without the empty assistant msg)
-      const apiMessages = [...messages, userMsg].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
-
-      const fetchStream = async () => {
-        try {
-          const res = await fetch('/api/realtime/euclid/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messages: apiMessages,
-              propositionId,
-              currentStep: step,
-              isComplete,
-              playgroundMode,
-              constructionGraph,
-              toolState,
-              proofFacts: proofFactsText,
-              stepList,
-              screenshot: screenshot ?? undefined,
-            }),
-            signal: abortController.signal,
-          })
-
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: 'Unknown error' }))
-            setMessages((prev) => {
-              const updated = [...prev]
-              const last = updated[updated.length - 1]
-              if (last.id === assistantMsg.id) {
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: err.error || 'I cannot respond right now. Try again.',
-                }
-              }
-              return updated
-            })
-            setIsStreaming(false)
-            return
-          }
-
-          const reader = res.body?.getReader()
-          if (!reader) {
-            setIsStreaming(false)
-            return
-          }
-
-          const decoder = new TextDecoder()
-          let buffer = ''
-
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() ?? ''
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue
-              const data = line.slice(6).trim()
-              if (data === '[DONE]') continue
-
-              try {
-                const event = JSON.parse(data) as { text?: string }
-                if (event.text) {
-                  setMessages((prev) => {
-                    const updated = [...prev]
-                    const last = updated[updated.length - 1]
-                    if (last.id === assistantMsg.id) {
-                      updated[updated.length - 1] = {
-                        ...last,
-                        content: last.content + event.text,
-                      }
-                    }
-                    return updated
-                  })
-                }
-              } catch {
-                // Skip malformed JSON
-              }
-            }
-          }
-        } catch (err) {
-          if ((err as Error).name === 'AbortError') return
-          console.error('[euclid-chat] Stream error:', err)
-          setMessages((prev) => {
-            const updated = [...prev]
-            const last = updated[updated.length - 1]
-            if (last.id === assistantMsg.id && !last.content) {
-              updated[updated.length - 1] = {
-                ...last,
-                content: 'I cannot respond right now. Try again.',
-              }
-            }
-            return updated
-          })
-        } finally {
-          setIsStreaming(false)
-        }
+      return {
+        messages,
+        propositionId,
+        currentStep: step,
+        isComplete,
+        playgroundMode,
+        constructionGraph,
+        toolState,
+        proofFacts: proofFactsText,
+        stepList,
+        screenshot,
       }
-
-      fetchStream()
     },
-    [
-      isStreaming,
-      messages,
-      constructionRef,
-      proofFactsRef,
-      currentStepRef,
-      canvasRef,
-      propositionId,
-      isComplete,
-      playgroundMode,
-      steps,
-      readToolState,
-    ]
+    [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState],
   )
 
-  return { messages, isStreaming, sendMessage, isOpen, open, close }
+  return useCharacterChat({
+    chatEndpoint: '/api/realtime/euclid/chat',
+    buildRequestBody,
+    canvasRef,
+  })
 }

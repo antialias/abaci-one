@@ -19,7 +19,7 @@ export function getFoundationIdForCitation(citationKey?: string | null): string 
 export function getFoundationHref(citationKey?: string | null): string | null {
   const id = getFoundationIdForCitation(citationKey)
   if (!id) return null
-  return `/toys/euclid/foundations?focus=${encodeURIComponent(id)}`
+  return `/toys/euclid?focus=${encodeURIComponent(id)}`
 }
 
 /** Returns the proposition number for I.N citations, or null for others. */

@@ -564,12 +564,18 @@ interface EuclidMapProps {
   onSelectProp: (propId: number) => void
   onSelectPlayground?: () => void
   hideHeader?: boolean
+  showAll?: boolean
+  onToggleShowAll?: () => void
 }
 
-export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHeader }: EuclidMapProps) {
-  const [showAll, setShowAll] = useState(false)
+export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHeader, showAll: showAllProp, onToggleShowAll }: EuclidMapProps) {
+  // showAll can be controlled externally (foundations page) or internally (main map page)
+  const [showAllInternal, setShowAllInternal] = useState(false)
+  const showAll = showAllProp ?? showAllInternal
+  const setShowAll = onToggleShowAll ?? (() => setShowAllInternal((prev) => !prev))
   const [hoveredNode, setHoveredNode] = useState<number | null>(null)
   const [comingSoonOpacity, setComingSoonOpacity] = useState(1)
+  const [rowWindow, setRowWindow] = useState(3) // how many rows from center to fit in viewport
   const previews = usePropPreviews()
   const { isVisualDebugEnabled } = useVisualDebugSafe()
 
@@ -693,7 +699,19 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     // Find the segment [i, i+1] that currentY falls in
     const PAD = 140 // padding around row content
     const MIN_VB_W = 280 // minimum viewBox width (for single-node rows)
-    const rowWidths = rows.map((r) => Math.max(MIN_VB_W, r.width + PAD))
+    const rawWidths = rows.map((r) => Math.max(MIN_VB_W, r.width + PAD))
+
+    // Expand each row's width to the max of itself and (n-1) neighbors on each side
+    // rowWindow=1: just center row, 2: center ± 1, 3: center ± 2
+    const radius = rowWindow - 1
+    const rowWidths = rawWidths.map((_, i) => {
+      let maxW = rawWidths[i]
+      for (let d = 1; d <= radius; d++) {
+        if (i - d >= 0) maxW = Math.max(maxW, rawWidths[i - d])
+        if (i + d < rawWidths.length) maxW = Math.max(maxW, rawWidths[i + d])
+      }
+      return maxW
+    })
     const rowCenters = rows.map((r) => r.centerX)
 
     let segIdx = 0
@@ -735,7 +753,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const vbH = vbW / aspect
 
     setScrollViewBox(`${centerX - vbW / 2} ${currentY - vbH / 2} ${vbW} ${vbH}`)
-  }, [rowMeta])
+  }, [rowMeta, rowWindow])
 
   // Find the actual scroll container and attach scroll listener
   useEffect(() => {
@@ -1034,7 +1052,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
             <button
               type="button"
               data-action="toggle-show-all"
-              onClick={() => setShowAll((prev) => !prev)}
+              onClick={setShowAll}
               style={{
                 padding: '6px 14px',
                 fontSize: 13,
@@ -1051,41 +1069,6 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
               {showAll ? 'Show available' : 'Show all 48'}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Sticky toggle when header is hidden — outside viewport so it sticks to page scroll */}
-      {hideHeader && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            position: 'sticky',
-            top: 'calc(var(--app-nav-height, 0px) + 8px)',
-            zIndex: 5,
-            pointerEvents: 'none',
-            padding: '0 8px',
-          }}
-        >
-          <button
-            type="button"
-            data-action="toggle-show-all"
-            onClick={() => setShowAll((prev) => !prev)}
-            style={{
-              padding: '4px 10px',
-              fontSize: 12,
-              fontWeight: 500,
-              fontFamily: 'system-ui, sans-serif',
-              background: showAll ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.9)',
-              color: showAll ? '#3b82f6' : '#6b7280',
-              border: `1px solid ${showAll ? '#93c5fd' : '#d1d5db'}`,
-              borderRadius: 6,
-              cursor: 'pointer',
-              pointerEvents: 'auto',
-            }}
-          >
-            {showAll ? 'Show available' : 'Show all 48'}
-          </button>
         </div>
       )}
 
@@ -1222,6 +1205,17 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
           onChange={setComingSoonOpacity}
           formatValue={(v) => v.toFixed(2)}
         />
+        {hideHeader && (
+          <DebugSlider
+            label="Row window"
+            value={rowWindow}
+            min={1}
+            max={3}
+            step={1}
+            onChange={setRowWindow}
+            formatValue={(v) => v === 1 ? '1 (center only)' : `${v} (±${v - 1} rows)`}
+          />
+        )}
       </ToyDebugPanel>
     </div>
   )

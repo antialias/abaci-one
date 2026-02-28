@@ -18,6 +18,8 @@ interface FoundationsDeckProps {
   onFocusChange?: (id: string) => void
   completed?: Set<number>
   onSelectProp?: (propId: number) => void
+  activeTab?: FoundationCategory
+  onTabChange?: (tab: FoundationCategory) => void
 }
 
 export function FoundationsDeck({
@@ -26,8 +28,18 @@ export function FoundationsDeck({
   onFocusChange,
   completed,
   onSelectProp,
+  activeTab,
+  onTabChange,
 }: FoundationsDeckProps) {
-  const [category, setCategory] = useState<FoundationCategory>('definitions')
+  const [internalCategory, setInternalCategory] = useState<FoundationCategory>('definitions')
+  const category = activeTab ?? internalCategory
+  const setCategory = (tab: FoundationCategory) => {
+    if (onTabChange) {
+      onTabChange(tab)
+    } else {
+      setInternalCategory(tab)
+    }
+  }
   const items = useMemo(
     () => FOUNDATION_ITEMS.filter((item) => item.category === category),
     [category]
@@ -57,6 +69,7 @@ export function FoundationsDeck({
   const primaryLabel = preferPlain ? 'In plain words' : 'Statement'
   const secondaryLabel = preferPlain ? 'Original' : preferClassical ? 'Plain words' : 'Plain words'
 
+  const [showAll, setShowAll] = useState(false)
   const isMapView = category === 'propositions'
 
   return (
@@ -87,7 +100,84 @@ export function FoundationsDeck({
           pointerEvents: 'none',
         })}
       >
-        {FOUNDATION_CATEGORIES.map((tab) => {
+        {/* Propositions split pill — always first */}
+        {(() => {
+          const propTab = FOUNDATION_CATEGORIES.find((t) => t.id === 'propositions')!
+          const isActive = category === 'propositions'
+          const activeBorder = 'rgba(16,185,129,0.6)'
+          const inactiveBorder = 'rgba(203, 213, 225, 0.5)'
+          const activeBg = 'rgba(16,185,129,0.18)'
+          const inactiveBg = 'rgba(250, 250, 240, 0.65)'
+          return (
+            <div
+              key={propTab.id}
+              className={css({
+                display: 'flex',
+                borderRadius: '999px',
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                pointerEvents: 'auto',
+              })}
+              style={{
+                border: `1px solid ${isActive ? activeBorder : inactiveBorder}`,
+              }}
+            >
+              <button
+                type="button"
+                data-selected={isActive}
+                onClick={() => setCategory('propositions')}
+                className={css({
+                  padding: '0.45rem 0.9rem',
+                  border: 'none',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  backdropFilter: 'blur(12px)',
+                })}
+                style={{
+                  WebkitBackdropFilter: 'blur(12px)',
+                  backgroundColor: isActive ? activeBg : inactiveBg,
+                  color: isActive ? '#0f766e' : '#475569',
+                }}
+              >
+                {propTab.label}
+              </button>
+              {isActive && (
+                <button
+                  type="button"
+                  data-action="toggle-show-all"
+                  data-selected={showAll}
+                  onClick={() => setShowAll((prev) => !prev)}
+                  className={css({
+                    padding: '0.45rem 0.65rem',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    letterSpacing: '0.04em',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    backdropFilter: 'blur(12px)',
+                    textTransform: 'uppercase',
+                  })}
+                  style={{
+                    WebkitBackdropFilter: 'blur(12px)',
+                    borderLeft: `1px solid ${activeBorder}`,
+                    backgroundColor: showAll
+                      ? 'rgba(16,185,129,0.35)'
+                      : 'rgba(16,185,129,0.08)',
+                    color: showAll ? '#064e3b' : '#0f766e',
+                  }}
+                >
+                  All
+                </button>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* Other category pills — slightly smaller */}
+        {FOUNDATION_CATEGORIES.filter((tab) => tab.id !== 'propositions').map((tab) => {
           const isActive = category === tab.id
           return (
             <button
@@ -96,18 +186,16 @@ export function FoundationsDeck({
               data-selected={isActive}
               onClick={() => {
                 setCategory(tab.id)
-                if (tab.id !== 'propositions') {
-                  const nextItems = FOUNDATION_ITEMS.filter((item) => item.category === tab.id)
-                  const nextId = nextItems[0]?.id ?? FOUNDATION_ITEMS[0]?.id
-                  setSelectedId(nextId)
-                  if (nextId) onFocusChange?.(nextId)
-                }
+                const nextItems = FOUNDATION_ITEMS.filter((item) => item.category === tab.id)
+                const nextId = nextItems[0]?.id ?? FOUNDATION_ITEMS[0]?.id
+                setSelectedId(nextId)
+                if (nextId) onFocusChange?.(nextId)
               }}
               className={css({
-                padding: '0.45rem 0.9rem',
+                padding: '0.35rem 0.7rem',
                 borderRadius: '999px',
                 border: '1px solid',
-                fontSize: '0.85rem',
+                fontSize: '0.75rem',
                 fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
@@ -141,6 +229,8 @@ export function FoundationsDeck({
           completed={completed ?? new Set()}
           onSelectProp={onSelectProp ?? (() => {})}
           hideHeader
+          showAll={showAll}
+          onToggleShowAll={() => setShowAll((prev) => !prev)}
         />
       ) : (
         <div
