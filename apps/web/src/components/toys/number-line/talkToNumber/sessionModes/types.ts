@@ -4,10 +4,15 @@
  * Every voice session mode controls both the agent's instructions and tools
  * via `session.update`. These types define the interface for mode definitions,
  * context passed to modes, and the tool format expected by the OpenAI Realtime API.
+ *
+ * RealtimeTool is re-exported from the shared voice framework.
  */
 
+import type { RealtimeTool, VoiceMode } from '@/lib/voice/types'
 import type { GeneratedScenario } from '../generateScenario'
 import type { ChildProfile } from '../childProfile'
+
+export type { RealtimeTool } from '@/lib/voice/types'
 
 /** All possible mode identifiers in the session state machine. */
 export type ModeId =
@@ -19,18 +24,6 @@ export type ModeId =
   | 'game'
   | 'winding_down'
   | 'hanging_up'
-
-/** Tool definition for the OpenAI Realtime API (JSON Schema format). */
-export interface RealtimeTool {
-  type: 'function'
-  name: string
-  description: string
-  parameters: {
-    type: 'object'
-    properties: Record<string, unknown>
-    required?: string[]
-  }
-}
 
 /** Tracks what the child has done this session (across all calls). */
 export interface SessionActivity {
@@ -58,7 +51,7 @@ export interface ModeContext {
 }
 
 /** A session mode definition — controls instructions + tools for a phase of the call. */
-export interface AgentMode {
+export interface AgentMode extends VoiceMode<ModeContext> {
   id: ModeId
   getInstructions: (ctx: ModeContext) => string
   getTools: (ctx: ModeContext) => RealtimeTool[]

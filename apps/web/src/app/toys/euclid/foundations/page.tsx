@@ -6,6 +6,7 @@ import { AppNavBar } from '@/components/AppNavBar'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { usePlayerSessionPreferences } from '@/hooks/usePlayerSessionPreferences'
+import { useEuclidProgress } from '@/hooks/useEuclidProgress'
 import { resolveKidLanguageStyle } from '@/lib/kidLanguageStyle'
 import { getAgeFromBirthday } from '@/lib/playerAge'
 import { FoundationsDeck } from '@/components/toys/euclid/foundations/FoundationsDeck'
@@ -34,6 +35,9 @@ export default function EuclidFoundationsPage() {
       ),
     [preferences?.kidLanguageStyle, selectedPlayer?.birthday]
   )
+
+  const { data: completedList } = useEuclidProgress(selectedPlayerId)
+  const completed = useMemo(() => new Set(completedList ?? []), [completedList])
 
   return (
     <div
@@ -91,15 +95,34 @@ export default function EuclidFoundationsPage() {
           paddingTop: { base: 'calc(var(--app-nav-height) + 16px)' },
           paddingX: { base: '1rem', md: '1.5rem' },
           paddingBottom: { base: '1rem', md: '1.5rem' },
+          display: 'flex',
+          flexDirection: 'column',
         })}
       >
-        <div className={css({ maxWidth: '1100px', margin: '0 auto' })}>
+        <div
+          className={css({
+            maxWidth: '1100px',
+            margin: '0 auto',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+          })}
+        >
           <FoundationsDeck
             languageStyle={languageStyle}
             focusId={focusId}
             onFocusChange={(id) =>
               router.replace(`/toys/euclid/foundations?focus=${id}`, { scroll: false })
             }
+            completed={completed}
+            onSelectProp={(propId) => {
+              const params = selectedPlayerId
+                ? `?player=${encodeURIComponent(selectedPlayerId)}`
+                : ''
+              router.push(`/toys/euclid/${propId}${params}`)
+            }}
           />
         </div>
       </main>

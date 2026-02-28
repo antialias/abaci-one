@@ -9,6 +9,7 @@
  * If the clip already exists on disk, returns the cached version.
  */
 
+import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
@@ -16,10 +17,22 @@ import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
+/** Max filename length (bytes) — conservative limit for all filesystems */
+const MAX_FILENAME_LEN = 200
+
+/** If a clipId is too long for a filename, hash it to a safe short form. */
+function safeClipId(clipId: string): string {
+  // +4 for ".mp3" extension
+  if (Buffer.byteLength(clipId, 'utf8') + 4 <= MAX_FILENAME_LEN) return clipId
+  const hash = createHash('sha256').update(clipId).digest('hex').slice(0, 16)
+  return `hc-${hash}`
+}
+
 export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
-    const { voice, clipId, text, tone } = body
+    const { voice, text, tone } = body
+    const clipId = safeClipId(body.clipId ?? '')
 
     // Validate required fields
     if (!voice || !clipId || !text) {

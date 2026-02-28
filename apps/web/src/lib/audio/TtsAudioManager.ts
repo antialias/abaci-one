@@ -537,10 +537,17 @@ export class TtsAudioManager {
     let segTone: string | undefined
 
     if (typeof seg === 'string') {
-      clipId = seg
-      const meta = getClipMeta(clipId)
+      const meta = getClipMeta(seg)
       if (meta) {
+        clipId = seg
         segSay = { en: meta.text }
+      } else {
+        // Not a registered clip — treat as text to be spoken.
+        // Hash it to produce a safe, short clipId instead of using
+        // the raw string (which can exceed filesystem name limits).
+        segSay = { en: seg }
+        segTone = topConfig?.tone ?? ''
+        clipId = computeClipHash(segSay, segTone)
       }
     } else if (hasExplicitClipId(seg)) {
       clipId = seg.clipId

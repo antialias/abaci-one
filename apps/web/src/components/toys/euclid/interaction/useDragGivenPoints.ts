@@ -36,6 +36,8 @@ interface UseDragGivenPointsOptions {
   onReplayResult: (result: ReplayResult) => void
   /** Called once when a drag gesture starts on a given point */
   onDragStart?: (pointId: string) => void
+  /** Ref updated with the currently dragged point ID (null when not dragging) */
+  dragPointIdRef?: React.MutableRefObject<string | null>
 }
 
 /**
@@ -59,6 +61,7 @@ export function useDragGivenPoints({
   interactionLockedRef,
   onReplayResult,
   onDragStart,
+  dragPointIdRef,
 }: UseDragGivenPointsOptions): void {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -159,6 +162,7 @@ export function useDragGivenPoints({
         e.stopPropagation()
         e.preventDefault()
         dragPointId = hit.id
+        if (dragPointIdRef) dragPointIdRef.current = hit.id
         pointerCapturedRef.current = true
         canvas!.style.cursor = 'grabbing'
         needsDrawRef.current = true
@@ -244,6 +248,7 @@ export function useDragGivenPoints({
       if (!dragPointId) return
       e.stopPropagation()
       dragPointId = null
+      if (dragPointIdRef) dragPointIdRef.current = null
       pointerCapturedRef.current = false
       canvas!.style.cursor = hoveredDraggableId ? 'grab' : ''
       needsDrawRef.current = true
@@ -252,6 +257,7 @@ export function useDragGivenPoints({
     function handlePointerCancel() {
       if (!dragPointId) return
       dragPointId = null
+      if (dragPointIdRef) dragPointIdRef.current = null
       pointerCapturedRef.current = false
       hoveredDraggableId = null
       canvas!.style.cursor = ''
@@ -284,6 +290,7 @@ export function useDragGivenPoints({
     postCompletionActionsRef,
     onReplayResult,
     onDragStart,
+    dragPointIdRef,
     getCanvasRect,
   ])
 }

@@ -564,9 +564,10 @@ interface EuclidMapProps {
   completed: Set<number>
   onSelectProp: (propId: number) => void
   onSelectPlayground?: () => void
+  hideHeader?: boolean
 }
 
-export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: EuclidMapProps) {
+export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHeader }: EuclidMapProps) {
   const [showAll, setShowAll] = useState(false)
   const [hoveredNode, setHoveredNode] = useState<number | null>(null)
   const [comingSoonOpacity, setComingSoonOpacity] = useState(1)
@@ -639,97 +640,132 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
       data-component="euclid-map"
       style={{
         width: '100%',
-        height: '100%',
+        ...(hideHeader ? {} : { height: '100%' }),
         display: 'flex',
         flexDirection: 'column',
         background: '#FAFAF0',
       }}
     >
       {/* Header bar */}
-      <div
-        data-element="map-header"
-        style={{
-          padding: '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(203, 213, 225, 0.4)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              fontFamily: 'Georgia, serif',
-              color: '#1e293b',
-            }}
-          >
-            Book I
-          </span>
-          <span
-            style={{
-              fontSize: 13,
-              color: '#6b7280',
-              fontFamily: 'Georgia, serif',
-            }}
-          >
-            {completedCount} of {totalImplemented} complete
-          </span>
-        </div>
+      {!hideHeader && (
+        <div
+          data-element="map-header"
+          style={{
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid rgba(203, 213, 225, 0.4)',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                fontFamily: 'Georgia, serif',
+                color: '#1e293b',
+              }}
+            >
+              Book I
+            </span>
+            <span
+              style={{
+                fontSize: 13,
+                color: '#6b7280',
+                fontFamily: 'Georgia, serif',
+              }}
+            >
+              {completedCount} of {totalImplemented} complete
+            </span>
+          </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          {onSelectPlayground && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {onSelectPlayground && (
+              <button
+                type="button"
+                data-action="open-playground"
+                onClick={onSelectPlayground}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  fontFamily: 'system-ui, sans-serif',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  color: '#d97706',
+                  border: '1px solid #fbbf24',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                Playground
+              </button>
+            )}
             <button
               type="button"
-              data-action="open-playground"
-              onClick={onSelectPlayground}
+              data-action="toggle-show-all"
+              onClick={() => setShowAll((prev) => !prev)}
               style={{
                 padding: '6px 14px',
                 fontSize: 13,
                 fontWeight: 500,
                 fontFamily: 'system-ui, sans-serif',
-                background: 'rgba(245, 158, 11, 0.08)',
-                color: '#d97706',
-                border: '1px solid #fbbf24',
+                background: showAll ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                color: showAll ? '#3b82f6' : '#6b7280',
+                border: `1px solid ${showAll ? '#93c5fd' : '#d1d5db'}`,
                 borderRadius: 8,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
             >
-              Playground
+              {showAll ? 'Show available' : 'Show all 48'}
             </button>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* Sticky toggle when header is hidden — outside viewport so it sticks to page scroll */}
+      {hideHeader && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            position: 'sticky',
+            top: 'calc(var(--app-nav-height, 0px) + 8px)',
+            zIndex: 5,
+            pointerEvents: 'none',
+            padding: '0 8px',
+          }}
+        >
           <button
             type="button"
             data-action="toggle-show-all"
             onClick={() => setShowAll((prev) => !prev)}
             style={{
-              padding: '6px 14px',
-              fontSize: 13,
+              padding: '4px 10px',
+              fontSize: 12,
               fontWeight: 500,
               fontFamily: 'system-ui, sans-serif',
-              background: showAll ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+              background: showAll ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.9)',
               color: showAll ? '#3b82f6' : '#6b7280',
               border: `1px solid ${showAll ? '#93c5fd' : '#d1d5db'}`,
-              borderRadius: 8,
+              borderRadius: 6,
               cursor: 'pointer',
-              transition: 'all 0.15s',
+              pointerEvents: 'auto',
             }}
           >
             {showAll ? 'Show available' : 'Show all 48'}
           </button>
         </div>
-      </div>
+      )}
 
-      {/* SVG map — scrollable */}
+      {/* SVG map */}
       <div
         data-element="map-viewport"
         style={{
-          flex: 1,
-          minHeight: 0,
-          overflow: 'auto',
+          ...(hideHeader ? {} : { flex: 1, minHeight: 0, overflow: 'auto' }),
           padding: '24px 20px',
         }}
       >
@@ -851,6 +887,32 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
                     </g>
                   ))}
 
+                {/* Type badge (P = Problem/construction, T = Theorem) */}
+                {prop && (
+                  <g data-element="type-badge">
+                    <rect
+                      x={pos.x - NODE_W / 2 + 4}
+                      y={topY + 4}
+                      width={14}
+                      height={14}
+                      rx={3}
+                      fill={prop.type === 'construction' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'}
+                    />
+                    <text
+                      x={pos.x - NODE_W / 2 + 11}
+                      y={topY + 11}
+                      fontSize={8}
+                      fontWeight={700}
+                      fontFamily="system-ui, sans-serif"
+                      fill={prop.type === 'construction' ? '#d97706' : '#4f46e5'}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      {prop.type === 'construction' ? 'P' : 'T'}
+                    </text>
+                  </g>
+                )}
+
                 {/* Checkmark for completed */}
                 {status === 'completed' && (
                   <text
@@ -900,6 +962,59 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground }: Eucli
             )
           })}
         </svg>
+
+        {/* Legend — type badges */}
+        <div
+          data-element="map-legend"
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 20,
+            padding: '12px 0 4px',
+            fontSize: 12,
+            fontFamily: 'system-ui, sans-serif',
+            color: '#6b7280',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 16,
+                height: 16,
+                borderRadius: 3,
+                background: 'rgba(245,158,11,0.15)',
+                color: '#d97706',
+                fontSize: 9,
+                fontWeight: 700,
+              }}
+            >
+              P
+            </span>
+            Problem (construction)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 16,
+                height: 16,
+                borderRadius: 3,
+                background: 'rgba(99,102,241,0.12)',
+                color: '#4f46e5',
+                fontSize: 9,
+                fontWeight: 700,
+              }}
+            >
+              T
+            </span>
+            Theorem
+          </span>
+        </div>
       </div>
 
       {/* Tooltip for locked nodes */}

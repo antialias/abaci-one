@@ -1,7 +1,7 @@
 import type { ConstructionElement, AngleSpec } from '../types'
 import { BYRNE } from '../types'
 
-export type FoundationCategory = 'definitions' | 'postulates' | 'common-notions'
+export type FoundationCategory = 'definitions' | 'postulates' | 'common-notions' | 'propositions'
 
 export interface FoundationDiagram {
   id: string
@@ -1019,4 +1019,5 @@ export const FOUNDATION_CATEGORIES: Array<{ id: FoundationCategory; label: strin
   { id: 'definitions', label: 'Definitions' },
   { id: 'postulates', label: 'Postulates' },
   { id: 'common-notions', label: 'Common Notions' },
+  { id: 'propositions', label: 'Propositions' },
 ]

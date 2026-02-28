@@ -691,6 +691,7 @@ export function EuclidCanvas({
   const panZoomDisabledRef = useRef(true)
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
   const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
+  const dragPointIdRef = useRef<string | null>(null)
   const isCompleteRef = useRef(false)
   const completionTimeRef = useRef<number>(0)
   const postCompletionActionsRef = useRef<PostCompletionAction[]>(initialActions ?? [])
@@ -1030,6 +1031,13 @@ export function EuclidCanvas({
     totalSteps: steps.length,
     isComplete,
     playgroundMode: !!playgroundMode,
+    activeToolRef,
+    compassPhaseRef,
+    straightedgePhaseRef,
+    extendPhaseRef,
+    macroPhaseRef,
+    dragPointIdRef,
+    steps,
   })
 
   // ── Fire onComplete callback and auto-select Move tool ──
@@ -2255,6 +2263,7 @@ export function EuclidCanvas({
     candidatesRef,
     postCompletionActionsRef,
     interactionLockedRef: correctionActiveRef,
+    dragPointIdRef,
     onReplayResult: handleDragReplay,
     onDragStart: useCallback(
       (pointId: string) => {
@@ -3446,7 +3455,7 @@ export function EuclidCanvas({
             <button
               data-action="call-euclid"
               onClick={euclidVoice.dial}
-              title="Call Euclid"
+              title="Call Εὐκλείδης"
               style={{
                 width: 36,
                 height: 36,
@@ -3484,8 +3493,8 @@ export function EuclidCanvas({
         {/* Phone call overlay for Call Euclid */}
         {euclidVoice.state !== 'idle' && (
           <PhoneCallOverlay
-            callerLabel="Euclid"
-            callerIcon="\u03B5" // lowercase epsilon — Greek feel
+            callerLabel="Εὐκλείδης"
+            callerImage="/images/euclid-profile.png"
             state={euclidVoice.state}
             timeRemaining={euclidVoice.timeRemaining}
             error={euclidVoice.error}
