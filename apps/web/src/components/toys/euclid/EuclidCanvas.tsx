@@ -1162,6 +1162,7 @@ export function EuclidCanvas({
           postCompletionActionsRef.current = initialActions
           applyPositions(initialPositions)
           needsDrawRef.current = true
+          wiggleCancelRef.current = null // prevent stale cancel from wiping later actions
           return
         }
         const envelope = Math.sin((t / DURATION_MS) * Math.PI)
@@ -2659,7 +2660,7 @@ export function EuclidCanvas({
               candFilter = { ofA: resolvedA, ofB: resolvedB, beyondId: curExpected.beyondId }
             }
           }
-          const complete = !playgroundMode && curStep >= steps.length
+          const complete = playgroundMode || curStep >= steps.length
 
           // Compute hidden elements during macro animation
           const hiddenIds = getHiddenElementIds(macroAnimationRef.current)
@@ -2787,6 +2788,11 @@ export function EuclidCanvas({
                 : proposition.draggablePointIds
               : undefined
           )
+
+          // Keep redrawing while ripple rings are visible so they animate
+          if (complete && (playgroundMode ? getAllPoints(drawState).some((pt) => pt.origin === 'given' || pt.origin === 'free') : proposition.draggablePointIds?.length)) {
+            needsDrawRef.current = true
+          }
 
           // Render Post.2 production segments (extensions to intersection points)
           renderProductionSegments(
