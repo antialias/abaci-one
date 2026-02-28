@@ -8,6 +8,7 @@ import { PROP_1 } from '../propositions/prop1'
 import { PROP_2 } from '../propositions/prop2'
 import { PROP_3 } from '../propositions/prop3'
 import { PROP_4 } from '../propositions/prop4'
+import { PROP_5 } from '../propositions/prop5'
 import { IMPLEMENTED_PROPS } from '../data/propositionGraph'
 import type { ConstructionState, EuclidViewportState, PropositionDef } from '../types'
 
@@ -20,6 +21,7 @@ const PROP_DEFS: Record<number, PropositionDef> = {
   2: PROP_2,
   3: PROP_3,
   4: PROP_4,
+  5: PROP_5,
 }
 
 /**

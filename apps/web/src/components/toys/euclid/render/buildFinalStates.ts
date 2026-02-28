@@ -10,10 +10,12 @@ import { resolveSelector } from '../engine/selectors'
 import { MACRO_REGISTRY } from '../engine/macros'
 import { createFactStore } from '../engine/factStore'
 import { deriveDef15Facts } from '../engine/factDerivation'
+import { replayConstruction } from '../engine/replayConstruction'
 import { PROP_1 } from '../propositions/prop1'
 import { PROP_2 } from '../propositions/prop2'
 import { PROP_3 } from '../propositions/prop3'
 import { PROP_4 } from '../propositions/prop4'
+import { PROP_5 } from '../propositions/prop5'
 import { needsExtendedSegments } from '../types'
 import type { ConstructionState, IntersectionCandidate } from '../types'
 
@@ -207,11 +209,21 @@ export function buildProp4FinalState(): ConstructionState {
   return state
 }
 
+/**
+ * Replay Proposition I.5: Pons Asinorum (isosceles base angles).
+ * Uses replayConstruction since the steps include extend + macro types.
+ */
+export function buildProp5FinalState(): ConstructionState {
+  const result = replayConstruction(PROP_5.givenElements, PROP_5.steps, PROP_5)
+  return result.state
+}
+
 const PROP_BUILDERS: Record<number, () => ConstructionState> = {
   1: buildProp1FinalState,
   2: buildProp2FinalState,
   3: buildProp3FinalState,
   4: buildProp4FinalState,
+  5: buildProp5FinalState,
 }
 
 export function buildFinalState(propId: number): ConstructionState | null {
