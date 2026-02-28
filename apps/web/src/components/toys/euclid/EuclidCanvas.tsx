@@ -112,6 +112,10 @@ import { getFoundationHref } from './foundations/citationUtils'
 import { MacroToolPanel } from './MacroToolPanel'
 import { useEuclidVoice } from './voice/useEuclidVoice'
 import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
+import { useEuclidChat } from './chat/useEuclidChat'
+import { EuclidChatPanel } from './chat/EuclidChatPanel'
+import type { GeometricEntityRef } from './chat/parseGeometricEntities'
+import { renderChatHighlight } from './render/renderChatHighlight'
 
 // ── Keyboard shortcuts ──
 
@@ -1028,6 +1032,41 @@ export function EuclidCanvas({
     dragPointIdRef,
     steps,
   })
+
+  const euclidChat = useEuclidChat({
+    canvasRef,
+    constructionRef,
+    proofFactsRef,
+    currentStepRef,
+    propositionId,
+    isComplete,
+    playgroundMode: !!playgroundMode,
+    activeToolRef,
+    compassPhaseRef,
+    straightedgePhaseRef,
+    extendPhaseRef,
+    macroPhaseRef,
+    dragPointIdRef,
+    steps,
+  })
+
+  // Chat highlight state — set when hovering geometric entities in chat
+  const chatHighlightRef = useRef<GeometricEntityRef | null>(null)
+  const handleChatHighlight = useCallback((entity: GeometricEntityRef | null) => {
+    chatHighlightRef.current = entity
+    needsDrawRef.current = true
+  }, [])
+
+  // Derive known point labels for the chat entity parser
+  const chatPointLabels = useMemo(() => {
+    const labels = new Set<string>()
+    for (const el of constructionRef.current.elements) {
+      if (el.kind === 'point' && el.label) labels.add(el.label)
+    }
+    return labels
+    // Re-derive when step changes (proxy for construction changes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, isComplete])
 
   // Mute TTS narration while a voice call is active, and stop any playing audio
   const euclidCallActive = euclidVoice.state !== 'idle'
@@ -2929,6 +2968,19 @@ export function EuclidCanvas({
             }
           }
 
+          // Render chat entity highlight (golden glow on hovered geometric refs)
+          if (chatHighlightRef.current) {
+            renderChatHighlight(
+              ctx,
+              drawState,
+              chatHighlightRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight
+            )
+            needsDrawRef.current = true
+          }
+
           // Render tool overlay (geometric previews + physical tool body)
           const nextColor = BYRNE_CYCLE[constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
           renderToolOverlay(
@@ -3410,90 +3462,186 @@ export function EuclidCanvas({
               </button>
             </>
           ) : (
-            /* Audio toggle — proposition mode */
-            <button
-              data-action="toggle-audio"
-              onClick={() =>
-                disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)
-              }
-              title={audioEnabled ? 'Mute narration' : 'Enable narration'}
+            /* Euclid quad: avatar (TL), mute (TR), call (BL), chat (BR) */
+            <div
+              data-component="euclid-quad"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gridTemplateRows: '1fr 1fr',
+                width: 76,
+                height: 76,
+                borderRadius: 10,
                 border: '1px solid rgba(203, 213, 225, 0.8)',
-                background: 'rgba(255, 255, 255, 0.9)',
+                background: 'rgba(255, 255, 255, 0.92)',
                 backdropFilter: 'blur(8px)',
-                color: audioEnabled ? '#4E79A7' : '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'all 0.15s ease',
-                padding: 0,
+                position: 'relative',
               }}
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              {/* Cross dividers */}
+              <div style={{ position: 'absolute', left: '50%', top: 6, bottom: 6, width: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: '50%', left: 6, right: 6, height: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
+              {/* TL: Euclid avatar with popover */}
+              <div
+                data-element="euclid-avatar"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  cursor: 'default',
+                  borderRadius: '9px 0 0 0',
+                }}
+                onMouseEnter={(e) => {
+                  const popover = e.currentTarget.querySelector('[data-element="euclid-popover"]') as HTMLElement
+                  if (popover) popover.style.opacity = '1'
+                }}
+                onMouseLeave={(e) => {
+                  const popover = e.currentTarget.querySelector('[data-element="euclid-popover"]') as HTMLElement
+                  if (popover) popover.style.opacity = '0'
+                }}
               >
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                {audioEnabled ? (
-                  <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/euclid-profile.png"
+                  alt="Εὐκλείδης"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+                {/* Popover */}
+                <div
+                  data-element="euclid-popover"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: -38,
+                    marginTop: 8,
+                    width: 220,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(203, 213, 225, 0.8)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                    opacity: 0,
+                    transition: 'opacity 0.15s ease',
+                    pointerEvents: 'none',
+                    zIndex: 20,
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                    color: '#374151',
+                    fontFamily: 'system-ui, sans-serif',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontStyle: 'normal', marginBottom: 4, fontSize: 13 }}>Εὐκλείδης</div>
+                  <div style={{ marginBottom: 6 }}>&ldquo;I am here if you need guidance. You may call upon me by voice, or write to me if you prefer. I can also narrate your progress as you work.&rdquo;</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontStyle: 'normal', fontSize: 11, color: '#6b7280' }}>
+                    <span><strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me directly</span>
+                    <span><strong style={{ color: '#4E79A7' }}>💬 Chat</strong> — write to me</span>
+                    <span><strong style={{ color: '#4E79A7' }}>🔊 Sound</strong> — toggle my narration</span>
+                  </div>
+                  {/* Arrow */}
+                  <div style={{
+                    position: 'absolute',
+                    top: -5,
+                    left: 24,
+                    width: 10,
+                    height: 10,
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    border: '1px solid rgba(203, 213, 225, 0.8)',
+                    borderBottom: 'none',
+                    borderRight: 'none',
+                    transform: 'rotate(45deg)',
+                  }} />
+                </div>
+              </div>
+              {/* TR: Mute/unmute */}
+              <button
+                data-action="toggle-audio"
+                onClick={() =>
+                  disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)
+                }
+                title={audioEnabled ? 'Mute narration' : 'Enable narration'}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: audioEnabled ? '#4E79A7' : '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'background 0.15s ease, color 0.15s ease',
+                  borderRadius: '0 9px 0 0',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  {audioEnabled ? (
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                  </>
-                ) : (
-                  <line x1="23" y1="9" x2="17" y2="15" />
-                )}
-              </svg>
-            </button>
-          )}
-
-          {/* Call Euclid phone button */}
-          {!playgroundMode && euclidVoice.state === 'idle' && (
-            <button
-              data-action="call-euclid"
-              onClick={euclidVoice.dial}
-              title="Call Εὐκλείδης"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                border: '1px solid rgba(203, 213, 225, 0.8)',
-                background: 'rgba(255, 255, 255, 0.9)',
-                backdropFilter: 'blur(8px)',
-                color: '#4E79A7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'all 0.15s ease',
-                padding: 0,
-                fontSize: 16,
-              }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                  ) : (
+                    <line x1="23" y1="9" x2="17" y2="15" />
+                  )}
+                </svg>
+              </button>
+              {/* BL: Call */}
+              <button
+                data-action="call-euclid"
+                onClick={euclidVoice.state === 'idle' && !euclidChat.isOpen ? euclidVoice.dial : undefined}
+                title="Call Εὐκλείδης"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: euclidVoice.state === 'idle' && !euclidChat.isOpen ? '#4E79A7' : '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: euclidVoice.state === 'idle' && !euclidChat.isOpen ? 'pointer' : 'default',
+                  padding: 0,
+                  transition: 'background 0.15s ease, color 0.15s ease',
+                  borderRadius: '0 0 0 9px',
+                }}
+                onMouseEnter={(e) => { if (euclidVoice.state === 'idle' && !euclidChat.isOpen) e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-              </svg>
-            </button>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </button>
+              {/* BR: Chat */}
+              <button
+                data-action="chat-euclid"
+                onClick={euclidVoice.state === 'idle' ? (euclidChat.isOpen ? euclidChat.close : euclidChat.open) : undefined}
+                title="Chat with Εὐκλείδης"
+                style={{
+                  border: 'none',
+                  background: euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent',
+                  color: euclidVoice.state === 'idle' ? '#4E79A7' : '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: euclidVoice.state === 'idle' ? 'pointer' : 'default',
+                  padding: 0,
+                  transition: 'background 0.15s ease, color 0.15s ease',
+                  borderRadius: '0 0 9px 0',
+                }}
+                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            </div>
           )}
         </div>
 
@@ -3514,6 +3662,18 @@ export function EuclidCanvas({
             isDark={false}
             containerWidth={containerRef.current?.clientWidth ?? 600}
             containerHeight={containerRef.current?.clientHeight ?? 400}
+          />
+        )}
+
+        {/* Text chat panel for Chat with Euclid */}
+        {euclidChat.isOpen && euclidVoice.state === 'idle' && (
+          <EuclidChatPanel
+            messages={euclidChat.messages}
+            isStreaming={euclidChat.isStreaming}
+            onSend={euclidChat.sendMessage}
+            onClose={euclidChat.close}
+            knownLabels={chatPointLabels}
+            onHighlight={handleChatHighlight}
           />
         )}
 

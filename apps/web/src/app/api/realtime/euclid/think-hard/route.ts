@@ -102,7 +102,7 @@ Keep your answer concise but thorough — it will be spoken aloud by an AI chara
       const errText = await response.text()
       console.error('[think-hard] API error:', response.status, errText)
       return NextResponse.json(
-        { error: 'Reasoning oracle is unavailable right now.' },
+        { error: 'Could not work through the proof right now.' },
         { status: 502 }
       )
     }
@@ -110,7 +110,7 @@ Keep your answer concise but thorough — it will be spoken aloud by an AI chara
     const data = await response.json()
 
     // Extract text from response output
-    let answer = 'The oracle could not find an answer.'
+    let answer = 'I could not find the answer in my writings.'
     if (data.output && Array.isArray(data.output)) {
       for (const item of data.output) {
         if (item.type === 'message' && Array.isArray(item.content)) {
