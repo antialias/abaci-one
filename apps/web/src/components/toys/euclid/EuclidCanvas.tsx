@@ -3507,6 +3507,7 @@ export function EuclidCanvas({
             error={euclidVoice.error}
             errorCode={euclidVoice.errorCode}
             isSpeaking={euclidVoice.isSpeaking}
+            isThinking={euclidVoice.isThinking}
             onHangUp={euclidVoice.hangUp}
             onRetry={euclidVoice.dial}
             onDismiss={euclidVoice.hangUp}

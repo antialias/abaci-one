@@ -13,7 +13,7 @@
  * Euclid uses this directly with a Greek-themed icon.
  */
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { CallState } from './types'
 
 export interface PhoneCallOverlayProps {
@@ -37,6 +37,8 @@ export interface PhoneCallOverlayProps {
   containerHeight: number
   /** Optional children rendered in the active state (e.g. conference call boxes) */
   children?: ReactNode
+  /** When true, shows a "consulting scrolls" indicator (e.g. Euclid's think_hard) */
+  isThinking?: boolean
 }
 
 function formatTime(seconds: number): string {
@@ -161,6 +163,16 @@ function CallerPhoto({
   )
 }
 
+/** Animated "..." that cycles through dot counts */
+function AnimatedDots() {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setCount((c) => (c + 1) % 4), 450)
+    return () => clearInterval(id)
+  }, [])
+  return <span style={{ width: 14, display: 'inline-block' }}>{'.'.repeat(count)}</span>
+}
+
 export function PhoneCallOverlay({
   callerLabel,
   callerIcon,
@@ -177,6 +189,7 @@ export function PhoneCallOverlay({
   containerWidth,
   containerHeight,
   children,
+  isThinking,
 }: PhoneCallOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -253,10 +266,20 @@ export function PhoneCallOverlay({
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: textColor,
+                color: isThinking ? accentColor : textColor,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
               }}
             >
-              {callerLabel}
+              {isThinking ? (
+                <>
+                  <span style={{ fontSize: 13 }}>📜</span>
+                  <span>Consulting scrolls<AnimatedDots /></span>
+                </>
+              ) : (
+                callerLabel
+              )}
             </span>
             {timeRemaining !== null && (
               <span

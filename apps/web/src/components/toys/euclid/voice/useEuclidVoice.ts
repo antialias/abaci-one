@@ -85,6 +85,8 @@ export interface UseEuclidVoiceReturn {
   hangUp: () => void
   timeRemaining: number | null
   isSpeaking: boolean
+  /** True while Euclid is consulting his scrolls (think_hard in progress) */
+  isThinking: boolean
 }
 
 /**
@@ -395,6 +397,7 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     hangUp: voiceCall.hangUp,
     timeRemaining: voiceCall.timeRemaining,
     isSpeaking: voiceCall.isSpeaking,
+    isThinking: voiceCall.modeDebug.current === 'thinking',
   }
 }
 
