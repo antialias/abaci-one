@@ -27,6 +27,7 @@ import {
   sendSystemMessage as sendSystemMessageHelper,
   sendImageContext as sendImageContextHelper,
   sendContextUpdate as sendContextUpdateHelper,
+  sendUserText as sendUserTextHelper,
 } from './toolCallHelpers'
 import type {
   CallState,
@@ -303,6 +304,12 @@ export function useVoiceCall<TContext>(
     const dc = dcRef.current
     if (!dc || dc.readyState !== 'open') return
     sendContextUpdateHelper(dc, text, base64DataUrl, promptResponse)
+  }, [])
+
+  const sendUserText = useCallback((text: string) => {
+    const dc = dcRef.current
+    if (!dc || dc.readyState !== 'open') return
+    sendUserTextHelper(dc, text)
   }, [])
 
   // ── Dial ──
@@ -781,5 +788,6 @@ export function useVoiceCall<TContext>(
     updateSession,
     extendTimer,
     audioElRef,
+    sendUserText,
   }
 }

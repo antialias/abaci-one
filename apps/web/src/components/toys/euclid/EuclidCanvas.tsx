@@ -115,6 +115,7 @@ import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
 import { useEuclidChat } from './chat/useEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
 import type { GeometricEntityRef } from './chat/parseGeometricEntities'
+import { generateId } from '@/lib/character/useCharacterChat'
 import { renderChatHighlight } from './render/renderChatHighlight'
 
 // ── Keyboard shortcuts ──
@@ -1011,7 +1012,38 @@ export function EuclidCanvas({
   const speakStepCorrection = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
   const speakStepCorrectionRef = useRef(speakStepCorrection)
   speakStepCorrectionRef.current = speakStepCorrection
-  // ── Call Euclid voice (before audio help so we can mute narration during calls) ──
+  // ── Text chat (must come before voice so transcript callbacks can reference addMessage) ──
+  const euclidChat = useEuclidChat({
+    canvasRef,
+    constructionRef,
+    proofFactsRef,
+    currentStepRef,
+    propositionId,
+    isComplete,
+    playgroundMode: !!playgroundMode,
+    activeToolRef,
+    compassPhaseRef,
+    straightedgePhaseRef,
+    extendPhaseRef,
+    macroPhaseRef,
+    dragPointIdRef,
+    steps,
+  })
+
+  // Keep a ref to chat messages for voice session context injection
+  const chatMessagesRef = useRef(euclidChat.messages)
+  chatMessagesRef.current = euclidChat.messages
+
+  // ── Transcript callbacks: inject voice transcripts into the shared chat history ──
+  const handleModelSpeech = useCallback((transcript: string) => {
+    euclidChat.addMessage({ id: generateId(), role: 'assistant', content: transcript, timestamp: Date.now(), via: 'voice' })
+  }, [euclidChat.addMessage])
+
+  const handleChildSpeech = useCallback((transcript: string) => {
+    euclidChat.addMessage({ id: generateId(), role: 'user', content: transcript, timestamp: Date.now(), via: 'voice' })
+  }, [euclidChat.addMessage])
+
+  // ── Call Euclid voice (after chat so transcript callbacks are available) ──
   const euclidVoice = useEuclidVoice({
     canvasRef,
     constructionRef,
@@ -1031,24 +1063,22 @@ export function EuclidCanvas({
     macroPhaseRef,
     dragPointIdRef,
     steps,
+    chatMessagesRef,
+    onModelSpeech: handleModelSpeech,
+    onChildSpeech: handleChildSpeech,
   })
 
-  const euclidChat = useEuclidChat({
-    canvasRef,
-    constructionRef,
-    proofFactsRef,
-    currentStepRef,
-    propositionId,
-    isComplete,
-    playgroundMode: !!playgroundMode,
-    activeToolRef,
-    compassPhaseRef,
-    straightedgePhaseRef,
-    extendPhaseRef,
-    macroPhaseRef,
-    dragPointIdRef,
-    steps,
-  })
+  // ── Unified send handler: routes to voice session or SSE chat ──
+  const handleChatSend = useCallback((text: string) => {
+    if (euclidVoice.state === 'active') {
+      // Send to voice session + add to shared message history
+      euclidVoice.sendUserText(text)
+      euclidChat.addMessage({ id: generateId(), role: 'user', content: text, timestamp: Date.now(), via: 'typed-during-call' })
+    } else {
+      // Normal SSE chat — sendMessage adds to history + streams response
+      euclidChat.sendMessage(text)
+    }
+  }, [euclidVoice.state, euclidVoice.sendUserText, euclidChat.addMessage, euclidChat.sendMessage])
 
   // Chat highlight state — set when hovering geometric entities in chat
   const chatHighlightRef = useRef<GeometricEntityRef | null>(null)
@@ -1988,7 +2018,7 @@ export function EuclidCanvas({
   }, [])
 
   // Chat open/close animation — grow from avatar position
-  const chatShouldBeOpen = euclidChat.isOpen && euclidVoice.state === 'idle'
+  const chatShouldBeOpen = euclidChat.isOpen
   const [chatMounted, setChatMounted] = useState(false)
   const [chatExpanded, setChatExpanded] = useState(false)
 
@@ -3557,8 +3587,8 @@ export function EuclidCanvas({
               >
                 <EuclidChatPanel
                   messages={euclidChat.messages}
-                  isStreaming={euclidChat.isStreaming}
-                  onSend={euclidChat.sendMessage}
+                  isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
+                  onSend={handleChatSend}
                   onClose={euclidChat.close}
                   onHighlight={handleChatHighlight}
                   onDragPointerDown={handleQuadPointerDown}
@@ -3713,21 +3743,21 @@ export function EuclidCanvas({
               {/* BL: Call */}
               <button
                 data-action="call-euclid"
-                onClick={euclidVoice.state === 'idle' && !euclidChat.isOpen ? euclidVoice.dial : undefined}
+                onClick={euclidVoice.state === 'idle' ? euclidVoice.dial : undefined}
                 title="Call Εὐκλείδης"
                 style={{
                   border: 'none',
                   background: 'transparent',
-                  color: euclidVoice.state === 'idle' && !euclidChat.isOpen ? '#4E79A7' : '#94a3b8',
+                  color: euclidVoice.state === 'idle' ? '#4E79A7' : '#94a3b8',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: euclidVoice.state === 'idle' && !euclidChat.isOpen ? 'pointer' : 'default',
+                  cursor: euclidVoice.state === 'idle' ? 'pointer' : 'default',
                   padding: 0,
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 0 0 9px',
                 }}
-                onMouseEnter={(e) => { if (euclidVoice.state === 'idle' && !euclidChat.isOpen) e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)' }}
+                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3737,21 +3767,21 @@ export function EuclidCanvas({
               {/* BR: Chat */}
               <button
                 data-action="chat-euclid"
-                onClick={euclidVoice.state === 'idle' ? (euclidChat.isOpen ? euclidChat.close : euclidChat.open) : undefined}
+                onClick={euclidChat.isOpen ? euclidChat.close : euclidChat.open}
                 title="Chat with Εὐκλείδης"
                 style={{
                   border: 'none',
                   background: euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent',
-                  color: euclidVoice.state === 'idle' ? '#4E79A7' : '#94a3b8',
+                  color: '#4E79A7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: euclidVoice.state === 'idle' ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   padding: 0,
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 0 9px 0',
                 }}
-                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent' }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

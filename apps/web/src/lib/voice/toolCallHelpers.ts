@@ -67,6 +67,21 @@ export function sendContextUpdate(
   }
 }
 
+/** Send a user text message to the voice session and prompt a model response. */
+export function sendUserText(dc: RTCDataChannel, text: string) {
+  dc.send(
+    JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text }],
+      },
+    })
+  )
+  dc.send(JSON.stringify({ type: 'response.create' }))
+}
+
 /**
  * Send an image to the conversation via input_image content part.
  * Used for mid-conversation visual context (e.g. construction screenshots).

@@ -237,6 +237,32 @@ export function CharacterChatPanel<TEntityRef>({
               ) : (
                 msg.content
               )}
+              {msg.via && (
+                <span
+                  title={msg.via === 'voice' ? 'Spoken' : 'Typed during call'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    marginLeft: 4,
+                    verticalAlign: 'middle',
+                    opacity: 0.45,
+                  }}
+                >
+                  {msg.via === 'voice' ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+                      <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+                    </svg>
+                  )}
+                </span>
+              )}
             </div>
           </div>
         ))}

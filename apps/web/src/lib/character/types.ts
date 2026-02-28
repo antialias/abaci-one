@@ -27,6 +27,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: number
+  /** How this message was created — absent for normal typed SSE chat. */
+  via?: 'voice' | 'typed-during-call'
 }
 
 /**

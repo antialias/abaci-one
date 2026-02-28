@@ -30,13 +30,15 @@ export interface UseCharacterChatReturn {
   messages: ChatMessage[]
   isStreaming: boolean
   sendMessage: (text: string) => void
+  /** Inject an external message (e.g., voice transcript) into the conversation. */
+  addMessage: (msg: ChatMessage) => void
   isOpen: boolean
   open: () => void
   close: () => void
 }
 
 let nextId = 0
-function generateId(): string {
+export function generateId(): string {
   return `msg-${Date.now()}-${nextId++}`
 }
 
@@ -52,6 +54,10 @@ export function useCharacterChat(
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
+
+  const addMessage = useCallback((msg: ChatMessage) => {
+    setMessages(prev => [...prev, msg])
+  }, [])
 
   const sendMessage = useCallback(
     (text: string) => {
@@ -187,5 +193,5 @@ export function useCharacterChat(
     [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef],
   )
 
-  return { messages, isStreaming, sendMessage, isOpen, open, close }
+  return { messages, isStreaming, sendMessage, addMessage, isOpen, open, close }
 }

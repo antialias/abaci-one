@@ -13,7 +13,9 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react'
 import { useVoiceCall } from '@/lib/voice/useVoiceCall'
 import type { VoiceSessionConfig, ToolCallResult, CallState } from '@/lib/voice/types'
+import { sendSystemMessage } from '@/lib/voice/toolCallHelpers'
 import { captureScreenshot } from '@/lib/character/captureScreenshot'
+import type { ChatMessage } from '@/lib/character/types'
 import type {
   ConstructionState,
   ActiveTool,
@@ -77,6 +79,12 @@ interface UseEuclidVoiceOptions {
   dragPointIdRef: React.RefObject<string | null>
   /** Proposition steps (for step context in tool state) */
   steps: PropositionStep[]
+  /** Prior chat messages ref — injected into voice session for context continuity */
+  chatMessagesRef: React.RefObject<ChatMessage[]>
+  /** Called when the model produces a speech transcript */
+  onModelSpeech?: (transcript: string) => void
+  /** Called when the child produces a speech transcript */
+  onChildSpeech?: (transcript: string) => void
 }
 
 export interface UseEuclidVoiceReturn {
@@ -91,6 +99,8 @@ export interface UseEuclidVoiceReturn {
   isThinking: boolean
   /** Ref holding the currently voice-highlighted entity (or null) */
   voiceHighlightRef: React.RefObject<GeometricEntityRef | null>
+  /** Send a user text message to the active voice session */
+  sendUserText: (text: string) => void
 }
 
 /**
@@ -245,9 +255,10 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     []
   )
 
-  const onChildSpeech = useCallback(() => {
+  const onChildSpeechInternal = useCallback((transcript: string) => {
     childHasSpokenRef.current = true
-  }, [])
+    options.onChildSpeech?.(transcript)
+  }, [options.onChildSpeech])
 
   const config = useMemo((): VoiceSessionConfig<EuclidModeContext> => ({
     sessionEndpoint: '/api/realtime/euclid/session',
@@ -260,13 +271,21 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     },
     onToolCall,
     onResponseDone,
-    onChildSpeech,
+    onChildSpeech: onChildSpeechInternal,
+    onModelSpeech: options.onModelSpeech,
     getSessionBody: () => ({
       propositionId,
       currentStep: currentStepRef.current ?? 0,
       isComplete,
       playgroundMode,
     }),
+    onSessionEstablished: (dc) => {
+      const msgs = options.chatMessagesRef.current
+      if (msgs && msgs.length > 0) {
+        const lines = msgs.map((m) => `${m.role === 'user' ? 'Student' : 'Euclid'}: ${m.content}`).join('\n')
+        sendSystemMessage(dc, `[Prior conversation with this student — you already discussed this, continue naturally without repeating yourself:]\n${lines}`)
+      }
+    },
     timer: {
       baseDurationMs: 3 * 60 * 1000, // 3 minutes for Euclid
       extensionMs: 2 * 60 * 1000,
@@ -314,7 +333,8 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     buildContext,
     onToolCall,
     onResponseDone,
-    onChildSpeech,
+    onChildSpeechInternal,
+    options.onModelSpeech,
     propositionId,
     currentStepRef,
     isComplete,
@@ -438,6 +458,7 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     isSpeaking: voiceCall.isSpeaking,
     isThinking: voiceCall.modeDebug.current === 'thinking',
     voiceHighlightRef,
+    sendUserText: voiceCall.sendUserText,
   }
 }
 

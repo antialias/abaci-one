@@ -180,4 +180,6 @@ export interface UseVoiceCallReturn {
   extendTimer: () => boolean
   /** Audio element ref — for consumers that need volume control (e.g. narration muting) */
   audioElRef: React.RefObject<HTMLAudioElement | null>
+  /** Send a user text message to the voice session and prompt a response */
+  sendUserText: (text: string) => void
 }
