@@ -752,7 +752,14 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const aspect = stickyW / stickyH
     const vbH = vbW / aspect
 
-    setScrollViewBox(`${centerX - vbW / 2} ${currentY - vbH / 2} ${vbW} ${vbH}`)
+    // Position so top node is at the top of the viewport at scroll start,
+    // and bottom node is at the bottom at scroll end.
+    const pad = 20
+    const topY = firstY - RENDER_H / 2 - pad
+    const bottomY = lastY + RENDER_H / 2 + pad - vbH
+    const vbY = topY + progress * (bottomY - topY)
+
+    setScrollViewBox(`${centerX - vbW / 2} ${vbY} ${vbW} ${vbH}`)
   }, [rowMeta, rowWindow])
 
   // Find the actual scroll container and attach scroll listener
