@@ -60,6 +60,40 @@ function buildEntity(tag: string, labels: string): GeometricEntityRef | null {
   }
 }
 
+/**
+ * Convert LaTeX-style geometric notation from voice transcripts to our marker syntax.
+ *
+ * Why post-processing instead of prompting the voice model to use {seg:AB} markers?
+ * The voice model generates *speech* — the transcript is a byproduct of audio output.
+ * If we instructed it to use {seg:AB} markers, it would literally say "open brace seg
+ * colon A B close brace" aloud. The model naturally speaks "segment A B" and its
+ * transcript formatter renders that as LaTeX: \( AB \). We convert that to our markers
+ * so the shared chat history gets hoverable entity highlights.
+ *
+ * The text chat model CAN be prompted to use {seg:AB} directly because it only produces
+ * text, never speech.
+ *
+ * Patterns handled:
+ *   \( \triangle ABC \) → {tri:ABC}
+ *   \( \angle ABC \)    → {ang:ABC}
+ *   \( AB = CD \)       → {seg:AB} = {seg:CD}
+ *   \( AB \)            → {seg:AB}
+ *   \( A \)             → {pt:A}
+ */
+export function latexToMarkers(text: string): string {
+  return text
+    // \( \triangle ABC \) → {tri:ABC}
+    .replace(/\\\(\s*\\triangle\s+([A-Z]{3})\s*\\\)/g, '{tri:$1}')
+    // \( \angle ABC \) → {ang:ABC}
+    .replace(/\\\(\s*\\angle\s+([A-Z]{3})\s*\\\)/g, '{ang:$1}')
+    // \( AB = CD \) → {seg:AB} = {seg:CD} (segment equations)
+    .replace(/\\\(\s*([A-Z]{2})\s*=\s*([A-Z]{2})\s*\\\)/g, '{seg:$1} = {seg:$2}')
+    // \( AB \) → {seg:AB} (two uppercase letters = segment)
+    .replace(/\\\(\s*([A-Z]{2})\s*\\\)/g, '{seg:$1}')
+    // \( A \) → {pt:A} (single uppercase letter = point)
+    .replace(/\\\(\s*([A-Z])\s*\\\)/g, '{pt:$1}')
+}
+
 // Match {tag:LABELS} where tag is seg|tri|ang|pt and LABELS is uppercase letters
 const MARKER_RE = /\{(seg|tri|ang|pt):([A-Z]+)\}/g
 

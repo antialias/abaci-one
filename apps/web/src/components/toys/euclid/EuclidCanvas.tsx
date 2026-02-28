@@ -116,6 +116,7 @@ import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
 import { useEuclidChat } from './chat/useEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
+import { latexToMarkers } from './chat/parseGeometricEntities'
 import type { GeometricEntityRef } from './chat/parseGeometricEntities'
 import { generateId } from '@/lib/character/useCharacterChat'
 import { renderChatHighlight } from './render/renderChatHighlight'
@@ -1042,7 +1043,9 @@ export function EuclidCanvas({
 
   // ── Transcript callbacks: inject voice transcripts into the shared chat history ──
   const handleModelSpeech = useCallback((transcript: string) => {
-    euclidChat.addMessage({ id: generateId(), role: 'assistant', content: transcript, timestamp: Date.now(), via: 'voice' })
+    // Convert LaTeX notation from voice transcripts to our {seg:AB} marker syntax
+    const converted = latexToMarkers(transcript)
+    euclidChat.addMessage({ id: generateId(), role: 'assistant', content: converted, timestamp: Date.now(), via: 'voice' })
   }, [euclidChat.addMessage])
 
   const handleChildSpeech = useCallback((transcript: string) => {
