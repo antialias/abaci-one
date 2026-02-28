@@ -99,9 +99,15 @@ export function PlaygroundCreationsPanel({ onClose, currentId, playerId }: Props
             borderBottom: '1px solid #e5e7eb',
           }}
         >
-          <button style={tabStyle('mine')} onClick={() => setTab('mine')}>Mine</button>
-          <button style={tabStyle('published')} onClick={() => setTab('published')}>Published</button>
-          <button style={tabStyle('seen')} onClick={() => setTab('seen')}>Seen</button>
+          <button style={tabStyle('mine')} onClick={() => setTab('mine')}>
+            Mine
+          </button>
+          <button style={tabStyle('published')} onClick={() => setTab('published')}>
+            Published
+          </button>
+          <button style={tabStyle('seen')} onClick={() => setTab('seen')}>
+            Seen
+          </button>
         </div>
 
         {/* Grid */}
@@ -153,9 +159,7 @@ export function PlaygroundCreationsPanel({ onClose, currentId, playerId }: Props
                     textDecoration: 'none',
                     borderRadius: 10,
                     overflow: 'hidden',
-                    border: c.id === currentId
-                      ? '2px solid #4E79A7'
-                      : '1px solid #e5e7eb',
+                    border: c.id === currentId ? '2px solid #4E79A7' : '1px solid #e5e7eb',
                     background: '#FAFAF0',
                     boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                   }}

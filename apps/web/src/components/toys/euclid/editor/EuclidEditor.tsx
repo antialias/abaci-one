@@ -16,15 +16,8 @@ import type {
 } from '../types'
 import { BYRNE_CYCLE } from '../types'
 import type { SerializedElement, SerializedEqualityFact } from '../types'
-import {
-  addPoint,
-  addCircle,
-  addSegment,
-  getPoint,
-} from '../engine/constructionState'
+import { addPoint, addCircle, addSegment, getPoint } from '../engine/constructionState'
 import { findNewIntersections } from '../engine/intersections'
-import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
-import { hitTestPoints } from '../interaction/hitTesting'
 import { renderConstruction } from '../render/renderConstruction'
 import { renderToolOverlay } from '../render/renderToolOverlay'
 import { renderEqualityMarks } from '../render/renderEqualityMarks'
@@ -117,7 +110,13 @@ function GivenSetupPanel({
   return (
     <div
       data-element="given-setup-panel"
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
     >
       {/* Instructions */}
       <div
@@ -131,8 +130,8 @@ function GivenSetupPanel({
           borderBottom: '1px solid rgba(203, 213, 225, 0.3)',
         }}
       >
-        Use the <strong>Point</strong> tool to place given points.
-        Use the <strong>Straightedge</strong> to add segments between points.
+        Use the <strong>Point</strong> tool to place given points. Use the{' '}
+        <strong>Straightedge</strong> to add segments between points.
       </div>
 
       {/* Given elements list */}
@@ -211,7 +210,9 @@ function GivenSetupPanel({
                     {pt.label}
                   </span>
                 )}
-                <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'system-ui, sans-serif' }}>
+                <span
+                  style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'system-ui, sans-serif' }}
+                >
                   ({pt.x?.toFixed(1)}, {pt.y?.toFixed(1)})
                 </span>
                 <button
@@ -270,7 +271,8 @@ function GivenSetupPanel({
                   }}
                 >
                   <span style={{ fontWeight: 600 }}>
-                    {fromPt?.label ?? '?'}{toPt?.label ?? '?'}
+                    {fromPt?.label ?? '?'}
+                    {toPt?.label ?? '?'}
                   </span>
                   <button
                     data-action="delete-given-element"
@@ -361,11 +363,22 @@ function GivenSetupPanel({
                   data-element="eq-left"
                   value={eqLeft}
                   onChange={(e) => setEqLeft(e.target.value)}
-                  style={{ flex: 1, minWidth: 0, padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: 600 }}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '4px 6px',
+                    borderRadius: 4,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 12,
+                    fontFamily: 'Georgia, serif',
+                    fontWeight: 600,
+                  }}
                 >
                   <option value="">segment...</option>
                   {segmentPairs.map((sp) => (
-                    <option key={sp.value} value={sp.value}>{sp.label}</option>
+                    <option key={sp.value} value={sp.value}>
+                      {sp.label}
+                    </option>
                   ))}
                 </select>
                 <span style={{ color: '#94a3b8', fontWeight: 600 }}>=</span>
@@ -373,12 +386,25 @@ function GivenSetupPanel({
                   data-element="eq-right"
                   value={eqRight}
                   onChange={(e) => setEqRight(e.target.value)}
-                  style={{ flex: 1, minWidth: 0, padding: '4px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: 600 }}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '4px 6px',
+                    borderRadius: 4,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 12,
+                    fontFamily: 'Georgia, serif',
+                    fontWeight: 600,
+                  }}
                 >
                   <option value="">segment...</option>
-                  {segmentPairs.filter((sp) => sp.value !== eqLeft).map((sp) => (
-                    <option key={sp.value} value={sp.value}>{sp.label}</option>
-                  ))}
+                  {segmentPairs
+                    .filter((sp) => sp.value !== eqLeft)
+                    .map((sp) => (
+                      <option key={sp.value} value={sp.value}>
+                        {sp.label}
+                      </option>
+                    ))}
                 </select>
                 <button
                   data-action="add-given-fact"
@@ -396,9 +422,10 @@ function GivenSetupPanel({
                     padding: '4px 12px',
                     borderRadius: 4,
                     border: 'none',
-                    background: eqLeft && eqRight && eqLeft !== eqRight
-                      ? '#4E79A7'
-                      : 'rgba(78, 121, 167, 0.2)',
+                    background:
+                      eqLeft && eqRight && eqLeft !== eqRight
+                        ? '#4E79A7'
+                        : 'rgba(78, 121, 167, 0.2)',
                     color: '#fff',
                     fontSize: 12,
                     fontWeight: 600,
@@ -745,9 +772,6 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
     toolToastTimerRef.current = setTimeout(() => setToolToast(null), 2500)
   }, [])
 
-  const handleToolBlockedRef = useRef(handleToolBlocked)
-  handleToolBlockedRef.current = handleToolBlocked
-
   // ── Place free point ──
 
   const handlePlaceFreePoint = useCallback(
@@ -783,12 +807,9 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
   // ── Macro phase change sync ──
 
-  const handleMacroPhaseChange = useCallback(
-    (phase: MacroPhase) => {
-      setMacroPhase(phase)
-    },
-    []
-  )
+  const handleMacroPhaseChange = useCallback((phase: MacroPhase) => {
+    setMacroPhase(phase)
+  }, [])
 
   // ── Export handlers ──
 
@@ -836,6 +857,14 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
     onMacroPhaseChange: handleMacroPhaseChange,
     requiresCitationRef: citationRequiredRef,
     onToolBlocked: handleToolBlocked,
+    extendPhaseRef,
+    extendPreviewRef,
+    onCommitExtend: useCallback(
+      (baseId: string, throughId: string, projX: number, projY: number) => {
+        handleCommitExtendRef.current(baseId, throughId, projX, projY)
+      },
+      []
+    ),
   })
 
   // ── Move tool: drag given points in given-setup mode ──
@@ -949,7 +978,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
       canvas.removeEventListener('pointermove', handlePointerMove, { capture: true })
       canvas.removeEventListener('pointerup', handlePointerUp, { capture: true })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Extend tool (Post.2): three-click interaction ──
@@ -1007,124 +1036,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
     needsDrawRef.current = true
   }
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const HIT_RADIUS = 30
-
-    function getCSSSize() {
-      const dpr = window.devicePixelRatio || 1
-      return { w: canvas!.width / dpr, h: canvas!.height / dpr }
-    }
-
-    function toWorld(sx: number, sy: number, cw: number, ch: number) {
-      const v = viewportRef.current
-      return screenToWorld2D(sx, sy, v.center.x, v.center.y, v.pixelsPerUnit, v.pixelsPerUnit, cw, ch)
-    }
-
-    function handlePointerDown(e: PointerEvent) {
-      if (activeToolRef.current !== 'extend') return
-      // Block extend gestures when no citation is active in authoring mode
-      if (citationRequiredRef.current) {
-        handleToolBlockedRef.current()
-        return
-      }
-      const rect = canvas!.getBoundingClientRect()
-      const sx = e.clientX - rect.left
-      const sy = e.clientY - rect.top
-      const { w, h } = getCSSSize()
-      const isTouch = e.pointerType === 'touch'
-      const state = constructionRef.current
-      const viewport = viewportRef.current
-      const phase = extendPhaseRef.current
-
-      const hitPt = hitTestPoints(sx, sy, state, viewport, w, h, isTouch)
-
-      if (phase.tag === 'idle') {
-        if (hitPt) {
-          e.stopPropagation()
-          extendPhaseRef.current = { tag: 'base-set', baseId: hitPt.id }
-          needsDrawRef.current = true
-        }
-        return
-      }
-
-      if (phase.tag === 'base-set') {
-        if (hitPt && hitPt.id !== phase.baseId) {
-          e.stopPropagation()
-          extendPhaseRef.current = { tag: 'extending', baseId: phase.baseId, throughId: hitPt.id }
-          needsDrawRef.current = true
-        }
-        return
-      }
-
-      if (phase.tag === 'extending') {
-        e.stopPropagation()
-        const preview = extendPreviewRef.current
-        if (preview) {
-          handleCommitExtendRef.current(phase.baseId, phase.throughId, preview.x, preview.y)
-        }
-        extendPhaseRef.current = { tag: 'idle' }
-        extendPreviewRef.current = null
-        needsDrawRef.current = true
-        return
-      }
-    }
-
-    function handlePointerMove(e: PointerEvent) {
-      if (activeToolRef.current !== 'extend') return
-      const rect = canvas!.getBoundingClientRect()
-      const sx = e.clientX - rect.left
-      const sy = e.clientY - rect.top
-      const { w, h } = getCSSSize()
-      const phase = extendPhaseRef.current
-
-      if (phase.tag === 'extending') {
-        const world = toWorld(sx, sy, w, h)
-        const state = constructionRef.current
-        const basePt = getPoint(state, phase.baseId)
-        const throughPt = getPoint(state, phase.throughId)
-        if (basePt && throughPt) {
-          // Direction from base through "through" point
-          const dx = throughPt.x - basePt.x
-          const dy = throughPt.y - basePt.y
-          const len = Math.sqrt(dx * dx + dy * dy)
-          if (len > 0.001) {
-            const dirX = dx / len
-            const dirY = dy / len
-            // Project cursor onto ray beyond throughPt
-            const cx = world.x - throughPt.x
-            const cy = world.y - throughPt.y
-            const t = Math.max(0, cx * dirX + cy * dirY) // clamp to forward direction
-            extendPreviewRef.current = {
-              x: throughPt.x + dirX * t,
-              y: throughPt.y + dirY * t,
-            }
-          }
-        }
-        canvas!.style.cursor = 'crosshair'
-        needsDrawRef.current = true
-        return
-      }
-
-      // For idle and base-set, show grab cursor over points
-      const isTouch = e.pointerType === 'touch'
-      const state = constructionRef.current
-      const viewport = viewportRef.current
-      const hitPt = hitTestPoints(sx, sy, state, viewport, w, h, isTouch)
-      canvas!.style.cursor = hitPt ? 'pointer' : 'crosshair'
-      needsDrawRef.current = true
-    }
-
-    canvas.addEventListener('pointerdown', handlePointerDown, { capture: true })
-    canvas.addEventListener('pointermove', handlePointerMove, { capture: true })
-    return () => {
-      canvas.removeEventListener('pointerdown', handlePointerDown, { capture: true })
-      canvas.removeEventListener('pointermove', handlePointerMove, { capture: true })
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Extend tool is now handled by useToolInteraction (shared with player)
 
   // ── Canvas resize observer ──
   useEffect(() => {
@@ -1213,7 +1125,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             )
           }
 
-          // Render tool overlay
+          // Render tool overlay (including extend preview)
           const nextColor = BYRNE_CYCLE[constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
           renderToolOverlay(
             ctx,
@@ -1227,86 +1139,10 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             cssHeight,
             nextColor,
             false, // not complete
-            null // no straightedge draw animation
+            null, // no straightedge draw animation
+            extendPhaseRef.current,
+            extendPreviewRef.current
           )
-
-          // ── Extend tool preview ──
-          const extPhase = extendPhaseRef.current
-          const vp = viewportRef.current
-          const cState = constructionRef.current
-
-          if (extPhase.tag === 'base-set') {
-            // Highlight the selected base point with a colored ring
-            const basePt = getPoint(cState, extPhase.baseId)
-            if (basePt) {
-              const bs = worldToScreen2D(basePt.x, basePt.y, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssWidth, cssHeight)
-              ctx.beginPath()
-              ctx.arc(bs.x, bs.y, 10, 0, Math.PI * 2)
-              ctx.strokeStyle = nextColor
-              ctx.lineWidth = 2.5
-              ctx.stroke()
-            }
-          }
-
-          if (extPhase.tag === 'extending') {
-            const basePt = getPoint(cState, extPhase.baseId)
-            const throughPt = getPoint(cState, extPhase.throughId)
-            const preview = extendPreviewRef.current
-            if (basePt && throughPt) {
-              const as = worldToScreen2D(basePt.x, basePt.y, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssWidth, cssHeight)
-              const bs = worldToScreen2D(throughPt.x, throughPt.y, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssWidth, cssHeight)
-
-              // Draw faint infinite ray from A through B
-              const rdx = bs.x - as.x
-              const rdy = bs.y - as.y
-              const rlen = Math.sqrt(rdx * rdx + rdy * rdy)
-              if (rlen > 0.1) {
-                const extend = Math.max(cssWidth, cssHeight) * 2
-                const rnx = rdx / rlen
-                const rny = rdy / rlen
-                ctx.beginPath()
-                ctx.moveTo(as.x, as.y)
-                ctx.lineTo(as.x + rnx * extend, as.y + rny * extend)
-                ctx.strokeStyle = 'rgba(100, 100, 100, 0.15)'
-                ctx.lineWidth = 1
-                ctx.stroke()
-              }
-
-              if (preview) {
-                const ps = worldToScreen2D(preview.x, preview.y, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, cssWidth, cssHeight)
-
-                // Dashed colored segment from B to projected cursor position
-                ctx.beginPath()
-                ctx.moveTo(bs.x, bs.y)
-                ctx.lineTo(ps.x, ps.y)
-                ctx.strokeStyle = nextColor
-                ctx.lineWidth = 2
-                ctx.setLineDash([8, 4])
-                ctx.stroke()
-                ctx.setLineDash([])
-
-                // Small circle at projected cursor (point preview)
-                ctx.beginPath()
-                ctx.arc(ps.x, ps.y, 4, 0, Math.PI * 2)
-                ctx.fillStyle = nextColor
-                ctx.fill()
-                ctx.beginPath()
-                ctx.arc(ps.x, ps.y, 4, 0, Math.PI * 2)
-                ctx.strokeStyle = 'rgba(40, 40, 40, 0.5)'
-                ctx.lineWidth = 1
-                ctx.stroke()
-              }
-
-              // Highlight through point with ring
-              ctx.beginPath()
-              ctx.arc(bs.x, bs.y, 10, 0, Math.PI * 2)
-              ctx.strokeStyle = nextColor
-              ctx.lineWidth = 2
-              ctx.setLineDash([4, 3])
-              ctx.stroke()
-              ctx.setLineDash([])
-            }
-          }
 
           ctx.restore()
         }

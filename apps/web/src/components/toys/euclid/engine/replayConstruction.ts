@@ -136,20 +136,19 @@ export function replayConstruction(
               isCandidateBeyondPoint(c, expected.beyondId!, c.ofA, c.ofB, state)
             )
           } else if (expected.label === 'C') {
-            const pA = state.elements.find(
-              (e) => e.kind === 'point' && e.id === 'pt-A'
-            ) as { x: number; y: number } | undefined
-            const pB = state.elements.find(
-              (e) => e.kind === 'point' && e.id === 'pt-B'
-            ) as { x: number; y: number } | undefined
+            const pA = state.elements.find((e) => e.kind === 'point' && e.id === 'pt-A') as
+              | { x: number; y: number }
+              | undefined
+            const pB = state.elements.find((e) => e.kind === 'point' && e.id === 'pt-B') as
+              | { x: number; y: number }
+              | undefined
             if (pA && pB) {
               const abx = pB.x - pA.x
               const aby = pB.y - pA.y
               const preferUpper = matching.filter(
                 (c) => abx * (c.y - pA.y) - aby * (c.x - pA.x) > 0
               )
-              matchingCandidate =
-                preferUpper.length > 0 ? preferUpper[0] : matching[0]
+              matchingCandidate = preferUpper.length > 0 ? preferUpper[0] : matching[0]
             }
           }
           if (!matchingCandidate) {
@@ -160,12 +159,12 @@ export function replayConstruction(
       } else if (expected.ofA == null && expected.ofB == null && candidates.length > 0) {
         // Wildcard intersection (no ofA/ofB specified)
         if (expected.label === 'C') {
-          const pA = state.elements.find(
-            (e) => e.kind === 'point' && e.id === 'pt-A'
-          ) as { x: number; y: number } | undefined
-          const pB = state.elements.find(
-            (e) => e.kind === 'point' && e.id === 'pt-B'
-          ) as { x: number; y: number } | undefined
+          const pA = state.elements.find((e) => e.kind === 'point' && e.id === 'pt-A') as
+            | { x: number; y: number }
+            | undefined
+          const pB = state.elements.find((e) => e.kind === 'point' && e.id === 'pt-B') as
+            | { x: number; y: number }
+            | undefined
           if (pA && pB) {
             const abx = pB.x - pA.x
             const aby = pB.y - pA.y
@@ -177,7 +176,10 @@ export function replayConstruction(
         }
         if (!matchingCandidate) {
           // Fallback: pick highest-Y candidate
-          matchingCandidate = candidates.reduce((best, c) => (c.y > best.y ? c : best), candidates[0])
+          matchingCandidate = candidates.reduce(
+            (best, c) => (c.y > best.y ? c : best),
+            candidates[0]
+          )
         }
       }
 
@@ -234,7 +236,12 @@ export function replayConstruction(
 
           // Find intersections for both
           const ptCands = findNewIntersections(state, ptResult.point, candidates, extendSegments)
-          const segCands = findNewIntersections(state, segResult.segment, [...candidates, ...ptCands], extendSegments)
+          const segCands = findNewIntersections(
+            state,
+            segResult.segment,
+            [...candidates, ...ptCands],
+            extendSegments
+          )
           candidates = [...candidates, ...ptCands, ...segCands]
           stepSucceeded = true
         }

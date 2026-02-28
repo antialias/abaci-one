@@ -191,9 +191,7 @@ export function useDragGivenPoints({
         if (draggedPt?.origin === 'free') {
           // Update the free-point action coordinates in place
           actions = actions.map((a) =>
-            a.type === 'free-point' && a.id === dragPointId
-              ? { ...a, x: world.x, y: world.y }
-              : a
+            a.type === 'free-point' && a.id === dragPointId ? { ...a, x: world.x, y: world.y } : a
           )
           postCompletionActionsRef.current = actions
         }

@@ -41,10 +41,7 @@ const PROP_2_STEP_INSTRUCTIONS: Record<KidLanguageStyle, string[]> = {
   ],
 }
 
-function getProp2Tutorial(
-  isTouch: boolean,
-  options?: EuclidNarrationOptions
-): TutorialSubStep[][] {
+function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): TutorialSubStep[][] {
   const style = options?.languageStyle ?? DEFAULT_LANGUAGE_STYLE
   const tap = isTouch ? 'Tap' : 'Click'
   const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
@@ -135,7 +132,8 @@ function getProp2Tutorial(
         speech: byStyle({
           simple: 'Drag to C to set the radius. Every point on this circle is BC away from B.',
           standard: 'Drag to C to set the radius. Every point on this circle is BC away from B.',
-          classical: 'Drag to C to set the radius. Every point on this circle is at distance BC from B.',
+          classical:
+            'Drag to C to set the radius. Every point on this circle is at distance BC from B.',
         }),
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-C' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
@@ -201,7 +199,8 @@ function getProp2Tutorial(
         speech: byStyle({
           simple: 'Drag to E to set the radius. Every point on this circle is DE away from D.',
           standard: 'Drag to E to set the radius. Every point on this circle is DE away from D.',
-          classical: 'Drag to E to set the radius. Every point on this circle is at distance DE from D.',
+          classical:
+            'Drag to E to set the radius. Every point on this circle is at distance DE from D.',
         }),
         hint: { type: 'arrow', fromId: 'pt-D', toId: 'pt-E' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
@@ -440,7 +439,8 @@ export const PROP_2: PropositionDef = {
     pointTips: [
       {
         pointId: 'pt-A',
-        speech: 'AF always equals BC because the circles and subtractions enforce it, not because of measurement.',
+        speech:
+          'AF always equals BC because the circles and subtractions enforce it, not because of measurement.',
       },
       {
         pointId: 'pt-B',
@@ -477,7 +477,8 @@ export const PROP_2: PropositionDef = {
       pointTips: [
         {
           pointId: 'pt-A',
-          speech: 'AF always equals BC because the circles and subtractions enforce it, not because of measurement.',
+          speech:
+            'AF always equals BC because the circles and subtractions enforce it, not because of measurement.',
         },
         {
           pointId: 'pt-B',

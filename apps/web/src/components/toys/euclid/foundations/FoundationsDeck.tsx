@@ -140,9 +140,7 @@ export function FoundationsDeck({ languageStyle, focusId, onFocusChange }: Found
                   },
                 })}
                 style={{
-                  borderColor: isSelected
-                    ? 'rgba(16,185,129,0.55)'
-                    : 'rgba(203, 213, 225, 0.7)',
+                  borderColor: isSelected ? 'rgba(16,185,129,0.55)' : 'rgba(203, 213, 225, 0.7)',
                   boxShadow: isSelected
                     ? '0 12px 24px rgba(15, 118, 110, 0.12)'
                     : '0 2px 8px rgba(15,23,42,0.06)',

@@ -88,8 +88,7 @@ export function renderGhostGeometry(
 
     const key = `${layer.atStep}:${layer.depth}`
     // A layer is in the ceremony only if it appears in the ceremony map
-    const inLayerCeremony =
-      ceremonyRevealCounts != null && ceremonyRevealCounts.has(key)
+    const inLayerCeremony = ceremonyRevealCounts != null && ceremonyRevealCounts.has(key)
 
     let targetAlpha: number
     if (inLayerCeremony) {

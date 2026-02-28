@@ -7,7 +7,12 @@ import { PROP_REGISTRY } from '../propositions/registry'
 import { usePropPreviews } from '../render/usePropPreviews'
 import { FOUNDATION_ITEMS, FOUNDATION_DIAGRAMS } from './foundationsData'
 import { EuclidFoundationCanvas } from './EuclidFoundationCanvas'
-import { getFoundationIdForCitation, getFoundationHref, getPropositionHref, getPropIdForCitation } from './citationUtils'
+import {
+  getFoundationIdForCitation,
+  getFoundationHref,
+  getPropositionHref,
+  getPropIdForCitation,
+} from './citationUtils'
 
 const POPOVER_WIDTH = 248
 
@@ -55,7 +60,8 @@ export function CitationPopover({
 
   const activeDiagram = diagram ?? null
   const foundationHref = getFoundationHref(citationKey)
-  const propositionHref = getPropIdForCitation(citationKey) != null ? getPropositionHref(citationKey) : null
+  const propositionHref =
+    getPropIdForCitation(citationKey) != null ? getPropositionHref(citationKey) : null
 
   // Positioning: prefer left of anchor (into canvas), fall back to above/below
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -224,7 +230,9 @@ export function CitationPopover({
             gap: 3,
             paddingTop: 2,
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'underline')}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLElement).style.textDecoration = 'underline')
+          }
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'none')}
         >
           Open full page →
@@ -246,7 +254,9 @@ export function CitationPopover({
             gap: 3,
             paddingTop: 2,
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'underline')}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLElement).style.textDecoration = 'underline')
+          }
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.textDecoration = 'none')}
         >
           Open proposition →

@@ -41,7 +41,9 @@ export default function EuclidPage() {
             <button
               type="button"
               onClick={() => {
-                const params = selectedPlayerId ? `?player=${encodeURIComponent(selectedPlayerId)}` : ''
+                const params = selectedPlayerId
+                  ? `?player=${encodeURIComponent(selectedPlayerId)}`
+                  : ''
                 router.push(`/toys/euclid/foundations${params}`)
               }}
               style={{

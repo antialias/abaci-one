@@ -4,10 +4,7 @@ import * as schema from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 /** GET /api/euclid/creations/[id] — load a creation by ID (public, no auth required) */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const creation = await db
@@ -28,10 +25,7 @@ export async function GET(
 }
 
 /** PATCH /api/euclid/creations/[id] — toggle isPublic */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const { isPublic } = await request.json()

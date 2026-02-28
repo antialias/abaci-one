@@ -4,6 +4,7 @@ import type {
   EuclidViewportState,
   CompassPhase,
   StraightedgePhase,
+  ExtendPhase,
   MacroPhase,
   ActiveTool,
   IntersectionCandidate,
@@ -48,6 +49,12 @@ interface UseToolInteractionOptions {
   requiresCitationRef?: React.MutableRefObject<boolean>
   /** Called when a tool gesture is blocked because requiresCitationRef is true. */
   onToolBlocked?: () => void
+  /** Extend tool phase ref — caller creates, hook modifies on pointer events. */
+  extendPhaseRef?: React.MutableRefObject<ExtendPhase>
+  /** Extend tool preview position — updated on pointermove in 'extending' phase. */
+  extendPreviewRef?: React.MutableRefObject<{ x: number; y: number } | null>
+  /** Called when the extend tool commits (3rd click). */
+  onCommitExtend?: (baseId: string, throughId: string, projX: number, projY: number) => void
 }
 
 function normalizeAngle(angle: number): number {
@@ -83,6 +90,9 @@ export function useToolInteraction({
   disabledRef,
   requiresCitationRef,
   onToolBlocked,
+  extendPhaseRef,
+  extendPreviewRef,
+  onCommitExtend,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -123,8 +133,8 @@ export function useToolInteraction({
     function handlePointerDown(e: PointerEvent) {
       // Disable all tool gestures when disabled (e.g. given-setup mode)
       if (disabledRef?.current) return
-      // Disable tool gestures when Move or Extend tool is active (their own handlers take over)
-      if (activeToolRef.current === 'move' || activeToolRef.current === 'extend') return
+      // Disable tool gestures when Move tool is active (its own handler takes over)
+      if (activeToolRef.current === 'move') return
 
       const rect = getCanvasRect()
       if (!rect) return
@@ -189,8 +199,49 @@ export function useToolInteraction({
         return
       }
 
+      // ── Extend tool: three-click interaction ──
+      if (tool === 'extend' && extendPhaseRef && extendPreviewRef) {
+        const extPhase = extendPhaseRef.current
+
+        if (extPhase.tag === 'idle') {
+          if (hitPt) {
+            e.stopPropagation()
+            extendPhaseRef.current = { tag: 'base-set', baseId: hitPt.id }
+            requestDraw()
+          }
+          return
+        }
+
+        if (extPhase.tag === 'base-set') {
+          if (hitPt && hitPt.id !== extPhase.baseId) {
+            e.stopPropagation()
+            extendPhaseRef.current = { tag: 'extending', baseId: extPhase.baseId, throughId: hitPt.id }
+            requestDraw()
+          }
+          return
+        }
+
+        if (extPhase.tag === 'extending') {
+          e.stopPropagation()
+          const preview = extendPreviewRef.current
+          if (preview) {
+            onCommitExtend?.(extPhase.baseId, extPhase.throughId, preview.x, preview.y)
+          }
+          extendPhaseRef.current = { tag: 'idle' }
+          extendPreviewRef.current = null
+          requestDraw()
+          return
+        }
+        return
+      }
+
       // ── Tool gestures ──
-      console.log('[macro-debug] pointerdown tool=%s hitPt=%s macroPhase=%o', tool, hitPt?.id ?? 'none', macroPhaseRef.current)
+      console.log(
+        '[macro-debug] pointerdown tool=%s hitPt=%s macroPhase=%o',
+        tool,
+        hitPt?.id ?? 'none',
+        macroPhaseRef.current
+      )
       if (!hitPt) {
         requestDraw()
         return
@@ -225,10 +276,18 @@ export function useToolInteraction({
           e.stopPropagation()
 
           const newSelected = [...macro.selectedPointIds, hitPt.id]
-          console.log('[macro-debug] selecting: newSelected=%o inputLabels=%o', newSelected, macro.inputLabels)
+          console.log(
+            '[macro-debug] selecting: newSelected=%o inputLabels=%o',
+            newSelected,
+            macro.inputLabels
+          )
           if (newSelected.length >= macro.inputLabels.length) {
             // All inputs collected — commit
-            console.log('[macro-debug] committing macro propId=%d inputs=%o', macro.propId, newSelected)
+            console.log(
+              '[macro-debug] committing macro propId=%d inputs=%o',
+              macro.propId,
+              newSelected
+            )
             const idlePhase: MacroPhase = { tag: 'idle' }
             macroPhaseRef.current = idlePhase
             onMacroPhaseChange?.(idlePhase)
@@ -420,6 +479,33 @@ export function useToolInteraction({
         return
       }
 
+      // ── Extend: project cursor onto ray in 'extending' phase ──
+      if (activeToolRef.current === 'extend' && extendPhaseRef && extendPreviewRef) {
+        const extPhase = extendPhaseRef.current
+        if (extPhase.tag === 'extending') {
+          const basePt = getPoint(state, extPhase.baseId)
+          const throughPt = getPoint(state, extPhase.throughId)
+          if (basePt && throughPt) {
+            const dx = throughPt.x - basePt.x
+            const dy = throughPt.y - basePt.y
+            const len = Math.sqrt(dx * dx + dy * dy)
+            if (len > 0.001) {
+              const dirX = dx / len
+              const dirY = dy / len
+              const cx = world.x - throughPt.x
+              const cy = world.y - throughPt.y
+              const t = Math.max(0, cx * dirX + cy * dirY)
+              extendPreviewRef.current = {
+                x: throughPt.x + dirX * t,
+                y: throughPt.y + dirY * t,
+              }
+            }
+          }
+        }
+        requestDraw()
+        return
+      }
+
       requestDraw()
     }
 
@@ -493,6 +579,8 @@ export function useToolInteraction({
     function handlePointerCancel() {
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
+      if (extendPhaseRef) extendPhaseRef.current = { tag: 'idle' }
+      if (extendPreviewRef) extendPreviewRef.current = null
       const idlePhase: MacroPhase = { tag: 'idle' }
       macroPhaseRef.current = idlePhase
       onMacroPhaseChange?.(idlePhase)
@@ -536,5 +624,8 @@ export function useToolInteraction({
     onPlaceFreePoint,
     getCanvasRect,
     onToolBlocked,
+    extendPhaseRef,
+    extendPreviewRef,
+    onCommitExtend,
   ])
 }

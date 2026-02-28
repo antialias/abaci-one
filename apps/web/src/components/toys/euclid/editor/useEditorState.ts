@@ -7,15 +7,75 @@ import type {
   SerializedStep,
   SerializedAction,
   SerializedElement,
+  SerializedEqualityFact,
   ProofJSON,
-  ActiveTool,
 } from '../types'
 import { BYRNE } from '../types'
-import { createInitialState, addPoint, addSegment, getPoint } from '../engine/constructionState'
+import { getPoint } from '../engine/constructionState'
 import type { FactStore } from '../engine/factStore'
 import { createFactStore, rebuildFactStore } from '../engine/factStore'
+import { addFact } from '../engine/factStore'
+import { distancePair } from '../engine/facts'
 import type { ProofFact } from '../engine/facts'
 import { PROPOSITION_REFS } from './propositionReference'
+
+// ── Constraint enforcement ──
+
+/**
+ * Enforce equality constraints by adjusting point positions.
+ * Convention: the left side of each fact is the reference length;
+ * the right side's second point (right.b) is moved along the ray
+ * from right.a to match.  Multiple iterations handle chains.
+ */
+function enforceEqualityConstraints(
+  elements: SerializedElement[],
+  facts: SerializedEqualityFact[]
+): SerializedElement[] {
+  if (facts.length === 0) return elements
+
+  // Build mutable position map
+  const positions = new Map<string, { x: number; y: number }>()
+  for (const el of elements) {
+    if (el.kind === 'point' && el.id && el.x != null && el.y != null) {
+      positions.set(el.id, { x: el.x, y: el.y })
+    }
+  }
+
+  let anyChanged = false
+  for (let iter = 0; iter < 3; iter++) {
+    for (const fact of facts) {
+      const pLA = positions.get(fact.left.a)
+      const pLB = positions.get(fact.left.b)
+      const pRA = positions.get(fact.right.a)
+      const pRB = positions.get(fact.right.b)
+      if (!pLA || !pLB || !pRA || !pRB) continue
+
+      const targetLen = Math.hypot(pLB.x - pLA.x, pLB.y - pLA.y)
+      const dx = pRB.x - pRA.x
+      const dy = pRB.y - pRA.y
+      const currentLen = Math.hypot(dx, dy)
+      if (currentLen < 0.001) continue
+      if (Math.abs(currentLen - targetLen) < 0.001) continue
+
+      const scale = targetLen / currentLen
+      pRB.x = pRA.x + dx * scale
+      pRB.y = pRA.y + dy * scale
+      anyChanged = true
+    }
+  }
+
+  if (!anyChanged) return elements
+
+  return elements.map((el) => {
+    if (el.kind === 'point' && el.id) {
+      const pos = positions.get(el.id)
+      if (pos && (pos.x !== el.x || pos.y !== el.y)) {
+        return { ...el, x: pos.x, y: pos.y }
+      }
+    }
+    return el
+  })
+}
 
 // ── Editor mode ──
 
@@ -52,6 +112,7 @@ export function useEditorState({
   const [mode, setMode] = useState<EditorMode>('given-setup')
   const [steps, setSteps] = useState<SerializedStep[]>([])
   const [givenElements, setGivenElements] = useState<SerializedElement[]>([])
+  const [givenFacts, setGivenFacts] = useState<SerializedEqualityFact[]>([])
   const [authorNotes, setAuthorNotes] = useState('')
   const [activeCitation, setActiveCitation] = useState<string | null>(null)
   const [proofFacts, setProofFacts] = useState<ProofFact[]>([])
@@ -96,6 +157,29 @@ export function useEditorState({
     return el.id
   }, [])
 
+  /** Add a given point that was already created in constructionState (unified point tool path) */
+  const addGivenPointFromConstruction = useCallback(
+    (pointId: string, label: string, x: number, y: number) => {
+      const el: SerializedElement = {
+        kind: 'point',
+        id: pointId,
+        label,
+        x,
+        y,
+        color: BYRNE.given,
+        origin: 'given',
+      }
+      setGivenElements((prev) => [...prev, el])
+      // Keep nextLabelRef in sync
+      const idx = label.charCodeAt(0) - 65
+      if (idx >= nextLabelRef.current) {
+        nextLabelRef.current = idx + 1
+      }
+      setDirty(true)
+    },
+    []
+  )
+
   const addGivenSegment = useCallback(
     (fromId: string, toId: string) => {
       const segCount = givenElements.filter((e) => e.kind === 'segment').length
@@ -113,10 +197,86 @@ export function useEditorState({
     [givenElements]
   )
 
-  const updateGivenPointPosition = useCallback((pointId: string, x: number, y: number) => {
-    setGivenElements((prev) => prev.map((el) => (el.id === pointId ? { ...el, x, y } : el)))
-    setDirty(true)
-  }, [])
+  /** Sync point positions from givenElements into constructionRef */
+  const syncPositionsToConstruction = useCallback(
+    (elements: SerializedElement[]) => {
+      const posMap = new Map<string, { x: number; y: number }>()
+      for (const el of elements) {
+        if (el.kind === 'point' && el.id && el.x != null && el.y != null) {
+          posMap.set(el.id, { x: el.x, y: el.y })
+        }
+      }
+      let changed = false
+      const updatedEls = constructionRef.current.elements.map((cel) => {
+        if (cel.kind === 'point') {
+          const pos = posMap.get(cel.id)
+          if (pos && (pos.x !== cel.x || pos.y !== cel.y)) {
+            changed = true
+            return { ...cel, x: pos.x, y: pos.y }
+          }
+        }
+        return cel
+      })
+      if (changed) {
+        constructionRef.current = { ...constructionRef.current, elements: updatedEls }
+      }
+    },
+    [constructionRef]
+  )
+
+  const updateGivenPointPosition = useCallback(
+    (pointId: string, x: number, y: number) => {
+      let enforcedResult: SerializedElement[] | null = null
+      setGivenElements((prev) => {
+        const updated = prev.map((el) => (el.id === pointId ? { ...el, x, y } : el))
+        const enforced = enforceEqualityConstraints(updated, givenFacts)
+        enforcedResult = enforced
+        return enforced
+      })
+      // Sync any constraint-adjusted positions back to constructionRef
+      if (enforcedResult) {
+        syncPositionsToConstruction(enforcedResult)
+      }
+      setDirty(true)
+    },
+    [givenFacts, syncPositionsToConstruction]
+  )
+
+  const deleteGivenElement = useCallback(
+    (elementId: string) => {
+      setGivenElements((prev) => {
+        // If deleting a point, also remove segments that reference it
+        const el = prev.find((e) => e.id === elementId)
+        if (el?.kind === 'point') {
+          return prev.filter(
+            (e) => e.id !== elementId && e.fromId !== elementId && e.toId !== elementId
+          )
+        }
+        return prev.filter((e) => e.id !== elementId)
+      })
+      // Also remove givenFacts that reference the deleted point
+      setGivenFacts((prev) =>
+        prev.filter(
+          (f) =>
+            f.left.a !== elementId &&
+            f.left.b !== elementId &&
+            f.right.a !== elementId &&
+            f.right.b !== elementId
+        )
+      )
+      // Also remove from construction state
+      constructionRef.current = {
+        ...constructionRef.current,
+        elements: constructionRef.current.elements.filter((e) => {
+          if (e.id === elementId) return false
+          if (e.kind === 'segment' && (e.fromId === elementId || e.toId === elementId)) return false
+          return true
+        }),
+      }
+      setDirty(true)
+    },
+    [constructionRef]
+  )
 
   const renameGivenPoint = useCallback((pointId: string, newLabel: string) => {
     const newId = `pt-${newLabel}`
@@ -130,6 +290,69 @@ export function useEditorState({
         return el
       })
     )
+    // Also rename in givenFacts
+    setGivenFacts((prev) =>
+      prev.map((fact) => {
+        const left = { ...fact.left }
+        const right = { ...fact.right }
+        let changed = false
+        if (left.a === pointId) {
+          left.a = newId
+          changed = true
+        }
+        if (left.b === pointId) {
+          left.b = newId
+          changed = true
+        }
+        if (right.a === pointId) {
+          right.a = newId
+          changed = true
+        }
+        if (right.b === pointId) {
+          right.b = newId
+          changed = true
+        }
+        if (!changed) return fact
+        // Regenerate statement from point IDs
+        const lbl = (id: string) => id.replace('pt-', '')
+        const statement = `${lbl(left.a)}${lbl(left.b)} = ${lbl(right.a)}${lbl(right.b)}`
+        return { left, right, statement }
+      })
+    )
+    setDirty(true)
+  }, [])
+
+  // ── Given fact (equality) management ──
+
+  const addGivenFact = useCallback(
+    (leftA: string, leftB: string, rightA: string, rightB: string) => {
+      const labelFor = (id: string) => {
+        const pt = givenElements.find((e) => e.id === id)
+        return pt?.label ?? id.replace('pt-', '')
+      }
+      const statement = `${labelFor(leftA)}${labelFor(leftB)} = ${labelFor(rightA)}${labelFor(rightB)}`
+      const fact: SerializedEqualityFact = {
+        left: { a: leftA, b: leftB },
+        right: { a: rightA, b: rightB },
+        statement,
+      }
+      const newFacts = [...givenFacts, fact]
+      setGivenFacts(newFacts)
+
+      // Enforce constraint immediately — snap the right-side endpoint
+      const enforced = enforceEqualityConstraints(givenElements, newFacts)
+      if (enforced !== givenElements) {
+        setGivenElements(enforced)
+        syncPositionsToConstruction(enforced)
+      }
+
+      setDirty(true)
+    },
+    [givenElements, givenFacts, syncPositionsToConstruction]
+  )
+
+  const deleteGivenFact = useCallback((index: number) => {
+    setGivenFacts((prev) => prev.filter((_, i) => i !== index))
     setDirty(true)
   }, [])
 
@@ -186,20 +409,30 @@ export function useEditorState({
     candidatesRef.current = []
     factStoreRef.current = createFactStore()
     ghostLayersRef.current = []
-    proofFactsRef.current = []
-    setProofFacts([])
+
+    // Pre-load given facts into the fact store
+    const initialFacts: ProofFact[] = []
+    for (const gf of givenFacts) {
+      const left = distancePair(gf.left.a, gf.left.b)
+      const right = distancePair(gf.right.a, gf.right.b)
+      initialFacts.push(
+        ...addFact(factStoreRef.current, left, right, { type: 'given' }, gf.statement, 'Given', -1)
+      )
+    }
+    proofFactsRef.current = initialFacts
+    setProofFacts(initialFacts)
 
     // Reset snapshot stack with initial state
     snapshotStackRef.current = [
       {
         construction: constructionRef.current,
         candidates: [],
-        proofFacts: [],
+        proofFacts: initialFacts,
         ghostLayers: [],
         steps: [],
       },
     ]
-  }, [givenElements, constructionRef, candidatesRef, factStoreRef, ghostLayersRef])
+  }, [givenElements, givenFacts, constructionRef, candidatesRef, factStoreRef, ghostLayersRef])
 
   // ── Start proof mode ──
 
@@ -212,16 +445,110 @@ export function useEditorState({
   // ── Return to given setup ──
 
   const editGiven = useCallback(() => {
-    setMode('given-setup')
     setSteps([])
     setActiveCitation(null)
-    constructionRef.current = createInitialState()
     candidatesRef.current = []
     factStoreRef.current = createFactStore()
     ghostLayersRef.current = []
     proofFactsRef.current = []
     setProofFacts([])
     snapshotStackRef.current = []
+    // Rebuild construction from given elements so the main RAF loop renders them
+    initializeConstruction()
+    setMode('given-setup')
+  }, [candidatesRef, factStoreRef, ghostLayersRef, initializeConstruction])
+
+  // ── Reset everything ──
+
+  // ── Full-state snapshot for undo after reset ──
+
+  interface FullSnapshot {
+    mode: EditorMode
+    steps: SerializedStep[]
+    givenElements: SerializedElement[]
+    givenFacts: SerializedEqualityFact[]
+    authorNotes: string
+    activeCitation: string | null
+    proofFacts: ProofFact[]
+    nextLabel: number
+    candidates: IntersectionCandidate[]
+    factStore: FactStore
+    ghostLayers: GhostLayer[]
+    snapshotStack: EditorSnapshot[]
+    construction: ConstructionState
+  }
+
+  const captureFullState = useCallback(
+    (): FullSnapshot => ({
+      mode,
+      steps,
+      givenElements,
+      givenFacts,
+      authorNotes,
+      activeCitation,
+      proofFacts: [...proofFactsRef.current],
+      nextLabel: nextLabelRef.current,
+      candidates: [...candidatesRef.current],
+      factStore: factStoreRef.current,
+      ghostLayers: [...ghostLayersRef.current],
+      snapshotStack: [...snapshotStackRef.current],
+      construction: constructionRef.current,
+    }),
+    [
+      mode,
+      steps,
+      givenElements,
+      givenFacts,
+      authorNotes,
+      activeCitation,
+      constructionRef,
+      candidatesRef,
+      factStoreRef,
+      ghostLayersRef,
+    ]
+  )
+
+  const restoreFullState = useCallback(
+    (snap: FullSnapshot) => {
+      setMode(snap.mode)
+      setSteps(snap.steps)
+      setGivenElements(snap.givenElements)
+      setGivenFacts(snap.givenFacts)
+      setAuthorNotes(snap.authorNotes)
+      setActiveCitation(snap.activeCitation)
+      proofFactsRef.current = snap.proofFacts
+      setProofFacts(snap.proofFacts)
+      nextLabelRef.current = snap.nextLabel
+      candidatesRef.current = snap.candidates
+      factStoreRef.current = snap.factStore
+      ghostLayersRef.current = snap.ghostLayers
+      snapshotStackRef.current = snap.snapshotStack
+      constructionRef.current = snap.construction
+      setDirty(true)
+    },
+    [constructionRef, candidatesRef, factStoreRef, ghostLayersRef]
+  )
+
+  const resetAll = useCallback(() => {
+    setSteps([])
+    setGivenElements([])
+    setGivenFacts([])
+    setActiveCitation(null)
+    setAuthorNotes('')
+    setProofFacts([])
+    proofFactsRef.current = []
+    nextLabelRef.current = 0
+    candidatesRef.current = []
+    factStoreRef.current = createFactStore()
+    ghostLayersRef.current = []
+    snapshotStackRef.current = []
+    constructionRef.current = {
+      elements: [],
+      nextLabelIndex: 0,
+      nextColorIndex: 0,
+    }
+    setMode('given-setup')
+    setDirty(true)
   }, [constructionRef, candidatesRef, factStoreRef, ghostLayersRef])
 
   // ── Add step ──
@@ -332,6 +659,8 @@ export function useEditorState({
           return `Apply I.${action.propId}.`
         case 'fact-only':
           return `By ${citation}.`
+        case 'extend':
+          return `Extend ${label(action.baseId)}${label(action.throughId)} beyond ${label(action.throughId)} to ${action.label}.`
       }
     },
     [constructionRef]
@@ -346,9 +675,10 @@ export function useEditorState({
       kind: ref?.type === 'C' ? 'construction' : 'theorem',
       givenElements,
       steps,
+      givenFacts: givenFacts.length > 0 ? givenFacts : undefined,
       authorNotes: authorNotes || undefined,
     }
-  }, [propositionId, ref, givenElements, steps, authorNotes])
+  }, [propositionId, ref, givenElements, steps, givenFacts, authorNotes])
 
   // ── Save to API ──
 
@@ -386,6 +716,7 @@ export function useEditorState({
       }
       const data: ProofJSON = await res.json()
       setGivenElements(data.givenElements)
+      setGivenFacts(data.givenFacts ?? [])
       setSteps(data.steps)
       setAuthorNotes(data.authorNotes ?? '')
 
@@ -427,6 +758,7 @@ export function useEditorState({
     mode,
     steps,
     givenElements,
+    givenFacts,
     authorNotes,
     activeCitation,
     proofFacts,
@@ -443,14 +775,23 @@ export function useEditorState({
 
     // Given element management
     addGivenPoint,
+    addGivenPointFromConstruction,
     addGivenSegment,
     updateGivenPointPosition,
     renameGivenPoint,
+    deleteGivenElement,
+
+    // Given fact (equality) management
+    addGivenFact,
+    deleteGivenFact,
 
     // Construction
     initializeConstruction,
     startProof,
     editGiven,
+    resetAll,
+    captureFullState,
+    restoreFullState,
 
     // Steps
     addStep,

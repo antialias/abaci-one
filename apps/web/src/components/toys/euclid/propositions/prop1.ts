@@ -33,10 +33,7 @@ const PROP_1_STEP_INSTRUCTIONS: Record<KidLanguageStyle, string[]> = {
   ],
 }
 
-function getProp1Tutorial(
-  isTouch: boolean,
-  options?: EuclidNarrationOptions
-): TutorialSubStep[][] {
+function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): TutorialSubStep[][] {
   const style = options?.languageStyle ?? DEFAULT_LANGUAGE_STYLE
   const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
   const drag = isTouch ? 'Drag' : 'Drag'
@@ -122,7 +119,8 @@ function getProp1Tutorial(
           simple: 'Drag to A to set the radius BA. Every point on this circle is BA away from B.',
           standard:
             'Drag to A to make the radius BA. Every point on this circle is BA away from B.',
-          classical: 'Drag to A so the radius is BA. Every point on this circle is at distance BA from B.',
+          classical:
+            'Drag to A so the radius is BA. Every point on this circle is at distance BA from B.',
         }),
         hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-A' },
         advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
@@ -149,8 +147,7 @@ function getProp1Tutorial(
       {
         instruction: `${tap} where the circles cross`,
         speech: byStyle({
-          simple:
-            'Tap where the circles cross. That point is the same distance from A and from B.',
+          simple: 'Tap where the circles cross. That point is the same distance from A and from B.',
           standard:
             'Mark a point where the circles meet. That point is on both circles, so it is the same distance from A as from B.',
           classical:
@@ -281,12 +278,12 @@ export const PROP_1: PropositionDef = {
     pointTips: [
       {
         pointId: 'pt-A',
-        speech:
-          'No matter where A moves, C stays on both circles, so CA and AB remain equal.',
+        speech: 'No matter where A moves, C stays on both circles, so CA and AB remain equal.',
       },
       {
         pointId: 'pt-B',
-        speech: 'C stays the same distance from B as A is from B, so the triangle stays equilateral.',
+        speech:
+          'C stays the same distance from B as A is from B, so the triangle stays equilateral.',
       },
     ],
   },
@@ -311,8 +308,7 @@ export const PROP_1: PropositionDef = {
       pointTips: [
         {
           pointId: 'pt-A',
-          speech:
-            'No matter where A moves, C stays on both circles, so CA and AB remain equal.',
+          speech: 'No matter where A moves, C stays on both circles, so CA and AB remain equal.',
         },
         {
           pointId: 'pt-B',
@@ -327,13 +323,11 @@ export const PROP_1: PropositionDef = {
       pointTips: [
         {
           pointId: 'pt-A',
-          speech:
-            'Because C remains on the circle with center A, CA is always equal to AB.',
+          speech: 'Because C remains on the circle with center A, CA is always equal to AB.',
         },
         {
           pointId: 'pt-B',
-          speech:
-            'Because C remains on the circle with center B, CB is always equal to AB.',
+          speech: 'Because C remains on the circle with center B, CB is always equal to AB.',
         },
       ],
     },

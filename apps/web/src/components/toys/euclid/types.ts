@@ -135,6 +135,7 @@ export type TutorialHint =
 export type AdvanceOn =
   | { kind: 'compass-phase'; phase: 'center-set' | 'radius-set' }
   | { kind: 'macro-select'; index: number }
+  | { kind: 'extend-phase'; phase: 'base-set' | 'extending' }
 
 export interface TutorialSubStep {
   /** Short display text */

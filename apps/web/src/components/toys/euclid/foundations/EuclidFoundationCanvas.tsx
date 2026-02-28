@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import type { FoundationDiagram } from './foundationsData'
-import type { ConstructionState, EuclidViewportState, CompassPhase, StraightedgePhase } from '../types'
+import type {
+  ConstructionState,
+  EuclidViewportState,
+  CompassPhase,
+  StraightedgePhase,
+} from '../types'
 import { initializeGiven, getAllCircles, getPoint, getRadius } from '../engine/constructionState'
 import { renderConstruction } from '../render/renderConstruction'
 import { renderEqualityMarks } from '../render/renderEqualityMarks'
@@ -47,7 +52,11 @@ function computeBounds(state: ConstructionState) {
   return { minX, minY, maxX, maxY }
 }
 
-function computeViewport(state: ConstructionState, width: number, height: number): EuclidViewportState {
+function computeViewport(
+  state: ConstructionState,
+  width: number,
+  height: number
+): EuclidViewportState {
   const bounds = computeBounds(state)
   if (!bounds) return { center: { x: 0, y: 0 }, pixelsPerUnit: 60 }
 

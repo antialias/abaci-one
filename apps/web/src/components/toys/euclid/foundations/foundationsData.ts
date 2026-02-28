@@ -108,7 +108,11 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
   'def-3': {
     id: 'def-3',
     title: 'Ends of a Line',
-    elements: [pt('pt-A', -2, 0, 'A', red), pt('pt-B', 2, 0, 'B', red), seg('seg-AB', 'pt-A', 'pt-B')],
+    elements: [
+      pt('pt-A', -2, 0, 'A', red),
+      pt('pt-B', 2, 0, 'B', red),
+      seg('seg-AB', 'pt-A', 'pt-B'),
+    ],
     animation: {
       type: 'line-draw-then-pulse',
       fromId: 'pt-A',
@@ -306,7 +310,12 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
       seg('seg-OB', 'pt-O', 'pt-B', blue),
       circle('cir-1', 'pt-O', 'pt-B', blue),
     ],
-    equalSegmentGroups: [[{ fromId: 'pt-O', toId: 'pt-A' }, { fromId: 'pt-O', toId: 'pt-B' }]],
+    equalSegmentGroups: [
+      [
+        { fromId: 'pt-O', toId: 'pt-A' },
+        { fromId: 'pt-O', toId: 'pt-B' },
+      ],
+    ],
     arcOverlays: [
       {
         centerId: 'pt-O',
@@ -512,7 +521,11 @@ export const FOUNDATION_DIAGRAMS: Record<string, FoundationDiagram> = {
   'post-1': {
     id: 'post-1',
     title: 'Draw a Line',
-    elements: [pt('pt-A', -2, 0, 'A', red), pt('pt-B', 2, 0, 'B', red), seg('seg-AB', 'pt-A', 'pt-B', blue)],
+    elements: [
+      pt('pt-A', -2, 0, 'A', red),
+      pt('pt-B', 2, 0, 'B', red),
+      seg('seg-AB', 'pt-A', 'pt-B', blue),
+    ],
     animation: { type: 'line-draw', fromId: 'pt-A', toId: 'pt-B', durationMs: 2000 },
   },
   'post-2': {
@@ -778,7 +791,8 @@ export const FOUNDATION_ITEMS: FoundationItem[] = [
     title: 'Right Angle / Perpendicular',
     statement:
       'When a straight line standing on a straight line makes the adjacent angles equal to one another, each of the equal angles is right, and the straight line standing on the other is called a perpendicular to that on which it stands.',
-    plain: 'If two adjacent angles are equal, each is a right angle; the standing line is perpendicular.',
+    plain:
+      'If two adjacent angles are equal, each is a right angle; the standing line is perpendicular.',
     diagramId: 'def-10',
   },
   {
@@ -863,7 +877,8 @@ export const FOUNDATION_ITEMS: FoundationItem[] = [
     title: 'Rectilinear Figures',
     statement:
       'Rectilinear figures are those which are contained by straight lines, trilateral figures those contained by three, quadrilateral those contained by four, and multilateral those contained by more than four straight lines.',
-    plain: 'Rectilinear figures use straight sides: 3 for triangles, 4 for quadrilaterals, more for multilateral.',
+    plain:
+      'Rectilinear figures use straight sides: 3 for triangles, 4 for quadrilaterals, more for multilateral.',
     diagramId: 'def-19',
   },
   {
@@ -873,7 +888,8 @@ export const FOUNDATION_ITEMS: FoundationItem[] = [
     title: 'Triangles by Sides',
     statement:
       'Of trilateral figures, an equilateral triangle is that which has its three sides equal, an isosceles triangle that which has two of its sides equal, and a scalene triangle that which has its three sides unequal.',
-    plain: 'Equilateral has 3 equal sides, isosceles has 2 equal sides, scalene has no equal sides.',
+    plain:
+      'Equilateral has 3 equal sides, isosceles has 2 equal sides, scalene has no equal sides.',
     diagramId: 'def-20',
   },
   {

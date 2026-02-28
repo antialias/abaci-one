@@ -2,6 +2,7 @@ import type {
   ActiveTool,
   CompassPhase,
   StraightedgePhase,
+  ExtendPhase,
   ConstructionState,
   EuclidViewportState,
 } from '../types'
@@ -684,12 +685,11 @@ export function renderToolOverlay(
   h: number,
   nextColor: string,
   isComplete: boolean,
-  straightedgeDrawAnim: StraightedgeDrawAnim | null
+  straightedgeDrawAnim: StraightedgeDrawAnim | null,
+  extendPhase?: ExtendPhase,
+  extendPreview?: { x: number; y: number } | null
 ): void {
   const ppu = viewport.pixelsPerUnit
-
-  // Extend tool handles its own preview rendering in the editor RAF loop
-  if (activeTool === 'extend') return
 
   // ── Straightedge drawing animation (takes priority over everything) ──
 
@@ -923,6 +923,85 @@ export function renderToolOverlay(
       const trailY = tipY + sinA * STRAIGHTEDGE_IDLE_LENGTH
       renderStraightedgeBar(ctx, tipX, tipY, trailX, trailY, 0.4)
       renderStraightedgeEndpoint(ctx, tipX, tipY, trailX, trailY, 0.4)
+    }
+  }
+
+  // ── Extend tool preview ──
+
+  if (activeTool === 'extend' && extendPhase) {
+    // Clear straightedge physics when switching tools
+    sePhysics.initialized = false
+
+    if (extendPhase.tag === 'base-set') {
+      // Highlight the selected base point with a colored ring
+      const basePt = getPoint(state, extendPhase.baseId)
+      if (basePt) {
+        const bs = toScreen(basePt.x, basePt.y, viewport, w, h)
+        ctx.beginPath()
+        ctx.arc(bs.x, bs.y, 10, 0, Math.PI * 2)
+        ctx.strokeStyle = nextColor
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+      }
+    }
+
+    if (extendPhase.tag === 'extending') {
+      const basePt = getPoint(state, extendPhase.baseId)
+      const throughPt = getPoint(state, extendPhase.throughId)
+      if (basePt && throughPt) {
+        const as = toScreen(basePt.x, basePt.y, viewport, w, h)
+        const bs = toScreen(throughPt.x, throughPt.y, viewport, w, h)
+
+        // Draw faint infinite ray from A through B
+        const rdx = bs.x - as.x
+        const rdy = bs.y - as.y
+        const rlen = Math.sqrt(rdx * rdx + rdy * rdy)
+        if (rlen > 0.1) {
+          const extend = Math.max(w, h) * 2
+          const rnx = rdx / rlen
+          const rny = rdy / rlen
+          ctx.beginPath()
+          ctx.moveTo(as.x, as.y)
+          ctx.lineTo(as.x + rnx * extend, as.y + rny * extend)
+          ctx.strokeStyle = 'rgba(100, 100, 100, 0.15)'
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
+
+        if (extendPreview) {
+          const ps = toScreen(extendPreview.x, extendPreview.y, viewport, w, h)
+
+          // Dashed colored segment from B to projected cursor position
+          ctx.beginPath()
+          ctx.moveTo(bs.x, bs.y)
+          ctx.lineTo(ps.x, ps.y)
+          ctx.strokeStyle = nextColor
+          ctx.lineWidth = 2
+          ctx.setLineDash([8, 4])
+          ctx.stroke()
+          ctx.setLineDash([])
+
+          // Small circle at projected cursor (point preview)
+          ctx.beginPath()
+          ctx.arc(ps.x, ps.y, 4, 0, Math.PI * 2)
+          ctx.fillStyle = nextColor
+          ctx.fill()
+          ctx.beginPath()
+          ctx.arc(ps.x, ps.y, 4, 0, Math.PI * 2)
+          ctx.strokeStyle = 'rgba(40, 40, 40, 0.5)'
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
+
+        // Highlight through point with dashed ring
+        ctx.beginPath()
+        ctx.arc(bs.x, bs.y, 10, 0, Math.PI * 2)
+        ctx.strokeStyle = nextColor
+        ctx.lineWidth = 2
+        ctx.setLineDash([4, 3])
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
     }
   }
 }

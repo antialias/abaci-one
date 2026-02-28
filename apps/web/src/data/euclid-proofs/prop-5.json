@@ -7,11 +7,120 @@
       "kind": "point",
       "id": "pt-A",
       "label": "A",
-      "x": 0.5,
-      "y": 6.5,
+      "x": -1,
+      "y": 5.5,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-B",
+      "label": "B",
+      "x": -3.5,
+      "y": 0,
+      "color": "#1A1A2E",
+      "origin": "given"
+    },
+    {
+      "kind": "point",
+      "id": "pt-C",
+      "label": "C",
+      "x": 3.544392212854822,
+      "y": 1.5189826154933153,
       "color": "#1A1A2E",
       "origin": "given"
     }
   ],
-  "steps": []
+  "steps": [
+    {
+      "citation": "Def.20",
+      "instruction": "Draw segment from A to C.",
+      "action": {
+        "type": "straightedge",
+        "fromId": "pt-A",
+        "toId": "pt-C"
+      }
+    },
+    {
+      "citation": "Def.20",
+      "instruction": "Draw segment from A to B.",
+      "action": {
+        "type": "straightedge",
+        "fromId": "pt-A",
+        "toId": "pt-B"
+      }
+    },
+    {
+      "citation": "Post.2",
+      "instruction": "Extend AB beyond B to D.",
+      "action": {
+        "type": "extend",
+        "baseId": "pt-A",
+        "throughId": "pt-B",
+        "distance": 6.833793983358936,
+        "label": "D"
+      }
+    },
+    {
+      "citation": "Post.2",
+      "instruction": "Extend AC beyond C to E.",
+      "action": {
+        "type": "extend",
+        "baseId": "pt-A",
+        "throughId": "pt-C",
+        "distance": 3.0620402784254077,
+        "label": "E"
+      }
+    },
+    {
+      "citation": "Def.15",
+      "instruction": "Draw circle centered at A through E.",
+      "action": {
+        "type": "compass",
+        "centerId": "pt-A",
+        "radiusPointId": "pt-E"
+      }
+    },
+    {
+      "citation": "Post.1",
+      "instruction": "Draw segment from F to C.",
+      "action": {
+        "type": "straightedge",
+        "fromId": "pt-F",
+        "toId": "pt-C"
+      }
+    },
+    {
+      "citation": "Post.1",
+      "instruction": "Draw segment from E to B.",
+      "action": {
+        "type": "straightedge",
+        "fromId": "pt-E",
+        "toId": "pt-B"
+      }
+    },
+    {
+      "citation": "Post.1",
+      "instruction": "Draw segment from B to C.",
+      "action": {
+        "type": "straightedge",
+        "fromId": "pt-B",
+        "toId": "pt-C"
+      },
+      "notes": "\n"
+    }
+  ],
+  "givenFacts": [
+    {
+      "left": {
+        "a": "pt-A",
+        "b": "pt-B"
+      },
+      "right": {
+        "a": "pt-A",
+        "b": "pt-C"
+      },
+      "statement": "AB = AC"
+    }
+  ]
 }

@@ -132,20 +132,21 @@ export function EditorStepList({
             <div
               key={i}
               data-element="editor-step"
-              onClick={() => onRewind(i)}
               onMouseEnter={() => setHoveredStepIndex(i)}
               onMouseLeave={() => setHoveredStepIndex(null)}
               style={{
                 marginBottom: 12,
-                cursor: 'pointer',
                 borderRadius: 6,
                 background: isHovered ? 'rgba(78, 121, 167, 0.04)' : undefined,
                 transition: 'background 0.15s',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                {/* Step indicator */}
-                <div
+                {/* Step indicator — click to rewind */}
+                <button
+                  data-action="rewind-to-step"
+                  onClick={() => onRewind(i)}
+                  title={`Rewind to step ${i + 1}`}
                   style={{
                     width: 20,
                     height: 20,
@@ -161,10 +162,13 @@ export function EditorStepList({
                     background: isHovered ? '#0d9668' : '#10b981',
                     color: '#fff',
                     transition: 'all 0.15s ease',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
                   }}
                 >
                   {isHovered ? '\u21BA' : '\u2713'}
-                </div>
+                </button>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Instruction (editable) */}

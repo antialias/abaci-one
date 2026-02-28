@@ -71,7 +71,11 @@ export function validateStep(
   }
 
   // Extend steps: verify new point + segment beyond throughId
-  if (expected.type === 'extend' && lastElement.kind === 'point' && lastElement.origin === 'intersection') {
+  if (
+    expected.type === 'extend' &&
+    lastElement.kind === 'point' &&
+    lastElement.origin === 'intersection'
+  ) {
     return lastElement.label === expected.label
   }
 

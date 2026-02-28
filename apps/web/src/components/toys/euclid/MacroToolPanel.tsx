@@ -31,10 +31,14 @@ export function MacroToolPanel({
   onSelect,
   isMobile,
 }: MacroToolPanelProps) {
-  const selectedPropId =
-    macroPhase.tag === 'selecting' ? macroPhase.propId : null
+  const selectedPropId = macroPhase.tag === 'selecting' ? macroPhase.propId : null
 
-  console.log('[macro-debug] MacroToolPanel render macros=%d phase=%s isMobile=%s', macros.length, macroPhase.tag, isMobile)
+  console.log(
+    '[macro-debug] MacroToolPanel render macros=%d phase=%s isMobile=%s',
+    macros.length,
+    macroPhase.tag,
+    isMobile
+  )
 
   return (
     <div
@@ -69,12 +73,10 @@ export function MacroToolPanel({
 
         // Selection progress: how many points have been selected
         const selectedCount =
-          isSelected && macroPhase.tag === 'selecting'
-            ? macroPhase.selectedPointIds.length
-            : 0
+          isSelected && macroPhase.tag === 'selecting' ? macroPhase.selectedPointIds.length : 0
         const nextLabel =
           isSelected && macroPhase.tag === 'selecting'
-            ? macroPhase.inputLabels[selectedCount] ?? null
+            ? (macroPhase.inputLabels[selectedCount] ?? null)
             : null
 
         const borderColor = isSelected
@@ -189,8 +191,8 @@ export function MacroToolPanel({
               >
                 <span style={{ opacity: 0.6 }}>
                   {selectedCount}/{def.inputCount}
-                </span>
-                {' '}Select {nextLabel} →
+                </span>{' '}
+                Select {nextLabel} →
               </div>
             )}
             {isSelected && !nextLabel && macroPhase.tag === 'selecting' && (
