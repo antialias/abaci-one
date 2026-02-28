@@ -48,6 +48,7 @@ export const POST = withAuth(async (request) => {
       proofFacts: [],
       screenshotDataUrl: null,
       playgroundMode: !!playgroundMode,
+      steps: prop.steps,
     }
 
     const instructions = greetingMode.getInstructions(ctx)

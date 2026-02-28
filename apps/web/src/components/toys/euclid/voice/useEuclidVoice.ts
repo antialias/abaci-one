@@ -146,6 +146,7 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
       proofFacts: proofFactsRef.current ?? [],
       screenshotDataUrl: screenshot,
       playgroundMode,
+      steps,
     }
   }, [
     canvasRef,
@@ -158,6 +159,7 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
     totalSteps,
     isComplete,
     playgroundMode,
+    steps,
   ])
 
   const onToolCall = useCallback(
@@ -191,12 +193,12 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
             return res.json()
           })
           .then((data) => ({
-            text: `[Oracle's answer: ${data.answer}]`,
+            text: `[From your scrolls: ${data.answer}]`,
             exitMode: true,
           }))
 
         return {
-          output: { success: true, message: 'Consulting the oracle...' },
+          output: { success: true, message: 'Consulting my earlier writings...' },
           enterMode: 'thinking',
           asyncResult,
         }

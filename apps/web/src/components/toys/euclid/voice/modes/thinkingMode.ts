@@ -1,7 +1,7 @@
 /**
  * Thinking mode — brief waiting state while think_hard executes.
  *
- * Euclid has "consulted the oracle" and is waiting for the answer.
+ * Euclid is consulting his own writings and working through the proof.
  * Minimal tools — just hang_up in case they want to leave.
  */
 

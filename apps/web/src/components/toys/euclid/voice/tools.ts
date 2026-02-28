@@ -20,10 +20,10 @@ export const TOOL_THINK_HARD: RealtimeTool = {
   type: 'function',
   name: 'think_hard',
   description:
-    'Consult a powerful reasoning oracle for difficult geometric questions. ' +
+    'Consult your own earlier writings and work through a proof carefully. ' +
     'Use this when the student asks something that requires deep geometric reasoning, ' +
-    'visual analysis of the construction, or when you are unsure of the correct answer. ' +
-    'The oracle can see the current construction and will reason carefully. ' +
+    'visual analysis of the construction, or when you need to verify a result against your notes. ' +
+    'You can see the current construction and will reason through it methodically. ' +
     'Set effort based on difficulty: "low" for simple clarifications, "medium" for moderate questions, ' +
     '"high" for complex proofs, "xhigh" for the hardest problems.',
   parameters: {
@@ -37,7 +37,7 @@ export const TOOL_THINK_HARD: RealtimeTool = {
       effort: {
         type: 'string',
         enum: ['low', 'medium', 'high', 'xhigh'],
-        description: 'How hard the oracle should think. Higher = slower but more thorough.',
+        description: 'How carefully to work through the proof. Higher = slower but more thorough.',
       },
     },
     required: ['question', 'effort'],

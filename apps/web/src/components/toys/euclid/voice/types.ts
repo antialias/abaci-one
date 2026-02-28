@@ -2,7 +2,7 @@
  * Types for the Euclid voice call system.
  */
 
-import type { ConstructionState } from '../types'
+import type { ConstructionState, PropositionStep } from '../types'
 import type { ProofFact } from '../engine/facts'
 
 /** Context available to Euclid voice modes. */
@@ -27,6 +27,8 @@ export interface EuclidModeContext {
   screenshotDataUrl: string | null
   /** Whether the user is in playground/exploration mode (post-completion) */
   playgroundMode: boolean
+  /** The full list of tutorial steps for this proposition */
+  steps: PropositionStep[]
 }
 
 /** Euclid voice mode IDs */

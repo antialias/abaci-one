@@ -21,9 +21,18 @@ export const conversingMode: VoiceMode<EuclidModeContext> = {
       ? `Proposition I.${ctx.propositionId}: "${propSummary.statement}" (${propSummary.type})`
       : `Proposition I.${ctx.propositionId}`
 
-    const stepInfo = ctx.isComplete
-      ? 'The construction is COMPLETE. The student is exploring freely — discuss what they have built, why it works, and what comes next.'
-      : `Step ${ctx.currentStep + 1} of ${ctx.totalSteps}. Guide them toward the next step without giving it away.`
+    // Build the full step list with current step marked
+    let stepInfo: string
+    if (ctx.isComplete) {
+      stepInfo = 'The construction is COMPLETE. The student is exploring freely — discuss what they have built, why it works, and what comes next.'
+    } else {
+      const stepLines = ctx.steps.map((step, i) => {
+        const marker = i === ctx.currentStep ? '→' : i < ctx.currentStep ? '✓' : ' '
+        const citation = step.citation ? ` [${step.citation}]` : ''
+        return `  ${marker} Step ${i + 1}: ${step.instruction}${citation}`
+      })
+      stepInfo = `The student is on step ${ctx.currentStep + 1} of ${ctx.totalSteps}.\n\nPROOF PLAN (this is the exact sequence of steps for this proposition):\n${stepLines.join('\n')}\n\nYou MUST guide the student toward the CURRENT step (marked with →). Do NOT skip ahead or suggest steps from a different proof strategy. This is YOUR proof — you wrote it. Follow it exactly.`
+    }
 
     const proofState = serializeFullProofState(ctx.construction, ctx.proofFacts)
     const referenceContext = buildReferenceContext(ctx.propositionId)
