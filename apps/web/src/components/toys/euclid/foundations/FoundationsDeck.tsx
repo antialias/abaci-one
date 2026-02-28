@@ -10,6 +10,7 @@ import {
   type FoundationCategory,
 } from './foundationsData'
 import { EuclidMap } from '../EuclidMap'
+import { useEuclidCreations } from '@/hooks/useEuclidCreations'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 
 interface FoundationsDeckProps {
@@ -18,8 +19,10 @@ interface FoundationsDeckProps {
   onFocusChange?: (id: string) => void
   completed?: Set<number>
   onSelectProp?: (propId: number) => void
+  onSelectPlayground?: () => void
   activeTab?: FoundationCategory
   onTabChange?: (tab: FoundationCategory) => void
+  playerId?: string | null
 }
 
 export function FoundationsDeck({
@@ -28,8 +31,10 @@ export function FoundationsDeck({
   onFocusChange,
   completed,
   onSelectProp,
+  onSelectPlayground,
   activeTab,
   onTabChange,
+  playerId,
 }: FoundationsDeckProps) {
   const [internalCategory, setInternalCategory] = useState<FoundationCategory>('definitions')
   const category = activeTab ?? internalCategory
@@ -68,6 +73,9 @@ export function FoundationsDeck({
 
   const primaryLabel = preferPlain ? 'In plain words' : 'Statement'
   const secondaryLabel = preferPlain ? 'Original' : preferClassical ? 'Plain words' : 'Plain words'
+
+  const { data: creations } = useEuclidCreations('mine', playerId)
+  const creationCount = creations?.length ?? 0
 
   const [showAll, setShowAll] = useState(false)
   const isMapView = category === 'propositions'
@@ -218,6 +226,54 @@ export function FoundationsDeck({
             </button>
           )
         })}
+
+        {/* Playground pill */}
+        {onSelectPlayground && (
+          <button
+            type="button"
+            data-action="open-playground"
+            onClick={onSelectPlayground}
+            className={css({
+              padding: '0.35rem 0.7rem',
+              borderRadius: '999px',
+              border: '1px solid rgba(139, 92, 246, 0.4)',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            })}
+            style={{
+              WebkitBackdropFilter: 'blur(12px)',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              color: '#6d28d9',
+            }}
+          >
+            Playground
+            {creationCount > 0 && (
+              <span
+                className={css({
+                  fontSize: '0.65rem',
+                  fontWeight: '700',
+                  borderRadius: '999px',
+                  padding: '0.05rem 0.35rem',
+                  lineHeight: '1.4',
+                })}
+                style={{
+                  backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                  color: '#7c3aed',
+                }}
+              >
+                {creationCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Spacer for fixed tab pills */}

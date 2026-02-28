@@ -127,6 +127,13 @@ export default function EuclidPage() {
                 : ''
               router.push(`/toys/euclid/${propId}${params}`)
             }}
+            onSelectPlayground={() => {
+              const params = selectedPlayerId
+                ? `?player=${encodeURIComponent(selectedPlayerId)}`
+                : ''
+              router.push(`/toys/euclid/playground${params}`)
+            }}
+            playerId={selectedPlayerId}
           />
         </div>
       </main>
