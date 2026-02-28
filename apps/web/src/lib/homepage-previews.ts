@@ -17,7 +17,7 @@ import {
   getPoint,
   getRadius,
 } from '@/components/toys/euclid/engine/constructionState'
-import { PROP_1 } from '@/components/toys/euclid/propositions/prop1'
+import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import type { ConstructionState, EuclidViewportState } from '@/components/toys/euclid/types'
 
 // ---------------------------------------------------------------------------
@@ -117,14 +117,16 @@ const euclidProp1: CanvasPreviewTarget = {
   width: 800,
   height: 500,
   render(ctx, w, h) {
-    const finalState = buildFinalState(1)
-    if (!finalState) return
-    const viewport = computeFitViewport(finalState, w, h)
+    const result = buildFinalState(1)
+    if (!result) return
+    const prop = PROP_REGISTRY[1]
+    if (!prop) return
+    const viewport = computeFitViewport(result.state, w, h)
     const idle = { tag: 'idle' as const }
 
     renderConstruction(
       ctx,
-      finalState,
+      result.state,
       viewport,
       w,
       h,
@@ -136,7 +138,7 @@ const euclidProp1: CanvasPreviewTarget = {
       0, // nextColorIndex
       null, // candidateFilter
       true, // isComplete
-      PROP_1.resultSegments,
+      prop.resultSegments,
       undefined, // hiddenElementIds
       false // transparentBg (white bg for preview)
     )

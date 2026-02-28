@@ -3,26 +3,15 @@
 import { useState, useEffect } from 'react'
 import { buildFinalState } from './buildFinalStates'
 import { renderConstruction } from './renderConstruction'
+import { renderEqualityMarks } from './renderEqualityMarks'
 import { getAllPoints, getAllCircles, getPoint, getRadius } from '../engine/constructionState'
-import { PROP_1 } from '../propositions/prop1'
-import { PROP_2 } from '../propositions/prop2'
-import { PROP_3 } from '../propositions/prop3'
-import { PROP_4 } from '../propositions/prop4'
-import { PROP_5 } from '../propositions/prop5'
+import { PROP_REGISTRY } from '../propositions/registry'
 import { IMPLEMENTED_PROPS } from '../data/propositionGraph'
-import type { ConstructionState, EuclidViewportState, PropositionDef } from '../types'
+import type { ConstructionState, EuclidViewportState } from '../types'
 
 const PREVIEW_W = 260
 const PREVIEW_H = 200
 const PADDING_FRACTION = 0.15
-
-const PROP_DEFS: Record<number, PropositionDef> = {
-  1: PROP_1,
-  2: PROP_2,
-  3: PROP_3,
-  4: PROP_4,
-  5: PROP_5,
-}
 
 /**
  * Compute a viewport that fits all geometric elements (points + circle extents)
@@ -83,11 +72,12 @@ export function usePropPreviews(): Map<number, string> {
     const idle = { tag: 'idle' as const }
 
     for (const propId of IMPLEMENTED_PROPS) {
-      const finalState = buildFinalState(propId)
-      if (!finalState) continue
+      const result = buildFinalState(propId)
+      if (!result) continue
 
-      const prop = PROP_DEFS[propId]
-      const viewport = computeFitViewport(finalState, PREVIEW_W, PREVIEW_H)
+      const prop = PROP_REGISTRY[propId]
+      if (!prop) continue
+      const viewport = computeFitViewport(result.state, PREVIEW_W, PREVIEW_H)
 
       const canvas = document.createElement('canvas')
       canvas.width = PREVIEW_W
@@ -97,7 +87,7 @@ export function usePropPreviews(): Map<number, string> {
 
       renderConstruction(
         ctx,
-        finalState,
+        result.state,
         viewport,
         PREVIEW_W,
         PREVIEW_H,
@@ -113,6 +103,20 @@ export function usePropPreviews(): Map<number, string> {
         undefined, // hiddenElementIds
         true // transparentBg
       )
+
+      // Render equality tick marks on segments with proven equalities
+      if (result.factStore.facts.length > 0) {
+        renderEqualityMarks(
+          ctx,
+          result.state,
+          viewport,
+          PREVIEW_W,
+          PREVIEW_H,
+          result.factStore,
+          undefined,
+          prop.resultSegments
+        )
+      }
 
       map.set(propId, canvas.toDataURL('image/png'))
     }
