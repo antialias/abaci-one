@@ -66,8 +66,8 @@ export function SettingsTab({
     () => getRecommendedKidLanguageStyle(resolvedAge),
     [resolvedAge]
   )
-  const currentLanguageStyle =
-    (preferences?.kidLanguageStyle ?? recommendedLanguageStyle) as KidLanguageStyle
+  const currentLanguageStyle = (preferences?.kidLanguageStyle ??
+    recommendedLanguageStyle) as KidLanguageStyle
 
   const handleSelectLanguageStyle = useCallback(
     (style: KidLanguageStyle) => {

@@ -1,9 +1,5 @@
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
-import type {
-  GameBreakEndReason,
-  SessionFlowState,
-  SessionPlan,
-} from '@/db/schema/session-plans'
+import type { GameBreakEndReason, SessionFlowState, SessionPlan } from '@/db/schema/session-plans'
 
 export type SessionFlowEvent =
   | { type: 'PART_TRANSITION_STARTED' }

@@ -1,4 +1,4 @@
-import { SubscriptionsClient } from "./SubscriptionsClient";
+import { SubscriptionsClient } from './SubscriptionsClient'
 
 /**
  * Admin page for managing user subscription tiers.
@@ -6,5 +6,5 @@ import { SubscriptionsClient } from "./SubscriptionsClient";
  * Search users by email and set their tier (free / family).
  */
 export default function SubscriptionsPage() {
-  return <SubscriptionsClient />;
+  return <SubscriptionsClient />
 }

@@ -381,8 +381,7 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean }>({
 
     const onResize = () => {
       const styles = getComputedStyle(outer)
-      const padX =
-        (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0)
+      const padX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0)
       const padY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0)
       const availW = Math.max(0, outer.clientWidth - padX)
       const availH = Math.max(0, outer.clientHeight - padY)

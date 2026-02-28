@@ -188,7 +188,9 @@ export function ViewSelector({
 
         // Otherwise render as simple chip
         const allTotal =
-          viewId === 'all' && viewCounts.allTotal !== undefined && viewCounts.allTotal !== parentCount
+          viewId === 'all' &&
+          viewCounts.allTotal !== undefined &&
+          viewCounts.allTotal !== parentCount
             ? viewCounts.allTotal
             : undefined
         return (

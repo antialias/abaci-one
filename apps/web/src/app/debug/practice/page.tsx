@@ -65,10 +65,7 @@ function CleanupSection({ isDark }: { isDark: boolean }) {
   }
 
   return (
-    <section
-      data-component="cleanup-section"
-      className={css({ marginTop: '2rem' })}
-    >
+    <section data-component="cleanup-section" className={css({ marginTop: '2rem' })}>
       <h2
         className={css({
           fontSize: '1.25rem',
@@ -157,10 +154,7 @@ function CleanupSection({ isDark }: { isDark: boolean }) {
             color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
-          <Loader2
-            size={16}
-            className={css({ animation: 'spin 1s linear infinite' })}
-          />
+          <Loader2 size={16} className={css({ animation: 'spin 1s linear infinite' })} />
           Scanning...
         </div>
       )}
@@ -349,7 +343,6 @@ function CleanupSection({ isDark }: { isDark: boolean }) {
               </div>
             </>
           )}
-
         </div>
       )}
     </section>

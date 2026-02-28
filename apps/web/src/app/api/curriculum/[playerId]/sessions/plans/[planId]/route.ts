@@ -284,7 +284,6 @@ export const PATCH = withAuth(async (request, { params }) => {
   }
 })
 
-
 /**
  * Helper to emit session socket events to both:
  * 1. Player channel (for parent observation) - ALWAYS

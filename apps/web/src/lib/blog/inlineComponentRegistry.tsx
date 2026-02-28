@@ -31,9 +31,7 @@ export const INLINE_COMPONENTS: Record<string, InlineComponentEntry> = {
     description: 'Three-panel triptych showing 27+14 from plain format to ten-frame scaffolding',
     component: dynamic(
       () =>
-        import('@/components/blog/inlineComponents/TenFramesInline').then(
-          (m) => m.TenFramesInline
-        ),
+        import('@/components/blog/inlineComponents/TenFramesInline').then((m) => m.TenFramesInline),
       { ssr: false }
     ),
   },

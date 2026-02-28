@@ -494,7 +494,6 @@ export function ActiveSession({
     ]
   )
 
-
   // Compute initial problem from plan for SSR hydration (must be before useInteractionPhase)
   // Uses getCurrentProblemInfo to account for retry epochs
   const currentProblemInfo = useMemo(() => getCurrentProblemInfo(plan), [plan])

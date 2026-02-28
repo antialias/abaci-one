@@ -165,7 +165,13 @@ export default function MyStuffPage() {
 
         {/* ── My Euclid Creations (user-level) ── */}
         <section data-section="euclid-creations">
-          <div className={hstack({ justifyContent: 'space-between', alignItems: 'baseline', mb: '12px' })}>
+          <div
+            className={hstack({
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              mb: '12px',
+            })}
+          >
             <SectionHeader>My Euclid Creations</SectionHeader>
             <Link
               href="/toys/euclid/playground"
@@ -241,7 +247,12 @@ export default function MyStuffPage() {
                     <img
                       src={c.thumbnail}
                       alt="Creation preview"
-                      style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '4/3',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
                     />
                   ) : (
                     <div
@@ -266,7 +277,13 @@ export default function MyStuffPage() {
 
         {/* ── My Flowcharts ── */}
         <section data-section="flowcharts">
-          <div className={hstack({ justifyContent: 'space-between', alignItems: 'baseline', mb: '12px' })}>
+          <div
+            className={hstack({
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              mb: '12px',
+            })}
+          >
             <SectionHeader>My Flowcharts</SectionHeader>
             <Link
               href="/flowchart/my-flowcharts"
@@ -319,7 +336,9 @@ export default function MyStuffPage() {
               {visibleFlowcharts.map((f) => (
                 <Link
                   key={f.id}
-                  href={f.status === 'published' ? `/flowchart/${f.id}` : `/flowchart/my-flowcharts`}
+                  href={
+                    f.status === 'published' ? `/flowchart/${f.id}` : `/flowchart/my-flowcharts`
+                  }
                   className={hstack({
                     gap: '12px',
                     p: '14px 16px',
@@ -332,8 +351,17 @@ export default function MyStuffPage() {
                     _hover: { borderColor: 'blue.300', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
                   })}
                 >
-                  <span className={css({ fontSize: '22px', flexShrink: '0' })}>{f.emoji || '📊'}</span>
-                  <span className={css({ fontSize: '14px', fontWeight: '600', color: 'gray.800', flex: '1' })}>
+                  <span className={css({ fontSize: '22px', flexShrink: '0' })}>
+                    {f.emoji || '📊'}
+                  </span>
+                  <span
+                    className={css({
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: 'gray.800',
+                      flex: '1',
+                    })}
+                  >
                     {f.title}
                   </span>
                   <span

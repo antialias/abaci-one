@@ -244,8 +244,7 @@ export function MyAbacus() {
   const isOnWorkshopRoute = pathname?.startsWith('/flowchart/workshop/')
 
   // Admin pages are dev-only tools — the floating abacus is student-facing only
-  const isOnAdminRoute =
-    pathname?.startsWith('/admin') || pathname?.startsWith('/flowchart/admin')
+  const isOnAdminRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/flowchart/admin')
 
   // Sync local button ref with context's buttonRef
   useEffect(() => {

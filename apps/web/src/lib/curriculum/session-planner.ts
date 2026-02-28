@@ -1408,7 +1408,7 @@ export async function recordSlotResult(
         retryState: updatedRetryState,
         status: isComplete ? 'completed' : 'in_progress',
         flowState: nextFlowState,
-        flowUpdatedAt: flowStateChanged ? flowUpdatedAt : plan.flowUpdatedAt ?? flowUpdatedAt,
+        flowUpdatedAt: flowStateChanged ? flowUpdatedAt : (plan.flowUpdatedAt ?? flowUpdatedAt),
         flowVersion: nextFlowVersion,
         breakStartedAt: null,
         breakReason: null,

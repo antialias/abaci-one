@@ -36,19 +36,13 @@ function makeSlot(index: number, slotId = `slot-${index}`): ProblemSlot {
   }
 }
 
-function makePart(
-  partNumber: 1 | 2 | 3,
-  slotCount: number,
-  slotIdPrefix = 'slot'
-): SessionPart {
+function makePart(partNumber: 1 | 2 | 3, slotCount: number, slotIdPrefix = 'slot'): SessionPart {
   return {
     partNumber,
     type: 'abacus',
     format: 'vertical',
     useAbacus: true,
-    slots: Array.from({ length: slotCount }, (_, i) =>
-      makeSlot(i, `${slotIdPrefix}-${i}`)
-    ),
+    slots: Array.from({ length: slotCount }, (_, i) => makeSlot(i, `${slotIdPrefix}-${i}`)),
     estimatedMinutes: 5,
   }
 }
@@ -258,8 +252,7 @@ describe('optimistic advance condition', () => {
     slotIndex: number,
     epochNumber: number
   ): boolean {
-    const nextSlotExists =
-      !!plan.parts[partIndex]?.slots[slotIndex + 1]?.problem
+    const nextSlotExists = !!plan.parts[partIndex]?.slots[slotIndex + 1]?.problem
     return epochNumber === 0 && nextSlotExists
   }
 

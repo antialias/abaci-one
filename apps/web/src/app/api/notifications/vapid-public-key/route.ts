@@ -14,7 +14,10 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const key = process.env.VAPID_PUBLIC_KEY
   if (!key) {
-    return NextResponse.json({ vapidPublicKey: null }, { status: 404, headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json(
+      { vapidPublicKey: null },
+      { status: 404, headers: { 'Cache-Control': 'no-store' } }
+    )
   }
   return NextResponse.json({ vapidPublicKey: key }, { headers: { 'Cache-Control': 'no-store' } })
 }

@@ -42,8 +42,9 @@ export function usePublishFlowchart() {
       return data.flowchart as TeacherFlowchart
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData<TeacherFlowchart[]>(flowchartKeys.mine(), (prev) =>
-        prev?.map((f) => (f.id === updated.id ? updated : f)) ?? []
+      queryClient.setQueryData<TeacherFlowchart[]>(
+        flowchartKeys.mine(),
+        (prev) => prev?.map((f) => (f.id === updated.id ? updated : f)) ?? []
       )
     },
   })
@@ -59,8 +60,9 @@ export function useUnpublishFlowchart() {
       return data.flowchart as TeacherFlowchart
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData<TeacherFlowchart[]>(flowchartKeys.mine(), (prev) =>
-        prev?.map((f) => (f.id === updated.id ? updated : f)) ?? []
+      queryClient.setQueryData<TeacherFlowchart[]>(
+        flowchartKeys.mine(),
+        (prev) => prev?.map((f) => (f.id === updated.id ? updated : f)) ?? []
       )
     },
   })
@@ -75,8 +77,9 @@ export function useDeleteFlowchart() {
       return id
     },
     onSuccess: (id) => {
-      queryClient.setQueryData<TeacherFlowchart[]>(flowchartKeys.mine(), (prev) =>
-        prev?.filter((f) => f.id !== id) ?? []
+      queryClient.setQueryData<TeacherFlowchart[]>(
+        flowchartKeys.mine(),
+        (prev) => prev?.filter((f) => f.id !== id) ?? []
       )
     },
   })

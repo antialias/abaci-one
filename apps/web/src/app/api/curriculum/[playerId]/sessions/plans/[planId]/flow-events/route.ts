@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import type { SessionPlan } from '@/db/schema/session-plans'
-import {
-  applySessionFlowEvent,
-  StaleFlowVersionError,
-} from '@/lib/curriculum/session-planner'
+import { applySessionFlowEvent, StaleFlowVersionError } from '@/lib/curriculum/session-planner'
 import { InvalidFlowTransitionError, type SessionFlowEvent } from '@/lib/curriculum/session-flow'
 import { getUserId } from '@/lib/viewer'
 

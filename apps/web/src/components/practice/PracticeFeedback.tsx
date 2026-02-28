@@ -53,7 +53,11 @@ export function PracticeFeedback({
       data-correct={isCorrect}
       className={cx(baseStyles, className)}
     >
-      {isCorrect ? 'Correct!' : showCorrectAnswer ? `The answer was ${correctAnswer}` : 'Not quite.'}
+      {isCorrect
+        ? 'Correct!'
+        : showCorrectAnswer
+          ? `The answer was ${correctAnswer}`
+          : 'Not quite.'}
     </div>
   )
 }

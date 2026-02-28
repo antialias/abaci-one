@@ -21,11 +21,7 @@ export function normalizeBirthdayInput(value: string): string | null {
   }
 
   const today = new Date()
-  const todayUtc = Date.UTC(
-    today.getUTCFullYear(),
-    today.getUTCMonth(),
-    today.getUTCDate()
-  )
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
   if (candidate.getTime() > todayUtc) return null
 
   return `${match[1]}-${match[2]}-${match[3]}`

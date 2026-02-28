@@ -83,9 +83,7 @@ export default function PlayerStuffPage({ params }: Props) {
             >
               {name}&apos;s Stuff
             </h1>
-            <span className={css({ fontSize: '13px', color: 'gray.500' })}>
-              Euclid creations
-            </span>
+            <span className={css({ fontSize: '13px', color: 'gray.500' })}>Euclid creations</span>
           </div>
         </div>
 

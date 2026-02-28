@@ -1824,7 +1824,8 @@ function OverviewTab({
             margin: 0,
           })}
         >
-          {student.name}&rsquo;s first session will begin with a short tutorial, then adaptive practice.
+          {student.name}&rsquo;s first session will begin with a short tutorial, then adaptive
+          practice.
         </p>
         <button
           type="button"
@@ -3686,7 +3687,6 @@ export function DashboardClient({
               {activeTab === 'relationships' && (
                 <RelationshipsTab studentId={studentId} studentName={player.name} isDark={isDark} />
               )}
-
             </div>
 
             {/* Modals */}

@@ -137,7 +137,9 @@ export default function MyFlowchartsPage() {
                     onPublish={() => publish.mutate(f.id)}
                     onUnpublish={() => unpublish.mutate(f.id)}
                     onDelete={() => {
-                      if (confirm('Archive this flowchart? It will no longer be visible to others.'))
+                      if (
+                        confirm('Archive this flowchart? It will no longer be visible to others.')
+                      )
                         deleteChart.mutate(f.id)
                     }}
                     onUse={() => router.push(`/flowchart/${f.id}`)}
@@ -169,7 +171,9 @@ export default function MyFlowchartsPage() {
                     onPublish={() => publish.mutate(f.id)}
                     onUnpublish={() => unpublish.mutate(f.id)}
                     onDelete={() => {
-                      if (confirm('Archive this flowchart? It will no longer be visible to others.'))
+                      if (
+                        confirm('Archive this flowchart? It will no longer be visible to others.')
+                      )
                         deleteChart.mutate(f.id)
                     }}
                     onUse={() => router.push(`/flowchart/${f.id}`)}
