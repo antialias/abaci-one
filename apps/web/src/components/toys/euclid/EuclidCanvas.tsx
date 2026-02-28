@@ -1072,116 +1072,146 @@ export function EuclidCanvas({
     needsDrawRef.current = true
   }, [])
 
-  // ── Completion wiggle — invite kids to drag given points ──
-  useEffect(() => {
-    if (!isComplete) return
-    if (playgroundMode) return // no wiggle in freeform playground
-    if (!proposition.draggablePointIds || proposition.draggablePointIds.length === 0) return
+  // ── Wiggle animation — invite kids to drag moveable points ──
+  // Extracted so it can be triggered by both completion and the playground wiggle button.
+  const startWiggle = useCallback(
+    (delayMs: number = 0) => {
+      // Cancel any existing wiggle
+      wiggleCancelRef.current?.()
+      wiggleCancelRef.current = null
 
-    const draggableIds = proposition.draggablePointIds
-    const computeFn = proposition.computeGivenElements
+      const prop = propositionRef.current
+      const computeFn = prop.computeGivenElements
 
-    // Snapshot initial world positions of every draggable given point
-    const initialPositions = new Map<string, { x: number; y: number }>()
-    for (const el of constructionRef.current.elements) {
-      if (el.kind === 'point' && el.origin === 'given' && draggableIds.includes(el.id)) {
-        initialPositions.set(el.id, { x: el.x, y: el.y })
+      // Collect all moveable points: given draggable + free (playground)
+      const initialPositions = new Map<string, { x: number; y: number }>()
+      const initialActions = [...postCompletionActionsRef.current]
+      const draggableSet = new Set(prop.draggablePointIds ?? [])
+      for (const el of constructionRef.current.elements) {
+        if (el.kind !== 'point') continue
+        if (draggableSet.has(el.id) || el.origin === 'free') {
+          initialPositions.set(el.id, { x: el.x, y: el.y })
+        }
       }
-    }
-    if (initialPositions.size === 0) return
+      if (initialPositions.size === 0) return
 
-    // Per-point random sinusoid parameters
-    const params = [...initialPositions.keys()].map((ptId) => {
-      const canvas = canvasRef.current
-      const cssMin = canvas
-        ? Math.min(canvas.getBoundingClientRect().width, canvas.getBoundingClientRect().height)
-        : 600
-      const ppu = viewportRef.current.pixelsPerUnit
-      const amp = ((0.0025 + Math.random() * 0.00375) * cssMin) / ppu // 0.25–0.625 % of viewport
-      return {
-        ptId,
-        ax: amp * (0.6 + Math.random() * 0.8),
-        ay: amp * (0.6 + Math.random() * 0.8),
-        freqX: (2 + Math.random() * 2) * ((2 * Math.PI) / 1000), // 2–4 Hz
-        freqY: (2 + Math.random() * 2) * ((2 * Math.PI) / 1000),
-        phaseX: Math.random() * 2 * Math.PI,
-        phaseY: Math.random() * 2 * Math.PI,
-      }
-    })
+      // Per-point random sinusoid parameters
+      const params = [...initialPositions.keys()].map((ptId) => {
+        const canvas = canvasRef.current
+        const cssMin = canvas
+          ? Math.min(canvas.getBoundingClientRect().width, canvas.getBoundingClientRect().height)
+          : 600
+        const ppu = viewportRef.current.pixelsPerUnit
+        const amp = ((0.0025 + Math.random() * 0.00375) * cssMin) / ppu
+        return {
+          ptId,
+          isFree: !draggableSet.has(ptId),
+          ax: amp * (0.6 + Math.random() * 0.8),
+          ay: amp * (0.6 + Math.random() * 0.8),
+          freqX: (2 + Math.random() * 2) * ((2 * Math.PI) / 1000),
+          freqY: (2 + Math.random() * 2) * ((2 * Math.PI) / 1000),
+          phaseX: Math.random() * 2 * Math.PI,
+          phaseY: Math.random() * 2 * Math.PI,
+        }
+      })
 
-    const DURATION_MS = 1500
-    let frameId = 0
-    let cancelled = false
+      const DURATION_MS = 1500
+      let frameId = 0
+      let cancelled = false
 
-    function applyPositions(positions: Map<string, { x: number; y: number }>) {
-      let givenElements: ConstructionElement[]
-      if (computeFn) {
-        givenElements = computeFn(positions)
-      } else {
-        givenElements = proposition.givenElements.map((el) => {
-          if (el.kind === 'point' && positions.has(el.id)) {
-            const pos = positions.get(el.id)!
-            return { ...el, x: pos.x, y: pos.y }
+      function applyPositions(positions: Map<string, { x: number; y: number }>) {
+        // Update free-point actions with new positions
+        let actions = initialActions.map((a) => {
+          if (a.type === 'free-point' && positions.has(a.id)) {
+            const pos = positions.get(a.id)!
+            return { ...a, x: pos.x, y: pos.y }
           }
-          return el
+          return a
         })
-      }
-      const result = replayConstruction(
-        givenElements,
-        proposition.steps,
-        proposition,
-        postCompletionActionsRef.current
-      )
-      constructionRef.current = result.state
-      candidatesRef.current = result.candidates
-      ghostLayersRef.current = result.ghostLayers
-      factStoreRef.current = result.factStore
-    }
+        postCompletionActionsRef.current = actions
 
-    function frame(now: number) {
-      if (cancelled) return
-      const t = now - startMs
-      if (t >= DURATION_MS) {
-        applyPositions(initialPositions)
+        let givenElements: ConstructionElement[]
+        if (computeFn) {
+          givenElements = computeFn(positions)
+        } else {
+          givenElements = prop.givenElements.map((el) => {
+            if (el.kind === 'point' && positions.has(el.id)) {
+              const pos = positions.get(el.id)!
+              return { ...el, x: pos.x, y: pos.y }
+            }
+            return el
+          })
+        }
+        const result = replayConstruction(
+          givenElements,
+          prop.steps,
+          prop,
+          actions
+        )
+        constructionRef.current = result.state
+        candidatesRef.current = result.candidates
+        ghostLayersRef.current = result.ghostLayers
+        factStoreRef.current = result.factStore
+      }
+
+      function frame(now: number) {
+        if (cancelled) return
+        const t = now - startMs
+        if (t >= DURATION_MS) {
+          // Restore original positions
+          postCompletionActionsRef.current = initialActions
+          applyPositions(initialPositions)
+          needsDrawRef.current = true
+          return
+        }
+        const envelope = Math.sin((t / DURATION_MS) * Math.PI)
+        const positions = new Map(initialPositions)
+        for (const p of params) {
+          const orig = initialPositions.get(p.ptId)!
+          positions.set(p.ptId, {
+            x: orig.x + envelope * p.ax * Math.sin(p.freqX * t + p.phaseX),
+            y: orig.y + envelope * p.ay * Math.sin(p.freqY * t + p.phaseY),
+          })
+        }
+        applyPositions(positions)
         needsDrawRef.current = true
-        return
-      }
-      // Sine envelope: eases in and out for a smooth wiggle feel
-      const envelope = Math.sin((t / DURATION_MS) * Math.PI)
-      const positions = new Map(initialPositions)
-      for (const p of params) {
-        const orig = initialPositions.get(p.ptId)!
-        positions.set(p.ptId, {
-          x: orig.x + envelope * p.ax * Math.sin(p.freqX * t + p.phaseX),
-          y: orig.y + envelope * p.ay * Math.sin(p.freqY * t + p.phaseY),
-        })
-      }
-      applyPositions(positions)
-      needsDrawRef.current = true
-      frameId = requestAnimationFrame(frame)
-    }
-
-    let startMs = 0
-    // Short delay so the completion moment has time to render first
-    const timeoutId = setTimeout(() => {
-      if (!cancelled) {
-        startMs = performance.now()
         frameId = requestAnimationFrame(frame)
       }
-    }, 400)
 
-    const cancel = () => {
-      cancelled = true
-      clearTimeout(timeoutId)
-      cancelAnimationFrame(frameId)
-      // Snap back to original so no stale offset remains
-      applyPositions(initialPositions)
-      needsDrawRef.current = true
-    }
-    wiggleCancelRef.current = cancel
+      let startMs = 0
+      const timeoutId = setTimeout(() => {
+        if (!cancelled) {
+          startMs = performance.now()
+          frameId = requestAnimationFrame(frame)
+        }
+      }, delayMs)
+
+      const cancel = () => {
+        cancelled = true
+        clearTimeout(timeoutId)
+        cancelAnimationFrame(frameId)
+        postCompletionActionsRef.current = initialActions
+        applyPositions(initialPositions)
+        needsDrawRef.current = true
+      }
+      wiggleCancelRef.current = cancel
+
+      return cancel
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+
+  // Auto-wiggle on proposition completion (not in playground — user triggers manually)
+  useEffect(() => {
+    if (!isComplete) return
+    if (playgroundMode) return
+    if (!proposition.draggablePointIds || proposition.draggablePointIds.length === 0) return
+
+    const cancel = startWiggle(400) // 400ms delay for completion moment to render
 
     return () => {
-      cancel()
+      cancel?.()
       wiggleCancelRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2749,7 +2779,13 @@ export function EuclidCanvas({
             complete ? proposition.resultSegments : undefined,
             hiddenIds.size > 0 ? hiddenIds : undefined,
             undefined, // transparentBg
-            complete ? proposition.draggablePointIds : undefined
+            complete
+              ? playgroundMode
+                ? getAllPoints(drawState)
+                    .filter((pt) => pt.origin === 'given' || pt.origin === 'free')
+                    .map((pt) => pt.id)
+                : proposition.draggablePointIds
+              : undefined
           )
 
           // Render Post.2 production segments (extensions to intersection points)
@@ -3206,6 +3242,28 @@ export function EuclidCanvas({
                 setActiveTool('point')
                 activeToolRef.current = 'point'
               }}
+              size={isMobile ? 44 : 48}
+            />
+          )}
+          {playgroundMode && (
+            <ToolButton
+              label="Wiggle"
+              icon={
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2 12c1.5-3 3.5-3 5 0s3.5 3 5 0 3.5-3 5 0 3.5 3 5 0" />
+                </svg>
+              }
+              active={false}
+              onClick={() => startWiggle(0)}
               size={isMobile ? 44 : 48}
             />
           )}
