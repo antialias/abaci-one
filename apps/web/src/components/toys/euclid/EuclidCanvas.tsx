@@ -6,6 +6,7 @@ import type {
   ConstructionState,
   CompassPhase,
   StraightedgePhase,
+  ExtendPhase,
   MacroPhase,
   ActiveTool,
   IntersectionCandidate,
@@ -114,6 +115,7 @@ import { MacroToolPanel } from './MacroToolPanel'
 
 const SHORTCUTS: ShortcutEntry[] = [
   { key: 'V', description: 'Toggle pan/zoom (disabled by default)' },
+  { key: 'G', description: 'Include ghost geometry in auto-zoom bounds' },
   { key: '?', description: 'Toggle this help' },
 ]
 
@@ -133,7 +135,6 @@ const AUTO_FIT_POST_SWEEP_MS = 750
 const AUTO_FIT_MAX_CENTER_PX = 2
 const AUTO_FIT_MAX_PPU_DELTA = 1
 const AUTO_FIT_CEREMONY_PPU_DELTA = 4
-
 
 // ── Viewport centering ──
 
@@ -177,9 +178,7 @@ function getConstructionBounds(state: ConstructionState): {
   maxX: number
   maxY: number
 } | null {
-  const points = state.elements.filter(
-    (e): e is ConstructionPoint => e.kind === 'point'
-  )
+  const points = state.elements.filter((e): e is ConstructionPoint => e.kind === 'point')
   if (points.length === 0) return null
 
   let minX = Infinity
@@ -403,7 +402,14 @@ function clampCenterToRect(
   cssWidth: number,
   cssHeight: number
 ) {
-  const screenBounds = getScreenBoundsForViewport(bounds, centerX, centerY, ppu, cssWidth, cssHeight)
+  const screenBounds = getScreenBoundsForViewport(
+    bounds,
+    centerX,
+    centerY,
+    ppu,
+    cssWidth,
+    cssHeight
+  )
   let shiftX = 0
   let shiftY = 0
   if (screenBounds.minX < rect.left + margin) {
@@ -585,7 +591,7 @@ const WRONG_MOVE_PHRASES = [
   "Not quite. Let's try that step again.",
   "Hmm, that's not right. Try again.",
   "That's not it. Here's the step one more time:",
-  "Oops! Let me remind you:",
+  'Oops! Let me remind you:',
 ]
 
 export function EuclidCanvas({
@@ -652,8 +658,7 @@ export function EuclidCanvas({
   const explorationNarration = useMemo(() => {
     if (!languageStyle) return proposition.explorationNarration
     return (
-      proposition.explorationNarrationByStyle?.[languageStyle] ??
-      proposition.explorationNarration
+      proposition.explorationNarrationByStyle?.[languageStyle] ?? proposition.explorationNarration
     )
   }, [languageStyle, proposition])
 
@@ -675,6 +680,8 @@ export function EuclidCanvas({
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
   const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
+  const extendPhaseRef = useRef<ExtendPhase>({ tag: 'idle' })
+  const extendPreviewRef = useRef<{ x: number; y: number } | null>(null)
   const [macroPhase, setMacroPhase] = useState<MacroPhase>({ tag: 'idle' })
   const macroAnimationRef = useRef<MacroAnimation | null>(null)
   const wiggleCancelRef = useRef<(() => void) | null>(null)
@@ -688,6 +695,7 @@ export function EuclidCanvas({
   const ghostLayersRef = useRef<GhostLayer[]>([])
   const hoveredMacroStepRef = useRef<number | null>(null)
   const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
+  const ghostBoundsEnabledRef = useRef(false)
   const macroRevealRef = useRef<MacroCeremonyState | null>(null)
   const propositionRef = useRef(proposition)
   propositionRef.current = proposition
@@ -709,9 +717,7 @@ export function EuclidCanvas({
   )
   const [currentStep, setCurrentStep] = useState(0)
   const currentStepRef = useRef(0)
-  const [completedSteps, setCompletedSteps] = useState<boolean[]>(
-    steps.map(() => false)
-  )
+  const [completedSteps, setCompletedSteps] = useState<boolean[]>(steps.map(() => false))
   const [isComplete, setIsComplete] = useState(playgroundMode ? true : false)
   const [toolToast, setToolToast] = useState<string | null>(null)
   const toolToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -867,7 +873,12 @@ export function EuclidCanvas({
     // If there's only one macro available, skip the picker and go straight to selecting
     if (availableMacros.length === 1) {
       const { propId, def } = availableMacros[0]
-      const phase: MacroPhase = { tag: 'selecting', propId, inputLabels: def.inputLabels, selectedPointIds: [] }
+      const phase: MacroPhase = {
+        tag: 'selecting',
+        propId,
+        inputLabels: def.inputLabels,
+        selectedPointIds: [],
+      }
       macroPhaseRef.current = phase
       setMacroPhase(phase)
     } else {
@@ -879,7 +890,11 @@ export function EuclidCanvas({
 
   const handleMacroPropositionSelect = useCallback((propId: number) => {
     const macroDef = MACRO_REGISTRY[propId]
-    console.log('[macro-debug] handleMacroPropositionSelect propId=%d macroDef=%o', propId, macroDef)
+    console.log(
+      '[macro-debug] handleMacroPropositionSelect propId=%d macroDef=%o',
+      propId,
+      macroDef
+    )
     if (!macroDef) return
     const phase: MacroPhase = {
       tag: 'selecting',
@@ -935,6 +950,7 @@ export function EuclidCanvas({
   const tutorialSubStepRef = useRef(0)
   const prevCompassTagRef = useRef('idle')
   const prevStraightedgeTagRef = useRef('idle')
+  const prevExtendTagRef = useRef('idle')
 
   const tutorialSubSteps = useMemo(
     () => getTutorial(isTouch, { languageStyle }),
@@ -1268,6 +1284,7 @@ export function EuclidCanvas({
       const toolLabels: Record<string, string> = {
         compass: 'Compass',
         straightedge: 'Straightedge',
+        extend: 'Straightedge',
         macro: 'Proposition',
       }
       const label = toolLabels[stepDef.tool] ?? stepDef.tool
@@ -1289,11 +1306,7 @@ export function EuclidCanvas({
     if (!isComplete) return
     const conclusionFn = proposition.deriveConclusion
     if (!conclusionFn) return
-    const newFacts = conclusionFn(
-      factStoreRef.current,
-      constructionRef.current,
-      steps.length
-    )
+    const newFacts = conclusionFn(factStoreRef.current, constructionRef.current, steps.length)
     if (newFacts.length > 0) {
       proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
       setProofFacts(proofFactsRef.current)
@@ -1320,6 +1333,9 @@ export function EuclidCanvas({
       } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         togglePanZoom()
+      } else if ((e.key === 'g' || e.key === 'G') && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        ghostBoundsEnabledRef.current = !ghostBoundsEnabledRef.current
       }
     }
 
@@ -1356,8 +1372,7 @@ export function EuclidCanvas({
       // Lock all tool interactions for the duration of the correction narration
       correctionActiveRef.current = true
 
-      const phrase =
-        WRONG_MOVE_PHRASES[wrongMoveCounterRef.current++ % WRONG_MOVE_PHRASES.length]
+      const phrase = WRONG_MOVE_PHRASES[wrongMoveCounterRef.current++ % WRONG_MOVE_PHRASES.length]
       const instruction = currentSpeechRef.current || steps[step].instruction
 
       const unlock = () => {
@@ -1365,7 +1380,8 @@ export function EuclidCanvas({
       }
 
       if (audioEnabledRef.current) {
-        speakStepCorrectionRef.current({ say: { en: phrase } })
+        speakStepCorrectionRef
+          .current({ say: { en: phrase } })
           .then(() => speakStepCorrectionRef.current({ say: { en: instruction } }))
           .finally(unlock)
       } else {
@@ -1508,6 +1524,64 @@ export function EuclidCanvas({
     [checkStep, requestDraw, extendSegments]
   )
 
+  const handleCommitExtend = useCallback(
+    (baseId: string, throughId: string, _projX: number, _projY: number) => {
+      const step = currentStepRef.current
+      if (step >= steps.length) return
+      const expected = steps[step].expected
+      if (expected.type !== 'extend') return
+
+      // Use expected.distance along the ray (student click determines direction only)
+      const basePt = getPoint(constructionRef.current, expected.baseId)
+      const throughPt = getPoint(constructionRef.current, expected.throughId)
+      if (!basePt || !throughPt) return
+
+      const dx = throughPt.x - basePt.x
+      const dy = throughPt.y - basePt.y
+      const len = Math.sqrt(dx * dx + dy * dy)
+      if (len < 0.001) return
+
+      const dirX = dx / len
+      const dirY = dy / len
+      const newX = throughPt.x + dirX * expected.distance
+      const newY = throughPt.y + dirY * expected.distance
+
+      const ptResult = addPoint(
+        constructionRef.current,
+        newX,
+        newY,
+        'intersection',
+        expected.label
+      )
+      constructionRef.current = ptResult.state
+
+      const segResult = addSegment(
+        constructionRef.current,
+        expected.throughId,
+        ptResult.point.id
+      )
+      constructionRef.current = segResult.state
+
+      const ptCands = findNewIntersections(
+        constructionRef.current,
+        ptResult.point,
+        candidatesRef.current,
+        extendSegments
+      )
+      const segCands = findNewIntersections(
+        constructionRef.current,
+        segResult.segment,
+        [...candidatesRef.current, ...ptCands],
+        extendSegments
+      )
+      candidatesRef.current = [...candidatesRef.current, ...ptCands, ...segCands]
+
+      checkStep(ptResult.point)
+      requestDraw()
+    },
+    [steps, checkStep, requestDraw, extendSegments]
+  )
+
   const handleMarkIntersection = useCallback(
     (candidate: IntersectionCandidate) => {
       // In guided mode, reject candidates that don't match the current step's expected ofA/ofB.
@@ -1605,7 +1679,8 @@ export function EuclidCanvas({
       // In guided mode: full flow with snapshot, ceremony, and step advancement.
       // In free mode: apply elements immediately, reopen picker for another application.
       const isGuidedStep = expected?.type === 'macro' && expected.propId === propId
-      const outputLabels = isGuidedStep && expected?.type === 'macro' ? expected.outputLabels : undefined
+      const outputLabels =
+        isGuidedStep && expected?.type === 'macro' ? expected.outputLabels : undefined
 
       // Execute the macro — state is computed all at once
       const result = macroDef.execute(
@@ -1646,7 +1721,12 @@ export function EuclidCanvas({
         macroAnimationRef.current = createMacroAnimation(result)
         if (availableMacros.length === 1) {
           const { propId: mpId, def: mDef } = availableMacros[0]
-          const nextPhase: MacroPhase = { tag: 'selecting', propId: mpId, inputLabels: mDef.inputLabels, selectedPointIds: [] }
+          const nextPhase: MacroPhase = {
+            tag: 'selecting',
+            propId: mpId,
+            inputLabels: mDef.inputLabels,
+            selectedPointIds: [],
+          }
           macroPhaseRef.current = nextPhase
           setMacroPhase(nextPhase)
         } else {
@@ -1678,9 +1758,7 @@ export function EuclidCanvas({
       ]
 
       // Check if any ghost layers have revealGroups (ceremony needed)
-      const hasCeremony = macroGhosts.some(
-        (gl) => gl.revealGroups && gl.revealGroups.length > 0
-      )
+      const hasCeremony = macroGhosts.some((gl) => gl.revealGroups && gl.revealGroups.length > 0)
 
       // Build the step-advance closure.
       // For ceremony: also starts macroAnimation so construction elements appear
@@ -1863,7 +1941,13 @@ export function EuclidCanvas({
       // Record action for replay during drag
       postCompletionActionsRef.current = [
         ...postCompletionActionsRef.current,
-        { type: 'free-point' as const, id: result.point.id, label: result.point.label, x: worldX, y: worldY },
+        {
+          type: 'free-point' as const,
+          id: result.point.id,
+          label: result.point.label,
+          x: worldX,
+          y: worldY,
+        },
       ]
       requestDraw()
     },
@@ -2010,12 +2094,32 @@ export function EuclidCanvas({
             const dirY = dy / len
             const newX = throughPt.x + dirX * expected.distance
             const newY = throughPt.y + dirY * expected.distance
-            const ptResult = addPoint(constructionRef.current, newX, newY, 'intersection', expected.label)
+            const ptResult = addPoint(
+              constructionRef.current,
+              newX,
+              newY,
+              'intersection',
+              expected.label
+            )
             constructionRef.current = ptResult.state
-            const segResult = addSegment(constructionRef.current, expected.throughId, ptResult.point.id)
+            const segResult = addSegment(
+              constructionRef.current,
+              expected.throughId,
+              ptResult.point.id
+            )
             constructionRef.current = segResult.state
-            const ptCands = findNewIntersections(constructionRef.current, ptResult.point, candidatesRef.current, extendSegments)
-            const segCands = findNewIntersections(constructionRef.current, segResult.segment, [...candidatesRef.current, ...ptCands], extendSegments)
+            const ptCands = findNewIntersections(
+              constructionRef.current,
+              ptResult.point,
+              candidatesRef.current,
+              extendSegments
+            )
+            const segCands = findNewIntersections(
+              constructionRef.current,
+              segResult.segment,
+              [...candidatesRef.current, ...ptCands],
+              extendSegments
+            )
             candidatesRef.current = [...candidatesRef.current, ...ptCands, ...segCands]
             checkStep(ptResult.point)
           }
@@ -2066,6 +2170,9 @@ export function EuclidCanvas({
     onMacroPhaseChange: handleMacroPhaseChange,
     onPlaceFreePoint: handlePlaceFreePoint,
     disabledRef: correctionActiveRef,
+    extendPhaseRef,
+    extendPreviewRef,
+    onCommitExtend: handleCommitExtend,
   })
 
   // ── Hook up drag interaction for post-completion play ──
@@ -2101,11 +2208,14 @@ export function EuclidCanvas({
     postCompletionActionsRef,
     interactionLockedRef: correctionActiveRef,
     onReplayResult: handleDragReplay,
-    onDragStart: useCallback((pointId: string) => {
-      wiggleCancelRef.current?.()
-      wiggleCancelRef.current = null
-      handleDragStart(pointId)
-    }, [handleDragStart]),
+    onDragStart: useCallback(
+      (pointId: string) => {
+        wiggleCancelRef.current?.()
+        wiggleCancelRef.current = null
+        handleDragStart(pointId)
+      },
+      [handleDragStart]
+    ),
   })
 
   // ── Construction music ──
@@ -2174,6 +2284,27 @@ export function EuclidCanvas({
         }
       }
 
+      // ── Observe extend phase transitions for tutorial advancement ──
+      const extendTag = extendPhaseRef.current.tag
+      if (extendTag !== prevExtendTagRef.current) {
+        const prev = prevExtendTagRef.current
+        prevExtendTagRef.current = extendTag
+
+        if (extendTag === 'idle' && prev !== 'idle') {
+          // Extend gesture completed or cancelled — reset sub-step
+          tutorialSubStepRef.current = 0
+          setTutorialSubStep(0)
+        } else {
+          const subStepDef = subSteps[step]?.[subStep]
+          const adv = subStepDef?.advanceOn
+          if (adv?.kind === 'extend-phase' && adv.phase === extendTag) {
+            const next = subStep + 1
+            tutorialSubStepRef.current = next
+            setTutorialSubStep(next)
+          }
+        }
+      }
+
       // ── Tick macro animation ──
       const macroAnim = macroAnimationRef.current
       if (macroAnim && macroAnim.revealedCount < macroAnim.elements.length) {
@@ -2209,8 +2340,7 @@ export function EuclidCanvas({
                 for (const idx of group) {
                   const el = layer.elements[idx]
                   if (!el) continue
-                  const durationMs =
-                    el.kind === 'circle' ? 700 : el.kind === 'segment' ? 400 : 0
+                  const durationMs = el.kind === 'circle' ? 700 : el.kind === 'segment' ? 400 : 0
                   ceremony.elementAnims.set(`${revealedEntry.layerKey}:${idx}`, {
                     startMs: now,
                     durationMs,
@@ -2323,13 +2453,24 @@ export function EuclidCanvas({
               }
               // During ceremony: expand bounds to include ghost geometry so the
               // viewport zooms out to frame the full dependency construction.
+              // When ghostBoundsEnabled (G key): also include hovered ghost layers.
               const cer = macroRevealRef.current
               const inCeremony = cer != null
-              if (inCeremony) {
-                const ceremonyLayerKeys = new Set(cer.sequence.map((e) => e.layerKey))
+              const hoveredStep = hoveredMacroStepRef.current
+              const includeGhostBounds =
+                inCeremony || ghostBoundsEnabledRef.current
+              if (includeGhostBounds) {
+                const ceremonyLayerKeys = inCeremony
+                  ? new Set(cer!.sequence.map((e) => e.layerKey))
+                  : null
                 for (const layer of ghostLayersRef.current) {
                   const key = `${layer.atStep}:${layer.depth}`
-                  if (!ceremonyLayerKeys.has(key)) continue
+                  // During ceremony: only include ceremony layers
+                  // With G toggle + hover: include only the hovered step's layers
+                  // With G toggle (no hover): include all ghost layers
+                  if (ceremonyLayerKeys && !ceremonyLayerKeys.has(key)) continue
+                  if (!ceremonyLayerKeys && hoveredStep != null && layer.atStep !== hoveredStep)
+                    continue
                   for (const el of layer.elements) {
                     if (el.kind === 'circle') {
                       expandBounds(bounds, el.cx, el.cy, el.r)
@@ -2349,8 +2490,8 @@ export function EuclidCanvas({
               const minPpuNeeded = Math.min(availableW / width, availableH / height)
               const fitArea = availableW * availableH
               const boundsArea = width * height
-              // Suppress zoom-in during ceremony — ghost geometry should only zoom out
-              const shouldZoomIn = !inCeremony && boundsArea <= fitArea * 0.25
+              // Suppress zoom-in when ghost bounds are included (ceremony or G toggle)
+              const shouldZoomIn = !includeGhostBounds && boundsArea <= fitArea * 0.25
               const desiredPpu = Math.min(availableW / width, availableH / height)
               const maxPpu = getAutoFitMaxPpu(isTouch)
               const targetPpu = shouldZoomIn
@@ -2366,7 +2507,12 @@ export function EuclidCanvas({
               const screenBounds = getScreenBounds(bounds, v, cssWidth, cssHeight)
               const softOk = boundsWithinRect(
                 screenBounds,
-                { left: fitRect.left, right: fitRect.right, top: fitRect.top, bottom: fitRect.bottom },
+                {
+                  left: fitRect.left,
+                  right: fitRect.right,
+                  top: fitRect.top,
+                  bottom: fitRect.bottom,
+                },
                 AUTO_FIT_SOFT_MARGIN
               )
 
@@ -2393,7 +2539,9 @@ export function EuclidCanvas({
               let effectivePpu = v.pixelsPerUnit
               if (!softOk || targetPpu < v.pixelsPerUnit || shouldZoomIn) {
                 const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
-                const ppuDeltaCap = inCeremony ? AUTO_FIT_CEREMONY_PPU_DELTA : AUTO_FIT_MAX_PPU_DELTA
+                const ppuDeltaCap = inCeremony
+                  ? AUTO_FIT_CEREMONY_PPU_DELTA
+                  : AUTO_FIT_MAX_PPU_DELTA
                 const deltaPpu = Math.max(
                   -ppuDeltaCap,
                   Math.min(ppuDeltaCap, nextPpu - v.pixelsPerUnit)
@@ -2402,10 +2550,8 @@ export function EuclidCanvas({
                 v.pixelsPerUnit = effectivePpu
               }
 
-              let targetCenterX =
-                targetCx - (fitRect.centerX - cssWidth / 2) / effectivePpu
-              let targetCenterY =
-                targetCy + (fitRect.centerY - cssHeight / 2) / effectivePpu
+              let targetCenterX = targetCx - (fitRect.centerX - cssWidth / 2) / effectivePpu
+              let targetCenterY = targetCy + (fitRect.centerY - cssHeight / 2) / effectivePpu
               if (compassPhase.tag === 'sweeping' || isPostSweep) {
                 const anchorCenterId =
                   compassPhase.tag === 'sweeping'
@@ -2470,8 +2616,7 @@ export function EuclidCanvas({
           // Derive candidate filter from current step's expected intersection
           // Resolve ElementSelectors to runtime IDs for filtering
           const curStep = currentStepRef.current
-          const curExpected =
-            curStep < steps.length ? steps[curStep].expected : null
+          const curExpected = curStep < steps.length ? steps[curStep].expected : null
           let candFilter: { ofA: string; ofB: string; beyondId?: string } | null = null
           if (
             curExpected?.type === 'intersection' &&
@@ -2512,8 +2657,7 @@ export function EuclidCanvas({
             const correction = correctionRef.current
             const t = Math.min(1, (performance.now() - correction.startTime) / correction.duration)
             const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
-            const angle =
-              correction.fromAngle + (correction.toAngle - correction.fromAngle) * ease
+            const angle = correction.fromAngle + (correction.toAngle - correction.fromAngle) * ease
             const state = constructionRef.current
             const updatedElements = state.elements.map((el) => {
               if (el.kind === 'point') {
@@ -2724,7 +2868,9 @@ export function EuclidCanvas({
             cssHeight,
             nextColor,
             complete,
-            straightedgeDrawAnimRef.current
+            straightedgeDrawAnimRef.current,
+            extendPhaseRef.current,
+            extendPreviewRef.current
           )
 
           // Render tutorial hint on top
@@ -2849,9 +2995,9 @@ export function EuclidCanvas({
             cursor:
               activeTool === 'move'
                 ? undefined // drag hook manages grab/grabbing cursor
-                : activeTool !== 'macro'
-                  ? 'none'
-                  : undefined,
+                : activeTool === 'macro' || activeTool === 'extend'
+                  ? undefined
+                  : 'none',
           }}
         />
 
@@ -3526,12 +3672,19 @@ export function EuclidCanvas({
                             >
                               {foundationHref || step.citation.match(/^I\./) ? (
                                 <a
-                                  href={foundationHref ?? `/toys/euclid/${step.citation.replace('I.', '')}`}
+                                  href={
+                                    foundationHref ??
+                                    `/toys/euclid/${step.citation.replace('I.', '')}`
+                                  }
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onPointerEnter={(e) => handleCitationPointerEnter(step.citation!, e)}
+                                  onPointerEnter={(e) =>
+                                    handleCitationPointerEnter(step.citation!, e)
+                                  }
                                   onPointerLeave={handleCitationPointerLeave}
-                                  onPointerDown={(e) => handleCitationPointerDown(step.citation!, e)}
+                                  onPointerDown={(e) =>
+                                    handleCitationPointerDown(step.citation!, e)
+                                  }
                                   style={{
                                     fontWeight: 600,
                                     fontStyle: 'normal',
@@ -3628,47 +3781,54 @@ export function EuclidCanvas({
                                       fontFamily: 'Georgia, serif',
                                     }}
                                   >
-                                  {fact.statement}
-                                </span>
-                                {citLabel && factCit && (
-                                  <>
-                                    {foundationHref || factCit.key.match(/^I\./) ? (
-                                      <a
-                                        href={foundationHref ?? `/toys/euclid/${factCit.key.replace('I.', '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
-                                        onPointerLeave={handleCitationPointerLeave}
-                                        onPointerDown={(e) => handleCitationPointerDown(factCit.key, e)}
-                                        style={{
-                                          color: '#94a3b8',
-                                          fontFamily: 'Georgia, serif',
-                                          fontSize: proofFont.citation,
-                                          fontWeight: 600,
-                                          marginLeft: 6,
-                                          textDecoration: 'underline',
-                                          textDecorationColor: 'rgba(16, 185, 129, 0.45)',
-                                          cursor: 'pointer',
-                                        }}
-                                      >
-                                        [{citLabel}]
-                                      </a>
-                                    ) : (
-                                      <span
-                                        style={{
-                                          color: '#94a3b8',
-                                          fontFamily: 'Georgia, serif',
-                                          fontSize: proofFont.citation,
-                                          fontWeight: 600,
-                                          marginLeft: 6,
-                                        }}
-                                      >
-                                        [{citLabel}]
-                                      </span>
-                                    )}
-                                  </>
-                                )}
-                              </div>
+                                    {fact.statement}
+                                  </span>
+                                  {citLabel && factCit && (
+                                    <>
+                                      {foundationHref || factCit.key.match(/^I\./) ? (
+                                        <a
+                                          href={
+                                            foundationHref ??
+                                            `/toys/euclid/${factCit.key.replace('I.', '')}`
+                                          }
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onPointerEnter={(e) =>
+                                            handleCitationPointerEnter(factCit.key, e)
+                                          }
+                                          onPointerLeave={handleCitationPointerLeave}
+                                          onPointerDown={(e) =>
+                                            handleCitationPointerDown(factCit.key, e)
+                                          }
+                                          style={{
+                                            color: '#94a3b8',
+                                            fontFamily: 'Georgia, serif',
+                                            fontSize: proofFont.citation,
+                                            fontWeight: 600,
+                                            marginLeft: 6,
+                                            textDecoration: 'underline',
+                                            textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          [{citLabel}]
+                                        </a>
+                                      ) : (
+                                        <span
+                                          style={{
+                                            color: '#94a3b8',
+                                            fontFamily: 'Georgia, serif',
+                                            fontSize: proofFont.citation,
+                                            fontWeight: 600,
+                                            marginLeft: 6,
+                                          }}
+                                        >
+                                          [{citLabel}]
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                                 {showText && factCit?.text && (
                                   <div
                                     style={{
@@ -3756,7 +3916,9 @@ export function EuclidCanvas({
                           <>
                             {foundationHref || factCit.key.match(/^I\./) ? (
                               <a
-                                href={foundationHref ?? `/toys/euclid/${factCit.key.replace('I.', '')}`}
+                                href={
+                                  foundationHref ?? `/toys/euclid/${factCit.key.replace('I.', '')}`
+                                }
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
@@ -3863,105 +4025,105 @@ export function EuclidCanvas({
                       minWidth: 0,
                     }}
                   >
-                  <span
-                    style={{
-                      color: '#10b981',
-                      fontWeight: 700,
-                      fontSize: proofFont.conclusion,
-                      fontFamily: 'Georgia, serif',
-                    }}
-                  >
-                    {'∴ '}
-                    {completionResult.segments.map((seg, idx) => (
-                      <span key={seg.label}>
-                        {idx > 0 && <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>}
-                        <span
-                          data-element="conclusion-segment"
-                          onMouseEnter={() => setHoveredProofDp(seg.dp)}
-                          style={{
-                            cursor: 'default',
-                            borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
-                              ? '2px solid #10b981'
-                              : '2px solid transparent',
-                            transition: 'border-color 0.15s ease',
-                          }}
-                        >
-                          {seg.label}
+                    <span
+                      style={{
+                        color: '#10b981',
+                        fontWeight: 700,
+                        fontSize: proofFont.conclusion,
+                        fontFamily: 'Georgia, serif',
+                      }}
+                    >
+                      {'∴ '}
+                      {completionResult.segments.map((seg, idx) => (
+                        <span key={seg.label}>
+                          {idx > 0 && <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>}
+                          <span
+                            data-element="conclusion-segment"
+                            onMouseEnter={() => setHoveredProofDp(seg.dp)}
+                            style={{
+                              cursor: 'default',
+                              borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
+                                ? '2px solid #10b981'
+                                : '2px solid transparent',
+                              transition: 'border-color 0.15s ease',
+                            }}
+                          >
+                            {seg.label}
+                          </span>
                         </span>
-                      </span>
-                    ))}
-                  </span>
-                  {(() => {
-                    // Render angle conclusion facts as interactive hoverable spans
-                    const conclusionAngleFacts = (
-                      factsByStep.get(steps.length) ?? []
-                    ).filter(isAngleFact)
-                    if (conclusionAngleFacts.length > 0) {
-                      return (
-                        <div
-                          style={{
-                            color: '#10b981',
-                            fontSize: proofFont.stepText,
-                            fontFamily: 'Georgia, serif',
-                            fontStyle: 'italic',
-                            marginTop: 0,
-                            width: '100%',
-                          }}
-                        >
-                          {conclusionAngleFacts.map((fact, idx) => (
-                            <span key={fact.id}>
-                              {idx > 0 && ', '}
-                              <span
-                                data-element="conclusion-angle"
-                                onMouseEnter={() => setHoveredFactId(fact.id)}
-                                onMouseLeave={() => setHoveredFactId(null)}
-                                style={{
-                                  cursor: 'default',
-                                  borderBottom: isFactHighlighted(fact)
-                                    ? '2px solid #10b981'
-                                    : '2px solid transparent',
-                                  transition: 'border-color 0.15s ease',
-                                }}
-                              >
-                                {fact.statement}
+                      ))}
+                    </span>
+                    {(() => {
+                      // Render angle conclusion facts as interactive hoverable spans
+                      const conclusionAngleFacts = (factsByStep.get(steps.length) ?? []).filter(
+                        isAngleFact
+                      )
+                      if (conclusionAngleFacts.length > 0) {
+                        return (
+                          <div
+                            style={{
+                              color: '#10b981',
+                              fontSize: proofFont.stepText,
+                              fontFamily: 'Georgia, serif',
+                              fontStyle: 'italic',
+                              marginTop: 0,
+                              width: '100%',
+                            }}
+                          >
+                            {conclusionAngleFacts.map((fact, idx) => (
+                              <span key={fact.id}>
+                                {idx > 0 && ', '}
+                                <span
+                                  data-element="conclusion-angle"
+                                  onMouseEnter={() => setHoveredFactId(fact.id)}
+                                  onMouseLeave={() => setHoveredFactId(null)}
+                                  style={{
+                                    cursor: 'default',
+                                    borderBottom: isFactHighlighted(fact)
+                                      ? '2px solid #10b981'
+                                      : '2px solid transparent',
+                                    transition: 'border-color 0.15s ease',
+                                  }}
+                                >
+                                  {fact.statement}
+                                </span>
                               </span>
-                            </span>
-                          ))}
-                        </div>
-                      )
-                    }
-                    // Fall back to static theorem conclusion text
-                    if (proposition.theoremConclusion) {
-                      return (
-                        <div
-                          style={{
-                            color: '#10b981',
-                            fontSize: proofFont.stepText,
-                            fontFamily: 'Georgia, serif',
-                            fontStyle: 'italic',
-                            marginTop: 0,
-                            width: '100%',
-                            whiteSpace: 'pre-line',
-                          }}
-                        >
-                          {proposition.theoremConclusion}
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
-                  <span
-                    style={{
-                      color: '#10b981',
-                      fontStyle: 'italic',
-                      fontSize: proofFont.stepText,
-                      fontWeight: 600,
-                      fontFamily: 'Georgia, serif',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
-                  </span>
+                            ))}
+                          </div>
+                        )
+                      }
+                      // Fall back to static theorem conclusion text
+                      if (proposition.theoremConclusion) {
+                        return (
+                          <div
+                            style={{
+                              color: '#10b981',
+                              fontSize: proofFont.stepText,
+                              fontFamily: 'Georgia, serif',
+                              fontStyle: 'italic',
+                              marginTop: 0,
+                              width: '100%',
+                              whiteSpace: 'pre-line',
+                            }}
+                          >
+                            {proposition.theoremConclusion}
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+                    <span
+                      style={{
+                        color: '#10b981',
+                        fontStyle: 'italic',
+                        fontSize: proofFont.stepText,
+                        fontWeight: 600,
+                        fontFamily: 'Georgia, serif',
+                        letterSpacing: '0.02em',
+                      }}
+                    >
+                      {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
+                    </span>
                   </div>
                   {isMobile && completionMeta?.nextPropId && (
                     <button
@@ -4064,24 +4226,24 @@ export function EuclidCanvas({
                         completionMeta.unlocked.length === 1 &&
                         completionMeta.unlocked[0] === completionMeta.nextPropId
                       ) && (
-                      <div
-                        style={{
-                          marginTop: 2,
-                          fontSize: proofFont.stepText,
-                          color: '#475569',
-                          fontFamily: 'Georgia, serif',
-                          lineHeight: isMobile ? 1.2 : 1.4,
-                        }}
-                      >
-                        <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
-                        {completionMeta.unlocked.map((id, i) => (
-                          <span key={id}>
-                            {i > 0 && ', '}
-                            <strong>I.{id}</strong>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                        <div
+                          style={{
+                            marginTop: 2,
+                            fontSize: proofFont.stepText,
+                            color: '#475569',
+                            fontFamily: 'Georgia, serif',
+                            lineHeight: isMobile ? 1.2 : 1.4,
+                          }}
+                        >
+                          <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
+                          {completionMeta.unlocked.map((id, i) => (
+                            <span key={id}>
+                              {i > 0 && ', '}
+                              <strong>I.{id}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 )}
             </div>
@@ -4149,24 +4311,24 @@ export function EuclidCanvas({
                   completionMeta.unlocked.length === 1 &&
                   completionMeta.unlocked[0] === completionMeta.nextPropId
                 ) && (
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontSize: proofFont.stepText,
-                    color: '#475569',
-                    fontFamily: 'Georgia, serif',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
-                  {completionMeta.unlocked.map((id, i) => (
-                    <span key={id}>
-                      {i > 0 && ', '}
-                      <strong>I.{id}</strong>
-                    </span>
-                  ))}
-                </div>
-              )}
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: proofFont.stepText,
+                      color: '#475569',
+                      fontFamily: 'Georgia, serif',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
+                    {completionMeta.unlocked.map((id, i) => (
+                      <span key={id}>
+                        {i > 0 && ', '}
+                        <strong>I.{id}</strong>
+                      </span>
+                    ))}
+                  </div>
+                )}
             </div>
           )}
         </div>

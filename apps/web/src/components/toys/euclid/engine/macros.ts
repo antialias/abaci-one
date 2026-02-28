@@ -131,7 +131,9 @@ const MACRO_PROP_1: MacroDef = {
     const preferUpper = intersections.filter((p) => abx * (p.y - pA.y) - aby * (p.x - pA.x) > 0)
     const apexPool = preferUpper.length > 0 ? preferUpper : intersections
     const apex =
-      apexPool.length > 1 ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0]) : apexPool[0]
+      apexPool.length > 1
+        ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
+        : apexPool[0]
     if (!apex) {
       return {
         state: currentState,
@@ -223,8 +225,7 @@ const MACRO_PROP_1: MacroDef = {
         ],
         // Reveal ceremony: show each circle in turn so the kid sees them intersect
         revealGroups: [[0], [1]],
-        keyNarration:
-          `${apexLabel}${aLabel} equals ${apexLabel}${bLabel} — the triangle is equilateral. That is what Proposition one gives us.`,
+        keyNarration: `${apexLabel}${aLabel} equals ${apexLabel}${bLabel} — the triangle is equilateral. That is what Proposition one gives us.`,
       })
     }
 
@@ -375,12 +376,13 @@ const MACRO_PROP_2: MacroDef = {
       // Use chirality (left of A→B) for consistent triangle orientation, matching MACRO_PROP_1
       const abx = segFrom.x - target.x
       const aby = segFrom.y - target.y
-      const upperD = apexCandidates.filter((p) => abx * (p.y - target.y) - aby * (p.x - target.x) > 0)
+      const upperD = apexCandidates.filter(
+        (p) => abx * (p.y - target.y) - aby * (p.x - target.x) > 0
+      )
       const apexPool = upperD.length > 0 ? upperD : apexCandidates
-      const apexD =
-        (apexPool.length > 1
-          ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
-          : apexPool[0]) ?? { x: target.x, y: target.y + (abRadius * Math.sqrt(3)) / 2 }
+      const apexD = (apexPool.length > 1
+        ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
+        : apexPool[0]) ?? { x: target.x, y: target.y + (abRadius * Math.sqrt(3)) / 2 }
 
       // Ghost point D + segments DA, DB
       ghostElements.push({
@@ -527,11 +529,8 @@ const MACRO_PROP_2: MacroDef = {
         // [0]=seg AB, [1]=pt D, [2]=seg DA, [3]=seg DB,
         // [4]=cir(B,C), [5]=pt E, [6]=seg BE, [7]=cir(D,E), [8]=pt F, [9]=seg AF
         revealGroups:
-          ghostElements.length >= 10
-            ? [[0], [1, 2, 3], [4], [5, 6], [7], [8, 9]]
-            : [[0]],
-        keyNarration:
-          `The segment at ${targetLabel} now equals ${segFromLabel}${segToLabel} — that is what Proposition two proves.`,
+          ghostElements.length >= 10 ? [[0], [1, 2, 3], [4], [5, 6], [7], [8, 9]] : [[0]],
+        keyNarration: `The segment at ${targetLabel} now equals ${segFromLabel}${segToLabel} — that is what Proposition two proves.`,
       })
     }
     ghostLayers.push(...childGhostLayers)
@@ -597,16 +596,21 @@ const MACRO_PROP_3: MacroDef = {
       }
     }
 
-    // Optimization: skip I.2 state modification if cutPoint coincides with segFrom
+    // Optimization: skip I.2 state modification if cutPoint coincides with segFrom.
+    // The distance transfer is trivially satisfied, but I.2 is still invoked for
+    // ghost layers so the full dependency chain (I.2 → I.1) is visible.
     const cdx = cutPoint.x - segFrom.x
     const cdy = cutPoint.y - segFrom.y
     const coincident = Math.sqrt(cdx * cdx + cdy * cdy) < 1e-9
 
-    // Always call I.2 to get ghost layers (even in coincident/degenerate case).
-    // When coincident, use a throwaway factStore so we don't pollute the real one.
+    // When coincident (cutPoint = segFrom), swap segFrom/segTo so I.2 gets a
+    // non-degenerate segment (cutPoint→segTo) instead of the zero-length
+    // cutPoint→segFrom. The distance |segFrom−segTo| is symmetric, so the
+    // result is identical — but I.2 now constructs a real equilateral triangle
+    // and produces full ghost geometry including nested I.1.
     const i2Result = MACRO_PROP_2.execute(
       currentState,
-      [cutId, segFromId, segToId],
+      coincident ? [cutId, segToId, segFromId] : [cutId, segFromId, segToId],
       currentCandidates,
       coincident ? createFactStore() : factStore,
       atStep,
@@ -717,8 +721,7 @@ const MACRO_PROP_3: MacroDef = {
         elements: ghostElements,
         // [0]=pt (I.2 output), [1]=seg (I.2 output), [2]=cir at cut, [3]=result pt
         revealGroups: [[0, 1], [2], [3]],
-        keyNarration:
-          `The circle marks the cut — ${cutLabel}${resultLabel} equals ${segFromLabel}${segToLabel}. That is what Proposition three proves.`,
+        keyNarration: `The circle marks the cut — ${cutLabel}${resultLabel} equals ${segFromLabel}${segToLabel}. That is what Proposition three proves.`,
       })
     }
     ghostLayers.push(...childGhostLayers)

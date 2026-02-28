@@ -13,142 +13,98 @@ import { addFact, addAngleFact } from '../engine/factStore'
 function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tap = isTouch ? 'Tap' : 'Click'
   const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
-  const sweep = isTouch ? 'Sweep your finger' : 'Move your mouse'
 
   return [
-    // ── Step 0: Circle centered at B through C (compass) ──
-    [
-      {
-        instruction: `${tapHold} point B`,
-        speech: isTouch
-          ? "We have an isosceles triangle — AB equals AC. Let's prove the base angles are equal. Press and hold on B to start a circle."
-          : "We have an isosceles triangle — AB equals AC. Let's prove the base angles are equal. Click and hold on B to start a circle.",
-        hint: { type: 'point', pointId: 'pt-B' },
-        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
-      },
-      {
-        instruction: `Drag to point C`,
-        speech: isTouch
-          ? 'Drag to C — this makes the compass match the base length BC.'
-          : 'Drag to C — this sets the compass to the base length BC.',
-        hint: { type: 'arrow', fromId: 'pt-B', toId: 'pt-C' },
-        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
-      },
-      {
-        instruction: `${sweep} around`,
-        speech: isTouch ? 'Sweep around to draw the circle!' : 'Move around to draw the circle!',
-        hint: { type: 'sweep', centerId: 'pt-B', radiusPointId: 'pt-C' },
-        advanceOn: null,
-      },
-    ],
-    // ── Step 1: Intersection beyond B → F ──
-    [
-      {
-        instruction: `${tap} where the circle crosses line AB past B`,
-        speech:
-          "See where the circle crosses the line from A through B, on the far side of B? Tap that point — that's F, and BF equals BC.",
-        hint: {
-          type: 'candidates',
-          ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
-          ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-B' },
-          beyondId: 'pt-B',
-        },
-        advanceOn: null,
-      },
-    ],
-    // ── Step 2: Circle centered at C through F (compass) — produces AC past C ──
-    [
-      {
-        instruction: `${tapHold} point C`,
-        speech: isTouch
-          ? 'Now we need to produce AC past C. Press and hold on C to start a circle.'
-          : 'Now we need to produce AC past C. Click and hold on C to start a circle.',
-        hint: { type: 'point', pointId: 'pt-C' },
-        advanceOn: { kind: 'compass-phase', phase: 'center-set' },
-      },
-      {
-        instruction: `Drag to point F`,
-        speech: isTouch
-          ? 'Drag to F — this gives us a radius big enough to reach past C on line AC.'
-          : 'Drag to F — this gives us a radius big enough to reach past C on line AC.',
-        hint: { type: 'arrow', fromId: 'pt-C', toId: 'pt-F' },
-        advanceOn: { kind: 'compass-phase', phase: 'radius-set' },
-      },
-      {
-        instruction: `${sweep} around`,
-        speech: isTouch ? 'Sweep around to draw the circle!' : 'Move around to draw the circle!',
-        hint: { type: 'sweep', centerId: 'pt-C', radiusPointId: 'pt-F' },
-        advanceOn: null,
-      },
-    ],
-    // ── Step 3: Intersection beyond C → E ──
-    [
-      {
-        instruction: `${tap} where the circle crosses line AC past C`,
-        speech:
-          "Tap where this circle crosses line AC, past C. That's E — now AE is longer than AF, so we can apply Proposition Three.",
-        hint: {
-          type: 'candidates',
-          ofA: { kind: 'circle', centerId: 'pt-C', radiusPointId: 'pt-F' },
-          ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-C' },
-          beyondId: 'pt-C',
-        },
-        advanceOn: null,
-      },
-    ],
-    // ── Step 4: I.3 macro — cut AG = AF from AE ──
+    // ── Step 0: Extend AB beyond B to F ──
     [
       {
         instruction: `${tap} point A`,
-        speech: isTouch
-          ? "Now we'll cut from AE a length equal to AF using Proposition Three. Tap A — where the cut starts."
-          : "Now we'll cut from AE a length equal to AF using Proposition Three. Click A — where the cut starts.",
+        speech:
+          "We have an isosceles triangle — AB equals AC. Let's prove the base angles are equal. First, we produce line AB past B. Start by clicking point A.",
         hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: { kind: 'macro-select', index: 0 },
+        advanceOn: { kind: 'extend-phase' as const, phase: 'base-set' as const },
+      },
+      {
+        instruction: `${tap} point B`,
+        speech: 'Now click point B — the endpoint to extend beyond.',
+        hint: { type: 'point', pointId: 'pt-B' },
+        advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
+      },
+      {
+        instruction: `${tap} along the ray to place F`,
+        speech: 'Click anywhere along the ray beyond B to place point F.',
+        hint: { type: 'none' as const },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 1: Extend AC beyond C to E ──
+    [
+      {
+        instruction: `${tap} point A`,
+        speech: 'Now produce the other equal side — line AC past C. Click point A.',
+        hint: { type: 'point', pointId: 'pt-A' },
+        advanceOn: { kind: 'extend-phase' as const, phase: 'base-set' as const },
+      },
+      {
+        instruction: `${tap} point C`,
+        speech: 'Click point C — the endpoint to extend beyond.',
+        hint: { type: 'point', pointId: 'pt-C' },
+        advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
+      },
+      {
+        instruction: `${tap} along the ray to place E`,
+        speech: 'Click anywhere along the ray beyond C to place point E.',
+        hint: { type: 'none' as const },
+        advanceOn: null,
+      },
+    ],
+    // ── Step 2: I.3 macro — cut AG from AE equal to AF ──
+    [
+      {
+        instruction: `${tap} point A`,
+        speech:
+          "Now we use Proposition I.3 to cut off from AE a part equal to AF. This transfers the length AF onto line AE. Select point A — the start of the greater line.",
+        hint: { type: 'point', pointId: 'pt-A' },
+        advanceOn: { kind: 'macro-select' as const, index: 0 },
       },
       {
         instruction: `${tap} point E`,
-        speech: isTouch
-          ? 'Tap E — the far end of the greater line.'
-          : 'Click E — the far end of the greater line.',
+        speech: 'Select point E — the end of the greater line AE.',
         hint: { type: 'point', pointId: 'pt-E' },
-        advanceOn: { kind: 'macro-select', index: 1 },
-      },
-      {
-        instruction: `${tap} point F`,
-        speech: isTouch
-          ? "Tap F — one end of the length we're matching."
-          : "Click F — one end of the length we're matching.",
-        hint: { type: 'point', pointId: 'pt-F' },
-        advanceOn: { kind: 'macro-select', index: 2 },
+        advanceOn: { kind: 'macro-select' as const, index: 1 },
       },
       {
         instruction: `${tap} point A`,
-        speech: isTouch
-          ? 'Tap A — the other end. Proposition Three will find G where AG equals AF!'
-          : 'Click A — the other end. Proposition Three will find G where AG equals AF!',
+        speech: 'Now select the segment to copy. Click A — the start of AF.',
         hint: { type: 'point', pointId: 'pt-A' },
+        advanceOn: { kind: 'macro-select' as const, index: 2 },
+      },
+      {
+        instruction: `${tap} point F`,
+        speech:
+          'Click F to finish. Proposition I.3 places point G on AE where AG equals AF — cutting off from the greater a part equal to the less.',
+        hint: { type: 'point', pointId: 'pt-F' },
         advanceOn: null,
       },
     ],
-    // ── Step 5: Join F to C (straightedge) ──
+    // ── Step 3: Join F to C (straightedge) ──
     [
       {
         instruction: `${tapHold} point F`,
         speech: isTouch
-          ? 'Now join F to C. Press and hold on F.'
-          : 'Now join F to C. Click and hold on F.',
+          ? 'Now join F to C. Press and hold on F and drag to C.'
+          : 'Now join F to C. Click and hold on F and drag to C.',
         hint: { type: 'point', pointId: 'pt-F' },
         advanceOn: null,
       },
     ],
-    // ── Step 6: Join G to B (straightedge) ──
+    // ── Step 4: Join G to B (straightedge) ──
     [
       {
         instruction: `${tapHold} point G`,
         speech: isTouch
-          ? 'Almost done! Join G to B. Press and hold on G.'
-          : 'Almost done! Join G to B. Click and hold on G.',
+          ? 'Almost done! Join G to B — this gives us two cross-triangles to compare. Press and hold on G.'
+          : 'Almost done! Join G to B — this gives us two cross-triangles to compare. Click and hold on G.',
         hint: { type: 'point', pointId: 'pt-G' },
         advanceOn: null,
       },
@@ -158,10 +114,16 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
 
 /**
  * Derive I.5 conclusion: full 7-fact derivation chain
- *   1. CG = BF           [C.N.3 distance subtraction]
+ *
+ * Construction gives us:
+ *   AF = AG  (I.3: cut off from AE a part equal to AF)
+ *   AB = AC  (given)
+ *
+ * Derivation:
+ *   1. BF = CG           [C.N.3: AF − AB = AG − AC]
  *   2. FC = GB           [I.4: △AFC ≅ △AGB]
- *   3. ∠AFC = ∠AGB       [I.4: △AFC ≅ △AGB — remaining angles]
- *   4. ∠ACF = ∠ABG       [I.4: △AFC ≅ △AGB — remaining angles]
+ *   3. ∠ACF = ∠ABG       [I.4: △AFC ≅ △AGB — vertex angles]
+ *   4. ∠AFC = ∠AGB       [I.4: △AFC ≅ △AGB — vertex angles]
  *   5. ∠FBC = ∠GCB       [I.4: △BFC ≅ △CGB — under-base angles]
  *   6. ∠BCF = ∠CBG       [I.4: △BFC ≅ △CGB — remaining angles]
  *   7. ∠ABC = ∠ACB       [C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF]
@@ -173,27 +135,28 @@ function deriveProp5Conclusion(
 ): ProofFact[] {
   const allNewFacts: ProofFact[] = []
 
-  const dpCG = distancePair('pt-C', 'pt-G')
   const dpBF = distancePair('pt-B', 'pt-F')
-  const dpAG = distancePair('pt-A', 'pt-G')
-  const dpAC = distancePair('pt-A', 'pt-C')
+  const dpCG = distancePair('pt-C', 'pt-G')
+  const dpAF = distancePair('pt-A', 'pt-F')
+  const dpAB = distancePair('pt-A', 'pt-B')
 
-  // 1. C.N.3 — CG = BF
-  //    AG = AF (from I.3), AC = AB (given)
-  //    AG − AC = AF − AB → CG = BF
+  // 1. C.N.3 — BF = CG
+  //    AF = AG (I.3), AB = AC (given)
+  //    AF − AB = AG − AC → BF = CG
   allNewFacts.push(
     ...addFact(
       store,
-      dpCG,
       dpBF,
-      { type: 'cn3', whole: dpAG, part: dpAC },
-      'CG = BF',
-      'C.N.3: AG − AC = AF − AB (since AG = AF, AB = AC)',
+      dpCG,
+      { type: 'cn3', whole: dpAF, part: dpAB },
+      'BF = CG',
+      'C.N.3: AF − AB = AG − AC (since AF = AG, AB = AC)',
       atStep
     )
   )
 
   // 2. I.4 (SAS) — FC = GB
+  //    △AFC ≅ △AGB: AF = AG, AC = AB, ∠FAC = ∠GAB (common angle at A)
   const dpFC = distancePair('pt-F', 'pt-C')
   const dpGB = distancePair('pt-G', 'pt-B')
 
@@ -209,22 +172,7 @@ function deriveProp5Conclusion(
     )
   )
 
-  // 3. ∠AFC = ∠AGB (I.4: remaining angles of △AFC ≅ △AGB)
-  const angAFC = angleMeasure('pt-F', 'pt-A', 'pt-C')
-  const angAGB = angleMeasure('pt-G', 'pt-A', 'pt-B')
-  allNewFacts.push(
-    ...addAngleFact(
-      store,
-      angAFC,
-      angAGB,
-      { type: 'prop', propId: 4 },
-      '∠AFC = ∠AGB',
-      'I.4: △AFC ≅ △AGB — remaining angles',
-      atStep
-    )
-  )
-
-  // 4. ∠ACF = ∠ABG (I.4: remaining angles of △AFC ≅ △AGB)
+  // 3. ∠ACF = ∠ABG (I.4: vertex angles at C and B in △AFC ≅ △AGB)
   const angACF = angleMeasure('pt-C', 'pt-A', 'pt-F')
   const angABG = angleMeasure('pt-B', 'pt-A', 'pt-G')
   allNewFacts.push(
@@ -239,7 +187,23 @@ function deriveProp5Conclusion(
     )
   )
 
+  // 4. ∠AFC = ∠AGB (I.4: vertex angles at F and G in △AFC ≅ △AGB)
+  const angAFC = angleMeasure('pt-F', 'pt-A', 'pt-C')
+  const angAGB = angleMeasure('pt-G', 'pt-A', 'pt-B')
+  allNewFacts.push(
+    ...addAngleFact(
+      store,
+      angAFC,
+      angAGB,
+      { type: 'prop', propId: 4 },
+      '∠AFC = ∠AGB',
+      'I.4: △AFC ≅ △AGB — remaining angles',
+      atStep
+    )
+  )
+
   // 5. ∠FBC = ∠GCB (I.4: △BFC ≅ △CGB — under-base angles)
+  //    BF = CG (fact 1), FC = GB (fact 2), ∠BFC = ∠CGB (supp. of equal ∠AFC, ∠AGB)
   const angFBC = angleMeasure('pt-B', 'pt-F', 'pt-C')
   const angGCB = angleMeasure('pt-C', 'pt-G', 'pt-B')
   allNewFacts.push(
@@ -249,7 +213,7 @@ function deriveProp5Conclusion(
       angGCB,
       { type: 'prop', propId: 4 },
       '∠FBC = ∠GCB',
-      'I.4: △BFC ≅ △CGB — under-base angles',
+      'I.4: △BFC ≅ △CGB — angles under the base',
       atStep
     )
   )
@@ -296,20 +260,19 @@ function deriveProp5Conclusion(
  *
  * Given: Isosceles triangle ABC with AB = AC (A at apex, B/C at base).
  *
- * Construction:
- * 0. Circle centered at B through C               (Post.3)
- * 1. Intersection: circle(B,C) × ext AB → F       (BF = BC, Def.15)
- * 2. Circle centered at C through F               (Post.3)
- * 3. Intersection: circle(C,F) × ext AC → E       (CE = CF, Def.15)
- *    — AE = AC + CF > AC + BC = AF, so AE > AF —
- * 4. I.3: from AE cut AG = FA                     (I.3) → G
- * 5. Join F to C                                   (Post.1)
- * 6. Join G to B                                   (Post.1)
+ * Construction (following Euclid's original, using I.3):
+ * 0. Extend AB beyond B to F                          (Post.2)
+ * 1. Extend AC beyond C to E                          (Post.2)
+ * 2. Cut off AG from AE equal to AF                   (I.3)
+ * 3. Join F to C                                       (Post.1)
+ * 4. Join G to B                                       (Post.1)
  *
- * Conclusion:
- *   CG = BF  via C.N.3: AG − AC = AF − AB (since AG = AF, AB = AC)
- *   FC = GB  via I.4: △AFC ≅ △AGB (AF = AG, AC = AB, ∠FAC = ∠GAB)
- *   ∠ABC = ∠ACB, ∠FBC = ∠GCB
+ * Proof chain:
+ *   BF = CG       [C.N.3: AF − AB = AG − AC]
+ *   △AFC ≅ △AGB   [I.4: AF = AG, AC = AB, ∠FAC = ∠GAB]
+ *   △BFC ≅ △CGB   [I.4: BF = CG, FC = GB, ∠BFC = ∠CGB]
+ *   ∠FBC = ∠GCB   [under-base angles equal]
+ *   ∠ABC = ∠ACB   [C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF]
  */
 
 // ── Default positions ──
@@ -317,10 +280,15 @@ const DEFAULT_A = { x: 0, y: 2 }
 const DEFAULT_B = { x: -2, y: -1 }
 const DEFAULT_C = { x: 2, y: -1 }
 
+// ── Extend distances ──
+// F is placed beyond B on ray AB; E is placed beyond C on ray AC.
+// I.3 cuts off AG from AE equal to AF.
+// Constraint: AE > AF so I.3 can cut from the greater.
+// BF = 1.5 (shorter), CE = 2.5 (longer) → AF = AB + 1.5 < AC + 2.5 = AE
+const EXTEND_BF = 1.5
+const EXTEND_CE = 2.5
+
 // ── Rotation angle from vector AB to vector AC ──
-// vAB = B − A = (−2, −3), vAC = C − A = (2, −3)
-// cross = vAB.x * vAC.y − vAB.y * vAC.x = 12
-// dot   = vAB.x * vAC.x + vAB.y * vAC.y = 5
 // Rot(ROTATION_ANGLE) * (B − A) = (C − A), preserving |AC| = |AB|
 const ROTATION_ANGLE = Math.atan2(
   (DEFAULT_B.x - DEFAULT_A.x) * (DEFAULT_C.y - DEFAULT_A.y) -
@@ -469,68 +437,48 @@ export const PROP_5: PropositionDef = {
     },
   ] as ConstructionElement[],
   steps: [
-    // 0. Circle centered at B through C
+    // 0. Extend AB beyond B to F
     {
-      instruction: 'Draw a circle centered at B through C',
-      expected: { type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-C' },
-      highlightIds: ['pt-B', 'pt-C'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    // 1. Mark intersection of circle(B,C) with extension of AB beyond B → F
-    {
-      instruction: 'Mark where the circle crosses line AB past B',
+      instruction: 'Produce AB beyond B to F',
       expected: {
-        type: 'intersection',
-        ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
-        ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-B' },
-        beyondId: 'pt-B',
+        type: 'extend',
+        baseId: 'pt-A',
+        throughId: 'pt-B',
+        distance: EXTEND_BF,
         label: 'F',
       },
-      highlightIds: [],
-      tool: null,
-      citation: 'Def.15',
+      highlightIds: ['pt-A', 'pt-B'],
+      tool: 'extend',
+      citation: 'Post.2',
     },
-    // 2. Circle centered at C through F — produces AC past C (Post.2 via Post.3)
-    //    CF > BC for all isosceles triangles, so AE = AC + CF > AC + BC = AF.
+    // 1. Extend AC beyond C to E
     {
-      instruction: 'Draw a circle centered at C through F',
-      expected: { type: 'compass', centerId: 'pt-C', radiusPointId: 'pt-F' },
-      highlightIds: ['pt-C', 'pt-F'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    // 3. Mark intersection of circle(C,F) with extension of AC beyond C → E
-    {
-      instruction: 'Mark where the circle crosses line AC past C',
+      instruction: 'Produce AC beyond C to E',
       expected: {
-        type: 'intersection',
-        ofA: { kind: 'circle', centerId: 'pt-C', radiusPointId: 'pt-F' },
-        ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-C' },
-        beyondId: 'pt-C',
+        type: 'extend',
+        baseId: 'pt-A',
+        throughId: 'pt-C',
+        distance: EXTEND_CE,
         label: 'E',
       },
-      highlightIds: [],
-      tool: null,
-      citation: 'Def.15',
+      highlightIds: ['pt-A', 'pt-C'],
+      tool: 'extend',
+      citation: 'Post.2',
     },
-    // 4. I.3 macro: from AE (greater), cut off AG = FA (less) → G
-    //    Inputs: [cutPoint=A, target=E, segFrom=F, segTo=A]
-    //    - AE > AF (proven by construction) ✓
-    //    - cutPoint ≠ segFrom (A ≠ F) → I.2 is non-degenerate ✓
+    // 2. Cut off AG from AE equal to AF (I.3)
     {
-      instruction: 'From AE, cut off a length equal to AF (I.3)',
+      instruction: 'Cut off from AE a part equal to AF (I.3)',
       expected: {
         type: 'macro',
         propId: 3,
-        inputPointIds: ['pt-A', 'pt-E', 'pt-F', 'pt-A'],
+        inputPointIds: ['pt-A', 'pt-E', 'pt-A', 'pt-F'],
         outputLabels: { result: 'G' },
       },
       highlightIds: ['pt-A', 'pt-E', 'pt-F'],
       tool: 'macro',
       citation: 'I.3',
     },
-    // 5. Join F to C
+    // 3. Join F to C
     {
       instruction: 'Join F to C',
       expected: { type: 'straightedge', fromId: 'pt-F', toId: 'pt-C' },
@@ -538,7 +486,7 @@ export const PROP_5: PropositionDef = {
       tool: 'straightedge',
       citation: 'Post.1',
     },
-    // 6. Join G to B
+    // 4. Join G to B
     {
       instruction: 'Join G to B',
       expected: { type: 'straightedge', fromId: 'pt-G', toId: 'pt-B' },
@@ -547,21 +495,30 @@ export const PROP_5: PropositionDef = {
       citation: 'Post.1',
     },
   ],
+  resultSegments: [
+    { fromId: 'pt-F', toId: 'pt-C' },
+    { fromId: 'pt-G', toId: 'pt-B' },
+    // CG is not a construction segment (G sits on ray AE with no segment to C),
+    // but the derivation proves BF = CG. Include it so tick marks render.
+    { fromId: 'pt-C', toId: 'pt-G' },
+  ],
   getTutorial: getProp5Tutorial,
   explorationNarration: {
     introSpeech:
-      'The Bridge of Asses! You proved that base angles of an isosceles triangle are always equal. Try dragging the points to see this hold for every shape.',
+      'The Bridge of Asses! You proved that base angles of an isosceles triangle are always equal — and the angles under the base too. Proposition I.3 transferred the distance for us. Try dragging the points to see this hold for every shape.',
     pointTips: [
       {
         pointId: 'pt-A',
         speech:
-          'See how the triangle changes shape but the base angles always stay equal? The construction adapts perfectly.',
+          'See how the triangle changes shape but the base angles always stay equal? The I.3 construction adapts perfectly.',
       },
       {
         pointId: 'pt-B',
         speech: 'Watch how C follows to keep the triangle isosceles. The angles always match!',
       },
     ],
+    breakdownTip:
+      'The construction needs the extensions to satisfy I.3 — AE must exceed AF. Try moving the points closer together.',
   },
   deriveConclusion: deriveProp5Conclusion,
 }
