@@ -159,8 +159,10 @@ describe('computeViewCounts', () => {
   it('computes basic counts (non-teacher)', () => {
     const counts = computeViewCounts(allStudents, false)
 
-    expect(counts.all).toBe(7)
-    expect(counts['my-children']).toBe(4)
+    // "all" excludes archived students (1 archived => 6 active)
+    expect(counts.all).toBe(6)
+    expect(counts.allTotal).toBe(7) // full roster including archived
+    expect(counts['my-children']).toBe(3) // 4 children minus 1 archived
     expect(counts['my-children-active']).toBe(1)
     expect(counts['needs-attention']).toBe(1) // archived ones excluded
     // Teacher-only counts should not be present
@@ -172,8 +174,10 @@ describe('computeViewCounts', () => {
   it('includes teacher-only counts when isTeacher=true', () => {
     const counts = computeViewCounts(allStudents, true)
 
-    expect(counts.all).toBe(7)
-    expect(counts['my-children']).toBe(4)
+    // "all" excludes archived students (1 archived => 6 active)
+    expect(counts.all).toBe(6)
+    expect(counts.allTotal).toBe(7) // full roster including archived
+    expect(counts['my-children']).toBe(3) // 4 children minus 1 archived
     expect(counts['my-children-active']).toBe(1)
     expect(counts['needs-attention']).toBe(1)
     expect(counts.enrolled).toBe(4) // myChild, enrolledStudent, presentStudent, presentPracticingStudent
