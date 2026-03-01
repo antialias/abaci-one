@@ -13,6 +13,7 @@
 import { useState, useCallback, useRef } from 'react'
 import type { ChatMessage } from './types'
 import { captureScreenshot } from './captureScreenshot'
+import { useConversationCompaction, type CompactionState } from './useConversationCompaction'
 
 export interface UseCharacterChatOptions {
   /** API endpoint for chat streaming */
@@ -37,6 +38,12 @@ export interface UseCharacterChatReturn {
   isOpen: boolean
   open: () => void
   close: () => void
+  /** Conversation compaction state — used by voice to get compacted history. */
+  compaction: CompactionState & {
+    compactForVoice: (messages: ChatMessage[]) => string
+    isSummarizingRef: React.RefObject<boolean>
+    manualCompactUpTo: (index: number) => void
+  }
 }
 
 let nextId = 0
@@ -53,6 +60,9 @@ export function useCharacterChat(
   const [isStreaming, setIsStreaming] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+
+  // Async conversation compaction — summarizes old messages in the background
+  const compaction = useConversationCompaction(messages)
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
@@ -105,14 +115,10 @@ export function useCharacterChat(
         : undefined
 
       // Build message history for API (without the empty assistant msg).
-      // Filter out error messages (they're UI-only) and wrap event messages
-      // so the model sees construction state changes at their temporal position.
-      const apiMessages = [...messages, userMsg]
-        .filter((m) => !m.isError)
-        .map((m) => ({
-          role: m.role,
-          content: m.isEvent ? `[CONSTRUCTION EVENT: ${m.content}]` : m.content,
-        }))
+      // Uses compaction: if a cached summary exists, the head is replaced with it.
+      // Otherwise falls back to the full history. Error messages are filtered out
+      // and event messages are wrapped so the model sees construction state changes.
+      const apiMessages = compaction.compactForApi([...messages, userMsg])
 
       const body = buildRequestBody(apiMessages, screenshot)
 
@@ -229,8 +235,17 @@ export function useCharacterChat(
 
       fetchStream()
     },
-    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef],
+    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, compaction.compactForApi],
   )
 
-  return { messages, isStreaming, sendMessage, addMessage, setTrailingEvent, isOpen, open, close }
+  return {
+    messages, isStreaming, sendMessage, addMessage, setTrailingEvent, isOpen, open, close,
+    compaction: {
+      headSummary: compaction.headSummary,
+      coversUpTo: compaction.coversUpTo,
+      compactForVoice: compaction.compactForVoice,
+      isSummarizingRef: compaction.isSummarizingRef,
+      manualCompactUpTo: compaction.manualCompactUpTo,
+    },
+  }
 }

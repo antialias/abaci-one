@@ -113,6 +113,7 @@ import { MacroToolPanel } from './MacroToolPanel'
 import { useEuclidVoice } from './voice/useEuclidVoice'
 import { useConstructionNotifier } from './voice/useConstructionNotifier'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
 import { useEuclidChat } from './chat/useEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
@@ -616,6 +617,7 @@ export function EuclidCanvas({
   disableAudio,
 }: EuclidCanvasProps) {
   const isMobile = useIsMobile()
+  const { isVisualDebugEnabled } = useVisualDebugSafe()
   const proofFont = {
     header: isMobile ? 11 : 14,
     title: isMobile ? 11 : 14,
@@ -1074,6 +1076,7 @@ export function EuclidCanvas({
     dragPointIdRef,
     steps,
     chatMessagesRef,
+    compactForVoice: euclidChat.compaction.compactForVoice,
     onModelSpeech: handleModelSpeech,
     onChildSpeech: handleChildSpeech,
   })
@@ -3786,6 +3789,11 @@ export function EuclidCanvas({
                   onDragPointerUp={handleQuadPointerUp}
                   isDragging={quadDragging}
                   squareBottomRight
+                  debugCompaction={isVisualDebugEnabled ? {
+                    coversUpTo: euclidChat.compaction.coversUpTo,
+                    isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
+                    onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
+                  } : undefined}
                 />
               </div>
             )}
@@ -5012,6 +5020,11 @@ export function EuclidCanvas({
         isSpeaking={euclidVoice.isSpeaking}
         notifierRef={notifierRef}
         chatMessageCount={euclidChat.messages.length}
+        compaction={{
+          headSummary: euclidChat.compaction.headSummary,
+          coversUpTo: euclidChat.compaction.coversUpTo,
+          isSummarizingRef: euclidChat.compaction.isSummarizingRef,
+        }}
       />
 
       <ToyDebugPanel title="Euclid">

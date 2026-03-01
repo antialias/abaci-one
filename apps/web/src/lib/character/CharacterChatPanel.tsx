@@ -7,9 +7,18 @@
  * entity marker system for domain-specific inline highlights.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { CharacterDefinition, ChatMessage, EntityMarkerConfig } from './types'
 import { MarkedText } from './MarkedText'
+
+export interface DebugCompactionProps {
+  /** Current compaction coverage (messages 0..coversUpTo are summarized) */
+  coversUpTo: number
+  /** Whether a summarization request is in-flight */
+  isSummarizing: boolean
+  /** Trigger compaction of all messages before the given message index */
+  onCompactUpTo: (index: number) => void
+}
 
 export interface CharacterChatPanelProps<TEntityRef> {
   character: CharacterDefinition
@@ -26,6 +35,8 @@ export interface CharacterChatPanelProps<TEntityRef> {
   isDragging?: boolean
   /** Square off the bottom-right corner to connect with the quad */
   squareBottomRight?: boolean
+  /** When set, shows compaction controls between messages (debug mode) */
+  debugCompaction?: DebugCompactionProps
 }
 
 export function CharacterChatPanel<TEntityRef>({
@@ -41,6 +52,7 @@ export function CharacterChatPanel<TEntityRef>({
   onDragPointerUp,
   isDragging,
   squareBottomRight,
+  debugCompaction,
 }: CharacterChatPanelProps<TEntityRef>) {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -208,75 +220,125 @@ export function CharacterChatPanel<TEntityRef>({
             {character.chat.emptyPrompt}
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, msgIndex) => {
+          // Debug compaction divider — shown between messages when debug is active
+          const compactionDivider = debugCompaction && msgIndex > 0 ? (() => {
+            const isCovered = msgIndex <= debugCompaction.coversUpTo
+            const isAtBoundary = msgIndex === debugCompaction.coversUpTo
+            const canCompact = !debugCompaction.isSummarizing && msgIndex > debugCompaction.coversUpTo
+            return (
+              <div
+                key={`compact-${msgIndex}`}
+                data-element="compaction-divider"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '1px 0',
+                  opacity: isCovered ? 0.4 : 0.7,
+                }}
+              >
+                <div style={{ flex: 1, height: 1, background: isAtBoundary ? '#86efac' : isCovered ? '#86efac' : 'rgba(203,213,225,0.4)' }} />
+                {isAtBoundary ? (
+                  <span style={{ fontSize: 8, color: '#86efac', whiteSpace: 'nowrap' }}>
+                    summarized above
+                  </span>
+                ) : canCompact ? (
+                  <button
+                    data-action="compact-here"
+                    onClick={() => debugCompaction.onCompactUpTo(msgIndex)}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      fontSize: 9,
+                      color: '#94a3b8',
+                      padding: '0 4px',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={`Compact messages 1–${msgIndex} into a summary`}
+                  >
+                    {'\u2702'} compact here
+                  </button>
+                ) : null}
+                <div style={{ flex: 1, height: 1, background: isAtBoundary ? '#86efac' : isCovered ? '#86efac' : 'rgba(203,213,225,0.4)' }} />
+              </div>
+            )
+          })() : null
+
           // Event messages render as small centered notices
           if (msg.isEvent) {
             return (
-              <div
-                key={msg.id}
-                data-element="chat-message-event"
-                style={{
-                  textAlign: 'center',
-                  padding: '4px 12px',
-                  fontSize: 11,
-                  color: '#94a3b8',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
-                  {msg.content}
+              <React.Fragment key={msg.id}>
+                {compactionDivider}
+                <div
+                  data-element="chat-message-event"
+                  style={{
+                    textAlign: 'center',
+                    padding: '4px 12px',
+                    fontSize: 11,
+                    color: '#94a3b8',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
+                    {msg.content}
+                  </div>
+                  {msg.imageDataUrl && (
+                    <img
+                      src={msg.imageDataUrl}
+                      alt="Construction screenshot"
+                      data-element="event-screenshot"
+                      style={{
+                        width: 120,
+                        height: 90,
+                        objectFit: 'cover',
+                        borderRadius: 6,
+                        border: '1px solid rgba(203, 213, 225, 0.6)',
+                        opacity: 0.85,
+                      }}
+                    />
+                  )}
                 </div>
-                {msg.imageDataUrl && (
-                  <img
-                    src={msg.imageDataUrl}
-                    alt="Construction screenshot"
-                    data-element="event-screenshot"
-                    style={{
-                      width: 120,
-                      height: 90,
-                      objectFit: 'cover',
-                      borderRadius: 6,
-                      border: '1px solid rgba(203, 213, 225, 0.6)',
-                      opacity: 0.85,
-                    }}
-                  />
-                )}
-              </div>
+              </React.Fragment>
             )
           }
           // Error messages render as centered system notices, not character speech
           if (msg.isError) {
             return (
-              <div
-                key={msg.id}
-                data-element="chat-message-error"
-                style={{
-                  textAlign: 'center',
-                  padding: '8px 12px',
-                  fontSize: 12,
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                }}
-              >
-                {msg.content}
-              </div>
+              <React.Fragment key={msg.id}>
+                {compactionDivider}
+                <div
+                  data-element="chat-message-error"
+                  style={{
+                    textAlign: 'center',
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    color: '#94a3b8',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  {msg.content}
+                </div>
+              </React.Fragment>
             )
           }
           return (
-            <div
-              key={msg.id}
-              data-element={`chat-message-${msg.role}`}
-              style={{
-                display: 'flex',
-                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-                alignItems: 'flex-start',
-                gap: 6,
-              }}
-            >
+            <React.Fragment key={msg.id}>
+              {compactionDivider}
+              <div
+                data-element={`chat-message-${msg.role}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                  alignItems: 'flex-start',
+                  gap: 6,
+                }}
+              >
               {msg.role === 'assistant' && (
                 <img
                   src={character.profileImage}
@@ -351,6 +413,7 @@ export function CharacterChatPanel<TEntityRef>({
                 )}
               </div>
             </div>
+            </React.Fragment>
           )
         })}
         {isStreaming &&

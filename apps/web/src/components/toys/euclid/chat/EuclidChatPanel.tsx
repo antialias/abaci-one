@@ -7,6 +7,7 @@
  */
 
 import { CharacterChatPanel } from '@/lib/character/CharacterChatPanel'
+import type { DebugCompactionProps } from '@/lib/character/CharacterChatPanel'
 import type { ChatMessage } from '@/lib/character/types'
 import type { GeometricEntityRef } from './parseGeometricEntities'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
@@ -25,6 +26,8 @@ interface EuclidChatPanelProps {
   isDragging?: boolean
   /** Square off the bottom-right corner to connect with the quad */
   squareBottomRight?: boolean
+  /** When set, shows compaction controls between messages (debug mode) */
+  debugCompaction?: DebugCompactionProps
 }
 
 export function EuclidChatPanel({
@@ -38,6 +41,7 @@ export function EuclidChatPanel({
   onDragPointerUp,
   isDragging,
   squareBottomRight,
+  debugCompaction,
 }: EuclidChatPanelProps) {
   return (
     <CharacterChatPanel
@@ -53,6 +57,7 @@ export function EuclidChatPanel({
       onDragPointerUp={onDragPointerUp}
       isDragging={isDragging}
       squareBottomRight={squareBottomRight}
+      debugCompaction={debugCompaction}
     />
   )
 }

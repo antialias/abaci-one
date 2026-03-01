@@ -74,6 +74,8 @@ interface UseEuclidVoiceOptions {
   steps: PropositionStep[]
   /** Prior chat messages ref — injected into voice session for context continuity */
   chatMessagesRef: React.RefObject<ChatMessage[]>
+  /** Compact conversation for voice injection (uses head summary if available) */
+  compactForVoice?: (messages: ChatMessage[]) => string
   /** Called when the model produces a speech transcript */
   onModelSpeech?: (transcript: string) => void
   /** Called when the child produces a speech transcript */
@@ -272,14 +274,20 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
       const msgs = options.chatMessagesRef.current
       console.log('[euclid-voice] prior chat messages: %d', msgs?.length ?? 0)
       if (msgs && msgs.length > 0) {
-        const lines = msgs
-          .filter((m) => !m.isError)
-          .map((m) => {
-            if (m.isEvent) return `[Event: ${m.content}]`
-            return `${m.role === 'user' ? 'Student' : 'Euclid'}: ${m.content}`
-          })
-          .join('\n')
-        sendSystemMessage(dc, `[Prior conversation with this student — you already discussed this, continue naturally without repeating yourself:]\n${lines}`)
+        // Use compacted history if available (head summary + recent tail),
+        // otherwise fall back to formatting all messages verbatim
+        const historyText = options.compactForVoice
+          ? options.compactForVoice(msgs)
+          : msgs
+              .filter((m) => !m.isError)
+              .map((m) => {
+                if (m.isEvent) return `[Event: ${m.content}]`
+                return `${m.role === 'user' ? 'Student' : 'Euclid'}: ${m.content}`
+              })
+              .join('\n')
+        if (historyText) {
+          sendSystemMessage(dc, `[Prior conversation with this student — you already discussed this, continue naturally without repeating yourself:]\n${historyText}`)
+        }
       }
     },
     timer: {

@@ -98,6 +98,7 @@ p, guest, /api/scanner-settings, *
 p, guest, /api/arcade/*, *
 p, guest, /api/arcade-session, *
 p, guest, /api/realtime/*, *
+p, guest, /api/chat/*, *
 p, guest, /api/euclid/*, *
 p, guest, /api/audio/*, *
 p, guest, /api/generate, *

@@ -37,6 +37,12 @@ interface EuclidContextDebugPanelProps {
   isSpeaking: boolean
   notifierRef: React.RefObject<ConstructionNotifier>
   chatMessageCount: number
+  /** Compaction state from useConversationCompaction */
+  compaction: {
+    headSummary: string | null
+    coversUpTo: number
+    isSummarizingRef: React.RefObject<boolean>
+  }
 }
 
 const SECTION_STYLE: React.CSSProperties = {
@@ -121,6 +127,7 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
     isSpeaking,
     notifierRef,
     chatMessageCount,
+    compaction,
   } = props
 
   const emptyState = { elements: [], nextLabelIndex: 0, nextColorIndex: 0 } as ConstructionState
@@ -210,6 +217,29 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
       <CollapsibleSection title="Text Chat">
         <div>Messages: {chatMessageCount}</div>
         <div>Pending action: {pendingAction ?? '(none)'}</div>
+      </CollapsibleSection>
+
+      {/* Conversation Compaction */}
+      <CollapsibleSection title="Compaction" defaultOpen>
+        {(() => {
+          const isSummarizing = compaction.isSummarizingRef.current
+          const hasSummary = !!compaction.headSummary
+          const status = isSummarizing ? 'summarizing...' : hasSummary ? 'ready' : 'idle'
+          const tailSize = hasSummary ? chatMessageCount - compaction.coversUpTo : chatMessageCount
+          const statusColor = isSummarizing ? '#fcd34d' : hasSummary ? '#86efac' : 'inherit'
+          return (
+            <>
+              <div>Status: <span style={{ color: statusColor }}>{status}</span></div>
+              <div>Coverage: {compaction.coversUpTo} / {chatMessageCount} msgs summarized</div>
+              <div>Tail: {tailSize} msgs verbatim</div>
+              {hasSummary && (
+                <div style={{ marginTop: 4, opacity: 0.7, fontSize: 9 }}>
+                  {compaction.headSummary!.slice(0, 200)}{compaction.headSummary!.length > 200 ? '...' : ''}
+                </div>
+              )}
+            </>
+          )
+        })()}
       </CollapsibleSection>
 
       {/* Push Log */}
