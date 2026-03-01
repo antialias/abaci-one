@@ -48,6 +48,8 @@ export interface UseEuclidChatOptions {
   steps: PropositionStep[]
   /** Ref holding a pending action description (set by push notifier, consumed on send) */
   pendingActionRef?: React.RefObject<string | null>
+  /** Whether the user is on a mobile device — triggers concise response mode */
+  isMobile?: boolean
 }
 
 export type UseEuclidChatReturn = UseCharacterChatReturn
@@ -69,6 +71,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     dragPointIdRef,
     steps,
     pendingActionRef,
+    isMobile,
   } = options
 
   const readToolState = useCallback((): ToolStateInfo => ({
@@ -123,11 +126,12 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         stepList,
         screenshot,
         ...(recentAction ? { recentAction } : {}),
+        ...(isMobile ? { isMobile: true } : {}),
       }
       console.log('[euclid-chat] buildRequestBody: step=%d, isComplete=%s, recentAction=%s, messageCount=%d', step, isComplete, recentAction, messages.length)
       return body
     },
-    [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState, pendingActionRef],
+    [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState, pendingActionRef, isMobile],
   )
 
   return useCharacterChat({

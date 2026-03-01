@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseEntityMarkers } from '../parseEntityMarkers'
+import { parseEntityMarkers, stripEntityMarkers } from '../parseEntityMarkers'
 import type { EntityMarkerConfig } from '../types'
 
 // Simple test config: matches [TAG] patterns
@@ -73,5 +73,32 @@ describe('parseEntityMarkers', () => {
     expect(result).toEqual([
       { kind: 'entity', text: '<B>', entity: { tag: 'B' } },
     ])
+  })
+})
+
+describe('stripEntityMarkers', () => {
+  it('returns plain text unchanged', () => {
+    expect(stripEntityMarkers('no markers here', testConfig)).toBe('no markers here')
+  })
+
+  it('replaces a single marker with display text', () => {
+    expect(stripEntityMarkers('before [FOO] after', testConfig)).toBe('before <FOO> after')
+  })
+
+  it('replaces multiple markers', () => {
+    expect(stripEntityMarkers('[A] and [B]', testConfig)).toBe('<A> and <B>')
+  })
+
+  it('leaves unparseable markers as-is', () => {
+    expect(stripEntityMarkers('[SKIP] and [OK]', testConfig)).toBe('[SKIP] and <OK>')
+  })
+
+  it('handles empty string', () => {
+    expect(stripEntityMarkers('', testConfig)).toBe('')
+  })
+
+  it('resets regex state between calls', () => {
+    stripEntityMarkers('[A]', testConfig)
+    expect(stripEntityMarkers('[B]', testConfig)).toBe('<B>')
   })
 })

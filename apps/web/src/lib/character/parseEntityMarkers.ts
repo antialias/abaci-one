@@ -54,3 +54,17 @@ export function parseEntityMarkers<TEntityRef>(
 
   return result
 }
+
+/** Replace all entity markers with their display text, returning a plain string. */
+export function stripEntityMarkers<TEntityRef>(
+  text: string,
+  config: EntityMarkerConfig<TEntityRef>,
+): string {
+  config.pattern.lastIndex = 0
+  return text.replace(config.pattern, (...args) => {
+    // args: full match, then capture groups, then index, then input
+    const groups = args.slice(1, -2) as string[]
+    const parsed = config.parseMatch(groups)
+    return parsed ? parsed.displayText : args[0]
+  })
+}

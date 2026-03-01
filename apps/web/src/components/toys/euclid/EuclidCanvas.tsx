@@ -116,6 +116,7 @@ import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ChatCallState } from '@/lib/character/types'
 import { useEuclidChat } from './chat/useEuclidChat'
+import { DockedEuclidChat } from './chat/DockedEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
 import { latexToMarkers } from './chat/parseGeometricEntities'
 import type { GeometricEntityRef } from './chat/parseGeometricEntities'
@@ -1038,6 +1039,7 @@ export function EuclidCanvas({
     dragPointIdRef,
     steps,
     pendingActionRef,
+    isMobile,
   })
 
   // Keep a ref to chat messages for voice session context injection
@@ -1143,13 +1145,6 @@ export function EuclidCanvas({
         onRetry: euclidVoice.dial,
       }
     : undefined
-
-  // Auto-open chat when a call starts ringing
-  useEffect(() => {
-    if (euclidVoice.state === 'ringing' && !euclidChat.isOpen) {
-      euclidChat.open()
-    }
-  }, [euclidVoice.state, euclidChat.isOpen, euclidChat.open])
 
   // Inject "Call ended" event when transitioning from active → ending
   const prevVoiceStateRef = useRef(euclidVoice.state)
@@ -2108,8 +2103,7 @@ export function EuclidCanvas({
     let newX = drag.origX + dx
     let newY = drag.origY + dy
 
-    // Clamp so the quad (and chat panel if open) stays within the root bounds.
-    // The root component (euclid-canvas) has overflow: hidden, so we clamp to that.
+    // Clamp so the quad stays within the canvas pane bounds.
     const container = containerRef.current
     const root = container?.parentElement  // euclid-canvas root
     if (container && root) {
@@ -2118,32 +2112,15 @@ export function EuclidCanvas({
       const cw = container.clientWidth
       const ch = container.clientHeight
       const QUAD_SIZE = 76
-      const MARGIN = 12  // base bottom/right offset
+      const MARGIN = 12
 
-      // Base quad position (top-left in canvas-pane coords, before offset):
       const baseX = cw - MARGIN - QUAD_SIZE
       const baseY = ch - MARGIN - QUAD_SIZE
       const quadLeft = baseX + newX
       const quadTop = baseY + newY
 
-      // If chat is open, account for how far it extends past the quad
-      let chatExtendLeft = 0
-      let chatExtendUp = 0
-      const chatEl = root.querySelector('[data-component="character-chat-panel"]') as HTMLElement | null
-      if (chatEl) {
-        // Chat is positioned at right: 38, bottom: 38 inside assembly.
-        // Assembly width = QUAD_SIZE, so chat right edge = QUAD_SIZE - 38 from quad left.
-        // Chat left edge = (QUAD_SIZE - 38) - chatWidth from quad left.
-        // If negative, chat extends past quad left by that amount.
-        const chatW = chatEl.offsetWidth
-        const chatH = chatEl.offsetHeight
-        chatExtendLeft = Math.max(0, chatW - (QUAD_SIZE - 38))
-        chatExtendUp = Math.max(0, chatH - (QUAD_SIZE - 38))
-      }
-
-      // Clamp: quad left must leave room for chat, quad right stays in root
-      const clampedLeft = Math.max(chatExtendLeft, Math.min(quadLeft, rootW - QUAD_SIZE))
-      const clampedTop = Math.max(chatExtendUp, Math.min(quadTop, rootH - QUAD_SIZE))
+      const clampedLeft = Math.max(0, Math.min(quadLeft, rootW - QUAD_SIZE))
+      const clampedTop = Math.max(0, Math.min(quadTop, rootH - QUAD_SIZE))
       newX = clampedLeft - baseX
       newY = clampedTop - baseY
     }
@@ -2158,15 +2135,18 @@ export function EuclidCanvas({
     setQuadDragging(false)
   }, [])
 
-  // Chat open/close animation — grow from avatar position
-  const chatShouldBeOpen = euclidChat.isOpen
+  // Chat mode: closed (hidden), docked (in proof column), floating (old quad popup)
+  const [chatMode, setChatMode] = useState<'closed' | 'docked' | 'floating'>('closed')
+  const [mobileDockedExpanded, setMobileDockedExpanded] = useState(false)
+  const dockedInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Floating chat animation (only when mode === 'floating')
   const [chatMounted, setChatMounted] = useState(false)
   const [chatExpanded, setChatExpanded] = useState(false)
 
   useEffect(() => {
-    if (chatShouldBeOpen) {
+    if (chatMode === 'floating') {
       setChatMounted(true)
-      // Double-rAF: mount first, then trigger CSS transition next frame
       const raf = requestAnimationFrame(() => {
         requestAnimationFrame(() => setChatExpanded(true))
       })
@@ -2179,7 +2159,14 @@ export function EuclidCanvas({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatShouldBeOpen])
+  }, [chatMode])
+
+  // Auto-open docked chat when a call starts ringing
+  useEffect(() => {
+    if (euclidVoice.state === 'ringing' && chatMode === 'closed') {
+      setChatMode('docked')
+    }
+  }, [euclidVoice.state, chatMode])
 
   const handleNewCanvas = useCallback(() => {
     constructionRef.current = initializeGiven(proposition.givenElements)
@@ -3823,8 +3810,9 @@ export function EuclidCanvas({
           </div>
         )}
 
-        {/* Euclid assembly — quad + chat, positioned at bottom-right */}
-        {!playgroundMode && (
+        {/* Euclid assembly — quad + floating chat, positioned at bottom-right */}
+        {/* Hidden on mobile — controls live in the always-visible mobile chat strip */}
+        {!playgroundMode && !isMobile && (
           <div
             ref={quadRef}
             data-component="euclid-assembly"
@@ -3836,7 +3824,7 @@ export function EuclidCanvas({
               transform: `translate(${quadOffset.x}px, ${quadOffset.y}px)`,
             }}
           >
-            {/* Chat panel — absolutely positioned, BR corner covers the avatar cell */}
+            {/* Floating chat panel — only when mode is 'floating' */}
             {chatMounted && (
               <div
                 data-element="chat-anim-wrapper"
@@ -3858,7 +3846,7 @@ export function EuclidCanvas({
                   messages={euclidChat.messages}
                   isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
                   onSend={handleChatSend}
-                  onClose={euclidChat.close}
+                  onClose={() => setChatMode('closed')}
                   onHighlight={handleChatHighlight}
                   onDragPointerDown={handleQuadPointerDown}
                   onDragPointerMove={handleQuadPointerMove}
@@ -3872,6 +3860,32 @@ export function EuclidCanvas({
                   } : undefined}
                   callState={chatCallState}
                 />
+                {/* Dock button — pins chat into proof column */}
+                <button
+                  data-action="dock-chat"
+                  onClick={() => setChatMode('docked')}
+                  title="Dock into proof panel"
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 32,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#94a3b8',
+                    padding: '2px 4px',
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* Pin/dock icon */}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="18" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                </button>
               </div>
             )}
             {/* Quad: avatar (TL), mute (TR), call (BL), chat (BR) */}
@@ -3894,7 +3908,7 @@ export function EuclidCanvas({
               {/* Cross dividers */}
               <div style={{ position: 'absolute', left: '50%', top: 6, bottom: 6, width: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', top: '50%', left: 6, right: 6, height: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
-              {/* TL: Euclid avatar with popover — drag handle when chat is closed */}
+              {/* TL: Euclid avatar — drag handle (disabled when floating chat is expanded) */}
               <div
                 data-element="euclid-avatar"
                 style={{
@@ -3913,7 +3927,7 @@ export function EuclidCanvas({
                 onPointerUp={!chatExpanded ? handleQuadPointerUp : undefined}
                 onPointerCancel={!chatExpanded ? handleQuadPointerUp : undefined}
                 onMouseEnter={(e) => {
-                  if (euclidChat.isOpen) return
+                  if (chatMode === 'floating') return
                   const popover = e.currentTarget.querySelector('[data-element="euclid-popover"]') as HTMLElement
                   if (popover) popover.style.opacity = '1'
                 }}
@@ -3934,7 +3948,7 @@ export function EuclidCanvas({
                     display: 'block',
                   }}
                 />
-                {/* Popover — only when chat is closed */}
+                {/* Popover — only when floating chat is not expanded */}
                 {!chatExpanded && (
                   <div
                     data-element="euclid-popover"
@@ -4039,14 +4053,23 @@ export function EuclidCanvas({
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                 </svg>
               </button>
-              {/* BR: Chat — disabled close during active call */}
+              {/* BR: Chat — toggles docked mode; disabled during active voice call */}
               <button
                 data-action="chat-euclid"
-                onClick={euclidVoice.state !== 'idle' ? undefined : (euclidChat.isOpen ? euclidChat.close : euclidChat.open)}
-                title="Chat with Εὐκλείδης"
+                onClick={euclidVoice.state !== 'idle'
+                  ? undefined
+                  : () => setChatMode((m) => {
+                      if (m === 'closed') {
+                        requestAnimationFrame(() => dockedInputRef.current?.focus())
+                        return 'docked'
+                      }
+                      return 'closed'
+                    })
+                }
+                title={chatMode !== 'closed' ? 'Close chat' : 'Open chat'}
                 style={{
                   border: 'none',
-                  background: euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent',
+                  background: chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.12)' : 'transparent',
                   color: euclidVoice.state !== 'idle' ? '#94a3b8' : '#4E79A7',
                   display: 'flex',
                   alignItems: 'center',
@@ -4056,8 +4079,8 @@ export function EuclidCanvas({
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 0 9px 0',
                 }}
-                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent' }}
+                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.12)' : 'transparent' }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -4152,7 +4175,10 @@ export function EuclidCanvas({
             borderLeft: isMobile ? undefined : '1px solid rgba(203, 213, 225, 0.6)',
             borderTop: isMobile ? '1px solid rgba(203, 213, 225, 0.6)' : undefined,
             position: 'relative',
-            height: isMobile ? `${MOBILE_PROOF_PANEL_HEIGHT_RATIO * 100}dvh` : '100%',
+            height: isMobile
+              ? (mobileDockedExpanded ? 'calc(50dvh / 3)' : `${MOBILE_PROOF_PANEL_HEIGHT_RATIO * 100}dvh`)
+              : '100%',
+            transition: isMobile ? 'height 0.25s ease' : undefined,
             boxShadow: isMobile ? '0 -10px 24px rgba(0,0,0,0.12)' : undefined,
           }}
         >
@@ -4199,6 +4225,17 @@ export function EuclidCanvas({
             </div>
           )}
 
+          {/* Proof body — wraps steps + conclusion + completion dock, flex:1 so chat docks below */}
+          <div
+            data-element="proof-body"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
           {/* Scrollable steps + proof chain */}
           <div
             ref={proofScrollRef}
@@ -5042,7 +5079,47 @@ export function EuclidCanvas({
                 )}
             </div>
           )}
+          </div>{/* /proof-body */}
+
+          {/* Docked chat — desktop: below proof steps in the right column */}
+          {!isMobile && (
+            <DockedEuclidChat
+              messages={euclidChat.messages}
+              isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
+              onSend={handleChatSend}
+              onHighlight={handleChatHighlight}
+              callState={chatCallState}
+              isMobile={false}
+              collapsed={chatMode !== 'docked'}
+              onUndock={() => setChatMode('floating')}
+              inputRef={dockedInputRef}
+              debugCompaction={isVisualDebugEnabled ? {
+                coversUpTo: euclidChat.compaction.coversUpTo,
+                isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
+                onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
+              } : undefined}
+            />
+          )}
         </div>
+      )}
+
+      {/* Docked chat — mobile: compact strip below proof panel */}
+      {isMobile && !playgroundMode && showProofPanel && (
+        <DockedEuclidChat
+          messages={euclidChat.messages}
+          isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
+          onSend={handleChatSend}
+          onHighlight={handleChatHighlight}
+          callState={chatCallState}
+          isMobile={true}
+          collapsed={false}
+          inputRef={dockedInputRef}
+          onCall={euclidVoice.state === 'idle' ? euclidVoice.dial : undefined}
+          canCall={euclidVoice.state === 'idle'}
+          onToggleAudio={() => disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)}
+          audioEnabled={audioEnabled}
+          onExpandedChange={setMobileDockedExpanded}
+        />
       )}
 
       {/* Citation popover — rendered at root so position:fixed works cleanly */}

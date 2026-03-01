@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import { parseEntityMarkers } from '../../../../lib/character/parseEntityMarkers'
+import { parseEntityMarkers, stripEntityMarkers } from '../../../../lib/character/parseEntityMarkers'
 
 describe('EUCLID_ENTITY_MARKERS', () => {
   function parse(text: string) {
@@ -84,5 +84,41 @@ describe('EUCLID_ENTITY_MARKERS', () => {
 
   it('does not match unknown tags', () => {
     expect(parse('{line:AB}')).toEqual([{ kind: 'text', text: '{line:AB}' }])
+  })
+
+  describe('stripEntityMarkers (mobile preview)', () => {
+    function strip(text: string) {
+      return stripEntityMarkers(text, EUCLID_ENTITY_MARKERS)
+    }
+
+    it('replaces segment markers with plain label', () => {
+      expect(strip('{seg:AB}')).toBe('AB')
+    })
+
+    it('replaces triangle markers with △ prefix', () => {
+      expect(strip('{tri:ABC}')).toBe('△ABC')
+    })
+
+    it('replaces angle markers with ∠ prefix', () => {
+      expect(strip('{ang:DEF}')).toBe('∠DEF')
+    })
+
+    it('replaces point markers with plain label', () => {
+      expect(strip('{pt:A}')).toBe('A')
+    })
+
+    it('strips complex text with multiple entity types', () => {
+      expect(strip('Draw {seg:AB} to form {tri:ABC} with {ang:BAC} at {pt:A}'))
+        .toBe('Draw AB to form △ABC with ∠BAC at A')
+    })
+
+    it('leaves invalid markers as-is', () => {
+      expect(strip('{seg:A}')).toBe('{seg:A}')
+      expect(strip('{line:AB}')).toBe('{line:AB}')
+    })
+
+    it('handles text with no markers', () => {
+      expect(strip('just plain text')).toBe('just plain text')
+    })
   })
 })

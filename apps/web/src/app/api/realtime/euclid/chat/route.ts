@@ -40,6 +40,7 @@ export const POST = withAuth(async (request) => {
     proofFacts,
     stepList,
     screenshot,
+    isMobile,
   } = body as {
     messages: ChatMessage[]
     propositionId: number
@@ -51,6 +52,7 @@ export const POST = withAuth(async (request) => {
     proofFacts: string
     stepList: string
     screenshot?: string
+    isMobile?: boolean
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -114,8 +116,10 @@ ${EUCLID_WHAT_NOT_TO_DO}
 
 === TEXT CHAT SPECIFICS ===
 - Since this is written text (not voice), you may use point labels freely.
-- Keep responses concise: 2-6 sentences typically. You are terse by nature. Longer is acceptable for proof explanations.
-- Use line breaks for clarity when discussing multi-step reasoning.
+${isMobile
+    ? `- MOBILE DISPLAY: The student is on a small screen. Your response is shown in a 3-line preview strip. Be MAXIMALLY concise — 1-2 short sentences. Drop flowery language, honorifics, and rhetorical flourishes. Get straight to the point. Favor direct instructions ("Place compass at A", "That segment equals AB by Def 15") over elaborate prose. Character voice is secondary to clarity here.`
+    : `- Keep responses concise: 2-6 sentences typically. You are terse by nature. Longer is acceptable for proof explanations.
+- Use line breaks for clarity when discussing multi-step reasoning.`}
 
 === FORMATTING RULES (CRITICAL) ===
 - Write in PLAIN TEXT only. No markdown, no LaTeX, no other formatting.
