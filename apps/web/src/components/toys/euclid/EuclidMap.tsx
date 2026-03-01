@@ -635,6 +635,15 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
   // -------------------------------------------------------------------------
   // Scroll-driven viewport (foundations page only)
   // The SVG is sticky in the viewport; scrolling pans/zooms through the graph.
+  //
+  // 1:1 finger tracking: the adaptive zoom changes the scale (pixels per SVG
+  // unit) as you scroll. Without correction, content moves faster when zoomed
+  // in and slower when zoomed out, making it feel decoupled from the finger.
+  //
+  // Fix: pre-compute a cumulative integral of vbW over progress. This warps
+  // the progress→vbY mapping so each scroll pixel produces exactly 1 screen
+  // pixel of apparent vertical movement regardless of the current zoom level.
+  // The spacer height is sized to match the total screen-pixel travel.
   // -------------------------------------------------------------------------
 
   // Per-row metadata for scroll-driven viewport
@@ -667,6 +676,21 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   const [scrollViewBox, setScrollViewBox] = useState<string | null>(null)
+  const [spacerHeight, setSpacerHeight] = useState(0)
+
+  // Cache for the 1:1 scroll mapping (recomputed when layout/container changes)
+  const scrollMappingRef = useRef<{
+    /** Normalized cumulative integral of vbW: maps progress (0→1) to yFraction (0→1) */
+    normalizedCumulative: number[]
+    /** Total SVG Y travel from start to end */
+    totalYTravel: number
+    /** Starting vbY (first row at top of viewport) */
+    startVbY: number
+    /** Ideal spacer height in CSS pixels for 1:1 tracking */
+    idealSpacerPx: number
+    /** Cache key to detect when recomputation is needed */
+    key: string
+  } | null>(null)
 
   const updateScrollViewBox = useCallback(() => {
     const container = containerRef.current
@@ -677,40 +701,15 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const stickyW = sticky.clientWidth
     if (stickyH === 0 || stickyW === 0) return
 
-    // Compute scroll progress using the actual achievable scroll distance.
-    // We can't use `container.scrollHeight - stickyH` because the container lives inside
-    // a scroll parent (<main>) that has nav padding, tab-pill spacers, etc. above it.
-    // The achievable scroll distance past the container is always less than the spacer
-    // height, so progress would never reach 1.0. Instead, compute scroll range from the
-    // scroll parent's actual geometry.
-    const scrollParent = scrollContainerRef.current
-    let scrollTop: number
-    let scrollRange: number
-    if (scrollParent) {
-      const containerTop = container.offsetTop - scrollParent.offsetTop
-      const scrolled = scrollParent.scrollTop - containerTop
-      scrollTop = Math.max(0, scrolled)
-      // Max achievable scroll past the container's top edge
-      const totalScrollRange = scrollParent.scrollHeight - scrollParent.clientHeight
-      scrollRange = Math.max(1, totalScrollRange - Math.max(0, containerTop))
-    } else {
-      scrollTop = Math.max(0, -container.getBoundingClientRect().top)
-      scrollRange = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
-    }
-    const progress = Math.min(1, scrollTop / scrollRange)
-
-    const { rows, globalCenterX } = rowMeta
+    const { rows } = rowMeta
     const firstY = rows[0].y
     const lastY = rows[rows.length - 1].y
-    const currentY = firstY + progress * (lastY - firstY)
+    const aspect = stickyW / stickyH
 
-    // Find the segment [i, i+1] that currentY falls in
-    const PAD = 140 // padding around row content
-    const MIN_VB_W = 280 // minimum viewBox width (for single-node rows)
+    // --- Row width computation (unchanged — feeds Catmull-Rom adaptive zoom) ---
+    const PAD = 140
+    const MIN_VB_W = 280
     const rawWidths = rows.map((r) => Math.max(MIN_VB_W, r.width + PAD))
-
-    // Expand each row's width to the max of itself and (n-1) neighbors on each side
-    // rowWindow=1: just center row, 2: center ± 1, 3: center ± 2
     const radius = rowWindow - 1
     const rowWidths = rawWidths.map((_, i) => {
       let maxW = rawWidths[i]
@@ -722,22 +721,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     })
     const rowCenters = rows.map((r) => r.centerX)
 
-    let segIdx = 0
-    for (let i = 0; i < rows.length - 1; i++) {
-      if (rows[i].y <= currentY && rows[i + 1].y > currentY) {
-        segIdx = i
-        break
-      }
-      if (i === rows.length - 2) segIdx = i // clamp to last segment
-    }
-    const t =
-      rows[segIdx + 1].y === rows[segIdx].y
-        ? 0
-        : (currentY - rows[segIdx].y) / (rows[segIdx + 1].y - rows[segIdx].y)
-
-    // Catmull-Rom interpolation through all row waypoints for smooth zoom/pan
-    // Uses 4 control points: P0 (prev), P1 (current), P2 (next), P3 (next-next)
-    // Clamp at boundaries by repeating endpoints
+    // Catmull-Rom interpolation (reused for both adaptive zoom and mapping)
     const catmullRom = (values: number[], idx: number, u: number) => {
       const p0 = values[Math.max(0, idx - 1)]
       const p1 = values[idx]
@@ -753,19 +737,112 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       )
     }
 
+    // Helper: compute vbW at a given progress value
+    const vbWAtProgress = (p: number) => {
+      const cy = firstY + p * (lastY - firstY)
+      let si = 0
+      for (let i = 0; i < rows.length - 1; i++) {
+        if (rows[i].y <= cy && rows[i + 1].y > cy) { si = i; break }
+        if (i === rows.length - 2) si = i
+      }
+      const st = rows[si + 1].y === rows[si].y
+        ? 0
+        : (cy - rows[si].y) / (rows[si + 1].y - rows[si].y)
+      return catmullRom(rowWidths, si, st)
+    }
+
+    // --- Pre-compute 1:1 scroll mapping (cached, recomputed on layout/resize) ---
+    const mappingKey = `${rows.length}-${firstY}-${lastY}-${stickyW}-${stickyH}-${rowWindow}`
+    if (!scrollMappingRef.current || scrollMappingRef.current.key !== mappingKey) {
+      const N = 200
+      // Sample vbW at N+1 progress points and build cumulative integral
+      const vbWSamples: number[] = []
+      for (let i = 0; i <= N; i++) {
+        vbWSamples.push(vbWAtProgress(i / N))
+      }
+
+      // Cumulative integral of vbW over progress (trapezoidal rule)
+      // This represents how much SVG-Y-displacement each progress increment
+      // corresponds to, weighted by zoom level.
+      const cumulative: number[] = [0]
+      for (let i = 1; i <= N; i++) {
+        const avg = (vbWSamples[i - 1] + vbWSamples[i]) / 2
+        cumulative.push(cumulative[i - 1] + avg / N)
+      }
+      const totalIntegral = cumulative[N] // = average vbW
+
+      // Normalize: maps progress (0→1) to yFraction (0→1)
+      const normalizedCumulative = cumulative.map(v => v / totalIntegral)
+
+      // Compute total SVG Y travel
+      const vPad = 20
+      const startVbY = firstY - RENDER_H / 2 - vPad
+      const endVbW = vbWSamples[N]
+      const endVbH = endVbW / aspect
+      const endVbY = lastY + RENDER_H / 2 + vPad - endVbH
+      const totalYTravel = endVbY - startVbY
+
+      // Ideal spacer height: total screen pixels needed for 1:1 tracking
+      // d(vbY)/d(scroll) = vbW / containerW, so:
+      // totalScroll = totalYTravel * containerW / avgVbW
+      const idealSpacerPx = totalYTravel * stickyW / totalIntegral
+
+      scrollMappingRef.current = {
+        normalizedCumulative,
+        totalYTravel,
+        startVbY,
+        idealSpacerPx,
+        key: mappingKey,
+      }
+
+      // Update spacer height (will cause a re-render, but only on layout/resize changes)
+      setSpacerHeight(Math.max(0, idealSpacerPx))
+    }
+
+    const mapping = scrollMappingRef.current!
+
+    // --- Compute scroll progress ---
+    // Use the full scroll range of the scroll parent — no containerTop offset.
+    // The map is sticky and visible from page load, so it should respond to
+    // scrolling from the very first pixel. The ~136px of content above the map
+    // (nav padding, tab pills spacer) is part of the scroll travel.
+    const scrollParent = scrollContainerRef.current
+    let scrollTop: number
+    let scrollRange: number
+    if (scrollParent) {
+      scrollTop = scrollParent.scrollTop
+      scrollRange = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight)
+    } else {
+      scrollTop = Math.max(0, -container.getBoundingClientRect().top)
+      scrollRange = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+    }
+    const progress = Math.min(1, scrollTop / scrollRange)
+
+    // --- Adaptive zoom (unchanged — Catmull-Rom for vbW and centerX) ---
+    const currentY = firstY + progress * (lastY - firstY)
+    let segIdx = 0
+    for (let i = 0; i < rows.length - 1; i++) {
+      if (rows[i].y <= currentY && rows[i + 1].y > currentY) { segIdx = i; break }
+      if (i === rows.length - 2) segIdx = i
+    }
+    const t = rows[segIdx + 1].y === rows[segIdx].y
+      ? 0
+      : (currentY - rows[segIdx].y) / (rows[segIdx + 1].y - rows[segIdx].y)
+
     const vbW = catmullRom(rowWidths, segIdx, t)
     const centerX = catmullRom(rowCenters, segIdx, t)
-
-    // ViewBox height proportional to width (matching container aspect ratio)
-    const aspect = stickyW / stickyH
     const vbH = vbW / aspect
 
-    // Position so top node is at the top of the viewport at scroll start,
-    // and bottom node is at the bottom at scroll end.
-    const pad = 20
-    const topY = firstY - RENDER_H / 2 - pad
-    const bottomY = lastY + RENDER_H / 2 + pad - vbH
-    const vbY = topY + progress * (bottomY - topY)
+    // --- 1:1 tracked vbY via lookup table ---
+    // Interpolate the normalized cumulative to get yFraction at this progress
+    const N = mapping.normalizedCumulative.length - 1
+    const pScaled = progress * N
+    const lo = Math.min(Math.floor(pScaled), N - 1)
+    const hi = lo + 1
+    const frac = pScaled - lo
+    const yFraction = mapping.normalizedCumulative[lo] * (1 - frac) + mapping.normalizedCumulative[hi] * frac
+
+    const vbY = mapping.startVbY + yFraction * mapping.totalYTravel
 
     setScrollViewBox(`${centerX - vbW / 2} ${vbY} ${vbW} ${vbH}`)
   }, [rowMeta, rowWindow])
@@ -1112,10 +1189,10 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
               {svgContent}
             </svg>
           </div>
-          {/* Spacer creates scroll range — height proportional to graph extent.
-              The exact height controls scrolling granularity (bigger = smoother panning).
-              Progress 0→1 is computed from the scroll parent's actual achievable distance. */}
-          <div style={{ height: rowMeta ? (rowMeta.rows[rowMeta.rows.length - 1].y - rowMeta.rows[0].y) * 2.5 : 0 }} />
+          {/* Spacer sized for 1:1 finger tracking — each scroll pixel produces
+              exactly 1 screen pixel of apparent content movement. Height is computed
+              from the integral of vbW over the adaptive zoom curve. */}
+          <div style={{ height: spacerHeight }} />
         </div>
       ) : (
         /* Normal scrollable map */
