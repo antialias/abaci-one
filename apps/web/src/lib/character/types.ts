@@ -31,6 +31,10 @@ export interface ChatMessage {
   via?: 'voice' | 'typed-during-call'
   /** True when this message is a system error, not a character response. */
   isError?: boolean
+  /** True when this message is a construction event notice, not user/character speech. */
+  isEvent?: boolean
+  /** Data URL of a screenshot sent alongside this event (e.g. what the voice model sees). */
+  imageDataUrl?: string
 }
 
 /**

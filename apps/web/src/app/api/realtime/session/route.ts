@@ -139,7 +139,7 @@ export const POST = withAuth(async (request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-realtime-preview-2024-12-17',
+        model: 'gpt-realtime-1.5',
         voice: getVoiceForNumber(number),
         instructions,
         input_audio_transcription: { model: 'whisper-1' },

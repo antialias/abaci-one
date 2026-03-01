@@ -32,6 +32,8 @@ export interface UseCharacterChatReturn {
   sendMessage: (text: string) => void
   /** Inject an external message (e.g., voice transcript) into the conversation. */
   addMessage: (msg: ChatMessage) => void
+  /** Replace all trailing event messages with this one, or remove them if null. */
+  setTrailingEvent: (msg: ChatMessage | null) => void
   isOpen: boolean
   open: () => void
   close: () => void
@@ -57,6 +59,15 @@ export function useCharacterChat(
 
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg])
+  }, [])
+
+  const setTrailingEvent = useCallback((msg: ChatMessage | null) => {
+    setMessages(prev => {
+      // Strip all trailing event messages
+      let i = prev.length
+      while (i > 0 && prev[i - 1].isEvent) i--
+      return msg ? [...prev.slice(0, i), msg] : prev.slice(0, i)
+    })
   }, [])
 
   const sendMessage = useCallback(
@@ -93,11 +104,15 @@ export function useCharacterChat(
         ? (captureScreenshot(canvasRef.current) ?? undefined)
         : undefined
 
-      // Build message history for API (without the empty assistant msg)
-      const apiMessages = [...messages, userMsg].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
+      // Build message history for API (without the empty assistant msg).
+      // Filter out error messages (they're UI-only) and wrap event messages
+      // so the model sees construction state changes at their temporal position.
+      const apiMessages = [...messages, userMsg]
+        .filter((m) => !m.isError)
+        .map((m) => ({
+          role: m.role,
+          content: m.isEvent ? `[CONSTRUCTION EVENT: ${m.content}]` : m.content,
+        }))
 
       const body = buildRequestBody(apiMessages, screenshot)
 
@@ -217,5 +232,5 @@ export function useCharacterChat(
     [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef],
   )
 
-  return { messages, isStreaming, sendMessage, addMessage, isOpen, open, close }
+  return { messages, isStreaming, sendMessage, addMessage, setTrailingEvent, isOpen, open, close }
 }

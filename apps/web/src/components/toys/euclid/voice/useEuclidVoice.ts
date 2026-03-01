@@ -272,7 +272,13 @@ export function useEuclidVoice(options: UseEuclidVoiceOptions): UseEuclidVoiceRe
       const msgs = options.chatMessagesRef.current
       console.log('[euclid-voice] prior chat messages: %d', msgs?.length ?? 0)
       if (msgs && msgs.length > 0) {
-        const lines = msgs.map((m) => `${m.role === 'user' ? 'Student' : 'Euclid'}: ${m.content}`).join('\n')
+        const lines = msgs
+          .filter((m) => !m.isError)
+          .map((m) => {
+            if (m.isEvent) return `[Event: ${m.content}]`
+            return `${m.role === 'user' ? 'Student' : 'Euclid'}: ${m.content}`
+          })
+          .join('\n')
         sendSystemMessage(dc, `[Prior conversation with this student — you already discussed this, continue naturally without repeating yourself:]\n${lines}`)
       }
     },

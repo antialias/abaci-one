@@ -9,7 +9,7 @@ import type { RealtimeTool } from './types'
 
 export interface CreateRealtimeSessionOptions {
   apiKey: string
-  /** OpenAI model ID (default: 'gpt-4o-realtime-preview-2024-12-17') */
+  /** OpenAI model ID (default: 'gpt-realtime-1.5') */
   model?: string
   voice: string
   instructions: string
@@ -43,7 +43,7 @@ export async function createRealtimeSession(
 ): Promise<RealtimeSessionResult> {
   const {
     apiKey,
-    model = 'gpt-4o-realtime-preview-2024-12-17',
+    model = 'gpt-realtime-1.5',
     voice,
     instructions,
     tools,

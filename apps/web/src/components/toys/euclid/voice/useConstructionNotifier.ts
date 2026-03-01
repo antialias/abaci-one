@@ -9,7 +9,7 @@
  * - notifyDragEnd: 600ms debounce with screenshot
  *
  * Each call serializes current state and pushes to the active voice session
- * and/or stores in pendingActionRef for the text chat.
+ * and injects construction events into the shared chat message history.
  */
 
 import { useCallback, useRef } from 'react'
@@ -24,6 +24,8 @@ import type {
 } from '../types'
 import type { ProofFact } from '../engine/facts'
 import type { UseVoiceCallReturn } from '@/lib/voice/types'
+import type { ChatMessage } from '@/lib/character/types'
+import { generateId } from '@/lib/character/useCharacterChat'
 import { captureScreenshot } from '@/lib/character/captureScreenshot'
 import {
   serializeConstructionGraph,
@@ -37,6 +39,9 @@ export interface ConstructionEvent {
   action: string
   /** true = voice Euclid responds, false = silent update */
   shouldPrompt: boolean
+  /** When true, replace trailing event messages in chat instead of appending.
+   *  Use for rapid-fire events (e.g. topology changes during drag) to avoid spam. */
+  collapseInChat?: boolean
 }
 
 export interface NotifierLogEntry {
@@ -51,7 +56,7 @@ const MAX_LOG_ENTRIES = 20
 export interface ConstructionNotifier {
   notifyConstruction(event: ConstructionEvent): void
   notifyToolState(): void
-  notifyDragEnd(): void
+  notifyDragEnd(pointLabel?: string): void
   /** Recent push log for debug panel */
   recentEvents: NotifierLogEntry[]
 }
@@ -70,7 +75,10 @@ interface UseConstructionNotifierOptions {
   macroPhaseRef: React.RefObject<MacroPhase>
   dragPointIdRef: React.RefObject<string | null>
   voiceCallRef: React.RefObject<UseVoiceCallReturn | null>
-  pendingActionRef: React.MutableRefObject<string | null>
+  /** Inject a construction event into the shared chat message history */
+  addMessage: (msg: ChatMessage) => void
+  /** Replace trailing events with one message (or remove them if null) */
+  setTrailingEvent: (msg: ChatMessage | null) => void
 }
 
 export function useConstructionNotifier(
@@ -90,7 +98,8 @@ export function useConstructionNotifier(
     macroPhaseRef,
     dragPointIdRef,
     voiceCallRef,
-    pendingActionRef,
+    addMessage,
+    setTrailingEvent,
   } = options
 
   const toolTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -116,7 +125,8 @@ export function useConstructionNotifier(
   const sendToVoice = useCallback((
     action: string,
     shouldPrompt: boolean,
-    includeScreenshot: boolean,
+    /** Pass a pre-captured screenshot string, true to capture now, or false/null to skip */
+    screenshotOrFlag: string | boolean | null,
   ) => {
     const vc = voiceCallRef.current
     console.log('[notifier] sendToVoice: vc=%s, state=%s, action=%s', vc ? 'exists' : 'null', vc?.state ?? 'N/A', action)
@@ -132,14 +142,23 @@ export function useConstructionNotifier(
     const factsText = serializeProofFacts(facts)
     const toolText = serializeToolState(toolInfo, state, step, steps, isComplete)
 
-    const screenshot = includeScreenshot && canvasRef.current
-      ? captureScreenshot(canvasRef.current)
-      : null
+    // Reuse pre-captured screenshot or capture fresh if true was passed
+    const screenshot = typeof screenshotOrFlag === 'string'
+      ? screenshotOrFlag
+      : screenshotOrFlag && canvasRef.current
+        ? captureScreenshot(canvasRef.current)
+        : null
 
-    const prefix = shouldPrompt
-      ? `[CONSTRUCTION CHANGED: ${action} — acknowledge briefly what the student did and guide them on what to do next. Keep it to 1-2 sentences.]`
-      : '[TOOL STATE UPDATE — do not speak, just update your understanding silently]'
-    const text = `${prefix}\n\n${toolText}\n\n${graph}\n\n=== Proven Facts ===\n${factsText}`
+    // For prompted updates, include the full state dump so the model has
+    // complete context when generating a response. For silent updates,
+    // send only a compact note — repeated full dumps overwhelm the model
+    // and it loses track of what's current vs. stale.
+    let text: string
+    if (shouldPrompt) {
+      text = `[CONSTRUCTION CHANGED: ${action} — acknowledge briefly what the student did and guide them on what to do next. Keep it to 1-2 sentences.]\n\n${toolText}\n\n${graph}\n\n=== Proven Facts ===\n${factsText}`
+    } else {
+      text = `[SILENT STATE UPDATE — do not speak. ${action}]`
+    }
 
     vc.sendContextUpdate(text, screenshot, shouldPrompt)
     return true
@@ -152,15 +171,33 @@ export function useConstructionNotifier(
       toolTimerRef.current = null
     }
 
-    // Set pending action for text chat
-    pendingActionRef.current = event.action
+    // Capture screenshot for both chat and voice
+    const screenshot = canvasRef.current
+      ? captureScreenshot(canvasRef.current)
+      : null
 
-    // Send to voice immediately
-    const delivered = sendToVoice(event.action, event.shouldPrompt, true)
+    // Inject event into shared chat history so the LLM sees it at the right temporal position.
+    // collapseInChat replaces trailing events (for rapid-fire drag topology changes).
+    const msg: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      content: event.action,
+      timestamp: Date.now(),
+      isEvent: true,
+      imageDataUrl: screenshot ?? undefined,
+    }
+    if (event.collapseInChat) {
+      setTrailingEvent(msg)
+    } else {
+      addMessage(msg)
+    }
+
+    // Send to voice immediately (reuse captured screenshot)
+    const delivered = sendToVoice(event.action, event.shouldPrompt, screenshot)
     addLogEntry('construction', event.action, delivered)
 
     console.log('[notifier] construction: %s (delivered=%s)', event.action, delivered)
-  }, [sendToVoice, pendingActionRef, addLogEntry])
+  }, [sendToVoice, addMessage, setTrailingEvent, addLogEntry, canvasRef])
 
   const notifyToolState = useCallback(() => {
     if (toolTimerRef.current) clearTimeout(toolTimerRef.current)
@@ -173,17 +210,30 @@ export function useConstructionNotifier(
     }, 300)
   }, [sendToVoice, addLogEntry])
 
-  const notifyDragEnd = useCallback(() => {
+  const notifyDragEnd = useCallback((pointLabel?: string) => {
     if (dragTimerRef.current) clearTimeout(dragTimerRef.current)
 
     dragTimerRef.current = setTimeout(() => {
       dragTimerRef.current = null
-      pendingActionRef.current = 'Dragged a point to a new position'
-      const delivered = sendToVoice('Dragged a point to a new position', true, true)
+      const action = pointLabel
+        ? `Dragged point ${pointLabel} to a new position`
+        : 'Dragged a point to a new position'
+      const screenshot = canvasRef.current
+        ? captureScreenshot(canvasRef.current)
+        : null
+      addMessage({
+        id: generateId(),
+        role: 'user',
+        content: action,
+        timestamp: Date.now(),
+        isEvent: true,
+        imageDataUrl: screenshot ?? undefined,
+      })
+      const delivered = sendToVoice(action, true, screenshot)
       addLogEntry('drag', 'drag end', delivered)
       console.log('[notifier] drag end (delivered=%s)', delivered)
     }, 600)
-  }, [sendToVoice, pendingActionRef, addLogEntry])
+  }, [sendToVoice, addMessage, addLogEntry, canvasRef])
 
   const notifierRef = useRef<ConstructionNotifier>({
     notifyConstruction,

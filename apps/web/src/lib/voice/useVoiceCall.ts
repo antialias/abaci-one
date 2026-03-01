@@ -94,6 +94,7 @@ export function useVoiceCall<TContext>(
   const deadlineRef = useRef<number>(0)
   const extensionUsedRef = useRef(false)
   const warningSentRef = useRef(false)
+  const expiredSentRef = useRef(false)
   const hangUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stateRef = useRef<CallState>('idle')
   const agentAudioPlayingRef = useRef(false)
@@ -256,6 +257,7 @@ export function useVoiceCall<TContext>(
     extensionUsedRef.current = true
     deadlineRef.current += timer.extensionMs
     warningSentRef.current = false
+    expiredSentRef.current = false
     return true
   }, [timer.extensionMs])
 
@@ -323,6 +325,7 @@ export function useVoiceCall<TContext>(
     previousModeRef.current = null
     extensionUsedRef.current = false
     warningSentRef.current = false
+    expiredSentRef.current = false
     childHasSpokenRef.current = false
 
     // 1. Microphone permission
@@ -702,7 +705,7 @@ export function useVoiceCall<TContext>(
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
       const sdpResponse = await fetch(
-        'https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+        'https://api.openai.com/v1/realtime?model=gpt-realtime-1.5',
         {
           method: 'POST',
           headers: {
@@ -759,8 +762,9 @@ export function useVoiceCall<TContext>(
           configRef.current.onTimeWarning?.(dcRef.current, remaining)
         }
 
-        // Time expired
-        if (remaining <= 0) {
+        // Time expired (guard prevents repeated firings every interval tick)
+        if (remaining <= 0 && !expiredSentRef.current) {
+          expiredSentRef.current = true
           if (dcRef.current?.readyState === 'open') {
             configRef.current.onTimeExpired?.(dcRef.current)
           }

@@ -209,6 +209,45 @@ export function CharacterChatPanel<TEntityRef>({
           </div>
         )}
         {messages.map((msg) => {
+          // Event messages render as small centered notices
+          if (msg.isEvent) {
+            return (
+              <div
+                key={msg.id}
+                data-element="chat-message-event"
+                style={{
+                  textAlign: 'center',
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
+                  {msg.content}
+                </div>
+                {msg.imageDataUrl && (
+                  <img
+                    src={msg.imageDataUrl}
+                    alt="Construction screenshot"
+                    data-element="event-screenshot"
+                    style={{
+                      width: 120,
+                      height: 90,
+                      objectFit: 'cover',
+                      borderRadius: 6,
+                      border: '1px solid rgba(203, 213, 225, 0.6)',
+                      opacity: 0.85,
+                    }}
+                  />
+                )}
+              </div>
+            )
+          }
           // Error messages render as centered system notices, not character speech
           if (msg.isError) {
             return (

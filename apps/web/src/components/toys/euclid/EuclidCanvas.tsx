@@ -700,6 +700,7 @@ export function EuclidCanvas({
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
   const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
   const dragPointIdRef = useRef<string | null>(null)
+  const dragLabelRef = useRef<string | null>(null)
   const isCompleteRef = useRef(false)
   const completionTimeRef = useRef<number>(0)
   const postCompletionActionsRef = useRef<PostCompletionAction[]>(initialActions ?? [])
@@ -1092,7 +1093,8 @@ export function EuclidCanvas({
     macroPhaseRef,
     dragPointIdRef,
     voiceCallRef: euclidVoice.voiceCallRef,
-    pendingActionRef,
+    addMessage: euclidChat.addMessage,
+    setTrailingEvent: euclidChat.setTrailingEvent,
   })
 
   // ── Unified send handler: routes to voice session or SSE chat ──
@@ -2427,6 +2429,33 @@ export function EuclidCanvas({
 
   // ── Hook up drag interaction for post-completion play ──
   const constructionIntactRef = useRef(true)
+  // Topology tracking: detect when elements appear/disappear during drag.
+  // Uses a drag-start baseline so oscillations resolve to the NET change,
+  // and collapseInChat replaces (not appends) the event in chat.
+  /** Baseline from drag start — never updated during drag */
+  const topologyBaselineRef = useRef<{ map: Map<string, string>, steps: number, factCount: number } | null>(null)
+  /** Current frame's map — used to describe elements that may disappear next frame */
+  const topologyCurrentRef = useRef<Map<string, string>>(new Map())
+  const topologyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /** Build a human-readable name for a construction element. */
+  function describeElement(el: ConstructionElement, state: ConstructionState): string {
+    if (el.kind === 'point') return `point ${el.label}`
+    if (el.kind === 'circle') {
+      const center = state.elements.find((e) => e.id === el.centerId)
+      const radius = state.elements.find((e) => e.id === el.radiusPointId)
+      const cLabel = center && 'label' in center ? center.label : '?'
+      const rLabel = radius && 'label' in radius ? radius.label : '?'
+      return `circle centered at ${cLabel} through ${rLabel}`
+    }
+    // el.kind === 'segment'
+    const from = state.elements.find((e) => e.id === el.fromId)
+    const to = state.elements.find((e) => e.id === el.toId)
+    const fLabel = from && 'label' in from ? from.label : '?'
+    const tLabel = to && 'label' in to ? to.label : '?'
+    return `segment ${fLabel}${tLabel}`
+  }
+
   const handleDragReplay = useCallback(
     (result: ReplayResult) => {
       proofFactsRef.current = result.proofFacts
@@ -2440,8 +2469,91 @@ export function EuclidCanvas({
         handleConstructionBreakdown()
       }
       constructionIntactRef.current = intact
+
+      // Build current element map (need this every frame so we can name
+      // elements that might disappear in a future frame)
+      const currMap = new Map<string, string>()
+      for (const el of result.state.elements) {
+        currMap.set(el.id, describeElement(el, result.state))
+      }
+
+      // Set baseline on first frame (drag start)
+      if (!topologyBaselineRef.current) {
+        topologyBaselineRef.current = { map: new Map(currMap), steps: result.stepsCompleted, factCount: result.proofFacts.length }
+        topologyCurrentRef.current = currMap
+        return
+      }
+
+      topologyCurrentRef.current = currMap
+
+      // Compute NET diff from drag-start baseline (not frame-to-frame).
+      // This resolves oscillations: if F disappears then reappears, net = nothing.
+      const baseline = topologyBaselineRef.current
+      const baseIds = new Set(baseline.map.keys())
+      const currIds = new Set(currMap.keys())
+      const appeared = [...currIds].filter((id) => !baseIds.has(id))
+      const disappeared = [...baseIds].filter((id) => !currIds.has(id))
+      const stepsChanged = result.stepsCompleted !== baseline.steps
+      const parts: string[] = []
+
+      if (appeared.length > 0) {
+        parts.push(`${appeared.map((id) => currMap.get(id)!).join(', ')} appeared`)
+      }
+      if (disappeared.length > 0) {
+        // Use current map first (for elements that existed recently), fall back to baseline
+        parts.push(`${disappeared.map((id) => topologyCurrentRef.current.get(id) ?? baseline.map.get(id)!).join(', ')} disappeared`)
+      }
+      if (stepsChanged) {
+        if (result.stepsCompleted < baseline.steps) {
+          // Use the proof engine to describe what broke
+          const cr = deriveCompletionResult(
+            result.factStore,
+            propositionRef.current.resultSegments,
+            result.state
+          )
+          const failedStep = propositionRef.current.steps[result.stepsCompleted]
+          let breakdown = `construction broke down at step ${result.stepsCompleted + 1}`
+          if (failedStep) breakdown += `: "${failedStep.instruction}"`
+          if (cr.status === 'unproven' && cr.statement) {
+            breakdown += ` — cannot prove ${cr.statement}`
+          }
+          parts.push(breakdown)
+        } else if (result.stepsCompleted > baseline.steps) {
+          const cr = deriveCompletionResult(
+            result.factStore,
+            propositionRef.current.resultSegments,
+            result.state
+          )
+          let restored = `construction restored through step ${result.stepsCompleted}`
+          if (cr.status === 'proven' && cr.statement) {
+            restored += ` — ${cr.statement} proven`
+          }
+          parts.push(restored)
+        }
+      }
+
+      // Note proof fact count changes (tells Euclid about proof chain health)
+      const factDelta = result.proofFacts.length - baseline.factCount
+      if (factDelta < 0) {
+        parts.push(`${Math.abs(factDelta)} proven fact${Math.abs(factDelta) > 1 ? 's' : ''} lost`)
+      } else if (factDelta > 0) {
+        parts.push(`${factDelta} new fact${factDelta > 1 ? 's' : ''} proven`)
+      }
+
+      // Debounce + collapse: replace the single trailing event in chat
+      if (topologyTimerRef.current) clearTimeout(topologyTimerRef.current)
+      topologyTimerRef.current = setTimeout(() => {
+        topologyTimerRef.current = null
+        if (parts.length > 0) {
+          const action = `While dragging: ${parts.join('; ')}`
+          notifierRef.current.notifyConstruction({ action, shouldPrompt: false, collapseInChat: true })
+        } else {
+          // Net change resolved to nothing — remove any trailing event
+          euclidChat.setTrailingEvent(null)
+        }
+      }, 400)
     },
-    [handleConstructionBreakdown]
+    [handleConstructionBreakdown, euclidChat.setTrailingEvent]
   )
 
   useDragGivenPoints({
@@ -2463,12 +2575,18 @@ export function EuclidCanvas({
       (pointId: string) => {
         wiggleCancelRef.current?.()
         wiggleCancelRef.current = null
+        // Capture label for the drag-end notifier (dragPointIdRef is cleared before onDragEnd fires)
+        const pt = constructionRef.current.elements.find((e) => e.kind === 'point' && e.id === pointId)
+        dragLabelRef.current = pt && 'label' in pt ? pt.label : null
+        // Reset topology tracking so first replay frame sets the baseline
+        topologyBaselineRef.current = null
         handleDragStart(pointId)
       },
       [handleDragStart]
     ),
     onDragEnd: useCallback(() => {
-      notifierRef.current.notifyDragEnd()
+      notifierRef.current.notifyDragEnd(dragLabelRef.current ?? undefined)
+      dragLabelRef.current = null
     }, []),
   })
 

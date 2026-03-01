@@ -56,8 +56,9 @@ export function sendContextUpdate(
     { type: 'input_text', text },
   ]
   if (base64DataUrl) {
-    const base64 = base64DataUrl.includes(',') ? base64DataUrl.split(',')[1] : base64DataUrl
-    content.push({ type: 'input_image', image: base64 })
+    // OpenAI Realtime API expects image_url as a full data URI
+    const dataUri = base64DataUrl.includes(',') ? base64DataUrl : `data:image/png;base64,${base64DataUrl}`
+    content.push({ type: 'input_image', image_url: dataUri })
   }
   dc.send(JSON.stringify({
     type: 'conversation.item.create',
@@ -89,8 +90,8 @@ export function sendUserText(dc: RTCDataChannel, text: string) {
  * Used for mid-conversation visual context (e.g. construction screenshots).
  */
 export function sendImageContext(dc: RTCDataChannel, base64DataUrl: string, promptResponse = false) {
-  // Extract the base64 data from the data URL
-  const base64 = base64DataUrl.includes(',') ? base64DataUrl.split(',')[1] : base64DataUrl
+  // OpenAI Realtime API expects image_url as a full data URI
+  const dataUri = base64DataUrl.includes(',') ? base64DataUrl : `data:image/png;base64,${base64DataUrl}`
 
   dc.send(
     JSON.stringify({
@@ -101,7 +102,7 @@ export function sendImageContext(dc: RTCDataChannel, base64DataUrl: string, prom
         content: [
           {
             type: 'input_image',
-            image: base64,
+            image_url: dataUri,
           },
         ],
       },
