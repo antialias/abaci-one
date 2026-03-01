@@ -8,7 +8,7 @@
 
 import { CharacterChatPanel } from '@/lib/character/CharacterChatPanel'
 import type { DebugCompactionProps } from '@/lib/character/CharacterChatPanel'
-import type { ChatMessage } from '@/lib/character/types'
+import type { ChatMessage, ChatCallState } from '@/lib/character/types'
 import type { GeometricEntityRef } from './parseGeometricEntities'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
@@ -28,6 +28,8 @@ interface EuclidChatPanelProps {
   squareBottomRight?: boolean
   /** When set, shows compaction controls between messages (debug mode) */
   debugCompaction?: DebugCompactionProps
+  /** When set, the chat panel acts as the voice call UI */
+  callState?: ChatCallState
 }
 
 export function EuclidChatPanel({
@@ -42,6 +44,7 @@ export function EuclidChatPanel({
   isDragging,
   squareBottomRight,
   debugCompaction,
+  callState,
 }: EuclidChatPanelProps) {
   return (
     <CharacterChatPanel
@@ -58,6 +61,7 @@ export function EuclidChatPanel({
       isDragging={isDragging}
       squareBottomRight={squareBottomRight}
       debugCompaction={debugCompaction}
+      callState={callState}
     />
   )
 }

@@ -8,8 +8,9 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import type { CharacterDefinition, ChatMessage, EntityMarkerConfig } from './types'
+import type { CharacterDefinition, ChatMessage, ChatCallState, EntityMarkerConfig } from './types'
 import { MarkedText } from './MarkedText'
+import { MiniWaveform, AnimatedDots, formatTime } from '@/lib/voice'
 
 export interface DebugCompactionProps {
   /** Current compaction coverage (messages 0..coversUpTo are summarized) */
@@ -37,6 +38,8 @@ export interface CharacterChatPanelProps<TEntityRef> {
   squareBottomRight?: boolean
   /** When set, shows compaction controls between messages (debug mode) */
   debugCompaction?: DebugCompactionProps
+  /** When set, the chat panel acts as the voice call UI */
+  callState?: ChatCallState
 }
 
 export function CharacterChatPanel<TEntityRef>({
@@ -53,6 +56,7 @@ export function CharacterChatPanel<TEntityRef>({
   isDragging,
   squareBottomRight,
   debugCompaction,
+  callState,
 }: CharacterChatPanelProps<TEntityRef>) {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -111,12 +115,20 @@ export function CharacterChatPanel<TEntityRef>({
   const hasDragHandlers = !!onDragPointerDown
   const headerName = character.nativeDisplayName ?? character.displayName
 
+  // Call-aware derived state
+  const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
+  const isRinging = callState?.state === 'ringing'
+  const isActive = callState?.state === 'active'
+  const isCallError = callState?.state === 'error'
+  const dangerColor = '#ef4444'
+  const accentColor = '#7c3aed'
+
   return (
     <div
       data-component="character-chat-panel"
       style={{
-        width: 300,
-        maxHeight: 420,
+        width: 'min(300px, calc(100vw - 24px))',
+        maxHeight: 'min(420px, calc(100vh - 120px))',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: squareBottomRight ? '12px 12px 0 12px' : 12,
@@ -128,7 +140,7 @@ export function CharacterChatPanel<TEntityRef>({
         overflow: 'hidden',
       }}
     >
-      {/* Header — drag handle when drag props provided */}
+      {/* Header — drag handle when drag props provided, transforms during call */}
       <div
         data-element="chat-header"
         style={{
@@ -148,45 +160,118 @@ export function CharacterChatPanel<TEntityRef>({
         onPointerUp={onDragPointerUp}
         onPointerCancel={onDragPointerUp}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img
-            src={character.profileImage}
-            alt={character.displayName}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {/* Profile image — pulsing ring when ringing, speaking glow when active+speaking */}
+          <div
             style={{
               width: 24,
               height: 24,
               borderRadius: '50%',
-              objectFit: 'cover',
-            }}
-          />
-          <span
-            style={{
-              fontWeight: 600,
-              fontSize: 13,
-              color: '#1e293b',
+              overflow: 'hidden',
+              flexShrink: 0,
+              boxShadow: isRinging
+                ? '0 0 0 2px rgba(109, 40, 217, 0.4), 0 0 8px rgba(109, 40, 217, 0.3)'
+                : isActive && callState.isSpeaking
+                  ? '0 0 0 2px rgba(109, 40, 217, 0.5), 0 0 8px rgba(109, 40, 217, 0.3)'
+                  : 'none',
+              animation: isRinging ? 'ringPulse 2s ease-out infinite' : undefined,
+              transition: 'box-shadow 0.3s ease',
             }}
           >
-            {headerName}
-          </span>
+            <img
+              src={character.profileImage}
+              alt={character.displayName}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+          </div>
+          {/* Name area — transforms based on call state */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            {isActive && callState.isThinking ? (
+              // Thinking state: thinkingLabel + animated dots
+              <span style={{ fontSize: 13, fontWeight: 600, color: accentColor, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12 }}>📜</span>
+                <span>{callState.thinkingLabel || 'Thinking'}<AnimatedDots /></span>
+              </span>
+            ) : isActive ? (
+              // Active: name + waveform + timer
+              <>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
+                <MiniWaveform isDark={false} active={callState.isSpeaking} />
+              </>
+            ) : isRinging ? (
+              // Ringing: name + "Calling..."
+              <>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
+                <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Calling...</span>
+              </>
+            ) : (
+              // Default: just name
+              <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
+            )}
+            {/* Timer badge in active state */}
+            {isActive && callState.timeRemaining !== null && (
+              <span
+                data-element="call-timer"
+                style={{
+                  fontSize: 12,
+                  fontVariantNumeric: 'tabular-nums',
+                  fontFamily: 'monospace',
+                  color: callState.timeRemaining <= 15 ? dangerColor : '#94a3b8',
+                  fontWeight: callState.timeRemaining <= 15 ? 700 : 400,
+                }}
+              >
+                {formatTime(callState.timeRemaining)}
+              </span>
+            )}
+          </div>
         </div>
-        <button
-          data-action="close-chat"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={onClose}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            color: '#94a3b8',
-            fontSize: 18,
-            lineHeight: 1,
-            padding: '2px 4px',
-            borderRadius: 4,
-          }}
-          title="Close chat"
-        >
-          {'\u2715'}
-        </button>
+        {/* Right button: × close normally, red hang-up/cancel during call */}
+        {isCallActive ? (
+          <button
+            data-action="hang-up-chat"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={callState!.onHangUp}
+            style={{
+              border: 'none',
+              background: dangerColor,
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: 600,
+              lineHeight: 1,
+              padding: '4px 10px',
+              borderRadius: 10,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isRinging ? 'Cancel' : 'End'}
+          </button>
+        ) : (
+          <button
+            data-action="close-chat"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onClose}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: '#94a3b8',
+              fontSize: 18,
+              lineHeight: 1,
+              padding: '2px 4px',
+              borderRadius: 4,
+            }}
+            title="Close chat"
+          >
+            {'\u2715'}
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -201,12 +286,72 @@ export function CharacterChatPanel<TEntityRef>({
           display: 'flex',
           flexDirection: 'column',
           gap: 6,
-          minHeight: 200,
-          maxHeight: 310,
+          minHeight: 0,
           userSelect: 'text',
           WebkitUserSelect: 'text',
+          position: 'relative',
         }}
       >
+        {/* Error banner at top of messages area */}
+        {isCallError && callState && (
+          <div
+            data-element="call-error-banner"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 2,
+              background: 'rgba(254, 242, 242, 0.95)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: 12,
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: 4 }}>
+              Couldn&apos;t connect
+            </div>
+            <div style={{ color: '#6b7280', marginBottom: 8, lineHeight: 1.4 }}>
+              {callState.error || 'Something went wrong'}
+            </div>
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+              {callState.errorCode !== 'quota_exceeded' && (
+                <button
+                  data-action="retry-call"
+                  onClick={callState.onRetry}
+                  style={{
+                    border: 'none',
+                    background: accentColor,
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '4px 14px',
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Try Again
+                </button>
+              )}
+              <button
+                data-action="dismiss-error"
+                onClick={callState.onHangUp}
+                style={{
+                  border: 'none',
+                  background: 'rgba(0,0,0,0.06)',
+                  color: '#374151',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: '4px 14px',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
         {messages.length === 0 && (
           <div
             style={{
@@ -431,6 +576,69 @@ export function CharacterChatPanel<TEntityRef>({
             </div>
           )}
         <div ref={messagesEndRef} />
+
+        {/* Ringing overlay — absolute over messages area */}
+        {isRinging && (
+          <div
+            data-element="ringing-overlay"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(255, 255, 255, 0.85)',
+              zIndex: 3,
+              gap: 8,
+            }}
+          >
+            {/* Profile photo with pulsing rings */}
+            <div style={{ position: 'relative', width: 72, height: 72 }}>
+              {[0, 0.4, 0.8].map((delay, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    inset: -6,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(109, 40, 217, 0.3)',
+                    animation: `ringPulse 2s ease-out ${delay}s infinite`,
+                  }}
+                />
+              ))}
+              <img
+                src={character.profileImage}
+                alt={character.displayName}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            </div>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>Calling...</div>
+            <button
+              data-action="cancel-ringing"
+              onClick={callState!.onHangUp}
+              style={{
+                marginTop: 4,
+                border: 'none',
+                background: dangerColor,
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '6px 20px',
+                borderRadius: 14,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Input bar */}
@@ -503,6 +711,20 @@ export function CharacterChatPanel<TEntityRef>({
           </svg>
         </button>
       </div>
+
+      {/* Keyframes for call animations — only injected when callState is present */}
+      {callState && (
+        <style>{`
+          @keyframes ringPulse {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+          }
+          @keyframes waveBarMini {
+            0% { height: 4px; }
+            100% { height: 16px; }
+          }
+        `}</style>
+      )}
     </div>
   )
 }

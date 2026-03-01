@@ -114,7 +114,7 @@ import { useEuclidVoice } from './voice/useEuclidVoice'
 import { useConstructionNotifier } from './voice/useConstructionNotifier'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import { PhoneCallOverlay } from '@/lib/voice/PhoneCallOverlay'
+import type { ChatCallState } from '@/lib/character/types'
 import { useEuclidChat } from './chat/useEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
 import { latexToMarkers } from './chat/parseGeometricEntities'
@@ -1129,6 +1129,38 @@ export function EuclidCanvas({
   }, [euclidCallActive, stopAudio])
   const narrationEnabled = disableAudio ? audioEnabled : euclidCallActive ? false : undefined
 
+  // ── Build chatCallState from euclidVoice ──
+  const chatCallState: ChatCallState | undefined = euclidVoice.state !== 'idle'
+    ? {
+        state: euclidVoice.state,
+        timeRemaining: euclidVoice.timeRemaining,
+        isSpeaking: euclidVoice.isSpeaking,
+        isThinking: euclidVoice.isThinking,
+        thinkingLabel: 'Consulting scrolls',
+        error: euclidVoice.error,
+        errorCode: euclidVoice.errorCode,
+        onHangUp: euclidVoice.hangUp,
+        onRetry: euclidVoice.dial,
+      }
+    : undefined
+
+  // Auto-open chat when a call starts ringing
+  useEffect(() => {
+    if (euclidVoice.state === 'ringing' && !euclidChat.isOpen) {
+      euclidChat.open()
+    }
+  }, [euclidVoice.state, euclidChat.isOpen, euclidChat.open])
+
+  // Inject "Call ended" event when transitioning from active → ending
+  const prevVoiceStateRef = useRef(euclidVoice.state)
+  useEffect(() => {
+    const prev = prevVoiceStateRef.current
+    prevVoiceStateRef.current = euclidVoice.state
+    if (prev === 'active' && euclidVoice.state === 'ending') {
+      euclidChat.addMessage({ id: generateId(), role: 'user', content: 'Call ended', timestamp: Date.now(), isEvent: true })
+    }
+  }, [euclidVoice.state, euclidChat.addMessage])
+
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
@@ -2073,7 +2105,50 @@ export function EuclidCanvas({
     e.preventDefault()
     const dx = e.clientX - drag.startX
     const dy = e.clientY - drag.startY
-    setQuadOffset({ x: drag.origX + dx, y: drag.origY + dy })
+    let newX = drag.origX + dx
+    let newY = drag.origY + dy
+
+    // Clamp so the quad (and chat panel if open) stays within the root bounds.
+    // The root component (euclid-canvas) has overflow: hidden, so we clamp to that.
+    const container = containerRef.current
+    const root = container?.parentElement  // euclid-canvas root
+    if (container && root) {
+      const rootW = root.clientWidth
+      const rootH = root.clientHeight
+      const cw = container.clientWidth
+      const ch = container.clientHeight
+      const QUAD_SIZE = 76
+      const MARGIN = 12  // base bottom/right offset
+
+      // Base quad position (top-left in canvas-pane coords, before offset):
+      const baseX = cw - MARGIN - QUAD_SIZE
+      const baseY = ch - MARGIN - QUAD_SIZE
+      const quadLeft = baseX + newX
+      const quadTop = baseY + newY
+
+      // If chat is open, account for how far it extends past the quad
+      let chatExtendLeft = 0
+      let chatExtendUp = 0
+      const chatEl = root.querySelector('[data-component="character-chat-panel"]') as HTMLElement | null
+      if (chatEl) {
+        // Chat is positioned at right: 38, bottom: 38 inside assembly.
+        // Assembly width = QUAD_SIZE, so chat right edge = QUAD_SIZE - 38 from quad left.
+        // Chat left edge = (QUAD_SIZE - 38) - chatWidth from quad left.
+        // If negative, chat extends past quad left by that amount.
+        const chatW = chatEl.offsetWidth
+        const chatH = chatEl.offsetHeight
+        chatExtendLeft = Math.max(0, chatW - (QUAD_SIZE - 38))
+        chatExtendUp = Math.max(0, chatH - (QUAD_SIZE - 38))
+      }
+
+      // Clamp: quad left must leave room for chat, quad right stays in root
+      const clampedLeft = Math.max(chatExtendLeft, Math.min(quadLeft, rootW - QUAD_SIZE))
+      const clampedTop = Math.max(chatExtendUp, Math.min(quadTop, rootH - QUAD_SIZE))
+      newX = clampedLeft - baseX
+      newY = clampedTop - baseY
+    }
+
+    setQuadOffset({ x: newX, y: newY })
   }, [])
 
   const handleQuadPointerUp = useCallback((e: React.PointerEvent) => {
@@ -3386,6 +3461,7 @@ export function EuclidCanvas({
           minHeight: 0,
           position: 'relative',
           touchAction: 'none',
+          overflow: 'visible',
         }}
       >
         <canvas
@@ -3794,6 +3870,7 @@ export function EuclidCanvas({
                     isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
                     onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
                   } : undefined}
+                  callState={chatCallState}
                 />
               </div>
             )}
@@ -3962,24 +4039,24 @@ export function EuclidCanvas({
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                 </svg>
               </button>
-              {/* BR: Chat */}
+              {/* BR: Chat — disabled close during active call */}
               <button
                 data-action="chat-euclid"
-                onClick={euclidChat.isOpen ? euclidChat.close : euclidChat.open}
+                onClick={euclidVoice.state !== 'idle' ? undefined : (euclidChat.isOpen ? euclidChat.close : euclidChat.open)}
                 title="Chat with Εὐκλείδης"
                 style={{
                   border: 'none',
                   background: euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent',
-                  color: '#4E79A7',
+                  color: euclidVoice.state !== 'idle' ? '#94a3b8' : '#4E79A7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
+                  cursor: euclidVoice.state !== 'idle' ? 'default' : 'pointer',
                   padding: 0,
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 0 9px 0',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
+                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = euclidChat.isOpen ? 'rgba(78, 121, 167, 0.12)' : 'transparent' }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3990,25 +4067,7 @@ export function EuclidCanvas({
           </div>
         )}
 
-        {/* Phone call overlay for Call Euclid */}
-        {euclidVoice.state !== 'idle' && (
-          <PhoneCallOverlay
-            callerLabel="Εὐκλείδης"
-            callerImage="/images/euclid-profile.png"
-            state={euclidVoice.state}
-            timeRemaining={euclidVoice.timeRemaining}
-            error={euclidVoice.error}
-            errorCode={euclidVoice.errorCode}
-            isSpeaking={euclidVoice.isSpeaking}
-            isThinking={euclidVoice.isThinking}
-            onHangUp={euclidVoice.hangUp}
-            onRetry={euclidVoice.dial}
-            onDismiss={euclidVoice.hangUp}
-            isDark={false}
-            containerWidth={containerRef.current?.clientWidth ?? 600}
-            containerHeight={containerRef.current?.clientHeight ?? 400}
-          />
-        )}
+        {/* Voice call UI is now integrated into the chat panel via callState */}
 
         {showCreationsPanel && (
           <PlaygroundCreationsPanel

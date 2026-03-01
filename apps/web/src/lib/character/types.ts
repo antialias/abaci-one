@@ -44,6 +44,20 @@ export interface ChatMessage {
  * (e.g., geometric entities like {seg:AB}) that render as hoverable
  * highlighted spans in chat messages.
  */
+/** Voice call state projected into the chat panel. */
+export interface ChatCallState {
+  state: 'idle' | 'ringing' | 'active' | 'ending' | 'error'
+  timeRemaining: number | null
+  isSpeaking: boolean
+  isThinking: boolean
+  /** Label shown during think_hard (e.g. "Consulting scrolls") */
+  thinkingLabel?: string
+  error: string | null
+  errorCode: string | null
+  onHangUp: () => void
+  onRetry: () => void
+}
+
 export interface EntityMarkerConfig<TEntityRef> {
   /** Regex with capture groups. Must use the `g` flag. */
   pattern: RegExp
