@@ -44,11 +44,35 @@ export function CharacterChatPanel<TEntityRef>({
 }: CharacterChatPanelProps<TEntityRef>) {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const userScrolledAwayRef = useRef(false)
+  const programmaticScrollRef = useRef(false)
 
-  // Auto-scroll to bottom on new messages
+  // Track whether the user has scrolled away from the bottom.
+  // Ignore scroll events caused by our own programmatic scrolling.
+  const handleMessagesScroll = useCallback(() => {
+    if (programmaticScrollRef.current) return
+    const el = messagesContainerRef.current
+    if (!el) return
+    const threshold = 40
+    const nearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+    userScrolledAwayRef.current = !nearBottom
+  }, [])
+
+  // Auto-scroll only when the user hasn't scrolled away
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!userScrolledAwayRef.current) {
+      const el = messagesContainerRef.current
+      if (el) {
+        programmaticScrollRef.current = true
+        el.scrollTop = el.scrollHeight
+        requestAnimationFrame(() => {
+          programmaticScrollRef.current = false
+        })
+      }
+    }
   }, [messages])
 
   // Focus input on open
@@ -155,7 +179,9 @@ export function CharacterChatPanel<TEntityRef>({
 
       {/* Messages */}
       <div
+        ref={messagesContainerRef}
         data-element="chat-messages"
+        onScroll={handleMessagesScroll}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -165,6 +191,8 @@ export function CharacterChatPanel<TEntityRef>({
           gap: 6,
           minHeight: 200,
           maxHeight: 310,
+          userSelect: 'text',
+          WebkitUserSelect: 'text',
         }}
       >
         {messages.length === 0 && (
