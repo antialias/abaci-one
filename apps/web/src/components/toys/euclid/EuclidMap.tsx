@@ -677,19 +677,27 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const stickyW = sticky.clientWidth
     if (stickyH === 0 || stickyW === 0) return
 
-    // Compute scroll progress using the container's position relative to the scroll parent
+    // Compute scroll progress using the actual achievable scroll distance.
+    // We can't use `container.scrollHeight - stickyH` because the container lives inside
+    // a scroll parent (<main>) that has nav padding, tab-pill spacers, etc. above it.
+    // The achievable scroll distance past the container is always less than the spacer
+    // height, so progress would never reach 1.0. Instead, compute scroll range from the
+    // scroll parent's actual geometry.
     const scrollParent = scrollContainerRef.current
     let scrollTop: number
+    let scrollRange: number
     if (scrollParent) {
-      // Container's offset within the scroll parent minus current scroll position
       const containerTop = container.offsetTop - scrollParent.offsetTop
       const scrolled = scrollParent.scrollTop - containerTop
       scrollTop = Math.max(0, scrolled)
+      // Max achievable scroll past the container's top edge
+      const totalScrollRange = scrollParent.scrollHeight - scrollParent.clientHeight
+      scrollRange = Math.max(1, totalScrollRange - Math.max(0, containerTop))
     } else {
       scrollTop = Math.max(0, -container.getBoundingClientRect().top)
+      scrollRange = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
     }
-    const scrollRange = container.scrollHeight - stickyH
-    const progress = scrollRange > 0 ? Math.min(1, scrollTop / scrollRange) : 0
+    const progress = Math.min(1, scrollTop / scrollRange)
 
     const { rows, globalCenterX } = rowMeta
     const firstY = rows[0].y
@@ -1104,8 +1112,10 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
               {svgContent}
             </svg>
           </div>
-          {/* Spacer creates scroll range — height proportional to graph extent */}
-          <div style={{ height: rowMeta ? (rowMeta.rows[rowMeta.rows.length - 1].y - rowMeta.rows[0].y) * 1.5 : 0 }} />
+          {/* Spacer creates scroll range — height proportional to graph extent.
+              The exact height controls scrolling granularity (bigger = smoother panning).
+              Progress 0→1 is computed from the scroll parent's actual achievable distance. */}
+          <div style={{ height: rowMeta ? (rowMeta.rows[rowMeta.rows.length - 1].y - rowMeta.rows[0].y) * 2.5 : 0 }} />
         </div>
       ) : (
         /* Normal scrollable map */
