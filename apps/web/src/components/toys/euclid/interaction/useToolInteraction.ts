@@ -428,6 +428,9 @@ export function useToolInteraction({
             prevAngle: currentAngle,
             cumulativeSweep: 0,
           }
+          // Capture pointer so sweep continues even when cursor leaves canvas
+          // (e.g. moves over proof-steps panel or outside the viewport)
+          canvas!.setPointerCapture(e.pointerId)
         }
         requestDraw()
         return
@@ -449,6 +452,8 @@ export function useToolInteraction({
 
           // Check for completion
           if (Math.abs(newSweep) >= SWEEP_THRESHOLD) {
+            // Release pointer capture acquired at sweep start
+            try { canvas!.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
             onCommitCircle(compass.centerId, compass.radiusPointId)
             compassPhaseRef.current = { tag: 'idle' }
             pointerCapturedRef.current = false
@@ -537,6 +542,8 @@ export function useToolInteraction({
 
       // ── Compass: cancel on pointer up if not completed ──
       if (compass.tag !== 'idle') {
+        // Release pointer capture if we captured it during sweep
+        try { canvas!.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
         compassPhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
         requestDraw()
@@ -589,7 +596,8 @@ export function useToolInteraction({
       requestDraw()
     }
 
-    function handlePointerCancel() {
+    function handlePointerCancel(e: PointerEvent) {
+      try { canvas!.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
       if (extendPhaseRef) extendPhaseRef.current = { tag: 'idle' }

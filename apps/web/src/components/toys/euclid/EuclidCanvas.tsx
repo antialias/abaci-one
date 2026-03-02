@@ -146,7 +146,10 @@ const AUTO_FIT_SWEEP_LERP_MIN = 0.03
 const AUTO_FIT_POST_SWEEP_MS = 750
 const AUTO_FIT_MAX_CENTER_PX = 2
 const AUTO_FIT_MAX_PPU_DELTA = 1
+const AUTO_FIT_SWEEP_PPU_DELTA = 3
 const AUTO_FIT_CEREMONY_PPU_DELTA = 4
+/** Fraction of pad used as tip margin in the hard visibility constraint */
+const AUTO_FIT_TIP_PAD_FRACTION = 0.5
 
 // ── Viewport centering ──
 
@@ -2974,17 +2977,26 @@ export function EuclidCanvas({
                   : AUTO_FIT_LERP
 
               let effectivePpu = v.pixelsPerUnit
+              const isSweeping = compassPhase.tag === 'sweeping'
               if (!softOk || targetPpu < v.pixelsPerUnit || shouldZoomIn) {
                 const nextPpu = v.pixelsPerUnit + (targetPpu - v.pixelsPerUnit) * sweepLerp
                 const ppuDeltaCap = inCeremony
                   ? AUTO_FIT_CEREMONY_PPU_DELTA
-                  : AUTO_FIT_MAX_PPU_DELTA
+                  : isSweeping
+                    ? AUTO_FIT_SWEEP_PPU_DELTA
+                    : AUTO_FIT_MAX_PPU_DELTA
                 const deltaPpu = Math.max(
                   -ppuDeltaCap,
                   Math.min(ppuDeltaCap, nextPpu - v.pixelsPerUnit)
                 )
-                effectivePpu = v.pixelsPerUnit + deltaPpu
-                v.pixelsPerUnit = effectivePpu
+                // During sweep: only zoom out (negative delta), never in.
+                // This ensures the drawn arc always stays visible — the
+                // viewport expands to frame the arc but never contracts
+                // while the user is still drawing.
+                if (!isSweeping || deltaPpu <= 0) {
+                  effectivePpu = v.pixelsPerUnit + deltaPpu
+                  v.pixelsPerUnit = effectivePpu
+                }
               }
 
               let targetCenterX = targetCx - (fitRect.centerX - cssWidth / 2) / effectivePpu
@@ -3033,6 +3045,39 @@ export function EuclidCanvas({
               const dy = (targetCenterY - v.center.y) * sweepLerp
               v.center.x += Math.max(-maxDx, Math.min(maxDx, dx))
               v.center.y += Math.max(-maxDy, Math.min(maxDy, dy))
+
+              // Hard constraint: compass scribing tip must always be visible.
+              // After the soft lerp, check if the tip is within the safe zone.
+              // If not, force-zoom out just enough to bring it inside.
+              if (compassPhase.tag === 'sweeping' && compassPhase.radius > 0) {
+                const sweepCenter = getPoint(constructionRef.current, compassPhase.centerId)
+                if (sweepCenter) {
+                  const tipAngle = compassPhase.startAngle + compassPhase.cumulativeSweep
+                  const tipWorldX = sweepCenter.x + Math.cos(tipAngle) * compassPhase.radius
+                  const tipWorldY = sweepCenter.y + Math.sin(tipAngle) * compassPhase.radius
+                  const tipDx = tipWorldX - v.center.x
+                  const tipDy = v.center.y - tipWorldY // screen Y inverted
+                  const tipPad = pad * AUTO_FIT_TIP_PAD_FRACTION
+                  let maxPpu = v.pixelsPerUnit
+                  if (tipDx > 0.001) {
+                    const limit = (fitRect.right - tipPad - cssWidth / 2) / tipDx
+                    if (limit > 0) maxPpu = Math.min(maxPpu, limit)
+                  } else if (tipDx < -0.001) {
+                    const limit = (fitRect.left + tipPad - cssWidth / 2) / tipDx
+                    if (limit > 0) maxPpu = Math.min(maxPpu, limit)
+                  }
+                  if (tipDy > 0.001) {
+                    const limit = (fitRect.bottom - tipPad - cssHeight / 2) / tipDy
+                    if (limit > 0) maxPpu = Math.min(maxPpu, limit)
+                  } else if (tipDy < -0.001) {
+                    const limit = (fitRect.top + tipPad - cssHeight / 2) / tipDy
+                    if (limit > 0) maxPpu = Math.min(maxPpu, limit)
+                  }
+                  if (maxPpu < v.pixelsPerUnit && maxPpu >= AUTO_FIT_MIN_PPU) {
+                    v.pixelsPerUnit = maxPpu
+                  }
+                }
+              }
 
               if (
                 Math.abs(v.center.x - prevCx) > 0.001 ||
