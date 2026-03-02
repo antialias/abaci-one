@@ -188,8 +188,10 @@ export function SessionPausedModal({
 
   if (!isOpen) return null
 
-  // Calculate progress
-  const completedProblems = session.results.length
+  // Calculate progress — count only original attempts, not retries or manual redos
+  const completedProblems = session.results.filter(
+    (r) => !r.isRetry && !r.isManualRedo
+  ).length
   const totalProblems = session.parts.reduce((sum, part) => sum + part.slots.length, 0)
   const progressPercent =
     totalProblems > 0 ? Math.round((completedProblems / totalProblems) * 100) : 0
