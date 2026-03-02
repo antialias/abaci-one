@@ -1,13 +1,20 @@
 /**
  * POST /api/admin/characters/[id]/profile/generate
  *
- * Generate a profile image for a character.
- * Body: { provider?, model?, variant?: 'default' | 'light' | 'dark', forceRegenerate? }
+ * Start a background task to generate a profile image for a character.
+ * Returns { taskId } for the client to track via useBackgroundTask.
+ *
+ * Body: { provider?, model?, size?, theme?, cascade?, forceRegenerate? }
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { CHARACTER_PROVIDERS } from '@/lib/character/characters'
-import { generateAndStoreImage } from '@/lib/image-generation'
+import {
+  startProfileImageGeneration,
+  type ProfileSize,
+  type ProfileTheme,
+  type ProfileState,
+} from '@/lib/tasks/profile-image-generate'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -21,36 +28,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const body = await request.json().catch(() => ({}))
     const imageProvider = body.provider || 'gemini'
-    const model = body.model || (imageProvider === 'gemini' ? 'gemini-2.5-flash-image' : 'gpt-image-1')
-    const variant: string = body.variant || 'default'
+    const model =
+      body.model || (imageProvider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
+    const size: ProfileSize = body.size || 'default'
+    const theme: ProfileTheme = body.theme || 'default'
+    const state: ProfileState = body.state || 'idle'
+    const cascade: boolean = body.cascade ?? false
 
-    const data = provider.getFullData()
-    const prompt = data.identity.profilePrompt
-
-    // Determine file path based on variant
-    const profileBase = data.identity.profileImage.replace(/^\//, '')
-    let relativePath: string
-    if (variant === 'light') {
-      relativePath = profileBase.replace('.png', '-light.png')
-    } else if (variant === 'dark') {
-      relativePath = profileBase.replace('.png', '-dark.png')
-    } else {
-      relativePath = profileBase
-    }
-
-    const result = await generateAndStoreImage({
+    const taskId = await startProfileImageGeneration({
       provider: imageProvider,
       model,
-      prompt,
-      imageOptions: { size: { width: 1024, height: 1024 } },
-      storageTarget: {
-        type: 'static',
-        relativePath,
-      },
-      skipIfExists: !body.forceRegenerate,
+      characterId: id,
+      size,
+      theme,
+      state,
+      cascade,
+      forceRegenerate: !!body.forceRegenerate,
     })
 
-    return NextResponse.json(result)
+    return NextResponse.json({ taskId })
   } catch (error) {
     console.error(`[characters/${id}/profile] Error:`, error)
     return NextResponse.json(

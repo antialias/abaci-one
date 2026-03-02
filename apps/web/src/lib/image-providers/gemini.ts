@@ -69,7 +69,7 @@ export const geminiProvider: ImageProvider = {
     return !!process.env.GEMINI_API_KEY
   },
 
-  async generate({ model, prompt, options }): Promise<{ imageBuffer: Buffer }> {
+  async generate({ model, prompt, options, referenceImage }): Promise<{ imageBuffer: Buffer }> {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
       throw new Error('No API key configured for Gemini. Set GEMINI_API_KEY in your environment.')
@@ -78,8 +78,21 @@ export const geminiProvider: ImageProvider = {
     const { aspectRatio, imageSize } = mapSizeToGeminiParams(options?.size)
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+    // Build content parts — include reference image before text if provided
+    const parts: Array<Record<string, unknown>> = []
+    if (referenceImage) {
+      parts.push({
+        inlineData: {
+          mimeType: 'image/png',
+          data: referenceImage.toString('base64'),
+        },
+      })
+    }
+    parts.push({ text: prompt })
+
     const requestBody = JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ parts }],
       generationConfig: {
         responseModalities: ['TEXT', 'IMAGE'],
         imageConfig: {

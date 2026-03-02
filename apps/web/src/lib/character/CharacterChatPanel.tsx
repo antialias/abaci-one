@@ -11,6 +11,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { CharacterDefinition, ChatMessage, ChatCallState, EntityMarkerConfig } from './types'
 import { MarkedText } from './MarkedText'
 import { CallStatusChip } from './CallStatusChip'
+import { useCharacterProfileImage } from './useCharacterProfileImage'
 
 export interface DebugCompactionProps {
   /** Current compaction coverage (messages 0..coversUpTo are summarized) */
@@ -61,6 +62,9 @@ export function CharacterChatPanel<TEntityRef>({
   debugCompaction,
   callState,
 }: CharacterChatPanelProps<TEntityRef>) {
+  const smProfileImage = useCharacterProfileImage(character.profileImage, 'sm')
+  const defaultProfileImage = useCharacterProfileImage(character.profileImage, 'default')
+
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
@@ -186,7 +190,7 @@ export function CharacterChatPanel<TEntityRef>({
               }}
             >
               <img
-                src={character.profileImage}
+                src={smProfileImage}
                 alt={character.displayName}
                 style={{
                   width: 24,
@@ -433,7 +437,7 @@ export function CharacterChatPanel<TEntityRef>({
               >
               {msg.role === 'assistant' && (
                 <img
-                  src={character.profileImage}
+                  src={smProfileImage}
                   alt=""
                   style={{
                     width: 18,
@@ -556,7 +560,7 @@ export function CharacterChatPanel<TEntityRef>({
                 />
               ))}
               <img
-                src={character.profileImage}
+                src={defaultProfileImage}
                 alt={character.displayName}
                 style={{
                   width: 72,

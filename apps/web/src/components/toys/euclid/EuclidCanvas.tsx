@@ -58,6 +58,7 @@ import { useAudioManager } from '@/hooks/useAudioManager'
 import { useTTS } from '@/hooks/useTTS'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useCharacterProfileImage } from '@/lib/character/useCharacterProfileImage'
 import {
   createFactStore,
   addFact,
@@ -1090,6 +1091,9 @@ export function EuclidCanvas({
     onModelSpeech: handleModelSpeech,
     onChildSpeech: handleChildSpeech,
   })
+
+  // ── Speaking-aware profile image (needs euclidVoice.isSpeaking) ──
+  const smProfileImage = useCharacterProfileImage('/images/euclid-profile.png', 'sm', euclidVoice.isSpeaking)
 
   // ── Push-based construction notifier ──
   const notifierRef = useConstructionNotifier({
@@ -4067,7 +4071,7 @@ export function EuclidCanvas({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/images/euclid-profile.png"
+                  src={smProfileImage}
                   alt="Εὐκλείδης"
                   style={{
                     width: 30,

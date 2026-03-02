@@ -16,6 +16,7 @@ import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
 import { CallStatusChip } from '@/lib/character/CallStatusChip'
+import { useCharacterProfileImage } from '@/lib/character/useCharacterProfileImage'
 
 export interface DockedEuclidChatProps {
   messages: ChatMessage[]
@@ -71,6 +72,11 @@ export function DockedEuclidChat({
   onExpandedChange,
   onColdStart,
 }: DockedEuclidChatProps) {
+  const isSpeaking = callState?.isSpeaking ?? false
+  const smProfileImage = useCharacterProfileImage(EUCLID_CHARACTER_DEF.profileImage, 'sm', isSpeaking)
+  // defaultProfileImage is used for ringing overlay — stays idle
+  const defaultProfileImage = useCharacterProfileImage(EUCLID_CHARACTER_DEF.profileImage, 'default')
+
   const [input, setInput] = useState('')
   const [mobileExpanded, setMobileExpanded] = useState(false)
   const internalInputRef = useRef<HTMLInputElement>(null)
@@ -187,6 +193,8 @@ export function DockedEuclidChat({
           canCall={canCall}
           onToggleAudio={onToggleAudio}
           audioEnabled={audioEnabled}
+          smProfileImage={smProfileImage}
+          defaultProfileImage={defaultProfileImage}
         />
       )
     }
@@ -209,6 +217,7 @@ export function DockedEuclidChat({
         onToggleAudio={onToggleAudio}
         audioEnabled={audioEnabled}
         onColdStart={onColdStart}
+        smProfileImage={smProfileImage}
       />
     )
   }
@@ -234,6 +243,8 @@ export function DockedEuclidChat({
       debugCompaction={debugCompaction}
       height={DESKTOP_HEIGHT}
       onUndock={onUndock}
+      smProfileImage={smProfileImage}
+      defaultProfileImage={defaultProfileImage}
     />
   )
 }
@@ -271,6 +282,10 @@ interface DesktopDockedChatProps {
   onToggleAudio?: () => void
   /** Whether narration audio is enabled */
   audioEnabled?: boolean
+  /** Theme-aware small profile image URL */
+  smProfileImage: string
+  /** Theme-aware default-size profile image URL */
+  defaultProfileImage: string
 }
 
 function DesktopDockedChat({
@@ -298,6 +313,8 @@ function DesktopDockedChat({
   canCall,
   onToggleAudio,
   audioEnabled,
+  smProfileImage,
+  defaultProfileImage,
 }: DesktopDockedChatProps) {
   return (
     <div
@@ -340,7 +357,7 @@ function DesktopDockedChat({
             pointerEvents: isCallActive ? 'none' : 'auto',
           }}>
             <img
-              src={EUCLID_CHARACTER_DEF.profileImage}
+              src={smProfileImage}
               alt={EUCLID_CHARACTER_DEF.displayName}
               style={{
                 width: 16,
@@ -654,7 +671,7 @@ function DesktopDockedChat({
               >
                 {msg.role === 'assistant' && (
                   <img
-                    src={EUCLID_CHARACTER_DEF.profileImage}
+                    src={smProfileImage}
                     alt=""
                     style={{
                       width: 14,
@@ -774,7 +791,7 @@ function DesktopDockedChat({
                 />
               ))}
               <img
-                src={EUCLID_CHARACTER_DEF.profileImage}
+                src={defaultProfileImage}
                 alt={EUCLID_CHARACTER_DEF.displayName}
                 style={{
                   width: 48,
@@ -888,6 +905,8 @@ interface MobileChatStripProps {
   onToggleAudio?: () => void
   audioEnabled?: boolean
   onColdStart?: () => void
+  /** Theme-aware small profile image URL */
+  smProfileImage: string
 }
 
 function MobileChatStrip({
@@ -908,6 +927,7 @@ function MobileChatStrip({
   onToggleAudio,
   audioEnabled,
   onColdStart,
+  smProfileImage,
 }: MobileChatStripProps) {
   const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
   const [inputFocused, setInputFocused] = useState(false)
@@ -998,7 +1018,7 @@ function MobileChatStrip({
         }}>
           {/* Avatar */}
           <img
-            src={EUCLID_CHARACTER_DEF.profileImage}
+            src={smProfileImage}
             alt={EUCLID_CHARACTER_DEF.displayName}
             style={{
               width: 20,

@@ -5,6 +5,14 @@ import Image from 'next/image'
 import { css } from '../../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
+import { useBackgroundTask } from '@/hooks/useBackgroundTask'
+import type { TaskState } from '@/hooks/useBackgroundTask'
+import type {
+  ProfileImageGenerateOutput,
+  ProfileSize,
+  ProfileTheme,
+  ProfileState,
+} from '@/lib/tasks/profile-image-generate'
 import type {
   CharacterData,
   CharacterSummary,
@@ -446,6 +454,48 @@ function ModeCard({ mode }: { mode: ModeData }) {
   )
 }
 
+/** Unique key for a size+theme+state combination. */
+function variantKey(size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle'): string {
+  return `${size}:${theme}:${state}`
+}
+
+/** Human-readable label for a variant. */
+function variantLabel(size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle'): string {
+  if (size === 'default' && theme === 'default' && state === 'idle') return 'Base'
+  const parts: string[] = []
+  if (size !== 'default') parts.push(size === 'sm' ? 'Small' : 'Large')
+  if (state !== 'idle') parts.push(state.charAt(0).toUpperCase() + state.slice(1))
+  if (theme !== 'default') parts.push(theme.charAt(0).toUpperCase() + theme.slice(1))
+  return parts.join(' ')
+}
+
+/** Background color for a variant cell based on theme. */
+function variantBgColor(theme: ProfileTheme): string | undefined {
+  if (theme === 'dark') return '#0d1117'
+  if (theme === 'light') return '#f0f6fc'
+  return undefined
+}
+
+const SIZE_LABELS: ProfileSize[] = ['default', 'sm', 'lg']
+const THEME_LABELS: ProfileTheme[] = ['default', 'light', 'dark']
+const SIZE_DISPLAY: Record<ProfileSize, string> = { default: 'Default', sm: 'Small', lg: 'Large' }
+const THEME_DISPLAY: Record<ProfileTheme, string> = { default: 'Default', light: 'Light', dark: 'Dark' }
+
+/** Zero-render component that subscribes to a single task and reports state changes. */
+function TaskTracker({
+  taskId,
+  onStateChange,
+}: {
+  taskId: string
+  onStateChange: (taskId: string, state: TaskState<ProfileImageGenerateOutput>) => void
+}) {
+  const { state } = useBackgroundTask<ProfileImageGenerateOutput>(taskId)
+  useEffect(() => {
+    if (state) onStateChange(taskId, state)
+  }, [taskId, state, onStateChange])
+  return null
+}
+
 function IdentityCard({
   data,
   onSave,
@@ -457,42 +507,294 @@ function IdentityCard({
 }) {
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [profilePrompt, setProfilePrompt] = useState(data.identity.profilePrompt)
-  const [generating, setGenerating] = useState(false)
   const [genProvider, setGenProvider] = useState('gemini')
-  const [genVariant, setGenVariant] = useState<'default' | 'light' | 'dark'>('default')
+  const [genModel, setGenModel] = useState('')
 
-  const handleGenerate = async () => {
-    setGenerating(true)
-    try {
-      const res = await fetch(`/api/admin/characters/${data.identity.id}/profile/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: genProvider, variant: genVariant, forceRegenerate: true }),
-      })
-      const result = await res.json()
-      if (result.error) {
-        alert(`Generation failed: ${result.error}`)
-      } else {
-        alert(`Image ${result.status}: ${result.publicUrl}`)
+  // Tab state for idle vs speaking grid view
+  const [viewState, setViewState] = useState<ProfileState>('idle')
+
+  // Map of variantKey → { taskId, size, theme, state }
+  const [trackedTasks, setTrackedTasks] = useState<
+    Map<string, { taskId: string; size: ProfileSize; theme: ProfileTheme; state: ProfileState }>
+  >(new Map())
+  // Map of taskId → TaskState
+  const [taskStates, setTaskStates] = useState<
+    Map<string, TaskState<ProfileImageGenerateOutput>>
+  >(new Map())
+  // Cache bust counter — increments when any task completes
+  const [imageCacheBust, setImageCacheBust] = useState(0)
+
+  const resolvedModel = genModel || (genProvider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
+
+  const fireGenerate = useCallback(
+    async (opts: {
+      size: ProfileSize
+      theme: ProfileTheme
+      state?: ProfileState
+      cascade: boolean
+    }): Promise<string | null> => {
+      try {
+        const res = await fetch(`/api/admin/characters/${data.identity.id}/profile/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: genProvider,
+            model: resolvedModel,
+            size: opts.size,
+            theme: opts.theme,
+            state: opts.state ?? 'idle',
+            cascade: opts.cascade,
+            forceRegenerate: true,
+          }),
+        })
+        const result = await res.json()
+        if (result.error) return null
+        return result.taskId as string
+      } catch {
+        return null
       }
-    } catch (err) {
-      alert(`Error: ${err}`)
-    } finally {
-      setGenerating(false)
+    },
+    [data.identity.id, genProvider, resolvedModel]
+  )
+
+  // Handle state changes from TaskTracker instances
+  const handleTaskStateChange = useCallback(
+    (taskId: string, state: TaskState<ProfileImageGenerateOutput>) => {
+      setTaskStates((prev) => {
+        const next = new Map(prev)
+        next.set(taskId, state)
+        return next
+      })
+
+      // Discover child tasks from events
+      for (const event of state.events) {
+        const payload = event.payload as Record<string, unknown> | undefined
+        if (payload && payload.type === 'children_started') {
+          const children = payload.children as Array<{
+            taskId: string
+            size: ProfileSize
+            theme: ProfileTheme
+            state: ProfileState
+          }>
+          setTrackedTasks((prev) => {
+            const next = new Map(prev)
+            for (const child of children) {
+              const key = variantKey(child.size, child.theme, child.state)
+              if (!next.has(key)) {
+                next.set(key, child)
+              }
+            }
+            return next
+          })
+        }
+      }
+
+      // Bump cache bust when any task completes
+      if (state.status === 'completed') {
+        setImageCacheBust((n) => n + 1)
+      }
+    },
+    []
+  )
+
+  // "Generate All" — fires base idle with cascade=true, cascades to all 18
+  const handleGenerateAll = useCallback(async () => {
+    setTrackedTasks(new Map())
+    setTaskStates(new Map())
+    const taskId = await fireGenerate({ size: 'default', theme: 'default', state: 'idle', cascade: true })
+    if (taskId) {
+      const key = variantKey('default', 'default', 'idle')
+      setTrackedTasks(
+        new Map([[key, { taskId, size: 'default', theme: 'default', state: 'idle' }]])
+      )
     }
+  }, [fireGenerate])
+
+  // Regenerate a single variant (no cascade)
+  const handleRegenerateSingle = useCallback(
+    async (size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle') => {
+      const taskId = await fireGenerate({ size, theme, state, cascade: false })
+      if (taskId) {
+        const key = variantKey(size, theme, state)
+        setTrackedTasks((prev) => new Map(prev).set(key, { taskId, size, theme, state }))
+      }
+    },
+    [fireGenerate]
+  )
+
+  // Compute aggregate status
+  const isGenerating = [...taskStates.values()].some((s) => s.status === 'running')
+  const completedCount = [...taskStates.values()].filter((s) => s.status === 'completed').length
+  const failedCount = [...taskStates.values()].filter((s) => s.status === 'failed').length
+  const totalTracked = trackedTasks.size
+
+  // Get task state for a specific variant
+  const getVariantTaskState = (size: ProfileSize, theme: ProfileTheme, state: ProfileState) => {
+    const key = variantKey(size, theme, state)
+    const tracked = trackedTasks.get(key)
+    if (!tracked) return null
+    return taskStates.get(tracked.taskId) ?? null
+  }
+
+  // Variant status indicator
+  const getStatusIndicator = (size: ProfileSize, theme: ProfileTheme, state: ProfileState) => {
+    const taskState = getVariantTaskState(size, theme, state)
+    if (!taskState) return null
+    if (taskState.status === 'running') return { symbol: '\u25cb', color: '#58a6ff', label: 'Generating...' }
+    if (taskState.status === 'completed') return { symbol: '\u2713', color: '#3fb950', label: 'Done' }
+    if (taskState.status === 'failed') return { symbol: '\u2717', color: '#f85149', label: taskState.error ?? 'Failed' }
+    return { symbol: '\u2026', color: '#8b949e', label: 'Pending' }
+  }
+
+  // Build variant paths from character data
+  const getVariantPath = (size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle'): string => {
+    const found = data.identity.profileVariants?.find(
+      (v) => v.size === size && v.theme === theme && v.state === state
+    )
+    return found?.path ?? data.identity.profileImage
   }
 
   return (
     <CollapsibleSection title="Identity" defaultOpen>
+      {/* Zero-render TaskTracker instances for all discovered tasks */}
+      {[...trackedTasks.values()].map(({ taskId }) => (
+        <TaskTracker
+          key={taskId}
+          taskId={taskId}
+          onStateChange={handleTaskStateChange}
+        />
+      ))}
+
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
         <div style={{ flexShrink: 0 }}>
-          <Image
-            src={data.identity.profileImage}
-            alt={data.identity.displayName}
-            width={120}
-            height={120}
-            style={{ borderRadius: '50%', border: '2px solid #30363d' }}
-          />
+          {/* Idle / Speaking tab toggle */}
+          <div style={{ display: 'flex', gap: 2, marginBottom: 8 }}>
+            {(['idle', 'speaking'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setViewState(s)}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: '1px solid #30363d',
+                  borderRadius: s === 'idle' ? '4px 0 0 4px' : '0 4px 4px 0',
+                  backgroundColor: viewState === s ? '#238636' : '#21262d',
+                  color: viewState === s ? '#fff' : '#8b949e',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          {/* 3×3 variant grid (filtered by viewState) */}
+          <div>
+            {/* Column headers */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 4, paddingLeft: 44 }}>
+              {THEME_LABELS.map((theme) => (
+                <div
+                  key={theme}
+                  style={{
+                    width: 64,
+                    textAlign: 'center',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#8b949e',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {THEME_DISPLAY[theme]}
+                </div>
+              ))}
+            </div>
+            {/* Rows */}
+            {SIZE_LABELS.map((size) => (
+              <div key={size} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                {/* Row label */}
+                <div
+                  style={{
+                    width: 40,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#8b949e',
+                    textTransform: 'uppercase',
+                    textAlign: 'right',
+                    paddingRight: 4,
+                  }}
+                >
+                  {SIZE_DISPLAY[size]}
+                </div>
+                {/* Cells */}
+                {THEME_LABELS.map((theme) => {
+                  const status = getStatusIndicator(size, theme, viewState)
+                  return (
+                    <div key={`${size}:${theme}:${viewState}`} style={{ position: 'relative' }}>
+                      <VariantThumbnail
+                        src={getVariantPath(size, theme, viewState)}
+                        alt={`${data.identity.displayName} (${variantLabel(size, theme, viewState)})`}
+                        label=""
+                        bgColor={variantBgColor(theme)}
+                        cacheBust={imageCacheBust}
+                        size={64}
+                      />
+                      {/* Status overlay */}
+                      {status && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            width: 16,
+                            height: 16,
+                            borderRadius: '50%',
+                            backgroundColor: '#161b22',
+                            border: `1.5px solid ${status.color}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 9,
+                            fontWeight: 700,
+                            color: status.color,
+                          }}
+                          title={status.label}
+                        >
+                          {status.symbol}
+                        </div>
+                      )}
+                      {/* Regenerate overlay button */}
+                      <button
+                        onClick={() => handleRegenerateSingle(size, theme, viewState)}
+                        disabled={isGenerating}
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: 16,
+                          height: 16,
+                          borderRadius: '50%',
+                          backgroundColor: '#21262d',
+                          border: '1px solid #30363d',
+                          color: '#8b949e',
+                          fontSize: 10,
+                          cursor: isGenerating ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0,
+                          opacity: isGenerating ? 0.5 : 1,
+                        }}
+                        title={`Regenerate ${variantLabel(size, theme, viewState)}`}
+                      >
+                        &#x21bb;
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 24, fontWeight: 600, color: '#f0f6fc' }}>
@@ -507,6 +809,7 @@ function IdentityCard({
             <span className={badgeStyle('#1f6feb')}>{data.identity.type}</span>
           </div>
 
+          {/* Profile Image Prompt */}
           <div style={{ marginTop: 16 }}>
             <div className={labelStyle}>Profile Image Prompt</div>
             {editingPrompt ? (
@@ -548,35 +851,139 @@ function IdentityCard({
             )}
           </div>
 
-          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select
-              className={selectStyle}
-              value={genProvider}
-              onChange={(e) => setGenProvider(e.target.value)}
-            >
-              <option value="gemini">Gemini</option>
-              <option value="openai">OpenAI</option>
-            </select>
-            <select
-              className={selectStyle}
-              value={genVariant}
-              onChange={(e) => setGenVariant(e.target.value as 'default' | 'light' | 'dark')}
-            >
-              <option value="default">Default</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-            <button
-              className={primaryButtonStyle}
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? 'Generating...' : 'Generate Image'}
-            </button>
+          {/* Generation controls */}
+          <div style={{ marginTop: 16 }}>
+            <div className={labelStyle}>Generate Profile Image</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <select
+                className={selectStyle}
+                value={genProvider}
+                onChange={(e) => setGenProvider(e.target.value)}
+                disabled={isGenerating}
+              >
+                <option value="gemini">Gemini</option>
+                <option value="openai">OpenAI</option>
+              </select>
+              <input
+                className={inputStyle}
+                style={{ width: 220 }}
+                placeholder={resolvedModel}
+                value={genModel}
+                onChange={(e) => setGenModel(e.target.value)}
+                disabled={isGenerating}
+              />
+
+              {/* Generate All (cascade) button */}
+              <button
+                className={primaryButtonStyle}
+                onClick={handleGenerateAll}
+                disabled={isGenerating}
+                data-action="generate-all-pipeline"
+              >
+                Generate All (18 variants)
+              </button>
+            </div>
+
+            {/* Progress summary */}
+            {totalTracked > 0 && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  backgroundColor: '#0d1117',
+                  border: '1px solid #30363d',
+                  fontSize: 12,
+                }}
+              >
+                {isGenerating ? (
+                  <span style={{ color: '#8957e5' }}>
+                    Generating {completedCount}/{totalTracked}...
+                    {failedCount > 0 && (
+                      <span style={{ color: '#f85149', marginLeft: 8 }}>
+                        ({failedCount} failed)
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      color: failedCount > 0 ? '#f85149' : '#3fb950',
+                    }}
+                  >
+                    {completedCount}/{totalTracked} completed
+                    {failedCount > 0 && ` (${failedCount} failed)`}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </CollapsibleSection>
+  )
+}
+
+/** Thumbnail that shows the image at full opacity, or a placeholder if it fails to load. */
+function VariantThumbnail({
+  src,
+  alt,
+  label,
+  bgColor,
+  cacheBust,
+  size = 80,
+}: {
+  src: string
+  alt: string
+  label: string
+  bgColor?: string
+  cacheBust?: number
+  size?: number
+}) {
+  const [failed, setFailed] = useState(false)
+
+  // Reset failed state when cacheBust changes (new image was generated)
+  useEffect(() => {
+    if (cacheBust) setFailed(false)
+  }, [cacheBust])
+
+  const imgSrc = cacheBust ? `${src}?v=${cacheBust}` : src
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      {failed ? (
+        <div
+          style={{
+            width: size,
+            height: size,
+            borderRadius: '50%',
+            border: '2px dashed #30363d',
+            backgroundColor: bgColor ?? '#161b22',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 10,
+            color: '#484f58',
+          }}
+        >
+          No image
+        </div>
+      ) : (
+        <Image
+          src={imgSrc}
+          alt={alt}
+          width={size}
+          height={size}
+          style={{
+            borderRadius: '50%',
+            border: '2px solid #30363d',
+            backgroundColor: bgColor,
+          }}
+          onError={() => setFailed(true)}
+        />
+      )}
+      {label && <div style={{ fontSize: 10, color: '#8b949e', marginTop: 2 }}>{label}</div>}
+    </div>
   )
 }
 

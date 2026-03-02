@@ -55,7 +55,7 @@ export const openaiProvider: ImageProvider = {
     return !!(process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY)
   },
 
-  async generate({ model, prompt, options }): Promise<{ imageBuffer: Buffer }> {
+  async generate({ model, prompt, options, referenceImage }): Promise<{ imageBuffer: Buffer }> {
     const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
       throw new Error(
@@ -64,6 +64,38 @@ export const openaiProvider: ImageProvider = {
     }
 
     const sizeStr = mapSizeToOpenAI(options?.size)
+
+    if (referenceImage) {
+      // Use the edits endpoint for image-to-image generation
+      const formData = new FormData()
+      formData.append('model', model)
+      formData.append('prompt', prompt)
+      formData.append('size', sizeStr)
+      formData.append('n', '1')
+      formData.append('response_format', 'b64_json')
+      formData.append(
+        'image',
+        new Blob([new Uint8Array(referenceImage)], { type: 'image/png' }),
+        'reference.png'
+      )
+
+      const response = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '')
+        throw new Error(parseOpenAIError(response.status, body))
+      }
+
+      const data = await response.json()
+      if (!data.data || data.data.length === 0) {
+        throw new Error('OpenAI returned no image data')
+      }
+      return { imageBuffer: Buffer.from(data.data[0].b64_json, 'base64') }
+    }
 
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',

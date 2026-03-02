@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const provider = body.provider || 'gemini'
-    const model = body.model || (provider === 'gemini' ? 'gemini-2.5-flash-image' : 'gpt-image-1')
+    const model = body.model || (provider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
 
     const result = await generateAndStoreImage({
       provider,

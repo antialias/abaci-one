@@ -20,6 +20,8 @@ export interface ImageProvider {
     model: string
     prompt: string
     options?: ImageOptions
+    /** Optional reference image for image-to-image generation (e.g. theme variants). */
+    referenceImage?: Buffer
   }): Promise<ImageGenerationResult>
   isAvailable(): boolean
 }

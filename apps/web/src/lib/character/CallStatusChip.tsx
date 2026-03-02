@@ -11,6 +11,7 @@
 import React from 'react'
 import type { CharacterDefinition, ChatCallState } from './types'
 import { MiniWaveform, AnimatedDots, formatTime } from '@/lib/voice'
+import { useCharacterProfileImage } from './useCharacterProfileImage'
 
 export interface CallStatusChipProps {
   character: CharacterDefinition
@@ -36,6 +37,7 @@ export function CallStatusChip({
   showName = true,
 }: CallStatusChipProps) {
   const { state, isSpeaking, isThinking, thinkingLabel, timeRemaining, onHangUp } = callState
+  const smProfileImage = useCharacterProfileImage(character.profileImage, 'sm', isSpeaking)
   const isRinging = state === 'ringing'
   const isActive = state === 'active'
   const isError = state === 'error'
@@ -81,7 +83,7 @@ export function CallStatusChip({
         }}
       >
         <img
-          src={character.profileImage}
+          src={smProfileImage}
           alt={character.displayName}
           style={{
             width: cfg.avatar,

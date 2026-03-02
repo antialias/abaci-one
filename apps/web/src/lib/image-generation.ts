@@ -12,6 +12,8 @@ export interface GenerateAndStoreRequest {
   imageOptions?: ImageOptions
   storageTarget: ImageStorageTarget
   skipIfExists?: boolean
+  /** Optional reference image for image-to-image generation (e.g. theme variants). */
+  referenceImage?: Buffer
 }
 
 export interface GenerateAndStoreResult {
@@ -40,6 +42,7 @@ export async function generateAndStoreImage(
     model: req.model,
     prompt: req.prompt,
     options: req.imageOptions,
+    referenceImage: req.referenceImage,
   })
 
   const { publicUrl, sizeBytes } = storeImage(req.storageTarget, imageBuffer)

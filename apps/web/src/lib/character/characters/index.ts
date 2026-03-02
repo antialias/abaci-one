@@ -8,6 +8,7 @@
  */
 
 import type { PromptBreakdown } from '../promptBreakdown'
+import type { ProfileSize, ProfileTheme, ProfileState } from '../../profile-variants'
 import { euclidProvider } from './euclid'
 
 /** Summary for character list view. */
@@ -63,10 +64,19 @@ export interface ModeTransition {
   trigger: string
 }
 
+/** Variant path entry for the size×theme×state matrix. */
+export interface ProfileVariantPath {
+  size: ProfileSize
+  theme: ProfileTheme
+  state: ProfileState
+  path: string
+}
+
 /** Full character data for detail view. */
 export interface CharacterData {
   identity: CharacterSummary & {
     profilePrompt: string
+    profileVariants: ProfileVariantPath[]
   }
   personalityBlocks: PersonalityBlock[]
   chatConfig: {

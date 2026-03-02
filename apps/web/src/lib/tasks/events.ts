@@ -442,6 +442,44 @@ export type BlogImageGenerateEvent =
     }
 
 // ============================================================================
+// Profile Image Generate domain events
+// ============================================================================
+
+import type { ProfileSize, ProfileTheme, ProfileState } from './profile-image-generate'
+
+export type ProfileImageGenerateEvent =
+  | {
+      type: 'image_started'
+      characterId: string
+      size: ProfileSize
+      theme: ProfileTheme
+      state: ProfileState
+      model: string
+      provider: string
+    }
+  | {
+      type: 'image_complete'
+      characterId: string
+      size: ProfileSize
+      theme: ProfileTheme
+      state: ProfileState
+      filePath: string
+      sizeBytes: number
+    }
+  | {
+      type: 'image_error'
+      characterId: string
+      size: ProfileSize
+      theme: ProfileTheme
+      state: ProfileState
+      error: string
+    }
+  | {
+      type: 'children_started'
+      children: Array<{ taskId: string; size: ProfileSize; theme: ProfileTheme; state: ProfileState }>
+    }
+
+// ============================================================================
 // Demo task events
 // ============================================================================
 
@@ -521,6 +559,7 @@ export interface TaskEventMap {
   'demo-refine': DemoRefineEvent
   'session-plan': SessionPlanEvent
   'session-song': SessionSongEvent
+  'profile-image-generate': ProfileImageGenerateEvent
 }
 
 /**

@@ -37,6 +37,16 @@ export function imageExists(target: ImageStorageTarget): boolean {
   return existsSync(resolvePath(target))
 }
 
+/** Read a static image from the public directory by its relative path. */
+export async function readStaticImage(relativePath: string): Promise<Buffer | null> {
+  const filePath = join(PUBLIC_DIR, relativePath)
+  try {
+    return await readFile(filePath)
+  } catch {
+    return null
+  }
+}
+
 export async function readPersistentImage(
   category: string,
   filename: string

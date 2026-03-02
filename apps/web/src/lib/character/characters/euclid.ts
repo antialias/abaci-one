@@ -27,7 +27,8 @@ import {
   type KnownBlock,
   type PromptBreakdown,
 } from '../promptBreakdown'
-import type { CharacterSummary, CharacterData, CharacterDataProvider } from './index'
+import { getVariantSuffix, type ProfileSize, type ProfileTheme, type ProfileState } from '../../profile-variants'
+import type { CharacterSummary, CharacterData, CharacterDataProvider, ProfileVariantPath } from './index'
 
 /** Personality block metadata for the admin panel. */
 const PERSONALITY_BLOCKS = [
@@ -168,6 +169,22 @@ export const euclidProvider: CharacterDataProvider = {
       isMobile: false,
     })
 
+    // Build all 18 variant paths from the base profile image (3 sizes × 3 themes × 2 states)
+    const baseImage = EUCLID_CHARACTER_DEF.profileImage
+    const sizes: ProfileSize[] = ['default', 'sm', 'lg']
+    const themes: ProfileTheme[] = ['default', 'light', 'dark']
+    const states: ProfileState[] = ['idle', 'speaking']
+    const profileVariants: ProfileVariantPath[] = sizes.flatMap((size) =>
+      themes.flatMap((theme) =>
+        states.map((state) => ({
+          size,
+          theme,
+          state,
+          path: baseImage.replace('.png', `${getVariantSuffix(size, theme, state)}.png`),
+        }))
+      )
+    )
+
     return {
       identity: {
         id: 'euclid',
@@ -183,6 +200,7 @@ export const euclidProvider: CharacterDataProvider = {
           "Art style: clean illustration, slightly stylized (not photorealistic), warm tones, approachable and friendly — this is a teacher children will talk to.",
           "No text, no labels, no letters. Square 1:1 composition.",
         ].join(' '),
+        profileVariants,
       },
 
       personalityBlocks: PERSONALITY_BLOCKS.map((b) => ({
