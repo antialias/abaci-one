@@ -11,7 +11,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 0: Place at A a line equal to CD (I.2 macro) ──
     [
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech: isTouch
           ? "We need to copy the length of line CD to point A. We'll use Proposition Two to do this. Tap point A first — that's where the copy goes."
           : "We need to copy the length of line CD to point A. We'll use Proposition Two to do this. Click point A first — that's where the copy goes.",
@@ -19,7 +19,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
         advanceOn: { kind: 'macro-select', index: 0 },
       },
       {
-        instruction: `${tap} point C`,
+        instruction: `${tap} point {pt:C}`,
         speech: isTouch
           ? 'Now tap point C — the start of the shorter line.'
           : 'Now click point C — the start of the shorter line.',
@@ -27,7 +27,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
         advanceOn: { kind: 'macro-select', index: 1 },
       },
       {
-        instruction: `${tap} point D`,
+        instruction: `${tap} point {pt:D}`,
         speech: isTouch
           ? 'Now tap point D to finish. This tells Proposition Two which line to copy.'
           : 'Now click point D to finish. This tells Proposition Two which line to copy.',
@@ -38,7 +38,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 1: Draw circle centered at A through E ──
     [
       {
-        instruction: `${tapHold} point A`,
+        instruction: `${tapHold} point {pt:A}`,
         speech: isTouch
           ? "Now we'll use the compass. The new point E is exactly as far from A as CD is long. Press and hold on A."
           : "Now we'll use the compass. Point E is exactly as far from A as CD is long. Click and hold on A.",
@@ -46,7 +46,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
-        instruction: `${drag} to point E`,
+        instruction: `${drag} to point {pt:E}`,
         speech: isTouch
           ? 'Drag to point E — this sets the compass to the length we copied.'
           : 'Drag to point E — this sets the compass to the copied length.',
@@ -63,7 +63,7 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 2: Mark where circle crosses AB → pt-F ──
     [
       {
-        instruction: `${tap} where the circle crosses line AB`,
+        instruction: `${tap} where the circle crosses line {seg:AB}`,
         speech:
           "See where the circle crosses line AB? Tap that intersection point. The line from A to that point is exactly the same length as CD — that's what we wanted to cut off!",
         hint: {
@@ -157,7 +157,7 @@ export const PROP_3: PropositionDef = {
   steps: [
     // 0. Place at A a line equal to CD (I.2 macro)
     {
-      instruction: 'Place at A a line equal to CD (I.2)',
+      instruction: 'Place at {pt:A} a line equal to {seg:CD} ({prop:2|I.2})',
       expected: {
         type: 'macro',
         propId: 2,
@@ -170,7 +170,7 @@ export const PROP_3: PropositionDef = {
     },
     // 1. Draw circle centered at A through E
     {
-      instruction: 'Draw a circle centered at A through E',
+      instruction: 'Draw a circle centered at {pt:A} through {pt:E}',
       expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-E' },
       highlightIds: ['pt-A', 'pt-E'],
       tool: 'compass',
@@ -178,7 +178,7 @@ export const PROP_3: PropositionDef = {
     },
     // 2. Mark where circle crosses AB → pt-F
     {
-      instruction: 'Mark where the circle crosses line AB',
+      instruction: 'Mark where the circle crosses line {seg:AB}',
       expected: {
         type: 'intersection',
         ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-E' },

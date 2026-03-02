@@ -122,6 +122,8 @@ import { latexToMarkers } from './chat/parseGeometricEntities'
 import type { GeometricEntityRef, EuclidEntityRef, FoundationEntityRef } from './chat/parseGeometricEntities'
 import { isGeometricEntity, foundationToCitationKey } from './chat/parseGeometricEntities'
 import { useEuclidEntityRenderer } from './chat/useEuclidEntityRenderer'
+import { MarkedText } from '@/lib/character/MarkedText'
+import { EUCLID_ENTITY_MARKERS } from './euclidEntityMarkers'
 import { generateId } from '@/lib/character/useCharacterChat'
 import { renderChatHighlight } from './render/renderChatHighlight'
 
@@ -1050,10 +1052,11 @@ export function EuclidCanvas({
     // Convert LaTeX notation from voice transcripts to our {seg:AB} marker syntax
     const converted = latexToMarkers(transcript)
     const msgId = generateId()
-    euclidChat.addMessage({ id: msgId, role: 'assistant', content: converted, timestamp: Date.now(), via: 'voice' })
+    // Insert before trailing events — speech started before events that arrived during it
+    euclidChat.addMessageBeforeTrailingEvents({ id: msgId, role: 'assistant', content: converted, timestamp: Date.now(), via: 'voice' })
     // Async: send to LLM for full entity markup (foundation refs, missed geometric refs)
     euclidChat.markupMessage(msgId, converted)
-  }, [euclidChat.addMessage, euclidChat.markupMessage])
+  }, [euclidChat.addMessageBeforeTrailingEvents, euclidChat.markupMessage])
 
   const handleChildSpeech = useCallback((transcript: string) => {
     const msgId = generateId()
@@ -1159,6 +1162,14 @@ export function EuclidCanvas({
     onHighlightGeometric: handleChatHighlight,
     onHighlightFoundation: handleChatHighlightFoundation,
     onUnhighlightFoundation: handleChatUnhighlightFoundation,
+  })
+
+  // Subtle renderer for tutorial guidance — interactive but visually muted
+  const renderEntitySubtle = useEuclidEntityRenderer({
+    onHighlightGeometric: handleChatHighlight,
+    onHighlightFoundation: handleChatHighlightFoundation,
+    onUnhighlightFoundation: handleChatUnhighlightFoundation,
+    subtle: true,
   })
 
   // Mute TTS narration while a voice call is active, and stop any playing audio
@@ -4510,7 +4521,12 @@ export function EuclidCanvas({
                           lineHeight: isMobile ? 1.25 : 1.4,
                         }}
                       >
-                        {step.instruction}
+                        <MarkedText
+                          text={step.instruction}
+                          markers={EUCLID_ENTITY_MARKERS}
+                          onHighlight={handleChatHighlight}
+                          renderEntity={renderEntity}
+                        />
                       </div>
 
                       {/* Citation: progressive disclosure */}
@@ -4594,7 +4610,12 @@ export function EuclidCanvas({
                             lineHeight: isMobile ? 1.25 : 1.4,
                           }}
                         >
-                          {currentInstruction}
+                          <MarkedText
+                            text={currentInstruction}
+                            markers={EUCLID_ENTITY_MARKERS}
+                            onHighlight={handleChatHighlight}
+                            renderEntity={renderEntitySubtle}
+                          />
                         </div>
                       )}
 

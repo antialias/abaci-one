@@ -18,7 +18,7 @@ function getProp7Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 0: Join C to D (straightedge) ──
     [
       {
-        instruction: `${tapHold} point C, drag to D`,
+        instruction: `${tapHold} point {pt:C}, drag to {pt:D}`,
         speech: isTouch
           ? 'Join C to D — this single line creates the two isosceles triangles we need. Press and hold on C and drag to D.'
           : 'Join C to D — this single line creates the two isosceles triangles we need. Click and hold on C and drag to D.',
@@ -345,7 +345,7 @@ export const PROP_7: PropositionDef = {
   steps: [
     // 0. Join C to D
     {
-      instruction: 'Join C to D',
+      instruction: 'Join {pt:C} to {pt:D}',
       expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-D' },
       highlightIds: ['pt-C', 'pt-D'],
       tool: 'straightedge',

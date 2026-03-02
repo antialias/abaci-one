@@ -18,20 +18,20 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 0: Extend AB beyond B to F ──
     [
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech:
           "We have an isosceles triangle — AB equals AC. Let's prove the base angles are equal. First, we produce line AB past B. Start by clicking point A.",
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'base-set' as const },
       },
       {
-        instruction: `${tap} point B`,
+        instruction: `${tap} point {pt:B}`,
         speech: 'Now click point B — the endpoint to extend beyond.',
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
       },
       {
-        instruction: `${tap} along the ray to place F`,
+        instruction: `${tap} along the ray to place {pt:F}`,
         speech: 'Click anywhere along the ray beyond B to place point F.',
         hint: { type: 'none' as const },
         advanceOn: null,
@@ -40,19 +40,19 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 1: Extend AC beyond C to E ──
     [
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech: 'Now produce the other equal side — line AC past C. Click point A.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'base-set' as const },
       },
       {
-        instruction: `${tap} point C`,
+        instruction: `${tap} point {pt:C}`,
         speech: 'Click point C — the endpoint to extend beyond.',
         hint: { type: 'point', pointId: 'pt-C' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
       },
       {
-        instruction: `${tap} along the ray to place E`,
+        instruction: `${tap} along the ray to place {pt:E}`,
         speech: 'Click anywhere along the ray beyond C to place point E.',
         hint: { type: 'none' as const },
         advanceOn: null,
@@ -61,26 +61,26 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 2: I.3 macro — cut AG from AE equal to AF ──
     [
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech:
           "Now we use Proposition I.3 to cut off from AE a part equal to AF. This transfers the length AF onto line AE. Select point A — the start of the greater line.",
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select' as const, index: 0 },
       },
       {
-        instruction: `${tap} point E`,
+        instruction: `${tap} point {pt:E}`,
         speech: 'Select point E — the end of the greater line AE.',
         hint: { type: 'point', pointId: 'pt-E' },
         advanceOn: { kind: 'macro-select' as const, index: 1 },
       },
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech: 'Now select the segment to copy. Click A — the start of AF.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select' as const, index: 2 },
       },
       {
-        instruction: `${tap} point F`,
+        instruction: `${tap} point {pt:F}`,
         speech:
           'Click F to finish. Proposition I.3 places point G on AE where AG equals AF — cutting off from the greater a part equal to the less.',
         hint: { type: 'point', pointId: 'pt-F' },
@@ -90,7 +90,7 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 3: Join F to C (straightedge) ──
     [
       {
-        instruction: `${tapHold} point F`,
+        instruction: `${tapHold} point {pt:F}`,
         speech: isTouch
           ? 'Now join F to C. Press and hold on F and drag to C.'
           : 'Now join F to C. Click and hold on F and drag to C.',
@@ -101,7 +101,7 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 4: Join G to B (straightedge) ──
     [
       {
-        instruction: `${tapHold} point G`,
+        instruction: `${tapHold} point {pt:G}`,
         speech: isTouch
           ? 'Almost done! Join G to B — this gives us two cross-triangles to compare. Press and hold on G.'
           : 'Almost done! Join G to B — this gives us two cross-triangles to compare. Click and hold on G.',
@@ -439,7 +439,7 @@ export const PROP_5: PropositionDef = {
   steps: [
     // 0. Extend AB beyond B to F
     {
-      instruction: 'Produce AB beyond B to F',
+      instruction: 'Produce {seg:AB} beyond {pt:B} to {pt:F}',
       expected: {
         type: 'extend',
         baseId: 'pt-A',
@@ -453,7 +453,7 @@ export const PROP_5: PropositionDef = {
     },
     // 1. Extend AC beyond C to E
     {
-      instruction: 'Produce AC beyond C to E',
+      instruction: 'Produce {seg:AC} beyond {pt:C} to {pt:E}',
       expected: {
         type: 'extend',
         baseId: 'pt-A',
@@ -467,7 +467,7 @@ export const PROP_5: PropositionDef = {
     },
     // 2. Cut off AG from AE equal to AF (I.3)
     {
-      instruction: 'Cut off from AE a part equal to AF (I.3)',
+      instruction: 'Cut off from {seg:AE} a part equal to {seg:AF} ({prop:3|I.3})',
       expected: {
         type: 'macro',
         propId: 3,
@@ -480,7 +480,7 @@ export const PROP_5: PropositionDef = {
     },
     // 3. Join F to C
     {
-      instruction: 'Join F to C',
+      instruction: 'Join {pt:F} to {pt:C}',
       expected: { type: 'straightedge', fromId: 'pt-F', toId: 'pt-C' },
       highlightIds: ['pt-F', 'pt-C'],
       tool: 'straightedge',
@@ -488,7 +488,7 @@ export const PROP_5: PropositionDef = {
     },
     // 4. Join G to B
     {
-      instruction: 'Join G to B',
+      instruction: 'Join {pt:G} to {pt:B}',
       expected: { type: 'straightedge', fromId: 'pt-G', toId: 'pt-B' },
       highlightIds: ['pt-G', 'pt-B'],
       tool: 'straightedge',

@@ -37,6 +37,8 @@ export interface UseCharacterChatReturn {
   coldStart: () => void
   /** Inject an external message (e.g., voice transcript) into the conversation. */
   addMessage: (msg: ChatMessage) => void
+  /** Insert a message before any trailing event messages (use for speech that started before events arrived). */
+  addMessageBeforeTrailingEvents: (msg: ChatMessage) => void
   /** Replace all trailing event messages with this one, or remove them if null. */
   setTrailingEvent: (msg: ChatMessage | null) => void
   /** Update the content of an existing message by ID (used for async markup). */
@@ -75,6 +77,16 @@ export function useCharacterChat(
 
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg])
+  }, [])
+
+  const addMessageBeforeTrailingEvents = useCallback((msg: ChatMessage) => {
+    setMessages(prev => {
+      // Find where trailing event messages start
+      let i = prev.length
+      while (i > 0 && prev[i - 1].isEvent) i--
+      // Insert before the trailing events
+      return [...prev.slice(0, i), msg, ...prev.slice(i)]
+    })
   }, [])
 
   const setTrailingEvent = useCallback((msg: ChatMessage | null) => {
@@ -298,7 +310,7 @@ export function useCharacterChat(
   )
 
   return {
-    messages, isStreaming, sendMessage, coldStart, addMessage, setTrailingEvent, updateMessageContent, isOpen, open, close,
+    messages, isStreaming, sendMessage, coldStart, addMessage, addMessageBeforeTrailingEvents, setTrailingEvent, updateMessageContent, isOpen, open, close,
     compaction: {
       headSummary: compaction.headSummary,
       coversUpTo: compaction.coversUpTo,

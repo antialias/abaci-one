@@ -18,26 +18,26 @@ function getProp6Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 0: I.3 macro — cut DB from BA equal to AC ──
     [
       {
-        instruction: `${tap} point B`,
+        instruction: `${tap} point {pt:B}`,
         speech:
           "We'll prove this by contradiction. Assume AB is not equal to AC — specifically, AB is greater. We use Proposition I.3 to cut off from BA a part equal to AC. Start by clicking point B — the cut point on the greater line.",
         hint: { type: 'point', pointId: 'pt-B' },
         advanceOn: { kind: 'macro-select' as const, index: 0 },
       },
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech: 'Click point A — the other end of line BA.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select' as const, index: 1 },
       },
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech: 'Now select the segment to copy. Click A — the start of AC.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select' as const, index: 2 },
       },
       {
-        instruction: `${tap} point C`,
+        instruction: `${tap} point {pt:C}`,
         speech:
           'Click C to finish. Proposition I.3 places point D on BA where BD equals AC.',
         hint: { type: 'point', pointId: 'pt-C' },
@@ -47,7 +47,7 @@ function getProp6Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 1: Join D to C (straightedge) ──
     [
       {
-        instruction: `${tapHold} point D, drag to C`,
+        instruction: `${tapHold} point {pt:D}, drag to {pt:C}`,
         speech: isTouch
           ? 'Now join D to C to form triangle DBC. Press and hold on D and drag to C.'
           : 'Now join D to C to form triangle DBC. Click and hold on D and drag to C.',
@@ -269,7 +269,7 @@ export const PROP_6: PropositionDef = {
   steps: [
     // 0. Cut off DB from BA equal to AC (I.3)
     {
-      instruction: 'Cut off from BA a part equal to AC (I.3)',
+      instruction: 'Cut off from {seg:BA} a part equal to {seg:AC} ({prop:3|I.3})',
       expected: {
         type: 'macro',
         propId: 3,
@@ -282,7 +282,7 @@ export const PROP_6: PropositionDef = {
     },
     // 1. Join D to C
     {
-      instruction: 'Join D to C',
+      instruction: 'Join {pt:D} to {pt:C}',
       expected: { type: 'straightedge', fromId: 'pt-D', toId: 'pt-C' },
       highlightIds: ['pt-D', 'pt-C'],
       tool: 'straightedge',

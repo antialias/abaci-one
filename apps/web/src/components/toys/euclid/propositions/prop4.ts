@@ -17,7 +17,7 @@ function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 0: Draw segment EF (straightedge) ──
     [
       {
-        instruction: `${tapHold} point E`,
+        instruction: `${tapHold} point {pt:E}`,
         speech: isTouch
           ? "We're given two triangles with two sides and the included angle equal. Complete triangle DEF by pressing and holding on point E."
           : "We're given two triangles with two sides and the included angle equal. Complete triangle DEF by clicking and holding on point E.",
@@ -339,7 +339,7 @@ export const PROP_4: PropositionDef = {
   ] as ConstructionElement[],
   steps: [
     {
-      instruction: 'Join E to F',
+      instruction: 'Join {pt:E} to {pt:F}',
       expected: { type: 'straightedge', fromId: 'pt-E', toId: 'pt-F' },
       highlightIds: ['pt-E', 'pt-F'],
       tool: 'straightedge',

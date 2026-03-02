@@ -10,7 +10,7 @@
  * - Propositions: dark → CitationPopover on hover
  */
 
-import { useRef, useCallback } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { BYRNE } from '../types'
 import type { EuclidEntityRef, FoundationEntityRef } from './parseGeometricEntities'
 import { isGeometricEntity, isFoundationEntity, foundationToCitationKey } from './parseGeometricEntities'
@@ -39,6 +39,8 @@ interface EuclidEntitySpanProps {
   onHighlightGeometric: (entity: EuclidEntityRef | null) => void
   onHighlightFoundation: (entity: FoundationEntityRef, anchorRect: DOMRect) => void
   onUnhighlightFoundation: () => void
+  /** When true, inherit parent styling but still trigger glow/popover on hover */
+  subtle?: boolean
 }
 
 export function EuclidEntitySpan({
@@ -47,10 +49,13 @@ export function EuclidEntitySpan({
   onHighlightGeometric,
   onHighlightFoundation,
   onUnhighlightFoundation,
+  subtle,
 }: EuclidEntitySpanProps) {
   const spanRef = useRef<HTMLSpanElement>(null)
+  const [hovered, setHovered] = useState(false)
 
   const handleMouseEnter = useCallback(() => {
+    setHovered(true)
     if (isGeometricEntity(entity)) {
       onHighlightGeometric(entity)
     } else if (isFoundationEntity(entity)) {
@@ -60,6 +65,7 @@ export function EuclidEntitySpan({
   }, [entity, onHighlightGeometric, onHighlightFoundation])
 
   const handleMouseLeave = useCallback(() => {
+    setHovered(false)
     if (isGeometricEntity(entity)) {
       onHighlightGeometric(null)
     } else if (isFoundationEntity(entity)) {
@@ -77,18 +83,28 @@ export function EuclidEntitySpan({
 
   const color = entityColor(entity)
 
+  const style: React.CSSProperties = subtle
+    ? {
+        color: hovered ? color : 'inherit',
+        fontWeight: 'inherit',
+        cursor: 'pointer',
+        borderBottom: 'none',
+        transition: 'color 0.15s ease',
+      }
+    : {
+        color,
+        fontWeight: 600,
+        cursor: 'pointer',
+        borderBottom: entityUnderline(entity),
+      }
+
   return (
     <span
       ref={spanRef}
       data-element="entity-ref"
       data-entity-type={entity.type}
       data-citation-key={isFoundationEntity(entity) ? foundationToCitationKey(entity) : undefined}
-      style={{
-        color,
-        fontWeight: 600,
-        cursor: 'pointer',
-        borderBottom: entityUnderline(entity),
-      }}
+      style={style}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onPointerDown={handlePointerDown}

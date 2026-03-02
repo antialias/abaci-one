@@ -11,25 +11,25 @@ const DEFAULT_LANGUAGE_STYLE: KidLanguageStyle = 'standard'
 
 const PROP_1_STEP_INSTRUCTIONS: Record<KidLanguageStyle, string[]> = {
   simple: [
-    'Draw a circle with center A through B',
-    'Draw a circle with center B through A',
+    'Draw a circle with center {pt:A} through {pt:B}',
+    'Draw a circle with center {pt:B} through {pt:A}',
     'Mark where the circles cross',
-    'Draw a line from C to A',
-    'Draw a line from C to B',
+    'Draw a line from {pt:C} to {pt:A}',
+    'Draw a line from {pt:C} to {pt:B}',
   ],
   standard: [
-    'Draw a circle centered at A through B',
-    'Draw a circle centered at B through A',
+    'Draw a circle centered at {pt:A} through {pt:B}',
+    'Draw a circle centered at {pt:B} through {pt:A}',
     'Mark the point where the circles meet',
-    'Draw a line from C to A',
-    'Draw a line from C to B',
+    'Draw a line from {pt:C} to {pt:A}',
+    'Draw a line from {pt:C} to {pt:B}',
   ],
   classical: [
-    'Describe a circle with center A and radius AB',
-    'Describe a circle with center B and radius BA',
+    'Describe a circle with center {pt:A} and radius {seg:AB}',
+    'Describe a circle with center {pt:B} and radius {seg:BA}',
     'Mark where the circles cut one another',
-    'Join C to A',
-    'Join C to B',
+    'Join {pt:C} to {pt:A}',
+    'Join {pt:C} to {pt:B}',
   ],
 }
 
@@ -45,7 +45,7 @@ function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 0: Circle centered at A through B ──
     [
       {
-        instruction: `${tapHold} point A`,
+        instruction: `${tapHold} point {pt:A}`,
         speech: isTouch
           ? byStyle({
               simple:
@@ -67,7 +67,7 @@ function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
-        instruction: `${drag} to point B`,
+        instruction: `${drag} to point {pt:B}`,
         speech: byStyle({
           simple: 'Drag to B to set the radius. Every point on this circle is AB away from A.',
           standard:
@@ -98,7 +98,7 @@ function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 1: Circle centered at B through A ──
     [
       {
-        instruction: `${tapHold} point B`,
+        instruction: `${tapHold} point {pt:B}`,
         speech: isTouch
           ? byStyle({
               simple: 'Now do the same with center B. Press and hold on B.',
@@ -114,7 +114,7 @@ function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
-        instruction: `${drag} to point A`,
+        instruction: `${drag} to point {pt:A}`,
         speech: byStyle({
           simple: 'Drag to A to set the radius BA. Every point on this circle is BA away from B.',
           standard:
@@ -160,7 +160,7 @@ function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 3: Segment C → A ──
     [
       {
-        instruction: `${drag} from C to A`,
+        instruction: `${drag} from {pt:C} to {pt:A}`,
         speech: byStyle({
           simple:
             'Postulate 1 lets us draw a straight line from any point to any point. Draw the line from C to A.',
@@ -175,7 +175,7 @@ function getProp1Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 4: Segment C → B ──
     [
       {
-        instruction: `${drag} from C to B`,
+        instruction: `${drag} from {pt:C} to {pt:B}`,
         speech: byStyle({
           simple:
             'Draw the line from C to B. Now CA = AB and CB = AB, so all three sides are equal.',
@@ -229,14 +229,14 @@ export const PROP_1: PropositionDef = {
   ] as ConstructionElement[],
   steps: [
     {
-      instruction: 'Draw a circle centered at A through B',
+      instruction: 'Draw a circle centered at {pt:A} through {pt:B}',
       expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
       highlightIds: ['pt-A', 'pt-B'],
       tool: 'compass',
       citation: 'Post.3',
     },
     {
-      instruction: 'Draw a circle centered at B through A',
+      instruction: 'Draw a circle centered at {pt:B} through {pt:A}',
       expected: { type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-A' },
       highlightIds: ['pt-B', 'pt-A'],
       tool: 'compass',
@@ -250,14 +250,14 @@ export const PROP_1: PropositionDef = {
       citation: 'Def.15',
     },
     {
-      instruction: 'Draw a line from C to A',
+      instruction: 'Draw a line from {pt:C} to {pt:A}',
       expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-A' },
       highlightIds: ['pt-C', 'pt-A'],
       tool: 'straightedge',
       citation: 'Post.1',
     },
     {
-      instruction: 'Draw a line from C to B',
+      instruction: 'Draw a line from {pt:C} to {pt:B}',
       expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-B' },
       highlightIds: ['pt-C', 'pt-B'],
       tool: 'straightedge',

@@ -15,12 +15,15 @@ interface UseEuclidEntityRendererOptions {
   onHighlightGeometric: (entity: EuclidEntityRef | null) => void
   onHighlightFoundation: (entity: FoundationEntityRef, anchorRect: DOMRect) => void
   onUnhighlightFoundation: () => void
+  /** When true, entities inherit parent styling but still trigger glow/popover on hover */
+  subtle?: boolean
 }
 
 export function useEuclidEntityRenderer({
   onHighlightGeometric,
   onHighlightFoundation,
   onUnhighlightFoundation,
+  subtle,
 }: UseEuclidEntityRendererOptions) {
   const renderEntity = useCallback(
     (entity: EuclidEntityRef, displayText: string, _index: number) => (
@@ -30,9 +33,10 @@ export function useEuclidEntityRenderer({
         onHighlightGeometric={onHighlightGeometric}
         onHighlightFoundation={onHighlightFoundation}
         onUnhighlightFoundation={onUnhighlightFoundation}
+        subtle={subtle}
       />
     ),
-    [onHighlightGeometric, onHighlightFoundation, onUnhighlightFoundation],
+    [onHighlightGeometric, onHighlightFoundation, onUnhighlightFoundation, subtle],
   )
 
   return renderEntity

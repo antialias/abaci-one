@@ -9,8 +9,9 @@
  * markers into plain text.
  *
  * Two modes:
- *  - Default (strict: false): trusts the prompt; accepts whatever the model returns
- *    as long as it contains at least one marker. Suitable for LLM-generated text.
+ *  - Default (strict: false): sanity check via word overlap ratio — at least 60% of
+ *    original words must survive marker stripping. Catches hallucinated rewrites
+ *    while tolerating minor rephrasing. Suitable for LLM-generated text.
  *  - Strict (strict: true): validates that the remaining text (markers stripped) is a
  *    subsequence of the original. Use for user-written text where we must preserve
  *    every word exactly.
@@ -19,6 +20,40 @@
 import { withAuth } from '@/lib/auth/withAuth'
 
 const MARKER_RE = /\{(seg|tri|ang|pt|def|post|cn|prop):[A-Za-z0-9]+(?:\|[^}]*)?\}/g
+
+/** Tokenize text into lowercase words (letters/digits/apostrophes). */
+function words(text: string): string[] {
+  return (text.toLowerCase().match(/[a-z\d']+/g) ?? [])
+}
+
+/**
+ * Word overlap ratio: fraction of original words that appear in the stripped output.
+ * Returns 0–1. High values mean the model preserved most of the original prose.
+ */
+function wordOverlapRatio(original: string, stripped: string): number {
+  const origWords = words(original)
+  if (origWords.length === 0) return 1
+
+  // Build a bag (multiset) of stripped words so each can only match once
+  const bag = new Map<string, number>()
+  for (const w of words(stripped)) {
+    bag.set(w, (bag.get(w) ?? 0) + 1)
+  }
+
+  let matched = 0
+  for (const w of origWords) {
+    const count = bag.get(w) ?? 0
+    if (count > 0) {
+      matched++
+      bag.set(w, count - 1)
+    }
+  }
+
+  return matched / origWords.length
+}
+
+/** Minimum word overlap ratio for non-strict (sanity check) mode. */
+const SANITY_OVERLAP_THRESHOLD = 0.6
 
 /**
  * Strict validation: remaining text (markers stripped) must be a subsequence of
@@ -163,12 +198,24 @@ CRITICAL RULES — read carefully:
       return Response.json({ markedText: text })
     }
 
-    // In strict mode, verify the model didn't rewrite surrounding text.
-    if (strict && !validateMarkupStrict(text, markedText)) {
-      console.warn('[euclid-markup] Strict validation failed — model rewrote surrounding text. Returning original.')
-      console.warn('[euclid-markup] Original:', JSON.stringify(text))
-      console.warn('[euclid-markup] Model   :', JSON.stringify(markedText))
-      return Response.json({ markedText: text })
+    if (strict) {
+      // Strict: remaining text must be a character-level subsequence of the original
+      if (!validateMarkupStrict(text, markedText)) {
+        console.warn('[euclid-markup] Strict validation failed — model rewrote surrounding text. Returning original.')
+        console.warn('[euclid-markup] Original:', JSON.stringify(text))
+        console.warn('[euclid-markup] Model   :', JSON.stringify(markedText))
+        return Response.json({ markedText: text })
+      }
+    } else {
+      // Non-strict sanity check: most original words should survive marker stripping
+      const stripped = markedText.replace(MARKER_RE, '')
+      const overlap = wordOverlapRatio(text, stripped)
+      if (overlap < SANITY_OVERLAP_THRESHOLD) {
+        console.warn('[euclid-markup] Sanity check failed — word overlap %.0f%% < %.0f%% threshold. Returning original.', overlap * 100, SANITY_OVERLAP_THRESHOLD * 100)
+        console.warn('[euclid-markup] Original:', JSON.stringify(text))
+        console.warn('[euclid-markup] Model   :', JSON.stringify(markedText))
+        return Response.json({ markedText: text })
+      }
     }
 
     return Response.json({ markedText })

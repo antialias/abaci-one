@@ -66,14 +66,19 @@ ${EUCLID_POINT_LABELING}
 
 === HIGHLIGHT TOOL ===
 You can highlight geometric entities on the student's canvas using the highlight tool.
-Call it while speaking to direct attention — the student sees a golden glow on the entity.
-Examples:
+The student sees a brief golden glow on the highlighted entity.
+CRITICAL: ONLY highlight while you are actively speaking about the entity. Every highlight
+must accompany a spoken reference — never highlight silently without saying anything.
+The purpose is to draw the student's eye to what you're describing, not to point at things
+without explanation. One or two highlights per response is typical. Do not highlight every
+entity you mention — save it for moments where the student needs to locate something specific.
+Examples of GOOD usage (highlight accompanies speech):
 - "Now look at segment A B" → highlight(entity_type: "segment", labels: "AB")
-- "Consider point C" → highlight(entity_type: "point", labels: "C")
-- "Triangle A B C is equilateral" → highlight(entity_type: "triangle", labels: "ABC")
-- "The angle at B" → highlight(entity_type: "angle", labels: "ABC")
-Use this frequently — visual cues help the student follow your reasoning.
-The highlight fades after a few seconds. Call again for new entities as you discuss them.
+- "Consider the triangle A B C we have formed" → highlight(entity_type: "triangle", labels: "ABC")
+Examples of BAD usage (do NOT do these):
+- Highlighting without speaking anything
+- Highlighting 3+ entities in a single short response
+- Highlighting an entity the student just created (they already know where it is)
 
 === THINK_HARD TOOL ===
 When the student asks a question that requires careful geometric reasoning or visual analysis

@@ -16,28 +16,28 @@ const DEFAULT_LANGUAGE_STYLE: KidLanguageStyle = 'standard'
 
 const PROP_2_STEP_INSTRUCTIONS: Record<KidLanguageStyle, string[]> = {
   simple: [
-    'Draw a line from A to B',
-    'Build an equilateral triangle on AB (I.1)',
-    'Draw a circle with center B through C',
-    'Mark where the circle crosses line DB, past B',
-    'Draw a circle with center D through E',
-    'Mark where the circle crosses line DA, past A',
+    'Draw a line from {pt:A} to {pt:B}',
+    'Build an equilateral triangle on {seg:AB} ({prop:1|I.1})',
+    'Draw a circle with center {pt:B} through {pt:C}',
+    'Mark where the circle crosses line {seg:DB}, past {pt:B}',
+    'Draw a circle with center {pt:D} through {pt:E}',
+    'Mark where the circle crosses line {seg:DA}, past {pt:A}',
   ],
   standard: [
-    'Join point A to point B',
-    'Construct equilateral triangle on AB (I.1)',
-    'Draw a circle centered at B through C',
-    'Mark where the circle crosses line DB, past B',
-    'Draw a circle centered at D through E',
-    'Mark where the circle crosses line DA, past A',
+    'Join point {pt:A} to point {pt:B}',
+    'Construct equilateral triangle on {seg:AB} ({prop:1|I.1})',
+    'Draw a circle centered at {pt:B} through {pt:C}',
+    'Mark where the circle crosses line {seg:DB}, past {pt:B}',
+    'Draw a circle centered at {pt:D} through {pt:E}',
+    'Mark where the circle crosses line {seg:DA}, past {pt:A}',
   ],
   classical: [
-    'Join A to B',
-    'Construct the equilateral triangle on AB (I.1)',
-    'Describe the circle with center B and radius BC',
-    'Mark where the circle cuts DB produced beyond B',
-    'Describe the circle with center D and radius DE',
-    'Mark where the circle cuts DA produced beyond A',
+    'Join {pt:A} to {pt:B}',
+    'Construct the equilateral triangle on {seg:AB} ({prop:1|I.1})',
+    'Describe the circle with center {pt:B} and radius {seg:BC}',
+    'Mark where the circle cuts {seg:DB} produced beyond {pt:B}',
+    'Describe the circle with center {pt:D} and radius {seg:DE}',
+    'Mark where the circle cuts {seg:DA} produced beyond {pt:A}',
   ],
 }
 
@@ -53,7 +53,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 0: Join A to B ──
     [
       {
-        instruction: `${drag} from A to B`,
+        instruction: `${drag} from {pt:A} to {pt:B}`,
         speech: byStyle({
           simple: 'Postulate 1 lets us draw a straight line from any point to any point. Draw AB.',
           standard:
@@ -67,7 +67,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 1: Construct equilateral triangle (I.1 macro) ──
     [
       {
-        instruction: `${tap} point A`,
+        instruction: `${tap} point {pt:A}`,
         speech: isTouch
           ? byStyle({
               simple:
@@ -89,7 +89,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'macro-select', index: 0 },
       },
       {
-        instruction: `${tap} point B`,
+        instruction: `${tap} point {pt:B}`,
         speech: isTouch
           ? byStyle({
               simple: 'Tap B to finish. In an equilateral triangle, DA equals DB.',
@@ -108,7 +108,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 2: Circle at B through C ──
     [
       {
-        instruction: `${tapHold} point B`,
+        instruction: `${tapHold} point {pt:B}`,
         speech: isTouch
           ? byStyle({
               simple:
@@ -128,7 +128,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
-        instruction: `${drag} to point C`,
+        instruction: `${drag} to point {pt:C}`,
         speech: byStyle({
           simple: 'Drag to C to set the radius. Every point on this circle is BC away from B.',
           standard: 'Drag to C to set the radius. Every point on this circle is BC away from B.',
@@ -158,7 +158,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 3: Mark intersection E (Euclid's G) ──
     [
       {
-        instruction: `${tap} where the circle crosses line DB, past B`,
+        instruction: `${tap} where the circle crosses line {seg:DB}, past {pt:B}`,
         speech: byStyle({
           simple:
             'Extend line DB past B (Postulate 2) and tap where it meets the circle. Call it E. Then BE equals BC.',
@@ -179,7 +179,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 4: Circle at D through E ──
     [
       {
-        instruction: `${tapHold} point D`,
+        instruction: `${tapHold} point {pt:D}`,
         speech: isTouch
           ? byStyle({
               simple: 'Now draw a circle with center D and radius DE. Press and hold on D.',
@@ -195,7 +195,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'compass-phase', phase: 'center-set' },
       },
       {
-        instruction: `${drag} to point E`,
+        instruction: `${drag} to point {pt:E}`,
         speech: byStyle({
           simple: 'Drag to E to set the radius. Every point on this circle is DE away from D.',
           standard: 'Drag to E to set the radius. Every point on this circle is DE away from D.',
@@ -225,7 +225,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
     // ── Step 5: Mark intersection F (Euclid's L) ──
     [
       {
-        instruction: `${tap} where the big circle crosses line DA, past A`,
+        instruction: `${tap} where the big circle crosses line {seg:DA}, past {pt:A}`,
         speech: byStyle({
           simple:
             'Extend line DA past A (Postulate 2) and tap where it meets the circle. Call it F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
@@ -366,7 +366,7 @@ export const PROP_2: PropositionDef = {
   steps: [
     // 1. Join A and B
     {
-      instruction: 'Join point A to point B',
+      instruction: 'Join point {pt:A} to point {pt:B}',
       expected: { type: 'straightedge', fromId: 'pt-A', toId: 'pt-B' },
       highlightIds: ['pt-A', 'pt-B'],
       tool: 'straightedge',
@@ -374,7 +374,7 @@ export const PROP_2: PropositionDef = {
     },
     // 2. Construct equilateral triangle on AB (I.1 macro)
     {
-      instruction: 'Construct equilateral triangle on AB (I.1)',
+      instruction: 'Construct equilateral triangle on {seg:AB} ({prop:1|I.1})',
       expected: {
         type: 'macro',
         propId: 1,
@@ -387,7 +387,7 @@ export const PROP_2: PropositionDef = {
     },
     // 3. Circle at B through C
     {
-      instruction: 'Draw a circle centered at B through C',
+      instruction: 'Draw a circle centered at {pt:B} through {pt:C}',
       expected: { type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-C' },
       highlightIds: ['pt-B', 'pt-C'],
       tool: 'compass',
@@ -396,7 +396,7 @@ export const PROP_2: PropositionDef = {
     // 4. Mark intersection E (Euclid's G — on extension of DB beyond B)
     // Uses ElementSelectors: circle(B,C) and segment(D,B) instead of creation-order IDs
     {
-      instruction: 'Mark where the circle crosses line DB, past B',
+      instruction: 'Mark where the circle crosses line {seg:DB}, past {pt:B}',
       expected: {
         type: 'intersection',
         ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
@@ -410,7 +410,7 @@ export const PROP_2: PropositionDef = {
     },
     // 5. Circle at D through E
     {
-      instruction: 'Draw a circle centered at D through E',
+      instruction: 'Draw a circle centered at {pt:D} through {pt:E}',
       expected: { type: 'compass', centerId: 'pt-D', radiusPointId: 'pt-E' },
       highlightIds: ['pt-D', 'pt-E'],
       tool: 'compass',
@@ -418,7 +418,7 @@ export const PROP_2: PropositionDef = {
     },
     // 6. Mark intersection F (Euclid's L — on extension of DA beyond A)
     {
-      instruction: 'Mark where the circle crosses line DA, past A',
+      instruction: 'Mark where the circle crosses line {seg:DA}, past {pt:A}',
       expected: {
         type: 'intersection',
         ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
