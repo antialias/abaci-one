@@ -67,6 +67,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Proof editor',
   },
   {
+    href: '/admin/characters',
+    label: 'Characters',
+    description: 'Prompt system',
+  },
+  {
     href: '/admin/feature-flags',
     label: 'Flags',
     description: 'Feature flags',
