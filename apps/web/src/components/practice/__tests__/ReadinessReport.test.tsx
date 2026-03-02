@@ -75,9 +75,7 @@ describe('ReadinessReport - full variant', () => {
     const readiness = { 'basic.+3': createReadinessResult() }
     render(<ReadinessReport readiness={readiness} variant="full" />)
 
-    const lines = screen.getByTestId
-      ? document.querySelectorAll('[data-element="dimension-line"]')
-      : document.querySelectorAll('[data-element="dimension-line"]')
+    const lines = document.querySelectorAll('[data-element="dimension-line"]')
     expect(lines).toHaveLength(4)
   })
 

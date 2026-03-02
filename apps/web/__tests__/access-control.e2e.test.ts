@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { db, schema } from '../src/db'
 import { parentChild } from '../src/db/schema'

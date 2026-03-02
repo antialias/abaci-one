@@ -90,7 +90,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     })
 
     // Mock getUserId by setting cookie
-    const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
+    const response = await PATCH(mockRequest, { params: Promise.resolve({ id: testPlayerId }) })
     const data = await response.json()
 
     // Should be rejected with 403
@@ -119,7 +119,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       body: JSON.stringify({ isActive: true }),
     })
 
-    const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
+    const response = await PATCH(mockRequest, { params: Promise.resolve({ id: testPlayerId }) })
     const data = await response.json()
 
     // Should succeed
@@ -179,7 +179,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       }),
     })
 
-    const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
+    const response = await PATCH(mockRequest, { params: Promise.resolve({ id: testPlayerId }) })
     const data = await response.json()
 
     // Should succeed
@@ -242,7 +242,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       body: JSON.stringify({ isActive: true }),
     })
 
-    const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
+    const response = await PATCH(mockRequest, { params: Promise.resolve({ id: testPlayerId }) })
     const data = await response.json()
 
     // Should succeed
@@ -304,7 +304,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       body: JSON.stringify({ isActive: true }),
     })
 
-    const response1 = await PATCH(request1, { params: { id: testPlayerId } })
+    const response1 = await PATCH(request1, { params: Promise.resolve({ id: testPlayerId }) })
     expect(response1.status).toBe(403)
 
     // Try to toggle player2 (active -> inactive) - should also fail
@@ -317,7 +317,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       body: JSON.stringify({ isActive: false }),
     })
 
-    const response2 = await PATCH(request2, { params: { id: player2.id } })
+    const response2 = await PATCH(request2, { params: Promise.resolve({ id: player2.id }) })
     expect(response2.status).toBe(403)
   })
 })

@@ -3,7 +3,7 @@
  */
 
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { db, schema } from '../src/db'
 import type { SessionPart, SessionSummary } from '../src/db/schema/session-plans'
 import {
@@ -15,7 +15,6 @@ import {
   revokeSharesForSession,
   getActiveSharesForSession,
   isValidShareToken,
-  generateShareToken,
 } from '../src/lib/session-share'
 
 /**

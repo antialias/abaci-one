@@ -35,6 +35,7 @@ function makePlayer(
     isArchived: false,
     isPracticeStudent: true,
     birthday: null,
+    isExpungeable: false,
     familyCode: null,
     familyCodeGeneratedAt: null,
     ...overrides,

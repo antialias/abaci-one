@@ -1,7 +1,9 @@
+import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { PurposeBadge, extractTargetSkillName, formatSkillName } from '../PurposeBadge'
 import type { ProblemSlot } from '@/db/schema/session-plans'
+import type { SkillSet } from '@/types/tutorial'
 import type { ComplexityData } from '../PurposeBadge'
 
 // Mock ThemeContext
@@ -98,7 +100,7 @@ describe('extractTargetSkillName', () => {
       purpose: 'reinforce',
       constraints: {
         targetSkills: {
-          basic: { '+3': true },
+          basic: { '+3': true } as unknown as SkillSet['basic'],
         },
       },
     }
@@ -112,7 +114,7 @@ describe('extractTargetSkillName', () => {
       purpose: 'reinforce',
       constraints: {
         targetSkills: {
-          basic: { '+3': true, '+4': true },
+          basic: { '+3': true, '+4': true } as unknown as SkillSet['basic'],
         },
       },
     }
@@ -179,7 +181,7 @@ describe('PurposeBadge', () => {
       purpose: 'reinforce',
       constraints: {
         targetSkills: {
-          basic: { '+3': true },
+          basic: { '+3': true } as unknown as SkillSet['basic'],
         },
       },
     }

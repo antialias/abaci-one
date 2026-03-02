@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { LocaleProvider, useLocaleContext } from '../LocaleContext'
+import type { Locale } from '@/i18n/messages'
 
 // Mock the i18n modules
 vi.mock('@/i18n/messages', () => ({
@@ -16,7 +17,7 @@ vi.mock('@/i18n/routing', () => ({
 
 const initialMessages = { greeting: 'Hello' }
 
-function createWrapper(locale = 'en' as const) {
+function createWrapper(locale: Locale = 'en') {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <LocaleProvider initialLocale={locale} initialMessages={initialMessages}>

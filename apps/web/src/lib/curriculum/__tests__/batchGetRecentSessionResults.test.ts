@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SessionStatus, SlotResult } from '@/db/schema/session-plans'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -67,10 +67,12 @@ function makeSessionPart(
     useAbacus: type === 'abacus',
     slots: Array.from({ length: slotCount }, (_, i) => ({
       slotId: `test-${i}`,
+      index: i,
       slotIndex: i,
       skillId: 'basic.directAddition',
       terms: [1, 2],
       purpose: 'focus' as const,
+      constraints: {},
     })),
     estimatedMinutes: 4,
   }
@@ -82,7 +84,7 @@ async function insertSession(
   opts: {
     id: string
     playerId: string
-    status?: string
+    status?: SessionStatus
     completedAt?: Date | null
     parts: SessionPart[]
     results: SlotResult[]
@@ -295,7 +297,7 @@ describe('batchGetRecentSessionResults', () => {
     })
 
     // Insert sessions with various statuses
-    for (const status of ['draft', 'approved', 'in_progress', 'abandoned']) {
+    for (const status of ['draft', 'approved', 'in_progress', 'abandoned'] as SessionStatus[]) {
       await insertSession(ephemeralDb.db, {
         id: `session-${status}`,
         playerId,

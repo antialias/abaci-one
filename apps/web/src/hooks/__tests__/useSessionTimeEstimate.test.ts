@@ -25,7 +25,7 @@ function makeResult(responseTimeMs: number, partNumber = 1): SlotResult {
     skillId: 'test-skill',
     problemId: 'p1',
     terms: [1, 2],
-  } as SlotResult
+  } as unknown as SlotResult
 }
 
 function makePart(type: SessionPart['type'], slotCount: number, partNumber = 1): SessionPart {
@@ -38,7 +38,7 @@ function makePart(type: SessionPart['type'], slotCount: number, partNumber = 1):
       terms: [1, 2],
       purpose: 'focus',
     })),
-  } as SessionPart
+  } as unknown as SessionPart
 }
 
 // ============================================================================

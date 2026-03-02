@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, type MockInstance } from 'vitest'
 import { computeClipHash } from '../clipHash'
 import { TtsAudioManager } from '../TtsAudioManager'
 import type { TtsInput, TtsConfig, TtsSay } from '../TtsAudioManager'
@@ -191,7 +191,10 @@ describe('register — re-registration', () => {
 // ---------------------------------------------------------------------------
 
 describe('register — clobber detection', () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>
+  // Use MockInstance with explicit type params to avoid the ReturnType<typeof vi.spyOn>
+  // overload resolution issue (which resolves to MockInstance<unknown[], unknown>).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let warnSpy: MockInstance<any[], void>
 
   beforeEach(() => {
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
