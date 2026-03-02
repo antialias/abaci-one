@@ -111,6 +111,7 @@ import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { CitationPopover } from './foundations/CitationPopover'
 import { getFoundationHref } from './foundations/citationUtils'
 import { MacroToolPanel } from './MacroToolPanel'
+import { renderMacroPreview } from './render/renderMacroPreview'
 import { useGeometryVoice } from './voice/useGeometryVoice'
 import { GeometryTeacherProvider, useGeometryTeacher } from './GeometryTeacherContext'
 import { getTeacherConfig } from './characters/registry'
@@ -2243,6 +2244,15 @@ function EuclidCanvasInner({
         const narrationText = depth1Layer?.keyNarration ?? ''
         const propTitle = PROP_REGISTRY[propId]?.title ?? ''
         setCeremonyLabel(`Applying I.${propId}${propTitle ? ` · ${propTitle}` : ''}`)
+
+        // Pre-reveal depth-1 layers: the preview already showed them at ~0.25 opacity,
+        // so seed the ghost opacity to avoid a flash-from-zero. The ceremony lerp will
+        // smoothly transition from 0.35 → 0.75.
+        const depth1Key = depth1Layer ? `${step}:1` : null
+        if (depth1Key) {
+          ghostOpacitiesRef.current.set(depth1Key, 0.35)
+        }
+
         macroRevealRef.current = {
           sequence,
           revealed: 0,
@@ -3056,7 +3066,10 @@ function EuclidCanvasInner({
       }
 
       // ── Keep animating while tool overlay is visible (idle bob animation) ──
-      if (pointerWorldRef.current && activeToolRef.current !== 'macro') {
+      if (
+        pointerWorldRef.current &&
+        (activeToolRef.current !== 'macro' || macroPhaseRef.current.tag === 'selecting')
+      ) {
         needsDrawRef.current = true
       }
 
@@ -3509,6 +3522,21 @@ function EuclidCanvasInner({
             if (ghostAnimating || hoveredMacroStepRef.current !== null) {
               needsDrawRef.current = true
             }
+          }
+
+          // Render macro preview (unbound markers + live ghost geometry)
+          if (macroPhaseRef.current.tag === 'selecting') {
+            const previewAnimating = renderMacroPreview(
+              ctx,
+              macroPhaseRef.current,
+              constructionRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight,
+              pointerWorldRef.current,
+              snappedPointIdRef.current
+            )
+            if (previewAnimating) needsDrawRef.current = true
           }
 
           // Render equality tick marks on segments with proven equalities

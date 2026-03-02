@@ -256,4 +256,5 @@ After creating the `PropositionDef` in `propositions/propN.ts` (with `getTutoria
 
 1. **`PROP_REGISTRY`** in `propositions/registry.ts` — **the only required registration**. This is the single source of truth: it gates the map UI (`IMPLEMENTED_PROPS` is derived from it), provides runtime proposition lookup, tutorial, narration, and conclusion functions.
 2. **`MACRO_REGISTRY`** in `engine/macros.ts` — only if this proposition becomes a macro used by later propositions
-3. **`CITATIONS`** in `engine/citations.ts` — only if new citation keys are used in steps
+3. **`MACRO_PREVIEW_REGISTRY`** in `engine/macroPreview.ts` — when adding a new macro, add a matching pure preview function. This powers the live cursor-bound geometry preview while users select inputs. The function takes raw `{x,y}[]` positions (no construction state) and returns `{ ghostElements, resultElements }`. Use `computeEquilateralApex` / `computeDirectionVector` from `engine/geometryHelpers.ts` for shared geometry math.
+4. **`CITATIONS`** in `engine/citations.ts` — only if new citation keys are used in steps

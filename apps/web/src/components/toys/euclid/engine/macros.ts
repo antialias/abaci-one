@@ -10,12 +10,9 @@ import type { FactStore } from './factStore'
 import type { EqualityFact } from './facts'
 import { distancePair } from './facts'
 import { addSegment, addPoint, getPoint } from './constructionState'
-import {
-  findNewIntersections,
-  circleCircleIntersections,
-  circleLineIntersections,
-} from './intersections'
+import { findNewIntersections, circleLineIntersections } from './intersections'
 import { addFact, createFactStore } from './factStore'
+import { computeEquilateralApex, computeDirectionVector } from './geometryHelpers'
 
 export interface MacroDef {
   propId: number
@@ -134,15 +131,7 @@ const MACRO_PROP_1: MacroDef = {
       }
     }
     const radius = Math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2)
-    const intersections = circleCircleIntersections(pA.x, pA.y, radius, pB.x, pB.y, radius)
-    const abx = pB.x - pA.x
-    const aby = pB.y - pA.y
-    const preferUpper = intersections.filter((p) => abx * (p.y - pA.y) - aby * (p.x - pA.x) > 0)
-    const apexPool = preferUpper.length > 0 ? preferUpper : intersections
-    const apex =
-      apexPool.length > 1
-        ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
-        : apexPool[0]
+    const apex = computeEquilateralApex(pA, pB)
     if (!apex) {
       return {
         state: currentState,
@@ -306,20 +295,11 @@ const MACRO_PROP_2: MacroDef = {
     const dist = Math.sqrt((segFrom.x - segTo.x) ** 2 + (segFrom.y - segTo.y) ** 2)
 
     // 2. Compute direction: target → segFrom (fallback to (0, 1) if coincident)
-    let dx = segFrom.x - target.x
-    let dy = segFrom.y - target.y
-    const len = Math.sqrt(dx * dx + dy * dy)
-    if (len < 1e-9) {
-      dx = 0
-      dy = 1
-    } else {
-      dx /= len
-      dy /= len
-    }
+    const dir = computeDirectionVector(target, segFrom)
 
     // 3. Place output point at target + dist * direction
-    const outX = target.x + dist * dx
-    const outY = target.y + dist * dy
+    const outX = target.x + dist * dir.x
+    const outY = target.y + dist * dir.y
 
     const ptResult = addPoint(currentState, outX, outY, 'intersection', outputLabels?.result)
     currentState = ptResult.state
@@ -379,24 +359,10 @@ const MACRO_PROP_2: MacroDef = {
     if (abRadius > 1e-9) {
       // Non-degenerate: full I.2 construction ghost with equilateral triangle,
       // circles, intersection points, and production segments.
-      const apexCandidates = circleCircleIntersections(
-        target.x,
-        target.y,
-        abRadius,
-        segFrom.x,
-        segFrom.y,
-        abRadius
-      )
-      // Use chirality (left of A→B) for consistent triangle orientation, matching MACRO_PROP_1
-      const abx = segFrom.x - target.x
-      const aby = segFrom.y - target.y
-      const upperD = apexCandidates.filter(
-        (p) => abx * (p.y - target.y) - aby * (p.x - target.x) > 0
-      )
-      const apexPool = upperD.length > 0 ? upperD : apexCandidates
-      const apexD = (apexPool.length > 1
-        ? apexPool.reduce((best, p) => (p.y > best.y ? p : best), apexPool[0])
-        : apexPool[0]) ?? { x: target.x, y: target.y + (abRadius * Math.sqrt(3)) / 2 }
+      const apexD = computeEquilateralApex(target, segFrom) ?? {
+        x: target.x,
+        y: target.y + (abRadius * Math.sqrt(3)) / 2,
+      }
 
       // Ghost point D + segments DA, DB
       ghostElements.push({
@@ -449,19 +415,10 @@ const MACRO_PROP_2: MacroDef = {
       })
 
       // Direction D→B (for "produce DB to E")
-      let dbDirX = segFrom.x - apexD.x
-      let dbDirY = segFrom.y - apexD.y
-      const dbLen = Math.sqrt(dbDirX * dbDirX + dbDirY * dbDirY)
-      if (dbLen < 1e-9) {
-        dbDirX = 0
-        dbDirY = 1
-      } else {
-        dbDirX /= dbLen
-        dbDirY /= dbLen
-      }
+      const dbDir = computeDirectionVector(apexD, segFrom)
 
       // Step 4: E = point on circle(B, |BC|) along ray D→B past B
-      const ptE = { x: segFrom.x + bcRadius * dbDirX, y: segFrom.y + bcRadius * dbDirY }
+      const ptE = { x: segFrom.x + bcRadius * dbDir.x, y: segFrom.y + bcRadius * dbDir.y }
       ghostElements.push({
         kind: 'point',
         x: ptE.x,
@@ -490,19 +447,10 @@ const MACRO_PROP_2: MacroDef = {
       })
 
       // Direction D→A (for "produce DA to F")
-      let daDirX = target.x - apexD.x
-      let daDirY = target.y - apexD.y
-      const daLen = Math.sqrt(daDirX * daDirX + daDirY * daDirY)
-      if (daLen < 1e-9) {
-        daDirX = 0
-        daDirY = 1
-      } else {
-        daDirX /= daLen
-        daDirY /= daLen
-      }
+      const daDir = computeDirectionVector(apexD, target)
 
       // Step 6: F = point on circle(D, |DE|) along ray D→A past A
-      const ptF = { x: apexD.x + deRadius * daDirX, y: apexD.y + deRadius * daDirY }
+      const ptF = { x: apexD.x + deRadius * daDir.x, y: apexD.y + deRadius * daDir.y }
       ghostElements.push({
         kind: 'point',
         x: ptF.x,
@@ -649,19 +597,10 @@ const MACRO_PROP_3: MacroDef = {
 
     // Compute result position: point on ray cutPoint→targetPoint at distance |segFrom-segTo|
     const radius = Math.sqrt((segFrom.x - segTo.x) ** 2 + (segFrom.y - segTo.y) ** 2)
-    let dirX = targetPoint.x - cutPoint.x
-    let dirY = targetPoint.y - cutPoint.y
-    const dirLen = Math.sqrt(dirX * dirX + dirY * dirY)
-    if (dirLen < 1e-9) {
-      dirX = 0
-      dirY = 1
-    } else {
-      dirX /= dirLen
-      dirY /= dirLen
-    }
+    const cutDir = computeDirectionVector(cutPoint, targetPoint)
 
-    const resultX = cutPoint.x + radius * dirX
-    const resultY = cutPoint.y + radius * dirY
+    const resultX = cutPoint.x + radius * cutDir.x
+    const resultY = cutPoint.y + radius * cutDir.y
 
     // Add result point
     const ptResult = addPoint(currentState, resultX, resultY, 'intersection', outputLabels?.result)

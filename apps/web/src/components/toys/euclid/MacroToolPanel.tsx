@@ -1,8 +1,9 @@
 'use client'
 
-import { BYRNE } from './types'
+import { BYRNE, BYRNE_CYCLE } from './types'
 import type { MacroPhase } from './types'
 import type { MacroDef } from './engine/macros'
+import { PropThumbnailStandalone } from './render/PropThumbnailSvg'
 
 interface MacroEntry {
   propId: number
@@ -121,7 +122,7 @@ export function MacroToolPanel({
               outline: 'none',
             }}
           >
-            {/* Prop identifier badge */}
+            {/* Prop identifier badge + thumbnail */}
             <div
               style={{
                 display: 'flex',
@@ -130,6 +131,11 @@ export function MacroToolPanel({
                 width: '100%',
               }}
             >
+              <PropThumbnailStandalone
+                propId={propId}
+                size={28}
+                color={isSelected ? BYRNE.blue : '#94a3b8'}
+              />
               <span
                 style={{
                   fontSize: 10,
@@ -174,12 +180,40 @@ export function MacroToolPanel({
               {title}
             </div>
 
+            {/* Bound dots — visual checklist of already-selected inputs */}
+            {isSelected && selectedCount > 0 && (
+              <div
+                data-element="bound-dots"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginTop: 2,
+                }}
+              >
+                {Array.from({ length: def.inputCount }, (_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background:
+                        i < selectedCount ? BYRNE_CYCLE[i % 3] : 'rgba(148, 163, 184, 0.25)',
+                      border: i < selectedCount ? 'none' : '1px solid rgba(148, 163, 184, 0.4)',
+                      transition: 'background 0.15s',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
             {/* Point selection prompt (when this prop is selected and awaiting input) */}
             {isSelected && nextLabel && (
               <div
                 style={{
                   fontSize: 11,
-                  color: BYRNE.blue,
+                  color: BYRNE_CYCLE[selectedCount % 3],
                   fontFamily: 'system-ui, sans-serif',
                   marginTop: 2,
                   display: 'flex',
@@ -202,7 +236,7 @@ export function MacroToolPanel({
                   marginTop: 2,
                 }}
               >
-                ✓ All points selected
+                All points selected
               </div>
             )}
           </button>
