@@ -13,6 +13,7 @@ import {
   getUnlockedBy,
   getNextProp,
 } from '@/components/toys/euclid/data/propositionGraph'
+import { PROP_REGISTRY, ALTERNATE_PROOFS } from '@/components/toys/euclid/propositions/registry'
 import { resolveKidLanguageStyle } from '@/lib/kidLanguageStyle'
 import { getAgeFromBirthday } from '@/lib/playerAge'
 
@@ -24,6 +25,20 @@ export default function EuclidPropPage() {
   const propId = Number(params.id) || 1
   const prop = getProposition(propId)
   const title = prop ? `Euclid I.${propId}` : `Euclid I.${propId}`
+
+  // ── Proof variant state ──
+  const [proofVariant, setProofVariant] = useState<string | undefined>(undefined)
+
+  const canonical = PROP_REGISTRY[propId]
+  const alternates = ALTERNATE_PROOFS[propId] ?? []
+  const allVariants = canonical ? [canonical, ...alternates] : []
+  const hasAlternates = allVariants.length > 1
+
+  const selectedProp = useMemo(() => {
+    if (!proofVariant) return canonical
+    return allVariants.find((v) => v.proofVariant === proofVariant) ?? canonical
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propId, proofVariant])
 
   // Player state — initialized from URL search param if present
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(
@@ -147,6 +162,57 @@ export default function EuclidPropPage() {
           </div>
         }
       />
+
+      {/* Proof variant selector — shown when multiple proofs exist */}
+      {hasAlternates && (
+        <div
+          data-element="proof-selector"
+          style={{
+            position: 'absolute',
+            top: 'calc(var(--app-nav-height) + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 15,
+            display: 'flex',
+            gap: 2,
+            padding: 2,
+            borderRadius: 16,
+            background: 'rgba(255, 255, 255, 0.9)',
+            border: '1px solid rgba(203, 213, 225, 0.6)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          {allVariants.map((variant) => {
+            const variantId = variant.proofVariant
+            const isActive = proofVariant === variantId || (!proofVariant && !variantId)
+            const label = variant.proofLabel ?? (variantId ? variantId : 'Euclid')
+            return (
+              <button
+                key={variantId ?? 'canonical'}
+                type="button"
+                onClick={() => setProofVariant(variantId)}
+                style={{
+                  padding: '4px 14px',
+                  borderRadius: 14,
+                  border: 'none',
+                  background: isActive ? '#4E79A7' : 'transparent',
+                  color: isActive ? '#fff' : '#64748b',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: 'Georgia, serif',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div
         style={{
           flex: 1,
@@ -157,7 +223,9 @@ export default function EuclidPropPage() {
         }}
       >
         <EuclidCanvas
+          key={`${propId}-${proofVariant ?? 'canonical'}`}
           propositionId={propId}
+          proposition={selectedProp}
           onComplete={handleComplete}
           languageStyle={languageStyle}
           completionMeta={{

@@ -179,6 +179,7 @@ export type ExpectedAction =
       inputPointIds: string[]
       outputLabels?: Record<string, string>
     }
+  | { type: 'observation'; id: string }
 
 export interface PropositionStep {
   instruction: string
@@ -189,11 +190,19 @@ export interface PropositionStep {
   tool: ActiveTool | null
   /** Citation reference for this step, e.g. "Post.1", "I.1", "Def.15" */
   citation?: string
+  /** For observation steps: speech narration text */
+  observationSpeech?: string
 }
 
 export interface PropositionDef {
   id: number
   title: string
+  /** Unique proof variant ID. Absent = canonical/default proof. */
+  proofVariant?: string
+  /** Human-readable label for proof selector (e.g., "Pappus's proof") */
+  proofLabel?: string
+  /** Short description shown below proof selector */
+  proofDescription?: string
   givenElements: ConstructionElement[]
   steps: PropositionStep[]
   completionMessage?: string

@@ -581,6 +581,8 @@ function deriveCompletionResult(
 
 interface EuclidCanvasProps {
   propositionId?: number
+  /** Resolved proposition definition. If provided, takes precedence over propositionId lookup. */
+  proposition?: import('./types').PropositionDef
   /** Called when the proposition is completed (all steps done + proven) */
   onComplete?: (propId: number) => void
   /** Hides proof panel for free-form playground mode */
@@ -616,6 +618,7 @@ const WRONG_MOVE_PHRASES = [
 
 export function EuclidCanvas({
   propositionId = 1,
+  proposition: propositionProp,
   onComplete,
   playgroundMode,
   languageStyle,
@@ -636,8 +639,8 @@ export function EuclidCanvas({
     citation: isMobile ? 9 : 10,
     conclusion: isMobile ? 12 : 15,
   }
-  const propositionBase =
-    (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1]
+  const propositionBase = propositionProp ??
+    ((propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1])
   const proposition = useMemo(() => {
     if (!initialGivenPoints || initialGivenPoints.length === 0) return propositionBase
     const overrideMap = new Map(initialGivenPoints.map((p) => [p.id, p]))
@@ -664,6 +667,10 @@ export function EuclidCanvas({
       return instruction ? { ...step, instruction } : step
     })
   }, [proposition.steps, stepInstructionOverrides])
+  const hasConstructionSteps = useMemo(
+    () => steps.some((s) => s.expected.type !== 'observation'),
+    [steps]
+  )
   const extendSegments = useMemo(() => needsExtendedSegments(proposition), [proposition])
   const getTutorial = proposition.getTutorial ?? (() => [] as TutorialSubStep[][])
   // All prior propositions that have applicable macros
@@ -696,7 +703,9 @@ export function EuclidCanvas({
   const snappedPointIdRef = useRef<string | null>(null)
   const candidatesRef = useRef<IntersectionCandidate[]>([])
   const pointerCapturedRef = useRef(false)
-  const activeToolRef = useRef<ActiveTool>(steps[0]?.tool ?? 'compass')
+  const activeToolRef = useRef<ActiveTool>(
+    steps[0]?.expected.type === 'observation' ? 'move' : (steps[0]?.tool ?? 'compass')
+  )
   const expectedActionRef = useRef<ExpectedAction | null>(steps[0]?.expected ?? null)
   const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
@@ -736,7 +745,11 @@ export function EuclidCanvas({
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(
-    playgroundMode ? 'move' : (steps[0]?.tool ?? 'compass')
+    playgroundMode
+      ? 'move'
+      : steps[0]?.expected.type === 'observation'
+        ? 'move'
+        : (steps[0]?.tool ?? 'compass')
   )
   const [currentStep, setCurrentStep] = useState(0)
   const currentStepRef = useRef(0)
@@ -1493,6 +1506,15 @@ export function EuclidCanvas({
     const stepDef = steps[currentStep]
     expectedActionRef.current = stepDef.expected
 
+    // Observation steps need no tool — stay on move
+    if (stepDef.expected.type === 'observation') {
+      if (activeTool !== 'move') {
+        setActiveTool('move')
+        activeToolRef.current = 'move'
+      }
+      return
+    }
+
     if (stepDef.tool === null) return
 
     // In guided mode, auto-select the required proposition so the user can
@@ -1704,6 +1726,37 @@ export function EuclidCanvas({
     },
     [steps, extendSegments, triggerCorrection]
   )
+
+  // ── Advance observation step (no canvas interaction needed) ──
+  const advanceObservation = useCallback(() => {
+    const step = currentStepRef.current
+    if (step >= steps.length) return
+    const stepDef = steps[step]
+    if (stepDef.expected.type !== 'observation') return
+
+    // Capture snapshot before advancing
+    snapshotStackRef.current = [
+      ...snapshotStackRef.current,
+      captureSnapshot(
+        constructionRef.current,
+        candidatesRef.current,
+        proofFactsRef.current,
+        ghostLayersRef.current
+      ),
+    ]
+
+    setCompletedSteps((prev) => {
+      const next = [...prev]
+      next[step] = true
+      return next
+    })
+    const nextStep = step + 1
+    currentStepRef.current = nextStep
+    if (nextStep >= steps.length) {
+      setIsComplete(true)
+    }
+    setCurrentStep(nextStep)
+  }, [steps])
 
   // ── Commit handlers ──
 
@@ -3659,7 +3712,7 @@ export function EuclidCanvas({
           </div>
         )}
 
-        <div
+        {(hasConstructionSteps || isComplete || playgroundMode) && <div
           data-element="tool-selector"
           ref={toolDockRef}
           onMouseEnter={() => setIsToolDockActive(true)}
@@ -3838,7 +3891,7 @@ export function EuclidCanvas({
               size={isMobile ? 44 : 48}
             />
           )}
-        </div>
+        </div>}
 
         {/* Top-right bar — playground controls only */}
         {playgroundMode && (
@@ -4621,6 +4674,30 @@ export function EuclidCanvas({
                             renderEntity={renderEntitySubtle}
                           />
                         </div>
+                      )}
+
+                      {/* Observation step: Continue button */}
+                      {isCurrent && step.expected.type === 'observation' && (
+                        <button
+                          data-action="advance-observation"
+                          type="button"
+                          onClick={advanceObservation}
+                          style={{
+                            marginTop: 8,
+                            padding: '6px 20px',
+                            borderRadius: 16,
+                            border: 'none',
+                            background: '#4E79A7',
+                            color: '#fff',
+                            fontSize: proofFont.stepText,
+                            fontWeight: 600,
+                            fontFamily: 'Georgia, serif',
+                            cursor: 'pointer',
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          Continue
+                        </button>
                       )}
 
                       {/* Facts derived at this step */}

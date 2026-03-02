@@ -7,6 +7,8 @@ import { PROP_5 } from './prop5'
 import { PROP_6 } from './prop6'
 import { PROP_7 } from './prop7'
 
+export { ALTERNATE_PROOFS } from './alternateProofs'
+
 /** Lookup table: propId → PropositionDef. */
 export const PROP_REGISTRY: Record<number, PropositionDef> = {
   1: PROP_1,

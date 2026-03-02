@@ -24,6 +24,9 @@ export function validateStep(
   lastElement: ConstructionElement,
   candidate?: IntersectionCandidate
 ): boolean {
+  // Observation steps are advanced by the Continue button, not canvas interaction
+  if (expected.type === 'observation') return false
+
   if (expected.type === 'compass' && lastElement.kind === 'circle') {
     return (
       lastElement.centerId === expected.centerId &&
