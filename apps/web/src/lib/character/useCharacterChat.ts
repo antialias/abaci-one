@@ -31,6 +31,8 @@ export interface UseCharacterChatReturn {
   messages: ChatMessage[]
   isStreaming: boolean
   sendMessage: (text: string) => void
+  /** Cold-start the conversation: Euclid speaks first with no visible user message. */
+  coldStart: () => void
   /** Inject an external message (e.g., voice transcript) into the conversation. */
   addMessage: (msg: ChatMessage) => void
   /** Replace all trailing event messages with this one, or remove them if null. */
@@ -80,51 +82,9 @@ export function useCharacterChat(
     })
   }, [])
 
-  const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim() || isStreaming) return
-
-      // Abort any in-flight request
-      if (abortRef.current) {
-        abortRef.current.abort()
-      }
-
-      const userMsg: ChatMessage = {
-        id: generateId(),
-        role: 'user',
-        content: text.trim(),
-        timestamp: Date.now(),
-      }
-
-      const assistantMsg: ChatMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      }
-
-      setMessages((prev) => [...prev, userMsg, assistantMsg])
-      setIsStreaming(true)
-
-      const abortController = new AbortController()
-      abortRef.current = abortController
-
-      // Capture screenshot
-      const screenshot = canvasRef?.current
-        ? (captureScreenshot(canvasRef.current) ?? undefined)
-        : undefined
-
-      // Build message history for API (without the empty assistant msg).
-      // Uses compaction: if a cached summary exists, the head is replaced with it.
-      // Otherwise falls back to the full history. Error messages are filtered out
-      // and event messages are wrapped so the model sees construction state changes.
-      const apiMessages = compaction.compactForApi([...messages, userMsg])
-
-      const body = buildRequestBody(apiMessages, screenshot)
-
-      console.log('[character-chat] sendMessage: endpoint=%s, messageCount=%d, hasScreenshot=%s', chatEndpoint, apiMessages.length, !!screenshot)
-      console.log('[character-chat] request body keys:', Object.keys(body).join(', '))
-
+  /** Shared streaming logic: fires the API request and streams deltas into assistantMsg. */
+  const streamResponse = useCallback(
+    (body: Record<string, unknown>, assistantMsgId: string, abortController: AbortController) => {
       const fetchStream = async () => {
         try {
           console.log('[character-chat] fetching stream...')
@@ -143,7 +103,7 @@ export function useCharacterChat(
             setMessages((prev) => {
               const updated = [...prev]
               const last = updated[updated.length - 1]
-              if (last.id === assistantMsg.id) {
+              if (last.id === assistantMsgId) {
                 updated[updated.length - 1] = {
                   ...last,
                   content: err.error || 'I cannot respond right now. Try again.',
@@ -183,11 +143,10 @@ export function useCharacterChat(
                 const event = JSON.parse(data) as { text?: string; error?: string }
                 console.log('[character-chat] SSE event:', data.slice(0, 100))
                 if (event.error) {
-                  // Server-side error — mark message as error
                   setMessages((prev) => {
                     const updated = [...prev]
                     const last = updated[updated.length - 1]
-                    if (last.id === assistantMsg.id) {
+                    if (last.id === assistantMsgId) {
                       updated[updated.length - 1] = {
                         ...last,
                         content: event.error!,
@@ -200,7 +159,7 @@ export function useCharacterChat(
                   setMessages((prev) => {
                     const updated = [...prev]
                     const last = updated[updated.length - 1]
-                    if (last.id === assistantMsg.id) {
+                    if (last.id === assistantMsgId) {
                       updated[updated.length - 1] = {
                         ...last,
                         content: last.content + event.text,
@@ -220,7 +179,7 @@ export function useCharacterChat(
           setMessages((prev) => {
             const updated = [...prev]
             const last = updated[updated.length - 1]
-            if (last.id === assistantMsg.id && !last.content) {
+            if (last.id === assistantMsgId && !last.content) {
               updated[updated.length - 1] = {
                 ...last,
                 content: 'I cannot respond right now. Try again.',
@@ -235,11 +194,102 @@ export function useCharacterChat(
 
       fetchStream()
     },
-    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, compaction.compactForApi],
+    [chatEndpoint],
+  )
+
+  const sendMessage = useCallback(
+    (text: string) => {
+      if (!text.trim() || isStreaming) return
+
+      if (abortRef.current) {
+        abortRef.current.abort()
+      }
+
+      const userMsg: ChatMessage = {
+        id: generateId(),
+        role: 'user',
+        content: text.trim(),
+        timestamp: Date.now(),
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+      }
+
+      setMessages((prev) => [...prev, userMsg, assistantMsg])
+      setIsStreaming(true)
+
+      const abortController = new AbortController()
+      abortRef.current = abortController
+
+      const screenshot = canvasRef?.current
+        ? (captureScreenshot(canvasRef.current) ?? undefined)
+        : undefined
+
+      const apiMessages = compaction.compactForApi([...messages, userMsg])
+      const body = buildRequestBody(apiMessages, screenshot)
+
+      console.log('[character-chat] sendMessage: endpoint=%s, messageCount=%d, hasScreenshot=%s', chatEndpoint, apiMessages.length, !!screenshot)
+      console.log('[character-chat] request body keys:', Object.keys(body).join(', '))
+
+      streamResponse(body, assistantMsg.id, abortController)
+    },
+    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, compaction.compactForApi, streamResponse],
+  )
+
+  const coldStart = useCallback(
+    () => {
+      // Allow cold-start if no real conversation has happened (events are OK)
+      const hasConversation = messages.some(m => !m.isEvent)
+      if (isStreaming || hasConversation) return
+
+      if (abortRef.current) {
+        abortRef.current.abort()
+      }
+
+      // Hidden user message — sent to API but not shown in chat UI
+      const hiddenUserMsg: ChatMessage = {
+        id: generateId(),
+        role: 'user',
+        content: '[The student has just opened the chat. Proactively help them — assess where they are in the construction and tell them what to do next. Do NOT greet them or introduce yourself.]',
+        timestamp: Date.now(),
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+      }
+
+      // Keep existing event messages, append the assistant response
+      setMessages(prev => [...prev, assistantMsg])
+      setIsStreaming(true)
+
+      const abortController = new AbortController()
+      abortRef.current = abortController
+
+      const screenshot = canvasRef?.current
+        ? (captureScreenshot(canvasRef.current) ?? undefined)
+        : undefined
+
+      // Include existing events + hidden prompt so the API sees construction history
+      const eventMessages = compaction.compactForApi(messages)
+      const apiMessages = [...eventMessages, { role: 'user', content: hiddenUserMsg.content }]
+      const body = buildRequestBody(apiMessages, screenshot)
+
+      console.log('[character-chat] coldStart: endpoint=%s, events=%d, hasScreenshot=%s', chatEndpoint, eventMessages.length, !!screenshot)
+
+      streamResponse(body, assistantMsg.id, abortController)
+    },
+    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, streamResponse, compaction.compactForApi],
   )
 
   return {
-    messages, isStreaming, sendMessage, addMessage, setTrailingEvent, isOpen, open, close,
+    messages, isStreaming, sendMessage, coldStart, addMessage, setTrailingEvent, isOpen, open, close,
     compaction: {
       headSummary: compaction.headSummary,
       coversUpTo: compaction.coversUpTo,

@@ -15,7 +15,7 @@ import { MarkedText } from '@/lib/character/MarkedText'
 import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import { MiniWaveform, AnimatedDots, formatTime } from '@/lib/voice'
+import { CallStatusChip } from '@/lib/character/CallStatusChip'
 
 export interface DockedEuclidChatProps {
   messages: ChatMessage[]
@@ -41,6 +41,8 @@ export interface DockedEuclidChatProps {
   audioEnabled?: boolean
   /** Notifies parent when mobile expanded state changes */
   onExpandedChange?: (expanded: boolean) => void
+  /** Cold-start the conversation — Euclid speaks first */
+  onColdStart?: () => void
 }
 
 const DESKTOP_HEIGHT = 200
@@ -65,6 +67,7 @@ export function DockedEuclidChat({
   onToggleAudio,
   audioEnabled,
   onExpandedChange,
+  onColdStart,
 }: DockedEuclidChatProps) {
   const [input, setInput] = useState('')
   const [mobileExpanded, setMobileExpanded] = useState(false)
@@ -146,6 +149,12 @@ export function DockedEuclidChat({
     return null
   }, [messages])
 
+  // Whether a real conversation has started (not just construction events)
+  const hasConversation = useMemo(
+    () => messages.some(m => !m.isEvent),
+    [messages],
+  )
+
   // Desktop collapsed or mobile collapsed: render nothing (give space back)
   if (collapsed) return null
 
@@ -171,6 +180,10 @@ export function DockedEuclidChat({
           isCallError={isCallError}
           debugCompaction={debugCompaction}
           onCollapse={() => setMobileExpandedAndNotify(false)}
+          onCall={onCall}
+          canCall={canCall}
+          onToggleAudio={onToggleAudio}
+          audioEnabled={audioEnabled}
         />
       )
     }
@@ -187,11 +200,12 @@ export function DockedEuclidChat({
         isRinging={isRinging}
         isActive={isActive}
         onExpand={() => setMobileExpandedAndNotify(true)}
-        hasMessages={messages.length > 0}
+        hasMessages={hasConversation}
         onCall={onCall}
         canCall={canCall}
         onToggleAudio={onToggleAudio}
         audioEnabled={audioEnabled}
+        onColdStart={onColdStart}
       />
     )
   }
@@ -244,6 +258,14 @@ interface DesktopDockedChatProps {
   onCollapse?: () => void
   /** Pop the chat out to the floating quad panel */
   onUndock?: () => void
+  /** Initiate a voice call (mobile expanded mode) */
+  onCall?: () => void
+  /** Whether the call button should be shown */
+  canCall?: boolean
+  /** Toggle narration audio (mobile expanded mode) */
+  onToggleAudio?: () => void
+  /** Whether narration audio is enabled */
+  audioEnabled?: boolean
 }
 
 function DesktopDockedChat({
@@ -266,6 +288,10 @@ function DesktopDockedChat({
   height,
   onCollapse,
   onUndock,
+  onCall,
+  canCall,
+  onToggleAudio,
+  audioEnabled,
 }: DesktopDockedChatProps) {
   return (
     <div
@@ -293,48 +319,37 @@ function DesktopDockedChat({
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <img
-            src={EUCLID_CHARACTER_DEF.profileImage}
-            alt={EUCLID_CHARACTER_DEF.displayName}
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              objectFit: 'cover',
-              flexShrink: 0,
-              boxShadow: isRinging
-                ? '0 0 0 2px rgba(109, 40, 217, 0.4)'
-                : isActive && callState?.isSpeaking
-                  ? '0 0 0 2px rgba(109, 40, 217, 0.5)'
-                  : 'none',
-              animation: isRinging ? 'ringPulse 2s ease-out infinite' : undefined,
-              transition: 'box-shadow 0.3s ease',
-            }}
-          />
-          <CallStateLabel callState={callState} isRinging={isRinging} isActive={isActive} />
+        {/* Left: cross-fade between idle avatar+name and call status chip */}
+        <div style={{ display: 'grid', alignItems: 'center', minWidth: 0 }}>
+          {callState && (
+            <div style={{ gridRow: 1, gridColumn: 1 }}>
+              <CallStatusChip character={EUCLID_CHARACTER_DEF} callState={callState} size="compact" />
+            </div>
+          )}
+          <div style={{
+            gridRow: 1, gridColumn: 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+            opacity: isCallActive ? 0 : 1,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: isCallActive ? 'none' : 'auto',
+          }}>
+            <img
+              src={EUCLID_CHARACTER_DEF.profileImage}
+              alt={EUCLID_CHARACTER_DEF.displayName}
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontWeight: 600, fontSize: 11, color: '#1e293b' }}>
+              {EUCLID_CHARACTER_DEF.nativeDisplayName}
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {isCallActive && callState && (
-            <button
-              data-action="hang-up-docked"
-              onClick={callState.onHangUp}
-              style={{
-                border: 'none',
-                background: DANGER,
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: 10,
-                fontWeight: 600,
-                lineHeight: 1,
-                padding: '3px 8px',
-                borderRadius: 8,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {isRinging ? 'Cancel' : 'End'}
-            </button>
-          )}
           {onUndock && !onCollapse && (
             <button
               data-action="undock-chat"
@@ -358,6 +373,57 @@ function DesktopDockedChat({
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </button>
+          )}
+          {onCollapse && onToggleAudio && (
+            <button
+              data-action="toggle-audio-expanded"
+              onClick={onToggleAudio}
+              title={audioEnabled ? 'Mute narration' : 'Enable narration'}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: audioEnabled ? '#4E79A7' : '#94a3b8',
+                cursor: 'pointer',
+                fontSize: 14,
+                lineHeight: 1,
+                padding: '2px 4px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                {audioEnabled ? (
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                ) : (
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                )}
+              </svg>
+            </button>
+          )}
+          {onCollapse && canCall && onCall && !isCallActive && (
+            <button
+              data-action="call-euclid-expanded"
+              onClick={onCall}
+              title="Call Εὐκλείδης"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#4E79A7',
+                cursor: 'pointer',
+                fontSize: 14,
+                lineHeight: 1,
+                padding: '2px 4px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
               </svg>
             </button>
           )}
@@ -814,6 +880,7 @@ interface MobileChatStripProps {
   canCall?: boolean
   onToggleAudio?: () => void
   audioEnabled?: boolean
+  onColdStart?: () => void
 }
 
 function MobileChatStrip({
@@ -833,6 +900,7 @@ function MobileChatStrip({
   canCall,
   onToggleAudio,
   audioEnabled,
+  onColdStart,
 }: MobileChatStripProps) {
   const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
   const [inputFocused, setInputFocused] = useState(false)
@@ -868,146 +936,119 @@ function MobileChatStrip({
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      {/* Avatar */}
-      <img
-        src={EUCLID_CHARACTER_DEF.profileImage}
-        alt={EUCLID_CHARACTER_DEF.displayName}
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          objectFit: 'cover',
-          flexShrink: 0,
-          boxShadow: isRinging
-            ? '0 0 0 2px rgba(109, 40, 217, 0.4)'
-            : isActive && callState?.isSpeaking
-              ? '0 0 0 2px rgba(109, 40, 217, 0.5)'
-              : 'none',
-          animation: isRinging ? 'ringPulse 2s ease-out infinite' : undefined,
-          transition: 'box-shadow 0.3s ease',
-        }}
-      />
-
-      {/* Middle: last message preview OR call state — tap to expand message history */}
-      <div
-        onClick={hasMessages ? onExpand : undefined}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          cursor: hasMessages ? 'pointer' : undefined,
-        }}
-      >
-        {isActive && callState?.isThinking ? (
-          <span style={{ fontSize: 11, fontWeight: 600, color: CALL_ACCENT, display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span style={{ fontSize: 10 }}>📜</span>
-            <span>{callState.thinkingLabel || 'Thinking'}<AnimatedDots /></span>
-          </span>
-        ) : isActive ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-            <MiniWaveform isDark={false} active={callState?.isSpeaking ?? false} />
-            {callState?.timeRemaining !== null && callState?.timeRemaining !== undefined && (
-              <span style={{
-                fontSize: 10,
-                fontVariantNumeric: 'tabular-nums',
-                fontFamily: 'monospace',
-                color: callState.timeRemaining <= 15 ? DANGER : '#94a3b8',
-                fontWeight: callState.timeRemaining <= 15 ? 700 : 400,
-              }}>
-                {formatTime(callState.timeRemaining)}
-              </span>
+      {/* Grid overlay: call layout and idle layout cross-fade */}
+      <div style={{ display: 'grid', alignItems: 'center', flex: 1, minWidth: 0 }}>
+        {/* Call layout — chip + audio toggle */}
+        {callState && (
+          <div style={{
+            gridRow: 1, gridColumn: 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+            opacity: isCallActive ? 1 : 0,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: isCallActive ? 'auto' : 'none',
+          }}>
+            <CallStatusChip character={EUCLID_CHARACTER_DEF} callState={callState} size="medium" showName={false} />
+            {onToggleAudio && (
+              <button
+                data-action="toggle-audio-mobile"
+                onClick={onToggleAudio}
+                title={audioEnabled ? 'Mute narration' : 'Enable narration'}
+                tabIndex={isCallActive ? 0 : -1}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: audioEnabled ? '#4E79A7' : '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: 2,
+                  flexShrink: 0,
+                  borderRadius: 4,
+                  width: 24,
+                  height: 24,
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  {audioEnabled ? (
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  ) : (
+                    <line x1="23" y1="9" x2="17" y2="15" />
+                  )}
+                </svg>
+              </button>
             )}
-          </span>
-        ) : isRinging ? (
-          <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>Calling...</span>
-        ) : isStreaming ? (
-          <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
-            {EUCLID_CHARACTER_DEF.chat.streamingLabel}
-          </span>
-        ) : lastAssistantMsg ? (
-          <span
-            style={{
-              fontSize: 11,
-              color: '#64748b',
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical' as const,
-              lineHeight: 1.3,
-            }}
-          >
-            {stripEntityMarkers(lastAssistantMsg.content, EUCLID_ENTITY_MARKERS)}
-            {hasMessages && (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4, verticalAlign: 'middle', flexShrink: 0 }}>
-                <polyline points="18 15 12 9 6 15" />
-              </svg>
-            )}
-          </span>
-        ) : (
-          <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
-            {EUCLID_CHARACTER_DEF.chat.emptyPrompt}
-          </span>
+          </div>
         )}
-      </div>
-
-      {/* Hang-up during call, or action buttons + input + send */}
-      {isCallActive && callState ? (
-        <>
-          {/* Audio toggle stays visible during calls */}
-          {onToggleAudio && (
-            <button
-              data-action="toggle-audio-mobile"
-              onClick={onToggleAudio}
-              title={audioEnabled ? 'Mute narration' : 'Enable narration'}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: audioEnabled ? '#4E79A7' : '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: 2,
-                flexShrink: 0,
-                borderRadius: 4,
-                width: 24,
-                height: 24,
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                {audioEnabled ? (
-                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                ) : (
-                  <line x1="23" y1="9" x2="17" y2="15" />
-                )}
-              </svg>
-            </button>
-          )}
-          <button
-            data-action="hang-up-mobile"
-            onClick={callState.onHangUp}
+        {/* Idle layout — avatar + preview + action buttons + input + send */}
+        <div style={{
+          gridRow: 1, gridColumn: 1,
+          display: 'flex', alignItems: 'center', gap: 6,
+          opacity: isCallActive ? 0 : 1,
+          transition: 'opacity 0.25s ease',
+          pointerEvents: isCallActive ? 'none' : 'auto',
+        }}>
+          {/* Avatar */}
+          <img
+            src={EUCLID_CHARACTER_DEF.profileImage}
+            alt={EUCLID_CHARACTER_DEF.displayName}
             style={{
-              border: 'none',
-              background: DANGER,
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 10,
-              fontWeight: 600,
-              padding: '4px 10px',
-              borderRadius: 8,
-              whiteSpace: 'nowrap',
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              objectFit: 'cover',
               flexShrink: 0,
             }}
+          />
+
+          {/* Middle: last message preview — tap to expand / cold-start */}
+          <div
+            onClick={hasMessages ? onExpand : (onColdStart && !isStreaming ? onColdStart : undefined)}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              cursor: hasMessages ? 'pointer' : (onColdStart && !isStreaming ? 'pointer' : undefined),
+            }}
           >
-            {isRinging ? 'Cancel' : 'End'}
-          </button>
-        </>
-      ) : (
-        <>
-          {/* Action buttons — collapse when input is focused to give more typing room */}
+            {isStreaming ? (
+              <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
+                {EUCLID_CHARACTER_DEF.chat.streamingLabel}
+              </span>
+            ) : lastAssistantMsg ? (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#64748b',
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical' as const,
+                  lineHeight: 1.3,
+                }}
+              >
+                {stripEntityMarkers(lastAssistantMsg.content, EUCLID_ENTITY_MARKERS)}
+                {hasMessages && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4, verticalAlign: 'middle', flexShrink: 0 }}>
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                )}
+              </span>
+            ) : (
+              <span style={{
+                fontSize: 11,
+                color: onColdStart ? ACCENT : '#94a3b8',
+                fontStyle: 'italic',
+              }}>
+                {onColdStart ? 'Tap to ask Euclid for help' : EUCLID_CHARACTER_DEF.chat.emptyPrompt}
+              </span>
+            )}
+          </div>
+
+          {/* Action buttons — collapse when input is focused */}
           <div
             data-element="mobile-action-buttons"
             style={{
@@ -1129,61 +1170,9 @@ function MobileChatStrip({
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
           </button>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   )
 }
 
-// ── Shared: call state label ──
-
-function CallStateLabel({ callState, isRinging, isActive }: {
-  callState?: ChatCallState
-  isRinging: boolean | undefined
-  isActive: boolean | undefined
-}) {
-  if (isActive && callState?.isThinking) {
-    return (
-      <span style={{ fontSize: 11, fontWeight: 600, color: CALL_ACCENT, display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ fontSize: 10 }}>📜</span>
-        <span>{callState.thinkingLabel || 'Thinking'}<AnimatedDots /></span>
-      </span>
-    )
-  }
-  if (isActive) {
-    return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ fontWeight: 600, fontSize: 11, color: '#1e293b' }}>
-          {EUCLID_CHARACTER_DEF.nativeDisplayName}
-        </span>
-        <MiniWaveform isDark={false} active={callState?.isSpeaking ?? false} />
-        {callState?.timeRemaining !== null && callState?.timeRemaining !== undefined && (
-          <span style={{
-            fontSize: 10,
-            fontVariantNumeric: 'tabular-nums',
-            fontFamily: 'monospace',
-            color: callState.timeRemaining <= 15 ? DANGER : '#94a3b8',
-            fontWeight: callState.timeRemaining <= 15 ? 700 : 400,
-          }}>
-            {formatTime(callState.timeRemaining)}
-          </span>
-        )}
-      </span>
-    )
-  }
-  if (isRinging) {
-    return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ fontWeight: 600, fontSize: 11, color: '#1e293b' }}>
-          {EUCLID_CHARACTER_DEF.nativeDisplayName}
-        </span>
-        <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>Calling...</span>
-      </span>
-    )
-  }
-  return (
-    <span style={{ fontWeight: 600, fontSize: 11, color: '#1e293b' }}>
-      {EUCLID_CHARACTER_DEF.nativeDisplayName}
-    </span>
-  )
-}

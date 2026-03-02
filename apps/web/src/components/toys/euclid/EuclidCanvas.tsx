@@ -5119,6 +5119,7 @@ export function EuclidCanvas({
           onToggleAudio={() => disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)}
           audioEnabled={audioEnabled}
           onExpandedChange={setMobileDockedExpanded}
+          onColdStart={euclidChat.coldStart}
         />
       )}
 

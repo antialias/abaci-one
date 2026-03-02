@@ -10,7 +10,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { CharacterDefinition, ChatMessage, ChatCallState, EntityMarkerConfig } from './types'
 import { MarkedText } from './MarkedText'
-import { MiniWaveform, AnimatedDots, formatTime } from '@/lib/voice'
+import { CallStatusChip } from './CallStatusChip'
 
 export interface DebugCompactionProps {
   /** Current compaction coverage (messages 0..coversUpTo are summarized) */
@@ -118,7 +118,6 @@ export function CharacterChatPanel<TEntityRef>({
   // Call-aware derived state
   const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
   const isRinging = callState?.state === 'ringing'
-  const isActive = callState?.state === 'active'
   const isCallError = callState?.state === 'error'
   const dangerColor = '#ef4444'
   const accentColor = '#7c3aed'
@@ -160,118 +159,63 @@ export function CharacterChatPanel<TEntityRef>({
         onPointerUp={onDragPointerUp}
         onPointerCancel={onDragPointerUp}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          {/* Profile image — pulsing ring when ringing, speaking glow when active+speaking */}
-          <div
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              overflow: 'hidden',
-              flexShrink: 0,
-              boxShadow: isRinging
-                ? '0 0 0 2px rgba(109, 40, 217, 0.4), 0 0 8px rgba(109, 40, 217, 0.3)'
-                : isActive && callState.isSpeaking
-                  ? '0 0 0 2px rgba(109, 40, 217, 0.5), 0 0 8px rgba(109, 40, 217, 0.3)'
-                  : 'none',
-              animation: isRinging ? 'ringPulse 2s ease-out infinite' : undefined,
-              transition: 'box-shadow 0.3s ease',
-            }}
-          >
-            <img
-              src={character.profileImage}
-              alt={character.displayName}
+        {/* Left: cross-fade between idle avatar+name and call status chip */}
+        <div style={{ display: 'grid', alignItems: 'center', minWidth: 0 }}>
+          {callState && (
+            <div style={{ gridRow: 1, gridColumn: 1 }}>
+              <CallStatusChip character={character} callState={callState} size="standard" />
+            </div>
+          )}
+          <div style={{
+            gridRow: 1, gridColumn: 1,
+            display: 'flex', alignItems: 'center', gap: 8,
+            opacity: isCallActive ? 0 : 1,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: isCallActive ? 'none' : 'auto',
+          }}>
+            <div
               style={{
                 width: 24,
                 height: 24,
                 borderRadius: '50%',
-                objectFit: 'cover',
-                display: 'block',
+                overflow: 'hidden',
+                flexShrink: 0,
               }}
-            />
-          </div>
-          {/* Name area — transforms based on call state */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            {isActive && callState.isThinking ? (
-              // Thinking state: thinkingLabel + animated dots
-              <span style={{ fontSize: 13, fontWeight: 600, color: accentColor, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12 }}>📜</span>
-                <span>{callState.thinkingLabel || 'Thinking'}<AnimatedDots /></span>
-              </span>
-            ) : isActive ? (
-              // Active: name + waveform + timer
-              <>
-                <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
-                <MiniWaveform isDark={false} active={callState.isSpeaking} />
-              </>
-            ) : isRinging ? (
-              // Ringing: name + "Calling..."
-              <>
-                <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Calling...</span>
-              </>
-            ) : (
-              // Default: just name
-              <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
-            )}
-            {/* Timer badge in active state */}
-            {isActive && callState.timeRemaining !== null && (
-              <span
-                data-element="call-timer"
+            >
+              <img
+                src={character.profileImage}
+                alt={character.displayName}
                 style={{
-                  fontSize: 12,
-                  fontVariantNumeric: 'tabular-nums',
-                  fontFamily: 'monospace',
-                  color: callState.timeRemaining <= 15 ? dangerColor : '#94a3b8',
-                  fontWeight: callState.timeRemaining <= 15 ? 700 : 400,
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block',
                 }}
-              >
-                {formatTime(callState.timeRemaining)}
-              </span>
-            )}
+              />
+            </div>
+            <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{headerName}</span>
           </div>
         </div>
-        {/* Right button: × close normally, red hang-up/cancel during call */}
-        {isCallActive ? (
-          <button
-            data-action="hang-up-chat"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={callState!.onHangUp}
-            style={{
-              border: 'none',
-              background: dangerColor,
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: 600,
-              lineHeight: 1,
-              padding: '4px 10px',
-              borderRadius: 10,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {isRinging ? 'Cancel' : 'End'}
-          </button>
-        ) : (
-          <button
-            data-action="close-chat"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={onClose}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              color: '#94a3b8',
-              fontSize: 18,
-              lineHeight: 1,
-              padding: '2px 4px',
-              borderRadius: 4,
-            }}
-            title="Close chat"
-          >
-            {'\u2715'}
-          </button>
-        )}
+        {/* Right: × close button (always visible — panel-level control) */}
+        <button
+          data-action="close-chat"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onClose}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            color: '#94a3b8',
+            fontSize: 18,
+            lineHeight: 1,
+            padding: '2px 4px',
+            borderRadius: 4,
+          }}
+          title="Close chat"
+        >
+          {'\u2715'}
+        </button>
       </div>
 
       {/* Messages */}
