@@ -40,7 +40,7 @@ export function foundationToCitationKey(entity: FoundationEntityRef): string {
     case 'definition': return `Def.${entity.id}`
     case 'postulate': return `Post.${entity.id}`
     case 'commonNotion': return `C.N.${entity.id}`
-    case 'proposition': return `Prop.${entity.id}`
+    case 'proposition': return `I.${entity.id}`
   }
 }
 

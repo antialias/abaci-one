@@ -1056,8 +1056,11 @@ export function EuclidCanvas({
   }, [euclidChat.addMessage, euclidChat.markupMessage])
 
   const handleChildSpeech = useCallback((transcript: string) => {
-    euclidChat.addMessage({ id: generateId(), role: 'user', content: transcript, timestamp: Date.now(), via: 'voice' })
-  }, [euclidChat.addMessage])
+    const msgId = generateId()
+    euclidChat.addMessage({ id: msgId, role: 'user', content: transcript, timestamp: Date.now(), via: 'voice' })
+    // Async: markup user voice transcript with strict validation (preserves original text exactly)
+    euclidChat.markupMessage(msgId, transcript, true)
+  }, [euclidChat.addMessage, euclidChat.markupMessage])
 
   // ── Call Euclid voice (after chat so transcript callbacks are available) ──
   const euclidVoice = useEuclidVoice({
@@ -1111,7 +1114,9 @@ export function EuclidCanvas({
       // Send to voice session + add to shared message history
       console.log('[euclid] routing to voice session')
       euclidVoice.sendUserText(text)
-      euclidChat.addMessage({ id: generateId(), role: 'user', content: text, timestamp: Date.now(), via: 'typed-during-call' })
+      const msgId = generateId()
+      euclidChat.addMessage({ id: msgId, role: 'user', content: text, timestamp: Date.now(), via: 'typed-during-call' })
+      euclidChat.markupMessage(msgId, text, true)
     } else {
       // Normal SSE chat — sendMessage adds to history + streams response
       console.log('[euclid] routing to SSE chat')

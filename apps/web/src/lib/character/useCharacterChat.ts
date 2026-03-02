@@ -25,6 +25,8 @@ export interface UseCharacterChatOptions {
   ) => Record<string, unknown>
   /** Canvas ref for screenshot capture (optional) */
   canvasRef?: React.RefObject<HTMLCanvasElement | null>
+  /** Called after a user message is added to the chat (e.g. for async markup). */
+  onUserMessageAdded?: (messageId: string, content: string) => void
 }
 
 export interface UseCharacterChatReturn {
@@ -58,7 +60,7 @@ export function generateId(): string {
 export function useCharacterChat(
   options: UseCharacterChatOptions,
 ): UseCharacterChatReturn {
-  const { chatEndpoint, buildRequestBody, canvasRef } = options
+  const { chatEndpoint, buildRequestBody, canvasRef, onUserMessageAdded } = options
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
@@ -227,6 +229,7 @@ export function useCharacterChat(
 
       setMessages((prev) => [...prev, userMsg, assistantMsg])
       setIsStreaming(true)
+      onUserMessageAdded?.(userMsg.id, userMsg.content)
 
       const abortController = new AbortController()
       abortRef.current = abortController
@@ -243,7 +246,7 @@ export function useCharacterChat(
 
       streamResponse(body, assistantMsg.id, abortController)
     },
-    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, compaction.compactForApi, streamResponse],
+    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, compaction.compactForApi, streamResponse, onUserMessageAdded],
   )
 
   const coldStart = useCallback(

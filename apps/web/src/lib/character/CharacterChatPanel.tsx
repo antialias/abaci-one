@@ -468,7 +468,7 @@ export function CharacterChatPanel<TEntityRef>({
                   wordBreak: 'break-word',
                 }}
               >
-                {msg.role === 'assistant' && msg.content && entityMarkers && onHighlight ? (
+                {msg.content && entityMarkers && onHighlight ? (
                   <MarkedText
                     text={msg.content}
                     markers={entityMarkers}

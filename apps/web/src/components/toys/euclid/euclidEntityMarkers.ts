@@ -58,18 +58,22 @@ function buildEntity(tag: string, value: string): EuclidEntityRef | null {
  * Matches geometric markers ({seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A})
  * and foundation/proposition markers ({def:15}, {post:1}, {cn:1}, {prop:5}).
  *
+ * Supports optional display text override: {prop:1|my first proposition}
+ * renders as "my first proposition" instead of the canonical "Proposition I.1".
+ *
  * The regex uses alternation: geometric tags require uppercase letters,
- * foundation tags require digits.
+ * foundation tags require digits. Each branch has an optional |override group.
  */
 export const EUCLID_ENTITY_MARKERS: EntityMarkerConfig<EuclidEntityRef> = {
-  pattern: /\{(seg|tri|ang|pt):([A-Z]+)\}|\{(def|post|cn|prop):(\d+)\}/g,
+  pattern: /\{(seg|tri|ang|pt):([A-Z]+)(?:\|([^}]*))?\}|\{(def|post|cn|prop):(\d+)(?:\|([^}]*))?\}/g,
   parseMatch: (groups) => {
-    // Alternation: either groups[0]+[1] matched (geometric) or groups[2]+[3] (foundation)
-    const tag = groups[0] ?? groups[2]
-    const value = groups[1] ?? groups[3]
+    // Alternation: either groups[0]+[1]+[2?] matched (geometric) or groups[3]+[4]+[5?] (foundation)
+    const tag = groups[0] ?? groups[3]
+    const value = groups[1] ?? groups[4]
+    const override = groups[2] ?? groups[5]
     if (!tag || !value) return null
     const entity = buildEntity(tag, value)
     if (!entity) return null
-    return { entity, displayText: displayText(tag, value) }
+    return { entity, displayText: override || displayText(tag, value) }
   },
 }

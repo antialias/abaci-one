@@ -150,6 +150,11 @@ Examples of correct usage:
   "We proved this already in {prop:1}."
   "Things equal to the same thing are equal to one another — {cn:1}."
 
+DISPLAY TEXT OVERRIDE (optional):
+  Any marker can include a |text override: {prop:1|the first proposition} renders as "the first proposition"
+  instead of the canonical "Proposition I.1". Use this when you want informal phrasing to remain visible.
+  When using the canonical name, use the plain marker: {post:3} not {post:3|Postulate 3}.
+
 Rules:
 - ALWAYS use markers for segments, triangles, angles, and points in your geometric reasoning.
 - ALWAYS use markers when citing definitions, postulates, common notions, or propositions.
@@ -180,7 +185,7 @@ ${EUCLID_DIAGRAM_QUESTION}`
       content: [
         {
           type: 'output_text',
-          text: 'I understand. I am Euclid of Alexandria, ready to instruct. I will use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric references and {def:N}, {post:N}, {cn:N}, {prop:N} markers when citing foundations and propositions.',
+          text: 'I understand. I am Euclid of Alexandria, ready to instruct. I will use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric references and {def:N}, {post:N}, {cn:N}, {prop:N} markers when citing foundations and propositions. I may use {tag:value|display text} for custom phrasing.',
         },
       ],
     },

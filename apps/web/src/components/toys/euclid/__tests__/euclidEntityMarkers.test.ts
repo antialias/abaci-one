@@ -138,6 +138,79 @@ describe('EUCLID_ENTITY_MARKERS', () => {
     expect(result[5]).toMatchObject({ kind: 'entity', entity: { type: 'postulate', id: 3 } })
   })
 
+  describe('display text override syntax', () => {
+    it('parses foundation marker with override text', () => {
+      const result = parse('{prop:1|my first proposition}')
+      expect(result).toEqual([
+        {
+          kind: 'entity',
+          text: 'my first proposition',
+          entity: { type: 'proposition', id: 1 },
+        },
+      ])
+    })
+
+    it('parses postulate marker with override text', () => {
+      const result = parse('{post:3|my third postulate}')
+      expect(result).toEqual([
+        {
+          kind: 'entity',
+          text: 'my third postulate',
+          entity: { type: 'postulate', id: 3 },
+        },
+      ])
+    })
+
+    it('parses definition marker with override text', () => {
+      const result = parse('{def:15|the fifteenth definition}')
+      expect(result).toEqual([
+        {
+          kind: 'entity',
+          text: 'the fifteenth definition',
+          entity: { type: 'definition', id: 15 },
+        },
+      ])
+    })
+
+    it('parses geometric marker with override text', () => {
+      const result = parse('{seg:AB|the line from A to B}')
+      expect(result).toEqual([
+        {
+          kind: 'entity',
+          text: 'the line from A to B',
+          entity: { type: 'segment', from: 'A', to: 'B' },
+        },
+      ])
+    })
+
+    it('mixes plain and override markers in same text', () => {
+      const result = parse('We call upon {prop:1}—{prop:1|my first proposition}.')
+      expect(result).toHaveLength(5) // text, entity, text, entity, text
+      expect(result[1]).toEqual({
+        kind: 'entity',
+        text: 'Proposition I.1',
+        entity: { type: 'proposition', id: 1 },
+      })
+      expect(result[3]).toEqual({
+        kind: 'entity',
+        text: 'my first proposition',
+        entity: { type: 'proposition', id: 1 },
+      })
+    })
+
+    it('falls back to canonical text when override is empty', () => {
+      // {prop:1|} — empty override should fall back to canonical
+      const result = parse('{prop:1|}')
+      expect(result).toEqual([
+        {
+          kind: 'entity',
+          text: 'Proposition I.1',
+          entity: { type: 'proposition', id: 1 },
+        },
+      ])
+    })
+  })
+
   describe('stripEntityMarkers (mobile preview)', () => {
     function strip(text: string) {
       return stripEntityMarkers(text, EUCLID_ENTITY_MARKERS)
@@ -183,6 +256,16 @@ describe('EUCLID_ENTITY_MARKERS', () => {
     it('strips mixed geometric and foundation markers', () => {
       expect(strip('{seg:CA} = {seg:AB} by {def:15}'))
         .toBe('CA = AB by Definition 15')
+    })
+
+    it('strips override markers using override text', () => {
+      expect(strip('{prop:1|my first proposition}')).toBe('my first proposition')
+      expect(strip('{post:3|my third postulate}')).toBe('my third postulate')
+    })
+
+    it('strips mixed plain and override markers', () => {
+      expect(strip('We call upon {prop:1}—{prop:1|my first proposition}.'))
+        .toBe('We call upon Proposition I.1—my first proposition.')
     })
   })
 })

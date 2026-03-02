@@ -689,7 +689,7 @@ function DesktopDockedChat({
                     wordBreak: 'break-word',
                   }}
                 >
-                  {msg.role === 'assistant' && msg.content ? (
+                  {msg.content ? (
                     <MarkedText
                       text={msg.content}
                       markers={EUCLID_ENTITY_MARKERS}

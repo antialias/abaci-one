@@ -8,7 +8,7 @@
  * message state, and open/close to the generic hook.
  */
 
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useCharacterChat } from '@/lib/character/useCharacterChat'
 import type { UseCharacterChatReturn } from '@/lib/character/useCharacterChat'
 import type {
@@ -54,8 +54,8 @@ export interface UseEuclidChatOptions {
 }
 
 export interface UseEuclidChatReturn extends UseCharacterChatReturn {
-  /** Async-markup a voice transcript message with entity markers. Pass the content to avoid stale closure issues. */
-  markupMessage: (messageId: string, content: string) => void
+  /** Async-markup a message with entity markers. Pass the content to avoid stale closure issues. */
+  markupMessage: (messageId: string, content: string, strict?: boolean) => void
 }
 
 export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatReturn {
@@ -138,13 +138,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState, pendingActionRef, isMobile],
   )
 
-  const chat = useCharacterChat({
-    chatEndpoint: '/api/realtime/euclid/chat',
-    buildRequestBody,
-    canvasRef,
-  })
-
-  const markupMessage = useCallback((messageId: string, content: string) => {
+  const markupMessageImpl = useCallback((messageId: string, content: string, strict?: boolean, updateFn?: (id: string, content: string) => void) => {
     if (!content) return
     // Skip if already has markers
     if (/\{(seg|tri|ang|pt|def|post|cn|prop):/.test(content)) return
@@ -162,18 +156,40 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         text: content,
         propositionId,
         pointLabels,
+        ...(strict ? { strict: true } : {}),
       }),
     })
       .then(res => res.json())
       .then(data => {
         if (data.markedText && data.markedText !== content) {
-          chat.updateMessageContent(messageId, data.markedText)
+          updateFn?.(messageId, data.markedText)
         }
       })
       .catch(() => {
         // Silently fail — original text remains
       })
-  }, [chat.updateMessageContent, constructionRef, propositionId])
+  }, [constructionRef, propositionId])
+
+  // Ref to access chat.updateMessageContent in the onUserMessageAdded callback without circular deps
+  const chatRef = useRef<UseCharacterChatReturn | null>(null)
+
+  // Callback for typed user messages — markup with strict validation
+  const onUserMessageAdded = useCallback((messageId: string, content: string) => {
+    markupMessageImpl(messageId, content, true, chatRef.current?.updateMessageContent)
+  }, [markupMessageImpl])
+
+  const chat = useCharacterChat({
+    chatEndpoint: '/api/realtime/euclid/chat',
+    buildRequestBody,
+    canvasRef,
+    onUserMessageAdded,
+  })
+
+  chatRef.current = chat
+
+  const markupMessage = useCallback((messageId: string, content: string, strict?: boolean) => {
+    markupMessageImpl(messageId, content, strict, chat.updateMessageContent)
+  }, [markupMessageImpl, chat.updateMessageContent])
 
   return { ...chat, markupMessage }
 }
