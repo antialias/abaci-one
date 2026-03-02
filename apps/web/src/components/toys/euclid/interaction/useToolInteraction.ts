@@ -12,7 +12,7 @@ import type {
   ExpectedAction,
 } from '../types'
 import { getPoint } from '../engine/constructionState'
-import { MACRO_REGISTRY } from '../engine/macros'
+import { MACRO_REGISTRY, wouldViolateDistinctness } from '../engine/macros'
 import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
 import { hitTestPoints, hitTestIntersectionCandidates, hitTestAlongRulerEdge } from './hitTesting'
 
@@ -295,15 +295,7 @@ export function useToolInteraction({
           // segments can share endpoints like [A, E, A, F]).
           const macroDef = MACRO_REGISTRY[macro.propId]
           if (macroDef?.distinctInputPairs) {
-            const nextIndex = macro.selectedPointIds.length
-            const wouldViolate = macroDef.distinctInputPairs.some(([i, j]) => {
-              // Check if placing hitPt at nextIndex would match an already-placed
-              // partner that must be distinct
-              if (nextIndex === j && i < nextIndex && macro.selectedPointIds[i] === hitPt.id) return true
-              if (nextIndex === i && j < nextIndex && macro.selectedPointIds[j] === hitPt.id) return true
-              return false
-            })
-            if (wouldViolate) {
+            if (wouldViolateDistinctness(macroDef.distinctInputPairs, macro.selectedPointIds, hitPt.id)) {
               requestDraw()
               return
             }

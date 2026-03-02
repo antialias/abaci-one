@@ -754,3 +754,20 @@ export const MACRO_REGISTRY: Record<number, MacroDef> = {
   2: MACRO_PROP_2,
   3: MACRO_PROP_3,
 }
+
+/**
+ * Check whether selecting `candidatePointId` as the next input (at index
+ * `selectedSoFar.length`) would violate any distinctness constraint.
+ */
+export function wouldViolateDistinctness(
+  distinctInputPairs: [number, number][],
+  selectedSoFar: string[],
+  candidatePointId: string
+): boolean {
+  const nextIndex = selectedSoFar.length
+  return distinctInputPairs.some(([i, j]) => {
+    if (nextIndex === j && i < nextIndex && selectedSoFar[i] === candidatePointId) return true
+    if (nextIndex === i && j < nextIndex && selectedSoFar[j] === candidatePointId) return true
+    return false
+  })
+}
