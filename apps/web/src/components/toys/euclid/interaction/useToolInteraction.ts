@@ -12,6 +12,7 @@ import type {
   ExpectedAction,
 } from '../types'
 import { getPoint } from '../engine/constructionState'
+import { MACRO_REGISTRY } from '../engine/macros'
 import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
 import { hitTestPoints, hitTestIntersectionCandidates, hitTestAlongRulerEdge } from './hitTesting'
 
@@ -274,13 +275,6 @@ export function useToolInteraction({
       if (tool === 'macro') {
         const macro = macroPhaseRef.current
         if (macro.tag === 'selecting') {
-          // Prevent selecting the same point twice (e.g. clicking B then B again
-          // would produce a degenerate macro with zero-radius construction)
-          if (macro.selectedPointIds.includes(hitPt.id)) {
-            requestDraw()
-            return
-          }
-
           // In guided mode, only accept the expected point at this selection index.
           // This prevents wrong-order selections (e.g. clicking B before A) from
           // triggering a heavyweight correction — instead the wrong point is silently
@@ -289,6 +283,27 @@ export function useToolInteraction({
             const selectionIndex = macro.selectedPointIds.length
             const expectedPointId = expected.inputPointIds[selectionIndex]
             if (expectedPointId && hitPt.id !== expectedPointId) {
+              requestDraw()
+              return
+            }
+          }
+
+          // Reject selections that would violate the macro's distinctness constraints.
+          // Each macro declares which input pairs must be distinct points — e.g. I.1
+          // requires inputs [0,1] to differ (can't build a triangle on a zero-length
+          // segment), while I.3 only requires [0,1] and [2,3] to differ (the two
+          // segments can share endpoints like [A, E, A, F]).
+          const macroDef = MACRO_REGISTRY[macro.propId]
+          if (macroDef?.distinctInputPairs) {
+            const nextIndex = macro.selectedPointIds.length
+            const wouldViolate = macroDef.distinctInputPairs.some(([i, j]) => {
+              // Check if placing hitPt at nextIndex would match an already-placed
+              // partner that must be distinct
+              if (nextIndex === j && i < nextIndex && macro.selectedPointIds[i] === hitPt.id) return true
+              if (nextIndex === i && j < nextIndex && macro.selectedPointIds[j] === hitPt.id) return true
+              return false
+            })
+            if (wouldViolate) {
               requestDraw()
               return
             }

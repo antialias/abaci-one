@@ -24,6 +24,14 @@ export interface MacroDef {
   inputLabels: string[]
   /** Maps macro inputs to the source proposition's given point IDs. */
   inputToGivenIds: string[]
+  /**
+   * Pairs of input indices that must refer to distinct points.
+   * E.g. [[0,1]] means input 0 and input 1 cannot be the same point.
+   * Used to reject degenerate selections (zero-length segments, etc.)
+   * while still allowing legitimate repeats (I.3 shares an endpoint
+   * between its two segment arguments).
+   */
+  distinctInputPairs: [number, number][]
   execute: (
     state: ConstructionState,
     inputPointIds: string[],
@@ -94,6 +102,7 @@ const MACRO_PROP_1: MacroDef = {
   inputCount: 2,
   inputLabels: ['First endpoint', 'Second endpoint'],
   inputToGivenIds: ['pt-A', 'pt-B'],
+  distinctInputPairs: [[0, 1]],
   execute(
     state: ConstructionState,
     inputPointIds: string[],
@@ -260,6 +269,7 @@ const MACRO_PROP_2: MacroDef = {
   inputCount: 3,
   inputLabels: ['Target point', 'Segment start', 'Segment end'],
   inputToGivenIds: ['pt-A', 'pt-B', 'pt-C'],
+  distinctInputPairs: [[0, 1], [0, 2], [1, 2]],
   execute(
     state: ConstructionState,
     inputPointIds: string[],
@@ -567,6 +577,9 @@ const MACRO_PROP_3: MacroDef = {
   inputCount: 4,
   inputLabels: ['Start of greater', 'End of greater', 'Start of less', 'End of less'],
   inputToGivenIds: ['pt-A', 'pt-B', 'pt-C', 'pt-D'],
+  // Each segment's endpoints must be distinct, but the two segments can share
+  // endpoints (e.g. [A, E, A, F] in Prop I.5 — A is start of both segments)
+  distinctInputPairs: [[0, 1], [2, 3]],
   execute(
     state: ConstructionState,
     inputPointIds: string[],
