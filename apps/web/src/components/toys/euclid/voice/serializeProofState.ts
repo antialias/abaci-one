@@ -87,10 +87,7 @@ export function serializeConstructionState(state: ConstructionState): string {
 /**
  * Build a complete proof state summary combining construction + facts.
  */
-export function serializeFullProofState(
-  state: ConstructionState,
-  facts: ProofFact[]
-): string {
+export function serializeFullProofState(state: ConstructionState, facts: ProofFact[]): string {
   const construction = serializeConstructionState(state)
   const provenFacts = serializeProofFacts(facts)
 
@@ -103,10 +100,7 @@ export function serializeFullProofState(
 const MATCH_TOLERANCE = 0.01
 
 /** Human-readable element description for intersection inference */
-function describeElement(
-  state: ConstructionState,
-  id: string
-): string {
+function describeElement(state: ConstructionState, id: string): string {
   const circles = getAllCircles(state)
   const segments = getAllSegments(state)
 
@@ -134,10 +128,7 @@ function describeElement(
  * by testing its coordinates against all circle-circle, circle-segment,
  * and segment-segment intersection pairs.
  */
-function inferIntersectionParents(
-  state: ConstructionState,
-  pt: ConstructionPoint
-): string | null {
+function inferIntersectionParents(state: ConstructionState, pt: ConstructionPoint): string | null {
   const circles = getAllCircles(state)
   const segments = getAllSegments(state)
   const matches: string[] = []
@@ -153,7 +144,11 @@ function inferIntersectionParents(
       const r2 = getRadius(state, c2.id)
       if (!ctr1 || !ctr2 || r1 <= 0 || r2 <= 0) continue
       const pts = circleCircleIntersections(ctr1.x, ctr1.y, r1, ctr2.x, ctr2.y, r2)
-      if (pts.some((p) => Math.abs(p.x - pt.x) < MATCH_TOLERANCE && Math.abs(p.y - pt.y) < MATCH_TOLERANCE)) {
+      if (
+        pts.some(
+          (p) => Math.abs(p.x - pt.x) < MATCH_TOLERANCE && Math.abs(p.y - pt.y) < MATCH_TOLERANCE
+        )
+      ) {
         matches.push(`${describeElement(state, c1.id)} ∩ ${describeElement(state, c2.id)}`)
       }
     }
@@ -169,7 +164,11 @@ function inferIntersectionParents(
       const to = getPoint(state, s.toId)
       if (!from || !to) continue
       const pts = circleSegmentIntersections(ctr.x, ctr.y, r, from.x, from.y, to.x, to.y)
-      if (pts.some((p) => Math.abs(p.x - pt.x) < MATCH_TOLERANCE && Math.abs(p.y - pt.y) < MATCH_TOLERANCE)) {
+      if (
+        pts.some(
+          (p) => Math.abs(p.x - pt.x) < MATCH_TOLERANCE && Math.abs(p.y - pt.y) < MATCH_TOLERANCE
+        )
+      ) {
         matches.push(`${describeElement(state, c.id)} ∩ ${describeElement(state, s.id)}`)
       }
     }
@@ -186,7 +185,11 @@ function inferIntersectionParents(
       const t2 = getPoint(state, s2.toId)
       if (!f1 || !t1 || !f2 || !t2) continue
       const pts = segmentSegmentIntersection(f1.x, f1.y, t1.x, t1.y, f2.x, f2.y, t2.x, t2.y)
-      if (pts.some((p) => Math.abs(p.x - pt.x) < MATCH_TOLERANCE && Math.abs(p.y - pt.y) < MATCH_TOLERANCE)) {
+      if (
+        pts.some(
+          (p) => Math.abs(p.x - pt.x) < MATCH_TOLERANCE && Math.abs(p.y - pt.y) < MATCH_TOLERANCE
+        )
+      ) {
         matches.push(`${describeElement(state, s1.id)} ∩ ${describeElement(state, s2.id)}`)
       }
     }
@@ -240,7 +243,9 @@ export function serializeConstructionGraph(state: ConstructionState): string {
     const r = getRadius(state, circ.id)
     const centerLabel = center?.label ?? circ.centerId
     const rpLabel = rp?.label ?? circ.radiusPointId
-    lines.push(`  ${circ.id}: center=${centerLabel}, radius-point=${rpLabel}, r=${r.toFixed(2)} [color: ${circ.color}]`)
+    lines.push(
+      `  ${circ.id}: center=${centerLabel}, radius-point=${rpLabel}, r=${r.toFixed(2)} [color: ${circ.color}]`
+    )
   }
 
   return lines.join('\n')
@@ -276,7 +281,7 @@ export function serializeToolState(
   state: ConstructionState,
   currentStep: number,
   steps: PropositionStep[],
-  isComplete: boolean,
+  isComplete: boolean
 ): string {
   const lines: string[] = ['=== TOOL STATE ===']
 
@@ -299,13 +304,19 @@ export function serializeToolState(
           lines.push('  Compass: idle — no center selected yet')
           break
         case 'center-set':
-          lines.push(`  Compass: center selected at ${pointLabel(state, cp.centerId)} — reaching for the radius-defining point`)
+          lines.push(
+            `  Compass: center selected at ${pointLabel(state, cp.centerId)} — reaching for the radius-defining point`
+          )
           break
         case 'radius-set':
-          lines.push(`  Compass: center=${pointLabel(state, cp.centerId)}, radius-point=${pointLabel(state, cp.radiusPointId)}, r=${cp.radius.toFixed(2)} — ready to sweep`)
+          lines.push(
+            `  Compass: center=${pointLabel(state, cp.centerId)}, radius-point=${pointLabel(state, cp.radiusPointId)}, r=${cp.radius.toFixed(2)} — ready to sweep`
+          )
           break
         case 'sweeping':
-          lines.push(`  Compass: SWEEPING circle center=${pointLabel(state, cp.centerId)}, radius-point=${pointLabel(state, cp.radiusPointId)}, r=${cp.radius.toFixed(2)}, swept=${(Math.abs(cp.cumulativeSweep) * 180 / Math.PI).toFixed(0)}°`)
+          lines.push(
+            `  Compass: SWEEPING circle center=${pointLabel(state, cp.centerId)}, radius-point=${pointLabel(state, cp.radiusPointId)}, r=${cp.radius.toFixed(2)}, swept=${((Math.abs(cp.cumulativeSweep) * 180) / Math.PI).toFixed(0)}°`
+          )
           break
       }
       break
@@ -317,7 +328,9 @@ export function serializeToolState(
           lines.push('  Straightedge: idle — no endpoint selected yet')
           break
         case 'from-set':
-          lines.push(`  Straightedge: first endpoint=${pointLabel(state, sp.fromId)} — reaching for the second endpoint`)
+          lines.push(
+            `  Straightedge: first endpoint=${pointLabel(state, sp.fromId)} — reaching for the second endpoint`
+          )
           break
       }
       break
@@ -329,10 +342,14 @@ export function serializeToolState(
           lines.push('  Extend: idle — no base segment selected yet')
           break
         case 'base-set':
-          lines.push(`  Extend: base endpoint=${pointLabel(state, ep.baseId)} — selecting the through-point to define direction`)
+          lines.push(
+            `  Extend: base endpoint=${pointLabel(state, ep.baseId)} — selecting the through-point to define direction`
+          )
           break
         case 'extending':
-          lines.push(`  Extend: extending segment from ${pointLabel(state, ep.baseId)} through ${pointLabel(state, ep.throughId)}`)
+          lines.push(
+            `  Extend: extending segment from ${pointLabel(state, ep.baseId)} through ${pointLabel(state, ep.throughId)}`
+          )
           break
       }
       break
@@ -344,7 +361,9 @@ export function serializeToolState(
           lines.push('  Proposition tool: idle')
           break
         case 'choosing':
-          lines.push('  Proposition tool: picker is open — student is choosing which prior proposition to apply')
+          lines.push(
+            '  Proposition tool: picker is open — student is choosing which prior proposition to apply'
+          )
           break
         case 'selecting': {
           const needed = mp.inputLabels.length
@@ -370,11 +389,11 @@ export function serializeToolState(
         const origin = pt?.origin ?? 'unknown'
         lines.push(`  Move: DRAGGING point ${label} (${origin})`)
         // Look for this point in step descriptions for significance
-        const mentioningSteps = steps.filter((s) =>
-          s.instruction.includes(label)
-        )
+        const mentioningSteps = steps.filter((s) => s.instruction.includes(label))
         if (mentioningSteps.length > 0) {
-          lines.push(`    Significance: appears in steps — ${mentioningSteps.map((s) => `"${s.instruction}"`).join(', ')}`)
+          lines.push(
+            `    Significance: appears in steps — ${mentioningSteps.map((s) => `"${s.instruction}"`).join(', ')}`
+          )
         }
       } else {
         lines.push('  Move: idle — student can drag given points to explore')
@@ -401,7 +420,8 @@ export function toolStateFingerprint(info: ToolStateInfo): string {
       parts.push(cp.tag)
       if (cp.tag === 'center-set') parts.push(cp.centerId)
       if (cp.tag === 'radius-set') parts.push(cp.centerId, cp.radiusPointId)
-      if (cp.tag === 'sweeping') parts.push(cp.centerId, cp.radiusPointId, String(Math.round(cp.cumulativeSweep * 10)))
+      if (cp.tag === 'sweeping')
+        parts.push(cp.centerId, cp.radiusPointId, String(Math.round(cp.cumulativeSweep * 10)))
       break
     }
     case 'straightedge': {

@@ -1,14 +1,14 @@
 /**
- * API route for streaming text chat with Euclid — GPT-5.2 Responses API.
+ * API route for streaming text chat with a geometry teacher — GPT-5.2 Responses API.
  *
  * POST /api/realtime/euclid/chat
  * Body: { messages, propositionId, currentStep, isComplete, playgroundMode,
- *         constructionGraph, toolState, proofFacts, stepList, screenshot? }
+ *         constructionGraph, toolState, proofFacts, stepList, screenshot?, characterId? }
  * Returns: SSE stream of { text } deltas, ending with [DONE]
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
-import { buildEuclidChatSystemPrompt } from '@/components/toys/euclid/chat/buildChatSystemPrompt'
+import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -29,6 +29,7 @@ export const POST = withAuth(async (request) => {
     stepList,
     screenshot,
     isMobile,
+    characterId,
   } = body as {
     messages: ChatMessage[]
     propositionId: number
@@ -41,6 +42,7 @@ export const POST = withAuth(async (request) => {
     stepList: string
     screenshot?: string
     isMobile?: boolean
+    characterId?: string
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -58,8 +60,10 @@ export const POST = withAuth(async (request) => {
     })
   }
 
+  const config = getTeacherConfig(characterId)
+
   // Build system context
-  const systemText = buildEuclidChatSystemPrompt({
+  const systemText = config.buildChatSystemPrompt({
     propositionId: typeof propositionId === 'number' ? propositionId : 1,
     currentStep,
     isComplete,
@@ -88,7 +92,7 @@ export const POST = withAuth(async (request) => {
       content: [
         {
           type: 'output_text',
-          text: 'I understand. I am Euclid of Alexandria, ready to instruct. I will use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric references and {def:N}, {post:N}, {cn:N}, {prop:N} markers when citing foundations and propositions. I may use {tag:value|display text} for custom phrasing.',
+          text: config.chatAssistantPriming,
         },
       ],
     },
@@ -113,7 +117,10 @@ export const POST = withAuth(async (request) => {
   if (screenshot && typeof screenshot === 'string') {
     let lastUserMsg: { role: string; content: unknown } | undefined
     for (let i = input.length - 1; i >= 0; i--) {
-      if (input[i].role === 'user') { lastUserMsg = input[i]; break }
+      if (input[i].role === 'user') {
+        lastUserMsg = input[i]
+        break
+      }
     }
     if (lastUserMsg && Array.isArray(lastUserMsg.content)) {
       const base64 = screenshot.includes(',') ? screenshot.split(',')[1] : screenshot
@@ -125,7 +132,12 @@ export const POST = withAuth(async (request) => {
   }
 
   // Call the Responses API with streaming
-  console.log('[euclid-chat-api] calling OpenAI Responses API, messageCount=%d, hasScreenshot=%s', messages.length, !!screenshot)
+  console.log(
+    '[euclid-chat-api] calling OpenAI Responses API, messageCount=%d, hasScreenshot=%s, character=%s',
+    messages.length,
+    !!screenshot,
+    config.definition.id
+  )
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -146,10 +158,13 @@ export const POST = withAuth(async (request) => {
   if (!response.ok) {
     const errText = await response.text()
     console.error('[euclid-chat-api] API error:', response.status, errText)
-    return new Response(JSON.stringify({ error: 'Could not reach Euclid right now.' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ error: `Could not reach ${config.definition.displayName} right now.` }),
+      {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   // Stream the response as SSE
@@ -197,7 +212,7 @@ export const POST = withAuth(async (request) => {
                 console.error('[euclid-chat-api] stream error: %s — %s', errCode, errMsg)
                 const isQuota = /quota/i.test(errCode)
                 const userMessage = isQuota
-                  ? 'Euclid is unavailable right now. Try again later.'
+                  ? `${config.definition.displayName} is unavailable right now. Try again later.`
                   : `Something went wrong. Try again later.`
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ error: userMessage })}\n\n`)

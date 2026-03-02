@@ -6,13 +6,12 @@
  * Wires in Euclid's character definition and geometric entity markers.
  */
 
-import React from 'react'
+import type React from 'react'
 import { CharacterChatPanel } from '@/lib/character/CharacterChatPanel'
 import type { DebugCompactionProps } from '@/lib/character/CharacterChatPanel'
 import type { ChatMessage, ChatCallState } from '@/lib/character/types'
 import type { EuclidEntityRef } from './parseGeometricEntities'
-import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
-import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
+import { useGeometryTeacher } from '../GeometryTeacherContext'
 
 interface EuclidChatPanelProps {
   messages: ChatMessage[]
@@ -49,10 +48,11 @@ export function EuclidChatPanel({
   debugCompaction,
   callState,
 }: EuclidChatPanelProps) {
+  const { definition, entityMarkers } = useGeometryTeacher()
   return (
     <CharacterChatPanel
-      character={EUCLID_CHARACTER_DEF}
-      entityMarkers={EUCLID_ENTITY_MARKERS}
+      character={definition}
+      entityMarkers={entityMarkers}
       messages={messages}
       isStreaming={isStreaming}
       onSend={onSend}

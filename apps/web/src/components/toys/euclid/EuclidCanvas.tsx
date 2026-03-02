@@ -111,7 +111,9 @@ import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { CitationPopover } from './foundations/CitationPopover'
 import { getFoundationHref } from './foundations/citationUtils'
 import { MacroToolPanel } from './MacroToolPanel'
-import { useEuclidVoice } from './voice/useEuclidVoice'
+import { useGeometryVoice } from './voice/useGeometryVoice'
+import { GeometryTeacherProvider, useGeometryTeacher } from './GeometryTeacherContext'
+import { getTeacherConfig } from './characters/registry'
 import { useConstructionNotifier } from './voice/useConstructionNotifier'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -120,7 +122,11 @@ import { useEuclidChat } from './chat/useEuclidChat'
 import { DockedEuclidChat } from './chat/DockedEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
 import { latexToMarkers } from './chat/parseGeometricEntities'
-import type { GeometricEntityRef, EuclidEntityRef, FoundationEntityRef } from './chat/parseGeometricEntities'
+import type {
+  GeometricEntityRef,
+  EuclidEntityRef,
+  FoundationEntityRef,
+} from './chat/parseGeometricEntities'
 import { isGeometricEntity, foundationToCitationKey } from './chat/parseGeometricEntities'
 import { useEuclidEntityRenderer } from './chat/useEuclidEntityRenderer'
 import { MarkedText } from '@/lib/character/MarkedText'
@@ -616,7 +622,19 @@ const WRONG_MOVE_PHRASES = [
   'Oops! Let me remind you:',
 ]
 
-export function EuclidCanvas({
+/**
+ * Public EuclidCanvas — wraps the inner canvas with the geometry teacher provider.
+ */
+export function EuclidCanvas(props: EuclidCanvasProps) {
+  const teacherConfig = getTeacherConfig(props.proposition?.characterId)
+  return (
+    <GeometryTeacherProvider config={teacherConfig}>
+      <EuclidCanvasInner {...props} />
+    </GeometryTeacherProvider>
+  )
+}
+
+function EuclidCanvasInner({
   propositionId = 1,
   proposition: propositionProp,
   onComplete,
@@ -639,8 +657,10 @@ export function EuclidCanvas({
     citation: isMobile ? 9 : 10,
     conclusion: isMobile ? 12 : 15,
   }
-  const propositionBase = propositionProp ??
-    ((propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ?? PROP_REGISTRY[1])
+  const propositionBase =
+    propositionProp ??
+    (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ??
+    PROP_REGISTRY[1]
   const proposition = useMemo(() => {
     if (!initialGivenPoints || initialGivenPoints.length === 0) return propositionBase
     const overrideMap = new Map(initialGivenPoints.map((p) => [p.id, p]))
@@ -1009,7 +1029,11 @@ export function EuclidCanvas({
   }, [proofFacts])
 
   // ── TTS integration ──
-  const { isEnabled: globalAudioEnabled, setEnabled: setAudioEnabled, stop: stopAudio } = useAudioManager()
+  const {
+    isEnabled: globalAudioEnabled,
+    setEnabled: setAudioEnabled,
+    stop: stopAudio,
+  } = useAudioManager()
   // When disableAudio is set, manage audio state locally so we don't auto-play on mount
   // (useful for blog embeds). The user can still toggle it on via the speaker button.
   const [localAudioEnabled, setLocalAudioEnabled] = useState(false)
@@ -1062,25 +1086,43 @@ export function EuclidCanvas({
   chatMessagesRef.current = euclidChat.messages
 
   // ── Transcript callbacks: inject voice transcripts into the shared chat history ──
-  const handleModelSpeech = useCallback((transcript: string) => {
-    // Convert LaTeX notation from voice transcripts to our {seg:AB} marker syntax
-    const converted = latexToMarkers(transcript)
-    const msgId = generateId()
-    // Insert before trailing events — speech started before events that arrived during it
-    euclidChat.addMessageBeforeTrailingEvents({ id: msgId, role: 'assistant', content: converted, timestamp: Date.now(), via: 'voice' })
-    // Async: send to LLM for full entity markup (foundation refs, missed geometric refs)
-    euclidChat.markupMessage(msgId, converted)
-  }, [euclidChat.addMessageBeforeTrailingEvents, euclidChat.markupMessage])
+  const handleModelSpeech = useCallback(
+    (transcript: string) => {
+      // Convert LaTeX notation from voice transcripts to our {seg:AB} marker syntax
+      const converted = latexToMarkers(transcript)
+      const msgId = generateId()
+      // Insert before trailing events — speech started before events that arrived during it
+      euclidChat.addMessageBeforeTrailingEvents({
+        id: msgId,
+        role: 'assistant',
+        content: converted,
+        timestamp: Date.now(),
+        via: 'voice',
+      })
+      // Async: send to LLM for full entity markup (foundation refs, missed geometric refs)
+      euclidChat.markupMessage(msgId, converted)
+    },
+    [euclidChat.addMessageBeforeTrailingEvents, euclidChat.markupMessage]
+  )
 
-  const handleChildSpeech = useCallback((transcript: string) => {
-    const msgId = generateId()
-    euclidChat.addMessage({ id: msgId, role: 'user', content: transcript, timestamp: Date.now(), via: 'voice' })
-    // Async: markup user voice transcript with strict validation (preserves original text exactly)
-    euclidChat.markupMessage(msgId, transcript, true)
-  }, [euclidChat.addMessage, euclidChat.markupMessage])
+  const handleChildSpeech = useCallback(
+    (transcript: string) => {
+      const msgId = generateId()
+      euclidChat.addMessage({
+        id: msgId,
+        role: 'user',
+        content: transcript,
+        timestamp: Date.now(),
+        via: 'voice',
+      })
+      // Async: markup user voice transcript with strict validation (preserves original text exactly)
+      euclidChat.markupMessage(msgId, transcript, true)
+    },
+    [euclidChat.addMessage, euclidChat.markupMessage]
+  )
 
   // ── Call Euclid voice (after chat so transcript callbacks are available) ──
-  const euclidVoice = useEuclidVoice({
+  const euclidVoice = useGeometryVoice({
     canvasRef,
     constructionRef,
     factStoreRef,
@@ -1106,7 +1148,12 @@ export function EuclidCanvas({
   })
 
   // ── Speaking-aware profile image (needs euclidVoice.isSpeaking) ──
-  const smProfileImage = useCharacterProfileImage('/images/euclid-profile.png', 'sm', euclidVoice.isSpeaking)
+  const teacherConfig = useGeometryTeacher()
+  const smProfileImage = useCharacterProfileImage(
+    teacherConfig.definition.profileImage,
+    'sm',
+    euclidVoice.isSpeaking
+  )
 
   // ── Push-based construction notifier ──
   const notifierRef = useConstructionNotifier({
@@ -1128,21 +1175,34 @@ export function EuclidCanvas({
   })
 
   // ── Unified send handler: routes to voice session or SSE chat ──
-  const handleChatSend = useCallback((text: string) => {
-    console.log('[euclid] handleChatSend: voiceState=%s, text=%s', euclidVoice.state, text.slice(0, 50))
-    if (euclidVoice.state === 'active') {
-      // Send to voice session + add to shared message history
-      console.log('[euclid] routing to voice session')
-      euclidVoice.sendUserText(text)
-      const msgId = generateId()
-      euclidChat.addMessage({ id: msgId, role: 'user', content: text, timestamp: Date.now(), via: 'typed-during-call' })
-      euclidChat.markupMessage(msgId, text, true)
-    } else {
-      // Normal SSE chat — sendMessage adds to history + streams response
-      console.log('[euclid] routing to SSE chat')
-      euclidChat.sendMessage(text)
-    }
-  }, [euclidVoice.state, euclidVoice.sendUserText, euclidChat.addMessage, euclidChat.sendMessage])
+  const handleChatSend = useCallback(
+    (text: string) => {
+      console.log(
+        '[euclid] handleChatSend: voiceState=%s, text=%s',
+        euclidVoice.state,
+        text.slice(0, 50)
+      )
+      if (euclidVoice.state === 'active') {
+        // Send to voice session + add to shared message history
+        console.log('[euclid] routing to voice session')
+        euclidVoice.sendUserText(text)
+        const msgId = generateId()
+        euclidChat.addMessage({
+          id: msgId,
+          role: 'user',
+          content: text,
+          timestamp: Date.now(),
+          via: 'typed-during-call',
+        })
+        euclidChat.markupMessage(msgId, text, true)
+      } else {
+        // Normal SSE chat — sendMessage adds to history + streams response
+        console.log('[euclid] routing to SSE chat')
+        euclidChat.sendMessage(text)
+      }
+    },
+    [euclidVoice.state, euclidVoice.sendUserText, euclidChat.addMessage, euclidChat.sendMessage]
+  )
 
   // Chat highlight state — set when hovering geometric entities in chat
   const chatHighlightRef = useRef<GeometricEntityRef | null>(null)
@@ -1158,14 +1218,17 @@ export function EuclidCanvas({
   }, [])
 
   // Foundation highlight: reuses the same activeCitation state + CitationPopover
-  const handleChatHighlightFoundation = useCallback((entity: FoundationEntityRef, anchorRect: DOMRect) => {
-    if (citationHideTimerRef.current) clearTimeout(citationHideTimerRef.current)
-    if (citationShowTimerRef.current) clearTimeout(citationShowTimerRef.current)
-    const key = foundationToCitationKey(entity)
-    citationShowTimerRef.current = setTimeout(() => {
-      setActiveCitation({ key, rect: anchorRect })
-    }, 200)
-  }, [])
+  const handleChatHighlightFoundation = useCallback(
+    (entity: FoundationEntityRef, anchorRect: DOMRect) => {
+      if (citationHideTimerRef.current) clearTimeout(citationHideTimerRef.current)
+      if (citationShowTimerRef.current) clearTimeout(citationShowTimerRef.current)
+      const key = foundationToCitationKey(entity)
+      citationShowTimerRef.current = setTimeout(() => {
+        setActiveCitation({ key, rect: anchorRect })
+      }, 200)
+    },
+    []
+  )
 
   const handleChatUnhighlightFoundation = useCallback(() => {
     if (citationShowTimerRef.current) clearTimeout(citationShowTimerRef.current)
@@ -1197,19 +1260,20 @@ export function EuclidCanvas({
   const narrationEnabled = disableAudio ? audioEnabled : euclidCallActive ? false : undefined
 
   // ── Build chatCallState from euclidVoice ──
-  const chatCallState: ChatCallState | undefined = euclidVoice.state !== 'idle'
-    ? {
-        state: euclidVoice.state,
-        timeRemaining: euclidVoice.timeRemaining,
-        isSpeaking: euclidVoice.isSpeaking,
-        isThinking: euclidVoice.isThinking,
-        thinkingLabel: 'Consulting scrolls',
-        error: euclidVoice.error,
-        errorCode: euclidVoice.errorCode,
-        onHangUp: euclidVoice.hangUp,
-        onRetry: euclidVoice.dial,
-      }
-    : undefined
+  const chatCallState: ChatCallState | undefined =
+    euclidVoice.state !== 'idle'
+      ? {
+          state: euclidVoice.state,
+          timeRemaining: euclidVoice.timeRemaining,
+          isSpeaking: euclidVoice.isSpeaking,
+          isThinking: euclidVoice.isThinking,
+          thinkingLabel: 'Consulting scrolls',
+          error: euclidVoice.error,
+          errorCode: euclidVoice.errorCode,
+          onHangUp: euclidVoice.hangUp,
+          onRetry: euclidVoice.dial,
+        }
+      : undefined
 
   // Inject "Call ended" event when transitioning from active → ending
   const prevVoiceStateRef = useRef(euclidVoice.state)
@@ -1217,7 +1281,13 @@ export function EuclidCanvas({
     const prev = prevVoiceStateRef.current
     prevVoiceStateRef.current = euclidVoice.state
     if (prev === 'active' && euclidVoice.state === 'ending') {
-      euclidChat.addMessage({ id: generateId(), role: 'user', content: 'Call ended', timestamp: Date.now(), isEvent: true })
+      euclidChat.addMessage({
+        id: generateId(),
+        role: 'user',
+        content: 'Call ended',
+        timestamp: Date.now(),
+        isEvent: true,
+      })
     }
   }, [euclidVoice.state, euclidChat.addMessage])
 
@@ -1338,7 +1408,7 @@ export function EuclidCanvas({
 
       function applyPositions(positions: Map<string, { x: number; y: number }>) {
         // Update free-point actions with new positions
-        let actions = initialActions.map((a) => {
+        const actions = initialActions.map((a) => {
           if (a.type === 'free-point' && positions.has(a.id)) {
             const pos = positions.get(a.id)!
             return { ...a, x: pos.x, y: pos.y }
@@ -1359,12 +1429,7 @@ export function EuclidCanvas({
             return el
           })
         }
-        const result = replayConstruction(
-          givenElements,
-          prop.steps,
-          prop,
-          actions
-        )
+        const result = replayConstruction(givenElements, prop.steps, prop, actions)
         constructionRef.current = result.state
         candidatesRef.current = result.candidates
         ghostLayersRef.current = result.ghostLayers
@@ -1786,7 +1851,8 @@ export function EuclidCanvas({
       musicRef.current?.notifyChange()
 
       const cLabel = getPoint(result.state, centerId)?.label ?? centerId.replace(/^pt-/, '')
-      const rLabel = getPoint(result.state, radiusPointId)?.label ?? radiusPointId.replace(/^pt-/, '')
+      const rLabel =
+        getPoint(result.state, radiusPointId)?.label ?? radiusPointId.replace(/^pt-/, '')
       notifierRef.current.notifyConstruction({
         action: `Drew circle centered at ${cLabel} through ${rLabel}`,
         shouldPrompt: true,
@@ -1871,20 +1937,10 @@ export function EuclidCanvas({
       const newX = throughPt.x + dirX * expected.distance
       const newY = throughPt.y + dirY * expected.distance
 
-      const ptResult = addPoint(
-        constructionRef.current,
-        newX,
-        newY,
-        'intersection',
-        expected.label
-      )
+      const ptResult = addPoint(constructionRef.current, newX, newY, 'intersection', expected.label)
       constructionRef.current = ptResult.state
 
-      const segResult = addSegment(
-        constructionRef.current,
-        expected.throughId,
-        ptResult.point.id
-      )
+      const segResult = addSegment(constructionRef.current, expected.throughId, ptResult.point.id)
       constructionRef.current = segResult.state
 
       const ptCands = findNewIntersections(
@@ -1904,7 +1960,9 @@ export function EuclidCanvas({
       checkStep(ptResult.point)
       requestDraw()
 
-      const throughLabel = getPoint(constructionRef.current, expected.throughId)?.label ?? expected.throughId.replace(/^pt-/, '')
+      const throughLabel =
+        getPoint(constructionRef.current, expected.throughId)?.label ??
+        expected.throughId.replace(/^pt-/, '')
       const newLabel = ptResult.point.label
       notifierRef.current.notifyConstruction({
         action: `Extended line through ${throughLabel} to new point ${newLabel}`,
@@ -2218,24 +2276,32 @@ export function EuclidCanvas({
 
   // Drag state for euclid-quad (draggable by avatar)
   const quadRef = useRef<HTMLDivElement>(null)
-  const quadDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const quadDragRef = useRef<{
+    startX: number
+    startY: number
+    origX: number
+    origY: number
+  } | null>(null)
   const [quadOffset, setQuadOffset] = useState({ x: 0, y: 0 })
 
   const [quadDragging, setQuadDragging] = useState(false)
 
-  const handleQuadPointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const el = e.currentTarget
-    el.setPointerCapture(e.pointerId)
-    quadDragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: quadOffset.x,
-      origY: quadOffset.y,
-    }
-    setQuadDragging(true)
-  }, [quadOffset])
+  const handleQuadPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const el = e.currentTarget
+      el.setPointerCapture(e.pointerId)
+      quadDragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: quadOffset.x,
+        origY: quadOffset.y,
+      }
+      setQuadDragging(true)
+    },
+    [quadOffset]
+  )
 
   const handleQuadPointerMove = useCallback((e: React.PointerEvent) => {
     const drag = quadDragRef.current
@@ -2248,7 +2314,7 @@ export function EuclidCanvas({
 
     // Clamp so the quad stays within the canvas pane bounds.
     const container = containerRef.current
-    const root = container?.parentElement  // euclid-canvas root
+    const root = container?.parentElement // euclid-canvas root
     if (container && root) {
       const rootW = root.clientWidth
       const rootH = root.clientHeight
@@ -2641,7 +2707,11 @@ export function EuclidCanvas({
   // Uses a drag-start baseline so oscillations resolve to the NET change,
   // and collapseInChat replaces (not appends) the event in chat.
   /** Baseline from drag start — never updated during drag */
-  const topologyBaselineRef = useRef<{ map: Map<string, string>, steps: number, factCount: number } | null>(null)
+  const topologyBaselineRef = useRef<{
+    map: Map<string, string>
+    steps: number
+    factCount: number
+  } | null>(null)
   /** Current frame's map — used to describe elements that may disappear next frame */
   const topologyCurrentRef = useRef<Map<string, string>>(new Map())
   const topologyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -2687,7 +2757,11 @@ export function EuclidCanvas({
 
       // Set baseline on first frame (drag start)
       if (!topologyBaselineRef.current) {
-        topologyBaselineRef.current = { map: new Map(currMap), steps: result.stepsCompleted, factCount: result.proofFacts.length }
+        topologyBaselineRef.current = {
+          map: new Map(currMap),
+          steps: result.stepsCompleted,
+          factCount: result.proofFacts.length,
+        }
         topologyCurrentRef.current = currMap
         return
       }
@@ -2709,7 +2783,9 @@ export function EuclidCanvas({
       }
       if (disappeared.length > 0) {
         // Use current map first (for elements that existed recently), fall back to baseline
-        parts.push(`${disappeared.map((id) => topologyCurrentRef.current.get(id) ?? baseline.map.get(id)!).join(', ')} disappeared`)
+        parts.push(
+          `${disappeared.map((id) => topologyCurrentRef.current.get(id) ?? baseline.map.get(id)!).join(', ')} disappeared`
+        )
       }
       if (stepsChanged) {
         if (result.stepsCompleted < baseline.steps) {
@@ -2754,7 +2830,11 @@ export function EuclidCanvas({
         topologyTimerRef.current = null
         if (parts.length > 0) {
           const action = `While dragging: ${parts.join('; ')}`
-          notifierRef.current.notifyConstruction({ action, shouldPrompt: false, collapseInChat: true })
+          notifierRef.current.notifyConstruction({
+            action,
+            shouldPrompt: false,
+            collapseInChat: true,
+          })
         } else {
           // Net change resolved to nothing — remove any trailing event
           euclidChat.setTrailingEvent(null)
@@ -2784,7 +2864,9 @@ export function EuclidCanvas({
         wiggleCancelRef.current?.()
         wiggleCancelRef.current = null
         // Capture label for the drag-end notifier (dragPointIdRef is cleared before onDragEnd fires)
-        const pt = constructionRef.current.elements.find((e) => e.kind === 'point' && e.id === pointId)
+        const pt = constructionRef.current.elements.find(
+          (e) => e.kind === 'point' && e.id === pointId
+        )
         dragLabelRef.current = pt && 'label' in pt ? pt.label : null
         // Reset topology tracking so first replay frame sets the baseline
         topologyBaselineRef.current = null
@@ -3037,8 +3119,7 @@ export function EuclidCanvas({
               const cer = macroRevealRef.current
               const inCeremony = cer != null
               const hoveredStep = hoveredMacroStepRef.current
-              const includeGhostBounds =
-                inCeremony || ghostBoundsEnabledRef.current
+              const includeGhostBounds = inCeremony || ghostBoundsEnabledRef.current
               if (includeGhostBounds) {
                 const ceremonyLayerKeys = inCeremony
                   ? new Set(cer!.sequence.map((e) => e.layerKey))
@@ -3278,7 +3359,7 @@ export function EuclidCanvas({
           if (correctionRef.current?.active) {
             const correction = correctionRef.current
             const t = Math.min(1, (performance.now() - correction.startTime) / correction.duration)
-            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+            const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
             const angle = correction.fromAngle + (correction.toAngle - correction.fromAngle) * ease
             const state = constructionRef.current
             const updatedElements = state.elements.map((el) => {
@@ -3381,7 +3462,12 @@ export function EuclidCanvas({
           )
 
           // Keep redrawing while ripple rings are visible so they animate
-          if (complete && (playgroundMode ? getAllPoints(drawState).some((pt) => pt.origin === 'given' || pt.origin === 'free') : proposition.draggablePointIds?.length)) {
+          if (
+            complete &&
+            (playgroundMode
+              ? getAllPoints(drawState).some((pt) => pt.origin === 'given' || pt.origin === 'free')
+              : proposition.draggablePointIds?.length)
+          ) {
             needsDrawRef.current = true
           }
 
@@ -3712,45 +3798,70 @@ export function EuclidCanvas({
           </div>
         )}
 
-        {(hasConstructionSteps || isComplete || playgroundMode) && <div
-          data-element="tool-selector"
-          ref={toolDockRef}
-          onMouseEnter={() => setIsToolDockActive(true)}
-          onMouseLeave={() => setIsToolDockActive(false)}
-          onTouchStart={() => setIsToolDockActive(true)}
-          onTouchEnd={() => setIsToolDockActive(false)}
-          onPointerDown={() => setIsToolDockActive(true)}
-          onPointerUp={() => setIsToolDockActive(false)}
-          style={{
-            position: 'absolute',
-            display: 'flex',
-            gap: 8,
-            zIndex: 10,
-            ...(isMobile
-              ? {
-                  top: '50%',
-                  right: 12,
-                  transform: 'translateY(-50%)',
-                  flexDirection: 'column',
-                  padding: '8px 6px',
-                  borderRadius: 16,
-                  background: 'rgba(255, 255, 255, 0.85)',
-                  border: '1px solid rgba(203, 213, 225, 0.8)',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-                  backdropFilter: 'blur(8px)',
-                  opacity: isToolDockActive ? 1 : 0.55,
-                  transition: 'opacity 0.2s ease',
+        {(hasConstructionSteps || isComplete || playgroundMode) && (
+          <div
+            data-element="tool-selector"
+            ref={toolDockRef}
+            onMouseEnter={() => setIsToolDockActive(true)}
+            onMouseLeave={() => setIsToolDockActive(false)}
+            onTouchStart={() => setIsToolDockActive(true)}
+            onTouchEnd={() => setIsToolDockActive(false)}
+            onPointerDown={() => setIsToolDockActive(true)}
+            onPointerUp={() => setIsToolDockActive(false)}
+            style={{
+              position: 'absolute',
+              display: 'flex',
+              gap: 8,
+              zIndex: 10,
+              ...(isMobile
+                ? {
+                    top: '50%',
+                    right: 12,
+                    transform: 'translateY(-50%)',
+                    flexDirection: 'column',
+                    padding: '8px 6px',
+                    borderRadius: 16,
+                    background: 'rgba(255, 255, 255, 0.85)',
+                    border: '1px solid rgba(203, 213, 225, 0.8)',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                    backdropFilter: 'blur(8px)',
+                    opacity: isToolDockActive ? 1 : 0.55,
+                    transition: 'opacity 0.2s ease',
+                  }
+                : {
+                    bottom: 24,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                  }),
+            }}
+          >
+            {(playgroundMode || (isComplete && proposition.draggablePointIds)) && (
+              <ToolButton
+                label="Move"
+                icon={
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" />
+                    <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v6" />
+                    <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+                    <path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 17" />
+                  </svg>
                 }
-              : {
-                  bottom: 24,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                }),
-          }}
-        >
-          {(playgroundMode || (isComplete && proposition.draggablePointIds)) && (
+                active={activeTool === 'move'}
+                onClick={() => setActiveTool('move')}
+                size={isMobile ? 44 : 48}
+              />
+            )}
             <ToolButton
-              label="Move"
+              label="Compass"
               icon={
                 <svg
                   width="22"
@@ -3762,63 +3873,18 @@ export function EuclidCanvas({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" />
-                  <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v6" />
-                  <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
-                  <path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 17" />
+                  <circle cx="12" cy="5" r="1" />
+                  <path d="M12 6l-4 14" />
+                  <path d="M12 6l4 14" />
+                  <path d="M6 18a6 6 0 0 0 12 0" />
                 </svg>
               }
-              active={activeTool === 'move'}
-              onClick={() => setActiveTool('move')}
+              active={activeTool === 'compass'}
+              onClick={() => setActiveTool('compass')}
               size={isMobile ? 44 : 48}
             />
-          )}
-          <ToolButton
-            label="Compass"
-            icon={
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="5" r="1" />
-                <path d="M12 6l-4 14" />
-                <path d="M12 6l4 14" />
-                <path d="M6 18a6 6 0 0 0 12 0" />
-              </svg>
-            }
-            active={activeTool === 'compass'}
-            onClick={() => setActiveTool('compass')}
-            size={isMobile ? 44 : 48}
-          />
-          <ToolButton
-            label="Straightedge"
-            icon={
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="4" y1="20" x2="20" y2="4" />
-              </svg>
-            }
-            active={activeTool === 'straightedge'}
-            onClick={() => setActiveTool('straightedge')}
-            size={isMobile ? 44 : 48}
-          />
-          {availableMacros.length > 0 && (
             <ToolButton
-              label="Proposition"
+              label="Straightedge"
               icon={
                 <svg
                   width="22"
@@ -3830,68 +3896,90 @@ export function EuclidCanvas({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  {/* Two overlapping circles — evokes prior constructions */}
-                  <circle cx="9" cy="12" r="5" />
-                  <circle cx="15" cy="12" r="5" />
+                  <line x1="4" y1="20" x2="20" y2="4" />
                 </svg>
               }
-              active={activeTool === 'macro'}
-              onClick={handleMacroToolClick}
+              active={activeTool === 'straightedge'}
+              onClick={() => setActiveTool('straightedge')}
               size={isMobile ? 44 : 48}
             />
-          )}
-          {playgroundMode && (
-            <ToolButton
-              label="Point"
-              icon={
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-                  <line x1="12" y1="2" x2="12" y2="6" />
-                  <line x1="12" y1="18" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="6" y2="12" />
-                  <line x1="18" y1="12" x2="22" y2="12" />
-                </svg>
-              }
-              active={activeTool === 'point'}
-              onClick={() => {
-                setActiveTool('point')
-                activeToolRef.current = 'point'
-              }}
-              size={isMobile ? 44 : 48}
-            />
-          )}
-          {playgroundMode && (
-            <ToolButton
-              label="Wiggle"
-              icon={
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M2 12c1.5-3 3.5-3 5 0s3.5 3 5 0 3.5-3 5 0 3.5 3 5 0" />
-                </svg>
-              }
-              active={false}
-              onClick={() => startWiggle(0)}
-              size={isMobile ? 44 : 48}
-            />
-          )}
-        </div>}
+            {availableMacros.length > 0 && (
+              <ToolButton
+                label="Proposition"
+                icon={
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {/* Two overlapping circles — evokes prior constructions */}
+                    <circle cx="9" cy="12" r="5" />
+                    <circle cx="15" cy="12" r="5" />
+                  </svg>
+                }
+                active={activeTool === 'macro'}
+                onClick={handleMacroToolClick}
+                size={isMobile ? 44 : 48}
+              />
+            )}
+            {playgroundMode && (
+              <ToolButton
+                label="Point"
+                icon={
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+                    <line x1="12" y1="2" x2="12" y2="6" />
+                    <line x1="12" y1="18" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="6" y2="12" />
+                    <line x1="18" y1="12" x2="22" y2="12" />
+                  </svg>
+                }
+                active={activeTool === 'point'}
+                onClick={() => {
+                  setActiveTool('point')
+                  activeToolRef.current = 'point'
+                }}
+                size={isMobile ? 44 : 48}
+              />
+            )}
+            {playgroundMode && (
+              <ToolButton
+                label="Wiggle"
+                icon={
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2 12c1.5-3 3.5-3 5 0s3.5 3 5 0 3.5-3 5 0 3.5 3 5 0" />
+                  </svg>
+                }
+                active={false}
+                onClick={() => startWiggle(0)}
+                size={isMobile ? 44 : 48}
+              />
+            )}
+          </div>
+        )}
 
         {/* Top-right bar — playground controls only */}
         {playgroundMode && (
@@ -4039,11 +4127,15 @@ export function EuclidCanvas({
                   onDragPointerUp={handleQuadPointerUp}
                   isDragging={quadDragging}
                   squareBottomRight
-                  debugCompaction={isVisualDebugEnabled ? {
-                    coversUpTo: euclidChat.compaction.coversUpTo,
-                    isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
-                    onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
-                  } : undefined}
+                  debugCompaction={
+                    isVisualDebugEnabled
+                      ? {
+                          coversUpTo: euclidChat.compaction.coversUpTo,
+                          isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
+                          onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
+                        }
+                      : undefined
+                  }
                   callState={chatCallState}
                 />
                 {/* Dock button — pins chat into proof column */}
@@ -4066,7 +4158,16 @@ export function EuclidCanvas({
                   }}
                 >
                   {/* Pin/dock icon */}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <rect x="3" y="3" width="7" height="7" rx="1" />
                     <rect x="14" y="3" width="7" height="18" rx="1" />
                     <rect x="3" y="14" width="7" height="7" rx="1" />
@@ -4092,8 +4193,28 @@ export function EuclidCanvas({
               }}
             >
               {/* Cross dividers */}
-              <div style={{ position: 'absolute', left: '50%', top: 6, bottom: 6, width: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', top: '50%', left: 6, right: 6, height: 1, background: 'rgba(203, 213, 225, 0.5)', pointerEvents: 'none' }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: 6,
+                  bottom: 6,
+                  width: 1,
+                  background: 'rgba(203, 213, 225, 0.5)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 6,
+                  right: 6,
+                  height: 1,
+                  background: 'rgba(203, 213, 225, 0.5)',
+                  pointerEvents: 'none',
+                }}
+              />
               {/* TL: Euclid avatar — drag handle (disabled when floating chat is expanded) */}
               <div
                 data-element="euclid-avatar"
@@ -4102,9 +4223,7 @@ export function EuclidCanvas({
                   alignItems: 'center',
                   justifyContent: 'center',
                   position: 'relative',
-                  cursor: !chatExpanded
-                    ? (quadDragging ? 'grabbing' : 'grab')
-                    : 'default',
+                  cursor: !chatExpanded ? (quadDragging ? 'grabbing' : 'grab') : 'default',
                   borderRadius: '9px 0 0 0',
                   touchAction: 'none',
                 }}
@@ -4114,11 +4233,15 @@ export function EuclidCanvas({
                 onPointerCancel={!chatExpanded ? handleQuadPointerUp : undefined}
                 onMouseEnter={(e) => {
                   if (chatMode === 'floating') return
-                  const popover = e.currentTarget.querySelector('[data-element="euclid-popover"]') as HTMLElement
+                  const popover = e.currentTarget.querySelector(
+                    '[data-element="euclid-popover"]'
+                  ) as HTMLElement
                   if (popover) popover.style.opacity = '1'
                 }}
                 onMouseLeave={(e) => {
-                  const popover = e.currentTarget.querySelector('[data-element="euclid-popover"]') as HTMLElement
+                  const popover = e.currentTarget.querySelector(
+                    '[data-element="euclid-popover"]'
+                  ) as HTMLElement
                   if (popover) popover.style.opacity = '0'
                 }}
               >
@@ -4161,26 +4284,56 @@ export function EuclidCanvas({
                       fontStyle: 'italic',
                     }}
                   >
-                    <div style={{ fontWeight: 600, fontStyle: 'normal', marginBottom: 4, fontSize: 13 }}>Εὐκλείδης</div>
-                    <div style={{ marginBottom: 6 }}>&ldquo;I am here if you need guidance. You may call upon me by voice, or write to me if you prefer. I can also narrate your progress as you work.&rdquo;</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontStyle: 'normal', fontSize: 11, color: '#6b7280' }}>
-                      <span><strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me directly</span>
-                      <span><strong style={{ color: '#4E79A7' }}>💬 Chat</strong> — write to me</span>
-                      <span><strong style={{ color: '#4E79A7' }}>🔊 Sound</strong> — toggle my narration</span>
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontStyle: 'normal',
+                        marginBottom: 4,
+                        fontSize: 13,
+                      }}
+                    >
+                      Εὐκλείδης
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      &ldquo;I am here if you need guidance. You may call upon me by voice, or write
+                      to me if you prefer. I can also narrate your progress as you work.&rdquo;
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 3,
+                        fontStyle: 'normal',
+                        fontSize: 11,
+                        color: '#6b7280',
+                      }}
+                    >
+                      <span>
+                        <strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me
+                        directly
+                      </span>
+                      <span>
+                        <strong style={{ color: '#4E79A7' }}>💬 Chat</strong> — write to me
+                      </span>
+                      <span>
+                        <strong style={{ color: '#4E79A7' }}>🔊 Sound</strong> — toggle my narration
+                      </span>
                     </div>
                     {/* Arrow */}
-                    <div style={{
-                      position: 'absolute',
-                      bottom: -5,
-                      left: 24,
-                      width: 10,
-                      height: 10,
-                      background: 'rgba(255, 255, 255, 0.95)',
-                      border: '1px solid rgba(203, 213, 225, 0.8)',
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      transform: 'rotate(45deg)',
-                    }} />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: -5,
+                        left: 24,
+                        width: 10,
+                        height: 10,
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        border: '1px solid rgba(203, 213, 225, 0.8)',
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        transform: 'rotate(45deg)',
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -4203,10 +4356,23 @@ export function EuclidCanvas({
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 9px 0 0',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   {audioEnabled ? (
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -4232,25 +4398,41 @@ export function EuclidCanvas({
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 0 0 9px',
                 }}
-                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                onMouseEnter={(e) => {
+                  if (euclidVoice.state === 'idle')
+                    e.currentTarget.style.background = 'rgba(78, 121, 167, 0.08)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                 </svg>
               </button>
               {/* BR: Chat — toggles docked mode; disabled during active voice call */}
               <button
                 data-action="chat-euclid"
-                onClick={euclidVoice.state !== 'idle'
-                  ? undefined
-                  : () => setChatMode((m) => {
-                      if (m === 'closed') {
-                        requestAnimationFrame(() => dockedInputRef.current?.focus())
-                        return 'docked'
-                      }
-                      return 'closed'
-                    })
+                onClick={
+                  euclidVoice.state !== 'idle'
+                    ? undefined
+                    : () =>
+                        setChatMode((m) => {
+                          if (m === 'closed') {
+                            requestAnimationFrame(() => dockedInputRef.current?.focus())
+                            return 'docked'
+                          }
+                          return 'closed'
+                        })
                 }
                 title={chatMode !== 'closed' ? 'Close chat' : 'Open chat'}
                 style={{
@@ -4265,10 +4447,28 @@ export function EuclidCanvas({
                   transition: 'background 0.15s ease, color 0.15s ease',
                   borderRadius: '0 0 9px 0',
                 }}
-                onMouseEnter={(e) => { if (euclidVoice.state === 'idle') e.currentTarget.style.background = chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.12)' : 'transparent' }}
+                onMouseEnter={(e) => {
+                  if (euclidVoice.state === 'idle')
+                    e.currentTarget.style.background =
+                      chatMode !== 'closed'
+                        ? 'rgba(78, 121, 167, 0.16)'
+                        : 'rgba(78, 121, 167, 0.08)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.12)' : 'transparent'
+                }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </button>
@@ -4362,7 +4562,9 @@ export function EuclidCanvas({
             borderTop: isMobile ? '1px solid rgba(203, 213, 225, 0.6)' : undefined,
             position: 'relative',
             height: isMobile
-              ? (mobileDockedExpanded ? 'calc(50dvh / 3)' : `${MOBILE_PROOF_PANEL_HEIGHT_RATIO * 100}dvh`)
+              ? mobileDockedExpanded
+                ? 'calc(50dvh / 3)'
+                : `${MOBILE_PROOF_PANEL_HEIGHT_RATIO * 100}dvh`
               : '100%',
             transition: isMobile ? 'height 0.25s ease' : undefined,
             boxShadow: isMobile ? '0 -10px 24px rgba(0,0,0,0.12)' : undefined,
@@ -4422,38 +4624,449 @@ export function EuclidCanvas({
               overflow: 'hidden',
             }}
           >
-          {/* Scrollable steps + proof chain */}
-          <div
-            ref={proofScrollRef}
-            data-element="proof-steps"
-            style={{
-              flex: 1,
-              minHeight: 0,
-              overflowY: 'auto',
-              padding: isMobile ? '10px 14px' : '12px 20px',
-            }}
-          >
-            {/* Given facts (atStep === -1, displayed before construction steps) */}
-            {(() => {
-              const givenFacts = factsByStep.get(-1) ?? []
-              if (givenFacts.length === 0) return null
-              return (
-                <div data-element="given-facts" style={{ marginBottom: isMobile ? 8 : 16 }}>
-                  {givenFacts.map((fact) => {
-                    const highlighted = isFactHighlighted(fact)
-                    return (
+            {/* Scrollable steps + proof chain */}
+            <div
+              ref={proofScrollRef}
+              data-element="proof-steps"
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                padding: isMobile ? '10px 14px' : '12px 20px',
+              }}
+            >
+              {/* Given facts (atStep === -1, displayed before construction steps) */}
+              {(() => {
+                const givenFacts = factsByStep.get(-1) ?? []
+                if (givenFacts.length === 0) return null
+                return (
+                  <div data-element="given-facts" style={{ marginBottom: isMobile ? 8 : 16 }}>
+                    {givenFacts.map((fact) => {
+                      const highlighted = isFactHighlighted(fact)
+                      return (
+                        <div
+                          key={fact.id}
+                          onMouseEnter={() => setHoveredFactId(fact.id)}
+                          onMouseLeave={() => setHoveredFactId(null)}
+                          style={{
+                            fontSize: proofFont.stepText,
+                            marginBottom: 3,
+                            paddingLeft: 8,
+                            cursor: 'default',
+                            borderLeft: highlighted
+                              ? '2px solid #10b981'
+                              : '2px solid rgba(78, 121, 167, 0.2)',
+                            background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                            borderRadius: highlighted ? 2 : 0,
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <div>
+                            <span
+                              style={{
+                                color: '#4E79A7',
+                                fontWeight: 600,
+                                fontFamily: 'Georgia, serif',
+                              }}
+                            >
+                              {fact.statement}
+                            </span>
+                            <span
+                              style={{
+                                color: '#94a3b8',
+                                fontFamily: 'Georgia, serif',
+                                fontSize: proofFont.citation,
+                                fontWeight: 600,
+                                marginLeft: 6,
+                              }}
+                            >
+                              [Given]
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+              {steps.map((step, i) => {
+                const isDone = completedSteps[i]
+                const isCurrent = i === currentStep && !isComplete
+                const isFuture = !isDone && !isCurrent
+                const stepFacts = factsByStep.get(i) ?? []
+
+                const isHovered = isDone && hoveredStepIndex === i
+
+                return (
+                  <div
+                    key={i}
+                    data-element="proof-step"
+                    data-step-current={isCurrent ? 'true' : undefined}
+                    onClick={isDone ? () => handleRewindToStep(i) : undefined}
+                    onMouseEnter={
+                      isDone
+                        ? () => {
+                            setHoveredStepIndex(i)
+                            // Activate ghost geometry hover for macro steps
+                            if (step.expected.type === 'macro') {
+                              hoveredMacroStepRef.current = i
+                              needsDrawRef.current = true
+                            }
+                          }
+                        : undefined
+                    }
+                    onMouseLeave={
+                      isDone
+                        ? () => {
+                            setHoveredStepIndex(null)
+                            hoveredMacroStepRef.current = null
+                            needsDrawRef.current = true
+                          }
+                        : undefined
+                    }
+                    style={{
+                      marginBottom: isMobile ? 8 : 16,
+                      opacity: isFuture ? 0.35 : 1,
+                      transition: 'opacity 0.3s ease',
+                      cursor: isDone ? 'pointer' : undefined,
+                      borderRadius: 6,
+                      background: isHovered ? 'rgba(16, 185, 129, 0.06)' : undefined,
+                    }}
+                  >
+                    {/* Step header: number + instruction + citation */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 8,
+                      }}
+                    >
+                      {/* Step indicator */}
                       <div
-                        key={fact.id}
-                        onMouseEnter={() => setHoveredFactId(fact.id)}
-                        onMouseLeave={() => setHoveredFactId(null)}
                         style={{
-                          fontSize: proofFont.stepText,
-                          marginBottom: 3,
+                          width: isMobile ? 18 : 20,
+                          height: isMobile ? 18 : 20,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          marginTop: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: isMobile ? 10 : 11,
+                          fontWeight: 700,
+                          fontFamily: 'system-ui, sans-serif',
+                          background: isDone
+                            ? isHovered
+                              ? '#0d9668'
+                              : '#10b981'
+                            : isCurrent
+                              ? '#4E79A7'
+                              : '#e2e8f0',
+                          color: isDone || isCurrent ? '#fff' : '#94a3b8',
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        {isDone ? (isHovered ? '\u21BA' : '\u2713') : i + 1}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Formal instruction */}
+                        <div
+                          style={{
+                            fontSize: proofFont.stepTitle,
+                            fontWeight: isCurrent ? 600 : 400,
+                            color: isCurrent ? '#1e293b' : '#475569',
+                            fontFamily: 'Georgia, serif',
+                            lineHeight: isMobile ? 1.25 : 1.4,
+                          }}
+                        >
+                          <MarkedText
+                            text={step.instruction}
+                            markers={EUCLID_ENTITY_MARKERS}
+                            onHighlight={handleChatHighlight}
+                            renderEntity={renderEntity}
+                          />
+                        </div>
+
+                        {/* Citation: progressive disclosure */}
+                        {step.citation &&
+                          (() => {
+                            const cit = CITATIONS[step.citation]
+                            const ord = citationOrdinals.get(`step-${i}`) ?? 1
+                            const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
+                            const showText = ord === 1
+                            const foundationHref = getFoundationHref(step.citation)
+                            return (
+                              <div
+                                data-element="citation-text"
+                                style={{
+                                  marginTop: 4,
+                                  fontSize: proofFont.stepText,
+                                  lineHeight: isMobile ? 1.25 : 1.4,
+                                  color: isDone ? '#6b9b6b' : '#7893ab',
+                                  fontFamily: 'Georgia, serif',
+                                  fontStyle: 'italic',
+                                }}
+                              >
+                                {foundationHref || step.citation.match(/^I\./) ? (
+                                  <a
+                                    href={
+                                      foundationHref ??
+                                      `/toys/euclid/${step.citation.replace('I.', '')}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onPointerEnter={(e) =>
+                                      handleCitationPointerEnter(step.citation!, e)
+                                    }
+                                    onPointerLeave={handleCitationPointerLeave}
+                                    onPointerDown={(e) =>
+                                      handleCitationPointerDown(step.citation!, e)
+                                    }
+                                    style={{
+                                      fontWeight: 600,
+                                      fontStyle: 'normal',
+                                      fontSize: proofFont.citation,
+                                      color: 'inherit',
+                                      textDecoration: 'underline',
+                                      textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    {label}
+                                  </a>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      fontStyle: 'normal',
+                                      fontSize: proofFont.citation,
+                                    }}
+                                  >
+                                    {label}
+                                  </span>
+                                )}
+                                {showText && cit?.text && (
+                                  <span style={{ marginLeft: 4 }}>— {cit.text}</span>
+                                )}
+                              </div>
+                            )
+                          })()}
+
+                        {/* Tutorial guidance for current step */}
+                        {isCurrent && currentInstruction && (
+                          <div
+                            data-element="step-guidance"
+                            style={{
+                              marginTop: 6,
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              background: 'rgba(78, 121, 167, 0.06)',
+                              border: '1px solid rgba(78, 121, 167, 0.15)',
+                              fontSize: proofFont.stepText,
+                              color: '#4E79A7',
+                              fontFamily: 'system-ui, sans-serif',
+                              lineHeight: isMobile ? 1.25 : 1.4,
+                            }}
+                          >
+                            <MarkedText
+                              text={currentInstruction}
+                              markers={EUCLID_ENTITY_MARKERS}
+                              onHighlight={handleChatHighlight}
+                              renderEntity={renderEntitySubtle}
+                            />
+                          </div>
+                        )}
+
+                        {/* Observation step: Continue button */}
+                        {isCurrent && step.expected.type === 'observation' && (
+                          <button
+                            data-action="advance-observation"
+                            type="button"
+                            onClick={advanceObservation}
+                            style={{
+                              marginTop: 8,
+                              padding: '6px 20px',
+                              borderRadius: 16,
+                              border: 'none',
+                              background: '#4E79A7',
+                              color: '#fff',
+                              fontSize: proofFont.stepText,
+                              fontWeight: 600,
+                              fontFamily: 'Georgia, serif',
+                              cursor: 'pointer',
+                              letterSpacing: '0.02em',
+                            }}
+                          >
+                            Continue
+                          </button>
+                        )}
+
+                        {/* Facts derived at this step */}
+                        {stepFacts.length > 0 && (
+                          <div style={{ marginTop: 6 }}>
+                            {stepFacts.map((fact) => {
+                              const factCit = citationDefFromFact(fact.citation)
+                              const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
+                              const citLabel = factCit
+                                ? ord <= 2
+                                  ? factCit.label
+                                  : factCit.key
+                                : null
+                              const foundationHref = factCit ? getFoundationHref(factCit.key) : null
+                              const showText = ord === 1 && factCit
+                              const explanation = fact.justification.replace(
+                                /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
+                                ''
+                              )
+                              const highlighted = isFactHighlighted(fact)
+                              return (
+                                <div
+                                  key={fact.id}
+                                  onMouseEnter={() => setHoveredFactId(fact.id)}
+                                  onMouseLeave={() => setHoveredFactId(null)}
+                                  style={{
+                                    fontSize: proofFont.stepText,
+                                    marginBottom: 3,
+                                    paddingLeft: 8,
+                                    cursor: 'default',
+                                    borderLeft: highlighted
+                                      ? '2px solid #10b981'
+                                      : '2px solid rgba(78, 121, 167, 0.2)',
+                                    background: highlighted
+                                      ? 'rgba(16, 185, 129, 0.08)'
+                                      : 'transparent',
+                                    borderRadius: highlighted ? 2 : 0,
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  <div>
+                                    <span
+                                      style={{
+                                        color: '#4E79A7',
+                                        fontWeight: 600,
+                                        fontFamily: 'Georgia, serif',
+                                      }}
+                                    >
+                                      {fact.statement}
+                                    </span>
+                                    {citLabel && factCit && (
+                                      <>
+                                        {foundationHref || factCit.key.match(/^I\./) ? (
+                                          <a
+                                            href={
+                                              foundationHref ??
+                                              `/toys/euclid/${factCit.key.replace('I.', '')}`
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onPointerEnter={(e) =>
+                                              handleCitationPointerEnter(factCit.key, e)
+                                            }
+                                            onPointerLeave={handleCitationPointerLeave}
+                                            onPointerDown={(e) =>
+                                              handleCitationPointerDown(factCit.key, e)
+                                            }
+                                            style={{
+                                              color: '#94a3b8',
+                                              fontFamily: 'Georgia, serif',
+                                              fontSize: proofFont.citation,
+                                              fontWeight: 600,
+                                              marginLeft: 6,
+                                              textDecoration: 'underline',
+                                              textDecorationColor: 'rgba(16, 185, 129, 0.45)',
+                                              cursor: 'pointer',
+                                            }}
+                                          >
+                                            [{citLabel}]
+                                          </a>
+                                        ) : (
+                                          <span
+                                            style={{
+                                              color: '#94a3b8',
+                                              fontFamily: 'Georgia, serif',
+                                              fontSize: proofFont.citation,
+                                              fontWeight: 600,
+                                              marginLeft: 6,
+                                            }}
+                                          >
+                                            [{citLabel}]
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                  {showText && factCit?.text && (
+                                    <div
+                                      style={{
+                                        color: '#94a3b8',
+                                        fontStyle: 'italic',
+                                        fontFamily: 'Georgia, serif',
+                                        fontSize: proofFont.citation,
+                                        lineHeight: 1.3,
+                                        marginTop: 1,
+                                      }}
+                                    >
+                                      {factCit.text}
+                                    </div>
+                                  )}
+                                  <div
+                                    style={{
+                                      color: '#94a3b8',
+                                      fontStyle: 'italic',
+                                      fontFamily: 'Georgia, serif',
+                                      fontSize: proofFont.citation,
+                                      lineHeight: 1.3,
+                                      marginTop: 1,
+                                    }}
+                                  >
+                                    {explanation}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Conclusion facts (atStep === steps.length) */}
+              {(() => {
+                const conclusionFacts = factsByStep.get(steps.length) ?? []
+                if (conclusionFacts.length === 0 && !isComplete) return null
+                return conclusionFacts.map((fact) => {
+                  const factCit = citationDefFromFact(fact.citation)
+                  const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
+                  const citLabel = factCit ? (ord <= 2 ? factCit.label : factCit.key) : null
+                  const showText = ord === 1 && factCit
+                  const explanation = fact.justification.replace(
+                    /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
+                    ''
+                  )
+                  const foundationHref = factCit ? getFoundationHref(factCit.key) : null
+                  const highlighted = isFactHighlighted(fact)
+                  return (
+                    <div
+                      key={fact.id}
+                      onMouseEnter={() => setHoveredFactId(fact.id)}
+                      onMouseLeave={() => setHoveredFactId(null)}
+                      style={{
+                        fontSize: proofFont.stepText,
+                        marginBottom: 3,
+                        paddingLeft: 28,
+                        marginLeft: 0,
+                        cursor: 'default',
+                      }}
+                    >
+                      <div
+                        style={{
                           paddingLeft: 8,
-                          cursor: 'default',
                           borderLeft: highlighted
                             ? '2px solid #10b981'
-                            : '2px solid rgba(78, 121, 167, 0.2)',
+                            : '2px solid rgba(16, 185, 129, 0.3)',
                           background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
                           borderRadius: highlighted ? 2 : 0,
                           transition: 'all 0.15s ease',
@@ -4469,456 +5082,62 @@ export function EuclidCanvas({
                           >
                             {fact.statement}
                           </span>
-                          <span
-                            style={{
-                              color: '#94a3b8',
-                              fontFamily: 'Georgia, serif',
-                              fontSize: proofFont.citation,
-                              fontWeight: 600,
-                              marginLeft: 6,
-                            }}
-                          >
-                            [Given]
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-            {steps.map((step, i) => {
-              const isDone = completedSteps[i]
-              const isCurrent = i === currentStep && !isComplete
-              const isFuture = !isDone && !isCurrent
-              const stepFacts = factsByStep.get(i) ?? []
-
-              const isHovered = isDone && hoveredStepIndex === i
-
-              return (
-                <div
-                  key={i}
-                  data-element="proof-step"
-                  data-step-current={isCurrent ? 'true' : undefined}
-                  onClick={isDone ? () => handleRewindToStep(i) : undefined}
-                  onMouseEnter={
-                    isDone
-                      ? () => {
-                          setHoveredStepIndex(i)
-                          // Activate ghost geometry hover for macro steps
-                          if (step.expected.type === 'macro') {
-                            hoveredMacroStepRef.current = i
-                            needsDrawRef.current = true
-                          }
-                        }
-                      : undefined
-                  }
-                  onMouseLeave={
-                    isDone
-                      ? () => {
-                          setHoveredStepIndex(null)
-                          hoveredMacroStepRef.current = null
-                          needsDrawRef.current = true
-                        }
-                      : undefined
-                  }
-                  style={{
-                    marginBottom: isMobile ? 8 : 16,
-                    opacity: isFuture ? 0.35 : 1,
-                    transition: 'opacity 0.3s ease',
-                    cursor: isDone ? 'pointer' : undefined,
-                    borderRadius: 6,
-                    background: isHovered ? 'rgba(16, 185, 129, 0.06)' : undefined,
-                  }}
-                >
-                  {/* Step header: number + instruction + citation */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 8,
-                    }}
-                  >
-                    {/* Step indicator */}
-                    <div
-                      style={{
-                        width: isMobile ? 18 : 20,
-                        height: isMobile ? 18 : 20,
-                        borderRadius: '50%',
-                        flexShrink: 0,
-                        marginTop: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: isMobile ? 10 : 11,
-                        fontWeight: 700,
-                        fontFamily: 'system-ui, sans-serif',
-                        background: isDone
-                          ? isHovered
-                            ? '#0d9668'
-                            : '#10b981'
-                          : isCurrent
-                            ? '#4E79A7'
-                            : '#e2e8f0',
-                        color: isDone || isCurrent ? '#fff' : '#94a3b8',
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      {isDone ? (isHovered ? '\u21BA' : '\u2713') : i + 1}
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* Formal instruction */}
-                      <div
-                        style={{
-                          fontSize: proofFont.stepTitle,
-                          fontWeight: isCurrent ? 600 : 400,
-                          color: isCurrent ? '#1e293b' : '#475569',
-                          fontFamily: 'Georgia, serif',
-                          lineHeight: isMobile ? 1.25 : 1.4,
-                        }}
-                      >
-                        <MarkedText
-                          text={step.instruction}
-                          markers={EUCLID_ENTITY_MARKERS}
-                          onHighlight={handleChatHighlight}
-                          renderEntity={renderEntity}
-                        />
-                      </div>
-
-                      {/* Citation: progressive disclosure */}
-                      {step.citation &&
-                        (() => {
-                          const cit = CITATIONS[step.citation]
-                          const ord = citationOrdinals.get(`step-${i}`) ?? 1
-                          const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
-                          const showText = ord === 1
-                          const foundationHref = getFoundationHref(step.citation)
-                          return (
-                            <div
-                              data-element="citation-text"
-                              style={{
-                                marginTop: 4,
-                                fontSize: proofFont.stepText,
-                                lineHeight: isMobile ? 1.25 : 1.4,
-                                color: isDone ? '#6b9b6b' : '#7893ab',
-                                fontFamily: 'Georgia, serif',
-                                fontStyle: 'italic',
-                              }}
-                            >
-                              {foundationHref || step.citation.match(/^I\./) ? (
+                          {citLabel && factCit && (
+                            <>
+                              {foundationHref || factCit.key.match(/^I\./) ? (
                                 <a
                                   href={
                                     foundationHref ??
-                                    `/toys/euclid/${step.citation.replace('I.', '')}`
+                                    `/toys/euclid/${factCit.key.replace('I.', '')}`
                                   }
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onPointerEnter={(e) =>
-                                    handleCitationPointerEnter(step.citation!, e)
-                                  }
+                                  onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
                                   onPointerLeave={handleCitationPointerLeave}
-                                  onPointerDown={(e) =>
-                                    handleCitationPointerDown(step.citation!, e)
-                                  }
+                                  onPointerDown={(e) => handleCitationPointerDown(factCit.key, e)}
                                   style={{
-                                    fontWeight: 600,
-                                    fontStyle: 'normal',
+                                    color: '#94a3b8',
+                                    fontFamily: 'Georgia, serif',
                                     fontSize: proofFont.citation,
-                                    color: 'inherit',
+                                    fontWeight: 600,
+                                    marginLeft: 6,
                                     textDecoration: 'underline',
                                     textDecorationColor: 'rgba(16, 185, 129, 0.45)',
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  {label}
+                                  [{citLabel}]
                                 </a>
                               ) : (
                                 <span
                                   style={{
-                                    fontWeight: 600,
-                                    fontStyle: 'normal',
-                                    fontSize: proofFont.citation,
-                                  }}
-                                >
-                                  {label}
-                                </span>
-                              )}
-                              {showText && cit?.text && (
-                                <span style={{ marginLeft: 4 }}>— {cit.text}</span>
-                              )}
-                            </div>
-                          )
-                        })()}
-
-                      {/* Tutorial guidance for current step */}
-                      {isCurrent && currentInstruction && (
-                        <div
-                          data-element="step-guidance"
-                          style={{
-                            marginTop: 6,
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            background: 'rgba(78, 121, 167, 0.06)',
-                            border: '1px solid rgba(78, 121, 167, 0.15)',
-                            fontSize: proofFont.stepText,
-                            color: '#4E79A7',
-                            fontFamily: 'system-ui, sans-serif',
-                            lineHeight: isMobile ? 1.25 : 1.4,
-                          }}
-                        >
-                          <MarkedText
-                            text={currentInstruction}
-                            markers={EUCLID_ENTITY_MARKERS}
-                            onHighlight={handleChatHighlight}
-                            renderEntity={renderEntitySubtle}
-                          />
-                        </div>
-                      )}
-
-                      {/* Observation step: Continue button */}
-                      {isCurrent && step.expected.type === 'observation' && (
-                        <button
-                          data-action="advance-observation"
-                          type="button"
-                          onClick={advanceObservation}
-                          style={{
-                            marginTop: 8,
-                            padding: '6px 20px',
-                            borderRadius: 16,
-                            border: 'none',
-                            background: '#4E79A7',
-                            color: '#fff',
-                            fontSize: proofFont.stepText,
-                            fontWeight: 600,
-                            fontFamily: 'Georgia, serif',
-                            cursor: 'pointer',
-                            letterSpacing: '0.02em',
-                          }}
-                        >
-                          Continue
-                        </button>
-                      )}
-
-                      {/* Facts derived at this step */}
-                      {stepFacts.length > 0 && (
-                        <div style={{ marginTop: 6 }}>
-                          {stepFacts.map((fact) => {
-                            const factCit = citationDefFromFact(fact.citation)
-                            const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
-                            const citLabel = factCit
-                              ? ord <= 2
-                                ? factCit.label
-                                : factCit.key
-                              : null
-                            const foundationHref = factCit ? getFoundationHref(factCit.key) : null
-                            const showText = ord === 1 && factCit
-                            const explanation = fact.justification.replace(
-                              /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
-                              ''
-                            )
-                            const highlighted = isFactHighlighted(fact)
-                            return (
-                              <div
-                                key={fact.id}
-                                onMouseEnter={() => setHoveredFactId(fact.id)}
-                                onMouseLeave={() => setHoveredFactId(null)}
-                                style={{
-                                  fontSize: proofFont.stepText,
-                                  marginBottom: 3,
-                                  paddingLeft: 8,
-                                  cursor: 'default',
-                                  borderLeft: highlighted
-                                    ? '2px solid #10b981'
-                                    : '2px solid rgba(78, 121, 167, 0.2)',
-                                  background: highlighted
-                                    ? 'rgba(16, 185, 129, 0.08)'
-                                    : 'transparent',
-                                  borderRadius: highlighted ? 2 : 0,
-                                  transition: 'all 0.15s ease',
-                                }}
-                              >
-                                <div>
-                                  <span
-                                    style={{
-                                      color: '#4E79A7',
-                                      fontWeight: 600,
-                                      fontFamily: 'Georgia, serif',
-                                    }}
-                                  >
-                                    {fact.statement}
-                                  </span>
-                                  {citLabel && factCit && (
-                                    <>
-                                      {foundationHref || factCit.key.match(/^I\./) ? (
-                                        <a
-                                          href={
-                                            foundationHref ??
-                                            `/toys/euclid/${factCit.key.replace('I.', '')}`
-                                          }
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onPointerEnter={(e) =>
-                                            handleCitationPointerEnter(factCit.key, e)
-                                          }
-                                          onPointerLeave={handleCitationPointerLeave}
-                                          onPointerDown={(e) =>
-                                            handleCitationPointerDown(factCit.key, e)
-                                          }
-                                          style={{
-                                            color: '#94a3b8',
-                                            fontFamily: 'Georgia, serif',
-                                            fontSize: proofFont.citation,
-                                            fontWeight: 600,
-                                            marginLeft: 6,
-                                            textDecoration: 'underline',
-                                            textDecorationColor: 'rgba(16, 185, 129, 0.45)',
-                                            cursor: 'pointer',
-                                          }}
-                                        >
-                                          [{citLabel}]
-                                        </a>
-                                      ) : (
-                                        <span
-                                          style={{
-                                            color: '#94a3b8',
-                                            fontFamily: 'Georgia, serif',
-                                            fontSize: proofFont.citation,
-                                            fontWeight: 600,
-                                            marginLeft: 6,
-                                          }}
-                                        >
-                                          [{citLabel}]
-                                        </span>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                                {showText && factCit?.text && (
-                                  <div
-                                    style={{
-                                      color: '#94a3b8',
-                                      fontStyle: 'italic',
-                                      fontFamily: 'Georgia, serif',
-                                      fontSize: proofFont.citation,
-                                      lineHeight: 1.3,
-                                      marginTop: 1,
-                                    }}
-                                  >
-                                    {factCit.text}
-                                  </div>
-                                )}
-                                <div
-                                  style={{
                                     color: '#94a3b8',
-                                    fontStyle: 'italic',
                                     fontFamily: 'Georgia, serif',
                                     fontSize: proofFont.citation,
-                                    lineHeight: 1.3,
-                                    marginTop: 1,
+                                    fontWeight: 600,
+                                    marginLeft: 6,
                                   }}
                                 >
-                                  {explanation}
-                                </div>
-                              </div>
-                            )
-                          })}
+                                  [{citLabel}]
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-
-            {/* Conclusion facts (atStep === steps.length) */}
-            {(() => {
-              const conclusionFacts = factsByStep.get(steps.length) ?? []
-              if (conclusionFacts.length === 0 && !isComplete) return null
-              return conclusionFacts.map((fact) => {
-                const factCit = citationDefFromFact(fact.citation)
-                const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
-                const citLabel = factCit ? (ord <= 2 ? factCit.label : factCit.key) : null
-                const showText = ord === 1 && factCit
-                const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
-                const foundationHref = factCit ? getFoundationHref(factCit.key) : null
-                const highlighted = isFactHighlighted(fact)
-                return (
-                  <div
-                    key={fact.id}
-                    onMouseEnter={() => setHoveredFactId(fact.id)}
-                    onMouseLeave={() => setHoveredFactId(null)}
-                    style={{
-                      fontSize: proofFont.stepText,
-                      marginBottom: 3,
-                      paddingLeft: 28,
-                      marginLeft: 0,
-                      cursor: 'default',
-                    }}
-                  >
-                    <div
-                      style={{
-                        paddingLeft: 8,
-                        borderLeft: highlighted
-                          ? '2px solid #10b981'
-                          : '2px solid rgba(16, 185, 129, 0.3)',
-                        background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                        borderRadius: highlighted ? 2 : 0,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div>
-                        <span
-                          style={{
-                            color: '#4E79A7',
-                            fontWeight: 600,
-                            fontFamily: 'Georgia, serif',
-                          }}
-                        >
-                          {fact.statement}
-                        </span>
-                        {citLabel && factCit && (
-                          <>
-                            {foundationHref || factCit.key.match(/^I\./) ? (
-                              <a
-                                href={
-                                  foundationHref ?? `/toys/euclid/${factCit.key.replace('I.', '')}`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
-                                onPointerLeave={handleCitationPointerLeave}
-                                onPointerDown={(e) => handleCitationPointerDown(factCit.key, e)}
-                                style={{
-                                  color: '#94a3b8',
-                                  fontFamily: 'Georgia, serif',
-                                  fontSize: proofFont.citation,
-                                  fontWeight: 600,
-                                  marginLeft: 6,
-                                  textDecoration: 'underline',
-                                  textDecorationColor: 'rgba(16, 185, 129, 0.45)',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                [{citLabel}]
-                              </a>
-                            ) : (
-                              <span
-                                style={{
-                                  color: '#94a3b8',
-                                  fontFamily: 'Georgia, serif',
-                                  fontSize: proofFont.citation,
-                                  fontWeight: 600,
-                                  marginLeft: 6,
-                                }}
-                              >
-                                [{citLabel}]
-                              </span>
-                            )}
-                          </>
+                        {showText && factCit?.text && (
+                          <div
+                            style={{
+                              color: '#94a3b8',
+                              fontStyle: 'italic',
+                              fontFamily: 'Georgia, serif',
+                              fontSize: proofFont.citation,
+                              lineHeight: 1.3,
+                              marginTop: 1,
+                            }}
+                          >
+                            {factCit.text}
+                          </div>
                         )}
-                      </div>
-                      {showText && factCit?.text && (
                         <div
                           style={{
                             color: '#94a3b8',
@@ -4929,377 +5148,367 @@ export function EuclidCanvas({
                             marginTop: 1,
                           }}
                         >
-                          {factCit.text}
+                          {explanation}
                         </div>
-                      )}
-                      <div
-                        style={{
-                          color: '#94a3b8',
-                          fontStyle: 'italic',
-                          fontFamily: 'Georgia, serif',
-                          fontSize: proofFont.citation,
-                          lineHeight: 1.3,
-                          marginTop: 1,
-                        }}
-                      >
-                        {explanation}
                       </div>
                     </div>
-                  </div>
-                )
-              })
-            })()}
-          </div>
+                  )
+                })
+              })()}
+            </div>
 
-          {/* Conclusion + completion (merged on mobile) */}
-          {isComplete && completionResult && (
-            <div
-              data-element="proof-conclusion"
-              style={{
-                padding: isMobile ? '6px 10px' : '12px 20px',
-                borderTop:
-                  completionResult.status === 'proven'
-                    ? '2px solid rgba(16, 185, 129, 0.4)'
-                    : '2px solid rgba(239, 68, 68, 0.4)',
-                background:
-                  completionResult.status === 'proven'
-                    ? 'rgba(16, 185, 129, 0.06)'
-                    : 'rgba(239, 68, 68, 0.06)',
-              }}
-              onMouseLeave={() => {
-                setHoveredProofDp(null)
-                setHoveredFactId(null)
-              }}
-            >
-              {completionResult.status === 'proven' ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: 6,
-                    flexWrap: 'wrap',
-                  }}
-                >
+            {/* Conclusion + completion (merged on mobile) */}
+            {isComplete && completionResult && (
+              <div
+                data-element="proof-conclusion"
+                style={{
+                  padding: isMobile ? '6px 10px' : '12px 20px',
+                  borderTop:
+                    completionResult.status === 'proven'
+                      ? '2px solid rgba(16, 185, 129, 0.4)'
+                      : '2px solid rgba(239, 68, 68, 0.4)',
+                  background:
+                    completionResult.status === 'proven'
+                      ? 'rgba(16, 185, 129, 0.06)'
+                      : 'rgba(239, 68, 68, 0.06)',
+                }}
+                onMouseLeave={() => {
+                  setHoveredProofDp(null)
+                  setHoveredFactId(null)
+                }}
+              >
+                {completionResult.status === 'proven' ? (
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'baseline',
-                      gap: 5,
+                      gap: 6,
                       flexWrap: 'wrap',
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: '#10b981',
-                        fontWeight: 700,
-                        fontSize: proofFont.conclusion,
-                        fontFamily: 'Georgia, serif',
-                      }}
-                    >
-                      {'∴ '}
-                      {completionResult.segments.map((seg, idx) => (
-                        <span key={seg.label}>
-                          {idx > 0 && <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>}
-                          <span
-                            data-element="conclusion-segment"
-                            onMouseEnter={() => setHoveredProofDp(seg.dp)}
-                            style={{
-                              cursor: 'default',
-                              borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
-                                ? '2px solid #10b981'
-                                : '2px solid transparent',
-                              transition: 'border-color 0.15s ease',
-                            }}
-                          >
-                            {seg.label}
-                          </span>
-                        </span>
-                      ))}
-                    </span>
-                    {(() => {
-                      // Render angle conclusion facts as interactive hoverable spans
-                      const conclusionAngleFacts = (factsByStep.get(steps.length) ?? []).filter(
-                        isAngleFact
-                      )
-                      // Dynamic conclusion takes precedence over static
-                      const conclusionText = proposition.computeTheoremConclusion
-                        ? proposition.computeTheoremConclusion(constructionRef.current)
-                        : proposition.theoremConclusion
-
-                      return (
-                        <>
-                          {conclusionAngleFacts.length > 0 && (
-                            <div
-                              style={{
-                                color: '#10b981',
-                                fontSize: proofFont.stepText,
-                                fontFamily: 'Georgia, serif',
-                                fontStyle: 'italic',
-                                marginTop: 0,
-                                width: '100%',
-                              }}
-                            >
-                              {conclusionAngleFacts.map((fact, idx) => (
-                                <span key={fact.id}>
-                                  {idx > 0 && ', '}
-                                  <span
-                                    data-element="conclusion-angle"
-                                    onMouseEnter={() => setHoveredFactId(fact.id)}
-                                    onMouseLeave={() => setHoveredFactId(null)}
-                                    style={{
-                                      cursor: 'default',
-                                      borderBottom: isFactHighlighted(fact)
-                                        ? '2px solid #10b981'
-                                        : '2px solid transparent',
-                                      transition: 'border-color 0.15s ease',
-                                    }}
-                                  >
-                                    {fact.statement}
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {conclusionText && (
-                            <div
-                              style={{
-                                color: '#10b981',
-                                fontSize: proofFont.stepText,
-                                fontFamily: 'Georgia, serif',
-                                fontStyle: 'italic',
-                                marginTop: 0,
-                                width: '100%',
-                                whiteSpace: 'pre-line',
-                              }}
-                            >
-                              {conclusionText}
-                            </div>
-                          )}
-                        </>
-                      )
-                    })()}
-                    <span
-                      style={{
-                        color: '#10b981',
-                        fontStyle: 'italic',
-                        fontSize: proofFont.stepText,
-                        fontWeight: 600,
-                        fontFamily: 'Georgia, serif',
-                        letterSpacing: '0.02em',
-                      }}
-                    >
-                      {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
-                    </span>
-                  </div>
-                  {isMobile && completionMeta?.nextPropId && (
-                    <button
-                      type="button"
-                      data-action="navigate-next"
-                      onClick={() => completionMeta.onNavigateNext(completionMeta.nextPropId!)}
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: proofFont.stepText,
-                        fontWeight: 600,
-                        fontFamily: 'Georgia, serif',
-                        background: '#10b981',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        marginLeft: 'auto',
-                      }}
-                    >
-                      {completionMeta.unlocked.includes(completionMeta.nextPropId)
-                        ? `Unlocked: I.${completionMeta.nextPropId} →`
-                        : `Next: I.${completionMeta.nextPropId} →`}
-                    </button>
-                  )}
-                  {!isMobile && proposition.draggablePointIds && (
-                    <div
-                      data-element="drag-invitation"
-                      style={{
-                        marginTop: 10,
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        background: 'rgba(78, 121, 167, 0.08)',
-                        border: '1px solid rgba(78, 121, 167, 0.15)',
-                        color: '#4E79A7',
-                        fontSize: proofFont.stepText,
-                        fontFamily: 'system-ui, sans-serif',
-                        fontStyle: 'normal',
-                        fontWeight: 500,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      Now try dragging the points to see that it always works.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <span
-                  style={{
-                    color: '#ef4444',
-                    fontWeight: 600,
-                    fontSize: proofFont.stepText,
-                    fontFamily: 'Georgia, serif',
-                  }}
-                >
-                  Proof incomplete — could not establish equality for {completionResult.statement}
-                </span>
-              )}
-              {isMobile &&
-                completionMeta &&
-                (completionResult.status !== 'proven' ||
-                  (completionMeta.unlocked.length > 0 &&
-                    !(
-                      completionMeta.nextPropId &&
-                      completionMeta.unlocked.length === 1 &&
-                      completionMeta.unlocked[0] === completionMeta.nextPropId
-                    ))) && (
-                  <div
-                    data-element="proof-completion-dock"
-                    style={{
-                      marginTop: 4,
-                      paddingTop: 4,
-                      borderTop: '1px dashed rgba(148, 163, 184, 0.5)',
                     }}
                   >
                     <div
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 10,
+                        alignItems: 'baseline',
+                        gap: 5,
                         flexWrap: 'wrap',
+                        flex: 1,
+                        minWidth: 0,
                       }}
                     >
-                      {completionResult.status !== 'proven' && (
-                        <div
-                          style={{
-                            color: '#b91c1c',
-                            fontFamily: 'Georgia, serif',
-                            fontSize: proofFont.stepText,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Incomplete
-                        </div>
-                      )}
+                      <span
+                        style={{
+                          color: '#10b981',
+                          fontWeight: 700,
+                          fontSize: proofFont.conclusion,
+                          fontFamily: 'Georgia, serif',
+                        }}
+                      >
+                        {'∴ '}
+                        {completionResult.segments.map((seg, idx) => (
+                          <span key={seg.label}>
+                            {idx > 0 && (
+                              <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>
+                            )}
+                            <span
+                              data-element="conclusion-segment"
+                              onMouseEnter={() => setHoveredProofDp(seg.dp)}
+                              style={{
+                                cursor: 'default',
+                                borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
+                                  ? '2px solid #10b981'
+                                  : '2px solid transparent',
+                                transition: 'border-color 0.15s ease',
+                              }}
+                            >
+                              {seg.label}
+                            </span>
+                          </span>
+                        ))}
+                      </span>
+                      {(() => {
+                        // Render angle conclusion facts as interactive hoverable spans
+                        const conclusionAngleFacts = (factsByStep.get(steps.length) ?? []).filter(
+                          isAngleFact
+                        )
+                        // Dynamic conclusion takes precedence over static
+                        const conclusionText = proposition.computeTheoremConclusion
+                          ? proposition.computeTheoremConclusion(constructionRef.current)
+                          : proposition.theoremConclusion
+
+                        return (
+                          <>
+                            {conclusionAngleFacts.length > 0 && (
+                              <div
+                                style={{
+                                  color: '#10b981',
+                                  fontSize: proofFont.stepText,
+                                  fontFamily: 'Georgia, serif',
+                                  fontStyle: 'italic',
+                                  marginTop: 0,
+                                  width: '100%',
+                                }}
+                              >
+                                {conclusionAngleFacts.map((fact, idx) => (
+                                  <span key={fact.id}>
+                                    {idx > 0 && ', '}
+                                    <span
+                                      data-element="conclusion-angle"
+                                      onMouseEnter={() => setHoveredFactId(fact.id)}
+                                      onMouseLeave={() => setHoveredFactId(null)}
+                                      style={{
+                                        cursor: 'default',
+                                        borderBottom: isFactHighlighted(fact)
+                                          ? '2px solid #10b981'
+                                          : '2px solid transparent',
+                                        transition: 'border-color 0.15s ease',
+                                      }}
+                                    >
+                                      {fact.statement}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {conclusionText && (
+                              <div
+                                style={{
+                                  color: '#10b981',
+                                  fontSize: proofFont.stepText,
+                                  fontFamily: 'Georgia, serif',
+                                  fontStyle: 'italic',
+                                  marginTop: 0,
+                                  width: '100%',
+                                  whiteSpace: 'pre-line',
+                                }}
+                              >
+                                {conclusionText}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                      <span
+                        style={{
+                          color: '#10b981',
+                          fontStyle: 'italic',
+                          fontSize: proofFont.stepText,
+                          fontWeight: 600,
+                          fontFamily: 'Georgia, serif',
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
+                      </span>
                     </div>
-                    {completionMeta.unlocked.length > 0 &&
+                    {isMobile && completionMeta?.nextPropId && (
+                      <button
+                        type="button"
+                        data-action="navigate-next"
+                        onClick={() => completionMeta.onNavigateNext(completionMeta.nextPropId!)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: proofFont.stepText,
+                          fontWeight: 600,
+                          fontFamily: 'Georgia, serif',
+                          background: '#10b981',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        {completionMeta.unlocked.includes(completionMeta.nextPropId)
+                          ? `Unlocked: I.${completionMeta.nextPropId} →`
+                          : `Next: I.${completionMeta.nextPropId} →`}
+                      </button>
+                    )}
+                    {!isMobile && proposition.draggablePointIds && (
+                      <div
+                        data-element="drag-invitation"
+                        style={{
+                          marginTop: 10,
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: 'rgba(78, 121, 167, 0.08)',
+                          border: '1px solid rgba(78, 121, 167, 0.15)',
+                          color: '#4E79A7',
+                          fontSize: proofFont.stepText,
+                          fontFamily: 'system-ui, sans-serif',
+                          fontStyle: 'normal',
+                          fontWeight: 500,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        Now try dragging the points to see that it always works.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span
+                    style={{
+                      color: '#ef4444',
+                      fontWeight: 600,
+                      fontSize: proofFont.stepText,
+                      fontFamily: 'Georgia, serif',
+                    }}
+                  >
+                    Proof incomplete — could not establish equality for {completionResult.statement}
+                  </span>
+                )}
+                {isMobile &&
+                  completionMeta &&
+                  (completionResult.status !== 'proven' ||
+                    (completionMeta.unlocked.length > 0 &&
                       !(
                         completionMeta.nextPropId &&
                         completionMeta.unlocked.length === 1 &&
                         completionMeta.unlocked[0] === completionMeta.nextPropId
-                      ) && (
-                        <div
-                          style={{
-                            marginTop: 2,
-                            fontSize: proofFont.stepText,
-                            color: '#475569',
-                            fontFamily: 'Georgia, serif',
-                            lineHeight: isMobile ? 1.2 : 1.4,
-                          }}
-                        >
-                          <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
-                          {completionMeta.unlocked.map((id, i) => (
-                            <span key={id}>
-                              {i > 0 && ', '}
-                              <strong>I.{id}</strong>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-                )}
-            </div>
-          )}
+                      ))) && (
+                    <div
+                      data-element="proof-completion-dock"
+                      style={{
+                        marginTop: 4,
+                        paddingTop: 4,
+                        borderTop: '1px dashed rgba(148, 163, 184, 0.5)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {completionResult.status !== 'proven' && (
+                          <div
+                            style={{
+                              color: '#b91c1c',
+                              fontFamily: 'Georgia, serif',
+                              fontSize: proofFont.stepText,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Incomplete
+                          </div>
+                        )}
+                      </div>
+                      {completionMeta.unlocked.length > 0 &&
+                        !(
+                          completionMeta.nextPropId &&
+                          completionMeta.unlocked.length === 1 &&
+                          completionMeta.unlocked[0] === completionMeta.nextPropId
+                        ) && (
+                          <div
+                            style={{
+                              marginTop: 2,
+                              fontSize: proofFont.stepText,
+                              color: '#475569',
+                              fontFamily: 'Georgia, serif',
+                              lineHeight: isMobile ? 1.2 : 1.4,
+                            }}
+                          >
+                            <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
+                            {completionMeta.unlocked.map((id, i) => (
+                              <span key={id}>
+                                {i > 0 && ', '}
+                                <strong>I.{id}</strong>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  )}
+              </div>
+            )}
 
-          {!isMobile && isComplete && completionResult && completionMeta && (
-            <div
-              data-element="proof-completion-dock"
-              style={{
-                padding: '10px 20px 12px',
-                borderTop: '1px dashed rgba(148, 163, 184, 0.5)',
-                background: 'rgba(248, 250, 252, 0.9)',
-              }}
-            >
+            {!isMobile && isComplete && completionResult && completionMeta && (
               <div
+                data-element="proof-completion-dock"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  flexWrap: 'wrap',
+                  padding: '10px 20px 12px',
+                  borderTop: '1px dashed rgba(148, 163, 184, 0.5)',
+                  background: 'rgba(248, 250, 252, 0.9)',
                 }}
               >
                 <div
                   style={{
-                    color: completionResult.status === 'proven' ? '#0f766e' : '#b91c1c',
-                    fontFamily: 'Georgia, serif',
-                    fontSize: proofFont.stepText,
-                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    flexWrap: 'wrap',
                   }}
                 >
-                  ✓ I.{proposition.id}{' '}
-                  {completionResult.status === 'proven'
-                    ? `Complete • ${proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}`
-                    : 'Incomplete'}
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {completionMeta.nextPropId && (
-                    <button
-                      type="button"
-                      data-action="navigate-next"
-                      onClick={() => completionMeta.onNavigateNext(completionMeta.nextPropId!)}
-                      style={{
-                        padding: '5px 12px',
-                        fontSize: proofFont.stepText,
-                        fontWeight: 600,
-                        fontFamily: 'Georgia, serif',
-                        background: '#10b981',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {completionMeta.unlocked.includes(completionMeta.nextPropId)
-                        ? `Unlocked: I.${completionMeta.nextPropId} →`
-                        : `Next: I.${completionMeta.nextPropId} →`}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {completionMeta.unlocked.length > 0 &&
-                !(
-                  completionMeta.nextPropId &&
-                  completionMeta.unlocked.length === 1 &&
-                  completionMeta.unlocked[0] === completionMeta.nextPropId
-                ) && (
                   <div
                     style={{
-                      marginTop: 6,
-                      fontSize: proofFont.stepText,
-                      color: '#475569',
+                      color: completionResult.status === 'proven' ? '#0f766e' : '#b91c1c',
                       fontFamily: 'Georgia, serif',
-                      lineHeight: 1.4,
+                      fontSize: proofFont.stepText,
+                      fontWeight: 600,
                     }}
                   >
-                    <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
-                    {completionMeta.unlocked.map((id, i) => (
-                      <span key={id}>
-                        {i > 0 && ', '}
-                        <strong>I.{id}</strong>
-                      </span>
-                    ))}
+                    ✓ I.{proposition.id}{' '}
+                    {completionResult.status === 'proven'
+                      ? `Complete • ${proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}`
+                      : 'Incomplete'}
                   </div>
-                )}
-            </div>
-          )}
-          </div>{/* /proof-body */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {completionMeta.nextPropId && (
+                      <button
+                        type="button"
+                        data-action="navigate-next"
+                        onClick={() => completionMeta.onNavigateNext(completionMeta.nextPropId!)}
+                        style={{
+                          padding: '5px 12px',
+                          fontSize: proofFont.stepText,
+                          fontWeight: 600,
+                          fontFamily: 'Georgia, serif',
+                          background: '#10b981',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {completionMeta.unlocked.includes(completionMeta.nextPropId)
+                          ? `Unlocked: I.${completionMeta.nextPropId} →`
+                          : `Next: I.${completionMeta.nextPropId} →`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {completionMeta.unlocked.length > 0 &&
+                  !(
+                    completionMeta.nextPropId &&
+                    completionMeta.unlocked.length === 1 &&
+                    completionMeta.unlocked[0] === completionMeta.nextPropId
+                  ) && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: proofFont.stepText,
+                        color: '#475569',
+                        fontFamily: 'Georgia, serif',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
+                      {completionMeta.unlocked.map((id, i) => (
+                        <span key={id}>
+                          {i > 0 && ', '}
+                          <strong>I.{id}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
+          {/* /proof-body */}
 
           {/* Docked chat — desktop: below proof steps in the right column */}
           {!isMobile && (
@@ -5314,11 +5523,15 @@ export function EuclidCanvas({
               collapsed={chatMode !== 'docked'}
               onUndock={() => setChatMode('floating')}
               inputRef={dockedInputRef}
-              debugCompaction={isVisualDebugEnabled ? {
-                coversUpTo: euclidChat.compaction.coversUpTo,
-                isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
-                onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
-              } : undefined}
+              debugCompaction={
+                isVisualDebugEnabled
+                  ? {
+                      coversUpTo: euclidChat.compaction.coversUpTo,
+                      isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
+                      onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
+                    }
+                  : undefined
+              }
             />
           )}
         </div>
@@ -5338,7 +5551,9 @@ export function EuclidCanvas({
           inputRef={dockedInputRef}
           onCall={euclidVoice.state === 'idle' ? euclidVoice.dial : undefined}
           canCall={euclidVoice.state === 'idle'}
-          onToggleAudio={() => disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)}
+          onToggleAudio={() =>
+            disableAudio ? setLocalAudioEnabled((v) => !v) : setAudioEnabled(!audioEnabled)
+          }
           audioEnabled={audioEnabled}
           onExpandedChange={setMobileDockedExpanded}
           onColdStart={euclidChat.coldStart}

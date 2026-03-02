@@ -3,6 +3,7 @@ import {
   EUCLID_TEACHING_STYLE,
   EUCLID_WHAT_NOT_TO_DO,
   EUCLID_DIAGRAM_QUESTION,
+  EUCLID_POINT_LABELING,
 } from './euclidCharacter'
 import type { CharacterDefinition } from '@/lib/character/types'
 
@@ -16,6 +17,7 @@ export const EUCLID_CHARACTER_DEF: CharacterDefinition = {
     teachingStyle: EUCLID_TEACHING_STYLE,
     dontDo: EUCLID_WHAT_NOT_TO_DO,
     hiddenDepth: EUCLID_DIAGRAM_QUESTION,
+    pointLabeling: EUCLID_POINT_LABELING,
   },
   chat: {
     placeholder: 'Ask Euclid...',

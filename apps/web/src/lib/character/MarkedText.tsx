@@ -25,10 +25,7 @@ export function MarkedText<TEntityRef>({
   onHighlight,
   renderEntity,
 }: MarkedTextProps<TEntityRef>) {
-  const segments = useMemo(
-    () => parseEntityMarkers(text, markers),
-    [text, markers],
-  )
+  const segments = useMemo(() => parseEntityMarkers(text, markers), [text, markers])
 
   return (
     <>

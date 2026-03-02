@@ -53,9 +53,7 @@ const DEFAULT_SUPPRESS_CODES = new Set([
   'invalid_value',
 ])
 
-export function useVoiceCall<TContext>(
-  config: VoiceSessionConfig<TContext>
-): UseVoiceCallReturn {
+export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): UseVoiceCallReturn {
   // Stable ref for config to avoid stale closures
   const configRef = useRef(config)
   configRef.current = config
@@ -120,12 +118,20 @@ export function useVoiceCall<TContext>(
     ringRef.current = null
 
     if (dcRef.current) {
-      try { dcRef.current.close() } catch { /* ignore */ }
+      try {
+        dcRef.current.close()
+      } catch {
+        /* ignore */
+      }
       dcRef.current = null
     }
 
     if (pcRef.current) {
-      try { pcRef.current.close() } catch { /* ignore */ }
+      try {
+        pcRef.current.close()
+      } catch {
+        /* ignore */
+      }
       pcRef.current = null
     }
 
@@ -170,7 +176,18 @@ export function useVoiceCall<TContext>(
 
   // ── Mode management ──
   const resolveMode = useCallback(
-    (modeId: string, ctx: TContext): { instructions: string; tools: { type: 'function'; name: string; description: string; parameters: { type: 'object'; properties: Record<string, unknown>; required?: string[] } }[] } => {
+    (
+      modeId: string,
+      ctx: TContext
+    ): {
+      instructions: string
+      tools: {
+        type: 'function'
+        name: string
+        description: string
+        parameters: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
+      }[]
+    } => {
       const mode = configRef.current.modes[modeId]
       if (!mode) {
         console.error('[voice] unknown mode:', modeId)
@@ -302,11 +319,14 @@ export function useVoiceCall<TContext>(
     sendImageContextHelper(dc, base64DataUrl)
   }, [])
 
-  const sendContextUpdate = useCallback((text: string, base64DataUrl?: string | null, promptResponse?: boolean) => {
-    const dc = dcRef.current
-    if (!dc || dc.readyState !== 'open') return
-    sendContextUpdateHelper(dc, text, base64DataUrl, promptResponse)
-  }, [])
+  const sendContextUpdate = useCallback(
+    (text: string, base64DataUrl?: string | null, promptResponse?: boolean) => {
+      const dc = dcRef.current
+      if (!dc || dc.readyState !== 'open') return
+      sendContextUpdateHelper(dc, text, base64DataUrl, promptResponse)
+    },
+    []
+  )
 
   const sendUserText = useCallback((text: string) => {
     const dc = dcRef.current
@@ -559,7 +579,11 @@ export function useVoiceCall<TContext>(
             // Log full response for debugging
             const respStatus = msg.response?.status
             if (respStatus && respStatus !== 'completed') {
-              console.warn('[voice] response.done status=%s, full response:', respStatus, JSON.stringify(msg.response, null, 2))
+              console.warn(
+                '[voice] response.done status=%s, full response:',
+                respStatus,
+                JSON.stringify(msg.response, null, 2)
+              )
             }
             // Check for failed responses with a recognized error code
             // Realtime API nests errors under status_details.error
@@ -665,7 +689,12 @@ export function useVoiceCall<TContext>(
 
           // Send immediate tool response
           const promptResponse = result.promptResponse !== false
-          sendToolResponseHelper(dc, msg.call_id, result.output, !result.asyncResult && promptResponse)
+          sendToolResponseHelper(
+            dc,
+            msg.call_id,
+            result.output,
+            !result.asyncResult && promptResponse
+          )
 
           // Mode transitions
           if (result.enterMode) {
@@ -704,17 +733,14 @@ export function useVoiceCall<TContext>(
       // SDP exchange
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
-      const sdpResponse = await fetch(
-        'https://api.openai.com/v1/realtime?model=gpt-realtime-1.5',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${clientSecret}`,
-            'Content-Type': 'application/sdp',
-          },
-          body: offer.sdp,
-        }
-      )
+      const sdpResponse = await fetch('https://api.openai.com/v1/realtime?model=gpt-realtime-1.5', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${clientSecret}`,
+          'Content-Type': 'application/sdp',
+        },
+        body: offer.sdp,
+      })
 
       if (!sdpResponse.ok) {
         console.error('[voice] WebRTC SDP exchange failed:', sdpResponse.status)
@@ -784,9 +810,7 @@ export function useVoiceCall<TContext>(
     } catch (err) {
       cleanup()
       if (err instanceof Error) console.error('[voice] connection error:', err.message)
-      setError(
-        err instanceof Error ? err.message : "Couldn't connect. Try calling again!"
-      )
+      setError(err instanceof Error ? err.message : "Couldn't connect. Try calling again!")
       setErrorCode('connection_error')
       setState('error')
     }
@@ -804,7 +828,9 @@ export function useVoiceCall<TContext>(
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { cleanup() }
+    return () => {
+      cleanup()
+    }
   }, [cleanup])
 
   return {

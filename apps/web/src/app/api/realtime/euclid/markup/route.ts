@@ -23,7 +23,7 @@ const MARKER_RE = /\{(seg|tri|ang|pt|def|post|cn|prop):[A-Za-z0-9]+(?:\|[^}]*)?\
 
 /** Tokenize text into lowercase words (letters/digits/apostrophes). */
 function words(text: string): string[] {
-  return (text.toLowerCase().match(/[a-z\d']+/g) ?? [])
+  return text.toLowerCase().match(/[a-z\d']+/g) ?? []
 }
 
 /**
@@ -77,7 +77,12 @@ function validateMarkupStrict(original: string, marked: string): boolean {
 
 export const POST = withAuth(async (request) => {
   const body = await request.json()
-  const { text, propositionId, pointLabels, strict = false } = body as {
+  const {
+    text,
+    propositionId,
+    pointLabels,
+    strict = false,
+  } = body as {
     text: string
     propositionId?: number
     pointLabels?: string[]
@@ -201,7 +206,9 @@ CRITICAL RULES — read carefully:
     if (strict) {
       // Strict: remaining text must be a character-level subsequence of the original
       if (!validateMarkupStrict(text, markedText)) {
-        console.warn('[euclid-markup] Strict validation failed — model rewrote surrounding text. Returning original.')
+        console.warn(
+          '[euclid-markup] Strict validation failed — model rewrote surrounding text. Returning original.'
+        )
         console.warn('[euclid-markup] Original:', JSON.stringify(text))
         console.warn('[euclid-markup] Model   :', JSON.stringify(markedText))
         return Response.json({ markedText: text })
@@ -211,7 +218,11 @@ CRITICAL RULES — read carefully:
       const stripped = markedText.replace(MARKER_RE, '')
       const overlap = wordOverlapRatio(text, stripped)
       if (overlap < SANITY_OVERLAP_THRESHOLD) {
-        console.warn('[euclid-markup] Sanity check failed — word overlap %.0f%% < %.0f%% threshold. Returning original.', overlap * 100, SANITY_OVERLAP_THRESHOLD * 100)
+        console.warn(
+          '[euclid-markup] Sanity check failed — word overlap %.0f%% < %.0f%% threshold. Returning original.',
+          overlap * 100,
+          SANITY_OVERLAP_THRESHOLD * 100
+        )
         console.warn('[euclid-markup] Original:', JSON.stringify(text))
         console.warn('[euclid-markup] Model   :', JSON.stringify(markedText))
         return Response.json({ markedText: text })

@@ -25,9 +25,30 @@ const DANGER = '#ef4444'
 const CALL_ACCENT = '#7c3aed'
 
 const SIZE_CONFIG = {
-  compact: { avatar: 16, fontSize: 11, timerFontSize: 10, buttonFontSize: 10, buttonPadding: '3px 8px', gap: 5 },
-  medium: { avatar: 20, fontSize: 11, timerFontSize: 10, buttonFontSize: 10, buttonPadding: '4px 10px', gap: 6 },
-  standard: { avatar: 24, fontSize: 13, timerFontSize: 12, buttonFontSize: 11, buttonPadding: '4px 10px', gap: 7 },
+  compact: {
+    avatar: 16,
+    fontSize: 11,
+    timerFontSize: 10,
+    buttonFontSize: 10,
+    buttonPadding: '3px 8px',
+    gap: 5,
+  },
+  medium: {
+    avatar: 20,
+    fontSize: 11,
+    timerFontSize: 10,
+    buttonFontSize: 10,
+    buttonPadding: '4px 10px',
+    gap: 6,
+  },
+  standard: {
+    avatar: 24,
+    fontSize: 13,
+    timerFontSize: 12,
+    buttonFontSize: 11,
+    buttonPadding: '4px 10px',
+    gap: 7,
+  },
 } as const
 
 export function CallStatusChip({
@@ -99,16 +120,21 @@ export function CallStatusChip({
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
         {isActive && isThinking ? (
           // Thinking state
-          <span style={{
-            fontSize: cfg.fontSize,
-            fontWeight: 600,
-            color: CALL_ACCENT,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}>
+          <span
+            style={{
+              fontSize: cfg.fontSize,
+              fontWeight: 600,
+              color: CALL_ACCENT,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
             <span style={{ fontSize: cfg.fontSize - 1 }}>📜</span>
-            <span>{thinkingLabel || 'Thinking'}<AnimatedDots /></span>
+            <span>
+              {thinkingLabel || 'Thinking'}
+              <AnimatedDots />
+            </span>
           </span>
         ) : isActive ? (
           // Active: optional name + waveform + timer
@@ -148,9 +174,7 @@ export function CallStatusChip({
           </>
         ) : isError ? (
           // Error: just label
-          <span style={{ fontSize: cfg.fontSize, color: DANGER, fontWeight: 600 }}>
-            Error
-          </span>
+          <span style={{ fontSize: cfg.fontSize, color: DANGER, fontWeight: 600 }}>Error</span>
         ) : null}
       </div>
 

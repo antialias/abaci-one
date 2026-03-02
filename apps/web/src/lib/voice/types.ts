@@ -119,7 +119,11 @@ export interface VoiceSessionConfig<TContext> {
    * Called BEFORE the mode-transition logic from onResponseDone.
    * Use for deferred actions that depend on agent audio finishing (e.g. exploration start).
    */
-  onResponseDoneRaw?: (dc: RTCDataChannel, msg: Record<string, unknown>, currentModeId: string) => void
+  onResponseDoneRaw?: (
+    dc: RTCDataChannel,
+    msg: Record<string, unknown>,
+    currentModeId: string
+  ) => void
   /**
    * Called when response.created fires — lets consumer cancel VAD-triggered
    * responses during narration playback.

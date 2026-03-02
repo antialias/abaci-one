@@ -1,7 +1,12 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
-import { getVariantSuffix, type ProfileSize, type ProfileTheme, type ProfileState } from '@/lib/profile-variants'
+import {
+  getVariantSuffix,
+  type ProfileSize,
+  type ProfileTheme,
+  type ProfileState,
+} from '@/lib/profile-variants'
 
 type SizeHint = ProfileSize
 
@@ -14,7 +19,7 @@ type SizeHint = ProfileSize
 export function useCharacterProfileImage(
   baseProfileImage: string,
   size: SizeHint = 'default',
-  speaking: boolean = false,
+  speaking: boolean = false
 ): string {
   const { resolvedTheme } = useTheme()
   const theme: ProfileTheme = resolvedTheme // 'light' | 'dark' — both valid ProfileTheme values

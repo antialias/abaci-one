@@ -1,8 +1,8 @@
 /**
- * API route that creates an ephemeral session token for the Euclid voice call.
+ * API route that creates an ephemeral session token for a geometry teacher voice call.
  *
  * POST /api/realtime/euclid/session
- * Body: { propositionId, currentStep, isComplete, playgroundMode }
+ * Body: { propositionId, currentStep, isComplete, playgroundMode, characterId? }
  * Returns: { clientSecret, expiresAt, instructions }
  */
 
@@ -10,34 +10,29 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { createRealtimeSession } from '@/lib/voice/createRealtimeSession'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
-import { greetingMode } from '@/components/toys/euclid/voice/modes/greetingMode'
 import { TOOL_HANG_UP } from '@/components/toys/euclid/voice/tools'
-import type { EuclidModeContext } from '@/components/toys/euclid/voice/types'
+import type { GeometryModeContext } from '@/components/toys/euclid/voice/types'
+import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
 
 export const POST = withAuth(async (request) => {
   try {
     const body = await request.json()
-    const { propositionId, currentStep, isComplete, playgroundMode } = body
+    const { propositionId, currentStep, isComplete, playgroundMode, characterId } = body
 
     if (typeof propositionId !== 'number' || !PROP_REGISTRY[propositionId]) {
-      return NextResponse.json(
-        { error: 'Invalid propositionId' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid propositionId' }, { status: 400 })
     }
 
     const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
     }
 
+    const config = getTeacherConfig(characterId)
     const prop = PROP_REGISTRY[propositionId]
 
     // Build greeting mode context for initial instructions
-    const ctx: EuclidModeContext = {
+    const ctx: GeometryModeContext = {
       propositionId,
       propositionTitle: prop.title,
       propositionKind: prop.kind ?? 'construction',
@@ -51,12 +46,12 @@ export const POST = withAuth(async (request) => {
       steps: prop.steps,
     }
 
-    const instructions = greetingMode.getInstructions(ctx)
+    const instructions = config.modes.greeting.getInstructions(ctx)
     const tools = [TOOL_HANG_UP]
 
     const result = await createRealtimeSession({
       apiKey,
-      voice: 'ash',
+      voice: config.voice.id,
       instructions,
       tools,
     })
@@ -78,9 +73,6 @@ export const POST = withAuth(async (request) => {
       )
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 })

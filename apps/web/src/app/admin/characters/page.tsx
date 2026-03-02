@@ -261,8 +261,25 @@ function TokenBar({ breakdown }: { breakdown: PromptBreakdown }) {
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
         {Object.entries(tokensByLayer).map(([layerId, tokens]) => (
-          <span key={layerId} style={{ fontSize: 11, color: '#8b949e', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: getLayerColor(layerId), display: 'inline-block' }} />
+          <span
+            key={layerId}
+            style={{
+              fontSize: 11,
+              color: '#8b949e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: getLayerColor(layerId),
+                display: 'inline-block',
+              }}
+            />
             {layerId} (~{tokens})
           </span>
         ))}
@@ -373,7 +390,9 @@ function ToolCard({ tool }: { tool: ToolData }) {
     <div className={cardStyle}>
       <div className={cardHeaderStyle} onClick={() => setShowSchema(!showSchema)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#f0f6fc', fontFamily: 'monospace' }}>
+          <span
+            style={{ fontSize: 14, fontWeight: 600, color: '#f0f6fc', fontFamily: 'monospace' }}
+          >
             {tool.name}
           </span>
           {tool.modes.map((m) => (
@@ -391,7 +410,9 @@ function ToolCard({ tool }: { tool: ToolData }) {
         <div className={cardContentStyle}>
           <p style={{ fontSize: 13, color: '#c9d1d9', marginBottom: 8 }}>{tool.description}</p>
           <div className={labelStyle}>Behavior</div>
-          <p className={valueStyle} style={{ marginBottom: 8 }}>{tool.behavior}</p>
+          <p className={valueStyle} style={{ marginBottom: 8 }}>
+            {tool.behavior}
+          </p>
           <div className={labelStyle}>Parameters</div>
           <pre className={preStyle}>{JSON.stringify(tool.parameters, null, 2)}</pre>
         </div>
@@ -404,10 +425,7 @@ function ModeCard({ mode }: { mode: ModeData }) {
   const [showPrompt, setShowPrompt] = useState(false)
 
   return (
-    <CollapsibleSection
-      title={mode.label}
-      badge={mode.api ?? `${mode.tools.length} tools`}
-    >
+    <CollapsibleSection title={mode.label} badge={mode.api ?? `${mode.tools.length} tools`}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 12 }}>
         <div>
           <div className={labelStyle}>Trigger</div>
@@ -421,19 +439,22 @@ function ModeCard({ mode }: { mode: ModeData }) {
       <div style={{ marginBottom: 8 }}>
         <div className={labelStyle}>Tools</div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {mode.tools.length > 0
-            ? mode.tools.map((t) => (
-                <span key={t} className={badgeStyle('#1f6feb')}>
-                  {t}
-                </span>
-              ))
-            : <span style={{ fontSize: 12, color: '#484f58' }}>None</span>
-          }
+          {mode.tools.length > 0 ? (
+            mode.tools.map((t) => (
+              <span key={t} className={badgeStyle('#1f6feb')}>
+                {t}
+              </span>
+            ))
+          ) : (
+            <span style={{ fontSize: 12, color: '#484f58' }}>None</span>
+          )}
         </div>
       </div>
       <div style={{ marginBottom: 8 }}>
         <div className={labelStyle}>Source</div>
-        <div style={{ fontSize: 12, color: '#484f58', fontFamily: 'monospace' }}>{mode.sourceFile}</div>
+        <div style={{ fontSize: 12, color: '#484f58', fontFamily: 'monospace' }}>
+          {mode.sourceFile}
+        </div>
       </div>
 
       <PromptBreakdownView breakdown={mode.promptBreakdown} />
@@ -460,7 +481,11 @@ function variantKey(size: ProfileSize, theme: ProfileTheme, state: ProfileState 
 }
 
 /** Human-readable label for a variant. */
-function variantLabel(size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle'): string {
+function variantLabel(
+  size: ProfileSize,
+  theme: ProfileTheme,
+  state: ProfileState = 'idle'
+): string {
   if (size === 'default' && theme === 'default' && state === 'idle') return 'Base'
   const parts: string[] = []
   if (size !== 'default') parts.push(size === 'sm' ? 'Small' : 'Large')
@@ -479,7 +504,11 @@ function variantBgColor(theme: ProfileTheme): string | undefined {
 const SIZE_LABELS: ProfileSize[] = ['default', 'sm', 'lg']
 const THEME_LABELS: ProfileTheme[] = ['default', 'light', 'dark']
 const SIZE_DISPLAY: Record<ProfileSize, string> = { default: 'Default', sm: 'Small', lg: 'Large' }
-const THEME_DISPLAY: Record<ProfileTheme, string> = { default: 'Default', light: 'Light', dark: 'Dark' }
+const THEME_DISPLAY: Record<ProfileTheme, string> = {
+  default: 'Default',
+  light: 'Light',
+  dark: 'Dark',
+}
 
 /** Zero-render component that subscribes to a single task and reports state changes. */
 function TaskTracker({
@@ -518,13 +547,14 @@ function IdentityCard({
     Map<string, { taskId: string; size: ProfileSize; theme: ProfileTheme; state: ProfileState }>
   >(new Map())
   // Map of taskId → TaskState
-  const [taskStates, setTaskStates] = useState<
-    Map<string, TaskState<ProfileImageGenerateOutput>>
-  >(new Map())
+  const [taskStates, setTaskStates] = useState<Map<string, TaskState<ProfileImageGenerateOutput>>>(
+    new Map()
+  )
   // Cache bust counter — increments when any task completes
   const [imageCacheBust, setImageCacheBust] = useState(0)
 
-  const resolvedModel = genModel || (genProvider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
+  const resolvedModel =
+    genModel || (genProvider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
 
   const fireGenerate = useCallback(
     async (opts: {
@@ -601,7 +631,12 @@ function IdentityCard({
   const handleGenerateAll = useCallback(async () => {
     setTrackedTasks(new Map())
     setTaskStates(new Map())
-    const taskId = await fireGenerate({ size: 'default', theme: 'default', state: 'idle', cascade: true })
+    const taskId = await fireGenerate({
+      size: 'default',
+      theme: 'default',
+      state: 'idle',
+      cascade: true,
+    })
     if (taskId) {
       const key = variantKey('default', 'default', 'idle')
       setTrackedTasks(
@@ -640,14 +675,21 @@ function IdentityCard({
   const getStatusIndicator = (size: ProfileSize, theme: ProfileTheme, state: ProfileState) => {
     const taskState = getVariantTaskState(size, theme, state)
     if (!taskState) return null
-    if (taskState.status === 'running') return { symbol: '\u25cb', color: '#58a6ff', label: 'Generating...' }
-    if (taskState.status === 'completed') return { symbol: '\u2713', color: '#3fb950', label: 'Done' }
-    if (taskState.status === 'failed') return { symbol: '\u2717', color: '#f85149', label: taskState.error ?? 'Failed' }
+    if (taskState.status === 'running')
+      return { symbol: '\u25cb', color: '#58a6ff', label: 'Generating...' }
+    if (taskState.status === 'completed')
+      return { symbol: '\u2713', color: '#3fb950', label: 'Done' }
+    if (taskState.status === 'failed')
+      return { symbol: '\u2717', color: '#f85149', label: taskState.error ?? 'Failed' }
     return { symbol: '\u2026', color: '#8b949e', label: 'Pending' }
   }
 
   // Build variant paths from character data
-  const getVariantPath = (size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle'): string => {
+  const getVariantPath = (
+    size: ProfileSize,
+    theme: ProfileTheme,
+    state: ProfileState = 'idle'
+  ): string => {
     const found = data.identity.profileVariants?.find(
       (v) => v.size === size && v.theme === theme && v.state === state
     )
@@ -658,11 +700,7 @@ function IdentityCard({
     <CollapsibleSection title="Identity" defaultOpen>
       {/* Zero-render TaskTracker instances for all discovered tasks */}
       {[...trackedTasks.values()].map(({ taskId }) => (
-        <TaskTracker
-          key={taskId}
-          taskId={taskId}
-          onStateChange={handleTaskStateChange}
-        />
+        <TaskTracker key={taskId} taskId={taskId} onStateChange={handleTaskStateChange} />
       ))}
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
@@ -711,7 +749,10 @@ function IdentityCard({
             </div>
             {/* Rows */}
             {SIZE_LABELS.map((size) => (
-              <div key={size} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <div
+                key={size}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}
+              >
                 {/* Row label */}
                 <div
                   style={{
@@ -1232,19 +1273,16 @@ export default function CharactersAdminPage() {
   }, [])
 
   // Load character detail
-  const loadCharacterData = useCallback(
-    (id: string, propositionId: number, stepNum: number) => {
-      setLoading(true)
-      fetch(`/api/admin/characters/${id}?propositionId=${propositionId}&step=${stepNum}`)
-        .then((r) => r.json())
-        .then((d) => {
-          setCharacterData(d)
-          setLoading(false)
-        })
-        .catch(() => setLoading(false))
-    },
-    []
-  )
+  const loadCharacterData = useCallback((id: string, propositionId: number, stepNum: number) => {
+    setLoading(true)
+    fetch(`/api/admin/characters/${id}?propositionId=${propositionId}&step=${stepNum}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setCharacterData(d)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
 
   useEffect(() => {
     if (selectedId) {
@@ -1282,12 +1320,13 @@ export default function CharactersAdminPage() {
   }
 
   // Compute total steps for the current proposition (from the data)
-  const totalSteps =
-    characterData?.modes.conversing?.promptBreakdown.sections.length
-      ? Object.keys(characterData.modes).length > 0
-        ? (characterData.availablePropositions.find((p) => p.id === propId) ? 10 : 1)
+  const totalSteps = characterData?.modes.conversing?.promptBreakdown.sections.length
+    ? Object.keys(characterData.modes).length > 0
+      ? characterData.availablePropositions.find((p) => p.id === propId)
+        ? 10
         : 1
       : 1
+    : 1
 
   return (
     <div className={pageStyle} data-component="characters-admin">
@@ -1395,10 +1434,7 @@ export default function CharactersAdminPage() {
             </CollapsibleSection>
 
             {/* E. Tools */}
-            <CollapsibleSection
-              title="Tools"
-              badge={`${characterData.tools.length} tools`}
-            >
+            <CollapsibleSection title="Tools" badge={`${characterData.tools.length} tools`}>
               {characterData.tools.map((tool) => (
                 <ToolCard key={tool.name} tool={tool} />
               ))}

@@ -11,7 +11,10 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
-import { PROPOSITION_SUMMARIES, buildReferenceContext } from '@/components/toys/euclid/voice/euclidReferenceContext'
+import {
+  PROPOSITION_SUMMARIES,
+  buildReferenceContext,
+} from '@/components/toys/euclid/voice/euclidReferenceContext'
 
 const VALID_EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const
 type Effort = (typeof VALID_EFFORTS)[number]

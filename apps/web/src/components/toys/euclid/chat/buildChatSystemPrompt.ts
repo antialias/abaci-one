@@ -1,23 +1,18 @@
 /**
- * Extracted chat system prompt builder.
+ * Chat system prompt builder for geometry teacher characters.
  *
- * Assembles the full system prompt for text chat with Euclid.
+ * Assembles the full system prompt for text chat.
  * Used by the chat API route and the characters admin panel.
  */
 
+import type { CharacterDefinition } from '@/lib/character/types'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import {
   PROPOSITION_SUMMARIES,
   buildReferenceContext,
 } from '@/components/toys/euclid/voice/euclidReferenceContext'
-import {
-  EUCLID_CHARACTER,
-  EUCLID_TEACHING_STYLE,
-  EUCLID_WHAT_NOT_TO_DO,
-  EUCLID_POINT_LABELING,
-  EUCLID_DIAGRAM_QUESTION,
-  buildCompletionContext,
-} from '@/components/toys/euclid/euclidCharacter'
+import { EUCLID_CHARACTER_DEF } from '@/components/toys/euclid/euclidCharacterDef'
+import { buildCompletionContext as buildEuclidCompletionContext } from '@/components/toys/euclid/euclidCharacter'
 
 export interface ChatSystemPromptContext {
   propositionId: number
@@ -31,7 +26,16 @@ export interface ChatSystemPromptContext {
   isMobile?: boolean
 }
 
-export function buildEuclidChatSystemPrompt(ctx: ChatSystemPromptContext): string {
+export interface BuildChatSystemPromptOptions {
+  character: CharacterDefinition
+  buildCompletionContext: (propId: number) => string
+}
+
+export function buildChatSystemPrompt(
+  opts: BuildChatSystemPromptOptions,
+  ctx: ChatSystemPromptContext
+): string {
+  const { character, buildCompletionContext } = opts
   const propId = ctx.propositionId
   const prop = PROP_REGISTRY[propId]
   const propSummary = PROPOSITION_SUMMARIES[propId]
@@ -46,7 +50,7 @@ export function buildEuclidChatSystemPrompt(ctx: ChatSystemPromptContext): strin
     completionContext = buildCompletionContext(propId)
   }
 
-  return `You are Euclid of Alexandria — THE Euclid, author of the Elements. You are communicating with a student through written text.
+  return `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. You are communicating with a student through written text.
 
 === CURRENT PROPOSITION ===
 ${propDesc}
@@ -68,18 +72,20 @@ ${typeof ctx.proofFacts === 'string' ? ctx.proofFacts : 'No facts proven yet.'}
 === REFERENCE MATERIAL ===
 ${referenceContext}
 
-${EUCLID_CHARACTER}
+${character.personality.character}
 
-${EUCLID_TEACHING_STYLE}
+${character.personality.teachingStyle}
 
-${EUCLID_WHAT_NOT_TO_DO}
+${character.personality.dontDo}
 
 === TEXT CHAT SPECIFICS ===
 - Since this is written text (not voice), you may use point labels freely.
-${ctx.isMobile
+${
+  ctx.isMobile
     ? `- MOBILE DISPLAY: The student is on a small screen. Your response is shown in a 3-line preview strip. Be MAXIMALLY concise — 1-2 short sentences. Drop flowery language, honorifics, and rhetorical flourishes. Get straight to the point. Favor direct instructions ("Place compass at A", "That segment equals AB by Def 15") over elaborate prose. Character voice is secondary to clarity here.`
     : `- Keep responses concise: 2-6 sentences typically. You are terse by nature. Longer is acceptable for proof explanations.
-- Use line breaks for clarity when discussing multi-step reasoning.`}
+- Use line breaks for clarity when discussing multi-step reasoning.`
+}
 
 === FORMATTING RULES (CRITICAL) ===
 - Write in PLAIN TEXT only. No markdown, no LaTeX, no other formatting.
@@ -124,7 +130,18 @@ Rules:
 - You may still write plain text around the markers naturally.
 - Do NOT use markers inside other markers.
 
-${EUCLID_POINT_LABELING}
+${character.personality.pointLabeling ?? ''}
 
-${EUCLID_DIAGRAM_QUESTION}`
+${character.personality.hiddenDepth ?? ''}`
+}
+
+/**
+ * Build the Euclid-specific chat system prompt (backward compat).
+ * @deprecated Use buildChatSystemPrompt with explicit character options instead.
+ */
+export function buildEuclidChatSystemPrompt(ctx: ChatSystemPromptContext): string {
+  return buildChatSystemPrompt(
+    { character: EUCLID_CHARACTER_DEF, buildCompletionContext: buildEuclidCompletionContext },
+    ctx
+  )
 }

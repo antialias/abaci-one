@@ -13,8 +13,7 @@ import type { DebugCompactionProps } from '@/lib/character/CharacterChatPanel'
 import type { EuclidEntityRef } from './parseGeometricEntities'
 import { MarkedText } from '@/lib/character/MarkedText'
 import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
-import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
-import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
+import { useGeometryTeacher } from '../GeometryTeacherContext'
 import { CallStatusChip } from '@/lib/character/CallStatusChip'
 import { useCharacterProfileImage } from '@/lib/character/useCharacterProfileImage'
 
@@ -72,21 +71,25 @@ export function DockedEuclidChat({
   onExpandedChange,
   onColdStart,
 }: DockedEuclidChatProps) {
+  const { definition: characterDef, entityMarkers } = useGeometryTeacher()
   const isSpeaking = callState?.isSpeaking ?? false
-  const smProfileImage = useCharacterProfileImage(EUCLID_CHARACTER_DEF.profileImage, 'sm', isSpeaking)
+  const smProfileImage = useCharacterProfileImage(characterDef.profileImage, 'sm', isSpeaking)
   // defaultProfileImage is used for ringing overlay — stays idle
-  const defaultProfileImage = useCharacterProfileImage(EUCLID_CHARACTER_DEF.profileImage, 'default')
+  const defaultProfileImage = useCharacterProfileImage(characterDef.profileImage, 'default')
 
   const [input, setInput] = useState('')
   const [mobileExpanded, setMobileExpanded] = useState(false)
   const internalInputRef = useRef<HTMLInputElement>(null)
   // Bridge external ref: callback ref writes to whichever ref object is active
-  const setInputRef = useCallback((el: HTMLInputElement | null) => {
-    (internalInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
-    if (externalInputRef) {
-      (externalInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
-    }
-  }, [externalInputRef])
+  const setInputRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      ;(internalInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+      if (externalInputRef) {
+        ;(externalInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+      }
+    },
+    [externalInputRef]
+  )
   const inputRef = internalInputRef
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const userScrolledAwayRef = useRef(false)
@@ -101,10 +104,13 @@ export function DockedEuclidChat({
   }, [collapsed, onExpandedChange])
 
   // Notify parent when expanded state changes
-  const setMobileExpandedAndNotify = useCallback((expanded: boolean) => {
-    setMobileExpanded(expanded)
-    onExpandedChange?.(expanded)
-  }, [onExpandedChange])
+  const setMobileExpandedAndNotify = useCallback(
+    (expanded: boolean) => {
+      setMobileExpanded(expanded)
+      onExpandedChange?.(expanded)
+    },
+    [onExpandedChange]
+  )
 
   const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
   const isRinging = callState?.state === 'ringing'
@@ -145,7 +151,7 @@ export function DockedEuclidChat({
         handleSend()
       }
     },
-    [handleSend],
+    [handleSend]
   )
 
   // Last assistant message for mobile preview
@@ -158,10 +164,7 @@ export function DockedEuclidChat({
   }, [messages])
 
   // Whether a real conversation has started (not just construction events)
-  const hasConversation = useMemo(
-    () => messages.some(m => !m.isEvent),
-    [messages],
-  )
+  const hasConversation = useMemo(() => messages.some((m) => !m.isEvent), [messages])
 
   // Desktop collapsed or mobile collapsed: render nothing (give space back)
   if (collapsed) return null
@@ -316,12 +319,15 @@ function DesktopDockedChat({
   smProfileImage,
   defaultProfileImage,
 }: DesktopDockedChatProps) {
+  const { definition: characterDef, entityMarkers } = useGeometryTeacher()
   return (
     <div
       data-component="docked-euclid-chat"
       data-variant={onCollapse ? 'mobile-expanded' : 'desktop'}
       style={{
-        ...(height != null ? { height, flexShrink: 0 } : { height: 'calc(100dvh / 3)', flexShrink: 0 }),
+        ...(height != null
+          ? { height, flexShrink: 0 }
+          : { height: 'calc(100dvh / 3)', flexShrink: 0 }),
         display: 'flex',
         flexDirection: 'column',
         borderTop: '1px solid rgba(203, 213, 225, 0.6)',
@@ -346,19 +352,24 @@ function DesktopDockedChat({
         <div style={{ display: 'grid', alignItems: 'center', minWidth: 0 }}>
           {callState && (
             <div style={{ gridRow: 1, gridColumn: 1 }}>
-              <CallStatusChip character={EUCLID_CHARACTER_DEF} callState={callState} size="compact" />
+              <CallStatusChip character={characterDef} callState={callState} size="compact" />
             </div>
           )}
-          <div style={{
-            gridRow: 1, gridColumn: 1,
-            display: 'flex', alignItems: 'center', gap: 6,
-            opacity: isCallActive ? 0 : 1,
-            transition: 'opacity 0.25s ease',
-            pointerEvents: isCallActive ? 'none' : 'auto',
-          }}>
+          <div
+            style={{
+              gridRow: 1,
+              gridColumn: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              opacity: isCallActive ? 0 : 1,
+              transition: 'opacity 0.25s ease',
+              pointerEvents: isCallActive ? 'none' : 'auto',
+            }}
+          >
             <img
               src={smProfileImage}
-              alt={EUCLID_CHARACTER_DEF.displayName}
+              alt={characterDef.displayName}
               style={{
                 width: 16,
                 height: 16,
@@ -368,7 +379,7 @@ function DesktopDockedChat({
               }}
             />
             <span style={{ fontWeight: 600, fontSize: 11, color: '#1e293b' }}>
-              {EUCLID_CHARACTER_DEF.nativeDisplayName}
+              {characterDef.nativeDisplayName}
             </span>
           </div>
         </div>
@@ -392,7 +403,16 @@ function DesktopDockedChat({
               }}
             >
               {/* External link / pop-out icon */}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
@@ -417,7 +437,16 @@ function DesktopDockedChat({
                 alignItems: 'center',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                 {audioEnabled ? (
                   <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -445,7 +474,16 @@ function DesktopDockedChat({
                 alignItems: 'center',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
               </svg>
             </button>
@@ -468,7 +506,16 @@ function DesktopDockedChat({
                 alignItems: 'center',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
@@ -564,54 +611,78 @@ function DesktopDockedChat({
               fontStyle: 'italic',
             }}
           >
-            {EUCLID_CHARACTER_DEF.chat.emptyPrompt}
+            {characterDef.chat.emptyPrompt}
           </div>
         )}
         {messages.map((msg, msgIndex) => {
           // Debug compaction divider
-          const compactionDivider = debugCompaction && msgIndex > 0 ? (() => {
-            const isCovered = msgIndex <= debugCompaction.coversUpTo
-            const isAtBoundary = msgIndex === debugCompaction.coversUpTo
-            const canCompact = !debugCompaction.isSummarizing && msgIndex > debugCompaction.coversUpTo
-            return (
-              <div
-                key={`compact-${msgIndex}`}
-                data-element="compaction-divider"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '1px 0',
-                  opacity: isCovered ? 0.4 : 0.7,
-                }}
-              >
-                <div style={{ flex: 1, height: 1, background: isAtBoundary ? '#86efac' : isCovered ? '#86efac' : 'rgba(203,213,225,0.4)' }} />
-                {isAtBoundary ? (
-                  <span style={{ fontSize: 8, color: '#86efac', whiteSpace: 'nowrap' }}>
-                    summarized above
-                  </span>
-                ) : canCompact ? (
-                  <button
-                    data-action="compact-here"
-                    onClick={() => debugCompaction.onCompactUpTo(msgIndex)}
-                    style={{
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      fontSize: 8,
-                      color: '#94a3b8',
-                      padding: '0 4px',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={`Compact messages 1–${msgIndex} into a summary`}
-                  >
-                    {'\u2702'} compact here
-                  </button>
-                ) : null}
-                <div style={{ flex: 1, height: 1, background: isAtBoundary ? '#86efac' : isCovered ? '#86efac' : 'rgba(203,213,225,0.4)' }} />
-              </div>
-            )
-          })() : null
+          const compactionDivider =
+            debugCompaction && msgIndex > 0
+              ? (() => {
+                  const isCovered = msgIndex <= debugCompaction.coversUpTo
+                  const isAtBoundary = msgIndex === debugCompaction.coversUpTo
+                  const canCompact =
+                    !debugCompaction.isSummarizing && msgIndex > debugCompaction.coversUpTo
+                  return (
+                    <div
+                      key={`compact-${msgIndex}`}
+                      data-element="compaction-divider"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '1px 0',
+                        opacity: isCovered ? 0.4 : 0.7,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: 1,
+                          height: 1,
+                          background: isAtBoundary
+                            ? '#86efac'
+                            : isCovered
+                              ? '#86efac'
+                              : 'rgba(203,213,225,0.4)',
+                        }}
+                      />
+                      {isAtBoundary ? (
+                        <span style={{ fontSize: 8, color: '#86efac', whiteSpace: 'nowrap' }}>
+                          summarized above
+                        </span>
+                      ) : canCompact ? (
+                        <button
+                          data-action="compact-here"
+                          onClick={() => debugCompaction.onCompactUpTo(msgIndex)}
+                          style={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            fontSize: 8,
+                            color: '#94a3b8',
+                            padding: '0 4px',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={`Compact messages 1–${msgIndex} into a summary`}
+                        >
+                          {'\u2702'} compact here
+                        </button>
+                      ) : null}
+                      <div
+                        style={{
+                          flex: 1,
+                          height: 1,
+                          background: isAtBoundary
+                            ? '#86efac'
+                            : isCovered
+                              ? '#86efac'
+                              : 'rgba(203,213,225,0.4)',
+                        }}
+                      />
+                    </div>
+                  )
+                })()
+              : null
 
           if (msg.isEvent) {
             return (
@@ -631,7 +702,15 @@ function DesktopDockedChat({
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
+                    <span
+                      style={{
+                        width: 3,
+                        height: 3,
+                        borderRadius: '50%',
+                        background: '#cbd5e1',
+                        flexShrink: 0,
+                      }}
+                    />
                     {msg.content}
                   </div>
                 </div>
@@ -687,14 +766,9 @@ function DesktopDockedChat({
                   style={{
                     maxWidth: '85%',
                     padding: '4px 8px',
-                    borderRadius:
-                      msg.role === 'user'
-                        ? '8px 8px 2px 8px'
-                        : '8px 8px 8px 2px',
+                    borderRadius: msg.role === 'user' ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
                     background:
-                      msg.role === 'user'
-                        ? 'rgba(78, 121, 167, 0.12)'
-                        : 'rgba(248, 250, 252, 0.9)',
+                      msg.role === 'user' ? 'rgba(78, 121, 167, 0.12)' : 'rgba(248, 250, 252, 0.9)',
                     border:
                       msg.role === 'user'
                         ? '1px solid rgba(78, 121, 167, 0.2)'
@@ -709,7 +783,7 @@ function DesktopDockedChat({
                   {msg.content ? (
                     <MarkedText
                       text={msg.content}
-                      markers={EUCLID_ENTITY_MARKERS}
+                      markers={entityMarkers}
                       onHighlight={onHighlight}
                       renderEntity={renderEntity}
                     />
@@ -728,14 +802,32 @@ function DesktopDockedChat({
                       }}
                     >
                       {msg.via === 'voice' ? (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                           <line x1="12" y1="19" x2="12" y2="23" />
                           <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
                       ) : (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
                           <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
                         </svg>
@@ -747,20 +839,18 @@ function DesktopDockedChat({
             </React.Fragment>
           )
         })}
-        {isStreaming &&
-          messages.length > 0 &&
-          !messages[messages.length - 1].content && (
-            <div
-              style={{
-                fontSize: 10,
-                color: '#94a3b8',
-                fontStyle: 'italic',
-                paddingLeft: 20,
-              }}
-            >
-              {EUCLID_CHARACTER_DEF.chat.streamingLabel}
-            </div>
-          )}
+        {isStreaming && messages.length > 0 && !messages[messages.length - 1].content && (
+          <div
+            style={{
+              fontSize: 10,
+              color: '#94a3b8',
+              fontStyle: 'italic',
+              paddingLeft: 20,
+            }}
+          >
+            {characterDef.chat.streamingLabel}
+          </div>
+        )}
         {/* Ringing overlay */}
         {isRinging && callState && (
           <div
@@ -792,7 +882,7 @@ function DesktopDockedChat({
               ))}
               <img
                 src={defaultProfileImage}
-                alt={EUCLID_CHARACTER_DEF.displayName}
+                alt={characterDef.displayName}
                 style={{
                   width: 48,
                   height: 48,
@@ -838,7 +928,7 @@ function DesktopDockedChat({
         <input
           ref={inputRef}
           type="text"
-          placeholder={EUCLID_CHARACTER_DEF.chat.placeholder}
+          placeholder={characterDef.chat.placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
@@ -875,7 +965,16 @@ function DesktopDockedChat({
             transition: 'background 0.15s ease',
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="22" y1="2" x2="11" y2="13" />
             <polygon points="22 2 15 22 11 13 2 9 22 2" />
           </svg>
@@ -929,6 +1028,7 @@ function MobileChatStrip({
   onColdStart,
   smProfileImage,
 }: MobileChatStripProps) {
+  const { definition: characterDef, entityMarkers } = useGeometryTeacher()
   const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
   const [inputFocused, setInputFocused] = useState(false)
 
@@ -938,14 +1038,17 @@ function MobileChatStrip({
     onSend()
   }, [input, onSend])
 
-  const handleMobileKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleMobileSend()
-    } else {
-      onKeyDown(e)
-    }
-  }, [handleMobileSend, onKeyDown])
+  const handleMobileKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleMobileSend()
+      } else {
+        onKeyDown(e)
+      }
+    },
+    [handleMobileSend, onKeyDown]
+  )
 
   return (
     <div
@@ -967,14 +1070,24 @@ function MobileChatStrip({
       <div style={{ display: 'grid', alignItems: 'center', flex: 1, minWidth: 0 }}>
         {/* Call layout — chip + audio toggle */}
         {callState && (
-          <div style={{
-            gridRow: 1, gridColumn: 1,
-            display: 'flex', alignItems: 'center', gap: 6,
-            opacity: isCallActive ? 1 : 0,
-            transition: 'opacity 0.25s ease',
-            pointerEvents: isCallActive ? 'auto' : 'none',
-          }}>
-            <CallStatusChip character={EUCLID_CHARACTER_DEF} callState={callState} size="medium" showName={false} />
+          <div
+            style={{
+              gridRow: 1,
+              gridColumn: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              opacity: isCallActive ? 1 : 0,
+              transition: 'opacity 0.25s ease',
+              pointerEvents: isCallActive ? 'auto' : 'none',
+            }}
+          >
+            <CallStatusChip
+              character={characterDef}
+              callState={callState}
+              size="medium"
+              showName={false}
+            />
             {onToggleAudio && (
               <button
                 data-action="toggle-audio-mobile"
@@ -996,7 +1109,16 @@ function MobileChatStrip({
                   height: 24,
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   {audioEnabled ? (
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -1009,17 +1131,22 @@ function MobileChatStrip({
           </div>
         )}
         {/* Idle layout — avatar + preview + action buttons + input + send */}
-        <div style={{
-          gridRow: 1, gridColumn: 1,
-          display: 'flex', alignItems: 'center', gap: 6,
-          opacity: isCallActive ? 0 : 1,
-          transition: 'opacity 0.25s ease',
-          pointerEvents: isCallActive ? 'none' : 'auto',
-        }}>
+        <div
+          style={{
+            gridRow: 1,
+            gridColumn: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            opacity: isCallActive ? 0 : 1,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: isCallActive ? 'none' : 'auto',
+          }}
+        >
           {/* Avatar */}
           <img
             src={smProfileImage}
-            alt={EUCLID_CHARACTER_DEF.displayName}
+            alt={characterDef.displayName}
             style={{
               width: 20,
               height: 20,
@@ -1031,19 +1158,19 @@ function MobileChatStrip({
 
           {/* Middle: last message preview — tap to expand / cold-start */}
           <div
-            onClick={hasMessages ? onExpand : (onColdStart && !isStreaming ? onColdStart : undefined)}
+            onClick={hasMessages ? onExpand : onColdStart && !isStreaming ? onColdStart : undefined}
             style={{
               flex: 1,
               minWidth: 0,
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              cursor: hasMessages ? 'pointer' : (onColdStart && !isStreaming ? 'pointer' : undefined),
+              cursor: hasMessages ? 'pointer' : onColdStart && !isStreaming ? 'pointer' : undefined,
             }}
           >
             {isStreaming ? (
               <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>
-                {EUCLID_CHARACTER_DEF.chat.streamingLabel}
+                {characterDef.chat.streamingLabel}
               </span>
             ) : lastAssistantMsg ? (
               <span
@@ -1057,20 +1184,34 @@ function MobileChatStrip({
                   lineHeight: 1.3,
                 }}
               >
-                {stripEntityMarkers(lastAssistantMsg.content, EUCLID_ENTITY_MARKERS)}
+                {stripEntityMarkers(lastAssistantMsg.content, entityMarkers)}
                 {hasMessages && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4, verticalAlign: 'middle', flexShrink: 0 }}>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#94a3b8"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ marginLeft: 4, verticalAlign: 'middle', flexShrink: 0 }}
+                  >
                     <polyline points="18 15 12 9 6 15" />
                   </svg>
                 )}
               </span>
             ) : (
-              <span style={{
-                fontSize: 11,
-                color: onColdStart ? ACCENT : '#94a3b8',
-                fontStyle: 'italic',
-              }}>
-                {onColdStart ? 'Tap to ask Euclid for help' : EUCLID_CHARACTER_DEF.chat.emptyPrompt}
+              <span
+                style={{
+                  fontSize: 11,
+                  color: onColdStart ? ACCENT : '#94a3b8',
+                  fontStyle: 'italic',
+                }}
+              >
+                {onColdStart
+                  ? `Tap to ask ${characterDef.displayName} for help`
+                  : characterDef.chat.emptyPrompt}
               </span>
             )}
           </div>
@@ -1084,7 +1225,7 @@ function MobileChatStrip({
               gap: 2,
               flexShrink: 0,
               overflow: 'hidden',
-              width: inputFocused ? 0 : ((onToggleAudio ? 24 : 0) + (canCall && onCall ? 24 + 2 : 0)),
+              width: inputFocused ? 0 : (onToggleAudio ? 24 : 0) + (canCall && onCall ? 24 + 2 : 0),
               opacity: inputFocused ? 0 : 1,
               transition: 'width 0.2s ease, opacity 0.15s ease',
             }}
@@ -1110,7 +1251,16 @@ function MobileChatStrip({
                   height: 24,
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   {audioEnabled ? (
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -1141,7 +1291,16 @@ function MobileChatStrip({
                   height: 24,
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                 </svg>
               </button>
@@ -1192,7 +1351,16 @@ function MobileChatStrip({
               transition: 'background 0.15s ease',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
@@ -1202,4 +1370,3 @@ function MobileChatStrip({
     </div>
   )
 }
-

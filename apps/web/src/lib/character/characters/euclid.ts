@@ -1,9 +1,8 @@
 /**
  * Euclid character data provider for the admin panel.
  *
- * Assembles all character data — identity, personality blocks, voice mode
- * prompts, text chat prompt, tools, mode transitions — into a single
- * introspectable structure.
+ * Derives all prompts from the canonical GeometryTeacherConfig to ensure
+ * admin panel shows exactly the same prompts as runtime.
  */
 
 import {
@@ -13,22 +12,24 @@ import {
   EUCLID_POINT_LABELING,
   EUCLID_DIAGRAM_QUESTION,
 } from '@/components/toys/euclid/euclidCharacter'
-import { EUCLID_CHARACTER_DEF } from '@/components/toys/euclid/euclidCharacterDef'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import { PROPOSITION_SUMMARIES } from '@/components/toys/euclid/voice/euclidReferenceContext'
-import { conversingMode } from '@/components/toys/euclid/voice/modes/conversingMode'
-import { greetingMode } from '@/components/toys/euclid/voice/modes/greetingMode'
-import { thinkingMode } from '@/components/toys/euclid/voice/modes/thinkingMode'
 import { TOOL_HANG_UP, TOOL_HIGHLIGHT, TOOL_THINK_HARD } from '@/components/toys/euclid/voice/tools'
-import { buildEuclidChatSystemPrompt } from '@/components/toys/euclid/chat/buildChatSystemPrompt'
-import type { EuclidModeContext } from '@/components/toys/euclid/voice/types'
+import { euclidConfig } from '@/components/toys/euclid/characters/euclidConfig'
+import type { GeometryModeContext } from '@/components/toys/euclid/voice/types'
+import { splitPromptByKnownBlocks, type KnownBlock, type PromptBreakdown } from '../promptBreakdown'
 import {
-  splitPromptByKnownBlocks,
-  type KnownBlock,
-  type PromptBreakdown,
-} from '../promptBreakdown'
-import { getVariantSuffix, type ProfileSize, type ProfileTheme, type ProfileState } from '../../profile-variants'
-import type { CharacterSummary, CharacterData, CharacterDataProvider, ProfileVariantPath } from './index'
+  getVariantSuffix,
+  type ProfileSize,
+  type ProfileTheme,
+  type ProfileState,
+} from '../../profile-variants'
+import type {
+  CharacterSummary,
+  CharacterData,
+  CharacterDataProvider,
+  ProfileVariantPath,
+} from './index'
 
 /** Personality block metadata for the admin panel. */
 const PERSONALITY_BLOCKS = [
@@ -79,8 +80,8 @@ const KNOWN_BLOCKS: KnownBlock[] = PERSONALITY_BLOCKS.map((b) => ({
   sourceExport: b.sourceExport,
 }))
 
-/** Build a sample EuclidModeContext for prompt generation. */
-function buildSampleContext(propositionId: number, step: number): EuclidModeContext {
+/** Build a sample GeometryModeContext for prompt generation. */
+function buildSampleContext(propositionId: number, step: number): GeometryModeContext {
   const prop = PROP_REGISTRY[propositionId]
   const propSummary = PROPOSITION_SUMMARIES[propositionId]
   const steps = prop?.steps ?? []
@@ -90,7 +91,8 @@ function buildSampleContext(propositionId: number, step: number): EuclidModeCont
   return {
     propositionId,
     propositionTitle: propSummary?.statement ?? prop?.title ?? `Proposition I.${propositionId}`,
-    propositionKind: (propSummary?.type?.toLowerCase() as 'construction' | 'theorem') ?? 'construction',
+    propositionKind:
+      (propSummary?.type?.toLowerCase() as 'construction' | 'theorem') ?? 'construction',
     currentStep: Math.max(0, currentStep),
     totalSteps,
     isComplete: false,
@@ -133,15 +135,17 @@ function getAvailablePropositions(): Array<{ id: number; title: string; type: st
   }))
 }
 
+const def = euclidConfig.definition
+
 export const euclidProvider: CharacterDataProvider = {
   id: 'euclid',
 
   getSummary(): CharacterSummary {
     return {
       id: 'euclid',
-      displayName: EUCLID_CHARACTER_DEF.displayName,
-      nativeDisplayName: EUCLID_CHARACTER_DEF.nativeDisplayName,
-      profileImage: EUCLID_CHARACTER_DEF.profileImage,
+      displayName: def.displayName,
+      nativeDisplayName: def.nativeDisplayName,
+      profileImage: def.profileImage,
       type: 'historical-figure',
     }
   },
@@ -151,11 +155,11 @@ export const euclidProvider: CharacterDataProvider = {
     const step = opts?.step ?? 0
     const sampleCtx = buildSampleContext(propositionId, step)
 
-    // Generate prompts from actual mode functions
-    const greetingPrompt = greetingMode.getInstructions(sampleCtx)
-    const conversingPrompt = conversingMode.getInstructions(sampleCtx)
-    const thinkingPrompt = thinkingMode.getInstructions(sampleCtx)
-    const chatPrompt = buildEuclidChatSystemPrompt({
+    // Generate prompts from the canonical GeometryTeacherConfig modes
+    const greetingPrompt = euclidConfig.modes.greeting.getInstructions(sampleCtx)
+    const conversingPrompt = euclidConfig.modes.conversing.getInstructions(sampleCtx)
+    const thinkingPrompt = euclidConfig.modes.thinking.getInstructions(sampleCtx)
+    const chatPrompt = euclidConfig.buildChatSystemPrompt({
       propositionId,
       currentStep: step,
       isComplete: false,
@@ -170,7 +174,7 @@ export const euclidProvider: CharacterDataProvider = {
     })
 
     // Build all 18 variant paths from the base profile image (3 sizes × 3 themes × 2 states)
-    const baseImage = EUCLID_CHARACTER_DEF.profileImage
+    const baseImage = def.profileImage
     const sizes: ProfileSize[] = ['default', 'sm', 'lg']
     const themes: ProfileTheme[] = ['default', 'light', 'dark']
     const states: ProfileState[] = ['idle', 'speaking']
@@ -188,17 +192,17 @@ export const euclidProvider: CharacterDataProvider = {
     return {
       identity: {
         id: 'euclid',
-        displayName: EUCLID_CHARACTER_DEF.displayName,
-        nativeDisplayName: EUCLID_CHARACTER_DEF.nativeDisplayName,
-        profileImage: EUCLID_CHARACTER_DEF.profileImage,
+        displayName: def.displayName,
+        nativeDisplayName: def.nativeDisplayName,
+        profileImage: def.profileImage,
         type: 'historical-figure',
         profilePrompt: [
-          "Portrait of Euclid (Εὐκλείδης) of Alexandria, depicted as an iPhone contact profile picture.",
-          "Circular crop-friendly composition centered on the face/bust.",
-          "Ancient Greek man, dignified, wise, warm expression, short curly grey-white beard, draped in a simple cream chiton.",
+          'Portrait of Euclid (Εὐκλείδης) of Alexandria, depicted as an iPhone contact profile picture.',
+          'Circular crop-friendly composition centered on the face/bust.',
+          'Ancient Greek man, dignified, wise, warm expression, short curly grey-white beard, draped in a simple cream chiton.',
           "Background: warm parchment with faint geometric compass arcs and construction lines in the style of Oliver Byrne's illustrated Euclid — bold flat primary colors (red, blue, gold) for the geometric accents.",
-          "Art style: clean illustration, slightly stylized (not photorealistic), warm tones, approachable and friendly — this is a teacher children will talk to.",
-          "No text, no labels, no letters. Square 1:1 composition.",
+          'Art style: clean illustration, slightly stylized (not photorealistic), warm tones, approachable and friendly — this is a teacher children will talk to.',
+          'No text, no labels, no letters. Square 1:1 composition.',
         ].join(' '),
         profileVariants,
       },
@@ -213,9 +217,9 @@ export const euclidProvider: CharacterDataProvider = {
       })),
 
       chatConfig: {
-        placeholder: EUCLID_CHARACTER_DEF.chat.placeholder,
-        emptyPrompt: EUCLID_CHARACTER_DEF.chat.emptyPrompt,
-        streamingLabel: EUCLID_CHARACTER_DEF.chat.streamingLabel,
+        placeholder: def.chat.placeholder,
+        emptyPrompt: def.chat.emptyPrompt,
+        streamingLabel: def.chat.streamingLabel,
         sourceFile: 'src/components/toys/euclid/euclidCharacterDef.ts',
       },
 
@@ -295,7 +299,8 @@ export const euclidProvider: CharacterDataProvider = {
           description: TOOL_THINK_HARD.description,
           parameters: TOOL_THINK_HARD.parameters,
           modes: ['conversing'],
-          behavior: 'Async: screenshot + proof state → POST → enterMode: thinking → asyncResult → auto-exit',
+          behavior:
+            'Async: screenshot + proof state → POST → enterMode: thinking → asyncResult → auto-exit',
           promptResponse: true,
         },
         {

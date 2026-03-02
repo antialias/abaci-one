@@ -91,7 +91,12 @@ describe('wouldViolateDistinctness', () => {
 
   describe('proposition macro steps pass distinctness checks', () => {
     // Collect every macro step from every proposition
-    const macroSteps: { propId: number; stepIndex: number; macroPropId: number; inputPointIds: string[] }[] = []
+    const macroSteps: {
+      propId: number
+      stepIndex: number
+      macroPropId: number
+      inputPointIds: string[]
+    }[] = []
     for (const [propIdStr, propDef] of Object.entries(PROP_REGISTRY)) {
       for (let i = 0; i < propDef.steps.length; i++) {
         const step = propDef.steps[i]
@@ -106,34 +111,39 @@ describe('wouldViolateDistinctness', () => {
       }
     }
 
-    it.each(macroSteps)(
-      'Prop I.$propId step $stepIndex — I.$macroPropId macro with $inputPointIds',
-      ({ macroPropId, inputPointIds }) => {
-        const macroDef = MACRO_REGISTRY[macroPropId]
-        expect(macroDef, `Macro I.${macroPropId} not in registry`).toBeDefined()
+    it.each(
+      macroSteps
+    )('Prop I.$propId step $stepIndex — I.$macroPropId macro with $inputPointIds', ({
+      macroPropId,
+      inputPointIds,
+    }) => {
+      const macroDef = MACRO_REGISTRY[macroPropId]
+      expect(macroDef, `Macro I.${macroPropId} not in registry`).toBeDefined()
 
-        // Simulate selecting each point in sequence — none should be rejected
-        for (let i = 0; i < inputPointIds.length; i++) {
-          const selectedSoFar = inputPointIds.slice(0, i)
-          const candidate = inputPointIds[i]
-          const violates = wouldViolateDistinctness(
-            macroDef.distinctInputPairs,
-            selectedSoFar,
-            candidate
-          )
-          expect(
-            violates,
-            `Selection ${i} (${candidate}) after [${selectedSoFar}] was rejected by I.${macroPropId} distinctInputPairs`
-          ).toBe(false)
-        }
+      // Simulate selecting each point in sequence — none should be rejected
+      for (let i = 0; i < inputPointIds.length; i++) {
+        const selectedSoFar = inputPointIds.slice(0, i)
+        const candidate = inputPointIds[i]
+        const violates = wouldViolateDistinctness(
+          macroDef.distinctInputPairs,
+          selectedSoFar,
+          candidate
+        )
+        expect(
+          violates,
+          `Selection ${i} (${candidate}) after [${selectedSoFar}] was rejected by I.${macroPropId} distinctInputPairs`
+        ).toBe(false)
       }
-    )
+    })
   })
 
   describe('registry completeness', () => {
     it('every macro in the registry has distinctInputPairs defined', () => {
       for (const [propId, macro] of Object.entries(MACRO_REGISTRY)) {
-        expect(macro.distinctInputPairs, `Macro I.${propId} missing distinctInputPairs`).toBeDefined()
+        expect(
+          macro.distinctInputPairs,
+          `Macro I.${propId} missing distinctInputPairs`
+        ).toBeDefined()
         expect(Array.isArray(macro.distinctInputPairs)).toBe(true)
       }
     })
@@ -141,8 +151,12 @@ describe('wouldViolateDistinctness', () => {
     it('all pair indices are within inputCount bounds', () => {
       for (const [propId, macro] of Object.entries(MACRO_REGISTRY)) {
         for (const [i, j] of macro.distinctInputPairs) {
-          expect(i, `Macro I.${propId} pair index ${i} out of bounds`).toBeLessThan(macro.inputCount)
-          expect(j, `Macro I.${propId} pair index ${j} out of bounds`).toBeLessThan(macro.inputCount)
+          expect(i, `Macro I.${propId} pair index ${i} out of bounds`).toBeLessThan(
+            macro.inputCount
+          )
+          expect(j, `Macro I.${propId} pair index ${j} out of bounds`).toBeLessThan(
+            macro.inputCount
+          )
           expect(i, `Macro I.${propId} pair [${i},${j}] should have i < j`).toBeLessThan(j)
         }
       }

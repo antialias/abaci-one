@@ -9,7 +9,15 @@
 
 import { useState, useEffect } from 'react'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import type { ConstructionState, ActiveTool, CompassPhase, StraightedgePhase, ExtendPhase, MacroPhase, PropositionStep } from './types'
+import type {
+  ConstructionState,
+  ActiveTool,
+  CompassPhase,
+  StraightedgePhase,
+  ExtendPhase,
+  MacroPhase,
+  PropositionStep,
+} from './types'
 import type { ProofFact } from './engine/facts'
 import type { CallState } from '@/lib/voice/types'
 import type { ConstructionNotifier, NotifierLogEntry } from './voice/useConstructionNotifier'
@@ -189,7 +197,9 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
 
       {/* Voice Session */}
       <CollapsibleSection title="Voice Session" defaultOpen>
-        <div>State: <strong>{voiceState}</strong></div>
+        <div>
+          State: <strong>{voiceState}</strong>
+        </div>
         <div>Speaking: {isSpeaking ? 'yes' : 'no'}</div>
       </CollapsibleSection>
 
@@ -199,9 +209,7 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
       </CollapsibleSection>
 
       {/* Construction State */}
-      <CollapsibleSection title="Construction State">
-        {constructionText}
-      </CollapsibleSection>
+      <CollapsibleSection title="Construction State">{constructionText}</CollapsibleSection>
 
       {/* Tool State */}
       <CollapsibleSection title="Tool State" defaultOpen>
@@ -209,9 +217,7 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
       </CollapsibleSection>
 
       {/* Proven Facts */}
-      <CollapsibleSection title="Proven Facts">
-        {factsText}
-      </CollapsibleSection>
+      <CollapsibleSection title="Proven Facts">{factsText}</CollapsibleSection>
 
       {/* Text Chat Context */}
       <CollapsibleSection title="Text Chat">
@@ -229,12 +235,17 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
           const statusColor = isSummarizing ? '#fcd34d' : hasSummary ? '#86efac' : 'inherit'
           return (
             <>
-              <div>Status: <span style={{ color: statusColor }}>{status}</span></div>
-              <div>Coverage: {compaction.coversUpTo} / {chatMessageCount} msgs summarized</div>
+              <div>
+                Status: <span style={{ color: statusColor }}>{status}</span>
+              </div>
+              <div>
+                Coverage: {compaction.coversUpTo} / {chatMessageCount} msgs summarized
+              </div>
               <div>Tail: {tailSize} msgs verbatim</div>
               {hasSummary && (
                 <div style={{ marginTop: 4, opacity: 0.7, fontSize: 9 }}>
-                  {compaction.headSummary!.slice(0, 200)}{compaction.headSummary!.length > 200 ? '...' : ''}
+                  {compaction.headSummary!.slice(0, 200)}
+                  {compaction.headSummary!.length > 200 ? '...' : ''}
                 </div>
               )}
             </>
@@ -251,13 +262,33 @@ export function EuclidContextDebugPanel(props: EuclidContextDebugPanelProps) {
             .slice()
             .reverse()
             .map((evt: NotifierLogEntry, i: number) => (
-              <div key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 2, marginBottom: 2 }}>
+              <div
+                key={i}
+                style={{
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  paddingBottom: 2,
+                  marginBottom: 2,
+                }}
+              >
                 <span style={{ opacity: 0.5 }}>{new Date(evt.timestamp).toLocaleTimeString()}</span>{' '}
-                <span style={{ color: evt.type === 'construction' ? '#86efac' : evt.type === 'tool' ? '#93c5fd' : '#fcd34d' }}>
+                <span
+                  style={{
+                    color:
+                      evt.type === 'construction'
+                        ? '#86efac'
+                        : evt.type === 'tool'
+                          ? '#93c5fd'
+                          : '#fcd34d',
+                  }}
+                >
                   [{evt.type}]
                 </span>{' '}
                 {evt.action}
-                {evt.delivered ? '' : <span style={{ color: '#f87171', marginLeft: 4 }}>(not delivered)</span>}
+                {evt.delivered ? (
+                  ''
+                ) : (
+                  <span style={{ color: '#f87171', marginLeft: 4 }}>(not delivered)</span>
+                )}
               </div>
             ))
         )}

@@ -46,9 +46,7 @@ async function replaceTemplateExport(
   const source = await fs.readFile(filePath, 'utf-8')
 
   // Match: export const EXPORT_NAME = `...`
-  const re = new RegExp(
-    `(export const ${exportName} = \`)([\\s\\S]*?)(\`)`,
-  )
+  const re = new RegExp(`(export const ${exportName} = \`)([\\s\\S]*?)(\`)`)
   const match = source.match(re)
   if (!match) return false
 
@@ -70,9 +68,7 @@ async function replaceStringProperty(
   const source = await fs.readFile(filePath, 'utf-8')
 
   // Match: propertyName: '...' or propertyName: "..."
-  const re = new RegExp(
-    `(${propertyName}:\\s*)(['"])(.*?)\\2`,
-  )
+  const re = new RegExp(`(${propertyName}:\\s*)(['"])(.*?)\\2`)
   const match = source.match(re)
   if (!match) return false
 
@@ -143,9 +139,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const match = source.match(re)
     if (match) {
       // Split new prompt into sentence-ish chunks for readability
-      const sentences = body.profilePrompt.split('. ').map((s: string) =>
-        s.endsWith('.') ? s : `${s}.`
-      )
+      const sentences = body.profilePrompt
+        .split('. ')
+        .map((s: string) => (s.endsWith('.') ? s : `${s}.`))
       const arrayContent = sentences.map((s: string) => `\n  ${JSON.stringify(s)},`).join('')
       const updated = source.replace(re, `$1${arrayContent}\n$3`)
       await fs.writeFile(filePath, updated, 'utf-8')

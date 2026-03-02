@@ -70,9 +70,7 @@ describe('parseEntityMarkers', () => {
   it('resets regex state between calls', () => {
     parseEntityMarkers('[A]', testConfig)
     const result = parseEntityMarkers('[B]', testConfig)
-    expect(result).toEqual([
-      { kind: 'entity', text: '<B>', entity: { tag: 'B' } },
-    ])
+    expect(result).toEqual([{ kind: 'entity', text: '<B>', entity: { tag: 'B' } }])
   })
 })
 

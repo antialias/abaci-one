@@ -6,7 +6,7 @@
 export function captureScreenshot(
   canvas: HTMLCanvasElement,
   width = 512,
-  height = 384,
+  height = 384
 ): string | null {
   try {
     const offscreen = document.createElement('canvas')

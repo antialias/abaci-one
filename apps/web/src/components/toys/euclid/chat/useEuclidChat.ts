@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useRef } from 'react'
+import { useGeometryTeacher } from '../GeometryTeacherContext'
 import { useCharacterChat } from '@/lib/character/useCharacterChat'
 import type { UseCharacterChatReturn } from '@/lib/character/useCharacterChat'
 import type {
@@ -59,6 +60,8 @@ export interface UseEuclidChatReturn extends UseCharacterChatReturn {
 }
 
 export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatReturn {
+  const teacherConfig = useGeometryTeacher()
+
   const {
     canvasRef,
     constructionRef,
@@ -78,19 +81,29 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     isMobile,
   } = options
 
-  const readToolState = useCallback((): ToolStateInfo => ({
-    activeTool: activeToolRef.current ?? 'compass',
-    compassPhase: compassPhaseRef.current ?? { tag: 'idle' },
-    straightedgePhase: straightedgePhaseRef.current ?? { tag: 'idle' },
-    extendPhase: extendPhaseRef.current ?? { tag: 'idle' },
-    macroPhase: macroPhaseRef.current ?? { tag: 'idle' },
-    dragPointId: dragPointIdRef.current ?? null,
-  }), [activeToolRef, compassPhaseRef, straightedgePhaseRef, extendPhaseRef, macroPhaseRef, dragPointIdRef])
+  const readToolState = useCallback(
+    (): ToolStateInfo => ({
+      activeTool: activeToolRef.current ?? 'compass',
+      compassPhase: compassPhaseRef.current ?? { tag: 'idle' },
+      straightedgePhase: straightedgePhaseRef.current ?? { tag: 'idle' },
+      extendPhase: extendPhaseRef.current ?? { tag: 'idle' },
+      macroPhase: macroPhaseRef.current ?? { tag: 'idle' },
+      dragPointId: dragPointIdRef.current ?? null,
+    }),
+    [
+      activeToolRef,
+      compassPhaseRef,
+      straightedgePhaseRef,
+      extendPhaseRef,
+      macroPhaseRef,
+      dragPointIdRef,
+    ]
+  )
 
   const buildRequestBody = useCallback(
     (
       messages: Array<{ role: string; content: string }>,
-      screenshot: string | undefined,
+      screenshot: string | undefined
     ): Record<string, unknown> => {
       const emptyState = { elements: [], nextLabelIndex: 0, nextColorIndex: 0 } as ConstructionState
       const state = constructionRef.current ?? emptyState
@@ -121,6 +134,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
       const body = {
         messages,
         propositionId,
+        characterId: teacherConfig.definition.id,
         currentStep: step,
         isComplete,
         playgroundMode,
@@ -132,54 +146,85 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         ...(recentAction ? { recentAction } : {}),
         ...(isMobile ? { isMobile: true } : {}),
       }
-      console.log('[euclid-chat] buildRequestBody: step=%d, isComplete=%s, recentAction=%s, messageCount=%d', step, isComplete, recentAction, messages.length)
+      console.log(
+        '[euclid-chat] buildRequestBody: step=%d, isComplete=%s, recentAction=%s, messageCount=%d',
+        step,
+        isComplete,
+        recentAction,
+        messages.length
+      )
       return body
     },
-    [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState, pendingActionRef, isMobile],
+    [
+      constructionRef,
+      proofFactsRef,
+      currentStepRef,
+      propositionId,
+      teacherConfig,
+      isComplete,
+      playgroundMode,
+      steps,
+      readToolState,
+      pendingActionRef,
+      isMobile,
+    ]
   )
 
-  const markupMessageImpl = useCallback((messageId: string, content: string, strict?: boolean, updateFn?: (id: string, content: string) => void) => {
-    if (!content) return
-    // Skip if already has markers
-    if (/\{(seg|tri|ang|pt|def|post|cn|prop):/.test(content)) return
+  const markupMessageImpl = useCallback(
+    (
+      messageId: string,
+      content: string,
+      strict?: boolean,
+      updateFn?: (id: string, content: string) => void
+    ) => {
+      if (!content) return
+      // Skip if already has markers
+      if (/\{(seg|tri|ang|pt|def|post|cn|prop):/.test(content)) return
 
-    // Gather point labels from the construction
-    const state = constructionRef.current
-    const pointLabels = state
-      ? state.elements.filter((e): e is ConstructionPoint => e.kind === 'point' && !!e.label).map(e => e.label)
-      : []
+      // Gather point labels from the construction
+      const state = constructionRef.current
+      const pointLabels = state
+        ? state.elements
+            .filter((e): e is ConstructionPoint => e.kind === 'point' && !!e.label)
+            .map((e) => e.label)
+        : []
 
-    fetch('/api/realtime/euclid/markup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: content,
-        propositionId,
-        pointLabels,
-        ...(strict ? { strict: true } : {}),
-      }),
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.markedText && data.markedText !== content) {
-          updateFn?.(messageId, data.markedText)
-        }
+      fetch('/api/realtime/euclid/markup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: content,
+          propositionId,
+          pointLabels,
+          ...(strict ? { strict: true } : {}),
+        }),
       })
-      .catch(() => {
-        // Silently fail — original text remains
-      })
-  }, [constructionRef, propositionId])
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.markedText && data.markedText !== content) {
+            updateFn?.(messageId, data.markedText)
+          }
+        })
+        .catch(() => {
+          // Silently fail — original text remains
+        })
+    },
+    [constructionRef, propositionId]
+  )
 
   // Ref to access chat.updateMessageContent in the onUserMessageAdded callback without circular deps
   const chatRef = useRef<UseCharacterChatReturn | null>(null)
 
   // Callback for typed user messages — markup with strict validation
-  const onUserMessageAdded = useCallback((messageId: string, content: string) => {
-    markupMessageImpl(messageId, content, true, chatRef.current?.updateMessageContent)
-  }, [markupMessageImpl])
+  const onUserMessageAdded = useCallback(
+    (messageId: string, content: string) => {
+      markupMessageImpl(messageId, content, true, chatRef.current?.updateMessageContent)
+    },
+    [markupMessageImpl]
+  )
 
   const chat = useCharacterChat({
-    chatEndpoint: '/api/realtime/euclid/chat',
+    chatEndpoint: teacherConfig.voice.chatEndpoint,
     buildRequestBody,
     canvasRef,
     onUserMessageAdded,
@@ -187,9 +232,12 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
 
   chatRef.current = chat
 
-  const markupMessage = useCallback((messageId: string, content: string, strict?: boolean) => {
-    markupMessageImpl(messageId, content, strict, chat.updateMessageContent)
-  }, [markupMessageImpl, chat.updateMessageContent])
+  const markupMessage = useCallback(
+    (messageId: string, content: string, strict?: boolean) => {
+      markupMessageImpl(messageId, content, strict, chat.updateMessageContent)
+    },
+    [markupMessageImpl, chat.updateMessageContent]
+  )
 
   return { ...chat, markupMessage }
 }

@@ -14,7 +14,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     const { id } = (await params) as { id: string }
     const userId = await getUserId()
     const body = await request.json()
-    let normalizedBirthday: string | null | undefined = undefined
+    let normalizedBirthday: string | null | undefined
     if (body.birthday === null) {
       normalizedBirthday = null
     } else if (typeof body.birthday === 'string') {

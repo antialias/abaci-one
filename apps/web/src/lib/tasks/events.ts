@@ -476,7 +476,12 @@ export type ProfileImageGenerateEvent =
     }
   | {
       type: 'children_started'
-      children: Array<{ taskId: string; size: ProfileSize; theme: ProfileTheme; state: ProfileState }>
+      children: Array<{
+        taskId: string
+        size: ProfileSize
+        theme: ProfileTheme
+        state: ProfileState
+      }>
     }
 
 // ============================================================================

@@ -28,12 +28,15 @@ Def.15 — A circle: a plane figure where all lines from the center to the bound
 Def.20 — Equilateral triangle: three equal sides. Isosceles: two equal sides. Scalene: three unequal sides.
 Def.23 — Parallel lines: lines in the same plane that never meet when produced indefinitely.`
 
-export const PROPOSITION_SUMMARIES: Record<number, {
-  statement: string
-  type: string
-  /** Edge cases where the construction degenerates or requires careful reasoning */
-  degenerateCases?: string
-}> = {
+export const PROPOSITION_SUMMARIES: Record<
+  number,
+  {
+    statement: string
+    type: string
+    /** Edge cases where the construction degenerates or requires careful reasoning */
+    degenerateCases?: string
+  }
+> = {
   1: {
     statement: 'Construct an equilateral triangle on a given finite straight line.',
     type: 'Construction',
@@ -102,7 +105,9 @@ export function buildReferenceContext(currentPropId: number): string {
   const currentProp = PROPOSITION_SUMMARIES[currentPropId]
   if (currentProp?.degenerateCases) {
     lines.push('', '=== EDGE CASES & DEGENERATE SITUATIONS (for this proposition) ===')
-    lines.push(`If the student asks about edge cases, boundary conditions, or what happens when points coincide, use this reasoning — do NOT improvise:`)
+    lines.push(
+      `If the student asks about edge cases, boundary conditions, or what happens when points coincide, use this reasoning — do NOT improvise:`
+    )
     lines.push(currentProp.degenerateCases)
   }
 

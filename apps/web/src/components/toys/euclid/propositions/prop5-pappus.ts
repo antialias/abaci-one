@@ -17,9 +17,10 @@ function getPappusTutorial(): TutorialSubStep[][] {
     // Step 0: observation — consider the correspondence
     [
       {
-        instruction: 'Consider: {pt:A} maps to {pt:A}, {pt:B} maps to {pt:C}, {pt:C} maps to {pt:B}',
+        instruction:
+          'Consider: {pt:A} maps to {pt:A}, {pt:B} maps to {pt:C}, {pt:C} maps to {pt:B}',
         speech:
-          "Pappus has a beautiful idea. Instead of building auxiliary lines, he applies the triangle to itself. Consider the correspondence where A stays fixed, but B and C swap places.",
+          'There is a more elegant approach. Instead of building auxiliary lines, let us apply the triangle to itself. Consider the correspondence where A stays fixed, but B and C swap places.',
         hint: { type: 'none' as const },
         advanceOn: null,
       },
@@ -29,7 +30,7 @@ function getPappusTutorial(): TutorialSubStep[][] {
       {
         instruction: '{seg:AB} = {seg:AC} — the first pair of equal sides',
         speech:
-          'Under this correspondence, side AB maps to side AC. But we know AB equals AC — that\'s given. So the first pair of sides match.',
+          'Under this correspondence, side AB maps to side AC. We know AB equals AC — that is given. So the first pair of sides match.',
         hint: { type: 'none' as const },
         advanceOn: null,
       },
@@ -39,7 +40,7 @@ function getPappusTutorial(): TutorialSubStep[][] {
       {
         instruction: '{ang:BAC} = {ang:CAB} — the same angle',
         speech:
-          'The included angle at A — angle BAC — maps to angle CAB. But that\'s the same angle, just written backwards! An angle always equals itself.',
+          'The included angle at A — angle BAC — maps to angle CAB. That is the same angle, written in reverse. An angle always equals itself.',
         hint: { type: 'none' as const },
         advanceOn: null,
       },
@@ -49,7 +50,7 @@ function getPappusTutorial(): TutorialSubStep[][] {
       {
         instruction: 'By {prop:4|I.4} (SAS): {tri:ABC} ≅ {tri:ACB}, so {ang:ABC} = {ang:ACB}',
         speech:
-          'Two sides and the included angle match, so by Proposition I.4, triangle ABC is congruent to triangle ACB. The remaining angles must be equal: angle ABC equals angle ACB. The base angles are equal — with no construction at all!',
+          "Two sides and the included angle match, so by Euclid's fourth proposition, triangle ABC is congruent to triangle ACB. The remaining angles must be equal: angle ABC equals angle ACB. The base angles are equal — with no construction at all.",
         hint: { type: 'none' as const },
         advanceOn: null,
       },
@@ -89,6 +90,7 @@ function derivePappusConclusion(
  */
 export const PROP_5_PAPPUS: PropositionDef = {
   id: 5,
+  characterId: 'pappus',
   proofVariant: 'pappus',
   proofLabel: "Pappus's proof",
   proofDescription: 'Zero constructions — the triangle is congruent to itself',
@@ -171,12 +173,13 @@ export const PROP_5_PAPPUS: PropositionDef = {
   ],
   steps: [
     {
-      instruction: 'Consider the correspondence: {pt:A}\u2009\u2192\u2009{pt:A}, {pt:B}\u2009\u2192\u2009{pt:C}, {pt:C}\u2009\u2192\u2009{pt:B}',
+      instruction:
+        'Consider the correspondence: {pt:A}\u2009\u2192\u2009{pt:A}, {pt:B}\u2009\u2192\u2009{pt:C}, {pt:C}\u2009\u2192\u2009{pt:B}',
       expected: { type: 'observation', id: 'obs-correspondence' },
       highlightIds: ['pt-A', 'pt-B', 'pt-C'],
       tool: null,
       observationSpeech:
-        "Pappus applies the triangle to itself. Consider the correspondence where A stays fixed, but B and C swap places.",
+        'Let us apply the triangle to itself. Consider the correspondence where A stays fixed, but B and C swap places.',
     },
     {
       instruction: '{seg:AB} = {seg:AC} — first pair of equal sides',
@@ -185,7 +188,7 @@ export const PROP_5_PAPPUS: PropositionDef = {
       tool: null,
       citation: 'Given',
       observationSpeech:
-        'Under this correspondence, side AB maps to side AC. We know AB equals AC — that\'s given.',
+        'Under this correspondence, side AB maps to side AC. We know AB equals AC — that is given.',
     },
     {
       instruction: '{ang:BAC} = {ang:CAB} — the included angle is the same angle',
@@ -203,7 +206,7 @@ export const PROP_5_PAPPUS: PropositionDef = {
       tool: null,
       citation: 'I.4',
       observationSpeech:
-        'Two sides and the included angle match, so by Proposition I.4, triangle ABC is congruent to triangle ACB. The base angles are equal — with no construction at all!',
+        "Two sides and the included angle match, so by Euclid's fourth proposition, triangle ABC is congruent to triangle ACB. The base angles are equal — with no construction at all.",
     },
   ],
   superpositionFlash: {
@@ -217,7 +220,7 @@ export const PROP_5_PAPPUS: PropositionDef = {
   getTutorial: getPappusTutorial,
   explorationNarration: {
     introSpeech:
-      "Pappus's proof is wonderfully elegant — zero auxiliary constructions! By seeing the triangle as congruent to its own mirror image, the base angles must be equal. Try dragging the points to see this hold for every isosceles triangle.",
+      'This proof requires no construction at all — only the observation that the triangle is congruent to its own mirror image. The base angles must therefore be equal. Try dragging the points to see this hold for every isosceles triangle.',
     pointTips: [
       {
         pointId: 'pt-A',

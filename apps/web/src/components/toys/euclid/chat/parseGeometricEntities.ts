@@ -27,20 +27,34 @@ export type FoundationEntityRef =
 export type EuclidEntityRef = GeometricEntityRef | FoundationEntityRef
 
 export function isGeometricEntity(entity: EuclidEntityRef): entity is GeometricEntityRef {
-  return entity.type === 'segment' || entity.type === 'triangle' || entity.type === 'angle' || entity.type === 'point'
+  return (
+    entity.type === 'segment' ||
+    entity.type === 'triangle' ||
+    entity.type === 'angle' ||
+    entity.type === 'point'
+  )
 }
 
 export function isFoundationEntity(entity: EuclidEntityRef): entity is FoundationEntityRef {
-  return entity.type === 'definition' || entity.type === 'postulate' || entity.type === 'commonNotion' || entity.type === 'proposition'
+  return (
+    entity.type === 'definition' ||
+    entity.type === 'postulate' ||
+    entity.type === 'commonNotion' ||
+    entity.type === 'proposition'
+  )
 }
 
 /** Convert a FoundationEntityRef to the citation key format used by CitationPopover (e.g. "Def.15", "Post.1") */
 export function foundationToCitationKey(entity: FoundationEntityRef): string {
   switch (entity.type) {
-    case 'definition': return `Def.${entity.id}`
-    case 'postulate': return `Post.${entity.id}`
-    case 'commonNotion': return `C.N.${entity.id}`
-    case 'proposition': return `I.${entity.id}`
+    case 'definition':
+      return `Def.${entity.id}`
+    case 'postulate':
+      return `Post.${entity.id}`
+    case 'commonNotion':
+      return `C.N.${entity.id}`
+    case 'proposition':
+      return `I.${entity.id}`
   }
 }
 
@@ -51,11 +65,16 @@ export type TextSegment =
 /** Display text for each entity type */
 function displayText(tag: string, labels: string): string {
   switch (tag) {
-    case 'seg': return labels // "AB"
-    case 'tri': return `△${labels}` // "△ABC"
-    case 'ang': return `∠${labels}` // "∠ABC"
-    case 'pt': return labels // "A"
-    default: return labels
+    case 'seg':
+      return labels // "AB"
+    case 'tri':
+      return `△${labels}` // "△ABC"
+    case 'ang':
+      return `∠${labels}` // "∠ABC"
+    case 'pt':
+      return labels // "A"
+    default:
+      return labels
   }
 }
 
@@ -108,17 +127,19 @@ function buildEntity(tag: string, labels: string): GeometricEntityRef | null {
  *   \( A \)             → {pt:A}
  */
 export function latexToMarkers(text: string): string {
-  return text
-    // \( \triangle ABC \) → {tri:ABC}
-    .replace(/\\\(\s*\\triangle\s+([A-Z]{3})\s*\\\)/g, '{tri:$1}')
-    // \( \angle ABC \) → {ang:ABC}
-    .replace(/\\\(\s*\\angle\s+([A-Z]{3})\s*\\\)/g, '{ang:$1}')
-    // \( AB = CD \) → {seg:AB} = {seg:CD} (segment equations)
-    .replace(/\\\(\s*([A-Z]{2})\s*=\s*([A-Z]{2})\s*\\\)/g, '{seg:$1} = {seg:$2}')
-    // \( AB \) → {seg:AB} (two uppercase letters = segment)
-    .replace(/\\\(\s*([A-Z]{2})\s*\\\)/g, '{seg:$1}')
-    // \( A \) → {pt:A} (single uppercase letter = point)
-    .replace(/\\\(\s*([A-Z])\s*\\\)/g, '{pt:$1}')
+  return (
+    text
+      // \( \triangle ABC \) → {tri:ABC}
+      .replace(/\\\(\s*\\triangle\s+([A-Z]{3})\s*\\\)/g, '{tri:$1}')
+      // \( \angle ABC \) → {ang:ABC}
+      .replace(/\\\(\s*\\angle\s+([A-Z]{3})\s*\\\)/g, '{ang:$1}')
+      // \( AB = CD \) → {seg:AB} = {seg:CD} (segment equations)
+      .replace(/\\\(\s*([A-Z]{2})\s*=\s*([A-Z]{2})\s*\\\)/g, '{seg:$1} = {seg:$2}')
+      // \( AB \) → {seg:AB} (two uppercase letters = segment)
+      .replace(/\\\(\s*([A-Z]{2})\s*\\\)/g, '{seg:$1}')
+      // \( A \) → {pt:A} (single uppercase letter = point)
+      .replace(/\\\(\s*([A-Z])\s*\\\)/g, '{pt:$1}')
+  )
 }
 
 // Match {tag:LABELS} where tag is seg|tri|ang|pt and LABELS is uppercase letters,
@@ -131,10 +152,7 @@ const MARKER_RE = /\{(seg|tri|ang|pt):([A-Z]+)\}|\{(def|post|cn|prop):(\d+)\}/g
  * `knownLabels` is accepted for API compatibility but not used for filtering —
  * the LLM explicitly marks entities so we trust its output.
  */
-export function parseGeometricEntities(
-  text: string,
-  _knownLabels?: Set<string>
-): TextSegment[] {
+export function parseGeometricEntities(text: string, _knownLabels?: Set<string>): TextSegment[] {
   const result: TextSegment[] = []
   let lastIndex = 0
 

@@ -10,6 +10,7 @@
 import type { PromptBreakdown } from '../promptBreakdown'
 import type { ProfileSize, ProfileTheme, ProfileState } from '../../profile-variants'
 import { euclidProvider } from './euclid'
+import { pappusProvider } from './pappus'
 
 /** Summary for character list view. */
 export interface CharacterSummary {
@@ -103,6 +104,7 @@ export interface CharacterDataProvider {
 /** Registry of all character providers. */
 export const CHARACTER_PROVIDERS: Record<string, CharacterDataProvider> = {
   euclid: euclidProvider,
+  pappus: pappusProvider,
 }
 
 /** Get all character summaries. */

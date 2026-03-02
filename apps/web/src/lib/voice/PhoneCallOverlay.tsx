@@ -242,9 +242,7 @@ export function PhoneCallOverlay({
               backgroundColor: bg,
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
-              boxShadow: isDark
-                ? '0 4px 16px rgba(0, 0, 0, 0.4)'
-                : '0 4px 16px rgba(0, 0, 0, 0.1)',
+              boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.4)' : '0 4px 16px rgba(0, 0, 0, 0.1)',
               zIndex: 13,
               pointerEvents: 'auto',
               animation: 'fadeInUp 0.2s ease-out',
@@ -252,12 +250,20 @@ export function PhoneCallOverlay({
           >
             {/* Caller identity in timer bar */}
             {callerImage ? (
-              <CallerPhoto src={callerImage} alt={callerLabel} size={32} speaking={isSpeaking} isDark={isDark} />
+              <CallerPhoto
+                src={callerImage}
+                alt={callerLabel}
+                size={32}
+                speaking={isSpeaking}
+                isDark={isDark}
+              />
             ) : (
               <>
                 {isSpeaking && <MiniWaveform isDark={isDark} active={true} />}
                 {callerIcon && (
-                  <span style={{ fontSize: 14, display: 'flex', alignItems: 'center' }}>{callerIcon}</span>
+                  <span style={{ fontSize: 14, display: 'flex', alignItems: 'center' }}>
+                    {callerIcon}
+                  </span>
                 )}
               </>
             )}
@@ -275,7 +281,10 @@ export function PhoneCallOverlay({
               {isThinking ? (
                 <>
                   <span style={{ fontSize: 13 }}>📜</span>
-                  <span>Consulting scrolls<AnimatedDots /></span>
+                  <span>
+                    Consulting scrolls
+                    <AnimatedDots />
+                  </span>
                 </>
               ) : (
                 callerLabel
@@ -333,9 +342,7 @@ export function PhoneCallOverlay({
             borderRadius: 16,
             backgroundColor: bg,
             backdropFilter: 'blur(12px)',
-            boxShadow: isDark
-              ? '0 8px 32px rgba(0, 0, 0, 0.6)'
-              : '0 8px 32px rgba(0, 0, 0, 0.15)',
+            boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.6)' : '0 8px 32px rgba(0, 0, 0, 0.15)',
             zIndex: 15,
             pointerEvents: 'auto',
             animation: 'fadeInUp 0.25s ease-out',
@@ -430,16 +437,12 @@ export function PhoneCallOverlay({
                   <CallerPhoto src={callerImage} alt={callerLabel} size={72} isDark={isDark} />
                 </div>
               ) : (
-                <div style={{ fontSize: 24, marginBottom: 8 }}>
-                  {callerIcon || '👋'}
-                </div>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>{callerIcon || '👋'}</div>
               )}
               <div style={{ fontSize: 16, fontWeight: 600, color: textColor }}>
                 {callerLabel} hung up
               </div>
-              <div style={{ fontSize: 13, color: subtextColor, marginTop: 4 }}>
-                Great chat!
-              </div>
+              <div style={{ fontSize: 13, color: subtextColor, marginTop: 4 }}>Great chat!</div>
             </div>
           )}
 
@@ -501,9 +504,7 @@ export function PhoneCallOverlay({
                         fontSize: 14,
                         fontWeight: 600,
                         color: textColor,
-                        backgroundColor: isDark
-                          ? 'rgba(255,255,255,0.1)'
-                          : 'rgba(0,0,0,0.06)',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
                         border: 'none',
                         borderRadius: 22,
                         cursor: 'pointer',

@@ -15,7 +15,11 @@ export type ProfileState = 'idle' | 'speaking'
  * Examples: '' (base idle), '-sm', '-light', '-sm-light', '-speaking', '-sm-speaking-light', '-lg-speaking-dark'
  * The 'idle' state produces no suffix addition, preserving all existing paths.
  */
-export function getVariantSuffix(size: ProfileSize, theme: ProfileTheme, state: ProfileState = 'idle'): string {
+export function getVariantSuffix(
+  size: ProfileSize,
+  theme: ProfileTheme,
+  state: ProfileState = 'idle'
+): string {
   const parts: string[] = []
   if (size !== 'default') parts.push(size)
   if (state !== 'idle') parts.push(state)

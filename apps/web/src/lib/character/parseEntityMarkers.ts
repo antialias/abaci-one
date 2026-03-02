@@ -14,7 +14,7 @@ export type MarkedSegment<TEntityRef> =
 
 export function parseEntityMarkers<TEntityRef>(
   text: string,
-  config: EntityMarkerConfig<TEntityRef>,
+  config: EntityMarkerConfig<TEntityRef>
 ): MarkedSegment<TEntityRef>[] {
   const result: MarkedSegment<TEntityRef>[] = []
   let lastIndex = 0
@@ -58,7 +58,7 @@ export function parseEntityMarkers<TEntityRef>(
 /** Replace all entity markers with their display text, returning a plain string. */
 export function stripEntityMarkers<TEntityRef>(
   text: string,
-  config: EntityMarkerConfig<TEntityRef>,
+  config: EntityMarkerConfig<TEntityRef>
 ): string {
   config.pattern.lastIndex = 0
   return text.replace(config.pattern, (...args) => {

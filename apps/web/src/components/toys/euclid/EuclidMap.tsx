@@ -508,13 +508,7 @@ function rectBorderPoint(cx: number, cy: number, w: number, h: number, px: numbe
  * Trim edge endpoints to node borders using ray-rect intersection.
  * Handles edges exiting/entering from any side of the node.
  */
-function trimToBorders(
-  pts: Pt[],
-  srcX: number,
-  srcY: number,
-  tgtX: number,
-  tgtY: number
-): Pt[] {
+function trimToBorders(pts: Pt[], srcX: number, srcY: number, tgtX: number, tgtY: number): Pt[] {
   if (pts.length < 2) return pts
   const result = pts.map((p) => ({ ...p }))
 
@@ -523,7 +517,14 @@ function trimToBorders(
 
   // Trim end → target border (ray from center toward prev point)
   const last = result.length - 1
-  result[last] = rectBorderPoint(tgtX, tgtY, NODE_W, RENDER_H, result[last - 1].x, result[last - 1].y)
+  result[last] = rectBorderPoint(
+    tgtX,
+    tgtY,
+    NODE_W,
+    RENDER_H,
+    result[last - 1].x,
+    result[last - 1].y
+  )
 
   return result
 }
@@ -568,7 +569,14 @@ interface EuclidMapProps {
   onToggleShowAll?: () => void
 }
 
-export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHeader, showAll: showAllProp, onToggleShowAll }: EuclidMapProps) {
+export function EuclidMap({
+  completed,
+  onSelectProp,
+  onSelectPlayground,
+  hideHeader,
+  showAll: showAllProp,
+  onToggleShowAll,
+}: EuclidMapProps) {
   // showAll can be controlled externally (foundations page) or internally (main map page)
   const [showAllInternal, setShowAllInternal] = useState(false)
   const showAll = showAllProp ?? showAllInternal
@@ -652,7 +660,10 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const byY = new Map<number, number[]>()
     for (const [, pos] of layout) {
       let xs = byY.get(pos.y)
-      if (!xs) { xs = []; byY.set(pos.y, xs) }
+      if (!xs) {
+        xs = []
+        byY.set(pos.y, xs)
+      }
       xs.push(pos.x)
     }
     const rows: { y: number; centerX: number; width: number }[] = []
@@ -664,7 +675,8 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     rows.sort((a, b) => a.y - b.y)
 
     // Global center X for horizontal panning
-    let gMinX = Infinity, gMaxX = -Infinity
+    let gMinX = Infinity,
+      gMaxX = -Infinity
     for (const pos of layout.values()) {
       gMinX = Math.min(gMinX, pos.x)
       gMaxX = Math.max(gMaxX, pos.x)
@@ -729,11 +741,12 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       const p3 = values[Math.min(values.length - 1, idx + 2)]
       const u2 = u * u
       const u3 = u2 * u
-      return 0.5 * (
-        2 * p1 +
-        (-p0 + p2) * u +
-        (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 +
-        (-p0 + 3 * p1 - 3 * p2 + p3) * u3
+      return (
+        0.5 *
+        (2 * p1 +
+          (-p0 + p2) * u +
+          (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 +
+          (-p0 + 3 * p1 - 3 * p2 + p3) * u3)
       )
     }
 
@@ -742,12 +755,14 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       const cy = firstY + p * (lastY - firstY)
       let si = 0
       for (let i = 0; i < rows.length - 1; i++) {
-        if (rows[i].y <= cy && rows[i + 1].y > cy) { si = i; break }
+        if (rows[i].y <= cy && rows[i + 1].y > cy) {
+          si = i
+          break
+        }
         if (i === rows.length - 2) si = i
       }
-      const st = rows[si + 1].y === rows[si].y
-        ? 0
-        : (cy - rows[si].y) / (rows[si + 1].y - rows[si].y)
+      const st =
+        rows[si + 1].y === rows[si].y ? 0 : (cy - rows[si].y) / (rows[si + 1].y - rows[si].y)
       return catmullRom(rowWidths, si, st)
     }
 
@@ -772,7 +787,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       const totalIntegral = cumulative[N] // = average vbW
 
       // Normalize: maps progress (0→1) to yFraction (0→1)
-      const normalizedCumulative = cumulative.map(v => v / totalIntegral)
+      const normalizedCumulative = cumulative.map((v) => v / totalIntegral)
 
       // Compute total SVG Y travel
       const vPad = 20
@@ -785,7 +800,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       // Ideal spacer height: total screen pixels needed for 1:1 tracking
       // d(vbY)/d(scroll) = vbW / containerW, so:
       // totalScroll = totalYTravel * containerW / avgVbW
-      const idealSpacerPx = totalYTravel * stickyW / totalIntegral
+      const idealSpacerPx = (totalYTravel * stickyW) / totalIntegral
 
       scrollMappingRef.current = {
         normalizedCumulative,
@@ -822,12 +837,16 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const currentY = firstY + progress * (lastY - firstY)
     let segIdx = 0
     for (let i = 0; i < rows.length - 1; i++) {
-      if (rows[i].y <= currentY && rows[i + 1].y > currentY) { segIdx = i; break }
+      if (rows[i].y <= currentY && rows[i + 1].y > currentY) {
+        segIdx = i
+        break
+      }
       if (i === rows.length - 2) segIdx = i
     }
-    const t = rows[segIdx + 1].y === rows[segIdx].y
-      ? 0
-      : (currentY - rows[segIdx].y) / (rows[segIdx + 1].y - rows[segIdx].y)
+    const t =
+      rows[segIdx + 1].y === rows[segIdx].y
+        ? 0
+        : (currentY - rows[segIdx].y) / (rows[segIdx + 1].y - rows[segIdx].y)
 
     const vbW = catmullRom(rowWidths, segIdx, t)
     const centerX = catmullRom(rowCenters, segIdx, t)
@@ -840,7 +859,8 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     const lo = Math.min(Math.floor(pScaled), N - 1)
     const hi = lo + 1
     const frac = pScaled - lo
-    const yFraction = mapping.normalizedCumulative[lo] * (1 - frac) + mapping.normalizedCumulative[hi] * frac
+    const yFraction =
+      mapping.normalizedCumulative[lo] * (1 - frac) + mapping.normalizedCumulative[hi] * frac
 
     const vbY = mapping.startVbY + yFraction * mapping.totalYTravel
 
@@ -861,7 +881,9 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       el = el.parentElement
     }
     const scrollTarget = scrollContainerRef.current ?? window
-    scrollTarget.addEventListener('scroll', updateScrollViewBox, { passive: true } as EventListenerOptions)
+    scrollTarget.addEventListener('scroll', updateScrollViewBox, {
+      passive: true,
+    } as EventListenerOptions)
     window.addEventListener('resize', updateScrollViewBox, { passive: true })
     // Initial computation
     updateScrollViewBox()
@@ -886,14 +908,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
     <>
       {/* Arrowhead marker */}
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="4"
-          markerHeight="3"
-          refX="3.5"
-          refY="1.5"
-          orient="auto"
-        >
+        <marker id="arrowhead" markerWidth="4" markerHeight="3" refX="3.5" refY="1.5" orient="auto">
           <polygon points="0 0, 4 1.5, 0 3" fill="#cbd5e1" fillOpacity={0.6} />
         </marker>
       </defs>
@@ -904,11 +919,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
         const tgtPos = layout.get(edge.to)
         if (!srcPos || !tgtPos) return null
 
-        const trimmed = trimToBorders(
-          edge.points,
-          srcPos.x, srcPos.y,
-          tgtPos.x, tgtPos.y
-        )
+        const trimmed = trimToBorders(edge.points, srcPos.x, srcPos.y, tgtPos.x, tgtPos.y)
         const simplified = simplifyPoints(trimmed, 4)
         const d = pointsToPath(simplified)
         if (!d) return null
@@ -1005,7 +1016,9 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
                   width={14}
                   height={14}
                   rx={3}
-                  fill={prop.type === 'construction' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'}
+                  fill={
+                    prop.type === 'construction' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'
+                  }
                 />
                 <text
                   x={pos.x - NODE_W / 2 + 11}
@@ -1167,11 +1180,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
       {/* SVG map */}
       {hideHeader ? (
         /* Scroll-driven viewport: sticky SVG + scroll spacer */
-        <div
-          ref={containerRef}
-          data-element="map-viewport-scroll"
-          style={{ position: 'relative' }}
-        >
+        <div ref={containerRef} data-element="map-viewport-scroll" style={{ position: 'relative' }}>
           <div
             ref={stickyRef}
             style={{
@@ -1307,7 +1316,7 @@ export function EuclidMap({ completed, onSelectProp, onSelectPlayground, hideHea
             max={3}
             step={1}
             onChange={setRowWindow}
-            formatValue={(v) => v === 1 ? '1 (center only)' : `${v} (±${v - 1} rows)`}
+            formatValue={(v) => (v === 1 ? '1 (center only)' : `${v} (±${v - 1} rows)`)}
           />
         )}
       </ToyDebugPanel>

@@ -17,7 +17,12 @@
 
 import { useCallback, useRef, useState, useMemo } from 'react'
 import { useVoiceCall } from '@/lib/voice/useVoiceCall'
-import type { VoiceSessionConfig, ToolCallResult, CallState as BaseCallState, UseVoiceCallReturn } from '@/lib/voice/types'
+import type {
+  VoiceSessionConfig,
+  ToolCallResult,
+  CallState as BaseCallState,
+  UseVoiceCallReturn,
+} from '@/lib/voice/types'
 import { sendSystemMessage as sendSystemMessageHelper } from '@/lib/voice/toolCallHelpers'
 import type { GeneratedScenario, TranscriptEntry } from './generateScenario'
 import type { ChildProfile } from './childProfile'
@@ -345,7 +350,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         const existing = new Set(conferenceNumbersRef.current)
         const newNumbers = targetNumbers.filter((n) => !existing.has(n))
         if (newNumbers.length === 0) {
-          return { output: { success: true, message: 'All those numbers are already on the call!' } }
+          return {
+            output: { success: true, message: 'All those numbers are already on the call!' },
+          }
         }
 
         const updated = [...conferenceNumbersRef.current, ...newNumbers]
@@ -418,7 +425,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         return {
           output: {
             success: true,
-            message: 'Exploration resumed. The narrator is speaking now — stay completely silent until the child speaks or the exploration ends.',
+            message:
+              'Exploration resumed. The narrator is speaking now — stay completely silent until the child speaks or the exploration ends.',
           },
           promptResponse: false,
         }
@@ -439,7 +447,11 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         narrationPlayingRef.current = false
         onEndExplorationRef.current?.()
         return {
-          output: { success: true, message: "Exploration stopped. You're back in conversation mode — full tools available." },
+          output: {
+            success: true,
+            message:
+              "Exploration stopped. You're back in conversation mode — full tools available.",
+          },
           exitMode: true,
         }
       }
@@ -471,7 +483,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             conferenceNumbers: conferenceNumbersRef.current,
           }),
         })
-          .then((res) => res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`)))
+          .then((res) =>
+            res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`))
+          )
           .then((data) => {
             if (!data.evolution) {
               return {
@@ -520,16 +534,22 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ playerId }),
         })
-          .then((res) => res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`)))
+          .then((res) =>
+            res.ok ? res.json() : Promise.reject(new Error(`API error ${res.status}`))
+          )
           .then((data) => {
             if (data.failed || !data.profile) {
-              return { text: "[System: Couldn't load their profile, but that's okay — continue naturally.]" }
+              return {
+                text: "[System: Couldn't load their profile, but that's okay — continue naturally.]",
+              }
             }
             const profile = data.profile as ChildProfile
             childProfileRef.current = profile
             const namePart = profile.name ? `This is ${profile.name}` : 'Identified the caller'
             const agePart = profile.age != null ? `, age ${profile.age}` : ''
-            const focusPart = profile.currentFocus ? `. Currently learning: ${profile.currentFocus}` : ''
+            const focusPart = profile.currentFocus
+              ? `. Currently learning: ${profile.currentFocus}`
+              : ''
             onPlayerIdentifiedRef.current?.(playerId!)
             return {
               text: `[System: ${namePart}${agePart}${focusPart}. Personalize the conversation for them!]`,
@@ -546,7 +566,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       // indicate
       if (name === 'indicate') {
         const numbers: number[] = Array.isArray(args.numbers)
-          ? (args.numbers as unknown[]).filter((v) => typeof v === 'number' && isFinite(v as number)) as number[]
+          ? ((args.numbers as unknown[]).filter(
+              (v) => typeof v === 'number' && isFinite(v as number)
+            ) as number[])
           : []
         let range: { from: number; to: number } | undefined
         if (args.range && typeof args.range === 'object') {
@@ -556,10 +578,19 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           }
         }
         if (numbers.length === 0 && !range) {
-          return { output: { success: false, error: 'Must provide at least numbers (array) or range ({ from, to })' } }
+          return {
+            output: {
+              success: false,
+              error: 'Must provide at least numbers (array) or range ({ from, to })',
+            },
+          }
         }
-        const durationSeconds = typeof args.duration_seconds === 'number' && isFinite(args.duration_seconds) && args.duration_seconds > 0
-          ? args.duration_seconds : undefined
+        const durationSeconds =
+          typeof args.duration_seconds === 'number' &&
+          isFinite(args.duration_seconds) &&
+          args.duration_seconds > 0
+            ? args.duration_seconds
+            : undefined
         const persistent = args.persistent === true
         onIndicateRef.current?.(numbers, range, durationSeconds, persistent)
         return {
@@ -575,18 +606,35 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         const gameId = String(args.game_id)
         const game = GAME_MAP.get(gameId)
         if (!game) {
-          return { output: { success: false, error: `Unknown game: ${gameId}. Valid games: ${[...GAME_MAP.keys()].join(', ')}` } }
+          return {
+            output: {
+              success: false,
+              error: `Unknown game: ${gameId}. Valid games: ${[...GAME_MAP.keys()].join(', ')}`,
+            },
+          }
         }
         if (activeGameIdRef.current) {
-          return { output: { success: false, error: `A game is already active (${activeGameIdRef.current}). End it first with end_game.` } }
+          return {
+            output: {
+              success: false,
+              error: `A game is already active (${activeGameIdRef.current}). End it first with end_game.`,
+            },
+          }
         }
-        const result = game.onStart?.(args as Record<string, unknown>) ?? { agentMessage: `${game.name} started!` }
+        const result = game.onStart?.(args as Record<string, unknown>) ?? {
+          agentMessage: `${game.name} started!`,
+        }
         activeGameIdRef.current = gameId
         gameStateRef.current = result.state ?? null
         sessionActivityRef.current.gamesPlayed.push(gameId)
         onGameStartRef.current?.(gameId, args)
         if (result.indicate) {
-          onIndicateRef.current?.(result.indicate.numbers, undefined, undefined, result.indicate.persistent)
+          onIndicateRef.current?.(
+            result.indicate.numbers,
+            undefined,
+            undefined,
+            result.indicate.persistent
+          )
         }
         return {
           output: { success: true, message: result.agentMessage },
@@ -612,14 +660,31 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       // set_number_line_style
       if (name === 'set_number_line_style') {
-        const scale = Math.max(0.5, Math.min(3,
-          typeof args.label_scale === 'number' && isFinite(args.label_scale) ? args.label_scale : 1
-        ))
-        const minOpacity = Math.max(0, Math.min(1,
-          typeof args.label_min_opacity === 'number' && isFinite(args.label_min_opacity) ? args.label_min_opacity : 0
-        ))
+        const scale = Math.max(
+          0.5,
+          Math.min(
+            3,
+            typeof args.label_scale === 'number' && isFinite(args.label_scale)
+              ? args.label_scale
+              : 1
+          )
+        )
+        const minOpacity = Math.max(
+          0,
+          Math.min(
+            1,
+            typeof args.label_min_opacity === 'number' && isFinite(args.label_min_opacity)
+              ? args.label_min_opacity
+              : 0
+          )
+        )
         onSetLabelStyleRef.current?.(scale, minOpacity)
-        return { output: { success: true, message: `Label style set: scale=${scale}, minOpacity=${minOpacity}` } }
+        return {
+          output: {
+            success: true,
+            message: `Label style set: scale=${scale}, minOpacity=${minOpacity}`,
+          },
+        }
       }
 
       // Game session tools (delegated to game handler)
@@ -630,11 +695,21 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             const result = game.onToolCall(gameStateRef.current, name, args)
             gameStateRef.current = result.state
             if (result.indicate) {
-              onIndicateRef.current?.(result.indicate.numbers, undefined, undefined, result.indicate.persistent)
+              onIndicateRef.current?.(
+                result.indicate.numbers,
+                undefined,
+                undefined,
+                result.indicate.persistent
+              )
             }
             return { output: { success: true, message: result.agentMessage } }
           } catch (err) {
-            return { output: { success: false, error: err instanceof Error ? err.message : 'Game tool call failed' } }
+            return {
+              output: {
+                success: false,
+                error: err instanceof Error ? err.message : 'Game tool call failed',
+              },
+            }
           }
         }
       }
@@ -644,40 +719,37 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     [setPendingSpeaker]
   )
 
-  const onResponseDone = useCallback(
-    (_ctx: ModeContext, currentModeId: string): string | null => {
-      if (currentModeId === 'answering' && childHasSpokenRef.current) {
-        if (childProfileRef.current) {
-          return 'default'
-        }
-        return 'familiarizing'
+  const onResponseDone = useCallback((_ctx: ModeContext, currentModeId: string): string | null => {
+    if (currentModeId === 'answering' && childHasSpokenRef.current) {
+      if (childProfileRef.current) {
+        return 'default'
       }
-      if (currentModeId === 'familiarizing') {
-        familiarizingResponseCountRef.current++
-        if (familiarizingResponseCountRef.current >= 4) {
-          return 'default'
-        }
-      }
-      return null
-    },
-    []
-  )
-
-  const onChildSpeech = useCallback((transcript: string) => {
-    childHasSpokenRef.current = true
-    const buf = transcriptsRef.current
-    buf.push({ role: 'child', text: transcript })
-    if (buf.length > 12) buf.shift()
-
-    // Auto-pause exploration
-    if (
-      isExplorationActiveRef?.current &&
-      Date.now() - lastResumeTimestampRef.current > 3000
-    ) {
-      narrationPlayingRef.current = false
-      onPauseExplorationRef.current?.()
+      return 'familiarizing'
     }
-  }, [isExplorationActiveRef])
+    if (currentModeId === 'familiarizing') {
+      familiarizingResponseCountRef.current++
+      if (familiarizingResponseCountRef.current >= 4) {
+        return 'default'
+      }
+    }
+    return null
+  }, [])
+
+  const onChildSpeech = useCallback(
+    (transcript: string) => {
+      childHasSpokenRef.current = true
+      const buf = transcriptsRef.current
+      buf.push({ role: 'child', text: transcript })
+      if (buf.length > 12) buf.shift()
+
+      // Auto-pause exploration
+      if (isExplorationActiveRef?.current && Date.now() - lastResumeTimestampRef.current > 3000) {
+        narrationPlayingRef.current = false
+        onPauseExplorationRef.current?.()
+      }
+    },
+    [isExplorationActiveRef]
+  )
 
   const onModelSpeech = useCallback((transcript: string) => {
     const buf = transcriptsRef.current
@@ -689,10 +761,28 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   // We need to wrap them as VoiceMode<ModeContext>
   const modes = useMemo(() => {
     const modeIds: ModeId[] = [
-      'answering', 'familiarizing', 'default', 'conference',
-      'exploration', 'game', 'winding_down', 'hanging_up',
+      'answering',
+      'familiarizing',
+      'default',
+      'conference',
+      'exploration',
+      'game',
+      'winding_down',
+      'hanging_up',
     ]
-    const map: Record<string, { id: string; getInstructions: (ctx: ModeContext) => string; getTools: (ctx: ModeContext) => { type: 'function'; name: string; description: string; parameters: { type: 'object'; properties: Record<string, unknown>; required?: string[] } }[] }> = {}
+    const map: Record<
+      string,
+      {
+        id: string
+        getInstructions: (ctx: ModeContext) => string
+        getTools: (ctx: ModeContext) => {
+          type: 'function'
+          name: string
+          description: string
+          parameters: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
+        }[]
+      }
+    > = {}
     for (const id of modeIds) {
       map[id] = {
         id,
@@ -703,188 +793,209 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     return map
   }, [])
 
-  const config = useMemo((): VoiceSessionConfig<ModeContext> => ({
-    sessionEndpoint: '/api/realtime/session',
-    buildContext: buildModeContext,
-    initialModeId: 'answering',
-    modes,
-    onToolCall,
-    onResponseDone,
-    onChildSpeech,
-    onModelSpeech,
-    getSessionBody: () => ({
-      number: calledNumberRef.current,
-      ...(activePlayerIdRef.current && { playerId: activePlayerIdRef.current }),
-      ...(sessionHistoryRef.current.some((r) => r.number === calledNumberRef.current) && {
-        previousScenario: sessionHistoryRef.current
-          .filter((r) => r.number === calledNumberRef.current)
-          .pop()?.scenario,
+  const config = useMemo(
+    (): VoiceSessionConfig<ModeContext> => ({
+      sessionEndpoint: '/api/realtime/session',
+      buildContext: buildModeContext,
+      initialModeId: 'answering',
+      modes,
+      onToolCall,
+      onResponseDone,
+      onChildSpeech,
+      onModelSpeech,
+      getSessionBody: () => ({
+        number: calledNumberRef.current,
+        ...(activePlayerIdRef.current && { playerId: activePlayerIdRef.current }),
+        ...(sessionHistoryRef.current.some((r) => r.number === calledNumberRef.current) && {
+          previousScenario: sessionHistoryRef.current
+            .filter((r) => r.number === calledNumberRef.current)
+            .pop()?.scenario,
+        }),
+        ...(recommendedExplorationsRef.current?.length && {
+          recommendedExplorations: recommendedExplorationsRef.current,
+        }),
+        ...(availablePlayersRef.current.length > 0 && {
+          availablePlayers: availablePlayersRef.current,
+        }),
       }),
-      ...(recommendedExplorationsRef.current?.length && {
-        recommendedExplorations: recommendedExplorationsRef.current,
-      }),
-      ...(availablePlayersRef.current.length > 0 && {
-        availablePlayers: availablePlayersRef.current,
-      }),
-    }),
-    onSessionCreated: (data) => {
-      scenarioRef.current = (data.scenario as GeneratedScenario) ?? null
-      childProfileRef.current = (data.childProfile as ChildProfile) ?? undefined
-      if (data.profileFailed) {
-        setProfileFailed(true)
-        profileFailedRef.current = true
-      }
-    },
-    onSessionEstablished: (dc) => {
-      const history = sessionHistoryRef.current
-      if (history.length > 0) {
-        const historyText = formatCallHistory(history, calledNumberRef.current)
-        sendSystemMessageHelper(dc, historyText)
-      }
-      // Set conference state
-      const num = calledNumberRef.current
-      conferenceNumbersRef.current = [num]
-      setConferenceNumbers([num])
-      currentSpeakerRef.current = num
-      setCurrentSpeaker(num)
-    },
-    timer: {
-      baseDurationMs: BASE_TIMEOUT_MS,
-      extensionMs: EXTENSION_MS,
-      warningBeforeEndMs: WARNING_BEFORE_END_MS,
-      hangUpDelayMs: HANG_UP_DELAY_MS,
-    },
-    onTimeWarning: (dc) => {
-      dc.send(
-        JSON.stringify({
-          type: 'conversation.item.create',
-          item: {
-            type: 'message',
-            role: 'user',
-            content: [{
-              type: 'input_text',
-              text: '[System: Only 15 seconds left. If the conversation is going well, silently call request_more_time. Otherwise give a gentle in-character hint that you might have to go soon — but do NOT mention timers, countdowns, or the time system directly.]',
-            }],
-          },
-        })
-      )
-      dc.send(JSON.stringify({ type: 'response.create' }))
-    },
-    onTimeExpired: (dc) => {
-      if (!windingDownRequestedRef.current) {
-        windingDownRequestedRef.current = true
-        // Enter winding_down mode
-        dc.send(JSON.stringify({
-          type: 'session.update',
-          session: resolveMode('winding_down', buildModeContext()),
-        }))
+      onSessionCreated: (data) => {
+        scenarioRef.current = (data.scenario as GeneratedScenario) ?? null
+        childProfileRef.current = (data.childProfile as ChildProfile) ?? undefined
+        if (data.profileFailed) {
+          setProfileFailed(true)
+          profileFailedRef.current = true
+        }
+      },
+      onSessionEstablished: (dc) => {
+        const history = sessionHistoryRef.current
+        if (history.length > 0) {
+          const historyText = formatCallHistory(history, calledNumberRef.current)
+          sendSystemMessageHelper(dc, historyText)
+        }
+        // Set conference state
+        const num = calledNumberRef.current
+        conferenceNumbersRef.current = [num]
+        setConferenceNumbers([num])
+        currentSpeakerRef.current = num
+        setCurrentSpeaker(num)
+      },
+      timer: {
+        baseDurationMs: BASE_TIMEOUT_MS,
+        extensionMs: EXTENSION_MS,
+        warningBeforeEndMs: WARNING_BEFORE_END_MS,
+        hangUpDelayMs: HANG_UP_DELAY_MS,
+      },
+      onTimeWarning: (dc) => {
+        dc.send(
+          JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: '[System: Only 15 seconds left. If the conversation is going well, silently call request_more_time. Otherwise give a gentle in-character hint that you might have to go soon — but do NOT mention timers, countdowns, or the time system directly.]',
+                },
+              ],
+            },
+          })
+        )
         dc.send(JSON.stringify({ type: 'response.create' }))
-      } else if (!goodbyeRequestedRef.current) {
-        goodbyeRequestedRef.current = true
-        dc.send(JSON.stringify({
-          type: 'session.update',
-          session: resolveMode('hanging_up', buildModeContext()),
-        }))
-        dc.send(JSON.stringify({ type: 'response.create' }))
-      }
-      // Phase 3 handled by the framework (force hangup)
-    },
-    onResponseDoneRaw: (dc, msg, _currentModeId) => {
-      const pending = pendingExplorationRef.current
-      if (!pending) return
-      pendingExplorationRef.current = null
+      },
+      onTimeExpired: (dc) => {
+        if (!windingDownRequestedRef.current) {
+          windingDownRequestedRef.current = true
+          // Enter winding_down mode
+          dc.send(
+            JSON.stringify({
+              type: 'session.update',
+              session: resolveMode('winding_down', buildModeContext()),
+            })
+          )
+          dc.send(JSON.stringify({ type: 'response.create' }))
+        } else if (!goodbyeRequestedRef.current) {
+          goodbyeRequestedRef.current = true
+          dc.send(
+            JSON.stringify({
+              type: 'session.update',
+              session: resolveMode('hanging_up', buildModeContext()),
+            })
+          )
+          dc.send(JSON.stringify({ type: 'response.create' }))
+        }
+        // Phase 3 handled by the framework (force hangup)
+      },
+      onResponseDoneRaw: (dc, msg, _currentModeId) => {
+        const pending = pendingExplorationRef.current
+        if (!pending) return
+        pendingExplorationRef.current = null
 
-      if (pending.type === 'start') {
-        // Wait for agent audio to finish (sustained silence) before starting exploration
-        const SUSTAINED_SILENCE_MS = 300
-        const startedWaiting = Date.now()
-        let silenceStartMs = voiceCallRef.current?.agentAudioPlayingRef.current ? 0 : Date.now()
-        const waitForSilence = () => {
-          if (Date.now() - startedWaiting > 3000) {
+        if (pending.type === 'start') {
+          // Wait for agent audio to finish (sustained silence) before starting exploration
+          const SUSTAINED_SILENCE_MS = 300
+          const startedWaiting = Date.now()
+          let silenceStartMs = voiceCallRef.current?.agentAudioPlayingRef.current ? 0 : Date.now()
+          const waitForSilence = () => {
+            if (Date.now() - startedWaiting > 3000) {
+              onStartExplorationRef.current?.(pending.constantId)
+              return
+            }
+            if (voiceCallRef.current?.agentAudioPlayingRef.current) {
+              silenceStartMs = 0
+              requestAnimationFrame(waitForSilence)
+              return
+            }
+            if (silenceStartMs === 0) silenceStartMs = Date.now()
+            if (Date.now() - silenceStartMs < SUSTAINED_SILENCE_MS) {
+              requestAnimationFrame(waitForSilence)
+              return
+            }
             onStartExplorationRef.current?.(pending.constantId)
-            return
           }
-          if (voiceCallRef.current?.agentAudioPlayingRef.current) {
-            silenceStartMs = 0
-            requestAnimationFrame(waitForSilence)
-            return
+          requestAnimationFrame(waitForSilence)
+        } else if (pending.type === 'resume') {
+          // Truncate agent's buffered audio so narrator takes over immediately
+          const response = (msg as Record<string, unknown>).response as
+            | Record<string, unknown>
+            | undefined
+          const output = response?.output as Array<{ type: string; id?: string }> | undefined
+          const audioItem = output?.find((item) => item.type === 'message')
+          if (audioItem?.id) {
+            const audioEndMs = Math.max(0, Date.now() - responseCreatedMsRef.current)
+            dc.send(
+              JSON.stringify({
+                type: 'conversation.item.truncate',
+                item_id: audioItem.id,
+                content_index: 0,
+                audio_end_ms: audioEndMs,
+              })
+            )
           }
-          if (silenceStartMs === 0) silenceStartMs = Date.now()
-          if (Date.now() - silenceStartMs < SUSTAINED_SILENCE_MS) {
-            requestAnimationFrame(waitForSilence)
-            return
-          }
-          onStartExplorationRef.current?.(pending.constantId)
-        }
-        requestAnimationFrame(waitForSilence)
-      } else if (pending.type === 'resume') {
-        // Truncate agent's buffered audio so narrator takes over immediately
-        const response = (msg as Record<string, unknown>).response as Record<string, unknown> | undefined
-        const output = response?.output as Array<{ type: string; id?: string }> | undefined
-        const audioItem = output?.find((item) => item.type === 'message')
-        if (audioItem?.id) {
-          const audioEndMs = Math.max(0, Date.now() - responseCreatedMsRef.current)
-          dc.send(JSON.stringify({
-            type: 'conversation.item.truncate',
-            item_id: audioItem.id,
-            content_index: 0,
-            audio_end_ms: audioEndMs,
-          }))
-        }
-        narrationPlayingRef.current = true
-        if (voiceCallRef.current?.audioElRef.current) {
-          voiceCallRef.current.audioElRef.current.volume = 0
-        }
-        lastResumeTimestampRef.current = Date.now()
-        onResumeExplorationRef.current?.()
-      }
-    },
-    onResponseCreated: (dc) => {
-      // Track response creation time for audio truncation
-      responseCreatedMsRef.current = Date.now()
-
-      // During narration, cancel any VAD-triggered response
-      if (narrationPlayingRef.current) {
-        if (!isExplorationActiveRef?.current) {
-          // Exploration ended — allow agent to speak
-          narrationPlayingRef.current = false
+          narrationPlayingRef.current = true
           if (voiceCallRef.current?.audioElRef.current) {
-            voiceCallRef.current.audioElRef.current.volume = 1
+            voiceCallRef.current.audioElRef.current.volume = 0
           }
-        } else {
-          dc.send(JSON.stringify({ type: 'response.cancel' }))
+          lastResumeTimestampRef.current = Date.now()
+          onResumeExplorationRef.current?.()
         }
-      }
-    },
-    onTransfer: (targetNumber, cleanupFn, _redialFn) => {
-      setTransferTarget(targetNumber)
-      setDomainState('transferring')
-      onTransferRef.current?.(targetNumber)
+      },
+      onResponseCreated: (dc) => {
+        // Track response creation time for audio truncation
+        responseCreatedMsRef.current = Date.now()
 
-      transferTimerRef.current = setTimeout(() => {
-        transferTimerRef.current = null
-        cleanupFn()
-        setTransferTarget(null)
-        setDomainState(null)
-        // Re-dial the new number (preserves playerId via activePlayerIdRef)
-        calledNumberRef.current = targetNumber
-        // Reset for new call
-        windingDownRequestedRef.current = false
-        goodbyeRequestedRef.current = false
-        childHasSpokenRef.current = false
-        familiarizingResponseCountRef.current = 0
-        scenarioRef.current = null
-        transcriptsRef.current = []
-        voiceCallRef.current?.dial()
-      }, TRANSFER_DELAY_MS)
-    },
-    suppressErrorCodes: [
-      'response_cancel_not_active',
-      'conversation_already_has_active_response',
-      'item_truncation_failed',
-      'invalid_value',
-    ],
-  }), [buildModeContext, modes, onToolCall, onResponseDone, onChildSpeech, onModelSpeech, isExplorationActiveRef])
+        // During narration, cancel any VAD-triggered response
+        if (narrationPlayingRef.current) {
+          if (!isExplorationActiveRef?.current) {
+            // Exploration ended — allow agent to speak
+            narrationPlayingRef.current = false
+            if (voiceCallRef.current?.audioElRef.current) {
+              voiceCallRef.current.audioElRef.current.volume = 1
+            }
+          } else {
+            dc.send(JSON.stringify({ type: 'response.cancel' }))
+          }
+        }
+      },
+      onTransfer: (targetNumber, cleanupFn, _redialFn) => {
+        setTransferTarget(targetNumber)
+        setDomainState('transferring')
+        onTransferRef.current?.(targetNumber)
+
+        transferTimerRef.current = setTimeout(() => {
+          transferTimerRef.current = null
+          cleanupFn()
+          setTransferTarget(null)
+          setDomainState(null)
+          // Re-dial the new number (preserves playerId via activePlayerIdRef)
+          calledNumberRef.current = targetNumber
+          // Reset for new call
+          windingDownRequestedRef.current = false
+          goodbyeRequestedRef.current = false
+          childHasSpokenRef.current = false
+          familiarizingResponseCountRef.current = 0
+          scenarioRef.current = null
+          transcriptsRef.current = []
+          voiceCallRef.current?.dial()
+        }, TRANSFER_DELAY_MS)
+      },
+      suppressErrorCodes: [
+        'response_cancel_not_active',
+        'conversation_already_has_active_response',
+        'item_truncation_failed',
+        'invalid_value',
+      ],
+    }),
+    [
+      buildModeContext,
+      modes,
+      onToolCall,
+      onResponseDone,
+      onChildSpeech,
+      onModelSpeech,
+      isExplorationActiveRef,
+    ]
+  )
 
   const voiceCall = useVoiceCall(config)
 
@@ -976,15 +1087,19 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
     [hangUp, voiceCall]
   )
 
-  const setNarrationPlaying = useCallback((playing: boolean) => {
-    narrationPlayingRef.current = playing
-    if (voiceCall.audioElRef.current) {
-      voiceCall.audioElRef.current.volume = playing ? 0 : 1
-    }
-  }, [voiceCall.audioElRef])
+  const setNarrationPlaying = useCallback(
+    (playing: boolean) => {
+      narrationPlayingRef.current = playing
+      if (voiceCall.audioElRef.current) {
+        voiceCall.audioElRef.current.volume = playing ? 0 : 1
+      }
+    },
+    [voiceCall.audioElRef]
+  )
 
   // Compute effective call state (overlay 'transferring' on base)
-  const effectiveState: CallState = domainState === 'transferring' ? 'transferring' : voiceCall.state
+  const effectiveState: CallState =
+    domainState === 'transferring' ? 'transferring' : voiceCall.state
 
   return {
     state: effectiveState,

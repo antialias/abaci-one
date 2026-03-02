@@ -13,21 +13,12 @@ const GLOW_LINE_WIDTH = 6
 const POINT_GLOW_RADIUS = 12
 const ANGLE_ARC_RADIUS_PX = 28
 
-function toScreen(
-  wx: number, wy: number,
-  vp: EuclidViewportState, w: number, h: number,
-) {
-  return worldToScreen2D(
-    wx, wy, vp.center.x, vp.center.y,
-    vp.pixelsPerUnit, vp.pixelsPerUnit, w, h,
-  )
+function toScreen(wx: number, wy: number, vp: EuclidViewportState, w: number, h: number) {
+  return worldToScreen2D(wx, wy, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, w, h)
 }
 
 /** Resolve a point label ("A") to its world coordinates, or null. */
-function resolvePoint(
-  state: ConstructionState,
-  label: string,
-): { x: number; y: number } | null {
+function resolvePoint(state: ConstructionState, label: string): { x: number; y: number } | null {
   const points = getAllPoints(state)
   return points.find((p) => p.label === label) ?? null
 }
@@ -35,9 +26,13 @@ function resolvePoint(
 /** Draw a glowing line between two world points. */
 function drawGlowLine(
   ctx: CanvasRenderingContext2D,
-  x1: number, y1: number,
-  x2: number, y2: number,
-  vp: EuclidViewportState, w: number, h: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  vp: EuclidViewportState,
+  w: number,
+  h: number
 ) {
   const s1 = toScreen(x1, y1, vp, w, h)
   const s2 = toScreen(x2, y2, vp, w, h)
@@ -53,8 +48,11 @@ function drawGlowLine(
 /** Draw a glowing circle at a world point. */
 function drawGlowPoint(
   ctx: CanvasRenderingContext2D,
-  wx: number, wy: number,
-  vp: EuclidViewportState, w: number, h: number,
+  wx: number,
+  wy: number,
+  vp: EuclidViewportState,
+  w: number,
+  h: number
 ) {
   const s = toScreen(wx, wy, vp, w, h)
   ctx.beginPath()
@@ -67,8 +65,11 @@ function drawGlowPoint(
 function highlightSegment(
   ctx: CanvasRenderingContext2D,
   state: ConstructionState,
-  from: string, to: string,
-  vp: EuclidViewportState, w: number, h: number,
+  from: string,
+  to: string,
+  vp: EuclidViewportState,
+  w: number,
+  h: number
 ) {
   const pA = resolvePoint(state, from)
   const pB = resolvePoint(state, to)
@@ -83,7 +84,9 @@ function highlightAngle(
   ctx: CanvasRenderingContext2D,
   state: ConstructionState,
   points: [string, string, string],
-  vp: EuclidViewportState, w: number, h: number,
+  vp: EuclidViewportState,
+  w: number,
+  h: number
 ) {
   const pA = resolvePoint(state, points[0])
   const pB = resolvePoint(state, points[1]) // vertex
@@ -123,7 +126,7 @@ export function renderChatHighlight(
   highlight: GeometricEntityRef,
   viewport: EuclidViewportState,
   canvasW: number,
-  canvasH: number,
+  canvasH: number
 ): void {
   ctx.save()
 
@@ -139,9 +142,33 @@ export function renderChatHighlight(
       break
 
     case 'triangle':
-      highlightSegment(ctx, state, highlight.vertices[0], highlight.vertices[1], viewport, canvasW, canvasH)
-      highlightSegment(ctx, state, highlight.vertices[1], highlight.vertices[2], viewport, canvasW, canvasH)
-      highlightSegment(ctx, state, highlight.vertices[2], highlight.vertices[0], viewport, canvasW, canvasH)
+      highlightSegment(
+        ctx,
+        state,
+        highlight.vertices[0],
+        highlight.vertices[1],
+        viewport,
+        canvasW,
+        canvasH
+      )
+      highlightSegment(
+        ctx,
+        state,
+        highlight.vertices[1],
+        highlight.vertices[2],
+        viewport,
+        canvasW,
+        canvasH
+      )
+      highlightSegment(
+        ctx,
+        state,
+        highlight.vertices[2],
+        highlight.vertices[0],
+        viewport,
+        canvasW,
+        canvasH
+      )
       break
 
     case 'angle':

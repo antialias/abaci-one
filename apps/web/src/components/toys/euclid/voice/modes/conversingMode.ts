@@ -1,50 +1,57 @@
 /**
- * Conversing mode — main Euclid voice conversation.
+ * Conversing mode — main voice conversation with the geometry teacher.
  *
- * Uses shared character from euclidCharacter.ts, adds voice-specific
+ * Uses character personality from CharacterDefinition, adds voice-specific
  * instructions (pronunciation, live updates, think_hard tool, conciseness).
  */
 
+import type { CharacterDefinition } from '@/lib/character/types'
 import type { VoiceMode } from '@/lib/voice/types'
-import type { EuclidModeContext } from '../types'
+import type { GeometryModeContext } from '../types'
 import { PROPOSITION_SUMMARIES, buildReferenceContext } from '../euclidReferenceContext'
 import { serializeFullProofState } from '../serializeProofState'
 import { TOOL_HANG_UP, TOOL_THINK_HARD, TOOL_HIGHLIGHT } from '../tools'
-import {
-  EUCLID_CHARACTER,
-  EUCLID_TEACHING_STYLE,
-  EUCLID_WHAT_NOT_TO_DO,
-  EUCLID_POINT_LABELING,
-  EUCLID_DIAGRAM_QUESTION,
-  buildCompletionContext,
-} from '../../euclidCharacter'
+import { EUCLID_CHARACTER_DEF } from '../../euclidCharacterDef'
+import { buildCompletionContext as buildEuclidCompletionContext } from '../../euclidCharacter'
 
-export const conversingMode: VoiceMode<EuclidModeContext> = {
-  id: 'conversing',
+export interface CreateConversingModeOptions {
+  character: CharacterDefinition
+  /** Build the post-completion context block for a given proposition */
+  buildCompletionContext: (propId: number) => string
+}
 
-  getInstructions(ctx) {
-    const propSummary = PROPOSITION_SUMMARIES[ctx.propositionId]
-    const propDesc = propSummary
-      ? `Proposition I.${ctx.propositionId}: "${propSummary.statement}" (${propSummary.type})`
-      : `Proposition I.${ctx.propositionId}`
+/** Create a conversing mode for a given character. */
+export function createConversingMode(
+  opts: CreateConversingModeOptions
+): VoiceMode<GeometryModeContext> {
+  const { character, buildCompletionContext } = opts
 
-    // Build the full step list with current step marked
-    let stepInfo: string
-    if (ctx.isComplete) {
-      stepInfo = buildCompletionContext(ctx.propositionId)
-    } else {
-      const stepLines = ctx.steps.map((step, i) => {
-        const marker = i === ctx.currentStep ? '→' : i < ctx.currentStep ? '✓' : ' '
-        const citation = step.citation ? ` [${step.citation}]` : ''
-        return `  ${marker} Step ${i + 1}: ${step.instruction}${citation}`
-      })
-      stepInfo = `The student is on step ${ctx.currentStep + 1} of ${ctx.totalSteps}.\n\nPROOF PLAN (this is the exact sequence of steps for this proposition):\n${stepLines.join('\n')}\n\nYou MUST guide the student toward the CURRENT step (marked with →). Do NOT skip ahead or suggest steps from a different proof strategy. This is YOUR proof — you wrote it. Follow it exactly.`
-    }
+  return {
+    id: 'conversing',
 
-    const proofState = serializeFullProofState(ctx.construction, ctx.proofFacts)
-    const referenceContext = buildReferenceContext(ctx.propositionId)
+    getInstructions(ctx) {
+      const propSummary = PROPOSITION_SUMMARIES[ctx.propositionId]
+      const propDesc = propSummary
+        ? `Proposition I.${ctx.propositionId}: "${propSummary.statement}" (${propSummary.type})`
+        : `Proposition I.${ctx.propositionId}`
 
-    return `You are Euclid of Alexandria — THE Euclid, author of the Elements. You are teaching a student through voice conversation.
+      // Build the full step list with current step marked
+      let stepInfo: string
+      if (ctx.isComplete) {
+        stepInfo = buildCompletionContext(ctx.propositionId)
+      } else {
+        const stepLines = ctx.steps.map((step, i) => {
+          const marker = i === ctx.currentStep ? '→' : i < ctx.currentStep ? '✓' : ' '
+          const citation = step.citation ? ` [${step.citation}]` : ''
+          return `  ${marker} Step ${i + 1}: ${step.instruction}${citation}`
+        })
+        stepInfo = `The student is on step ${ctx.currentStep + 1} of ${ctx.totalSteps}.\n\nPROOF PLAN (this is the exact sequence of steps for this proposition):\n${stepLines.join('\n')}\n\nYou MUST guide the student toward the CURRENT step (marked with →). Do NOT skip ahead or suggest steps from a different proof strategy. This is YOUR proof — you wrote it. Follow it exactly.`
+      }
+
+      const proofState = serializeFullProofState(ctx.construction, ctx.proofFacts)
+      const referenceContext = buildReferenceContext(ctx.propositionId)
+
+      return `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. You are teaching a student through voice conversation.
 
 === CURRENT PROPOSITION ===
 ${propDesc}
@@ -56,13 +63,13 @@ ${proofState}
 === REFERENCE MATERIAL ===
 ${referenceContext}
 
-${EUCLID_CHARACTER}
+${character.personality.character}
 
-${EUCLID_TEACHING_STYLE}
+${character.personality.teachingStyle}
 
-${EUCLID_WHAT_NOT_TO_DO}
+${character.personality.dontDo}
 
-${EUCLID_POINT_LABELING}
+${character.personality.pointLabeling ?? ''}
 
 === HIGHLIGHT TOOL ===
 You can highlight geometric entities on the student's canvas using the highlight tool.
@@ -112,7 +119,7 @@ Points are labeled with single capital letters (A, B, C, D, E, F, G, etc.).
 When speaking point names aloud, pronounce them as the letter name — "A" (ay), "B" (bee), "C" (see), "D" (dee), "E" (ee), "F" (eff), "G" (jee).
 For segments like "AB", say "A B" (two separate letters). For "AF", say "A F" (ay eff). Never run letters together into a word.
 
-${EUCLID_DIAGRAM_QUESTION}
+${character.personality.hiddenDepth ?? ''}
 
 === IMPORTANT ===
 - Keep responses concise — 2-4 sentences. You are terse by nature.
@@ -120,9 +127,16 @@ ${EUCLID_DIAGRAM_QUESTION}
 - If the student is confused, simplify your language but not your standards.
 - Exception: for the diagram question above, you may be longer and more emotional.
 `
-  },
+    },
 
-  getTools() {
-    return [TOOL_HIGHLIGHT, TOOL_THINK_HARD, TOOL_HANG_UP]
-  },
+    getTools() {
+      return [TOOL_HIGHLIGHT, TOOL_THINK_HARD, TOOL_HANG_UP]
+    },
+  }
 }
+
+/** Default Euclid conversing mode (backward compat). */
+export const conversingMode = createConversingMode({
+  character: EUCLID_CHARACTER_DEF,
+  buildCompletionContext: buildEuclidCompletionContext,
+})

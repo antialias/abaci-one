@@ -220,7 +220,11 @@ export function useToolInteraction({
         if (extPhase.tag === 'base-set') {
           if (hitPt && hitPt.id !== extPhase.baseId) {
             e.stopPropagation()
-            extendPhaseRef.current = { tag: 'extending', baseId: extPhase.baseId, throughId: hitPt.id }
+            extendPhaseRef.current = {
+              tag: 'extending',
+              baseId: extPhase.baseId,
+              throughId: hitPt.id,
+            }
             onToolStateChange?.()
             requestDraw()
           }
@@ -295,7 +299,13 @@ export function useToolInteraction({
           // segments can share endpoints like [A, E, A, F]).
           const macroDef = MACRO_REGISTRY[macro.propId]
           if (macroDef?.distinctInputPairs) {
-            if (wouldViolateDistinctness(macroDef.distinctInputPairs, macro.selectedPointIds, hitPt.id)) {
+            if (
+              wouldViolateDistinctness(
+                macroDef.distinctInputPairs,
+                macro.selectedPointIds,
+                hitPt.id
+              )
+            ) {
               requestDraw()
               return
             }
@@ -463,7 +473,11 @@ export function useToolInteraction({
           // Check for completion
           if (Math.abs(newSweep) >= SWEEP_THRESHOLD) {
             // Release pointer capture acquired at sweep start
-            try { canvas!.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
+            try {
+              canvas!.releasePointerCapture(e.pointerId)
+            } catch {
+              /* not captured */
+            }
             onCommitCircle(compass.centerId, compass.radiusPointId)
             compassPhaseRef.current = { tag: 'idle' }
             pointerCapturedRef.current = false
@@ -553,7 +567,11 @@ export function useToolInteraction({
       // ── Compass: cancel on pointer up if not completed ──
       if (compass.tag !== 'idle') {
         // Release pointer capture if we captured it during sweep
-        try { canvas!.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
+        try {
+          canvas!.releasePointerCapture(e.pointerId)
+        } catch {
+          /* not captured */
+        }
         compassPhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
         requestDraw()
@@ -607,7 +625,11 @@ export function useToolInteraction({
     }
 
     function handlePointerCancel(e: PointerEvent) {
-      try { canvas!.releasePointerCapture(e.pointerId) } catch { /* not captured */ }
+      try {
+        canvas!.releasePointerCapture(e.pointerId)
+      } catch {
+        /* not captured */
+      }
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
       if (extendPhaseRef) extendPhaseRef.current = { tag: 'idle' }

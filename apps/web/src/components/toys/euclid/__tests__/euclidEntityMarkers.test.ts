@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import { parseEntityMarkers, stripEntityMarkers } from '../../../../lib/character/parseEntityMarkers'
+import {
+  parseEntityMarkers,
+  stripEntityMarkers,
+} from '../../../../lib/character/parseEntityMarkers'
 
 describe('EUCLID_ENTITY_MARKERS', () => {
   function parse(text: string) {
@@ -233,8 +236,9 @@ describe('EUCLID_ENTITY_MARKERS', () => {
     })
 
     it('strips complex text with multiple entity types', () => {
-      expect(strip('Draw {seg:AB} to form {tri:ABC} with {ang:BAC} at {pt:A}'))
-        .toBe('Draw AB to form △ABC with ∠BAC at A')
+      expect(strip('Draw {seg:AB} to form {tri:ABC} with {ang:BAC} at {pt:A}')).toBe(
+        'Draw AB to form △ABC with ∠BAC at A'
+      )
     })
 
     it('leaves invalid markers as-is', () => {
@@ -254,8 +258,7 @@ describe('EUCLID_ENTITY_MARKERS', () => {
     })
 
     it('strips mixed geometric and foundation markers', () => {
-      expect(strip('{seg:CA} = {seg:AB} by {def:15}'))
-        .toBe('CA = AB by Definition 15')
+      expect(strip('{seg:CA} = {seg:AB} by {def:15}')).toBe('CA = AB by Definition 15')
     })
 
     it('strips override markers using override text', () => {
@@ -264,8 +267,9 @@ describe('EUCLID_ENTITY_MARKERS', () => {
     })
 
     it('strips mixed plain and override markers', () => {
-      expect(strip('We call upon {prop:1}—{prop:1|my first proposition}.'))
-        .toBe('We call upon Proposition I.1—my first proposition.')
+      expect(strip('We call upon {prop:1}—{prop:1|my first proposition}.')).toBe(
+        'We call upon Proposition I.1—my first proposition.'
+      )
     })
   })
 })

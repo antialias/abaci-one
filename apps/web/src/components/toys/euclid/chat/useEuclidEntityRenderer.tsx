@@ -36,7 +36,7 @@ export function useEuclidEntityRenderer({
         subtle={subtle}
       />
     ),
-    [onHighlightGeometric, onHighlightFoundation, onUnhighlightFoundation, subtle],
+    [onHighlightGeometric, onHighlightFoundation, onUnhighlightFoundation, subtle]
   )
 
   return renderEntity

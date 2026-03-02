@@ -4,15 +4,24 @@ import type { EuclidEntityRef } from './chat/parseGeometricEntities'
 /** Display text for each entity tag */
 function displayText(tag: string, value: string): string {
   switch (tag) {
-    case 'seg': return value       // "AB"
-    case 'tri': return `\u25B3${value}` // "△ABC"
-    case 'ang': return `\u2220${value}` // "∠ABC"
-    case 'pt': return value        // "A"
-    case 'def': return `Definition ${value}`
-    case 'post': return `Postulate ${value}`
-    case 'cn': return `Common Notion ${value}`
-    case 'prop': return `Proposition I.${value}`
-    default: return value
+    case 'seg':
+      return value // "AB"
+    case 'tri':
+      return `\u25B3${value}` // "△ABC"
+    case 'ang':
+      return `\u2220${value}` // "∠ABC"
+    case 'pt':
+      return value // "A"
+    case 'def':
+      return `Definition ${value}`
+    case 'post':
+      return `Postulate ${value}`
+    case 'cn':
+      return `Common Notion ${value}`
+    case 'prop':
+      return `Proposition I.${value}`
+    default:
+      return value
   }
 }
 
@@ -65,7 +74,8 @@ function buildEntity(tag: string, value: string): EuclidEntityRef | null {
  * foundation tags require digits. Each branch has an optional |override group.
  */
 export const EUCLID_ENTITY_MARKERS: EntityMarkerConfig<EuclidEntityRef> = {
-  pattern: /\{(seg|tri|ang|pt):([A-Z]+)(?:\|([^}]*))?\}|\{(def|post|cn|prop):(\d+)(?:\|([^}]*))?\}/g,
+  pattern:
+    /\{(seg|tri|ang|pt):([A-Z]+)(?:\|([^}]*))?\}|\{(def|post|cn|prop):(\d+)(?:\|([^}]*))?\}/g,
   parseMatch: (groups) => {
     // Alternation: either groups[0]+[1]+[2?] matched (geometric) or groups[3]+[4]+[5?] (foundation)
     const tag = groups[0] ?? groups[3]

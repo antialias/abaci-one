@@ -21,7 +21,7 @@ export interface UseCharacterChatOptions {
   /** Build the request body from current messages + optional screenshot. */
   buildRequestBody: (
     messages: Array<{ role: string; content: string }>,
-    screenshot: string | undefined,
+    screenshot: string | undefined
   ) => Record<string, unknown>
   /** Canvas ref for screenshot capture (optional) */
   canvasRef?: React.RefObject<HTMLCanvasElement | null>
@@ -59,9 +59,7 @@ export function generateId(): string {
   return `msg-${Date.now()}-${nextId++}`
 }
 
-export function useCharacterChat(
-  options: UseCharacterChatOptions,
-): UseCharacterChatReturn {
+export function useCharacterChat(options: UseCharacterChatOptions): UseCharacterChatReturn {
   const { chatEndpoint, buildRequestBody, canvasRef, onUserMessageAdded } = options
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -76,11 +74,11 @@ export function useCharacterChat(
   const close = useCallback(() => setIsOpen(false), [])
 
   const addMessage = useCallback((msg: ChatMessage) => {
-    setMessages(prev => [...prev, msg])
+    setMessages((prev) => [...prev, msg])
   }, [])
 
   const addMessageBeforeTrailingEvents = useCallback((msg: ChatMessage) => {
-    setMessages(prev => {
+    setMessages((prev) => {
       // Find where trailing event messages start
       let i = prev.length
       while (i > 0 && prev[i - 1].isEvent) i--
@@ -90,7 +88,7 @@ export function useCharacterChat(
   }, [])
 
   const setTrailingEvent = useCallback((msg: ChatMessage | null) => {
-    setMessages(prev => {
+    setMessages((prev) => {
       // Strip all trailing event messages
       let i = prev.length
       while (i > 0 && prev[i - 1].isEvent) i--
@@ -99,7 +97,7 @@ export function useCharacterChat(
   }, [])
 
   const updateMessageContent = useCallback((id: string, content: string) => {
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, content } : m))
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content } : m)))
   }, [])
 
   /** Shared streaming logic: fires the API request and streams deltas into assistantMsg. */
@@ -214,7 +212,7 @@ export function useCharacterChat(
 
       fetchStream()
     },
-    [chatEndpoint],
+    [chatEndpoint]
   )
 
   const sendMessage = useCallback(
@@ -253,64 +251,99 @@ export function useCharacterChat(
       const apiMessages = compaction.compactForApi([...messages, userMsg])
       const body = buildRequestBody(apiMessages, screenshot)
 
-      console.log('[character-chat] sendMessage: endpoint=%s, messageCount=%d, hasScreenshot=%s', chatEndpoint, apiMessages.length, !!screenshot)
+      console.log(
+        '[character-chat] sendMessage: endpoint=%s, messageCount=%d, hasScreenshot=%s',
+        chatEndpoint,
+        apiMessages.length,
+        !!screenshot
+      )
       console.log('[character-chat] request body keys:', Object.keys(body).join(', '))
 
       streamResponse(body, assistantMsg.id, abortController)
     },
-    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, compaction.compactForApi, streamResponse, onUserMessageAdded],
+    [
+      isStreaming,
+      messages,
+      chatEndpoint,
+      buildRequestBody,
+      canvasRef,
+      compaction.compactForApi,
+      streamResponse,
+      onUserMessageAdded,
+    ]
   )
 
-  const coldStart = useCallback(
-    () => {
-      // Allow cold-start if no real conversation has happened (events are OK)
-      const hasConversation = messages.some(m => !m.isEvent)
-      if (isStreaming || hasConversation) return
+  const coldStart = useCallback(() => {
+    // Allow cold-start if no real conversation has happened (events are OK)
+    const hasConversation = messages.some((m) => !m.isEvent)
+    if (isStreaming || hasConversation) return
 
-      if (abortRef.current) {
-        abortRef.current.abort()
-      }
+    if (abortRef.current) {
+      abortRef.current.abort()
+    }
 
-      // Hidden user message — sent to API but not shown in chat UI
-      const hiddenUserMsg: ChatMessage = {
-        id: generateId(),
-        role: 'user',
-        content: '[The student has just opened the chat. Proactively help them — assess where they are in the construction and tell them what to do next. Do NOT greet them or introduce yourself.]',
-        timestamp: Date.now(),
-      }
+    // Hidden user message — sent to API but not shown in chat UI
+    const hiddenUserMsg: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      content:
+        '[The student has just opened the chat. Proactively help them — assess where they are in the construction and tell them what to do next. Do NOT greet them or introduce yourself.]',
+      timestamp: Date.now(),
+    }
 
-      const assistantMsg: ChatMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      }
+    const assistantMsg: ChatMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+    }
 
-      // Keep existing event messages, append the assistant response
-      setMessages(prev => [...prev, assistantMsg])
-      setIsStreaming(true)
+    // Keep existing event messages, append the assistant response
+    setMessages((prev) => [...prev, assistantMsg])
+    setIsStreaming(true)
 
-      const abortController = new AbortController()
-      abortRef.current = abortController
+    const abortController = new AbortController()
+    abortRef.current = abortController
 
-      const screenshot = canvasRef?.current
-        ? (captureScreenshot(canvasRef.current) ?? undefined)
-        : undefined
+    const screenshot = canvasRef?.current
+      ? (captureScreenshot(canvasRef.current) ?? undefined)
+      : undefined
 
-      // Include existing events + hidden prompt so the API sees construction history
-      const eventMessages = compaction.compactForApi(messages)
-      const apiMessages = [...eventMessages, { role: 'user', content: hiddenUserMsg.content }]
-      const body = buildRequestBody(apiMessages, screenshot)
+    // Include existing events + hidden prompt so the API sees construction history
+    const eventMessages = compaction.compactForApi(messages)
+    const apiMessages = [...eventMessages, { role: 'user', content: hiddenUserMsg.content }]
+    const body = buildRequestBody(apiMessages, screenshot)
 
-      console.log('[character-chat] coldStart: endpoint=%s, events=%d, hasScreenshot=%s', chatEndpoint, eventMessages.length, !!screenshot)
+    console.log(
+      '[character-chat] coldStart: endpoint=%s, events=%d, hasScreenshot=%s',
+      chatEndpoint,
+      eventMessages.length,
+      !!screenshot
+    )
 
-      streamResponse(body, assistantMsg.id, abortController)
-    },
-    [isStreaming, messages, chatEndpoint, buildRequestBody, canvasRef, streamResponse, compaction.compactForApi],
-  )
+    streamResponse(body, assistantMsg.id, abortController)
+  }, [
+    isStreaming,
+    messages,
+    chatEndpoint,
+    buildRequestBody,
+    canvasRef,
+    streamResponse,
+    compaction.compactForApi,
+  ])
 
   return {
-    messages, isStreaming, sendMessage, coldStart, addMessage, addMessageBeforeTrailingEvents, setTrailingEvent, updateMessageContent, isOpen, open, close,
+    messages,
+    isStreaming,
+    sendMessage,
+    coldStart,
+    addMessage,
+    addMessageBeforeTrailingEvents,
+    setTrailingEvent,
+    updateMessageContent,
+    isOpen,
+    open,
+    close,
     compaction: {
       headSummary: compaction.headSummary,
       coversUpTo: compaction.coversUpTo,

@@ -13,16 +13,24 @@
 import { useRef, useState, useCallback } from 'react'
 import { BYRNE } from '../types'
 import type { EuclidEntityRef, FoundationEntityRef } from './parseGeometricEntities'
-import { isGeometricEntity, isFoundationEntity, foundationToCitationKey } from './parseGeometricEntities'
+import {
+  isGeometricEntity,
+  isFoundationEntity,
+  foundationToCitationKey,
+} from './parseGeometricEntities'
 
 /** Color for each entity type, using the Byrne palette. */
 function entityColor(entity: EuclidEntityRef): string {
   if (isGeometricEntity(entity)) return BYRNE.blue
   switch (entity.type) {
-    case 'definition': return BYRNE.red
-    case 'postulate': return BYRNE.yellow
-    case 'commonNotion': return BYRNE.blue
-    case 'proposition': return BYRNE.given
+    case 'definition':
+      return BYRNE.red
+    case 'postulate':
+      return BYRNE.yellow
+    case 'commonNotion':
+      return BYRNE.blue
+    case 'proposition':
+      return BYRNE.given
   }
 }
 
@@ -73,13 +81,16 @@ export function EuclidEntitySpan({
     }
   }, [entity, onHighlightGeometric, onUnhighlightFoundation])
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    // Mobile: tap foundation entities to show popover
-    if (!isFoundationEntity(entity)) return
-    e.stopPropagation()
-    const rect = spanRef.current?.getBoundingClientRect()
-    if (rect) onHighlightFoundation(entity, rect)
-  }, [entity, onHighlightFoundation])
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Mobile: tap foundation entities to show popover
+      if (!isFoundationEntity(entity)) return
+      e.stopPropagation()
+      const rect = spanRef.current?.getBoundingClientRect()
+      if (rect) onHighlightFoundation(entity, rect)
+    },
+    [entity, onHighlightFoundation]
+  )
 
   const color = entityColor(entity)
 

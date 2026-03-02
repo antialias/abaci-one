@@ -38,8 +38,7 @@ function getProp6Tutorial(isTouch: boolean): TutorialSubStep[][] {
       },
       {
         instruction: `${tap} point {pt:C}`,
-        speech:
-          'Click C to finish. Proposition I.3 places point D on BA where BD equals AC.',
+        speech: 'Click C to finish. Proposition I.3 places point D on BA where BD equals AC.',
         hint: { type: 'point', pointId: 'pt-C' },
         advanceOn: null,
       },

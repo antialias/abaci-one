@@ -6,10 +6,7 @@
  */
 
 import { useMemo } from 'react'
-import {
-  parseGeometricEntities,
-  type GeometricEntityRef,
-} from './parseGeometricEntities'
+import { parseGeometricEntities, type GeometricEntityRef } from './parseGeometricEntities'
 
 interface GeometricTextProps {
   text: string
@@ -18,10 +15,7 @@ interface GeometricTextProps {
 }
 
 export function GeometricText({ text, knownLabels, onHighlight }: GeometricTextProps) {
-  const segments = useMemo(
-    () => parseGeometricEntities(text, knownLabels),
-    [text, knownLabels]
-  )
+  const segments = useMemo(() => parseGeometricEntities(text, knownLabels), [text, knownLabels])
 
   return (
     <>

@@ -197,6 +197,8 @@ export interface PropositionStep {
 export interface PropositionDef {
   id: number
   title: string
+  /** Character ID for the teacher who narrates this proof. Absent = default (euclid). */
+  characterId?: string
   /** Unique proof variant ID. Absent = canonical/default proof. */
   proofVariant?: string
   /** Human-readable label for proof selector (e.g., "Pappus's proof") */

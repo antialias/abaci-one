@@ -37,7 +37,7 @@ export default function EuclidPropPage() {
   const selectedProp = useMemo(() => {
     if (!proofVariant) return canonical
     return allVariants.find((v) => v.proofVariant === proofVariant) ?? canonical
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propId, proofVariant])
 
   // Player state — initialized from URL search param if present

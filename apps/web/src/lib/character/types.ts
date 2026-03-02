@@ -12,6 +12,8 @@ export interface CharacterDefinition {
     dontDo: string
     /** Triggered only by specific topics */
     hiddenDepth?: string
+    /** Domain-specific point/label naming conventions */
+    pointLabeling?: string
   }
   /** Chat-specific UI strings */
   chat: {

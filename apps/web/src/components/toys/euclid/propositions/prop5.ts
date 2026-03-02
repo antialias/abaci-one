@@ -63,7 +63,7 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
       {
         instruction: `${tap} point {pt:A}`,
         speech:
-          "Now we use Proposition I.3 to cut off from AE a part equal to AF. This transfers the length AF onto line AE. Select point A — the start of the greater line.",
+          'Now we use Proposition I.3 to cut off from AE a part equal to AF. This transfers the length AF onto line AE. Select point A — the start of the greater line.',
         hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: { kind: 'macro-select' as const, index: 0 },
       },

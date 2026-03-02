@@ -85,7 +85,7 @@ export const POST = withAuth(async (request) => {
       }
     }
 
-    let normalizedBirthday: string | null | undefined = undefined
+    let normalizedBirthday: string | null | undefined
     if (body.birthday === null) {
       normalizedBirthday = null
     } else if (typeof body.birthday === 'string') {

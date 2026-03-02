@@ -1,12 +1,12 @@
 /**
- * Types for the Euclid voice call system.
+ * Types for the geometry voice call system.
  */
 
 import type { ConstructionState, PropositionStep } from '../types'
 import type { ProofFact } from '../engine/facts'
 
-/** Context available to Euclid voice modes. */
-export interface EuclidModeContext {
+/** Context available to geometry teacher voice modes. */
+export interface GeometryModeContext {
   /** The proposition number (1-based) */
   propositionId: number
   /** Proposition title (e.g. "Construct an equilateral triangle on a given line") */
@@ -31,5 +31,11 @@ export interface EuclidModeContext {
   steps: PropositionStep[]
 }
 
-/** Euclid voice mode IDs */
-export type EuclidModeId = 'greeting' | 'conversing' | 'thinking'
+/** @deprecated Use GeometryModeContext instead */
+export type EuclidModeContext = GeometryModeContext
+
+/** Geometry voice mode IDs */
+export type GeometryModeId = 'greeting' | 'conversing' | 'thinking'
+
+/** @deprecated Use GeometryModeId instead */
+export type EuclidModeId = GeometryModeId

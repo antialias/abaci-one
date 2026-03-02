@@ -269,7 +269,11 @@ const MACRO_PROP_2: MacroDef = {
   inputCount: 3,
   inputLabels: ['Target point', 'Segment start', 'Segment end'],
   inputToGivenIds: ['pt-A', 'pt-B', 'pt-C'],
-  distinctInputPairs: [[0, 1], [0, 2], [1, 2]],
+  distinctInputPairs: [
+    [0, 1],
+    [0, 2],
+    [1, 2],
+  ],
   execute(
     state: ConstructionState,
     inputPointIds: string[],
@@ -579,7 +583,10 @@ const MACRO_PROP_3: MacroDef = {
   inputToGivenIds: ['pt-A', 'pt-B', 'pt-C', 'pt-D'],
   // Each segment's endpoints must be distinct, but the two segments can share
   // endpoints (e.g. [A, E, A, F] in Prop I.5 — A is start of both segments)
-  distinctInputPairs: [[0, 1], [2, 3]],
+  distinctInputPairs: [
+    [0, 1],
+    [2, 3],
+  ],
   execute(
     state: ConstructionState,
     inputPointIds: string[],

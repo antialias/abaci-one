@@ -72,10 +72,7 @@ export const POST = withAuth(async (request) => {
     if (!response.ok) {
       const errText = await response.text()
       console.error('[chat/summarize] API error:', response.status, errText)
-      return NextResponse.json(
-        { error: 'Summarization failed' },
-        { status: 502 }
-      )
+      return NextResponse.json({ error: 'Summarization failed' }, { status: 502 })
     }
 
     const data = await response.json()

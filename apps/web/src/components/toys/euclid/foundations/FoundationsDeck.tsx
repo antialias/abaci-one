@@ -171,9 +171,7 @@ export function FoundationsDeck({
                   style={{
                     WebkitBackdropFilter: 'blur(12px)',
                     borderLeft: `1px solid ${activeBorder}`,
-                    backgroundColor: showAll
-                      ? 'rgba(16,185,129,0.35)'
-                      : 'rgba(16,185,129,0.08)',
+                    backgroundColor: showAll ? 'rgba(16,185,129,0.35)' : 'rgba(16,185,129,0.08)',
                     color: showAll ? '#064e3b' : '#0f766e',
                   }}
                 >
@@ -213,12 +211,8 @@ export function FoundationsDeck({
               })}
               style={{
                 WebkitBackdropFilter: 'blur(12px)',
-                borderColor: isActive
-                  ? 'rgba(16,185,129,0.6)'
-                  : 'rgba(203, 213, 225, 0.5)',
-                backgroundColor: isActive
-                  ? 'rgba(16,185,129,0.18)'
-                  : 'rgba(250, 250, 240, 0.65)',
+                borderColor: isActive ? 'rgba(16,185,129,0.6)' : 'rgba(203, 213, 225, 0.5)',
+                backgroundColor: isActive ? 'rgba(16,185,129,0.18)' : 'rgba(250, 250, 240, 0.65)',
                 color: isActive ? '#0f766e' : '#475569',
               }}
             >
@@ -332,9 +326,7 @@ export function FoundationsDeck({
                     },
                   })}
                   style={{
-                    borderColor: isSelected
-                      ? 'rgba(16,185,129,0.55)'
-                      : 'rgba(203, 213, 225, 0.7)',
+                    borderColor: isSelected ? 'rgba(16,185,129,0.55)' : 'rgba(203, 213, 225, 0.7)',
                     boxShadow: isSelected
                       ? '0 12px 24px rgba(15, 118, 110, 0.12)'
                       : '0 2px 8px rgba(15,23,42,0.06)',

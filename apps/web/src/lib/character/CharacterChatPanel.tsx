@@ -79,8 +79,7 @@ export function CharacterChatPanel<TEntityRef>({
     const el = messagesContainerRef.current
     if (!el) return
     const threshold = 40
-    const nearBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
     userScrolledAwayRef.current = !nearBottom
   }, [])
 
@@ -116,7 +115,7 @@ export function CharacterChatPanel<TEntityRef>({
         handleSend()
       }
     },
-    [handleSend],
+    [handleSend]
   )
 
   const hasDragHandlers = !!onDragPointerDown
@@ -173,13 +172,18 @@ export function CharacterChatPanel<TEntityRef>({
               <CallStatusChip character={character} callState={callState} size="standard" />
             </div>
           )}
-          <div style={{
-            gridRow: 1, gridColumn: 1,
-            display: 'flex', alignItems: 'center', gap: 8,
-            opacity: isCallActive ? 0 : 1,
-            transition: 'opacity 0.25s ease',
-            pointerEvents: isCallActive ? 'none' : 'auto',
-          }}>
+          <div
+            style={{
+              gridRow: 1,
+              gridColumn: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              opacity: isCallActive ? 0 : 1,
+              transition: 'opacity 0.25s ease',
+              pointerEvents: isCallActive ? 'none' : 'auto',
+            }}
+          >
             <div
               style={{
                 width: 24,
@@ -318,49 +322,73 @@ export function CharacterChatPanel<TEntityRef>({
         )}
         {messages.map((msg, msgIndex) => {
           // Debug compaction divider — shown between messages when debug is active
-          const compactionDivider = debugCompaction && msgIndex > 0 ? (() => {
-            const isCovered = msgIndex <= debugCompaction.coversUpTo
-            const isAtBoundary = msgIndex === debugCompaction.coversUpTo
-            const canCompact = !debugCompaction.isSummarizing && msgIndex > debugCompaction.coversUpTo
-            return (
-              <div
-                key={`compact-${msgIndex}`}
-                data-element="compaction-divider"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '1px 0',
-                  opacity: isCovered ? 0.4 : 0.7,
-                }}
-              >
-                <div style={{ flex: 1, height: 1, background: isAtBoundary ? '#86efac' : isCovered ? '#86efac' : 'rgba(203,213,225,0.4)' }} />
-                {isAtBoundary ? (
-                  <span style={{ fontSize: 8, color: '#86efac', whiteSpace: 'nowrap' }}>
-                    summarized above
-                  </span>
-                ) : canCompact ? (
-                  <button
-                    data-action="compact-here"
-                    onClick={() => debugCompaction.onCompactUpTo(msgIndex)}
-                    style={{
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      fontSize: 9,
-                      color: '#94a3b8',
-                      padding: '0 4px',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={`Compact messages 1–${msgIndex} into a summary`}
-                  >
-                    {'\u2702'} compact here
-                  </button>
-                ) : null}
-                <div style={{ flex: 1, height: 1, background: isAtBoundary ? '#86efac' : isCovered ? '#86efac' : 'rgba(203,213,225,0.4)' }} />
-              </div>
-            )
-          })() : null
+          const compactionDivider =
+            debugCompaction && msgIndex > 0
+              ? (() => {
+                  const isCovered = msgIndex <= debugCompaction.coversUpTo
+                  const isAtBoundary = msgIndex === debugCompaction.coversUpTo
+                  const canCompact =
+                    !debugCompaction.isSummarizing && msgIndex > debugCompaction.coversUpTo
+                  return (
+                    <div
+                      key={`compact-${msgIndex}`}
+                      data-element="compaction-divider"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '1px 0',
+                        opacity: isCovered ? 0.4 : 0.7,
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: 1,
+                          height: 1,
+                          background: isAtBoundary
+                            ? '#86efac'
+                            : isCovered
+                              ? '#86efac'
+                              : 'rgba(203,213,225,0.4)',
+                        }}
+                      />
+                      {isAtBoundary ? (
+                        <span style={{ fontSize: 8, color: '#86efac', whiteSpace: 'nowrap' }}>
+                          summarized above
+                        </span>
+                      ) : canCompact ? (
+                        <button
+                          data-action="compact-here"
+                          onClick={() => debugCompaction.onCompactUpTo(msgIndex)}
+                          style={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            fontSize: 9,
+                            color: '#94a3b8',
+                            padding: '0 4px',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={`Compact messages 1–${msgIndex} into a summary`}
+                        >
+                          {'\u2702'} compact here
+                        </button>
+                      ) : null}
+                      <div
+                        style={{
+                          flex: 1,
+                          height: 1,
+                          background: isAtBoundary
+                            ? '#86efac'
+                            : isCovered
+                              ? '#86efac'
+                              : 'rgba(203,213,225,0.4)',
+                        }}
+                      />
+                    </div>
+                  )
+                })()
+              : null
 
           // Event messages render as small centered notices
           if (msg.isEvent) {
@@ -381,7 +409,15 @@ export function CharacterChatPanel<TEntityRef>({
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
+                    <span
+                      style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: '50%',
+                        background: '#cbd5e1',
+                        flexShrink: 0,
+                      }}
+                    />
                     {msg.content}
                   </div>
                   {msg.imageDataUrl && (
@@ -435,98 +471,109 @@ export function CharacterChatPanel<TEntityRef>({
                   gap: 6,
                 }}
               >
-              {msg.role === 'assistant' && (
-                <img
-                  src={smProfileImage}
-                  alt=""
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    flexShrink: 0,
-                    marginTop: 2,
-                  }}
-                />
-              )}
-              <div
-                style={{
-                  maxWidth: '85%',
-                  padding: '6px 10px',
-                  borderRadius:
-                    msg.role === 'user'
-                      ? '10px 10px 2px 10px'
-                      : '10px 10px 10px 2px',
-                  background:
-                    msg.role === 'user'
-                      ? 'rgba(78, 121, 167, 0.12)'
-                      : 'rgba(248, 250, 252, 0.9)',
-                  border:
-                    msg.role === 'user'
-                      ? '1px solid rgba(78, 121, 167, 0.2)'
-                      : '1px solid rgba(203, 213, 225, 0.4)',
-                  fontSize: 13,
-                  lineHeight: 1.45,
-                  color: '#1e293b',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {msg.content && entityMarkers && onHighlight ? (
-                  <MarkedText
-                    text={msg.content}
-                    markers={entityMarkers}
-                    onHighlight={onHighlight}
-                    renderEntity={renderEntity}
-                  />
-                ) : (
-                  msg.content
-                )}
-                {msg.via && (
-                  <span
-                    title={msg.via === 'voice' ? 'Spoken' : 'Typed during call'}
+                {msg.role === 'assistant' && (
+                  <img
+                    src={smProfileImage}
+                    alt=""
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      marginLeft: 4,
-                      verticalAlign: 'middle',
-                      opacity: 0.45,
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0,
+                      marginTop: 2,
                     }}
-                  >
-                    {msg.via === 'voice' ? (
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                        <line x1="12" y1="19" x2="12" y2="23" />
-                        <line x1="8" y1="23" x2="16" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
-                        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
-                      </svg>
-                    )}
-                  </span>
+                  />
                 )}
+                <div
+                  style={{
+                    maxWidth: '85%',
+                    padding: '6px 10px',
+                    borderRadius: msg.role === 'user' ? '10px 10px 2px 10px' : '10px 10px 10px 2px',
+                    background:
+                      msg.role === 'user' ? 'rgba(78, 121, 167, 0.12)' : 'rgba(248, 250, 252, 0.9)',
+                    border:
+                      msg.role === 'user'
+                        ? '1px solid rgba(78, 121, 167, 0.2)'
+                        : '1px solid rgba(203, 213, 225, 0.4)',
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    color: '#1e293b',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {msg.content && entityMarkers && onHighlight ? (
+                    <MarkedText
+                      text={msg.content}
+                      markers={entityMarkers}
+                      onHighlight={onHighlight}
+                      renderEntity={renderEntity}
+                    />
+                  ) : (
+                    msg.content
+                  )}
+                  {msg.via && (
+                    <span
+                      title={msg.via === 'voice' ? 'Spoken' : 'Typed during call'}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        marginLeft: 4,
+                        verticalAlign: 'middle',
+                        opacity: 0.45,
+                      }}
+                    >
+                      {msg.via === 'voice' ? (
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                          <line x1="12" y1="19" x2="12" y2="23" />
+                          <line x1="8" y1="23" x2="16" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+                          <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+                        </svg>
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
             </React.Fragment>
           )
         })}
-        {isStreaming &&
-          messages.length > 0 &&
-          !messages[messages.length - 1].content && (
-            <div
-              style={{
-                fontSize: 11,
-                color: '#94a3b8',
-                fontStyle: 'italic',
-                paddingLeft: 26,
-              }}
-            >
-              {character.chat.streamingLabel}
-            </div>
-          )}
+        {isStreaming && messages.length > 0 && !messages[messages.length - 1].content && (
+          <div
+            style={{
+              fontSize: 11,
+              color: '#94a3b8',
+              fontStyle: 'italic',
+              paddingLeft: 26,
+            }}
+          >
+            {character.chat.streamingLabel}
+          </div>
+        )}
         <div ref={messagesEndRef} />
 
         {/* Ringing overlay — absolute over messages area */}
@@ -633,8 +680,7 @@ export function CharacterChatPanel<TEntityRef>({
           title="Send"
           style={{
             border: 'none',
-            background:
-              input.trim() && !isStreaming ? '#4E79A7' : '#cbd5e1',
+            background: input.trim() && !isStreaming ? '#4E79A7' : '#cbd5e1',
             color: 'white',
             borderRadius: 8,
             width: 32,
@@ -642,8 +688,7 @@ export function CharacterChatPanel<TEntityRef>({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor:
-              input.trim() && !isStreaming ? 'pointer' : 'default',
+            cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
             flexShrink: 0,
             transition: 'background 0.15s ease',
           }}

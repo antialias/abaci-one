@@ -28,9 +28,7 @@ export interface UseConversationCompactionReturn extends CompactionState {
    * Returns [summaryMessage, ...tailMessages] if a summary is cached,
    * or the full messages array if not.
    */
-  compactForApi: (
-    messages: ChatMessage[],
-  ) => Array<{ role: string; content: string }>
+  compactForApi: (messages: ChatMessage[]) => Array<{ role: string; content: string }>
   /**
    * Build compacted conversation lines for voice session history injection.
    * Returns formatted text suitable for sendSystemMessage().
@@ -52,7 +50,7 @@ const GROWTH_THRESHOLD = 10
 const MIN_MESSAGES = TAIL_SIZE + GROWTH_THRESHOLD
 
 export function useConversationCompaction(
-  messages: ChatMessage[],
+  messages: ChatMessage[]
 ): UseConversationCompactionReturn {
   const [headSummary, setHeadSummary] = useState<string | null>(null)
   const [coversUpTo, setCoversUpTo] = useState(0)
@@ -89,7 +87,7 @@ export function useConversationCompaction(
           '[compaction] summarizing %d messages (coversUpTo=%d, headSize=%d)',
           apiMessages.length,
           coversUpTo,
-          headSize,
+          headSize
         )
         const res = await fetch('/api/chat/summarize', {
           method: 'POST',
@@ -110,7 +108,7 @@ export function useConversationCompaction(
           console.log(
             '[compaction] summary ready (%d chars), covers up to index %d',
             data.summary.length,
-            headSize,
+            headSize
           )
           setHeadSummary(data.summary)
           setCoversUpTo(headSize)
@@ -150,19 +148,16 @@ export function useConversationCompaction(
           content: m.isEvent ? `[CONSTRUCTION EVENT: ${m.content}]` : m.content,
         }))
     },
-    [headSummary, coversUpTo],
+    [headSummary, coversUpTo]
   )
 
   const compactForVoice = useCallback(
     (msgs: ChatMessage[]): string => {
-      const preamble = headSummary
-        ? `[Summary of earlier conversation: ${headSummary}]\n\n`
-        : ''
+      const preamble = headSummary ? `[Summary of earlier conversation: ${headSummary}]\n\n` : ''
 
-      const tail = (headSummary && coversUpTo > 0
-        ? msgs.slice(coversUpTo)
-        : msgs
-      ).filter((m) => !m.isError)
+      const tail = (headSummary && coversUpTo > 0 ? msgs.slice(coversUpTo) : msgs).filter(
+        (m) => !m.isError
+      )
 
       const lines = tail
         .map((m) => {
@@ -173,7 +168,7 @@ export function useConversationCompaction(
 
       return `${preamble}${lines}`
     },
-    [headSummary, coversUpTo],
+    [headSummary, coversUpTo]
   )
 
   const manualCompactUpTo = useCallback(
@@ -195,7 +190,7 @@ export function useConversationCompaction(
           console.log(
             '[compaction] manual compact up to index %d (%d messages)',
             index,
-            apiMessages.length,
+            apiMessages.length
           )
           const res = await fetch('/api/chat/summarize', {
             method: 'POST',
@@ -216,7 +211,7 @@ export function useConversationCompaction(
             console.log(
               '[compaction] manual summary ready (%d chars), covers up to index %d',
               data.summary.length,
-              index,
+              index
             )
             setHeadSummary(data.summary)
             setCoversUpTo(index)
@@ -230,8 +225,15 @@ export function useConversationCompaction(
 
       summarize()
     },
-    [messages],
+    [messages]
   )
 
-  return { headSummary, coversUpTo, compactForApi, compactForVoice, isSummarizingRef, manualCompactUpTo }
+  return {
+    headSummary,
+    coversUpTo,
+    compactForApi,
+    compactForVoice,
+    isSummarizingRef,
+    manualCompactUpTo,
+  }
 }
