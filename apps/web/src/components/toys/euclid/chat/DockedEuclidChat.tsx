@@ -10,7 +10,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import type { ChatMessage, ChatCallState } from '@/lib/character/types'
 import type { DebugCompactionProps } from '@/lib/character/CharacterChatPanel'
-import type { GeometricEntityRef } from './parseGeometricEntities'
+import type { EuclidEntityRef } from './parseGeometricEntities'
 import { MarkedText } from '@/lib/character/MarkedText'
 import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
@@ -21,7 +21,8 @@ export interface DockedEuclidChatProps {
   messages: ChatMessage[]
   isStreaming: boolean
   onSend: (text: string) => void
-  onHighlight: (entity: GeometricEntityRef | null) => void
+  onHighlight: (entity: EuclidEntityRef | null) => void
+  renderEntity?: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
   callState?: ChatCallState
   isMobile: boolean
   /** When true, the chat panel is hidden (desktop) or collapsed to strip (mobile) */
@@ -56,6 +57,7 @@ export function DockedEuclidChat({
   isStreaming,
   onSend,
   onHighlight,
+  renderEntity,
   callState,
   isMobile,
   collapsed,
@@ -171,6 +173,7 @@ export function DockedEuclidChat({
           onSend={handleSend}
           onKeyDown={handleKeyDown}
           onHighlight={onHighlight}
+          renderEntity={renderEntity}
           messagesContainerRef={messagesContainerRef}
           handleMessagesScroll={handleMessagesScroll}
           callState={callState}
@@ -220,6 +223,7 @@ export function DockedEuclidChat({
       onSend={handleSend}
       onKeyDown={handleKeyDown}
       onHighlight={onHighlight}
+      renderEntity={renderEntity}
       messagesContainerRef={messagesContainerRef}
       handleMessagesScroll={handleMessagesScroll}
       callState={callState}
@@ -244,7 +248,8 @@ interface DesktopDockedChatProps {
   inputRef: React.RefCallback<HTMLInputElement>
   onSend: () => void
   onKeyDown: (e: React.KeyboardEvent) => void
-  onHighlight: (entity: GeometricEntityRef | null) => void
+  onHighlight: (entity: EuclidEntityRef | null) => void
+  renderEntity?: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
   messagesContainerRef: React.MutableRefObject<HTMLDivElement | null>
   handleMessagesScroll: () => void
   callState?: ChatCallState
@@ -277,6 +282,7 @@ function DesktopDockedChat({
   onSend,
   onKeyDown,
   onHighlight,
+  renderEntity,
   messagesContainerRef,
   handleMessagesScroll,
   callState,
@@ -688,6 +694,7 @@ function DesktopDockedChat({
                       text={msg.content}
                       markers={EUCLID_ENTITY_MARKERS}
                       onHighlight={onHighlight}
+                      renderEntity={renderEntity}
                     />
                   ) : (
                     msg.content

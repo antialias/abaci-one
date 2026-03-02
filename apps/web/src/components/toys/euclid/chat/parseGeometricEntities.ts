@@ -17,6 +17,33 @@ export type GeometricEntityRef =
   | { type: 'angle'; points: [string, string, string] }
   | { type: 'point'; label: string }
 
+export type FoundationEntityRef =
+  | { type: 'definition'; id: number }
+  | { type: 'postulate'; id: number }
+  | { type: 'commonNotion'; id: number }
+  | { type: 'proposition'; id: number }
+
+/** Union of all entity ref types supported in Euclid chat */
+export type EuclidEntityRef = GeometricEntityRef | FoundationEntityRef
+
+export function isGeometricEntity(entity: EuclidEntityRef): entity is GeometricEntityRef {
+  return entity.type === 'segment' || entity.type === 'triangle' || entity.type === 'angle' || entity.type === 'point'
+}
+
+export function isFoundationEntity(entity: EuclidEntityRef): entity is FoundationEntityRef {
+  return entity.type === 'definition' || entity.type === 'postulate' || entity.type === 'commonNotion' || entity.type === 'proposition'
+}
+
+/** Convert a FoundationEntityRef to the citation key format used by CitationPopover (e.g. "Def.15", "Post.1") */
+export function foundationToCitationKey(entity: FoundationEntityRef): string {
+  switch (entity.type) {
+    case 'definition': return `Def.${entity.id}`
+    case 'postulate': return `Post.${entity.id}`
+    case 'commonNotion': return `C.N.${entity.id}`
+    case 'proposition': return `Prop.${entity.id}`
+  }
+}
+
 export type TextSegment =
   | { kind: 'text'; text: string }
   | { kind: 'entity'; text: string; entity: GeometricEntityRef }
@@ -94,8 +121,9 @@ export function latexToMarkers(text: string): string {
     .replace(/\\\(\s*([A-Z])\s*\\\)/g, '{pt:$1}')
 }
 
-// Match {tag:LABELS} where tag is seg|tri|ang|pt and LABELS is uppercase letters
-const MARKER_RE = /\{(seg|tri|ang|pt):([A-Z]+)\}/g
+// Match {tag:LABELS} where tag is seg|tri|ang|pt and LABELS is uppercase letters,
+// or {tag:N} where tag is def|post|cn|prop and N is a number
+const MARKER_RE = /\{(seg|tri|ang|pt):([A-Z]+)\}|\{(def|post|cn|prop):(\d+)\}/g
 
 /**
  * Parse text for structured geometric entity markers.

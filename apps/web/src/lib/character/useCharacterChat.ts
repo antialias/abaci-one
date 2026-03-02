@@ -37,6 +37,8 @@ export interface UseCharacterChatReturn {
   addMessage: (msg: ChatMessage) => void
   /** Replace all trailing event messages with this one, or remove them if null. */
   setTrailingEvent: (msg: ChatMessage | null) => void
+  /** Update the content of an existing message by ID (used for async markup). */
+  updateMessageContent: (id: string, content: string) => void
   isOpen: boolean
   open: () => void
   close: () => void
@@ -80,6 +82,10 @@ export function useCharacterChat(
       while (i > 0 && prev[i - 1].isEvent) i--
       return msg ? [...prev.slice(0, i), msg] : prev.slice(0, i)
     })
+  }, [])
+
+  const updateMessageContent = useCallback((id: string, content: string) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, content } : m))
   }, [])
 
   /** Shared streaming logic: fires the API request and streams deltas into assistantMsg. */
@@ -289,7 +295,7 @@ export function useCharacterChat(
   )
 
   return {
-    messages, isStreaming, sendMessage, coldStart, addMessage, setTrailingEvent, isOpen, open, close,
+    messages, isStreaming, sendMessage, coldStart, addMessage, setTrailingEvent, updateMessageContent, isOpen, open, close,
     compaction: {
       headSummary: compaction.headSummary,
       coversUpTo: compaction.coversUpTo,

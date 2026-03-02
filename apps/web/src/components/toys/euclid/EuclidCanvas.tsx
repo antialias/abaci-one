@@ -119,7 +119,9 @@ import { useEuclidChat } from './chat/useEuclidChat'
 import { DockedEuclidChat } from './chat/DockedEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
 import { latexToMarkers } from './chat/parseGeometricEntities'
-import type { GeometricEntityRef } from './chat/parseGeometricEntities'
+import type { GeometricEntityRef, EuclidEntityRef, FoundationEntityRef } from './chat/parseGeometricEntities'
+import { isGeometricEntity, foundationToCitationKey } from './chat/parseGeometricEntities'
+import { useEuclidEntityRenderer } from './chat/useEuclidEntityRenderer'
 import { generateId } from '@/lib/character/useCharacterChat'
 import { renderChatHighlight } from './render/renderChatHighlight'
 
@@ -908,11 +910,6 @@ export function EuclidCanvas({
 
   const handleMacroPropositionSelect = useCallback((propId: number) => {
     const macroDef = MACRO_REGISTRY[propId]
-    console.log(
-      '[macro-debug] handleMacroPropositionSelect propId=%d macroDef=%o',
-      propId,
-      macroDef
-    )
     if (!macroDef) return
     const phase: MacroPhase = {
       tag: 'selecting',
@@ -920,7 +917,6 @@ export function EuclidCanvas({
       inputLabels: macroDef.inputLabels,
       selectedPointIds: [],
     }
-    console.log('[macro-debug] setting macroPhaseRef to', phase)
     macroPhaseRef.current = phase
     setMacroPhase(phase)
   }, [])
@@ -1053,8 +1049,11 @@ export function EuclidCanvas({
   const handleModelSpeech = useCallback((transcript: string) => {
     // Convert LaTeX notation from voice transcripts to our {seg:AB} marker syntax
     const converted = latexToMarkers(transcript)
-    euclidChat.addMessage({ id: generateId(), role: 'assistant', content: converted, timestamp: Date.now(), via: 'voice' })
-  }, [euclidChat.addMessage])
+    const msgId = generateId()
+    euclidChat.addMessage({ id: msgId, role: 'assistant', content: converted, timestamp: Date.now(), via: 'voice' })
+    // Async: send to LLM for full entity markup (foundation refs, missed geometric refs)
+    euclidChat.markupMessage(msgId, converted)
+  }, [euclidChat.addMessage, euclidChat.markupMessage])
 
   const handleChildSpeech = useCallback((transcript: string) => {
     euclidChat.addMessage({ id: generateId(), role: 'user', content: transcript, timestamp: Date.now(), via: 'voice' })
@@ -1122,10 +1121,40 @@ export function EuclidCanvas({
 
   // Chat highlight state — set when hovering geometric entities in chat
   const chatHighlightRef = useRef<GeometricEntityRef | null>(null)
-  const handleChatHighlight = useCallback((entity: GeometricEntityRef | null) => {
-    chatHighlightRef.current = entity
+
+  // Unified highlight handler for the old onHighlight prop (geometric only)
+  const handleChatHighlight = useCallback((entity: EuclidEntityRef | null) => {
+    if (entity && isGeometricEntity(entity)) {
+      chatHighlightRef.current = entity
+    } else {
+      chatHighlightRef.current = null
+    }
     needsDrawRef.current = true
   }, [])
+
+  // Foundation highlight: reuses the same activeCitation state + CitationPopover
+  const handleChatHighlightFoundation = useCallback((entity: FoundationEntityRef, anchorRect: DOMRect) => {
+    if (citationHideTimerRef.current) clearTimeout(citationHideTimerRef.current)
+    if (citationShowTimerRef.current) clearTimeout(citationShowTimerRef.current)
+    const key = foundationToCitationKey(entity)
+    citationShowTimerRef.current = setTimeout(() => {
+      setActiveCitation({ key, rect: anchorRect })
+    }, 200)
+  }, [])
+
+  const handleChatUnhighlightFoundation = useCallback(() => {
+    if (citationShowTimerRef.current) clearTimeout(citationShowTimerRef.current)
+    citationHideTimerRef.current = setTimeout(() => {
+      if (!popoverHoveredRef.current) setActiveCitation(null)
+    }, 300)
+  }, [])
+
+  // Per-entity-type renderer for MarkedText — delegates to EuclidEntitySpan
+  const renderEntity = useEuclidEntityRenderer({
+    onHighlightGeometric: handleChatHighlight,
+    onHighlightFoundation: handleChatHighlightFoundation,
+    onUnhighlightFoundation: handleChatUnhighlightFoundation,
+  })
 
   // Mute TTS narration while a voice call is active, and stop any playing audio
   const euclidCallActive = euclidVoice.state !== 'idle'
@@ -1563,6 +1592,22 @@ export function EuclidCanvas({
 
       const unlock = () => {
         correctionActiveRef.current = false
+        // Re-initialize the macro selecting phase if the step expects a macro.
+        // The step-sync useEffect won't re-fire because currentStep didn't change.
+        const stepDef = steps[step]
+        if (stepDef?.tool === 'macro' && stepDef.expected.type === 'macro') {
+          const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
+          if (macroDef) {
+            const phase: MacroPhase = {
+              tag: 'selecting',
+              propId: stepDef.expected.propId,
+              inputLabels: macroDef.inputLabels,
+              selectedPointIds: [],
+            }
+            macroPhaseRef.current = phase
+            setMacroPhase(phase)
+          }
+        }
       }
 
       if (audioEnabledRef.current) {
@@ -1588,6 +1633,13 @@ export function EuclidCanvas({
 
       const stepDef = steps[step]
       const valid = validateStep(stepDef.expected, constructionRef.current, element, candidate)
+      console.log(
+        '[checkStep] step=%d valid=%s expected=%o element=%o',
+        step,
+        valid,
+        stepDef.expected,
+        { kind: element.kind, id: element.id }
+      )
       if (valid) {
         // Capture snapshot before advancing — state after this step completes
         snapshotStackRef.current = [
@@ -1887,12 +1939,27 @@ export function EuclidCanvas({
       const step = currentStepRef.current
       const expected = step < steps.length ? steps[step].expected : null
 
-      // A macro application is "guided" when the current step expects this exact proposition.
-      // In guided mode: full flow with snapshot, ceremony, and step advancement.
-      // In free mode: apply elements immediately, reopen picker for another application.
-      const isGuidedStep = expected?.type === 'macro' && expected.propId === propId
+      // A macro application is "guided" when the current step expects this exact proposition
+      // AND the input points match the expected inputs (in order).
+      // Without the input check, wrong inputs (e.g. ['pt-B','pt-B'] instead of ['pt-A','pt-B'])
+      // would be treated as correct, advancing the step with a degenerate/empty construction.
+      const isGuidedStep =
+        expected?.type === 'macro' &&
+        expected.propId === propId &&
+        expected.inputPointIds.length === inputPointIds.length &&
+        expected.inputPointIds.every((id, i) => id === inputPointIds[i])
       const outputLabels =
         isGuidedStep && expected?.type === 'macro' ? expected.outputLabels : undefined
+
+      console.log(
+        '[commit-macro] propId=%d inputs=%o step=%d expected=%o isGuidedStep=%s expectedInputs=%o',
+        propId,
+        inputPointIds,
+        step,
+        expected,
+        isGuidedStep,
+        expected?.type === 'macro' ? expected.inputPointIds : 'N/A'
+      )
 
       // Execute the macro — state is computed all at once
       const result = macroDef.execute(
@@ -1922,6 +1989,7 @@ export function EuclidCanvas({
           // ── Wrong macro during guided steps ──────────────────────────
           // The user applied a macro that doesn't match the expected action.
           // Revert and narrate.
+          console.log('[commit-macro] WRONG macro — calling triggerCorrection for step %d', step)
           triggerCorrection(step)
           return
         }
@@ -1957,6 +2025,7 @@ export function EuclidCanvas({
       }
 
       // ── Guided path ───────────────────────────────────────────────
+      console.log('[commit-macro] GUIDED path — step=%d propId=%d inputs=%o addedElements=%o', step, propId, inputPointIds, result.addedElements.map(e => ({ kind: e.kind, id: e.id, label: (e as any).label })))
       // Collect ghost layers produced by the macro itself
       const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: step }))
       if (macroGhosts.length > 0) {
@@ -1982,12 +2051,13 @@ export function EuclidCanvas({
       // after the ghost reveal rather than racing with it.
       const stepToAdvance = step
       const doAdvanceStep = () => {
+        const nextSt = stepToAdvance + 1
+        console.log('[commit-macro] doAdvanceStep: %d → %d (total=%d)', stepToAdvance, nextSt, steps.length)
         setCompletedSteps((prev) => {
           const next = [...prev]
           next[stepToAdvance] = true
           return next
         })
-        const nextSt = stepToAdvance + 1
         currentStepRef.current = nextSt
         if (nextSt >= steps.length) {
           setIsComplete(true)
@@ -2745,6 +2815,25 @@ export function EuclidCanvas({
         }
       }
 
+      // ── Periodic state dump for debugging stuck states ──
+      {
+        const now = performance.now()
+        if (now - lastStateDumpRef.current > 5000) {
+          lastStateDumpRef.current = now
+          console.log(
+            '[state-dump] step=%d correctionActive=%s macroPhase=%s compassPhase=%s straightedgePhase=%s tool=%s ceremonyActive=%s macroAnim=%s',
+            currentStepRef.current,
+            correctionActiveRef.current,
+            macroPhaseRef.current.tag,
+            compassPhaseRef.current.tag,
+            straightedgePhaseRef.current.tag,
+            activeToolRef.current,
+            !!macroRevealRef.current,
+            !!macroAnimationRef.current
+          )
+        }
+      }
+
       // ── Tick macro animation ──
       const macroAnim = macroAnimationRef.current
       if (macroAnim && macroAnim.revealedCount < macroAnim.elements.length) {
@@ -2807,7 +2896,12 @@ export function EuclidCanvas({
             }
           }
           if (now - ceremony.allShownMs >= ceremony.postNarrationDelayMs) {
-            ceremony.advanceStep()
+            console.log('[ceremony] all shown + delay elapsed — calling advanceStep()')
+            try {
+              ceremony.advanceStep()
+            } catch (err) {
+              console.error('[ceremony] advanceStep() THREW:', err)
+            }
             macroRevealRef.current = null
           } else {
             needsDrawRef.current = true
@@ -3893,6 +3987,7 @@ export function EuclidCanvas({
                   onSend={handleChatSend}
                   onClose={() => setChatMode('closed')}
                   onHighlight={handleChatHighlight}
+                  renderEntity={renderEntity}
                   onDragPointerDown={handleQuadPointerDown}
                   onDragPointerMove={handleQuadPointerMove}
                   onDragPointerUp={handleQuadPointerUp}
@@ -5133,6 +5228,7 @@ export function EuclidCanvas({
               isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
               onSend={handleChatSend}
               onHighlight={handleChatHighlight}
+              renderEntity={renderEntity}
               callState={chatCallState}
               isMobile={false}
               collapsed={chatMode !== 'docked'}
@@ -5155,6 +5251,7 @@ export function EuclidCanvas({
           isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
           onSend={handleChatSend}
           onHighlight={handleChatHighlight}
+          renderEntity={renderEntity}
           callState={chatCallState}
           isMobile={true}
           collapsed={false}

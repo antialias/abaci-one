@@ -29,6 +29,8 @@ export interface CharacterChatPanelProps<TEntityRef> {
   onClose: () => void
   entityMarkers?: EntityMarkerConfig<TEntityRef>
   onHighlight?: (entity: TEntityRef | null) => void
+  /** Custom per-entity renderer. When provided, delegates to this instead of default blue styling. */
+  renderEntity?: (entity: TEntityRef, displayText: string, index: number) => React.ReactNode
   /** Drag handlers for the header — when provided, header becomes drag handle */
   onDragPointerDown?: (e: React.PointerEvent) => void
   onDragPointerMove?: (e: React.PointerEvent) => void
@@ -50,6 +52,7 @@ export function CharacterChatPanel<TEntityRef>({
   onClose,
   entityMarkers,
   onHighlight,
+  renderEntity,
   onDragPointerDown,
   onDragPointerMove,
   onDragPointerUp,
@@ -470,6 +473,7 @@ export function CharacterChatPanel<TEntityRef>({
                     text={msg.content}
                     markers={entityMarkers}
                     onHighlight={onHighlight}
+                    renderEntity={renderEntity}
                   />
                 ) : (
                   msg.content

@@ -86,6 +86,58 @@ describe('EUCLID_ENTITY_MARKERS', () => {
     expect(parse('{line:AB}')).toEqual([{ kind: 'text', text: '{line:AB}' }])
   })
 
+  it('parses definition markers', () => {
+    const result = parse('{def:15}')
+    expect(result).toEqual([
+      {
+        kind: 'entity',
+        text: 'Definition 15',
+        entity: { type: 'definition', id: 15 },
+      },
+    ])
+  })
+
+  it('parses postulate markers', () => {
+    const result = parse('{post:3}')
+    expect(result).toEqual([
+      {
+        kind: 'entity',
+        text: 'Postulate 3',
+        entity: { type: 'postulate', id: 3 },
+      },
+    ])
+  })
+
+  it('parses common notion markers', () => {
+    const result = parse('{cn:1}')
+    expect(result).toEqual([
+      {
+        kind: 'entity',
+        text: 'Common Notion 1',
+        entity: { type: 'commonNotion', id: 1 },
+      },
+    ])
+  })
+
+  it('parses proposition markers', () => {
+    const result = parse('{prop:5}')
+    expect(result).toEqual([
+      {
+        kind: 'entity',
+        text: 'Proposition I.5',
+        entity: { type: 'proposition', id: 5 },
+      },
+    ])
+  })
+
+  it('parses mixed geometric and foundation markers', () => {
+    const result = parse('Draw a circle at {pt:A} through {pt:B}, by {post:3}.')
+    expect(result).toHaveLength(7) // 3 entities + 4 text segments (trailing ".")
+    expect(result[1]).toMatchObject({ kind: 'entity', entity: { type: 'point', label: 'A' } })
+    expect(result[3]).toMatchObject({ kind: 'entity', entity: { type: 'point', label: 'B' } })
+    expect(result[5]).toMatchObject({ kind: 'entity', entity: { type: 'postulate', id: 3 } })
+  })
+
   describe('stripEntityMarkers (mobile preview)', () => {
     function strip(text: string) {
       return stripEntityMarkers(text, EUCLID_ENTITY_MARKERS)
@@ -119,6 +171,18 @@ describe('EUCLID_ENTITY_MARKERS', () => {
 
     it('handles text with no markers', () => {
       expect(strip('just plain text')).toBe('just plain text')
+    })
+
+    it('strips foundation markers', () => {
+      expect(strip('{def:15}')).toBe('Definition 15')
+      expect(strip('{post:3}')).toBe('Postulate 3')
+      expect(strip('{cn:1}')).toBe('Common Notion 1')
+      expect(strip('{prop:5}')).toBe('Proposition I.5')
+    })
+
+    it('strips mixed geometric and foundation markers', () => {
+      expect(strip('{seg:CA} = {seg:AB} by {def:15}'))
+        .toBe('CA = AB by Definition 15')
     })
   })
 })

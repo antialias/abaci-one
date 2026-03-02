@@ -1,44 +1,75 @@
 import type { EntityMarkerConfig } from '@/lib/character/types'
-import type { GeometricEntityRef } from './chat/parseGeometricEntities'
+import type { EuclidEntityRef } from './chat/parseGeometricEntities'
 
-/** Display text for each geometric entity tag */
-function displayText(tag: string, labels: string): string {
+/** Display text for each entity tag */
+function displayText(tag: string, value: string): string {
   switch (tag) {
-    case 'seg': return labels       // "AB"
-    case 'tri': return `\u25B3${labels}` // "△ABC"
-    case 'ang': return `\u2220${labels}` // "∠ABC"
-    case 'pt': return labels        // "A"
-    default: return labels
+    case 'seg': return value       // "AB"
+    case 'tri': return `\u25B3${value}` // "△ABC"
+    case 'ang': return `\u2220${value}` // "∠ABC"
+    case 'pt': return value        // "A"
+    case 'def': return `Definition ${value}`
+    case 'post': return `Postulate ${value}`
+    case 'cn': return `Common Notion ${value}`
+    case 'prop': return `Proposition I.${value}`
+    default: return value
   }
 }
 
-/** Build a GeometricEntityRef from tag + labels, or null if invalid. */
-function buildEntity(tag: string, labels: string): GeometricEntityRef | null {
+/** Build an EuclidEntityRef from tag + value, or null if invalid. */
+function buildEntity(tag: string, value: string): EuclidEntityRef | null {
   switch (tag) {
     case 'seg':
-      if (labels.length === 2) return { type: 'segment', from: labels[0], to: labels[1] }
+      if (value.length === 2) return { type: 'segment', from: value[0], to: value[1] }
       return null
     case 'tri':
-      if (labels.length === 3) return { type: 'triangle', vertices: [labels[0], labels[1], labels[2]] }
+      if (value.length === 3) return { type: 'triangle', vertices: [value[0], value[1], value[2]] }
       return null
     case 'ang':
-      if (labels.length === 3) return { type: 'angle', points: [labels[0], labels[1], labels[2]] }
+      if (value.length === 3) return { type: 'angle', points: [value[0], value[1], value[2]] }
       return null
     case 'pt':
-      if (labels.length === 1) return { type: 'point', label: labels[0] }
+      if (value.length === 1) return { type: 'point', label: value[0] }
       return null
+    case 'def': {
+      const n = parseInt(value, 10)
+      return !isNaN(n) && n >= 1 ? { type: 'definition', id: n } : null
+    }
+    case 'post': {
+      const n = parseInt(value, 10)
+      return !isNaN(n) && n >= 1 ? { type: 'postulate', id: n } : null
+    }
+    case 'cn': {
+      const n = parseInt(value, 10)
+      return !isNaN(n) && n >= 1 ? { type: 'commonNotion', id: n } : null
+    }
+    case 'prop': {
+      const n = parseInt(value, 10)
+      return !isNaN(n) && n >= 1 ? { type: 'proposition', id: n } : null
+    }
     default:
       return null
   }
 }
 
-export const EUCLID_ENTITY_MARKERS: EntityMarkerConfig<GeometricEntityRef> = {
-  pattern: /\{(seg|tri|ang|pt):([A-Z]+)\}/g,
+/**
+ * Unified entity marker config for Euclid chat.
+ *
+ * Matches geometric markers ({seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A})
+ * and foundation/proposition markers ({def:15}, {post:1}, {cn:1}, {prop:5}).
+ *
+ * The regex uses alternation: geometric tags require uppercase letters,
+ * foundation tags require digits.
+ */
+export const EUCLID_ENTITY_MARKERS: EntityMarkerConfig<EuclidEntityRef> = {
+  pattern: /\{(seg|tri|ang|pt):([A-Z]+)\}|\{(def|post|cn|prop):(\d+)\}/g,
   parseMatch: (groups) => {
-    const [tag, labels] = groups
-    if (!tag || !labels) return null
-    const entity = buildEntity(tag, labels)
+    // Alternation: either groups[0]+[1] matched (geometric) or groups[2]+[3] (foundation)
+    const tag = groups[0] ?? groups[2]
+    const value = groups[1] ?? groups[3]
+    if (!tag || !value) return null
+    const entity = buildEntity(tag, value)
     if (!entity) return null
-    return { entity, displayText: displayText(tag, labels) }
+    return { entity, displayText: displayText(tag, value) }
   },
 }

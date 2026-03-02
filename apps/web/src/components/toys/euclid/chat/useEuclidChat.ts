@@ -13,6 +13,7 @@ import { useCharacterChat } from '@/lib/character/useCharacterChat'
 import type { UseCharacterChatReturn } from '@/lib/character/useCharacterChat'
 import type {
   ConstructionState,
+  ConstructionPoint,
   ActiveTool,
   CompassPhase,
   StraightedgePhase,
@@ -52,7 +53,10 @@ export interface UseEuclidChatOptions {
   isMobile?: boolean
 }
 
-export type UseEuclidChatReturn = UseCharacterChatReturn
+export interface UseEuclidChatReturn extends UseCharacterChatReturn {
+  /** Async-markup a voice transcript message with entity markers. Pass the content to avoid stale closure issues. */
+  markupMessage: (messageId: string, content: string) => void
+}
 
 export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatReturn {
   const {
@@ -134,9 +138,42 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     [constructionRef, proofFactsRef, currentStepRef, propositionId, isComplete, playgroundMode, steps, readToolState, pendingActionRef, isMobile],
   )
 
-  return useCharacterChat({
+  const chat = useCharacterChat({
     chatEndpoint: '/api/realtime/euclid/chat',
     buildRequestBody,
     canvasRef,
   })
+
+  const markupMessage = useCallback((messageId: string, content: string) => {
+    if (!content) return
+    // Skip if already has markers
+    if (/\{(seg|tri|ang|pt|def|post|cn|prop):/.test(content)) return
+
+    // Gather point labels from the construction
+    const state = constructionRef.current
+    const pointLabels = state
+      ? state.elements.filter((e): e is ConstructionPoint => e.kind === 'point' && !!e.label).map(e => e.label)
+      : []
+
+    fetch('/api/realtime/euclid/markup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: content,
+        propositionId,
+        pointLabels,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.markedText && data.markedText !== content) {
+          chat.updateMessageContent(messageId, data.markedText)
+        }
+      })
+      .catch(() => {
+        // Silently fail — original text remains
+      })
+  }, [chat.updateMessageContent, constructionRef, propositionId])
+
+  return { ...chat, markupMessage }
 }

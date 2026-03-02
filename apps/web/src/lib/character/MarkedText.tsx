@@ -7,7 +7,7 @@
  * via EntityMarkerConfig.
  */
 
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import type { EntityMarkerConfig } from './types'
 import { parseEntityMarkers } from './parseEntityMarkers'
 
@@ -15,12 +15,15 @@ interface MarkedTextProps<TEntityRef> {
   text: string
   markers: EntityMarkerConfig<TEntityRef>
   onHighlight: (entity: TEntityRef | null) => void
+  /** Optional custom renderer per entity. When absent, uses default blue/bold styling. */
+  renderEntity?: (entity: TEntityRef, displayText: string, index: number) => React.ReactNode
 }
 
 export function MarkedText<TEntityRef>({
   text,
   markers,
   onHighlight,
+  renderEntity,
 }: MarkedTextProps<TEntityRef>) {
   const segments = useMemo(
     () => parseEntityMarkers(text, markers),
@@ -32,6 +35,9 @@ export function MarkedText<TEntityRef>({
       {segments.map((seg, i) => {
         if (seg.kind === 'text') {
           return <span key={i}>{seg.text}</span>
+        }
+        if (renderEntity) {
+          return <React.Fragment key={i}>{renderEntity(seg.entity, seg.text, i)}</React.Fragment>
         }
         return (
           <span

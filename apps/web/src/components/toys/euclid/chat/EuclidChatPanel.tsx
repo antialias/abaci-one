@@ -6,10 +6,11 @@
  * Wires in Euclid's character definition and geometric entity markers.
  */
 
+import React from 'react'
 import { CharacterChatPanel } from '@/lib/character/CharacterChatPanel'
 import type { DebugCompactionProps } from '@/lib/character/CharacterChatPanel'
 import type { ChatMessage, ChatCallState } from '@/lib/character/types'
-import type { GeometricEntityRef } from './parseGeometricEntities'
+import type { EuclidEntityRef } from './parseGeometricEntities'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
 
@@ -18,7 +19,8 @@ interface EuclidChatPanelProps {
   isStreaming: boolean
   onSend: (text: string) => void
   onClose: () => void
-  onHighlight: (entity: GeometricEntityRef | null) => void
+  onHighlight: (entity: EuclidEntityRef | null) => void
+  renderEntity?: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
   /** Drag handlers for the header — when provided, header becomes drag handle */
   onDragPointerDown?: (e: React.PointerEvent) => void
   onDragPointerMove?: (e: React.PointerEvent) => void
@@ -38,6 +40,7 @@ export function EuclidChatPanel({
   onSend,
   onClose,
   onHighlight,
+  renderEntity,
   onDragPointerDown,
   onDragPointerMove,
   onDragPointerUp,
@@ -55,6 +58,7 @@ export function EuclidChatPanel({
       onSend={onSend}
       onClose={onClose}
       onHighlight={onHighlight}
+      renderEntity={renderEntity}
       onDragPointerDown={onDragPointerDown}
       onDragPointerMove={onDragPointerMove}
       onDragPointerUp={onDragPointerUp}
