@@ -275,6 +275,7 @@ describe('BktContext', () => {
           skillId: 'add-1',
           lastPracticedAt: new Date(),
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       ]
 
@@ -300,6 +301,7 @@ describe('BktContext', () => {
           skillId: 'add-1',
           lastPracticedAt: tenDaysAgo,
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       ]
 
@@ -322,6 +324,7 @@ describe('BktContext', () => {
           skillId: 'new-skill',
           lastPracticedAt: null,
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       ]
 
@@ -345,11 +348,13 @@ describe('BktContext', () => {
           skillId: 'add-1',
           lastPracticedAt: new Date(),
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         {
           skillId: 'add-2',
           lastPracticedAt: null,
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       ]
 
@@ -377,11 +382,13 @@ describe('BktContext', () => {
           skillId: 'add-1',
           lastPracticedAt: new Date(),
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         {
           skillId: 'add-2',
           lastPracticedAt: null,
           isPracticing: false, // Not practicing
+          practiceLevel: 'none' as const,
         },
       ]
 
@@ -407,7 +414,14 @@ describe('BktContext', () => {
 
     it('returns distribution when extended data is available', () => {
       const history = createProblemHistory([])
-      const skillMasteryData = [{ skillId: 'add-1', lastPracticedAt: null, isPracticing: true }]
+      const skillMasteryData = [
+        {
+          skillId: 'add-1',
+          lastPracticedAt: null,
+          isPracticing: true,
+          practiceLevel: 'visual' as const,
+        },
+      ]
 
       const { result } = renderHook(() => useSkillDistribution(), {
         wrapper: createWrapper(history, { skillMasteryData }),

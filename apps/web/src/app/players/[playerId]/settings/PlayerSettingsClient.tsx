@@ -9,7 +9,8 @@ import { css } from '../../../../../styled-system/css'
 import { useUpdatePlayer, useUserPlayers } from '@/hooks/useUserPlayers'
 import { SettingsTab } from '@/app/practice/[studentId]/dashboard/SettingsTab'
 import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
-import { usePlayerCurriculumQuery, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
+import { usePlayerCurriculumQuery, useSetSkillLevels } from '@/hooks/usePlayerCurriculum'
+import type { PracticeLevel } from '@/db/schema/player-skill-mastery'
 import { formatBirthdayForInput, getAgeFromBirthday, normalizeBirthdayInput } from '@/lib/playerAge'
 
 const AVAILABLE_COLORS = [
@@ -37,7 +38,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
   const { data: players = [], isLoading } = useUserPlayers()
   const updatePlayer = useUpdatePlayer()
   const curriculumQuery = usePlayerCurriculumQuery(playerId)
-  const setMasteredSkills = useSetMasteredSkills()
+  const setSkillLevels = useSetSkillLevels()
 
   const player = useMemo(() => players.find((p) => p.id === playerId), [players, playerId])
 
@@ -109,13 +110,13 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
   )
 
   const handleSaveManualSkills = useCallback(
-    async (nextMasteredSkills: string[]) => {
-      await setMasteredSkills.mutateAsync({
+    async (skillLevels: Record<string, PracticeLevel>) => {
+      await setSkillLevels.mutateAsync({
         playerId,
-        masteredSkillIds: nextMasteredSkills,
+        skillLevels,
       })
     },
-    [playerId, setMasteredSkills]
+    [playerId, setSkillLevels]
   )
 
   if (isLoading) {

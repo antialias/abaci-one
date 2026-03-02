@@ -2,6 +2,42 @@ import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { players } from './players'
 
+// ============================================================================
+// Practice Level Types & Helpers
+// ============================================================================
+
+/**
+ * Practice level for a skill:
+ * - 'none': Skill is inactive (not in practice rotation)
+ * - 'abacus': Skill appears in "Use Abacus" parts only
+ * - 'visual': Skill appears in all parts (abacus + visualization + linear)
+ *
+ * Progression: none → abacus → visual
+ */
+export type PracticeLevel = 'none' | 'abacus' | 'visual'
+
+/** Check if a skill is active at any level (not 'none') */
+export function isActive(level: PracticeLevel): boolean {
+  return level !== 'none'
+}
+
+/** Check if a skill is ready for visualization/linear parts */
+export function isVisualReady(level: PracticeLevel): boolean {
+  return level === 'visual'
+}
+
+/** Cycle to the next practice level: none → abacus → visual → none */
+export function nextPracticeLevel(level: PracticeLevel): PracticeLevel {
+  switch (level) {
+    case 'none':
+      return 'abacus'
+    case 'abacus':
+      return 'visual'
+    case 'visual':
+      return 'none'
+  }
+}
+
 /**
  * Player skill mastery table - tracks per-skill progress for each player
  *
@@ -37,11 +73,21 @@ export const playerSkillMastery = sqliteTable(
     // See: getRecentSessionResults() in session-planner.ts
 
     /**
+     * @deprecated Use practiceLevel instead. Kept in DB for migration safety.
      * Whether this skill is in the student's active practice rotation.
-     * Set by teacher via ManualSkillSelector checkbox.
-     * Mastery is tracked via BKT (Bayesian Knowledge Tracing) using session history.
      */
     isPracticing: integer('is_practicing', { mode: 'boolean' }).notNull().default(false),
+
+    /**
+     * Practice level controlling which session parts this skill appears in:
+     * - 'none': Skill is inactive
+     * - 'abacus': Skill appears in abacus parts only
+     * - 'visual': Skill appears in all parts (abacus + visualization + linear)
+     *
+     * Set by teacher via ManualSkillSelector 3-state toggle.
+     * Mastery is tracked via BKT (Bayesian Knowledge Tracing) using session history.
+     */
+    practiceLevel: text('practice_level').$type<PracticeLevel>().notNull().default('none'),
 
     /** When this skill was last practiced */
     lastPracticedAt: integer('last_practiced_at', { mode: 'timestamp' }),

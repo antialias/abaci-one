@@ -3,10 +3,11 @@
  * Handles CRUD operations for student curriculum progress and skill mastery
  */
 
-import { and, desc, eq, inArray, lt, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, ne, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import { type PracticeLevel, isActive } from '@/db/schema/player-skill-mastery'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import {
   isTutorialSatisfied,
@@ -110,32 +111,30 @@ export async function getAllSkillMastery(playerId: string): Promise<PlayerSkillM
 }
 
 /**
- * Get all skills in a player's active practice rotation
+ * Get all skills in a player's active practice rotation (practiceLevel != 'none')
  */
 export async function getPracticingSkills(playerId: string): Promise<PlayerSkillMastery[]> {
   return db.query.playerSkillMastery.findMany({
     where: and(
       eq(schema.playerSkillMastery.playerId, playerId),
-      eq(schema.playerSkillMastery.isPracticing, true)
+      ne(schema.playerSkillMastery.practiceLevel, 'none')
     ),
     orderBy: desc(schema.playerSkillMastery.lastPracticedAt),
   })
 }
 
 /**
- * Set which skills are in a player's active practice rotation (teacher checkbox UI)
- * Skills in the list will have isPracticing=true, others isPracticing=false.
+ * Set practice levels for a player's skills.
  *
  * @param playerId - The player to update
- * @param practicingSkillIds - Array of skill IDs to mark as practicing
+ * @param skillLevels - Map of skillId → PracticeLevel
  * @returns All skill mastery records for the player after update
  */
-export async function setPracticingSkills(
+export async function setSkillPracticeLevels(
   playerId: string,
-  practicingSkillIds: string[]
+  skillLevels: Record<string, PracticeLevel>
 ): Promise<PlayerSkillMastery[]> {
   const now = new Date()
-  const practicingSet = new Set(practicingSkillIds)
 
   // Get all existing skills for this player
   const existingSkills = await getAllSkillMastery(playerId)
@@ -143,14 +142,16 @@ export async function setPracticingSkills(
 
   // Update existing skills
   for (const skill of existingSkills) {
-    const shouldBePracticing = practicingSet.has(skill.skillId)
+    const newLevel = skillLevels[skill.skillId] ?? 'none'
+    const isNowPracticing = isActive(newLevel)
 
-    // Only update if isPracticing changed
-    if (skill.isPracticing !== shouldBePracticing) {
+    // Only update if something changed
+    if (skill.practiceLevel !== newLevel || skill.isPracticing !== isNowPracticing) {
       await db
         .update(schema.playerSkillMastery)
         .set({
-          isPracticing: shouldBePracticing,
+          practiceLevel: newLevel,
+          isPracticing: isNowPracticing,
           updatedAt: now,
         })
         .where(eq(schema.playerSkillMastery.id, skill.id))
@@ -158,12 +159,13 @@ export async function setPracticingSkills(
   }
 
   // Create new skills that don't exist yet
-  for (const skillId of practicingSkillIds) {
-    if (!existingSkillIds.has(skillId)) {
+  for (const [skillId, level] of Object.entries(skillLevels)) {
+    if (!existingSkillIds.has(skillId) && isActive(level)) {
       const newRecord: NewPlayerSkillMastery = {
         playerId,
         skillId,
         isPracticing: true,
+        practiceLevel: level,
         lastPracticedAt: now,
       }
       await db.insert(schema.playerSkillMastery).values(newRecord)
@@ -174,7 +176,34 @@ export async function setPracticingSkills(
 }
 
 /**
- * @deprecated Use setPracticingSkills instead. Kept for backwards compatibility.
+ * Set which skills are in a player's active practice rotation.
+ * Backwards-compatible: treats all provided skills as 'visual' level.
+ *
+ * @deprecated Use setSkillPracticeLevels instead.
+ */
+export async function setPracticingSkills(
+  playerId: string,
+  practicingSkillIds: string[]
+): Promise<PlayerSkillMastery[]> {
+  // Get all existing skills to know which ones to set to 'none'
+  const existingSkills = await getAllSkillMastery(playerId)
+  const levels: Record<string, PracticeLevel> = {}
+
+  // Set existing skills not in the list to 'none'
+  for (const skill of existingSkills) {
+    levels[skill.skillId] = 'none'
+  }
+
+  // Set all provided skills to 'visual' (preserves legacy behavior)
+  for (const skillId of practicingSkillIds) {
+    levels[skillId] = 'visual'
+  }
+
+  return setSkillPracticeLevels(playerId, levels)
+}
+
+/**
+ * @deprecated Use setSkillPracticeLevels instead. Kept for backwards compatibility.
  */
 export async function setMasteredSkills(
   playerId: string,
@@ -291,7 +320,8 @@ export async function recordSkillAttempt(
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
-    isPracticing: true, // skill is being practiced
+    isPracticing: true,
+    practiceLevel: 'abacus',
     lastPracticedAt: now,
   }
 
@@ -334,7 +364,8 @@ export async function recordSkillAttemptWithHelp(
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
-    isPracticing: true, // skill is being practiced
+    isPracticing: true,
+    practiceLevel: 'abacus',
     lastPracticedAt: now,
     lastHadHelp: hadHelp,
   }
@@ -399,7 +430,7 @@ export async function calculatePracticingPercent(
   const masteryRecords = await getAllSkillMastery(playerId)
   const relevantRecords = masteryRecords.filter((r) => skillIds.includes(r.skillId))
 
-  const practicingCount = relevantRecords.filter((r) => r.isPracticing).length
+  const practicingCount = relevantRecords.filter((r) => isActive(r.practiceLevel)).length
 
   return Math.round((practicingCount / skillIds.length) * 100)
 }
@@ -611,7 +642,7 @@ export async function getPlayerProgressSummary(playerId: string): Promise<Player
     getRecentSessions(playerId, 5),
   ])
 
-  const practicingSkillCount = allSkills.filter((s) => s.isPracticing).length
+  const practicingSkillCount = allSkills.filter((s) => isActive(s.practiceLevel)).length
   const totalSkills = allSkills.length
 
   const practicingPercent =
@@ -993,9 +1024,9 @@ export { isTutorialSatisfied }
 // ============================================================================
 
 /**
- * Enable a single skill for practice.
- * Creates a new skill mastery record if one doesn't exist, or updates isPracticing to true.
- * This is typically called after a tutorial is completed.
+ * Enable a single skill for practice at the 'abacus' level (default entry after tutorial).
+ * Creates a new skill mastery record if one doesn't exist, or updates to 'abacus' level.
+ * Preserves existing 'visual' level if already set higher.
  *
  * @param playerId - The player's ID
  * @param skillId - The skill to enable
@@ -1009,12 +1040,13 @@ export async function enableSkillForPractice(
   const now = new Date()
 
   if (existing) {
-    // Only update if not already practicing
-    if (!existing.isPracticing) {
+    // Only upgrade if currently at 'none' level
+    if (existing.practiceLevel === 'none') {
       await db
         .update(schema.playerSkillMastery)
         .set({
           isPracticing: true,
+          practiceLevel: 'abacus',
           updatedAt: now,
         })
         .where(eq(schema.playerSkillMastery.id, existing.id))
@@ -1022,11 +1054,12 @@ export async function enableSkillForPractice(
     return (await getSkillMastery(playerId, skillId))!
   }
 
-  // Create new record with skill enabled for practice
+  // Create new record with skill enabled for practice at abacus level
   const newRecord: NewPlayerSkillMastery = {
     playerId,
     skillId,
     isPracticing: true,
+    practiceLevel: 'abacus',
     lastPracticedAt: now,
   }
 

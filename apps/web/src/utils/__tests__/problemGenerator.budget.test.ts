@@ -94,6 +94,7 @@ describe('Problem Generator Budget Integration', () => {
           'fiveComplements.4=5-1': {
             skillId: 'fiveComplements.4=5-1',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
         },
       }
@@ -114,6 +115,7 @@ describe('Problem Generator Budget Integration', () => {
           'fiveComplements.4=5-1': {
             skillId: 'fiveComplements.4=5-1',
             isPracticing: false,
+            practiceLevel: 'none' as const,
           },
         },
       }
@@ -134,6 +136,7 @@ describe('Problem Generator Budget Integration', () => {
           'tenComplements.9=10-1': {
             skillId: 'tenComplements.9=10-1',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
         },
       }
@@ -162,6 +165,7 @@ describe('Problem Generator Budget Integration', () => {
           'tenComplements.9=10-1': {
             skillId: 'tenComplements.9=10-1',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
         },
       }
@@ -184,10 +188,12 @@ describe('Problem Generator Budget Integration', () => {
           'tenComplements.9=10-1': {
             skillId: 'tenComplements.9=10-1',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'basic.heavenBead': {
             skillId: 'basic.heavenBead',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
         },
       }
@@ -222,14 +228,17 @@ describe('Problem Generator Budget Integration', () => {
           'basic.directAddition': {
             skillId: 'basic.directAddition',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'basic.heavenBead': {
             skillId: 'basic.heavenBead',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'basic.simpleCombinations': {
             skillId: 'basic.simpleCombinations',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
         },
       }
@@ -265,22 +274,27 @@ describe('Problem Generator Budget Integration', () => {
           'basic.directAddition': {
             skillId: 'basic.directAddition',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'basic.heavenBead': {
             skillId: 'basic.heavenBead',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'basic.simpleCombinations': {
             skillId: 'basic.simpleCombinations',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'tenComplements.9=10-1': {
             skillId: 'tenComplements.9=10-1',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
           'tenComplements.8=10-2': {
             skillId: 'tenComplements.8=10-2',
             isPracticing: true,
+            practiceLevel: 'visual' as const,
           },
         },
       }

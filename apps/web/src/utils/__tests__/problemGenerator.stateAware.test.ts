@@ -227,6 +227,7 @@ describe('Graceful fallback when minBudget cannot be met', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -262,6 +263,7 @@ describe('Graceful fallback when minBudget cannot be met', () => {
         'basic.directAddition': {
           skillId: 'basic.directAddition',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -324,10 +326,12 @@ describe('Budget preference behavior', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'fiveComplements.3=5-2': {
           skillId: 'fiveComplements.3=5-2',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -493,6 +497,7 @@ describe('Robustness stress tests', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -522,10 +527,12 @@ describe('Robustness stress tests', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'tenComplements.9=10-1': {
           skillId: 'tenComplements.9=10-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -597,10 +604,12 @@ describe('Regression: Original ProblemGenerationError bug', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'fiveComplements.3=5-2': {
           skillId: 'fiveComplements.3=5-2',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -639,10 +648,12 @@ describe('Regression: Original ProblemGenerationError bug', () => {
         'basic.directAddition': {
           skillId: 'basic.directAddition',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'basic.heavenBead': {
           skillId: 'basic.heavenBead',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }

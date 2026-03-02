@@ -344,6 +344,7 @@ describe('DetailedProblemCard', () => {
       skillMasteryContext: {
         'basic.directAddition': {
           isPracticing: true,
+          practiceLevel: 'visual' as const,
           baseCost: 1,
           effectiveCost: 1,
         },
@@ -463,11 +464,12 @@ describe('DetailedProblemCard', () => {
     expect(equationSection).toBeInTheDocument()
   })
 
-  it('shows rotation label "Practicing" for active skills', () => {
+  it('shows rotation label "Full Practice" for visual practice level skills', () => {
     const trace = createTrace({
       skillMasteryContext: {
         'basic.directAddition': {
           isPracticing: true,
+          practiceLevel: 'visual' as const,
           baseCost: 1,
           effectiveCost: 1,
         },
@@ -490,7 +492,7 @@ describe('DetailedProblemCard', () => {
       />
     )
 
-    expect(screen.getByText('Practicing')).toBeInTheDocument()
+    expect(screen.getByText('Full Practice')).toBeInTheDocument()
   })
 
   it('shows TermTotalBadge with "!" for over-budget costs', () => {

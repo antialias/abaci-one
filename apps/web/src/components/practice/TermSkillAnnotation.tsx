@@ -13,6 +13,7 @@
  */
 
 import type { GenerationTraceStep, SkillMasteryDisplay } from '@/db/schema/session-plans'
+import { type PracticeLevel, isActive } from '@/db/schema/player-skill-mastery'
 import { getBaseComplexity } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
 
@@ -79,8 +80,8 @@ function formatSkillId(skillId: string): {
  * Note: BKT provides continuous multipliers (1-4) based on pKnown.
  * These are fallback multipliers when BKT data is insufficient.
  */
-function getRotationAbbrev(isPracticing: boolean): string {
-  return isPracticing ? '×3' : '×4'
+function getRotationAbbrev(practiceLevel: PracticeLevel): string {
+  return isActive(practiceLevel) ? '×3' : '×4'
 }
 
 /**
@@ -216,7 +217,7 @@ export function TermSkillAnnotation({
         // Use mastery context if available, otherwise fall back to base cost
         const baseCost = masteryInfo?.baseCost ?? getBaseComplexity(skillId)
         const effectiveCost = masteryInfo?.effectiveCost ?? baseCost
-        const isPracticing = masteryInfo?.isPracticing
+        const practiceLevel = masteryInfo?.practiceLevel ?? 'none'
 
         return (
           <span
@@ -226,11 +227,11 @@ export function TermSkillAnnotation({
             })}
           >
             {shortName}: <span style={{ color: costColor, fontWeight: 500 }}>{effectiveCost}</span>
-            {isPracticing !== undefined && (
+            {masteryInfo && (
               <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>
                 {' '}
                 ({baseCost}
-                {getRotationAbbrev(isPracticing)})
+                {getRotationAbbrev(practiceLevel)})
               </span>
             )}
           </span>

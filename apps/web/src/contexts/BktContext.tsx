@@ -27,6 +27,7 @@
  */
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { isActive } from '@/db/schema/player-skill-mastery'
 import {
   computeBktFromHistory,
   getStalenessWarning,
@@ -66,6 +67,7 @@ export interface SkillMasteryInfo {
   skillId: string
   lastPracticedAt: Date | null
   isPracticing: boolean
+  practiceLevel: import('@/db/schema/player-skill-mastery').PracticeLevel
 }
 
 export interface ClassifiedSkill {
@@ -86,6 +88,8 @@ export interface ExtendedClassifiedSkill extends ClassifiedSkill {
   daysSinceLastPractice: number | null
   /** Whether the skill is currently being practiced */
   isPracticing: boolean
+  /** Practice level: 'none' | 'abacus' | 'visual' */
+  practiceLevel: import('@/db/schema/player-skill-mastery').PracticeLevel
 }
 
 interface BktConfigContextValue {
@@ -292,7 +296,7 @@ export function BktProvider({
     if (!skillMasteryData) return null
 
     // Only process practicing skills for the distribution
-    const practicingSkillData = skillMasteryData.filter((s) => s.isPracticing)
+    const practicingSkillData = skillMasteryData.filter((s) => isActive(s.practiceLevel))
 
     const extendedSkills: ExtendedClassifiedSkill[] = practicingSkillData.map((skillMastery) => {
       const bktData = bktResultsMap.get(skillMastery.skillId)
@@ -311,6 +315,7 @@ export function BktProvider({
         stalenessWarning,
         daysSinceLastPractice: daysSince,
         isPracticing: skillMastery.isPracticing,
+        practiceLevel: skillMastery.practiceLevel,
       }
     })
 

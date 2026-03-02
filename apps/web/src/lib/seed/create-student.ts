@@ -90,6 +90,7 @@ export async function createTestStudent(
       playerId,
       skillId,
       isPracticing: true,
+      practiceLevel: 'visual',
       lastPracticedAt,
     })
   }

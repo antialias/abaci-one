@@ -9,10 +9,12 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import type { PracticeLevel } from '@/db/schema/player-skill-mastery'
 import {
   recordSkillAttempt,
   refreshSkillRecency,
   setMasteredSkills,
+  setSkillPracticeLevels,
 } from '@/lib/curriculum/progress-manager'
 import { getUserId } from '@/lib/viewer'
 
@@ -56,9 +58,10 @@ export const POST = withAuth(async (request, { params }) => {
 })
 
 /**
- * PUT - Set which skills are mastered (teacher manual override)
+ * PUT - Set skill practice levels (teacher manual override)
  * Requires 'start-session' permission (parent or teacher-present)
- * Body: { masteredSkillIds: string[] }
+ * Body: { skillLevels: Record<string, PracticeLevel> }
+ *   OR: { masteredSkillIds: string[] } (backward compat - treats all as 'visual')
  */
 export const PUT = withAuth(async (request, { params }) => {
   try {
@@ -76,14 +79,46 @@ export const PUT = withAuth(async (request, { params }) => {
     }
 
     const body = await request.json()
+
+    // New format: { skillLevels: Record<string, PracticeLevel> }
+    if (
+      body.skillLevels &&
+      typeof body.skillLevels === 'object' &&
+      !Array.isArray(body.skillLevels)
+    ) {
+      const validLevels: PracticeLevel[] = ['none', 'abacus', 'visual']
+      const entries = Object.entries(body.skillLevels as Record<string, string>)
+
+      for (const [key, value] of entries) {
+        if (typeof key !== 'string' || !validLevels.includes(value as PracticeLevel)) {
+          return NextResponse.json(
+            {
+              error: `Invalid skill level for "${key}": "${value}". Must be one of: ${validLevels.join(', ')}`,
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      const result = await setSkillPracticeLevels(
+        playerId,
+        body.skillLevels as Record<string, PracticeLevel>
+      )
+      return NextResponse.json(result)
+    }
+
+    // Legacy format: { masteredSkillIds: string[] }
     const { masteredSkillIds } = body
 
     if (!Array.isArray(masteredSkillIds)) {
-      return NextResponse.json({ error: 'masteredSkillIds must be an array' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Body must contain skillLevels (object) or masteredSkillIds (array)' },
+        { status: 400 }
+      )
     }
 
     // Validate that all items are strings
-    if (!masteredSkillIds.every((id) => typeof id === 'string')) {
+    if (!masteredSkillIds.every((id: unknown) => typeof id === 'string')) {
       return NextResponse.json({ error: 'All skill IDs must be strings' }, { status: 400 })
     }
 
@@ -91,8 +126,8 @@ export const PUT = withAuth(async (request, { params }) => {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Error setting mastered skills:', error)
-    return NextResponse.json({ error: 'Failed to set mastered skills' }, { status: 500 })
+    console.error('Error setting skill levels:', error)
+    return NextResponse.json({ error: 'Failed to set skill levels' }, { status: 500 })
   }
 })
 

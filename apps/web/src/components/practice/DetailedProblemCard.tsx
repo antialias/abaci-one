@@ -18,6 +18,7 @@ import type {
   SkillMasteryDisplay,
   SlotResult,
 } from '@/db/schema/session-plans'
+import type { PracticeLevel } from '@/db/schema/player-skill-mastery'
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats } from './autoPauseCalculator'
 import { formatMs, getAutoPauseExplanation } from './autoPauseCalculator'
@@ -146,13 +147,18 @@ function formatSkillName(skillId: string): string {
  * Note: BKT provides fine-grained mastery (pKnown). The isPracticing flag here
  * is a simplified fallback indicating whether the skill is in the active practice rotation.
  */
-function getRotationLabel(isPracticing: boolean): {
+function getRotationLabel(practiceLevel: PracticeLevel): {
   label: string
   color: string
 } {
-  return isPracticing
-    ? { label: 'Practicing', color: 'blue' }
-    : { label: 'Not in rotation', color: 'gray' }
+  switch (practiceLevel) {
+    case 'abacus':
+      return { label: 'Abacus Only', color: 'blue' }
+    case 'visual':
+      return { label: 'Full Practice', color: 'green' }
+    case 'none':
+      return { label: 'Not in rotation', color: 'gray' }
+  }
 }
 
 /**
@@ -199,8 +205,8 @@ function InlineSkillList({
         const masteryInfo = skillMasteryContext?.[skillId]
         const baseCost = masteryInfo?.baseCost ?? 1
         const effectiveCost = masteryInfo?.effectiveCost ?? baseCost
-        const isPracticing = masteryInfo?.isPracticing
-        const rotation = isPracticing !== undefined ? getRotationLabel(isPracticing) : null
+        const practiceLevel = masteryInfo?.practiceLevel ?? 'none'
+        const rotation = masteryInfo ? getRotationLabel(practiceLevel) : null
         const hasMultiplier = rotation && effectiveCost !== baseCost
         const isZeroCost = effectiveCost === 0
 

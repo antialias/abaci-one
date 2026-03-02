@@ -89,7 +89,7 @@ export interface TestStudentProfile {
   description: string
   /** Intention notes - what this profile is TRYING to achieve */
   intentionNotes: string
-  /** Skills that should have isPracticing = true (realistic curriculum progression) */
+  /** Skills that should have practiceLevel set (realistic curriculum progression) */
   practicingSkills: string[]
   /** Skills with problem history (can include non-practicing for testing edge cases) */
   skillHistory: SkillConfig[]

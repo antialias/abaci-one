@@ -37,6 +37,8 @@ export interface StudentSkillState {
   skillId: string
   /** Whether skill is in the student's active practice rotation */
   isPracticing: boolean
+  /** Practice level: 'none' | 'abacus' | 'visual' */
+  practiceLevel: import('@/db/schema/player-skill-mastery').PracticeLevel
 }
 
 /**
@@ -226,6 +228,7 @@ export function calculateMaxSkillCost(calculator: SkillCostCalculator, skillIds:
 export interface DbSkillRecord {
   skillId: string
   isPracticing: boolean
+  practiceLevel: import('@/db/schema/player-skill-mastery').PracticeLevel
   lastPracticedAt?: Date | null
 }
 
@@ -241,6 +244,7 @@ export function buildStudentSkillHistoryFromRecords(
     skills[record.skillId] = {
       skillId: record.skillId,
       isPracticing: record.isPracticing,
+      practiceLevel: record.practiceLevel,
     }
   }
 

@@ -104,13 +104,15 @@ export interface GenerationTraceStep {
 /**
  * Skill practice context for a single skill - captured at generation time.
  *
- * Note: BKT handles fine-grained mastery estimation. This just tracks whether
- * the skill is in the student's active practice rotation.
+ * Note: BKT handles fine-grained mastery estimation. This just tracks the
+ * skill's practice level in the student's rotation.
  * Fine-grained mastery info (pKnown) should come from BKT data separately.
  */
 export interface SkillMasteryDisplay {
   /** Whether skill is in the student's active practice rotation */
   isPracticing: boolean
+  /** Practice level: 'none' | 'abacus' | 'visual' */
+  practiceLevel: import('./player-skill-mastery').PracticeLevel
   /** Base complexity cost (intrinsic to skill, 0-3) */
   baseCost: number
   /** Effective cost for this student (baseCost × rotationMultiplier) */

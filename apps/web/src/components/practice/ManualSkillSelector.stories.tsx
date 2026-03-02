@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
+import type { PracticeLevel } from '@/db/schema/player-skill-mastery'
 import { css } from '../../../styled-system/css'
 import { ManualSkillSelector } from './ManualSkillSelector'
 
@@ -28,9 +29,9 @@ function InteractiveDemo({
   const [isOpen, setIsOpen] = useState(true)
   const [savedSkills, setSavedSkills] = useState<string[]>(currentMasteredSkills)
 
-  const handleSave = async (masteredSkillIds: string[]) => {
-    console.log('Saving skills:', masteredSkillIds)
-    setSavedSkills(masteredSkillIds)
+  const handleSave = async (skillLevels: Record<string, PracticeLevel>) => {
+    console.log('Saving skill levels:', skillLevels)
+    setSavedSkills(Object.keys(skillLevels).filter((k) => skillLevels[k] !== 'none'))
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 500))
   }

@@ -142,6 +142,7 @@ export async function initializeSkillMastery(
       playerId,
       skillId,
       isPracticing,
+      practiceLevel: isPracticing ? 'visual' : 'none',
       lastHadHelp: false,
       createdAt: now,
       lastPracticedAt: null,

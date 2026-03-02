@@ -98,10 +98,12 @@ describe('createSkillCostCalculator', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'tenComplements.9=10-1': {
           skillId: 'tenComplements.9=10-1',
           isPracticing: false,
+          practiceLevel: 'none' as const,
         },
       },
     }
@@ -130,14 +132,17 @@ describe('createSkillCostCalculator', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'fiveComplements.3=5-2': {
           skillId: 'fiveComplements.3=5-2',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'tenComplements.9=10-1': {
           skillId: 'tenComplements.9=10-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
       },
     }
@@ -165,10 +170,12 @@ describe('createSkillCostCalculator', () => {
         'fiveComplements.4=5-1': {
           skillId: 'fiveComplements.4=5-1',
           isPracticing: true,
+          practiceLevel: 'visual' as const,
         },
         'tenComplements.9=10-1': {
           skillId: 'tenComplements.9=10-1',
           isPracticing: false,
+          practiceLevel: 'none' as const,
         },
       },
     }
@@ -187,16 +194,19 @@ describe('buildStudentSkillHistoryFromRecords', () => {
       {
         skillId: 'fiveComplements.4=5-1',
         isPracticing: true,
+        practiceLevel: 'visual' as const,
         lastPracticedAt: new Date('2024-02-25'),
       },
       {
         skillId: 'tenComplements.9=10-1',
         isPracticing: true,
+        practiceLevel: 'visual' as const,
         lastPracticedAt: null,
       },
       {
         skillId: 'basic.directAddition',
         isPracticing: false,
+        practiceLevel: 'none' as const,
         lastPracticedAt: null,
       },
     ]

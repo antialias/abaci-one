@@ -65,7 +65,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   }
 
   // Get skill IDs that are in the student's active practice rotation
-  // isPracticing=true means the skill is enabled for practice, NOT that it's mastered
+  // practiceLevel !== 'none' means the skill is enabled for practice, NOT that it's mastered
   const currentPracticingSkillIds = skills.filter((s) => s.isPracticing).map((s) => s.skillId)
 
   // Compute comfort level (depends on sessionMode, so must be after Promise.all)

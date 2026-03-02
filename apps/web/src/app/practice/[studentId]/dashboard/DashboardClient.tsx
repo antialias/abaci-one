@@ -30,7 +30,11 @@ import {
 import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { PlayerCurriculum } from '@/db/schema/player-curriculum'
-import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import {
+  isActive,
+  type PracticeLevel,
+  type PlayerSkillMastery,
+} from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
@@ -42,7 +46,7 @@ import {
   type SessionModeWithComfort,
 } from '@/hooks/useSessionMode'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { useRefreshSkillRecency, useSetMasteredSkills } from '@/hooks/usePlayerCurriculum'
+import { useRefreshSkillRecency, useSetSkillLevels } from '@/hooks/usePlayerCurriculum'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
   type BktComputeOptions,
@@ -119,6 +123,7 @@ export interface ProcessedSkill {
   attempts: number
   correct: number
   isPracticing: boolean
+  practiceLevel: PracticeLevel
   lastPracticedAt: Date | null
   daysSinceLastPractice: number | null
   avgResponseTimeMs: number | null
@@ -412,7 +417,7 @@ function processSkills(
       complexityMultiplier = calculateBktMultiplier(bkt.pKnown)
     } else {
       // Default discrete multiplier based on practice rotation status
-      complexityMultiplier = skill.isPracticing
+      complexityMultiplier = isActive(skill.practiceLevel)
         ? ROTATION_MULTIPLIERS.inRotation
         : ROTATION_MULTIPLIERS.outOfRotation
     }
@@ -446,6 +451,7 @@ function processSkills(
       attempts,
       correct,
       isPracticing: skill.isPracticing,
+      practiceLevel: skill.practiceLevel ?? 'none',
       lastPracticedAt, // Use BKT value (single source of truth from problem history)
       daysSinceLastPractice,
       avgResponseTimeMs,
@@ -927,7 +933,7 @@ export function SkillCard({
       )}
 
       {/* Readiness dimensions row — shows 4 small indicators for practicing skills */}
-      {skill.readiness && skill.isPracticing && (
+      {skill.readiness && isActive(skill.practiceLevel) && (
         <div
           data-element="readiness-dimensions"
           className={css({
@@ -970,7 +976,7 @@ export function SkillCard({
       )}
 
       {/* Classification badge - either Solid, BKT classification, or insufficient data */}
-      {skill.isSolid && skill.isPracticing ? (
+      {skill.isSolid && isActive(skill.practiceLevel) ? (
         <span
           className={css({
             marginTop: '0.375rem',
@@ -1911,7 +1917,7 @@ function SkillsTab({
     [skills, problemHistory, bktResultsMap, bktResult.byMode]
   )
   const practicingSkills = useMemo(
-    () => processedSkills.filter((s) => s.isPracticing),
+    () => processedSkills.filter((s) => isActive(s.practiceLevel)),
     [processedSkills]
   )
 
@@ -3357,7 +3363,7 @@ export function DashboardClient({
   const liveSkills: PlayerSkillMastery[] = skillsQueryData?.skills ?? skills
 
   // React Query mutations
-  const setMasteredSkillsMutation = useSetMasteredSkills()
+  const setSkillLevelsMutation = useSetSkillLevels()
 
   // Session mode - single source of truth for session planning decisions
   // Server pre-computes this to avoid a client-side waterfall
@@ -3480,14 +3486,14 @@ export function DashboardClient({
     // Use BKT classification for "mastered" count
     currentPhase.masteredSkills = phaseSkills.filter((s) => {
       const bkt = bktResultsMap.get(s.skillId)
-      return s.isPracticing && bkt?.masteryClassification === 'strong'
+      return isActive(s.practiceLevel) && bkt?.masteryClassification === 'strong'
     }).length
     currentPhase.totalSkills = currentPhase.skillsToMaster.length
   }
 
   // Derive practicing skill IDs from live skills data (reactive to mutations)
   const livePracticingSkillIds = useMemo(
-    () => liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId),
+    () => liveSkills.filter((s) => isActive(s.practiceLevel)).map((s) => s.skillId),
     [liveSkills]
   )
 
@@ -3513,7 +3519,7 @@ export function DashboardClient({
   // Compute skill health summary from session mode + BKT
   const skillHealth = useMemo(() => {
     if (!sessionMode) return undefined
-    const practicingSkills = processedSkillsForHealth.filter((s) => s.isPracticing)
+    const practicingSkills = processedSkillsForHealth.filter((s) => isActive(s.practiceLevel))
     return computeSkillHealthSummary(sessionMode, practicingSkills)
   }, [sessionMode, processedSkillsForHealth])
 
@@ -3578,15 +3584,15 @@ export function DashboardClient({
   )
 
   const handleSaveManualSkills = useCallback(
-    async (masteredSkillIds: string[]): Promise<void> => {
+    async (skillLevels: Record<string, PracticeLevel>): Promise<void> => {
       // Optimistic update in the mutation handles immediate UI feedback
-      await setMasteredSkillsMutation.mutateAsync({
+      await setSkillLevelsMutation.mutateAsync({
         playerId: studentId,
-        masteredSkillIds,
+        skillLevels,
       })
       setShowManualSkillModal(false)
     },
-    [studentId, setMasteredSkillsMutation]
+    [studentId, setSkillLevelsMutation]
   )
 
   return (
@@ -3696,7 +3702,9 @@ export function DashboardClient({
               open={showManualSkillModal}
               onClose={() => setShowManualSkillModal(false)}
               onSave={handleSaveManualSkills}
-              currentMasteredSkills={liveSkills.filter((s) => s.isPracticing).map((s) => s.skillId)}
+              currentMasteredSkills={liveSkills
+                .filter((s) => isActive(s.practiceLevel))
+                .map((s) => s.skillId)}
               skillMasteryData={liveSkills}
               bktResultsMap={bktResultsMap}
             />

@@ -16,7 +16,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import { isActive, isVisualReady, type PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import {
   calculateMasteryWeight,
@@ -279,7 +279,7 @@ export async function generateSessionPlan(
 
   const bktMs = performance.now() - bktStart
 
-  const practicingCount = skillMastery.filter((s) => s.isPracticing).length
+  const practicingCount = skillMastery.filter((s) => isActive(s.practiceLevel)).length
   onProgress?.({
     type: 'plan_analyzing_skills',
     message: `Analyzing ${practicingCount} skill${practicingCount !== 1 ? 's' : ''}...`,
@@ -296,7 +296,9 @@ export async function generateSessionPlan(
   // Debug: Show multipliers for all modes (not just when BKT data exists)
   if (process.env.DEBUG_SESSION_PLANNER === 'true') {
     console.log(`[SessionPlanner] Multiplier comparison (mode=${problemGenerationMode}):`)
-    const practicingIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
+    const practicingIds = skillMastery
+      .filter((s) => isActive(s.practiceLevel))
+      .map((s) => s.skillId)
     for (const skillId of practicingIds.slice(0, 5)) {
       const multiplier = costCalculator.getMultiplier(skillId)
       const isPracticing = costCalculator.getIsPracticing(skillId)
@@ -310,7 +312,9 @@ export async function generateSessionPlan(
 
   // Calculate max skill cost for dynamic visualization budget
   // This ensures the student's most expensive skill can appear in visualization
-  const practicingSkillIds = skillMastery.filter((s) => s.isPracticing).map((s) => s.skillId)
+  const practicingSkillIds = skillMastery
+    .filter((s) => isActive(s.practiceLevel))
+    .map((s) => s.skillId)
   const studentMaxSkillCost = calculateMaxSkillCost(costCalculator, practicingSkillIds)
 
   // Compute comfort level for dynamic term count scaling
@@ -362,14 +366,24 @@ export async function generateSessionPlan(
   )
 
   // 3. Build skill constraints from the student's ACTUAL practicing skills
-  const practicingSkills = skillMastery.filter((s) => s.isPracticing)
+  //    Two constraint sets: one for abacus parts (all active skills) and one for
+  //    visualization/linear parts (only visual-ready skills)
+  const activeSkills = skillMastery.filter((s) => isActive(s.practiceLevel))
+  const visualReadySkills = skillMastery.filter((s) => isVisualReady(s.practiceLevel))
 
   // Cannot generate a session without any skills enabled
-  if (practicingSkills.length === 0) {
+  if (activeSkills.length === 0) {
     throw new NoSkillsEnabledError()
   }
 
-  const practicingSkillConstraints = buildConstraintsFromPracticingSkills(practicingSkills)
+  const abacusConstraints = buildConstraintsFromPracticingSkills(activeSkills)
+  const visualConstraints =
+    visualReadySkills.length > 0
+      ? buildConstraintsFromPracticingSkills(visualReadySkills)
+      : abacusConstraints // Fallback: if no visual skills, use abacus constraints
+
+  // Legacy alias for compatibility within this function
+  const practicingSkillConstraints = abacusConstraints
 
   // Find skills needing spaced repetition review
   const needsReview = findSkillsNeedingReview(skillMastery, config.reviewIntervalDays)
@@ -400,9 +414,10 @@ export async function generateSessionPlan(
   }
 
   // 4. Build parts using STUDENT'S MASTERED SKILLS (only enabled parts)
-  // Normalize part time weights based on which parts are enabled
+  // Auto-disable visualization/linear parts when no visual-ready skills exist
+  const hasVisualSkills = visualReadySkills.length > 0
   const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter(
-    (type) => partsToInclude[type]
+    (type) => partsToInclude[type] && (type === 'abacus' || hasVisualSkills)
   )
   const totalEnabledWeight = enabledPartTypes.reduce(
     (sum, type) => sum + config.partTimeWeights[type],
@@ -477,6 +492,9 @@ export async function generateSessionPlan(
   } of partSlotStructures) {
     const partStartTime = performance.now()
 
+    // Use visual constraints for visualization/linear parts, abacus constraints for abacus parts
+    const partConstraints = partType === 'abacus' ? abacusConstraints : visualConstraints
+
     const part = await buildSessionPartAsync(
       partNumber,
       partType,
@@ -489,7 +507,7 @@ export async function generateSessionPlan(
           [partType]: normalizedWeight,
         },
       },
-      practicingSkillConstraints,
+      partConstraints,
       needsReview,
       currentPhase,
       normalizedWeight,
@@ -554,7 +572,7 @@ export async function generateSessionPlan(
     gameBreakSettings,
     parts,
     summary,
-    masteredSkillIds: practicingSkills.map((s) => s.skillId),
+    masteredSkillIds: activeSkills.map((s) => s.skillId),
     status: 'draft',
     currentPartIndex: 0,
     currentSlotIndex: 0,
@@ -2029,7 +2047,7 @@ function findSkillsNeedingReview(
   const now = Date.now()
   return mastery.filter((s) => {
     // Only consider skills that are being practiced
-    if (!s.isPracticing) return false
+    if (!isActive(s.practiceLevel)) return false
     if (!s.lastPracticedAt) return false
 
     const daysSinceLastPractice =

@@ -34,6 +34,8 @@ export interface SkillMasteryData {
   correct: number
   /** Whether this skill is in the student's active practice rotation */
   isPracticing: boolean
+  /** Practice level: 'none' | 'abacus' | 'visual' */
+  practiceLevel: import('@/db/schema/player-skill-mastery').PracticeLevel
   lastPracticedAt: Date | null
 }
 
@@ -385,13 +387,87 @@ export function usePlayerCurriculum(playerId: string | null) {
 // ============================================================================
 
 /**
- * Hook: Set mastered skills (manual skill management)
- * Used by dashboard to manually enable/disable skills
+ * Hook: Set skill practice levels (manual skill management)
+ * Used by dashboard to set per-skill practice levels (none/abacus/visual)
  *
  * Uses optimistic updates for instant UI feedback:
  * - Cache is updated immediately when mutation starts
  * - Rolled back if the API call fails
  * - Refetched on settle to ensure sync with server
+ */
+export function useSetSkillLevels() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      playerId,
+      skillLevels,
+    }: {
+      playerId: string
+      skillLevels: Record<string, import('@/db/schema/player-skill-mastery').PracticeLevel>
+    }) => {
+      const response = await api(`curriculum/${playerId}/skills`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillLevels }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to set skill levels')
+      }
+
+      return response.json()
+    },
+
+    // Optimistic update: update cache immediately before API call
+    onMutate: async ({ playerId, skillLevels }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
+
+      // Snapshot the previous value for rollback
+      const previousData = queryClient.getQueryData(curriculumKeys.detail(playerId))
+
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        curriculumKeys.detail(playerId),
+        (old: CurriculumData | undefined) => {
+          if (!old?.skills) return old
+          return {
+            ...old,
+            skills: old.skills.map((skill) => ({
+              ...skill,
+              practiceLevel: skillLevels[skill.skillId] ?? skill.practiceLevel,
+              isPracticing: (skillLevels[skill.skillId] ?? skill.practiceLevel) !== 'none',
+            })),
+          }
+        }
+      )
+
+      // Return context with the previous value for rollback
+      return { previousData }
+    },
+
+    // Rollback on error
+    onError: (_err, { playerId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(curriculumKeys.detail(playerId), context.previousData)
+      }
+    },
+
+    // Always refetch after mutation to ensure sync with server
+    onSettled: (_, __, { playerId }) => {
+      queryClient.invalidateQueries({
+        queryKey: curriculumKeys.detail(playerId),
+      })
+    },
+  })
+}
+
+/**
+ * @deprecated Use useSetSkillLevels instead. Kept for backwards compatibility.
  */
 export function useSetMasteredSkills() {
   const queryClient = useQueryClient()
@@ -418,44 +494,6 @@ export function useSetMasteredSkills() {
       return response.json()
     },
 
-    // Optimistic update: update cache immediately before API call
-    onMutate: async ({ playerId, masteredSkillIds }) => {
-      // Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({
-        queryKey: curriculumKeys.detail(playerId),
-      })
-
-      // Snapshot the previous value for rollback
-      const previousData = queryClient.getQueryData(curriculumKeys.detail(playerId))
-
-      // Optimistically update the cache
-      queryClient.setQueryData(
-        curriculumKeys.detail(playerId),
-        (old: CurriculumData | undefined) => {
-          if (!old?.skills) return old
-          const masteredSet = new Set(masteredSkillIds)
-          return {
-            ...old,
-            skills: old.skills.map((skill) => ({
-              ...skill,
-              isPracticing: masteredSet.has(skill.skillId),
-            })),
-          }
-        }
-      )
-
-      // Return context with the previous value for rollback
-      return { previousData }
-    },
-
-    // Rollback on error
-    onError: (_err, { playerId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(curriculumKeys.detail(playerId), context.previousData)
-      }
-    },
-
-    // Always refetch after mutation to ensure sync with server
     onSettled: (_, __, { playerId }) => {
       queryClient.invalidateQueries({
         queryKey: curriculumKeys.detail(playerId),

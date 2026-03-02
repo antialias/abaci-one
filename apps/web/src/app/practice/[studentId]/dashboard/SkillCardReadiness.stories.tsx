@@ -22,6 +22,8 @@ function makeSkill(overrides: Partial<ProcessedSkill> & { displayName: string })
     attempts: overrides.attempts ?? 50,
     correct: overrides.correct ?? 45,
     isPracticing: overrides.isPracticing ?? true,
+    practiceLevel:
+      overrides.practiceLevel ?? (overrides.isPracticing === false ? 'none' : 'abacus'),
     lastPracticedAt: overrides.lastPracticedAt ?? new Date(),
     daysSinceLastPractice: overrides.daysSinceLastPractice ?? 0,
     avgResponseTimeMs: overrides.avgResponseTimeMs ?? 2500,

@@ -680,8 +680,10 @@ function generateSequence(
   if (costCalculator) {
     skillMasteryContext = {}
     for (const skillId of allSkills) {
+      const isPracticing = costCalculator.getIsPracticing(skillId)
       skillMasteryContext[skillId] = {
-        isPracticing: costCalculator.getIsPracticing(skillId),
+        isPracticing,
+        practiceLevel: isPracticing ? 'visual' : 'none',
         baseCost: getBaseComplexity(skillId),
         effectiveCost: costCalculator.calculateSkillCost(skillId),
       }

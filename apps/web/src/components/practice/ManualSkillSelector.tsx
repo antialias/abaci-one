@@ -8,6 +8,12 @@ import useMeasure from 'react-use-measure'
 import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
+import {
+  type PracticeLevel,
+  nextPracticeLevel,
+  isActive,
+  isVisualReady,
+} from '@/db/schema/player-skill-mastery'
 import type { MasteryClassification, SkillBktResult } from '@/lib/curriculum/bkt/types'
 import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
@@ -240,6 +246,170 @@ function BktStatusBadge({
 }
 
 /**
+ * PracticeLevelButton - Shows and cycles the practice level for a skill
+ *
+ * Single tap cycles: none → abacus → visual → none
+ * - none: Dim gray dash (—) — not active
+ * - abacus: 🧮 on blue background — physical abacus only
+ * - visual: 🧠 on green background — all modes including mental
+ */
+function PracticeLevelButton({
+  level,
+  isDark,
+  onCycle,
+  size = 'normal',
+}: {
+  level: PracticeLevel
+  isDark: boolean
+  onCycle: () => void
+  size?: 'normal' | 'small'
+}) {
+  const styles: Record<PracticeLevel, { bg: string; color: string; label: string; title: string }> =
+    {
+      none: {
+        bg: isDark ? 'gray.700' : 'gray.100',
+        color: isDark ? 'gray.500' : 'gray.400',
+        label: '—',
+        title: 'Not active — click to enable for abacus practice',
+      },
+      abacus: {
+        bg: isDark ? 'blue.900' : 'blue.100',
+        color: isDark ? 'blue.300' : 'blue.700',
+        label: '🧮',
+        title: 'Abacus only — click to enable for all modes',
+      },
+      visual: {
+        bg: isDark ? 'green.900' : 'green.100',
+        color: isDark ? 'green.300' : 'green.700',
+        label: '🧠',
+        title: 'All modes — click to deactivate',
+      },
+    }
+
+  const style = styles[level]
+  const isSmall = size === 'small'
+
+  return (
+    <button
+      type="button"
+      data-action="cycle-practice-level"
+      data-level={level}
+      title={style.title}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onCycle()
+      }}
+      className={css({
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: isSmall ? '24px' : '28px',
+        height: isSmall ? '24px' : '28px',
+        borderRadius: 'md',
+        border: '2px solid',
+        borderColor: level === 'none' ? (isDark ? 'gray.600' : 'gray.300') : 'transparent',
+        bg: style.bg,
+        color: style.color,
+        fontSize: isSmall ? '12px' : '14px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+        flexShrink: 0,
+        _hover: {
+          opacity: 0.8,
+          transform: 'scale(1.1)',
+        },
+      })}
+    >
+      {style.label}
+    </button>
+  )
+}
+
+/**
+ * PracticeLevelLegend - Shows explanation of practice level states
+ */
+function PracticeLevelLegend({ isDark }: { isDark: boolean }) {
+  return (
+    <div
+      data-element="practice-level-legend"
+      className={css({
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '2',
+        fontSize: 'xs',
+        color: isDark ? 'gray.400' : 'gray.600',
+        py: '1.5',
+        px: '2',
+        bg: isDark ? 'gray.750' : 'gray.50',
+        borderRadius: 'md',
+        alignItems: 'center',
+      })}
+    >
+      <span className={css({ fontWeight: 'medium', mr: '1' })}>Practice Level:</span>
+      <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+        <span
+          className={css({
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '20px',
+            height: '20px',
+            borderRadius: 'sm',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            bg: isDark ? 'gray.700' : 'gray.100',
+            color: isDark ? 'gray.500' : 'gray.400',
+            border: '1px solid',
+            borderColor: isDark ? 'gray.600' : 'gray.300',
+          })}
+        >
+          —
+        </span>
+        Not active
+      </span>
+      <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+        <span
+          className={css({
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '20px',
+            height: '20px',
+            borderRadius: 'sm',
+            fontSize: '11px',
+            bg: isDark ? 'blue.900' : 'blue.100',
+            color: isDark ? 'blue.300' : 'blue.700',
+          })}
+        >
+          🧮
+        </span>
+        Abacus only
+      </span>
+      <span className={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+        <span
+          className={css({
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '20px',
+            height: '20px',
+            borderRadius: 'sm',
+            fontSize: '11px',
+            bg: isDark ? 'green.900' : 'green.100',
+            color: isDark ? 'green.300' : 'green.700',
+          })}
+        >
+          🧠
+        </span>
+        All modes
+      </span>
+    </div>
+  )
+}
+
+/**
  * AnimatedAccordionContent - Spring-animated height accordion content
  *
  * Provides smooth expand/collapse animation using react-spring.
@@ -378,9 +548,16 @@ export interface ManualSkillSelectorProps {
   /** Currently mastered skill IDs (deprecated, use skillMasteryData instead) */
   currentMasteredSkills?: string[]
   /** Full skill mastery data including lastPracticedAt for recency display */
-  skillMasteryData?: { skillId: string; isPracticing: boolean; lastPracticedAt: Date | null }[]
-  /** Callback when save is clicked */
-  onSave: (masteredSkillIds: string[]) => Promise<void>
+  skillMasteryData?: {
+    skillId: string
+    isPracticing: boolean
+    practiceLevel: import('@/db/schema/player-skill-mastery').PracticeLevel
+    lastPracticedAt: Date | null
+  }[]
+  /** Callback when save is clicked - sends practice level map */
+  onSave: (
+    skillLevels: Record<string, import('@/db/schema/player-skill-mastery').PracticeLevel>
+  ) => Promise<void>
   /** BKT results map for showing skill mastery status */
   bktResultsMap?: Map<string, SkillBktResult>
 }
@@ -405,7 +582,26 @@ export function ManualSkillSelector({
 }: ManualSkillSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set(currentMasteredSkills))
+
+  // Build initial skill levels from skillMasteryData or fallback to currentMasteredSkills
+  const buildInitialLevels = useCallback((): Map<string, PracticeLevel> => {
+    const map = new Map<string, PracticeLevel>()
+    if (skillMasteryData.length > 0) {
+      for (const skill of skillMasteryData) {
+        if (isActive(skill.practiceLevel)) {
+          map.set(skill.skillId, skill.practiceLevel)
+        }
+      }
+    } else {
+      // Legacy fallback
+      for (const skillId of currentMasteredSkills) {
+        map.set(skillId, 'visual')
+      }
+    }
+    return map
+  }, [skillMasteryData, currentMasteredSkills])
+
+  const [skillLevels, setSkillLevels] = useState<Map<string, PracticeLevel>>(buildInitialLevels)
   const [isSaving, setIsSaving] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
 
@@ -492,61 +688,80 @@ export function ManualSkillSelector({
   // Track previous open state to detect open transition
   const wasOpenRef = useRef(open)
 
-  // Sync selected skills only when modal OPENS (closed→open transition)
+  // Sync skill levels only when modal OPENS (closed→open transition)
   // Don't reset when props change while already open (prevents flicker on save)
   useEffect(() => {
     const justOpened = open && !wasOpenRef.current
     wasOpenRef.current = open
 
     if (justOpened) {
-      setSelectedSkills(new Set(currentMasteredSkills))
+      setSkillLevels(buildInitialLevels())
     }
-  }, [open, currentMasteredSkills])
+  }, [open, buildInitialLevels])
 
   const handlePresetChange = (presetKey: string) => {
     if (presetKey === '') {
       // Clear all
-      setSelectedSkills(new Set())
+      setSkillLevels(new Map())
       return
     }
 
     const preset = BOOK_PRESETS[presetKey as keyof typeof BOOK_PRESETS]
     if (preset) {
-      setSelectedSkills(new Set(preset.skills))
+      const newLevels = new Map<string, PracticeLevel>()
+      for (const skillId of preset.skills) {
+        newLevels.set(skillId, 'visual')
+      }
+      setSkillLevels(newLevels)
       // Expand all categories to show changes
       setExpandedCategories(Object.keys(SKILL_CATEGORIES))
     }
   }
 
-  const toggleSkill = (skillId: string) => {
-    setSelectedSkills((prev) => {
-      const next = new Set(prev)
-      if (next.has(skillId)) {
+  const cycleSkillLevel = (skillId: string) => {
+    setSkillLevels((prev) => {
+      const next = new Map(prev)
+      const currentLevel = prev.get(skillId) ?? 'none'
+      const newLevel = nextPracticeLevel(currentLevel)
+      if (newLevel === 'none') {
         next.delete(skillId)
       } else {
-        next.add(skillId)
+        next.set(skillId, newLevel)
       }
       return next
     })
   }
 
-  const toggleCategory = (category: CategoryKey) => {
+  const cycleCategory = (category: CategoryKey) => {
     const categorySkills = Object.keys(SKILL_CATEGORIES[category].skills).map(
       (skill) => `${category}.${skill}`
     )
-    const allSelected = categorySkills.every((id) => selectedSkills.has(id))
 
-    setSelectedSkills((prev) => {
-      const next = new Set(prev)
-      if (allSelected) {
-        // Deselect all in category
-        for (const id of categorySkills) {
-          next.delete(id)
-        }
+    // Determine current state: all none, all abacus, all visual, or mixed
+    const levels = categorySkills.map((id) => skillLevels.get(id) ?? 'none')
+    const allNone = levels.every((l) => l === 'none')
+    const allAbacus = levels.every((l) => l === 'abacus')
+    const allVisual = levels.every((l) => l === 'visual')
+
+    setSkillLevels((prev) => {
+      const next = new Map(prev)
+      let targetLevel: PracticeLevel
+      if (allNone) {
+        targetLevel = 'abacus'
+      } else if (allAbacus) {
+        targetLevel = 'visual'
+      } else if (allVisual) {
+        targetLevel = 'none'
       } else {
-        // Select all in category
-        for (const id of categorySkills) {
-          next.add(id)
+        // Mixed state → normalize to abacus
+        targetLevel = 'abacus'
+      }
+
+      for (const id of categorySkills) {
+        if (targetLevel === 'none') {
+          next.delete(id)
+        } else {
+          next.set(id, targetLevel)
         }
       }
       return next
@@ -556,7 +771,15 @@ export function ManualSkillSelector({
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await onSave(Array.from(selectedSkills))
+      // Build the full skill levels map including 'none' for unset skills
+      const allSkillLevels: Record<string, PracticeLevel> = {}
+      for (const [categoryKey, category] of Object.entries(SKILL_CATEGORIES)) {
+        for (const skillKey of Object.keys(category.skills)) {
+          const skillId = `${categoryKey}.${skillKey}`
+          allSkillLevels[skillId] = skillLevels.get(skillId) ?? 'none'
+        }
+      }
+      await onSave(allSkillLevels)
       onClose()
     } catch (error) {
       console.error('Failed to save skills:', error)
@@ -566,7 +789,9 @@ export function ManualSkillSelector({
     }
   }
 
-  const selectedCount = selectedSkills.size
+  const abacusOnlyCount = Array.from(skillLevels.values()).filter((l) => l === 'abacus').length
+  const visualReadyCount = Array.from(skillLevels.values()).filter((l) => l === 'visual').length
+  const activeCount = abacusOnlyCount + visualReadyCount
   const totalSkills = Object.values(SKILL_CATEGORIES).reduce(
     (sum, cat) => sum + Object.keys(cat.skills).length,
     0
@@ -629,7 +854,7 @@ export function ManualSkillSelector({
                 mb: '3',
               })}
             >
-              Select mastered skills or import from a book level preset.
+              Set practice levels for each skill. Tap to cycle: off → abacus → all modes.
             </Dialog.Description>
 
             {/* Compact controls row */}
@@ -674,23 +899,28 @@ export function ManualSkillSelector({
                 ))}
               </select>
 
-              {/* Selected count */}
+              {/* Selected count with level breakdown */}
               <span
                 data-element="selected-count"
                 className={css({
                   fontSize: 'xs',
                   color: isDark ? 'gray.400' : 'gray.500',
                   whiteSpace: 'nowrap',
+                  display: 'flex',
+                  gap: '1',
+                  alignItems: 'center',
                 })}
               >
-                {selectedCount}/{totalSkills}
+                {abacusOnlyCount > 0 && <span>🧮 {abacusOnlyCount}</span>}
+                {visualReadyCount > 0 && <span>🧠 {visualReadyCount}</span>}
+                <span>/ {totalSkills}</span>
               </span>
 
               {/* Clear All */}
               <button
                 type="button"
                 data-action="clear-all"
-                onClick={() => setSelectedSkills(new Set())}
+                onClick={() => setSkillLevels(new Map())}
                 className={css({
                   fontSize: 'xs',
                   color: isDark ? 'red.400' : 'red.600',
@@ -705,8 +935,8 @@ export function ManualSkillSelector({
               </button>
             </div>
 
-            {/* Complexity Legend - more compact */}
-            <ComplexityLegend isDark={isDark} />
+            {/* Practice Level Legend */}
+            <PracticeLevelLegend isDark={isDark} />
           </div>
 
           {/* Scrollable Skills Section with dynamic scroll indicators */}
@@ -780,11 +1010,26 @@ export function ManualSkillSelector({
                   const categorySkillIds = Object.keys(category.skills).map(
                     (skill) => `${categoryKey}.${skill}`
                   )
-                  const selectedInCategory = categorySkillIds.filter((id) =>
-                    selectedSkills.has(id)
-                  ).length
-                  const allSelected = selectedInCategory === categorySkillIds.length
-                  const someSelected = selectedInCategory > 0 && !allSelected
+                  const activeLevels = categorySkillIds
+                    .map((id) => skillLevels.get(id) ?? 'none')
+                    .filter((l) => l !== 'none')
+                  const activeInCategory = activeLevels.length
+
+                  // Determine the dominant level for the category toggle display
+                  const allNone = activeInCategory === 0
+                  const allAbacus = categorySkillIds.every(
+                    (id) => (skillLevels.get(id) ?? 'none') === 'abacus'
+                  )
+                  const allVisual = categorySkillIds.every(
+                    (id) => (skillLevels.get(id) ?? 'none') === 'visual'
+                  )
+                  const categoryLevel: PracticeLevel = allVisual
+                    ? 'visual'
+                    : allAbacus
+                      ? 'abacus'
+                      : allNone
+                        ? 'none'
+                        : 'abacus' // Mixed → show as abacus (next click normalizes)
 
                   return (
                     <Accordion.Item
@@ -825,24 +1070,11 @@ export function ManualSkillSelector({
                               gap: '3',
                             })}
                           >
-                            <input
-                              type="checkbox"
-                              data-action="toggle-category"
-                              data-category={categoryKey}
-                              checked={allSelected}
-                              ref={(el) => {
-                                if (el) el.indeterminate = someSelected
-                              }}
-                              onChange={(e) => {
-                                e.stopPropagation()
-                                toggleCategory(categoryKey)
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className={css({
-                                width: '18px',
-                                height: '18px',
-                                cursor: 'pointer',
-                              })}
+                            <PracticeLevelButton
+                              level={categoryLevel}
+                              isDark={isDark}
+                              onCycle={() => cycleCategory(categoryKey)}
+                              size="small"
                             />
                             <span
                               className={css({
@@ -866,7 +1098,7 @@ export function ManualSkillSelector({
                                 color: isDark ? 'gray.400' : 'gray.500',
                               })}
                             >
-                              {selectedInCategory}/{categorySkillIds.length}
+                              {activeInCategory}/{categorySkillIds.length}
                             </span>
                             <span
                               className={css({
@@ -904,11 +1136,12 @@ export function ManualSkillSelector({
                         <div className={css({ p: '3' })}>
                           {Object.entries(category.skills).map(([skillKey, skillName]) => {
                             const skillId = `${categoryKey}.${skillKey}`
-                            const isSelected = selectedSkills.has(skillId)
+                            const level = skillLevels.get(skillId) ?? 'none'
+                            const isSelected = level !== 'none'
                             const bktResult = bktResultsMap?.get(skillId)
 
                             return (
-                              <label
+                              <div
                                 key={skillId}
                                 data-skill={skillId}
                                 className={css({
@@ -922,27 +1155,25 @@ export function ManualSkillSelector({
                                     bg: isDark ? 'gray.700' : 'gray.50',
                                   },
                                 })}
+                                onClick={() => cycleSkillLevel(skillId)}
                               >
-                                <input
-                                  type="checkbox"
-                                  data-action="toggle-skill"
-                                  data-skill={skillId}
-                                  checked={isSelected}
-                                  onChange={() => toggleSkill(skillId)}
-                                  className={css({
-                                    width: '16px',
-                                    height: '16px',
-                                    cursor: 'pointer',
-                                  })}
+                                <PracticeLevelButton
+                                  level={level}
+                                  isDark={isDark}
+                                  onCycle={() => cycleSkillLevel(skillId)}
                                 />
                                 <ComplexityBadge skillId={skillId} isDark={isDark} />
                                 <span
                                   className={css({
                                     fontSize: 'sm',
                                     color: isSelected
-                                      ? isDark
-                                        ? 'green.400'
-                                        : 'green.700'
+                                      ? level === 'visual'
+                                        ? isDark
+                                          ? 'green.400'
+                                          : 'green.700'
+                                        : isDark
+                                          ? 'blue.400'
+                                          : 'blue.700'
                                       : isDark
                                         ? 'gray.300'
                                         : 'gray.700',
@@ -958,7 +1189,7 @@ export function ManualSkillSelector({
                                   isSelected={isSelected}
                                   isDark={isDark}
                                 />
-                              </label>
+                              </div>
                             )
                           })}
                         </div>
