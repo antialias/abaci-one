@@ -97,11 +97,9 @@ export function MacroToolPanel({
             data-element="macro-prop-card"
             data-prop-id={propId}
             onPointerDown={(e) => {
-              console.log('[macro-debug] card pointerdown propId=%d stopping propagation', propId)
               e.stopPropagation()
             }}
             onClick={() => {
-              console.log('[macro-debug] card onClick propId=%d', propId)
               onSelect(propId)
             }}
             style={{

@@ -242,12 +242,6 @@ export function useToolInteraction({
       }
 
       // ── Tool gestures ──
-      console.log(
-        '[macro-debug] pointerdown tool=%s hitPt=%s macroPhase=%o',
-        tool,
-        hitPt?.id ?? 'none',
-        macroPhaseRef.current
-      )
       if (!hitPt) {
         requestDraw()
         return
@@ -279,23 +273,32 @@ export function useToolInteraction({
 
       if (tool === 'macro') {
         const macro = macroPhaseRef.current
-        console.log('[macro-debug] macro branch: tag=%s', macro.tag)
         if (macro.tag === 'selecting') {
+          // Prevent selecting the same point twice (e.g. clicking B then B again
+          // would produce a degenerate macro with zero-radius construction)
+          if (macro.selectedPointIds.includes(hitPt.id)) {
+            requestDraw()
+            return
+          }
+
+          // In guided mode, only accept the expected point at this selection index.
+          // This prevents wrong-order selections (e.g. clicking B before A) from
+          // triggering a heavyweight correction — instead the wrong point is silently
+          // ignored, like compass radius filtering does for compass steps.
+          if (expected?.type === 'macro' && expected.propId === macro.propId) {
+            const selectionIndex = macro.selectedPointIds.length
+            const expectedPointId = expected.inputPointIds[selectionIndex]
+            if (expectedPointId && hitPt.id !== expectedPointId) {
+              requestDraw()
+              return
+            }
+          }
+
           e.stopPropagation()
 
           const newSelected = [...macro.selectedPointIds, hitPt.id]
-          console.log(
-            '[macro-debug] selecting: newSelected=%o inputLabels=%o',
-            newSelected,
-            macro.inputLabels
-          )
           if (newSelected.length >= macro.inputLabels.length) {
             // All inputs collected — commit
-            console.log(
-              '[macro-debug] committing macro propId=%d inputs=%o',
-              macro.propId,
-              newSelected
-            )
             const idlePhase: MacroPhase = { tag: 'idle' }
             macroPhaseRef.current = idlePhase
             onMacroPhaseChange?.(idlePhase)

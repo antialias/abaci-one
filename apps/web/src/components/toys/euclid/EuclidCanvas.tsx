@@ -1989,7 +1989,6 @@ export function EuclidCanvas({
           // ── Wrong macro during guided steps ──────────────────────────
           // The user applied a macro that doesn't match the expected action.
           // Revert and narrate.
-          console.log('[commit-macro] WRONG macro — calling triggerCorrection for step %d', step)
           triggerCorrection(step)
           return
         }
@@ -2025,7 +2024,6 @@ export function EuclidCanvas({
       }
 
       // ── Guided path ───────────────────────────────────────────────
-      console.log('[commit-macro] GUIDED path — step=%d propId=%d inputs=%o addedElements=%o', step, propId, inputPointIds, result.addedElements.map(e => ({ kind: e.kind, id: e.id, label: (e as any).label })))
       // Collect ghost layers produced by the macro itself
       const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: step }))
       if (macroGhosts.length > 0) {
@@ -2052,7 +2050,6 @@ export function EuclidCanvas({
       const stepToAdvance = step
       const doAdvanceStep = () => {
         const nextSt = stepToAdvance + 1
-        console.log('[commit-macro] doAdvanceStep: %d → %d (total=%d)', stepToAdvance, nextSt, steps.length)
         setCompletedSteps((prev) => {
           const next = [...prev]
           next[stepToAdvance] = true
@@ -2815,25 +2812,6 @@ export function EuclidCanvas({
         }
       }
 
-      // ── Periodic state dump for debugging stuck states ──
-      {
-        const now = performance.now()
-        if (now - lastStateDumpRef.current > 5000) {
-          lastStateDumpRef.current = now
-          console.log(
-            '[state-dump] step=%d correctionActive=%s macroPhase=%s compassPhase=%s straightedgePhase=%s tool=%s ceremonyActive=%s macroAnim=%s',
-            currentStepRef.current,
-            correctionActiveRef.current,
-            macroPhaseRef.current.tag,
-            compassPhaseRef.current.tag,
-            straightedgePhaseRef.current.tag,
-            activeToolRef.current,
-            !!macroRevealRef.current,
-            !!macroAnimationRef.current
-          )
-        }
-      }
-
       // ── Tick macro animation ──
       const macroAnim = macroAnimationRef.current
       if (macroAnim && macroAnim.revealedCount < macroAnim.elements.length) {
@@ -2896,12 +2874,7 @@ export function EuclidCanvas({
             }
           }
           if (now - ceremony.allShownMs >= ceremony.postNarrationDelayMs) {
-            console.log('[ceremony] all shown + delay elapsed — calling advanceStep()')
-            try {
-              ceremony.advanceStep()
-            } catch (err) {
-              console.error('[ceremony] advanceStep() THREW:', err)
-            }
+            ceremony.advanceStep()
             macroRevealRef.current = null
           } else {
             needsDrawRef.current = true
