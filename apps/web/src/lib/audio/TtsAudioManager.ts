@@ -37,6 +37,8 @@ export type TtsSay = Record<string, string>
 export interface TtsConfig {
   tone?: string
   say?: TtsSay
+  /** Voice sources prepended to the global chain for this specific call. */
+  prependChain?: VoiceSource[]
 }
 
 /**
@@ -67,7 +69,13 @@ export interface CollectedClip {
 
 export type { VoiceSourceData } from './voiceSource'
 import type { VoiceSourceData } from './voiceSource'
-import { type VoiceSource, PregeneratedVoice, CustomVoice, hydrateVoiceChain } from './voiceSource'
+import {
+  type VoiceSource,
+  PregeneratedVoice,
+  CustomVoice,
+  GenerateVoice,
+  hydrateVoiceChain,
+} from './voiceSource'
 
 type Listener = () => void
 
@@ -83,6 +91,7 @@ interface ResolvedSegment {
   clipId: string
   fallbackText: string
   tone: string
+  prependChain?: VoiceSource[]
 }
 
 const INTER_SEGMENT_GAP_MS = 80
@@ -569,7 +578,7 @@ export class TtsAudioManager {
     const manifestEntry = AUDIO_MANIFEST_MAP[clipId]
     const fallbackText = manifestEntry?.text ?? this.resolveSay(effectiveSay) ?? clipId
 
-    return { clipId, fallbackText, tone: effectiveTone }
+    return { clipId, fallbackText, tone: effectiveTone, prependChain: topConfig?.prependChain }
   }
 
   /** Check if this speak call has been superseded by a newer one. */
@@ -584,13 +593,20 @@ export class TtsAudioManager {
   private async playOneSegment(resolved: ResolvedSegment, speakId: number): Promise<boolean> {
     if (this._isStale(speakId)) return false
 
+    // When a per-call prependChain is present, insert a GenerateVoice
+    // after the prepended sources so that on-demand generation fires
+    // for the character voice before the global chain's cached voices.
+    const effectiveChain = resolved.prependChain?.length
+      ? [...resolved.prependChain, new GenerateVoice(), ...this._voiceChain]
+      : this._voiceChain
+
     const log: ChainAttempt[] = []
 
-    if (this._voiceChain.length > 0) {
-      for (let i = 0; i < this._voiceChain.length; i++) {
+    if (effectiveChain.length > 0) {
+      for (let i = 0; i < effectiveChain.length; i++) {
         if (this._isStale(speakId)) return false
 
-        const source = this._voiceChain[i]
+        const source = effectiveChain[i]
         if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false

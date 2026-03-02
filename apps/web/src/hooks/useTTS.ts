@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
+import { useVoiceChainOverrides } from '@/lib/audio/VoiceChainContext'
 import type { TtsInput, TtsConfig } from '@/lib/audio/TtsAudioManager'
 
 /**
@@ -66,6 +67,7 @@ export function useTTS(
   config?: TtsConfig
 ): (overrideInput?: TtsInput, overrideConfig?: TtsConfig) => Promise<void> {
   const manager = useAudioManagerInstance()
+  const contextChain = useVoiceChainOverrides()
 
   // Stable content key — avoids requiring callers to memoize objects
   const inputKey = JSON.stringify(input)
@@ -76,6 +78,11 @@ export function useTTS(
   const configRef = useRef(config)
   inputRef.current = input
   configRef.current = config
+
+  // Context chain ref — kept in a ref so the speak callback doesn't
+  // need to be recreated when the context chain identity changes.
+  const contextChainRef = useRef(contextChain)
+  contextChainRef.current = contextChain
 
   // Implicit config extracted from hook input segment (tone/say as defaults)
   const implicitConfigRef = useRef<TtsConfig>({})
@@ -90,10 +97,19 @@ export function useTTS(
   return useCallback(
     (overrideInput?: TtsInput, overrideConfig?: TtsConfig) => {
       const effectiveInput = overrideInput !== undefined ? overrideInput : inputRef.current
+
+      // Merge prependChain: speak override > hook config > context chain (weakest)
+      const explicitPrepend = overrideConfig?.prependChain ?? configRef.current?.prependChain ?? []
+      const mergedPrependChain =
+        explicitPrepend.length > 0 || contextChainRef.current.length > 0
+          ? [...explicitPrepend, ...contextChainRef.current]
+          : undefined
+
       const effectiveConfig: TtsConfig = {
         ...implicitConfigRef.current,
         ...configRef.current,
         ...overrideConfig,
+        ...(mergedPrependChain ? { prependChain: mergedPrependChain } : {}),
       }
       return manager.speak(effectiveInput, effectiveConfig)
     },

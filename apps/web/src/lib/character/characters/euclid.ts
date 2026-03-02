@@ -207,6 +207,16 @@ export const euclidProvider: CharacterDataProvider = {
         profileVariants,
       },
 
+      voiceConfig: {
+        realtimeVoice: euclidConfig.voice.id,
+        ttsVoice: euclidConfig.voice.ttsVoice ?? euclidConfig.voice.id,
+        baseDurationMs: euclidConfig.voice.baseDurationMs,
+        extensionMs: euclidConfig.voice.extensionMs,
+        sessionEndpoint: euclidConfig.voice.sessionEndpoint,
+        chatEndpoint: euclidConfig.voice.chatEndpoint,
+        thinkHardEndpoint: euclidConfig.voice.thinkHardEndpoint,
+      },
+
       personalityBlocks: PERSONALITY_BLOCKS.map((b) => ({
         key: b.key,
         label: b.label,

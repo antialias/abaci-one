@@ -6,10 +6,15 @@
  * Provides a GeometryTeacherConfig to all descendants, allowing
  * components and hooks to read character-specific config without
  * hardcoding imports.
+ *
+ * Also wraps children in a VoiceChainProvider so that any useTTS
+ * calls within the subtree automatically use the character's voice.
  */
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import type { GeometryTeacherConfig } from './GeometryTeacherConfig'
+import { VoiceChainProvider } from '@/lib/audio/VoiceChainContext'
+import { PregeneratedVoice } from '@/lib/audio/voiceSource'
 
 const GeometryTeacherContext = createContext<GeometryTeacherConfig | null>(null)
 
@@ -20,8 +25,13 @@ export function GeometryTeacherProvider({
   config: GeometryTeacherConfig
   children: React.ReactNode
 }) {
+  const ttsVoice = config.voice.ttsVoice ?? config.voice.id
+  const characterChain = useMemo(() => [new PregeneratedVoice(ttsVoice)], [ttsVoice])
+
   return (
-    <GeometryTeacherContext.Provider value={config}>{children}</GeometryTeacherContext.Provider>
+    <GeometryTeacherContext.Provider value={config}>
+      <VoiceChainProvider voices={characterChain}>{children}</VoiceChainProvider>
+    </GeometryTeacherContext.Provider>
   )
 }
 

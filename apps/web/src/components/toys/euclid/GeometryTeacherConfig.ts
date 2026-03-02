@@ -21,6 +21,8 @@ export interface GeometryTeacherConfig {
   voice: {
     /** OpenAI voice ID (e.g. 'ash') */
     id: string
+    /** TTS narration voice override — defaults to `id` when omitted. */
+    ttsVoice?: string
     /** API endpoint for creating a voice session token */
     sessionEndpoint: string
     /** API endpoint for text chat streaming */

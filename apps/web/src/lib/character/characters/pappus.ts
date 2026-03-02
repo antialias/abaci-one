@@ -210,6 +210,16 @@ export const pappusProvider: CharacterDataProvider = {
         profileVariants,
       },
 
+      voiceConfig: {
+        realtimeVoice: pappusConfig.voice.id,
+        ttsVoice: pappusConfig.voice.ttsVoice ?? pappusConfig.voice.id,
+        baseDurationMs: pappusConfig.voice.baseDurationMs,
+        extensionMs: pappusConfig.voice.extensionMs,
+        sessionEndpoint: pappusConfig.voice.sessionEndpoint,
+        chatEndpoint: pappusConfig.voice.chatEndpoint,
+        thinkHardEndpoint: pappusConfig.voice.thinkHardEndpoint,
+      },
+
       personalityBlocks: PERSONALITY_BLOCKS.map((b) => ({
         key: b.key,
         label: b.label,

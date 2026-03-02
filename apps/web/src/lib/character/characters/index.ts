@@ -73,12 +73,24 @@ export interface ProfileVariantPath {
   path: string
 }
 
+/** Voice configuration for admin display. */
+export interface VoiceConfig {
+  realtimeVoice: string
+  ttsVoice: string
+  baseDurationMs: number
+  extensionMs: number
+  sessionEndpoint: string
+  chatEndpoint: string
+  thinkHardEndpoint: string
+}
+
 /** Full character data for detail view. */
 export interface CharacterData {
   identity: CharacterSummary & {
     profilePrompt: string
     profileVariants: ProfileVariantPath[]
   }
+  voiceConfig?: VoiceConfig
   personalityBlocks: PersonalityBlock[]
   chatConfig: {
     placeholder: string

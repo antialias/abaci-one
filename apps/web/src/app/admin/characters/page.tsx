@@ -20,6 +20,7 @@ import type {
   PersonalityBlock,
   ToolData,
   ModeTransition,
+  VoiceConfig,
 } from '@/lib/character/characters'
 import type { PromptBreakdown, PromptSection } from '@/lib/character/promptBreakdown'
 
@@ -1246,6 +1247,74 @@ function ContextSelector({
   )
 }
 
+// ── Voice Config Card ────────────────────────────────────────────────
+
+function VoiceConfigCard({ config }: { config: VoiceConfig }) {
+  const voiceItemStyle = css({
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '8px 0',
+    borderBottom: '1px solid #21262d',
+    _last: { borderBottom: 'none' },
+  })
+
+  return (
+    <CollapsibleSection title="Voice Config" defaultOpen>
+      <div className={cardContentStyle}>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            Realtime Voice
+          </span>
+          <span className={badgeStyle('#238636')}>{config.realtimeVoice}</span>
+        </div>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            TTS Narration Voice
+          </span>
+          <span className={badgeStyle('#1f6feb')}>{config.ttsVoice}</span>
+        </div>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            Base Duration
+          </span>
+          <span className={valueStyle}>{(config.baseDurationMs / 1000).toFixed(0)}s</span>
+        </div>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            Extension
+          </span>
+          <span className={valueStyle}>{(config.extensionMs / 1000).toFixed(0)}s</span>
+        </div>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            Session Endpoint
+          </span>
+          <span className={valueStyle} style={{ fontSize: 11 }}>
+            {config.sessionEndpoint}
+          </span>
+        </div>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            Chat Endpoint
+          </span>
+          <span className={valueStyle} style={{ fontSize: 11 }}>
+            {config.chatEndpoint}
+          </span>
+        </div>
+        <div className={voiceItemStyle}>
+          <span className={labelStyle} style={{ marginBottom: 0 }}>
+            Think Hard Endpoint
+          </span>
+          <span className={valueStyle} style={{ fontSize: 11 }}>
+            {config.thinkHardEndpoint}
+          </span>
+        </div>
+      </div>
+    </CollapsibleSection>
+  )
+}
+
 // ── Main Page ───────────────────────────────────────────────────────
 
 export default function CharactersAdminPage() {
@@ -1397,6 +1466,9 @@ export default function CharactersAdminPage() {
 
             {/* A. Identity Card */}
             <IdentityCard data={characterData} onSave={handleSave} saving={saving} />
+
+            {/* A2. Voice Config */}
+            {characterData.voiceConfig && <VoiceConfigCard config={characterData.voiceConfig} />}
 
             {/* B. Personality Blocks */}
             <CollapsibleSection
