@@ -30,7 +30,7 @@ const mockPhase: CurriculumPhase = {
 
 const defaultSessionMode: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'test-skill', displayName: 'Test Skill', pKnown: 0.8 },
+  nextSkill: { skillId: 'test-skill', displayName: 'Test Skill', pKnown: 0.8, hasMathSentence: true },
   tutorialRequired: false,
   phase: mockPhase,
   skipCount: 0,

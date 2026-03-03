@@ -124,6 +124,8 @@ interface PracticeSubNavProps {
   sessionHud?: SessionHudData
   /** Game break HUD data (shown when on game break - takes priority over sessionHud) */
   gameBreakHud?: GameBreakHudData
+  /** Math-sentence skills to display in the focus banner during active sessions */
+  focusSkills?: string[]
   /** Optional callback when observe session is clicked */
   onObserveSession?: (sessionId: string) => void
 }
@@ -282,6 +284,7 @@ export function PracticeSubNav({
   pageContext,
   sessionHud,
   gameBreakHud,
+  focusSkills,
   onObserveSession,
 }: PracticeSubNavProps) {
   const { resolvedTheme } = useTheme()
@@ -290,6 +293,7 @@ export function PracticeSubNav({
   const isOnDashboard = pageContext === 'dashboard'
   const isInActiveSession = !!sessionHud
   const isOnGameBreak = !!gameBreakHud
+  const showFocusBanner = !!focusSkills && focusSkills.length > 0 && !!sessionHud && !isOnGameBreak
 
   // Stakeholder data for relationship popover
   const { data: stakeholdersData } = useStudentStakeholders(student.id)
@@ -481,980 +485,1015 @@ export function PracticeSubNav({
         top: 'var(--app-nav-height)', // Stick below the main nav when scrolling
         zIndex: 90,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: { base: '0.5rem', md: '1rem' },
-        padding: { base: '0.5rem 0.75rem', md: '0.75rem 1.5rem' },
+        flexDirection: 'column',
         backgroundColor: isDark ? 'gray.900' : 'gray.100',
         borderBottom: '1px solid',
         borderColor: isDark ? 'gray.800' : 'gray.200',
         boxShadow: 'sm',
-        // Prevent horizontal overflow
-        overflow: 'hidden',
         maxWidth: '100vw',
       })}
     >
-      {/* Left: Student identity with clear visual zones */}
+      {/* Main row */}
       <div
-        data-element="student-nav-link"
         className={css({
           display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem',
-          borderRadius: '8px',
-          padding: '0.375rem',
-          marginLeft: '-0.375rem',
-          transition: 'all 0.15s ease',
-          backgroundColor: isOnDashboard ? (isDark ? 'gray.800' : 'white') : 'transparent',
-          _hover: {
-            backgroundColor: isDark ? 'gray.800' : 'white',
-          },
+          justifyContent: 'space-between',
+          gap: { base: '0.5rem', md: '1rem' },
+          padding: { base: '0.5rem 0.75rem', md: '0.75rem 1.5rem' },
+          overflow: 'hidden',
         })}
       >
-        {/* Zone 1: Avatar - links to dashboard */}
-        <Link
-          href={`/practice/${student.id}/dashboard`}
+        {/* Left: Student identity with clear visual zones */}
+        <div
+          data-element="student-nav-link"
           className={css({
             display: 'flex',
-            textDecoration: 'none',
-            flexShrink: 0,
-            borderRadius: '50%',
-            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+            alignItems: 'center',
+            gap: '0.5rem',
+            borderRadius: '8px',
+            padding: '0.375rem',
+            marginLeft: '-0.375rem',
+            transition: 'all 0.15s ease',
+            backgroundColor: isOnDashboard ? (isDark ? 'gray.800' : 'white') : 'transparent',
             _hover: {
-              transform: 'scale(1.05)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              backgroundColor: isDark ? 'gray.800' : 'white',
             },
           })}
-          aria-label={`${student.name}'s dashboard`}
         >
-          <div
-            data-element="student-avatar"
+          {/* Zone 1: Avatar - links to dashboard */}
+          <Link
+            href={`/practice/${student.id}/dashboard`}
             className={css({
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.25rem',
+              textDecoration: 'none',
+              flexShrink: 0,
+              borderRadius: '50%',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              _hover: {
+                transform: 'scale(1.05)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+              },
             })}
-            style={{ backgroundColor: student.color }}
+            aria-label={`${student.name}'s dashboard`}
           >
-            {student.emoji}
-          </div>
-        </Link>
+            <div
+              data-element="student-avatar"
+              className={css({
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem',
+              })}
+              style={{ backgroundColor: student.color }}
+            >
+              {student.emoji}
+            </div>
+          </Link>
 
-        {/* Zone 2: Name + relationship info - hidden on mobile during session */}
-        <div
-          className={css({
-            display: sessionHud ? { base: 'none', sm: 'flex' } : 'flex',
-            flexDirection: 'column',
-            gap: '0',
-            minWidth: 0,
-            flex: 1,
-          })}
-        >
-          <Popover.Root>
-            <Popover.Trigger asChild>
-              <button
-                type="button"
-                className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: '2px',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  minWidth: 0,
-                })}
-                aria-label={`Open ${student.name} menu`}
-              >
-                <span
+          {/* Zone 2: Name + relationship info - hidden on mobile during session */}
+          <div
+            className={css({
+              display: sessionHud ? { base: 'none', sm: 'flex' } : 'flex',
+              flexDirection: 'column',
+              gap: '0',
+              minWidth: 0,
+              flex: 1,
+            })}
+          >
+            <Popover.Root>
+              <Popover.Trigger asChild>
+                <button
+                  type="button"
                   className={css({
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    fontSize: '0.9375rem',
-                    fontWeight: '600',
-                    color: isDark ? 'gray.100' : 'gray.800',
-                    lineHeight: '1.2',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '2px',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    minWidth: 0,
                   })}
+                  aria-label={`Open ${student.name} menu`}
                 >
-                  {student.name}
                   <span
                     className={css({
-                      fontSize: '0.75rem',
-                      opacity: 0.6,
-                    })}
-                    aria-hidden="true"
-                  >
-                    ▾
-                  </span>
-                </span>
-
-                {!sessionHud && viewerRelationship && viewerRelationship.type !== 'none' ? (
-                  <RelationshipSummary
-                    type={viewerRelationship.type}
-                    classroomName={viewerRelationship.classroomName}
-                    otherStakeholders={
-                      hasOtherStakeholders
-                        ? {
-                            parents: stakeholders?.parents.filter((p) => !p.isMe).length ?? 0,
-                            teachers: stakeholders?.enrolledClassrooms.length ?? 0,
-                          }
-                        : undefined
-                    }
-                    className={css({
-                      fontSize: '0.6875rem !important',
-                      opacity: 0.75,
-                    })}
-                  />
-                ) : (
-                  <span
-                    className={css({
-                      fontSize: '0.6875rem',
-                      color: isDark ? 'gray.500' : 'gray.500',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.9375rem',
+                      fontWeight: '600',
+                      color: isDark ? 'gray.100' : 'gray.800',
+                      lineHeight: '1.2',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     })}
                   >
-                    {isOnDashboard ? 'Dashboard' : 'Back to dashboard'}
+                    {student.name}
+                    <span
+                      className={css({
+                        fontSize: '0.75rem',
+                        opacity: 0.6,
+                      })}
+                      aria-hidden="true"
+                    >
+                      ▾
+                    </span>
                   </span>
-                )}
-              </button>
-            </Popover.Trigger>
 
-            <Popover.Portal>
-              <Popover.Content
-                data-component="student-context-popover"
-                side="bottom"
-                align="start"
-                sideOffset={8}
-                className={css({
-                  width: '260px',
-                  maxWidth: 'calc(100vw - 24px)',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                  boxShadow: 'lg',
-                  zIndex: Z_INDEX.POPOVER,
-                  animation: 'fadeIn 0.15s ease',
-                })}
-              >
-                <div
+                  {!sessionHud && viewerRelationship && viewerRelationship.type !== 'none' ? (
+                    <RelationshipSummary
+                      type={viewerRelationship.type}
+                      classroomName={viewerRelationship.classroomName}
+                      otherStakeholders={
+                        hasOtherStakeholders
+                          ? {
+                              parents: stakeholders?.parents.filter((p) => !p.isMe).length ?? 0,
+                              teachers: stakeholders?.enrolledClassrooms.length ?? 0,
+                            }
+                          : undefined
+                      }
+                      className={css({
+                        fontSize: '0.6875rem !important',
+                        opacity: 0.75,
+                      })}
+                    />
+                  ) : (
+                    <span
+                      className={css({
+                        fontSize: '0.6875rem',
+                        color: isDark ? 'gray.500' : 'gray.500',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      })}
+                    >
+                      {isOnDashboard ? 'Dashboard' : 'Back to dashboard'}
+                    </span>
+                  )}
+                </button>
+              </Popover.Trigger>
+
+              <Popover.Portal>
+                <Popover.Content
+                  data-component="student-context-popover"
+                  side="bottom"
+                  align="start"
+                  sideOffset={8}
                   className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    marginBottom: '0.75rem',
+                    width: '260px',
+                    maxWidth: 'calc(100vw - 24px)',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    backgroundColor: isDark ? 'gray.800' : 'white',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    boxShadow: 'lg',
+                    zIndex: Z_INDEX.POPOVER,
+                    animation: 'fadeIn 0.15s ease',
                   })}
                 >
                   <div
                     className={css({
-                      width: '34px',
-                      height: '34px',
-                      borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.1rem',
-                      flexShrink: 0,
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem',
                     })}
-                    style={{ backgroundColor: student.color }}
                   >
-                    {student.emoji}
-                  </div>
-                  <div className={css({ minWidth: 0 })}>
                     <div
                       className={css({
-                        fontSize: '0.95rem',
-                        fontWeight: '600',
-                        color: isDark ? 'gray.100' : 'gray.800',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.1rem',
+                        flexShrink: 0,
                       })}
+                      style={{ backgroundColor: student.color }}
                     >
-                      {student.name}
+                      {student.emoji}
                     </div>
-                    <div
-                      className={css({
-                        fontSize: '0.75rem',
-                        color: isDark ? 'gray.400' : 'gray.500',
-                      })}
-                    >
-                      Player context
+                    <div className={css({ minWidth: 0 })}>
+                      <div
+                        className={css({
+                          fontSize: '0.95rem',
+                          fontWeight: '600',
+                          color: isDark ? 'gray.100' : 'gray.800',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        })}
+                      >
+                        {student.name}
+                      </div>
+                      <div
+                        className={css({
+                          fontSize: '0.75rem',
+                          color: isDark ? 'gray.400' : 'gray.500',
+                        })}
+                      >
+                        Player context
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.35rem' })}>
-                  <Link
-                    href={`/practice/${student.id}/dashboard`}
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.45rem 0.6rem',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '0.85rem',
-                      color: isDark ? 'gray.200' : 'gray.700',
-                      _hover: {
-                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                      },
-                    })}
+                  <div
+                    className={css({ display: 'flex', flexDirection: 'column', gap: '0.35rem' })}
                   >
-                    <span>📊</span>
-                    <span>Practice dashboard</span>
-                  </Link>
-                  <Link
-                    href={`/practice/${student.id}/dashboard?tab=skills`}
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.45rem 0.6rem',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '0.85rem',
-                      color: isDark ? 'gray.200' : 'gray.700',
-                      _hover: {
-                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                      },
-                    })}
-                  >
-                    <span>🧭</span>
-                    <span>Skills overview</span>
-                  </Link>
-                  <Link
-                    href={`/practice/${student.id}/dashboard?tab=notes`}
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.45rem 0.6rem',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '0.85rem',
-                      color: isDark ? 'gray.200' : 'gray.700',
-                      _hover: {
-                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                      },
-                    })}
-                  >
-                    <span>📝</span>
-                    <span>Notes</span>
-                  </Link>
-                  <Link
-                    href={`/players/${student.id}/settings`}
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.45rem 0.6rem',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '0.85rem',
-                      color: isDark ? 'gray.200' : 'gray.700',
-                      _hover: {
-                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                      },
-                    })}
-                  >
-                    <span>⚙️</span>
-                    <span>Player settings</span>
-                  </Link>
-                </div>
-
-                {viewerRelationship && viewerRelationship.type !== 'none' && (
-                  <div className={css({ marginTop: '0.75rem' })}>
-                    <RelationshipCard playerId={student.id} compact />
-                  </div>
-                )}
-
-                <Popover.Arrow
-                  className={css({
-                    fill: isDark ? 'gray.800' : 'white',
-                  })}
-                />
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
-        </div>
-
-        {/* Zone 3: Actions menu button - separate, clearly clickable */}
-        {!isInActiveSession && hasAnyAction && (
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
-                data-element="student-actions-trigger"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.300',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  color: isDark ? 'gray.400' : 'gray.500',
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  flexShrink: 0,
-                  _hover: {
-                    backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                    borderColor: isDark ? 'gray.600' : 'gray.400',
-                    color: isDark ? 'gray.200' : 'gray.700',
-                  },
-                  _focus: {
-                    outline: '2px solid',
-                    outlineColor: isDark ? 'blue.500' : 'blue.400',
-                    outlineOffset: '2px',
-                  },
-                })}
-                aria-label="Student actions"
-              >
-                ⋮
-              </button>
-            </DropdownMenu.Trigger>
-
-            {/* Action menu dropdown */}
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                data-component="student-action-menu"
-                className={css({
-                  minWidth: '200px',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  borderRadius: '8px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                  padding: '4px',
-                  boxShadow: 'lg',
-                  zIndex: Z_INDEX.DROPDOWN,
-                  animation: 'fadeIn 0.15s ease',
-                })}
-                sideOffset={8}
-                align="end"
-              >
-                {/* Go to Dashboard - when not on dashboard */}
-                {!isOnDashboard && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={() => {
-                      window.location.href = `/practice/${student.id}/dashboard`
-                    }}
-                  >
-                    <span>📊</span>
-                    <span>Go to Dashboard</span>
-                  </DropdownMenu.Item>
-                )}
-
-                {/* Practice actions */}
-                {actions.startPractice && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={handlers.startPractice}
-                  >
-                    <span>{ACTION_DEFINITIONS.startPractice.icon}</span>
-                    <span>{ACTION_DEFINITIONS.startPractice.label}</span>
-                  </DropdownMenu.Item>
-                )}
-
-                {actions.watchSession && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={handlers.watchSession}
-                  >
-                    <span>{ACTION_DEFINITIONS.watchSession.icon}</span>
-                    <span>{ACTION_DEFINITIONS.watchSession.label}</span>
-                  </DropdownMenu.Item>
-                )}
-
-                {/* Classroom section */}
-                {(classrooms.enrolled.length > 0 || classrooms.current) && (
-                  <>
-                    <DropdownMenu.Separator className={separatorStyles(isDark)} />
-
-                    {/* If in a classroom, show presence + leave */}
-                    {classrooms.current && (
-                      <DropdownMenu.Item
-                        className={menuItemStyles(isDark)}
-                        onSelect={handlers.leaveClassroom}
-                        data-action="leave-classroom"
-                      >
-                        <span
-                          className={css({
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: 'green.500',
-                          })}
-                        />
-                        <span>In {classrooms.current.classroom.name} — Leave</span>
-                      </DropdownMenu.Item>
-                    )}
-
-                    {/* If not in classroom and has exactly 1 enrollment: direct action */}
-                    {!classrooms.current && classrooms.enrolled.length === 1 && (
-                      <DropdownMenu.Item
-                        className={menuItemStyles(isDark)}
-                        onSelect={handlers.enterClassroom}
-                        data-action="enter-classroom"
-                      >
-                        <span>🏫</span>
-                        <span>Enter {classrooms.enrolled[0].name}</span>
-                      </DropdownMenu.Item>
-                    )}
-
-                    {/* If not in classroom and has multiple enrollments: use submenu */}
-                    {!classrooms.current && classrooms.enrolled.length > 1 && (
-                      <DropdownMenu.Sub>
-                        <DropdownMenu.SubTrigger className={subTriggerStyles(isDark)}>
-                          <span>🏫</span>
-                          <span>Enter Classroom</span>
-                          <span className={css({ marginLeft: 'auto' })}>→</span>
-                        </DropdownMenu.SubTrigger>
-                        <DropdownMenu.Portal>
-                          <DropdownMenu.SubContent
-                            className={css({
-                              minWidth: '160px',
-                              backgroundColor: isDark ? 'gray.800' : 'white',
-                              borderRadius: '8px',
-                              border: '1px solid',
-                              borderColor: isDark ? 'gray.700' : 'gray.200',
-                              padding: '4px',
-                              boxShadow: 'lg',
-                              zIndex: Z_INDEX.DROPDOWN + 1,
-                            })}
-                            sideOffset={4}
-                          >
-                            {classrooms.enrolled.map((c) => (
-                              <DropdownMenu.Item
-                                key={c.id}
-                                className={menuItemStyles(isDark)}
-                                onSelect={() => handlers.enterSpecificClassroom(c.id)}
-                                data-action="enter-specific-classroom"
-                              >
-                                {c.name}
-                              </DropdownMenu.Item>
-                            ))}
-                          </DropdownMenu.SubContent>
-                        </DropdownMenu.Portal>
-                      </DropdownMenu.Sub>
-                    )}
-
-                    {/* Enroll option */}
-                    <DropdownMenu.Item
-                      className={menuItemStyles(isDark)}
-                      onSelect={handlers.openEnrollModal}
-                      data-action="enroll-in-classroom"
-                    >
-                      <span>➕</span>
-                      <span>Enroll in Classroom</span>
-                    </DropdownMenu.Item>
-                  </>
-                )}
-
-                {/* Show enroll option even if no enrollments yet */}
-                {classrooms.enrolled.length === 0 &&
-                  !classrooms.current &&
-                  actions.enrollInClassroom && (
-                    <DropdownMenu.Item
-                      className={menuItemStyles(isDark)}
-                      onSelect={handlers.openEnrollModal}
-                      data-action="enroll-in-classroom"
-                    >
-                      <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
-                      <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
-                    </DropdownMenu.Item>
-                  )}
-
-                <DropdownMenu.Separator className={separatorStyles(isDark)} />
-
-                {/* Management actions */}
-                {actions.archive && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={handlers.toggleArchive}
-                  >
-                    <span>{ACTION_DEFINITIONS.archive.icon}</span>
-                    <span>{ACTION_DEFINITIONS.archive.label}</span>
-                  </DropdownMenu.Item>
-                )}
-
-                {actions.unarchive && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={handlers.toggleArchive}
-                  >
-                    <span>{ACTION_DEFINITIONS.unarchive.icon}</span>
-                    <span>{ACTION_DEFINITIONS.unarchive.label}</span>
-                  </DropdownMenu.Item>
-                )}
-
-                {actions.shareAccess && (
-                  <DropdownMenu.Item
-                    className={menuItemStyles(isDark)}
-                    onSelect={handlers.openShareAccess}
-                  >
-                    <span>{ACTION_DEFINITIONS.shareAccess.icon}</span>
-                    <span>{ACTION_DEFINITIONS.shareAccess.label}</span>
-                  </DropdownMenu.Item>
-                )}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-        )}
-      </div>
-
-      {/* Game Break HUD - shown when student is on a game break */}
-      {isOnGameBreak && gameBreakHud && (
-        <div
-          data-section="game-break-hud"
-          className={css({
-            position: 'relative',
-            flex: 1,
-            minWidth: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: { base: '0.5rem', md: '1rem' },
-            overflow: 'hidden',
-          })}
-        >
-          {/* Progress bar that shrinks as time runs out */}
-          <div
-            data-element="game-break-progress-bar"
-            className={css({
-              position: 'absolute',
-              bottom: '-0.5rem',
-              left: 0,
-              right: 0,
-              height: '3px',
-              backgroundColor: isDark ? 'gray.800' : 'gray.300',
-              borderRadius: '2px',
-              overflow: 'hidden',
-            })}
-          >
-            <div
-              className={css({
-                height: '100%',
-                transition: 'width 0.5s linear, background-color 0.3s ease',
-                borderRadius: '2px',
-              })}
-              style={{
-                width: `${gameBreakPercentRemaining}%`,
-                backgroundColor:
-                  gameBreakPercentRemaining > 50
-                    ? '#22c55e' // green
-                    : gameBreakPercentRemaining > 20
-                      ? '#eab308' // yellow
-                      : '#ef4444', // red
-              }}
-            />
-          </div>
-
-          {/* Game break label with emoji */}
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              flexShrink: 0,
-            })}
-          >
-            <span className={css({ fontSize: '1.25rem' })}>{gameBreakHud.gameIcon || '🎮'}</span>
-            <span
-              className={css({
-                fontWeight: '600',
-                fontSize: { base: '0.75rem', sm: '0.875rem' },
-                color: isDark ? 'gray.200' : 'gray.700',
-                display: { base: 'none', sm: 'inline' },
-              })}
-            >
-              {gameBreakHud.gameName || 'Game Break'}
-            </span>
-          </div>
-
-          {/* Timer display */}
-          <div
-            data-element="game-break-timer"
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              padding: '0.25rem 0.5rem',
-              borderRadius: '6px',
-            })}
-            style={{
-              backgroundColor:
-                gameBreakPercentRemaining > 30
-                  ? isDark
-                    ? 'rgba(34, 197, 94, 0.2)'
-                    : 'rgba(34, 197, 94, 0.1)'
-                  : isDark
-                    ? 'rgba(234, 179, 8, 0.2)'
-                    : 'rgba(234, 179, 8, 0.1)',
-            }}
-          >
-            <span className={css({ fontSize: '0.875rem' })}>⏱️</span>
-            <span
-              className={css({
-                fontFamily: 'var(--font-mono, monospace)',
-                fontWeight: '600',
-                fontSize: '0.875rem',
-              })}
-              style={{
-                color:
-                  gameBreakPercentRemaining > 30
-                    ? isDark
-                      ? '#86efac'
-                      : '#16a34a'
-                    : isDark
-                      ? '#fde047'
-                      : '#ca8a04',
-              }}
-            >
-              {gameBreakMinutes}:{gameBreakSeconds.toString().padStart(2, '0')}
-            </span>
-          </div>
-
-          {/* Back to Practice button */}
-          <button
-            type="button"
-            data-action="skip-game-break"
-            onClick={gameBreakHud.onSkip}
-            className={css({
-              padding: '0.375rem 0.75rem',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: isDark ? 'gray.300' : 'gray.600',
-              backgroundColor: isDark ? 'gray.700' : 'gray.200',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              flexShrink: 0,
-              _hover: {
-                backgroundColor: isDark ? 'gray.600' : 'gray.300',
-              },
-            })}
-          >
-            Back to Practice →
-          </button>
-        </div>
-      )}
-
-      {/* Session HUD - takes full remaining width when in active session */}
-      {sessionHud && !isOnGameBreak && (
-        <div
-          data-section="session-hud"
-          className={css({
-            flex: 1,
-            minWidth: 0, // Allow shrinking below content size
-            display: 'flex',
-            alignItems: 'center',
-            gap: { base: '0.375rem', md: '0.75rem' },
-            overflow: 'hidden',
-          })}
-        >
-          {/* Browse mode toggle - prominent standalone button */}
-          <button
-            type="button"
-            data-action="toggle-browse"
-            data-active={sessionHud.isBrowseMode || undefined}
-            onClick={sessionHud.onToggleBrowse}
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              padding: '0.375rem 0.625rem',
-              fontSize: '0.75rem',
-              fontWeight: '500',
-              borderRadius: '6px',
-              border: '1px solid',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              flexShrink: 0,
-              // Active (browse mode on) styling
-              ...(sessionHud.isBrowseMode
-                ? {
-                    color: isDark ? 'blue.200' : 'blue.700',
-                    backgroundColor: isDark ? 'blue.900/60' : 'blue.100',
-                    borderColor: isDark ? 'blue.700' : 'blue.300',
-                  }
-                : {
-                    color: isDark ? 'gray.300' : 'gray.600',
-                    backgroundColor: isDark ? 'gray.800' : 'gray.50',
-                    borderColor: isDark ? 'gray.700' : 'gray.300',
-                  }),
-              _hover: sessionHud.isBrowseMode
-                ? {
-                    backgroundColor: isDark ? 'blue.800/60' : 'blue.200',
-                  }
-                : {
-                    backgroundColor: isDark ? 'gray.700' : 'white',
-                    borderColor: isDark ? 'gray.600' : 'gray.400',
-                  },
-            })}
-            aria-pressed={sessionHud.isBrowseMode}
-            aria-label={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Enter browse mode'}
-          >
-            <span>🔍</span>
-            <span className={css({ display: { base: 'none', sm: 'inline' } })}>
-              {sessionHud.isBrowseMode ? 'Exit' : 'Browse'}
-            </span>
-          </button>
-
-          {/* Session controls dropdown (pause/end) */}
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
-                data-element="session-controls"
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                  padding: '0.375rem 0.5rem',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: isDark ? 'gray.300' : 'gray.600',
-                  backgroundColor: isDark ? 'gray.800' : 'gray.50',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.300',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  flexShrink: 0,
-                  _hover: {
-                    backgroundColor: isDark ? 'gray.700' : 'white',
-                    borderColor: isDark ? 'gray.600' : 'gray.400',
-                  },
-                })}
-                aria-label="Session controls"
-              >
-                {/* Status indicator */}
-                <span>{sessionHud.isPaused ? '⏸' : '▶'}</span>
-                <span
-                  className={css({
-                    fontSize: '0.5rem',
-                    color: isDark ? 'gray.500' : 'gray.400',
-                  })}
-                >
-                  ▼
-                </span>
-              </button>
-            </DropdownMenu.Trigger>
-
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                className={css({
-                  minWidth: '140px',
-                  backgroundColor: isDark ? 'gray.800' : 'white',
-                  borderRadius: '8px',
-                  padding: '0.375rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  border: '1px solid',
-                  borderColor: isDark ? 'gray.700' : 'gray.200',
-                  zIndex: 1000,
-                })}
-                sideOffset={5}
-              >
-                {/* Play/Pause item */}
-                <DropdownMenu.Item
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '4px',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    color: isDark ? 'gray.100' : 'gray.900',
-                    _hover: {
-                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                    },
-                    _focus: {
-                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
-                    },
-                  })}
-                  onSelect={sessionHud.isPaused ? sessionHud.onResume : sessionHud.onPause}
-                >
-                  <span>{sessionHud.isPaused ? '▶' : '⏸'}</span>
-                  <span>{sessionHud.isPaused ? 'Resume' : 'Pause'}</span>
-                </DropdownMenu.Item>
-
-                <DropdownMenu.Separator
-                  className={css({
-                    height: '1px',
-                    backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                    margin: '0.375rem 0',
-                  })}
-                />
-
-                {/* End session item */}
-                <DropdownMenu.Item
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '4px',
-                    fontSize: '0.875rem',
-                    cursor: sessionHud.isEndingSession ? 'wait' : 'pointer',
-                    outline: 'none',
-                    color: isDark ? 'red.400' : 'red.600',
-                    opacity: sessionHud.isEndingSession ? 0.6 : 1,
-                    _hover: {
-                      backgroundColor: sessionHud.isEndingSession
-                        ? 'transparent'
-                        : isDark
-                          ? 'red.900/50'
-                          : 'red.50',
-                    },
-                    _focus: {
-                      backgroundColor: sessionHud.isEndingSession
-                        ? 'transparent'
-                        : isDark
-                          ? 'red.900/50'
-                          : 'red.50',
-                    },
-                  })}
-                  onSelect={(e) => {
-                    if (sessionHud.isEndingSession) {
-                      e.preventDefault() // Keep menu open while loading
-                      return
-                    }
-                    // Prevent menu from closing - we want to show the loading state
-                    e.preventDefault()
-                    sessionHud.onEndEarly()
-                  }}
-                  disabled={sessionHud.isEndingSession}
-                >
-                  <span>{sessionHud.isEndingSession ? '⏳' : '⏹'}</span>
-                  <span>{sessionHud.isEndingSession ? 'Ending...' : 'End Session'}</span>
-                </DropdownMenu.Item>
-
-                {/* Observe session - for parents/teachers to open observation page */}
-                {(viewerRelationship?.type === 'parent' ||
-                  viewerRelationship?.type === 'teacher') && (
-                  <>
-                    <DropdownMenu.Separator
-                      className={css({
-                        height: '1px',
-                        backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                        margin: '0.375rem 0',
-                      })}
-                    />
-                    <DropdownMenu.Item
+                    <Link
+                      href={`/practice/${student.id}/dashboard`}
                       className={css({
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        padding: '0.5rem 0.75rem',
-                        borderRadius: '4px',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        color: isDark ? 'blue.400' : 'blue.600',
+                        padding: '0.45rem 0.6rem',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        fontSize: '0.85rem',
+                        color: isDark ? 'gray.200' : 'gray.700',
                         _hover: {
-                          backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
-                        },
-                        _focus: {
-                          backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                          backgroundColor: isDark ? 'gray.700' : 'gray.100',
                         },
                       })}
-                      onSelect={() => {
-                        window.open(`/practice/${student.id}/observe`, '_blank')
-                      }}
                     >
-                      <span>👁️</span>
-                      <span>Observe Session</span>
-                    </DropdownMenu.Item>
-                  </>
-                )}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+                      <span>📊</span>
+                      <span>Practice dashboard</span>
+                    </Link>
+                    <Link
+                      href={`/practice/${student.id}/dashboard?tab=skills`}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.45rem 0.6rem',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        fontSize: '0.85rem',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                        _hover: {
+                          backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                        },
+                      })}
+                    >
+                      <span>🧭</span>
+                      <span>Skills overview</span>
+                    </Link>
+                    <Link
+                      href={`/practice/${student.id}/dashboard?tab=notes`}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.45rem 0.6rem',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        fontSize: '0.85rem',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                        _hover: {
+                          backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                        },
+                      })}
+                    >
+                      <span>📝</span>
+                      <span>Notes</span>
+                    </Link>
+                    <Link
+                      href={`/players/${student.id}/settings`}
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.45rem 0.6rem',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        fontSize: '0.85rem',
+                        color: isDark ? 'gray.200' : 'gray.700',
+                        _hover: {
+                          backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                        },
+                      })}
+                    >
+                      <span>⚙️</span>
+                      <span>Player settings</span>
+                    </Link>
+                  </div>
 
-          {/* Session Progress Indicator - discrete problem slots */}
-          <div
-            data-element="progress-indicator"
-            className={css({
-              flex: 1,
-              minWidth: 0, // Allow shrinking
-            })}
-          >
-            <SessionProgressIndicator
-              parts={sessionHud.parts}
-              results={sessionHud.results}
-              currentPartIndex={sessionHud.currentPartIndex}
-              currentSlotIndex={sessionHud.currentSlotIndex}
-              isBrowseMode={sessionHud.isBrowseMode}
-              onNavigate={sessionHud.onBrowseNavigate}
-              onRedoProblem={sessionHud.onRedoProblem}
-              onCancelRedo={sessionHud.onCancelRedo}
-              redoLinearIndex={sessionHud.redoLinearIndex}
-              isDark={isDark}
-              compact={true}
-              gameBreakEnabled={gameBreakInfo?.enabled ?? false}
-            />
+                  {viewerRelationship && viewerRelationship.type !== 'none' && (
+                    <div className={css({ marginTop: '0.75rem' })}>
+                      <RelationshipCard playerId={student.id} compact />
+                    </div>
+                  )}
+
+                  <Popover.Arrow
+                    className={css({
+                      fill: isDark ? 'gray.800' : 'white',
+                    })}
+                  />
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           </div>
 
-          {/* Session Mood Indicator - unified timing + health display */}
-          {timingStats && (
-            <SessionMoodIndicator
-              currentElapsedMs={currentElapsedMs}
-              meanMs={timingStats.mean}
-              stdDevMs={timingStats.stdDev}
-              thresholdMs={timingStats.threshold}
-              hasEnoughData={timingStats.hasEnoughData}
-              problemsRemaining={sessionHud.totalProblems - sessionHud.completedProblems}
-              totalProblems={sessionHud.totalProblems}
-              recentResults={recentResults}
-              accuracy={sessionHud.sessionHealth?.accuracy ?? 1}
-              healthStatus={sessionHud.sessionHealth?.overall ?? 'good'}
-              isPaused={sessionHud.isPaused}
-              isDark={isDark}
-            />
-          )}
+          {/* Zone 3: Actions menu button - separate, clearly clickable */}
+          {!isInActiveSession && hasAnyAction && (
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  type="button"
+                  data-element="student-actions-trigger"
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.300',
+                    backgroundColor: isDark ? 'gray.800' : 'white',
+                    color: isDark ? 'gray.400' : 'gray.500',
+                    fontSize: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      borderColor: isDark ? 'gray.600' : 'gray.400',
+                      color: isDark ? 'gray.200' : 'gray.700',
+                    },
+                    _focus: {
+                      outline: '2px solid',
+                      outlineColor: isDark ? 'blue.500' : 'blue.400',
+                      outlineOffset: '2px',
+                    },
+                  })}
+                  aria-label="Student actions"
+                >
+                  ⋮
+                </button>
+              </DropdownMenu.Trigger>
 
-          {/* Game Break Countdown Badge - shows problems until next game break */}
-          {gameBreakInfo && gameBreakInfo.problemsUntilBreak > 0 && (
-            <GameBreakCountdownBadge
-              problemsRemaining={gameBreakInfo.problemsUntilBreak}
-              isDark={isDark}
-              gameIcon={gameBreakInfo.gameIcon}
-            />
+              {/* Action menu dropdown */}
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  data-component="student-action-menu"
+                  className={css({
+                    minWidth: '200px',
+                    backgroundColor: isDark ? 'gray.800' : 'white',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    padding: '4px',
+                    boxShadow: 'lg',
+                    zIndex: Z_INDEX.DROPDOWN,
+                    animation: 'fadeIn 0.15s ease',
+                  })}
+                  sideOffset={8}
+                  align="end"
+                >
+                  {/* Go to Dashboard - when not on dashboard */}
+                  {!isOnDashboard && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={() => {
+                        window.location.href = `/practice/${student.id}/dashboard`
+                      }}
+                    >
+                      <span>📊</span>
+                      <span>Go to Dashboard</span>
+                    </DropdownMenu.Item>
+                  )}
+
+                  {/* Practice actions */}
+                  {actions.startPractice && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.startPractice}
+                    >
+                      <span>{ACTION_DEFINITIONS.startPractice.icon}</span>
+                      <span>{ACTION_DEFINITIONS.startPractice.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+
+                  {actions.watchSession && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.watchSession}
+                    >
+                      <span>{ACTION_DEFINITIONS.watchSession.icon}</span>
+                      <span>{ACTION_DEFINITIONS.watchSession.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+
+                  {/* Classroom section */}
+                  {(classrooms.enrolled.length > 0 || classrooms.current) && (
+                    <>
+                      <DropdownMenu.Separator className={separatorStyles(isDark)} />
+
+                      {/* If in a classroom, show presence + leave */}
+                      {classrooms.current && (
+                        <DropdownMenu.Item
+                          className={menuItemStyles(isDark)}
+                          onSelect={handlers.leaveClassroom}
+                          data-action="leave-classroom"
+                        >
+                          <span
+                            className={css({
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: 'green.500',
+                            })}
+                          />
+                          <span>In {classrooms.current.classroom.name} — Leave</span>
+                        </DropdownMenu.Item>
+                      )}
+
+                      {/* If not in classroom and has exactly 1 enrollment: direct action */}
+                      {!classrooms.current && classrooms.enrolled.length === 1 && (
+                        <DropdownMenu.Item
+                          className={menuItemStyles(isDark)}
+                          onSelect={handlers.enterClassroom}
+                          data-action="enter-classroom"
+                        >
+                          <span>🏫</span>
+                          <span>Enter {classrooms.enrolled[0].name}</span>
+                        </DropdownMenu.Item>
+                      )}
+
+                      {/* If not in classroom and has multiple enrollments: use submenu */}
+                      {!classrooms.current && classrooms.enrolled.length > 1 && (
+                        <DropdownMenu.Sub>
+                          <DropdownMenu.SubTrigger className={subTriggerStyles(isDark)}>
+                            <span>🏫</span>
+                            <span>Enter Classroom</span>
+                            <span className={css({ marginLeft: 'auto' })}>→</span>
+                          </DropdownMenu.SubTrigger>
+                          <DropdownMenu.Portal>
+                            <DropdownMenu.SubContent
+                              className={css({
+                                minWidth: '160px',
+                                backgroundColor: isDark ? 'gray.800' : 'white',
+                                borderRadius: '8px',
+                                border: '1px solid',
+                                borderColor: isDark ? 'gray.700' : 'gray.200',
+                                padding: '4px',
+                                boxShadow: 'lg',
+                                zIndex: Z_INDEX.DROPDOWN + 1,
+                              })}
+                              sideOffset={4}
+                            >
+                              {classrooms.enrolled.map((c) => (
+                                <DropdownMenu.Item
+                                  key={c.id}
+                                  className={menuItemStyles(isDark)}
+                                  onSelect={() => handlers.enterSpecificClassroom(c.id)}
+                                  data-action="enter-specific-classroom"
+                                >
+                                  {c.name}
+                                </DropdownMenu.Item>
+                              ))}
+                            </DropdownMenu.SubContent>
+                          </DropdownMenu.Portal>
+                        </DropdownMenu.Sub>
+                      )}
+
+                      {/* Enroll option */}
+                      <DropdownMenu.Item
+                        className={menuItemStyles(isDark)}
+                        onSelect={handlers.openEnrollModal}
+                        data-action="enroll-in-classroom"
+                      >
+                        <span>➕</span>
+                        <span>Enroll in Classroom</span>
+                      </DropdownMenu.Item>
+                    </>
+                  )}
+
+                  {/* Show enroll option even if no enrollments yet */}
+                  {classrooms.enrolled.length === 0 &&
+                    !classrooms.current &&
+                    actions.enrollInClassroom && (
+                      <DropdownMenu.Item
+                        className={menuItemStyles(isDark)}
+                        onSelect={handlers.openEnrollModal}
+                        data-action="enroll-in-classroom"
+                      >
+                        <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
+                        <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
+                      </DropdownMenu.Item>
+                    )}
+
+                  <DropdownMenu.Separator className={separatorStyles(isDark)} />
+
+                  {/* Management actions */}
+                  {actions.archive && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.toggleArchive}
+                    >
+                      <span>{ACTION_DEFINITIONS.archive.icon}</span>
+                      <span>{ACTION_DEFINITIONS.archive.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+
+                  {actions.unarchive && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.toggleArchive}
+                    >
+                      <span>{ACTION_DEFINITIONS.unarchive.icon}</span>
+                      <span>{ACTION_DEFINITIONS.unarchive.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+
+                  {actions.shareAccess && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.openShareAccess}
+                    >
+                      <span>{ACTION_DEFINITIONS.shareAccess.icon}</span>
+                      <span>{ACTION_DEFINITIONS.shareAccess.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           )}
         </div>
-      )}
 
-      {/* Nav Banner Slot - shown when not in session
+        {/* Game Break HUD - shown when student is on a game break */}
+        {isOnGameBreak && gameBreakHud && (
+          <div
+            data-section="game-break-hud"
+            className={css({
+              position: 'relative',
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: { base: '0.5rem', md: '1rem' },
+              overflow: 'hidden',
+            })}
+          >
+            {/* Progress bar that shrinks as time runs out */}
+            <div
+              data-element="game-break-progress-bar"
+              className={css({
+                position: 'absolute',
+                bottom: '-0.5rem',
+                left: 0,
+                right: 0,
+                height: '3px',
+                backgroundColor: isDark ? 'gray.800' : 'gray.300',
+                borderRadius: '2px',
+                overflow: 'hidden',
+              })}
+            >
+              <div
+                className={css({
+                  height: '100%',
+                  transition: 'width 0.5s linear, background-color 0.3s ease',
+                  borderRadius: '2px',
+                })}
+                style={{
+                  width: `${gameBreakPercentRemaining}%`,
+                  backgroundColor:
+                    gameBreakPercentRemaining > 50
+                      ? '#22c55e' // green
+                      : gameBreakPercentRemaining > 20
+                        ? '#eab308' // yellow
+                        : '#ef4444', // red
+                }}
+              />
+            </div>
+
+            {/* Game break label with emoji */}
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexShrink: 0,
+              })}
+            >
+              <span className={css({ fontSize: '1.25rem' })}>{gameBreakHud.gameIcon || '🎮'}</span>
+              <span
+                className={css({
+                  fontWeight: '600',
+                  fontSize: { base: '0.75rem', sm: '0.875rem' },
+                  color: isDark ? 'gray.200' : 'gray.700',
+                  display: { base: 'none', sm: 'inline' },
+                })}
+              >
+                {gameBreakHud.gameName || 'Game Break'}
+              </span>
+            </div>
+
+            {/* Timer display */}
+            <div
+              data-element="game-break-timer"
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: '0.25rem 0.5rem',
+                borderRadius: '6px',
+              })}
+              style={{
+                backgroundColor:
+                  gameBreakPercentRemaining > 30
+                    ? isDark
+                      ? 'rgba(34, 197, 94, 0.2)'
+                      : 'rgba(34, 197, 94, 0.1)'
+                    : isDark
+                      ? 'rgba(234, 179, 8, 0.2)'
+                      : 'rgba(234, 179, 8, 0.1)',
+              }}
+            >
+              <span className={css({ fontSize: '0.875rem' })}>⏱️</span>
+              <span
+                className={css({
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontWeight: '600',
+                  fontSize: '0.875rem',
+                })}
+                style={{
+                  color:
+                    gameBreakPercentRemaining > 30
+                      ? isDark
+                        ? '#86efac'
+                        : '#16a34a'
+                      : isDark
+                        ? '#fde047'
+                        : '#ca8a04',
+                }}
+              >
+                {gameBreakMinutes}:{gameBreakSeconds.toString().padStart(2, '0')}
+              </span>
+            </div>
+
+            {/* Back to Practice button */}
+            <button
+              type="button"
+              data-action="skip-game-break"
+              onClick={gameBreakHud.onSkip}
+              className={css({
+                padding: '0.375rem 0.75rem',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: isDark ? 'gray.300' : 'gray.600',
+                backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                _hover: {
+                  backgroundColor: isDark ? 'gray.600' : 'gray.300',
+                },
+              })}
+            >
+              Back to Practice →
+            </button>
+          </div>
+        )}
+
+        {/* Session HUD - takes full remaining width when in active session */}
+        {sessionHud && !isOnGameBreak && (
+          <div
+            data-section="session-hud"
+            className={css({
+              flex: 1,
+              minWidth: 0, // Allow shrinking below content size
+              display: 'flex',
+              alignItems: 'center',
+              gap: { base: '0.375rem', md: '0.75rem' },
+              overflow: 'hidden',
+            })}
+          >
+            {/* Browse mode toggle - prominent standalone button */}
+            <button
+              type="button"
+              data-action="toggle-browse"
+              data-active={sessionHud.isBrowseMode || undefined}
+              onClick={sessionHud.onToggleBrowse}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: '0.375rem 0.625rem',
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                borderRadius: '6px',
+                border: '1px solid',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+                // Active (browse mode on) styling
+                ...(sessionHud.isBrowseMode
+                  ? {
+                      color: isDark ? 'blue.200' : 'blue.700',
+                      backgroundColor: isDark ? 'blue.900/60' : 'blue.100',
+                      borderColor: isDark ? 'blue.700' : 'blue.300',
+                    }
+                  : {
+                      color: isDark ? 'gray.300' : 'gray.600',
+                      backgroundColor: isDark ? 'gray.800' : 'gray.50',
+                      borderColor: isDark ? 'gray.700' : 'gray.300',
+                    }),
+                _hover: sessionHud.isBrowseMode
+                  ? {
+                      backgroundColor: isDark ? 'blue.800/60' : 'blue.200',
+                    }
+                  : {
+                      backgroundColor: isDark ? 'gray.700' : 'white',
+                      borderColor: isDark ? 'gray.600' : 'gray.400',
+                    },
+              })}
+              aria-pressed={sessionHud.isBrowseMode}
+              aria-label={sessionHud.isBrowseMode ? 'Exit browse mode' : 'Enter browse mode'}
+            >
+              <span>🔍</span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>
+                {sessionHud.isBrowseMode ? 'Exit' : 'Browse'}
+              </span>
+            </button>
+
+            {/* Session controls dropdown (pause/end) */}
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  type="button"
+                  data-element="session-controls"
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.375rem 0.5rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '500',
+                    color: isDark ? 'gray.300' : 'gray.600',
+                    backgroundColor: isDark ? 'gray.800' : 'gray.50',
+                    borderRadius: '6px',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.300',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                    _hover: {
+                      backgroundColor: isDark ? 'gray.700' : 'white',
+                      borderColor: isDark ? 'gray.600' : 'gray.400',
+                    },
+                  })}
+                  aria-label="Session controls"
+                >
+                  {/* Status indicator */}
+                  <span>{sessionHud.isPaused ? '⏸' : '▶'}</span>
+                  <span
+                    className={css({
+                      fontSize: '0.5rem',
+                      color: isDark ? 'gray.500' : 'gray.400',
+                    })}
+                  >
+                    ▼
+                  </span>
+                </button>
+              </DropdownMenu.Trigger>
+
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  className={css({
+                    minWidth: '140px',
+                    backgroundColor: isDark ? 'gray.800' : 'white',
+                    borderRadius: '8px',
+                    padding: '0.375rem',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    border: '1px solid',
+                    borderColor: isDark ? 'gray.700' : 'gray.200',
+                    zIndex: 1000,
+                  })}
+                  sideOffset={5}
+                >
+                  {/* Play/Pause item */}
+                  <DropdownMenu.Item
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '4px',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      color: isDark ? 'gray.100' : 'gray.900',
+                      _hover: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      },
+                      _focus: {
+                        backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                      },
+                    })}
+                    onSelect={sessionHud.isPaused ? sessionHud.onResume : sessionHud.onPause}
+                  >
+                    <span>{sessionHud.isPaused ? '▶' : '⏸'}</span>
+                    <span>{sessionHud.isPaused ? 'Resume' : 'Pause'}</span>
+                  </DropdownMenu.Item>
+
+                  <DropdownMenu.Separator
+                    className={css({
+                      height: '1px',
+                      backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                      margin: '0.375rem 0',
+                    })}
+                  />
+
+                  {/* End session item */}
+                  <DropdownMenu.Item
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '4px',
+                      fontSize: '0.875rem',
+                      cursor: sessionHud.isEndingSession ? 'wait' : 'pointer',
+                      outline: 'none',
+                      color: isDark ? 'red.400' : 'red.600',
+                      opacity: sessionHud.isEndingSession ? 0.6 : 1,
+                      _hover: {
+                        backgroundColor: sessionHud.isEndingSession
+                          ? 'transparent'
+                          : isDark
+                            ? 'red.900/50'
+                            : 'red.50',
+                      },
+                      _focus: {
+                        backgroundColor: sessionHud.isEndingSession
+                          ? 'transparent'
+                          : isDark
+                            ? 'red.900/50'
+                            : 'red.50',
+                      },
+                    })}
+                    onSelect={(e) => {
+                      if (sessionHud.isEndingSession) {
+                        e.preventDefault() // Keep menu open while loading
+                        return
+                      }
+                      // Prevent menu from closing - we want to show the loading state
+                      e.preventDefault()
+                      sessionHud.onEndEarly()
+                    }}
+                    disabled={sessionHud.isEndingSession}
+                  >
+                    <span>{sessionHud.isEndingSession ? '⏳' : '⏹'}</span>
+                    <span>{sessionHud.isEndingSession ? 'Ending...' : 'End Session'}</span>
+                  </DropdownMenu.Item>
+
+                  {/* Observe session - for parents/teachers to open observation page */}
+                  {(viewerRelationship?.type === 'parent' ||
+                    viewerRelationship?.type === 'teacher') && (
+                    <>
+                      <DropdownMenu.Separator
+                        className={css({
+                          height: '1px',
+                          backgroundColor: isDark ? 'gray.700' : 'gray.200',
+                          margin: '0.375rem 0',
+                        })}
+                      />
+                      <DropdownMenu.Item
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          color: isDark ? 'blue.400' : 'blue.600',
+                          _hover: {
+                            backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                          },
+                          _focus: {
+                            backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
+                          },
+                        })}
+                        onSelect={() => {
+                          window.open(`/practice/${student.id}/observe`, '_blank')
+                        }}
+                      >
+                        <span>👁️</span>
+                        <span>Observe Session</span>
+                      </DropdownMenu.Item>
+                    </>
+                  )}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
+            {/* Session Progress Indicator - discrete problem slots */}
+            <div
+              data-element="progress-indicator"
+              className={css({
+                flex: 1,
+                minWidth: 0, // Allow shrinking
+              })}
+            >
+              <SessionProgressIndicator
+                parts={sessionHud.parts}
+                results={sessionHud.results}
+                currentPartIndex={sessionHud.currentPartIndex}
+                currentSlotIndex={sessionHud.currentSlotIndex}
+                isBrowseMode={sessionHud.isBrowseMode}
+                onNavigate={sessionHud.onBrowseNavigate}
+                onRedoProblem={sessionHud.onRedoProblem}
+                onCancelRedo={sessionHud.onCancelRedo}
+                redoLinearIndex={sessionHud.redoLinearIndex}
+                isDark={isDark}
+                compact={true}
+                gameBreakEnabled={gameBreakInfo?.enabled ?? false}
+              />
+            </div>
+
+            {/* Session Mood Indicator - unified timing + health display */}
+            {timingStats && (
+              <SessionMoodIndicator
+                currentElapsedMs={currentElapsedMs}
+                meanMs={timingStats.mean}
+                stdDevMs={timingStats.stdDev}
+                thresholdMs={timingStats.threshold}
+                hasEnoughData={timingStats.hasEnoughData}
+                problemsRemaining={sessionHud.totalProblems - sessionHud.completedProblems}
+                totalProblems={sessionHud.totalProblems}
+                recentResults={recentResults}
+                accuracy={sessionHud.sessionHealth?.accuracy ?? 1}
+                healthStatus={sessionHud.sessionHealth?.overall ?? 'good'}
+                isPaused={sessionHud.isPaused}
+                isDark={isDark}
+              />
+            )}
+
+            {/* Game Break Countdown Badge - shows problems until next game break */}
+            {gameBreakInfo && gameBreakInfo.problemsUntilBreak > 0 && (
+              <GameBreakCountdownBadge
+                problemsRemaining={gameBreakInfo.problemsUntilBreak}
+                isDark={isDark}
+                gameIcon={gameBreakInfo.gameIcon}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Nav Banner Slot - shown when not in session
           On dashboard/summary: receives projected banner when content banner scrolls out of view
           On other pages: shows compact banner directly */}
-      {!sessionHud && (
-        <NavBannerSlot
+        {!sessionHud && (
+          <NavBannerSlot
+            className={css({
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+            })}
+          />
+        )}
+      </div>
+
+      {/* Focus skill banner - shown during active sessions (not game breaks) */}
+      {showFocusBanner && (
+        <div
+          data-element="focus-skill-banner"
           className={css({
-            flex: 1,
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
+            gap: '1rem',
+            padding: '0.375rem 0.75rem',
+            borderTop: '1px solid',
+            borderColor: isDark ? 'gray.800' : 'gray.200',
+            backgroundColor: isDark ? 'gray.800/60' : 'gray.50',
+            fontSize: '1.0625rem',
+            fontWeight: '700',
+            fontFamily: 'var(--font-mono, monospace)',
+            color: isDark ? 'white' : 'gray.900',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           })}
-        />
+        >
+          {focusSkills.join('   ')}
+        </div>
       )}
 
       {/* Sub-modals for actions */}

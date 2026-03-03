@@ -36,10 +36,10 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 const mockRemediationMode = {
   type: 'remediation' as const,
-  weakSkills: [{ skillId: 'basic-add-1', displayName: 'Simple Addition', pKnown: 0.3 }],
+  weakSkills: [{ skillId: 'basic-add-1', displayName: 'Simple Addition', pKnown: 0.3, hasMathSentence: true }],
   focusDescription: 'Strengthening: Simple Addition',
   blockedPromotion: {
-    nextSkill: { skillId: 'five-complement-1', displayName: 'Five Complement', pKnown: 0 },
+    nextSkill: { skillId: 'five-complement-1', displayName: 'Five Complement', pKnown: 0, hasMathSentence: true },
     reason: 'Strengthen Simple Addition first',
     phase: { id: 'phase-2', primarySkillId: 'five-complement-1', displayName: 'Five Complement' },
     tutorialReady: false,
@@ -48,7 +48,7 @@ const mockRemediationMode = {
 
 const mockProgressionMode = {
   type: 'progression' as const,
-  nextSkill: { skillId: 'five-complement-1', displayName: 'Five Complement', pKnown: 0 },
+  nextSkill: { skillId: 'five-complement-1', displayName: 'Five Complement', pKnown: 0, hasMathSentence: true },
   phase: { id: 'phase-2', primarySkillId: 'five-complement-1', displayName: 'Five Complement' },
   tutorialRequired: true,
   skipCount: 0,

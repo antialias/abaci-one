@@ -16,7 +16,7 @@ const mockProgressionMode: SessionMode = {
   nextSkill: {
     skillId: 'heaven.5',
     displayName: '+5 (Heaven Bead)',
-    pKnown: 0,
+    pKnown: 0, hasMathSentence: true
   },
   phase: {
     id: 'level1-phase2',
@@ -32,8 +32,8 @@ const mockProgressionMode: SessionMode = {
 const mockRemediationMode: SessionMode = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'add.3', displayName: '+3', pKnown: 0.45 },
-    { skillId: 'add.4', displayName: '+4', pKnown: 0.52 },
+    { skillId: 'add.3', displayName: '+3', pKnown: 0.45, hasMathSentence: true },
+    { skillId: 'add.4', displayName: '+4', pKnown: 0.52, hasMathSentence: true },
   ],
   focusDescription: 'Strengthening +3, +4',
   blockedPromotion: undefined,

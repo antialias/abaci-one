@@ -234,7 +234,7 @@ const allSolidSkills: ProcessedSkill[] = [
 
 const mockProgressionSoftNudge: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
+  nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
   phase: {
     id: 'level1-phase2',
     name: 'Heaven Bead',
@@ -251,7 +251,7 @@ const mockMaintenanceDeferredPartial: SessionMode = {
   skillCount: 5,
   focusDescription: 'Mixed practice',
   deferredProgression: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
+    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
     readiness: {
       'add.3': {
         skillId: 'add.3',
@@ -278,7 +278,7 @@ const mockMaintenanceDeferredAllMet: SessionMode = {
   skillCount: 5,
   focusDescription: 'Mixed practice',
   deferredProgression: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
+    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
     readiness: {
       'add.3': {
         skillId: 'add.3',
@@ -304,12 +304,12 @@ const mockPureMaintenance: SessionMode = {
 const mockRemediationBlocked: SessionMode = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'add.3', displayName: '+3', pKnown: 0.45 },
-    { skillId: 'add.4', displayName: '+4', pKnown: 0.52 },
+    { skillId: 'add.3', displayName: '+3', pKnown: 0.45, hasMathSentence: true },
+    { skillId: 'add.4', displayName: '+4', pKnown: 0.52, hasMathSentence: true },
   ],
   focusDescription: 'Strengthen prerequisites to unlock +5',
   blockedPromotion: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0 },
+    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
     reason: 'Strengthen +3 and +4 first',
     phase: { id: 'level1-phase2', name: 'Heaven Bead', primarySkillId: 'heaven.5' } as any,
     tutorialReady: false,

@@ -121,7 +121,7 @@ afterEach(() => {
 
 const remediationMode: SessionMode = {
   type: 'remediation',
-  weakSkills: [{ skillId: 'basic.+3', displayName: '+3', pKnown: 0.35 }],
+  weakSkills: [{ skillId: 'basic.+3', displayName: '+3', pKnown: 0.35, hasMathSentence: true }],
   focusDescription: 'Strengthening +3',
 }
 

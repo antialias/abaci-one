@@ -30,6 +30,7 @@ import {
   type SkillReadinessResult,
 } from '@/lib/curriculum/skill-readiness'
 import { getActiveDeferral } from '@/lib/curriculum/progression-deferrals'
+import { skillHasMathSentence } from '@/constants/skillCategories'
 import { SKILL_TUTORIAL_CONFIGS, getSkillDisplayName } from './skill-tutorial-config'
 
 // ============================================================================
@@ -44,6 +45,8 @@ export interface SkillInfo {
   displayName: string
   /** P(known) from BKT, 0-1 */
   pKnown: number
+  /** Whether displayName is a concise math rule (e.g., "+4 = +5 - 1") suitable for the practice banner */
+  hasMathSentence: boolean
 }
 
 /**
@@ -155,6 +158,7 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
       skillId: s.skillId,
       displayName: getSkillDisplayName(s.skillId),
       pKnown: s.pKnown,
+      hasMathSentence: skillHasMathSentence(s.skillId),
     }))
 
   // 3. Find strong skills for maintenance mode counting
@@ -226,6 +230,7 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
           skillId: nextSkillInfo.skillId,
           displayName: nextSkillDisplay,
           pKnown: 0, // Not yet practiced
+          hasMathSentence: skillHasMathSentence(nextSkillInfo.skillId),
         },
         reason: `Strengthen ${weakSkillNames.slice(0, 2).join(' and ')} first`,
         phase: nextSkillInfo.phase,
@@ -247,6 +252,7 @@ export async function getSessionMode(playerId: string): Promise<SessionMode> {
       skillId: nextSkillInfo.skillId,
       displayName: nextSkillDisplay,
       pKnown: 0, // Not yet practiced
+      hasMathSentence: skillHasMathSentence(nextSkillInfo.skillId),
     }
 
     // Gate: only offer progression if ALL practicing skills are solid (all 4 dimensions met)

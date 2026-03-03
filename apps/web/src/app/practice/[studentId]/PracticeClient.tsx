@@ -66,6 +66,7 @@ import {
 } from '@/hooks/useSessionPlan'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSaveGameResult } from '@/hooks/useGameResults'
+import { useSessionMode } from '@/hooks/useSessionMode'
 import { useSessionSongTrigger } from '@/hooks/useSessionSongTrigger'
 import { BroadcastDebugPanel } from '@/components/debug/BroadcastDebugPanel'
 import { css } from '../../../../styled-system/css'
@@ -647,6 +648,25 @@ export function PracticeClient({
   // Session song smart trigger — fires when conditions are met mid-session
   useSessionSongTrigger({ studentId, plan: currentPlan, songEnabled })
 
+  // Focus skill banner — show the math rule(s) the student is working on
+  const { data: sessionModeData } = useSessionMode(studentId)
+  const focusSkills = useMemo((): string[] | undefined => {
+    if (!sessionModeData) return undefined
+    const mode = sessionModeData.sessionMode
+    switch (mode.type) {
+      case 'progression':
+        return mode.nextSkill.hasMathSentence ? [mode.nextSkill.displayName] : undefined
+      case 'remediation': {
+        const mathSkills = mode.weakSkills
+          .filter((s) => s.hasMathSentence)
+          .map((s) => s.displayName)
+        return mathSkills.length > 0 ? mathSkills : undefined
+      }
+      case 'maintenance':
+        return undefined
+    }
+  }, [sessionModeData])
+
   // Track whether we've started vision recording for this session
   const hasStartedRecordingRef = useRef(false)
   // Track previous problem number to detect when new problems appear
@@ -874,6 +894,7 @@ export function PracticeClient({
         pageContext="session"
         sessionHud={sessionHud}
         gameBreakHud={gameBreakHud}
+        focusSkills={focusSkills}
       />
 
       <main
@@ -882,8 +903,8 @@ export function PracticeClient({
           userSelect: 'none',
           // Fixed positioning to precisely control bounds
           position: 'fixed',
-          // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop)
-          top: { base: '132px', md: '140px' },
+          // Top: main nav (80px) + sub-nav height (~52px mobile, ~60px desktop) + optional focus banner (~24px)
+          top: focusSkills ? { base: '156px', md: '164px' } : { base: '132px', md: '140px' },
           left: 0,
           // Right: 0 by default, landscape mobile handled via media query below
           right: 0,

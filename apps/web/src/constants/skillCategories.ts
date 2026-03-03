@@ -11,6 +11,8 @@
 export const SKILL_CATEGORIES = {
   advanced: {
     name: 'Advanced Multi-Column Operations',
+    /** Whether skill display names are concise math rules suitable for the practice banner */
+    hasMathSentence: false,
     skills: {
       cascadingCarry: 'Cascading Carry (e.g., 999 + 1 = 1000)',
       cascadingBorrow: 'Cascading Borrow (e.g., 1000 - 1 = 999)',
@@ -18,6 +20,7 @@ export const SKILL_CATEGORIES = {
   },
   tenComplementsSub: {
     name: 'Ten Complements (Subtraction)',
+    hasMathSentence: true,
     skills: {
       '-9=+1-10': '-9 = +1 - 10',
       '-8=+2-10': '-8 = +2 - 10',
@@ -32,6 +35,7 @@ export const SKILL_CATEGORIES = {
   },
   tenComplements: {
     name: 'Ten Complements (Addition)',
+    hasMathSentence: true,
     skills: {
       '9=10-1': '+9 = +10 - 1',
       '8=10-2': '+8 = +10 - 2',
@@ -46,6 +50,7 @@ export const SKILL_CATEGORIES = {
   },
   fiveComplementsSub: {
     name: 'Five Complements (Subtraction)',
+    hasMathSentence: true,
     skills: {
       '-4=-5+1': '-4 = -5 + 1',
       '-3=-5+2': '-3 = -5 + 2',
@@ -55,6 +60,7 @@ export const SKILL_CATEGORIES = {
   },
   fiveComplements: {
     name: 'Five Complements (Addition)',
+    hasMathSentence: true,
     skills: {
       '4=5-1': '+4 = +5 - 1',
       '3=5-2': '+3 = +5 - 2',
@@ -64,6 +70,7 @@ export const SKILL_CATEGORIES = {
   },
   basic: {
     name: 'Basic Skills',
+    hasMathSentence: false,
     skills: {
       directAddition: 'Direct Addition (1-4)',
       heavenBead: 'Heaven Bead (5)',
@@ -137,4 +144,14 @@ export function getCategorySkillIds(category: SkillCategoryKey): string[] {
  */
 export function getCategoryDisplayName(category: SkillCategoryKey): string {
   return SKILL_CATEGORIES[category].name
+}
+
+/**
+ * Check if a skill's display name is a concise math sentence (e.g., "+4 = +5 - 1")
+ * suitable for showing in the practice focus banner.
+ */
+export function skillHasMathSentence(skillId: string): boolean {
+  const category = getSkillCategory(skillId)
+  if (!category) return false
+  return SKILL_CATEGORIES[category].hasMathSentence
 }

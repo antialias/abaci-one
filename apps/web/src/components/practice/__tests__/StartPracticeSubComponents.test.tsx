@@ -131,7 +131,7 @@ const mockPhase: CurriculumPhase = {
 // Default session mode for tests
 const defaultSessionMode: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'test-skill', displayName: 'Test Skill', pKnown: 0.8 },
+  nextSkill: { skillId: 'test-skill', displayName: 'Test Skill', pKnown: 0.8, hasMathSentence: true },
   tutorialRequired: false,
   phase: mockPhase,
   skipCount: 0,
@@ -144,7 +144,7 @@ const tutorialSessionMode: SessionMode = {
   nextSkill: {
     skillId: 'skill-with-tutorial',
     displayName: 'Skill With Tutorial',
-    pKnown: 0.8,
+    pKnown: 0.8, hasMathSentence: true
   },
   tutorialRequired: true,
   phase: mockPhase,
@@ -156,8 +156,8 @@ const tutorialSessionMode: SessionMode = {
 const remediationSessionMode: SessionMode = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'weak1', displayName: 'Weak Skill 1', pKnown: 0.3 },
-    { skillId: 'weak2', displayName: 'Weak Skill 2', pKnown: 0.4 },
+    { skillId: 'weak1', displayName: 'Weak Skill 1', pKnown: 0.3, hasMathSentence: true },
+    { skillId: 'weak2', displayName: 'Weak Skill 2', pKnown: 0.4, hasMathSentence: true },
   ],
   focusDescription: 'Strengthening weak skills',
 }
@@ -481,7 +481,7 @@ describe('SessionFocusInfo', () => {
   it('should show progression-no-tutorial fallback when no tutorial config', () => {
     const progressionNoTutorial: SessionMode = {
       type: 'progression',
-      nextSkill: { skillId: 'no-tutorial-skill', displayName: 'No Tutorial Skill', pKnown: 0.8 },
+      nextSkill: { skillId: 'no-tutorial-skill', displayName: 'No Tutorial Skill', pKnown: 0.8, hasMathSentence: true },
       tutorialRequired: false,
       phase: mockPhase,
       skipCount: 0,

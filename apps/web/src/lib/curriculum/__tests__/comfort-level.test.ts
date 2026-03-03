@@ -31,7 +31,7 @@ function makeSessionMode(type: 'remediation' | 'progression' | 'maintenance'): S
   if (type === 'progression') {
     return {
       type: 'progression' as const,
-      nextSkill: { skillId: 'x', displayName: 'x', pKnown: 0.5 },
+      nextSkill: { skillId: 'x', displayName: 'x', pKnown: 0.5, hasMathSentence: true },
       phase: 'basic-addition' as any,
       focusDescription: '',
       tutorialRequired: false,

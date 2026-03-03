@@ -15,15 +15,15 @@ import { SessionModeBanner } from './SessionModeBanner'
 const mockRemediationMode: RemediationMode = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'add-3', displayName: '+3', pKnown: 0.35 },
-    { skillId: 'sub-5-complement-2', displayName: '+5 - 2', pKnown: 0.42 },
+    { skillId: 'add-3', displayName: '+3', pKnown: 0.35, hasMathSentence: true },
+    { skillId: 'sub-5-complement-2', displayName: '+5 - 2', pKnown: 0.42, hasMathSentence: true },
   ],
   focusDescription: 'Strengthening: +3 and +5 - 2',
   blockedPromotion: {
     nextSkill: {
       skillId: 'sub-5-complement-4',
       displayName: '+5 - 4',
-      pKnown: 0,
+      pKnown: 0, hasMathSentence: true
     },
     reason: 'Strengthen +3 and +5 - 2 first',
     phase: {
@@ -45,9 +45,9 @@ const mockRemediationMode: RemediationMode = {
 const mockRemediationModeNoBlockedPromotion: RemediationMode = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'add-3', displayName: '+3', pKnown: 0.28 },
-    { skillId: 'add-4', displayName: '+4', pKnown: 0.31 },
-    { skillId: 'sub-5-complement-2', displayName: '+5 - 2', pKnown: 0.38 },
+    { skillId: 'add-3', displayName: '+3', pKnown: 0.28, hasMathSentence: true },
+    { skillId: 'add-4', displayName: '+4', pKnown: 0.31, hasMathSentence: true },
+    { skillId: 'sub-5-complement-2', displayName: '+5 - 2', pKnown: 0.38, hasMathSentence: true },
   ],
   focusDescription: 'Strengthening: +3, +4, +5 - 2',
 }
@@ -57,7 +57,7 @@ const mockProgressionModeWithTutorial: ProgressionMode = {
   nextSkill: {
     skillId: 'sub-5-complement-4',
     displayName: '+5 - 4',
-    pKnown: 0,
+    pKnown: 0, hasMathSentence: true
   },
   phase: {
     id: 'L1.sub.-4.five',
@@ -79,7 +79,7 @@ const mockProgressionModeWithTutorial: ProgressionMode = {
 
 const mockProgressionModeNoTutorial: ProgressionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'add-4', displayName: '+4', pKnown: 0 },
+  nextSkill: { skillId: 'add-4', displayName: '+4', pKnown: 0, hasMathSentence: true },
   phase: {
     id: 'L1.add.+4.direct',
     levelId: 1,
@@ -486,11 +486,11 @@ export const RemediationManyWeakSkills: Story = {
     sessionMode: {
       type: 'remediation',
       weakSkills: [
-        { skillId: 'add-1', displayName: '+1', pKnown: 0.25 },
-        { skillId: 'add-2', displayName: '+2', pKnown: 0.28 },
-        { skillId: 'add-3', displayName: '+3', pKnown: 0.31 },
-        { skillId: 'add-4', displayName: '+4', pKnown: 0.35 },
-        { skillId: 'sub-5-complement-1', displayName: '+5 - 1', pKnown: 0.38 },
+        { skillId: 'add-1', displayName: '+1', pKnown: 0.25, hasMathSentence: true },
+        { skillId: 'add-2', displayName: '+2', pKnown: 0.28, hasMathSentence: true },
+        { skillId: 'add-3', displayName: '+3', pKnown: 0.31, hasMathSentence: true },
+        { skillId: 'add-4', displayName: '+4', pKnown: 0.35, hasMathSentence: true },
+        { skillId: 'sub-5-complement-1', displayName: '+5 - 1', pKnown: 0.38, hasMathSentence: true },
       ],
       focusDescription: 'Strengthening: +1, +2, +3 +2 more',
     } satisfies RemediationMode,
@@ -503,10 +503,10 @@ export const RemediationAlmostDone: Story = {
   args: {
     sessionMode: {
       type: 'remediation',
-      weakSkills: [{ skillId: 'add-3', displayName: '+3', pKnown: 0.48 }],
+      weakSkills: [{ skillId: 'add-3', displayName: '+3', pKnown: 0.48, hasMathSentence: true }],
       focusDescription: 'Strengthening: +3',
       blockedPromotion: {
-        nextSkill: { skillId: 'add-4', displayName: '+4', pKnown: 0 },
+        nextSkill: { skillId: 'add-4', displayName: '+4', pKnown: 0, hasMathSentence: true },
         reason: 'Strengthen +3 first',
         phase: {
           id: 'L1.add.+4.direct',
@@ -610,7 +610,7 @@ const mockMaintenanceModeWithDeferred: MaintenanceMode = {
     nextSkill: {
       skillId: 'sub-5-complement-4',
       displayName: '+5 - 4',
-      pKnown: 0,
+      pKnown: 0, hasMathSentence: true
     },
     readiness: mockDeferredReadinessAllMet,
     phase: {
@@ -636,7 +636,7 @@ const mockMaintenanceModeWithDeferredPartial: MaintenanceMode = {
     nextSkill: {
       skillId: 'sub-5-complement-4',
       displayName: '+5 - 4',
-      pKnown: 0,
+      pKnown: 0, hasMathSentence: true
     },
     readiness: mockDeferredReadinessPartial,
     phase: {

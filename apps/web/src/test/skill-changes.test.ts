@@ -233,7 +233,7 @@ describe('formatSkillChanges', () => {
 
   it('formats weak skills message', () => {
     const changes: SkillChanges = {
-      newWeakSkills: [{ skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3 }],
+      newWeakSkills: [{ skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3, hasMathSentence: true }],
       newPracticingSkills: [],
       removedSkills: [],
       masteredSkills: [],
@@ -250,8 +250,8 @@ describe('formatSkillChanges', () => {
   it('formats plural weak skills correctly', () => {
     const changes: SkillChanges = {
       newWeakSkills: [
-        { skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3 },
-        { skillId: 'skill-b', displayName: 'Skill B', pKnown: 0.2 },
+        { skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3, hasMathSentence: true },
+        { skillId: 'skill-b', displayName: 'Skill B', pKnown: 0.2, hasMathSentence: true },
       ],
       newPracticingSkills: [],
       removedSkills: [],
@@ -312,7 +312,7 @@ describe('formatSkillChanges', () => {
 
   it('formats all change types together', () => {
     const changes: SkillChanges = {
-      newWeakSkills: [{ skillId: 'w1', displayName: 'Weak 1', pKnown: 0.3 }],
+      newWeakSkills: [{ skillId: 'w1', displayName: 'Weak 1', pKnown: 0.3, hasMathSentence: true }],
       newPracticingSkills: ['new1'],
       removedSkills: ['rem1'],
       masteredSkills: ['mas1'],

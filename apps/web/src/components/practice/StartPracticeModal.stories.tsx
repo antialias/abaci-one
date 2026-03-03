@@ -127,7 +127,7 @@ const mockMaintenanceMode: MaintenanceMode = {
 
 const mockProgressionMode: ProgressionModeType = {
   type: 'progression',
-  nextSkill: { skillId: 'add-5', displayName: '+5', pKnown: 0 },
+  nextSkill: { skillId: 'add-5', displayName: '+5', pKnown: 0, hasMathSentence: true },
   phase: {
     id: 'L1.add.+5.direct',
     levelId: 1,
@@ -149,27 +149,27 @@ const mockProgressionMode: ProgressionModeType = {
 const mockRemediationMode: RemediationModeType = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'add-3', displayName: '+3', pKnown: 0.35 },
-    { skillId: 'add-4', displayName: '+4', pKnown: 0.42 },
+    { skillId: 'add-3', displayName: '+3', pKnown: 0.35, hasMathSentence: true },
+    { skillId: 'add-4', displayName: '+4', pKnown: 0.42, hasMathSentence: true },
   ],
   focusDescription: 'Strengthening: +3 and +4',
 }
 
 const mockRemediationModeSingleSkill: RemediationModeType = {
   type: 'remediation',
-  weakSkills: [{ skillId: 'add-2', displayName: '+2', pKnown: 0.28 }],
+  weakSkills: [{ skillId: 'add-2', displayName: '+2', pKnown: 0.28, hasMathSentence: true }],
   focusDescription: 'Strengthening: +2',
 }
 
 const mockRemediationModeManySkills: RemediationModeType = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'add-1', displayName: '+1', pKnown: 0.31 },
-    { skillId: 'add-2', displayName: '+2', pKnown: 0.38 },
-    { skillId: 'add-3', displayName: '+3', pKnown: 0.25 },
-    { skillId: 'add-4', displayName: '+4', pKnown: 0.42 },
-    { skillId: 'sub-1', displayName: '-1', pKnown: 0.33 },
-    { skillId: 'sub-2', displayName: '-2', pKnown: 0.29 },
+    { skillId: 'add-1', displayName: '+1', pKnown: 0.31, hasMathSentence: true },
+    { skillId: 'add-2', displayName: '+2', pKnown: 0.38, hasMathSentence: true },
+    { skillId: 'add-3', displayName: '+3', pKnown: 0.25, hasMathSentence: true },
+    { skillId: 'add-4', displayName: '+4', pKnown: 0.42, hasMathSentence: true },
+    { skillId: 'sub-1', displayName: '-1', pKnown: 0.33, hasMathSentence: true },
+    { skillId: 'sub-2', displayName: '-2', pKnown: 0.29, hasMathSentence: true },
   ],
   focusDescription: 'Strengthening: +1, +2, +3, +4, -1, -2',
 }
