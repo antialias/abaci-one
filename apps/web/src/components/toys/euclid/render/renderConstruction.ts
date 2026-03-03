@@ -5,6 +5,7 @@ import type {
   StraightedgePhase,
   IntersectionCandidate,
 } from '../types'
+import type { PostCompletionAction } from '../engine/replayConstruction'
 import { BYRNE } from '../types'
 import {
   getAllPoints,
@@ -57,7 +58,8 @@ export function renderConstruction(
   resultSegments?: Array<{ fromId: string; toId: string }>,
   hiddenElementIds?: Set<string>,
   transparentBg?: boolean,
-  draggablePointIds?: string[]
+  draggablePointIds?: string[],
+  postCompletionActions?: PostCompletionAction[]
 ) {
   const ppu = viewport.pixelsPerUnit
 
@@ -167,6 +169,14 @@ export function renderConstruction(
     const RIPPLE_MAX_RADIUS = 22 // max ring radius (screen px)
     const STAGGER_PER_POINT = 0.3 // seconds offset between points
 
+    // Build a lookup for extend actions so we can draw rail lines
+    const extendActions = new Map<string, { baseId: string; throughId: string }>()
+    if (postCompletionActions) {
+      for (const a of postCompletionActions) {
+        if (a.type === 'extend') extendActions.set(a.pointId, { baseId: a.baseId, throughId: a.throughId })
+      }
+    }
+
     for (let ptIdx = 0; ptIdx < draggablePointIds.length; ptIdx++) {
       const ptId = draggablePointIds[ptIdx]
       const pt = getPoint(state, ptId)
@@ -174,19 +184,83 @@ export function renderConstruction(
       if (hiddenElementIds?.has(ptId)) continue
       const sp = toScreen(pt.x, pt.y, viewport, w, h)
 
-      for (let ring = 0; ring < RIPPLE_COUNT; ring++) {
-        // Stagger rings within a point + stagger between points
-        const offset = ring / RIPPLE_COUNT + (ptIdx * STAGGER_PER_POINT) / RIPPLE_PERIOD
-        const t = (time / RIPPLE_PERIOD + offset) % 1 // 0→1 phase
-        const radius = POINT_RADIUS + t * RIPPLE_MAX_RADIUS
-        // Fade out as ring expands: bright at birth, gone at max radius
-        const alpha = 0.5 * (1 - t)
+      const extendInfo = extendActions.get(ptId)
+      const isExtendPt = pt.origin === 'extend' && extendInfo != null
 
-        ctx.beginPath()
-        ctx.arc(sp.x, sp.y, radius, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(78, 121, 167, ${alpha})`
-        ctx.lineWidth = 2
-        ctx.stroke()
+      if (isExtendPt) {
+        // ── Rail line: dashed line along the ray through the extend point ──
+        const basePt = getPoint(state, extendInfo.baseId)
+        const throughPt = getPoint(state, extendInfo.throughId)
+        if (basePt && throughPt) {
+          const dx = throughPt.x - basePt.x
+          const dy = throughPt.y - basePt.y
+          const len = Math.sqrt(dx * dx + dy * dy)
+          if (len > 0.001) {
+            // Draw rail from throughPt to well past the extend point
+            const throughSp = toScreen(throughPt.x, throughPt.y, viewport, w, h)
+            const railLength = 60 // px beyond the extend point
+            // Use screen-space direction (world→screen may flip Y)
+            const sdx = sp.x - throughSp.x
+            const sdy = sp.y - throughSp.y
+            const slen = Math.sqrt(sdx * sdx + sdy * sdy)
+            if (slen > 1) {
+              const snx = sdx / slen
+              const sny = sdy / slen
+
+              ctx.save()
+              ctx.setLineDash([5, 4])
+              ctx.beginPath()
+              ctx.moveTo(throughSp.x, throughSp.y)
+              ctx.lineTo(sp.x + snx * railLength, sp.y + sny * railLength)
+              ctx.strokeStyle = 'rgba(225, 87, 89, 0.3)' // Byrne red, subtle
+              ctx.lineWidth = 1.5
+              ctx.stroke()
+              ctx.setLineDash([])
+              ctx.restore()
+
+              // Small arrowhead at the far end of the rail
+              const arrowX = sp.x + snx * railLength
+              const arrowY = sp.y + sny * railLength
+              const arrowSize = 5
+              ctx.beginPath()
+              ctx.moveTo(arrowX, arrowY)
+              ctx.lineTo(arrowX - snx * arrowSize + sny * arrowSize * 0.5, arrowY - sny * arrowSize - snx * arrowSize * 0.5)
+              ctx.moveTo(arrowX, arrowY)
+              ctx.lineTo(arrowX - snx * arrowSize - sny * arrowSize * 0.5, arrowY - sny * arrowSize + snx * arrowSize * 0.5)
+              ctx.strokeStyle = 'rgba(225, 87, 89, 0.35)'
+              ctx.lineWidth = 1.5
+              ctx.stroke()
+            }
+          }
+        }
+
+        // ── Extend point ripples: Byrne red instead of blue ──
+        for (let ring = 0; ring < RIPPLE_COUNT; ring++) {
+          const offset = ring / RIPPLE_COUNT + (ptIdx * STAGGER_PER_POINT) / RIPPLE_PERIOD
+          const t = (time / RIPPLE_PERIOD + offset) % 1
+          const radius = POINT_RADIUS + t * RIPPLE_MAX_RADIUS
+          const alpha = 0.5 * (1 - t)
+
+          ctx.beginPath()
+          ctx.arc(sp.x, sp.y, radius, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(225, 87, 89, ${alpha})` // Byrne red: #E15759
+          ctx.lineWidth = 2
+          ctx.stroke()
+        }
+      } else {
+        // ── Standard draggable point: blue ripple rings ──
+        for (let ring = 0; ring < RIPPLE_COUNT; ring++) {
+          const offset = ring / RIPPLE_COUNT + (ptIdx * STAGGER_PER_POINT) / RIPPLE_PERIOD
+          const t = (time / RIPPLE_PERIOD + offset) % 1
+          const radius = POINT_RADIUS + t * RIPPLE_MAX_RADIUS
+          const alpha = 0.5 * (1 - t)
+
+          ctx.beginPath()
+          ctx.arc(sp.x, sp.y, radius, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(78, 121, 167, ${alpha})` // Byrne blue: #4E79A7
+          ctx.lineWidth = 2
+          ctx.stroke()
+        }
       }
     }
   }

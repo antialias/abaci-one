@@ -36,6 +36,8 @@ export type PostCompletionAction =
   | { type: 'macro'; propId: number; inputPointIds: string[]; atStep: number }
   /** A user-placed free point (playground mode). Dragging updates x/y in place. */
   | { type: 'free-point'; id: string; label: string; x: number; y: number }
+  /** Post.2 extend: new point + segment beyond an existing segment endpoint */
+  | { type: 'extend'; baseId: string; throughId: string; pointId: string; segmentId: string; distance: number }
 
 export interface ReplayResult {
   state: ConstructionState
@@ -349,6 +351,28 @@ export function replayConstruction(
       } else if (action.type === 'free-point') {
         const result = addPoint(state, action.x, action.y, 'free', action.label)
         state = result.state
+      } else if (action.type === 'extend') {
+        // Replay extend: re-derive point position from base/through + stored distance
+        const basePt = getPoint(state, action.baseId)
+        const throughPt = getPoint(state, action.throughId)
+        if (basePt && throughPt) {
+          const dx = throughPt.x - basePt.x
+          const dy = throughPt.y - basePt.y
+          const len = Math.sqrt(dx * dx + dy * dy)
+          if (len > 0.001) {
+            const dirX = dx / len
+            const dirY = dy / len
+            const newX = throughPt.x + dirX * action.distance
+            const newY = throughPt.y + dirY * action.distance
+            const ptResult = addPoint(state, newX, newY, 'extend')
+            state = ptResult.state
+            const segResult = addSegment(state, action.throughId, ptResult.point.id)
+            state = segResult.state
+            const ptCands = findNewIntersections(state, ptResult.point, candidates, true)
+            const segCands = findNewIntersections(state, segResult.segment, [...candidates, ...ptCands], true)
+            candidates = [...candidates, ...ptCands, ...segCands]
+          }
+        }
       }
     }
   }

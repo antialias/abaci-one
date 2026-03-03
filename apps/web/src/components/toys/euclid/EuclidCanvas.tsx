@@ -1395,7 +1395,7 @@ function EuclidCanvasInner({
       const draggableSet = new Set(prop.draggablePointIds ?? [])
       for (const el of constructionRef.current.elements) {
         if (el.kind !== 'point') continue
-        if (draggableSet.has(el.id) || el.origin === 'free') {
+        if (draggableSet.has(el.id) || el.origin === 'free' || el.origin === 'extend') {
           initialPositions.set(el.id, { x: el.x, y: el.y })
         }
       }
@@ -1625,7 +1625,6 @@ function EuclidCanvasInner({
       const toolLabels: Record<string, string> = {
         compass: 'Compass',
         straightedge: 'Straightedge',
-        extend: 'Straightedge',
         macro: 'Proposition',
       }
       const label = toolLabels[stepDef.tool] ?? stepDef.tool
@@ -1935,15 +1934,13 @@ function EuclidCanvasInner({
   )
 
   const handleCommitExtend = useCallback(
-    (baseId: string, throughId: string, _projX: number, _projY: number) => {
+    (baseId: string, throughId: string, projX: number, projY: number) => {
       const step = currentStepRef.current
-      if (step >= steps.length) return
-      const expected = steps[step].expected
-      if (expected.type !== 'extend') return
+      const isGuidedExtend =
+        step < steps.length && steps[step].expected.type === 'extend'
 
-      // Use expected.distance along the ray (student click determines direction only)
-      const basePt = getPoint(constructionRef.current, expected.baseId)
-      const throughPt = getPoint(constructionRef.current, expected.throughId)
+      const basePt = getPoint(constructionRef.current, baseId)
+      const throughPt = getPoint(constructionRef.current, throughId)
       if (!basePt || !throughPt) return
 
       const dx = throughPt.x - basePt.x
@@ -1951,15 +1948,30 @@ function EuclidCanvasInner({
       const len = Math.sqrt(dx * dx + dy * dy)
       if (len < 0.001) return
 
-      const dirX = dx / len
-      const dirY = dy / len
-      const newX = throughPt.x + dirX * expected.distance
-      const newY = throughPt.y + dirY * expected.distance
+      let newX: number, newY: number, label: string | undefined
+      if (isGuidedExtend) {
+        const expected = steps[step].expected as Extract<
+          (typeof steps)[number]['expected'],
+          { type: 'extend' }
+        >
+        // Guided: use expected.distance along the ray
+        const dirX = dx / len
+        const dirY = dy / len
+        newX = throughPt.x + dirX * expected.distance
+        newY = throughPt.y + dirY * expected.distance
+        label = expected.label
+      } else {
+        // Free-form: use the actual projected cursor position
+        newX = projX
+        newY = projY
+      }
 
-      const ptResult = addPoint(constructionRef.current, newX, newY, 'intersection', expected.label)
+      // Free-form extends get 'extend' origin (draggable); guided keeps 'intersection'
+      const ptOrigin = isGuidedExtend ? 'intersection' : 'extend'
+      const ptResult = addPoint(constructionRef.current, newX, newY, ptOrigin, label)
       constructionRef.current = ptResult.state
 
-      const segResult = addSegment(constructionRef.current, expected.throughId, ptResult.point.id)
+      const segResult = addSegment(constructionRef.current, throughId, ptResult.point.id)
       constructionRef.current = segResult.state
 
       const ptCands = findNewIntersections(
@@ -1976,17 +1988,39 @@ function EuclidCanvasInner({
       )
       candidatesRef.current = [...candidatesRef.current, ...ptCands, ...segCands]
 
-      checkStep(ptResult.point)
+      if (isGuidedExtend) {
+        checkStep(ptResult.point)
+      }
       requestDraw()
 
       const throughLabel =
-        getPoint(constructionRef.current, expected.throughId)?.label ??
-        expected.throughId.replace(/^pt-/, '')
+        getPoint(constructionRef.current, throughId)?.label ??
+        throughId.replace(/^pt-/, '')
       const newLabel = ptResult.point.label
       notifierRef.current.notifyConstruction({
         action: `Extended line through ${throughLabel} to new point ${newLabel}`,
         shouldPrompt: true,
       })
+
+      // Record in post-completion actions for free-form extends
+      if (!isGuidedExtend) {
+        // Compute distance from throughPt to the new point along the ray
+        const eDx = newX - throughPt.x
+        const eDy = newY - throughPt.y
+        const extendDistance = Math.sqrt(eDx * eDx + eDy * eDy)
+
+        postCompletionActionsRef.current = [
+          ...postCompletionActionsRef.current,
+          {
+            type: 'extend' as const,
+            baseId,
+            throughId,
+            pointId: ptResult.point.id,
+            segmentId: segResult.segment.id,
+            distance: extendDistance,
+          },
+        ]
+      }
     },
     [steps, checkStep, requestDraw, extendSegments]
   )
@@ -3545,17 +3579,18 @@ function EuclidCanvasInner({
             complete
               ? playgroundMode
                 ? getAllPoints(drawState)
-                    .filter((pt) => pt.origin === 'given' || pt.origin === 'free')
+                    .filter((pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend')
                     .map((pt) => pt.id)
                 : proposition.draggablePointIds
-              : undefined
+              : undefined,
+            complete ? postCompletionActionsRef.current : undefined
           )
 
           // Keep redrawing while ripple rings are visible so they animate
           if (
             complete &&
             (playgroundMode
-              ? getAllPoints(drawState).some((pt) => pt.origin === 'given' || pt.origin === 'free')
+              ? getAllPoints(drawState).some((pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend')
               : proposition.draggablePointIds?.length)
           ) {
             needsDrawRef.current = true
@@ -3851,11 +3886,9 @@ function EuclidCanvasInner({
             cursor:
               activeTool === 'move'
                 ? undefined // drag hook manages grab/grabbing cursor
-                : activeTool === 'extend'
+                : activeTool === 'macro' && macroPhase.tag !== 'selecting'
                   ? undefined
-                  : activeTool === 'macro' && macroPhase.tag !== 'selecting'
-                    ? undefined
-                    : 'none',
+                  : 'none',
           }}
         />
 

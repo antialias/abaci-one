@@ -10,7 +10,7 @@ import type {
 import type { FactStore } from '../engine/factStore'
 import type { IntersectionCandidate } from '../types'
 import type { PostCompletionAction, ReplayResult } from '../engine/replayConstruction'
-import { getAllPoints } from '../engine/constructionState'
+import { getAllPoints, getPoint } from '../engine/constructionState'
 import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
 import { replayConstruction } from '../engine/replayConstruction'
 
@@ -115,8 +115,8 @@ export function useDragGivenPoints({
       let bestDist = Infinity
 
       for (const pt of getAllPoints(state)) {
-        // Include given draggable points and user-placed free points
-        if (!draggableSet.has(pt.id) && pt.origin !== 'free') continue
+        // Include given draggable points, user-placed free points, and extend points
+        if (!draggableSet.has(pt.id) && pt.origin !== 'free' && pt.origin !== 'extend') continue
         const s = worldToScreen2D(
           pt.x,
           pt.y,
@@ -201,11 +201,41 @@ export function useDragGivenPoints({
             a.type === 'free-point' && a.id === dragPointId ? { ...a, x: world.x, y: world.y } : a
           )
           postCompletionActionsRef.current = actions
+        } else if (draggedPt?.origin === 'extend') {
+          // Ray-constrained drag: project cursor onto the ray and update distance
+          const extendAction = actions.find(
+            (a) => a.type === 'extend' && a.pointId === dragPointId
+          )
+          if (extendAction && extendAction.type === 'extend') {
+            const basePt = getPoint(constructionRef.current, extendAction.baseId)
+            const throughPt = getPoint(constructionRef.current, extendAction.throughId)
+            if (basePt && throughPt) {
+              const dx = throughPt.x - basePt.x
+              const dy = throughPt.y - basePt.y
+              const len = Math.sqrt(dx * dx + dy * dy)
+              if (len > 0.001) {
+                const dirX = dx / len
+                const dirY = dy / len
+                // Project cursor onto ray beyond throughPt
+                const toX = world.x - throughPt.x
+                const toY = world.y - throughPt.y
+                const proj = toX * dirX + toY * dirY
+                const clampedDist = Math.max(0.1, proj)
+                // Update distance in the action
+                actions = actions.map((a) =>
+                  a.type === 'extend' && a.pointId === dragPointId
+                    ? { ...a, distance: clampedDist }
+                    : a
+                )
+                postCompletionActionsRef.current = actions
+              }
+            }
+          }
         }
 
-        // Collect current given point positions (unchanged for free point drag)
+        // Collect current given point positions (unchanged for free/extend point drag)
         const positions = collectCurrentPositions()
-        if (draggedPt?.origin !== 'free') {
+        if (draggedPt?.origin !== 'free' && draggedPt?.origin !== 'extend') {
           positions.set(dragPointId, world)
         }
 
