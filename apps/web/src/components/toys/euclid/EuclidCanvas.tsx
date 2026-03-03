@@ -697,13 +697,13 @@ function EuclidCanvasInner({
   // All prior propositions that have applicable macros
   const availableMacros = useMemo(() => {
     return Object.entries(MACRO_REGISTRY)
-      .filter(([key]) => Number(key) < propositionId)
+      .filter(([key]) => playgroundMode || Number(key) < propositionId)
       .map(([, def]) => ({
         propId: def.propId,
         def,
         title: PROP_REGISTRY[def.propId]?.title ?? '',
       }))
-  }, [propositionId])
+  }, [propositionId, playgroundMode])
   const explorationNarration = useMemo(() => {
     if (!languageStyle) return proposition.explorationNarration
     return (
@@ -1313,8 +1313,9 @@ function EuclidCanvasInner({
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
     isComplete,
-    celebrationText:
-      completionResult?.status === 'proven' && completionResult.statement
+    celebrationText: playgroundMode
+      ? ''
+      : completionResult?.status === 'proven' && completionResult.statement
         ? completionResult.statement
         : 'Construction complete!',
     explorationNarration,
