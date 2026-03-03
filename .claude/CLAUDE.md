@@ -144,5 +144,6 @@ Interactive compass-and-straightedge exploration of Euclid's Elements Book I. In
 - `apps/web/src/components/toys/euclid/reference/book1-dependency-graph.md` — Machine-readable DAG of proposition dependencies, thematic groupings, parallel postulate boundary
 - `apps/web/src/components/toys/euclid/reference/pedagogy-and-design.md` — Byrne-inspired design notes, color palette, interaction model, data structures, progression tracks
 - `apps/web/src/components/toys/euclid/reference/authoring-guide.md` — Step-by-step guide for implementing new propositions: geometry, tutorials, exploration narration, draggable points, testing
+- `apps/web/src/components/toys/euclid/reference/architecture.md` — Recipe system, adapters, ghost/ceremony pipeline, rendering architecture, dual authoring patterns
 
 **Architecture decision:** New toy at `toys/euclid/`, NOT an extension of the coordinate plane. Reuses shared infrastructure (Canvas 2D + RAF loop, coordinate conversions, collision detection, hit testing) but has its own construction-oriented interaction model. Uses `@flatten-js/core` for intersection computation.
