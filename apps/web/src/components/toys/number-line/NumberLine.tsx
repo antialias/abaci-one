@@ -22,7 +22,7 @@ import { MATH_CONSTANTS } from './constants/constantsData'
 import { computeAllConstantVisibilities } from './constants/computeConstantVisibility'
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
-import { useConstantDemo } from './constants/demos/useConstantDemo'
+import { useConstantDemo, DYNAMIC_DEMO_VIEWPORTS } from './constants/demos/useConstantDemo'
 import {
   CONSTANT_IDS,
   EXPLORATION_DISPLAY,
@@ -100,6 +100,28 @@ import type { CallState } from './talkToNumber/useRealtimeVoice'
 import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCallOverlay'
 import { lerpViewport } from './viewportAnimation'
 import type { Viewport } from './viewportAnimation'
+import {
+  renderLcmHopperOverlay,
+  setActiveCombo,
+  getActiveCombo,
+  setGuess,
+  clearGuess,
+  getGuessPosition,
+  getGuessResult,
+  EARLY_HOP_END,
+  GUESS_END,
+} from './lcmHopper/renderLcmHopperOverlay'
+import { LcmHopperOverlay } from './lcmHopper/LcmHopperOverlay'
+import {
+  pickCombo,
+  buildPartyCombo,
+  emojiForStride,
+  wouldExceedLcmLimit,
+  lcm,
+} from './lcmHopper/lcmComboGenerator'
+import type { PartyState } from './primes/PrimeTooltip'
+import { buildLcmHopperNarration } from './lcmHopper/lcmHopperNarration'
+import { evaluateGuess } from './lcmHopper/lcmHopperState'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { DemoRefinePanel } from './DemoRefinePanel'
@@ -348,6 +370,99 @@ export function NumberLine({
     forcedHoverValue,
   } = usePrimeTour(stateRef, cssWidthRef, cssHeightRef, demoRedraw)
 
+  // --- LCM Hopper state (driven by the constant demo framework) ---
+  const lcmRoundRef = useRef(0)
+  const startLcmHopperDemo = useCallback(() => {
+    const combo = pickCombo(lcmRoundRef.current)
+    lcmRoundRef.current++
+    setActiveCombo(combo)
+    clearGuess()
+    // Register viewport for this combo's LCM
+    DYNAMIC_DEMO_VIEWPORTS.set('lcm_hopper', (cssWidth) => {
+      const padding = Math.max(2, combo.lcm * 0.1)
+      const range = combo.lcm + padding * 2
+      const center = combo.lcm / 2
+      const pixelsPerUnit = cssWidth / range
+      return { center, pixelsPerUnit }
+    })
+    // Inject narration config for this combo
+    NARRATION_CONFIGS['lcm_hopper'] = buildLcmHopperNarration(combo)
+    narration.reset()
+    startDemo('lcm_hopper')
+  }, [narration, startDemo])
+
+  // --- Hopping Party invitation state ---
+  const [partyInvitees, setPartyInvitees] = useState<number[]>([])
+  const partyInviteesRef = useRef<number[]>([])
+  partyInviteesRef.current = partyInvitees
+
+  const handleToggleInvite = useCallback(
+    (value: number) => {
+      setPartyInvitees((prev) => {
+        if (prev.includes(value)) {
+          return prev.filter((v) => v !== value)
+        }
+        if (prev.length >= 3) return prev
+        if (wouldExceedLcmLimit(prev, value)) return prev
+        return [...prev, value]
+      })
+      // Dismiss tooltip after action
+      setTappedIntValue(null)
+      setHoveredValue(null)
+      tooltipHoveredRef.current = false
+    },
+    []
+  )
+
+  const startHoppingParty = useCallback(() => {
+    if (partyInviteesRef.current.length < 2) return
+    const combo = buildPartyCombo(partyInviteesRef.current)
+    setActiveCombo(combo)
+    clearGuess()
+    DYNAMIC_DEMO_VIEWPORTS.set('lcm_hopper', (cssWidth) => {
+      const padding = Math.max(2, combo.lcm * 0.1)
+      const range = combo.lcm + padding * 2
+      const center = combo.lcm / 2
+      const pixelsPerUnit = cssWidth / range
+      return { center, pixelsPerUnit }
+    })
+    NARRATION_CONFIGS['lcm_hopper'] = buildLcmHopperNarration(combo)
+    narration.reset()
+    startDemo('lcm_hopper')
+  }, [narration, startDemo])
+
+  const handleDismissPartyDemo = useCallback(() => {
+    cancelDemo()
+    setPartyInvitees([])
+  }, [cancelDemo])
+
+  /** Compute party state for a given integer value (for tooltip). */
+  const getPartyState = useCallback(
+    (value: number): PartyState | undefined => {
+      if (value < 2) return undefined
+      const demoPhase = demoStateRef.current.phase
+      if (demoPhase !== 'idle') return undefined
+      const invited = partyInvitees.includes(value)
+      const emoji = emojiForStride(value)
+      if (invited) {
+        return { invited: true, canInvite: true, emoji }
+      }
+      if (partyInvitees.length >= 3) {
+        return { invited: false, canInvite: false, rejectReason: 'Party full (max 3)', emoji }
+      }
+      if (partyInvitees.length > 0 && wouldExceedLcmLimit(partyInvitees, value)) {
+        return {
+          invited: false,
+          canInvite: false,
+          rejectReason: 'LCM would be too large',
+          emoji,
+        }
+      }
+      return { invited: false, canInvite: true, emoji }
+    },
+    [partyInvitees, demoStateRef]
+  )
+
   // --- Primes (Sieve of Eratosthenes) state ---
   const [primesEnabled, setPrimesEnabled] = useState(true)
   const primesEnabledRef = useRef(true)
@@ -394,35 +509,41 @@ export function NumberLine({
   const stopFindNumberFnRef = useRef<() => void>(() => {})
   // When true, indicate's auto-zoom is suppressed (game controls the viewport)
   const suppressIndicateZoomRef = useRef(false)
-  const handleVoiceGameStart = useCallback((gameId: string, params: Record<string, unknown>) => {
-    setActiveGameId(gameId)
-    if (gameId === 'find_number') {
-      const target = Number(params.target)
-      if (isFinite(target)) startFindNumberFnRef.current(target)
-    }
-    if (gameId === 'guess_my_number') {
-      // Lock viewport to full game range so the child sees the indicate band shrink
-      const min = params.min !== undefined ? Number(params.min) : 1
-      const max = params.max !== undefined ? Number(params.max) : 100
-      const center = (min + max) / 2
-      const range = (max - min) * 1.15 // 15% margin
-      lookAtFnRef.current(center, range)
-      suppressIndicateZoomRef.current = true
-    }
-    if (gameId === 'nim') {
-      const stones =
-        typeof params.stones === 'number' && isFinite(params.stones as number)
-          ? (params.stones as number)
-          : 15
-      const center = (1 + stones) / 2
-      const range = stones * 1.15 // 15% margin
-      lookAtFnRef.current(center, range)
-      suppressIndicateZoomRef.current = true
-      // Boost label visibility — wide zoom makes individual numbers nearly invisible
-      labelScaleRef.current = 1.8
-      labelMinOpacityRef.current = 0.9
-    }
-  }, [])
+  const handleVoiceGameStart = useCallback(
+    (gameId: string, params: Record<string, unknown>) => {
+      setActiveGameId(gameId)
+      if (gameId === 'find_number') {
+        const target = Number(params.target)
+        if (isFinite(target)) startFindNumberFnRef.current(target)
+      }
+      if (gameId === 'guess_my_number') {
+        // Lock viewport to full game range so the child sees the indicate band shrink
+        const min = params.min !== undefined ? Number(params.min) : 1
+        const max = params.max !== undefined ? Number(params.max) : 100
+        const center = (min + max) / 2
+        const range = (max - min) * 1.15 // 15% margin
+        lookAtFnRef.current(center, range)
+        suppressIndicateZoomRef.current = true
+      }
+      if (gameId === 'nim') {
+        const stones =
+          typeof params.stones === 'number' && isFinite(params.stones as number)
+            ? (params.stones as number)
+            : 15
+        const center = (1 + stones) / 2
+        const range = stones * 1.15 // 15% margin
+        lookAtFnRef.current(center, range)
+        suppressIndicateZoomRef.current = true
+        // Boost label visibility — wide zoom makes individual numbers nearly invisible
+        labelScaleRef.current = 1.8
+        labelMinOpacityRef.current = 0.9
+      }
+      if (gameId === 'lcm_hopper') {
+        startLcmHopperDemo()
+      }
+    },
+    [startLcmHopperDemo]
+  )
   const handleVoiceGameEnd = useCallback((gameId: string) => {
     setActiveGameId(null)
     suppressIndicateZoomRef.current = false
@@ -1159,6 +1280,19 @@ export function NumberLine({
       )
     }
 
+    // Render LCM Hopper overlay (emojis, arcs, landing marks, celebration)
+    if (ds.constantId === 'lcm_hopper' && ds.phase !== 'idle') {
+      renderLcmHopperOverlay(
+        ctx,
+        stateRef.current,
+        cssWidth,
+        cssHeight,
+        resolvedTheme === 'dark',
+        ds.revealProgress,
+        ds.opacity
+      )
+    }
+
     ctx.restore()
 
     // --- Sync demo scrubber DOM ---
@@ -1644,6 +1778,31 @@ export function NumberLine({
   // --- Constants + non-prime integer tap handler ---
   const handleCanvasTap = useCallback(
     (screenX: number, _screenY: number) => {
+      // LCM Hopper guess interception — active during guess phase of the demo
+      {
+        const ds = demoStateRef.current
+        if (
+          ds.constantId === 'lcm_hopper' &&
+          ds.phase !== 'idle' &&
+          ds.revealProgress >= EARLY_HOP_END &&
+          ds.revealProgress < GUESS_END
+        ) {
+          const combo = getActiveCombo()
+          if (combo) {
+            const value = screenXToNumber(
+              screenX,
+              stateRef.current.center,
+              stateRef.current.pixelsPerUnit,
+              cssWidthRef.current
+            )
+            const snapped = Math.round(value)
+            const result = evaluateGuess(snapped, combo.lcm)
+            setGuess(snapped, result)
+            return
+          }
+        }
+      }
+
       // Check constants first
       if (constantsEnabledRef.current) {
         const HIT_RADIUS = 30
@@ -1678,7 +1837,7 @@ export function NumberLine({
         }
       }
 
-      // Check for non-prime integer tap (composites + 1)
+      // Check for integer tap (all integers ≥ 2 — primes and composites)
       if (primesEnabledRef.current) {
         const cssWidth = cssWidthRef.current
         const state = stateRef.current
@@ -1687,13 +1846,10 @@ export function NumberLine({
         const nearestScreenX = numberToScreenX(nearest, state.center, state.pixelsPerUnit, cssWidth)
         const dist = Math.abs(screenX - nearestScreenX)
 
-        if (dist < 20 && nearest >= 1) {
-          const isPrime = nearest >= 2 && smallestPrimeFactor(nearest) === nearest
-          if (!isPrime) {
-            setTappedConstantId(null)
-            setTappedIntValue(nearest)
-            return
-          }
+        if (dist < 20 && nearest >= 2) {
+          setTappedConstantId(null)
+          setTappedIntValue(nearest)
+          return
         }
       }
 
@@ -2871,6 +3027,112 @@ export function NumberLine({
             callBoxContainerRef={callBoxContainerRef}
           />
         )}
+        {/* LCM Hopper overlay (guess prompt + celebration card) */}
+        {demoStateRef.current.constantId === 'lcm_hopper' &&
+          demoStateRef.current.phase !== 'idle' && (
+            <LcmHopperOverlay
+              progress={demoStateRef.current.revealProgress}
+              combo={getActiveCombo()}
+              guessResult={getGuessResult()}
+              guessPosition={getGuessPosition()}
+              isDark={resolvedTheme === 'dark'}
+              onDismiss={handleDismissPartyDemo}
+            />
+          )}
+        {/* Hopping Party bar — shown when invitees selected and demo idle */}
+        {partyInvitees.length > 0 &&
+          demoStateRef.current.phase === 'idle' &&
+          tourStateRef.current.phase === 'idle' && (
+            <div
+              data-component="party-bar"
+              style={{
+                position: 'absolute',
+                bottom: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 14px',
+                borderRadius: 12,
+                background:
+                  resolvedTheme === 'dark'
+                    ? 'rgba(30, 41, 59, 0.9)'
+                    : 'rgba(255, 255, 255, 0.92)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+                zIndex: 10,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {partyInvitees.map((stride) => (
+                <button
+                  key={stride}
+                  data-action="remove-invitee"
+                  onClick={() => handleToggleInvite(stride)}
+                  title={`Remove ${stride}`}
+                  style={{
+                    background: 'none',
+                    border: `2px solid ${resolvedTheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`,
+                    borderRadius: 8,
+                    padding: '2px 6px',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: resolvedTheme === 'dark' ? '#f3f4f6' : '#1f2937',
+                  }}
+                >
+                  {emojiForStride(stride)} {stride}
+                </button>
+              ))}
+              <span
+                data-element="lcm-preview"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: resolvedTheme === 'dark' ? '#a5b4fc' : '#4f46e5',
+                  marginLeft: 4,
+                }}
+              >
+                LCM = {lcm(partyInvitees)}
+              </span>
+              {partyInvitees.length >= 2 && (
+                <button
+                  data-action="start-party"
+                  onClick={startHoppingParty}
+                  style={{
+                    background: resolvedTheme === 'dark' ? '#4f46e5' : '#6366f1',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '4px 12px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginLeft: 4,
+                  }}
+                >
+                  Start Party!
+                </button>
+              )}
+              <button
+                data-action="clear-party"
+                onClick={() => setPartyInvitees([])}
+                title="Clear all"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+                  padding: '0 2px',
+                  marginLeft: 2,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
         {demoActive && restoredFromUrl && (
           <button
             data-action="demo-resume-from-url"
@@ -3447,6 +3709,7 @@ export function NumberLine({
           const isPrime = tooltipValue >= 2 && spf === tooltipValue
           const ip = interestingPrimesRef.current.find((p) => p.value === tooltipValue)
           const tourAvailable = tourStateRef.current.phase === 'idle' && !demoActive
+          const hoverPartyState = getPartyState(tooltipValue)
           return (
             <PrimeTooltip
               value={tooltipValue}
@@ -3467,6 +3730,8 @@ export function NumberLine({
               isDark={resolvedTheme === 'dark'}
               landmarkNote={ip?.note}
               onStartTour={tourAvailable ? handleStartTour : undefined}
+              partyState={hoverPartyState}
+              onToggleInvite={hoverPartyState ? handleToggleInvite : undefined}
               onMouseEnter={() => {
                 tooltipHoveredRef.current = true
               }}
@@ -3483,15 +3748,17 @@ export function NumberLine({
           (() => {
             const v = tappedIntValue
             const spf = v >= 2 ? smallestPrimeFactor(v) : 0
+            const isPrime = v >= 2 && spf === v
             const info: PrimeTickInfo =
               v === 1
                 ? { value: 1, smallestPrimeFactor: 0, isPrime: false, classification: 'one' }
                 : {
                     value: v,
                     smallestPrimeFactor: spf,
-                    isPrime: false,
-                    classification: 'composite',
+                    isPrime,
+                    classification: isPrime ? 'prime' : 'composite',
                   }
+            const tappedPartyState = getPartyState(v)
             return (
               <PrimeTooltip
                 value={v}
@@ -3505,6 +3772,14 @@ export function NumberLine({
                 tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
                 containerWidth={cssWidthRef.current}
                 isDark={resolvedTheme === 'dark'}
+                partyState={tappedPartyState}
+                onToggleInvite={tappedPartyState ? handleToggleInvite : undefined}
+                onMouseEnter={() => {
+                  tooltipHoveredRef.current = true
+                }}
+                onMouseLeave={() => {
+                  tooltipHoveredRef.current = false
+                }}
               />
             )
           })()}

@@ -6,6 +6,13 @@ import { primeColorHex } from './primeColors'
 import { getSpecialPrimeLabels, LABEL_COLORS } from './specialPrimes'
 import type { SpecialPrimeLabel } from './specialPrimes'
 
+export interface PartyState {
+  invited: boolean
+  canInvite: boolean
+  rejectReason?: string
+  emoji: string
+}
+
 interface PrimeTooltipProps {
   value: number
   primeInfo: PrimeTickInfo
@@ -23,6 +30,10 @@ interface PrimeTooltipProps {
   /** Called when the mouse enters/leaves the tooltip (to prevent hover-clear) */
   onMouseEnter?: () => void
   onMouseLeave?: () => void
+  /** Hopping party invite state for this value */
+  partyState?: PartyState
+  /** Toggle invite/remove for this value */
+  onToggleInvite?: (value: number) => void
 }
 
 const TOOLTIP_PAD = 8
@@ -66,6 +77,8 @@ export function PrimeTooltip({
   onStartTour,
   onMouseEnter,
   onMouseLeave,
+  partyState,
+  onToggleInvite,
 }: PrimeTooltipProps) {
   const bg = isDark ? 'rgba(30, 30, 40, 0.92)' : 'rgba(255, 255, 255, 0.92)'
   const textColor = isDark ? '#f3f4f6' : '#1f2937'
@@ -76,8 +89,12 @@ export function PrimeTooltip({
   // Show tour link for primes
   const showTourLink = primeInfo.isPrime && onStartTour
 
-  // Wider tooltip when there are special properties or landmark notes
-  const tooltipWidth = specialLabels.length > 0 || landmarkNote || showTourLink ? 220 : 180
+  // Show invite action for integers ≥ 2
+  const showInviteAction = partyState && onToggleInvite && value >= 2
+
+  // Wider tooltip when there are special properties or landmark notes or party state
+  const tooltipWidth =
+    specialLabels.length > 0 || landmarkNote || showTourLink || showInviteAction ? 220 : 180
 
   // Clamp horizontal position
   const clampedX = Math.max(
@@ -132,11 +149,13 @@ export function PrimeTooltip({
     )
   }
 
+  const isInteractive = showTourLink || showInviteAction
+
   return (
     <div
       data-component="prime-tooltip"
-      onMouseEnter={showTourLink ? onMouseEnter : undefined}
-      onMouseLeave={showTourLink ? onMouseLeave : undefined}
+      onMouseEnter={isInteractive ? onMouseEnter : undefined}
+      onMouseLeave={isInteractive ? onMouseLeave : undefined}
       style={{
         position: 'absolute',
         left: clampedX,
@@ -148,7 +167,7 @@ export function PrimeTooltip({
         backdropFilter: 'blur(8px)',
         boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.1)',
         zIndex: 10,
-        pointerEvents: showTourLink ? 'auto' : 'none',
+        pointerEvents: isInteractive ? 'auto' : 'none',
         whiteSpace: 'nowrap',
       }}
     >
@@ -213,6 +232,63 @@ export function PrimeTooltip({
           >
             Explore primes
           </button>
+        </div>
+      )}
+      {showInviteAction && (
+        <div
+          data-element="party-invite"
+          style={{
+            marginTop: 4,
+            paddingTop: 4,
+            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+          }}
+        >
+          {partyState.invited ? (
+            <button
+              data-action="remove-from-party"
+              onClick={() => onToggleInvite!(value)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                fontSize: 11,
+                fontWeight: 600,
+                color: isDark ? '#fca5a5' : '#dc2626',
+                cursor: 'pointer',
+              }}
+            >
+              {partyState.emoji} Remove from party
+            </button>
+          ) : partyState.canInvite ? (
+            <button
+              data-action="invite-to-party"
+              onClick={() => onToggleInvite!(value)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                fontSize: 11,
+                fontWeight: 600,
+                color: isDark ? '#86efac' : '#16a34a',
+                cursor: 'pointer',
+              }}
+            >
+              {partyState.emoji} Invite to hopping party
+            </button>
+          ) : (
+            <span
+              data-element="invite-disabled"
+              title={partyState.rejectReason ?? 'Cannot invite'}
+              style={{
+                fontSize: 11,
+                color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)',
+              }}
+            >
+              {partyState.emoji} {partyState.rejectReason ?? 'Cannot invite'}
+            </span>
+          )}
         </div>
       )}
     </div>
