@@ -105,7 +105,7 @@ export type ExtendPhase =
   | { tag: 'base-set'; baseId: string }
   | { tag: 'extending'; baseId: string; throughId: string }
 
-export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move' | 'point'
+export type ActiveTool = 'compass' | 'straightedge' | 'macro' | 'move' | 'point' | 'extend'
 
 export type MacroPhase =
   | { tag: 'idle' }
