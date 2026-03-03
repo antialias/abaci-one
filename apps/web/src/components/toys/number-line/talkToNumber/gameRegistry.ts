@@ -109,6 +109,20 @@ import { kaprekarGame } from './games/kaprekar'
 import { magicPredictionGame } from './games/magicPrediction'
 import { missingDigitGame } from './games/missingDigit'
 
+/** Lightweight LCM Hopper game definition for voice agent triggering. */
+const lcmHopperGame: GameDefinition = {
+  id: 'lcm_hopper',
+  name: 'LCM Hopping Game',
+  description:
+    'Watch emoji animals hop along the number line and guess where they all meet — the Least Common Multiple!',
+  category: 'guessing',
+  agentRules:
+    'The LCM Hopping Game is visual and self-narrated. ' +
+    'After starting, the animation and narration play automatically. ' +
+    'Encourage the child to watch and tap where they think the animals will meet. ' +
+    'After the round, discuss what they noticed about the multiples.',
+}
+
 export const GAMES: GameDefinition[] = [
   findNumberGame,
   guessMyNumberGame,
@@ -119,6 +133,7 @@ export const GAMES: GameDefinition[] = [
   kaprekarGame,
   magicPredictionGame,
   missingDigitGame,
+  lcmHopperGame,
 ]
 
 // ── Derived helpers ──────────────────────────────────────────────────

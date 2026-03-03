@@ -151,6 +151,15 @@ export const EXPLORATIONS: ExplorationEntry[] = [
     visualDesc:
       'A guided tour of prime numbers on the number line. Walks through the Sieve of Eratosthenes — crossing out multiples of 2, 3, 5, and 7 step by step to reveal the primes that remain. Highlights twin primes, prime gaps, and surprising patterns in prime distribution.',
   },
+  {
+    id: 'lcm_hopper',
+    type: 'tour',
+    name: 'LCM Hopping Game',
+    stopCount: 1,
+    shortDesc: 'emoji animals hopping to find the Least Common Multiple',
+    visualDesc:
+      'Emoji animals (frog, bunny, kangaroo) hop along the number line with different stride sizes. Each one lands on its own multiples. The child guesses where they will ALL land together — that meeting point is the Least Common Multiple. Colorful arcs, landing marks, and a celebration burst at the LCM.',
+  },
 ]
 
 // ── Derived helpers ──────────────────────────────────────────────────
@@ -243,6 +252,11 @@ export const EXPLORATION_RECOMMENDATIONS: Record<string, { id: string; reason: s
   primes: [
     { id: 'phi', reason: 'the golden ratio is another pattern hiding in numbers' },
     { id: 'ramanujan', reason: 'Ramanujan discovered incredible formulas involving primes' },
+    { id: 'lcm_hopper', reason: 'see how multiples line up with hopping animals' },
+  ],
+  lcm_hopper: [
+    { id: 'primes', reason: 'primes and multiples are two sides of the same coin' },
+    { id: 'phi', reason: 'the golden ratio is another fascinating number pattern' },
   ],
 }
 

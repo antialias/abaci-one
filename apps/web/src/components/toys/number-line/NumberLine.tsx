@@ -396,23 +396,20 @@ export function NumberLine({
   const partyInviteesRef = useRef<number[]>([])
   partyInviteesRef.current = partyInvitees
 
-  const handleToggleInvite = useCallback(
-    (value: number) => {
-      setPartyInvitees((prev) => {
-        if (prev.includes(value)) {
-          return prev.filter((v) => v !== value)
-        }
-        if (prev.length >= 3) return prev
-        if (wouldExceedLcmLimit(prev, value)) return prev
-        return [...prev, value]
-      })
-      // Dismiss tooltip after action
-      setTappedIntValue(null)
-      setHoveredValue(null)
-      tooltipHoveredRef.current = false
-    },
-    []
-  )
+  const handleToggleInvite = useCallback((value: number) => {
+    setPartyInvitees((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((v) => v !== value)
+      }
+      if (prev.length >= 3) return prev
+      if (wouldExceedLcmLimit(prev, value)) return prev
+      return [...prev, value]
+    })
+    // Dismiss tooltip after action
+    setTappedIntValue(null)
+    setHoveredValue(null)
+    tooltipHoveredRef.current = false
+  }, [])
 
   const startHoppingParty = useCallback(() => {
     if (partyInviteesRef.current.length < 2) return
@@ -3056,9 +3053,7 @@ export function NumberLine({
                 padding: '8px 14px',
                 borderRadius: 12,
                 background:
-                  resolvedTheme === 'dark'
-                    ? 'rgba(30, 41, 59, 0.9)'
-                    : 'rgba(255, 255, 255, 0.92)',
+                  resolvedTheme === 'dark' ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.92)',
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
                 boxShadow: '0 2px 12px rgba(0,0,0,0.2)',

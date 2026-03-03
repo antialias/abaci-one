@@ -95,17 +95,12 @@ export function buildPartyCombo(strides: number[]): ActiveCombo {
     emojis.push(emoji)
   }
   const colors = strides.map((s) => colorForStride(s))
-  const difficulty: Difficulty =
-    lcmVal <= 24 ? 'easy' : lcmVal <= 60 ? 'medium' : 'hard'
+  const difficulty: Difficulty = lcmVal <= 24 ? 'easy' : lcmVal <= 60 ? 'medium' : 'hard'
   return { strides, lcm: lcmVal, difficulty, emojis, colors }
 }
 
 /** Check whether adding a new stride would push the LCM over the limit. */
-export function wouldExceedLcmLimit(
-  existing: number[],
-  newStride: number,
-  limit = 120
-): boolean {
+export function wouldExceedLcmLimit(existing: number[], newStride: number, limit = 120): boolean {
   return lcm([...existing, newStride]) > limit
 }
 

@@ -50,12 +50,32 @@ import { CONSTANT_IDS } from '../../talkToNumber/explorationRegistry'
 /** Constants that have demos available */
 const DEMO_AVAILABLE = CONSTANT_IDS
 
+/**
+ * Dynamic demo viewport registry — allows non-constant demos (e.g. LCM Hopper)
+ * to register their viewport target at runtime.
+ *
+ * Call `DYNAMIC_DEMO_VIEWPORTS.set(id, fn)` before `startDemo(id)`.
+ */
+export const DYNAMIC_DEMO_VIEWPORTS = new Map<
+  string,
+  (cssWidth: number, cssHeight: number) => { center: number; pixelsPerUnit: number }
+>()
+
+/** Check if a demo is available (static constant OR dynamically registered). */
+function isDemoAvailable(id: string): boolean {
+  return DEMO_AVAILABLE.has(id) || DYNAMIC_DEMO_VIEWPORTS.has(id)
+}
+
 /** Compute the target viewport for a given constant's demo. */
 function getDemoViewport(
   constantId: string,
   cssWidth: number,
   cssHeight: number
 ): { center: number; pixelsPerUnit: number } {
+  // Check dynamic viewports first (e.g. LCM hopper with variable LCM)
+  const dynamicFn = DYNAMIC_DEMO_VIEWPORTS.get(constantId)
+  if (dynamicFn) return dynamicFn(cssWidth, cssHeight)
+
   if (constantId === 'phi') return goldenRatioDemoViewport(cssWidth, cssHeight)
   if (constantId === 'pi') return piDemoViewport(cssWidth, cssHeight)
   if (constantId === 'tau') return tauDemoViewport(cssWidth, cssHeight)
@@ -337,7 +357,7 @@ export function useConstantDemo(
 
   const startDemo = useCallback(
     (constantId: string) => {
-      if (!DEMO_AVAILABLE.has(constantId)) return
+      if (!isDemoAvailable(constantId)) return
 
       const target = getDemoViewport(constantId, cssWidthRef.current, cssHeightRef.current)
 
@@ -529,7 +549,7 @@ export function useConstantDemo(
    */
   const restoreDemo = useCallback(
     (constantId: string, progress: number) => {
-      if (!DEMO_AVAILABLE.has(constantId)) return
+      if (!isDemoAvailable(constantId)) return
       const target = getDemoViewport(constantId, cssWidthRef.current, cssHeightRef.current)
 
       // Snap viewport (skip fly-in animation)
