@@ -255,6 +255,48 @@ export function renderMacroPreview(
     _displayedPositions = positions.map(p => ({ x: p.x, y: p.y }))
   }
 
+  // ── Mating indicator ──
+  // When the primary unbound is attracted toward a construction point, draw a
+  // contracting ring on that point. The ring tightens and brightens as the
+  // cursor approaches, telegraphing which point will be selected on click.
+  if (selectedCount < inputCount) {
+    const cursorScreen = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
+    let nearestDist = Infinity
+    let nearestScreen: { x: number; y: number } | null = null
+
+    for (const pt of getAllPoints(constructionState)) {
+      const s = toScreen(pt.x, pt.y, viewport, w, h)
+      const dx = cursorScreen.x - s.x
+      const dy = cursorScreen.y - s.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < nearestDist) {
+        nearestDist = dist
+        nearestScreen = s
+      }
+    }
+
+    if (nearestScreen && nearestDist < ATTRACT_RADIUS) {
+      const ratio = nearestDist / ATTRACT_RADIUS
+      const t = 1 - ratio * ratio // same curve as attraction
+      const color = BYRNE_CYCLE[selectedCount % 3]
+
+      ctx.save()
+
+      // Contracting dashed ring — wide and faint at edge, tight and bright at center
+      const ringRadius = 18 - t * 8 // 18px → 10px
+      ctx.beginPath()
+      ctx.arc(nearestScreen.x, nearestScreen.y, ringRadius, 0, Math.PI * 2)
+      ctx.strokeStyle = color
+      ctx.lineWidth = 1.5 + t * 1.5
+      ctx.globalAlpha = t * 0.65
+      ctx.setLineDash([4, 3])
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      ctx.restore()
+    }
+  }
+
   // ── B. Unbound point markers ──
   for (let i = selectedCount; i < inputCount; i++) {
     const pos = positions[i]
