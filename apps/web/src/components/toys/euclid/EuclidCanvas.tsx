@@ -1312,10 +1312,9 @@ function EuclidCanvasInner({
 
   const { handleDragStart, handleConstructionBreakdown } = useEuclidAudioHelp({
     instruction: currentSpeech,
-    isComplete,
-    celebrationText: playgroundMode
-      ? ''
-      : completionResult?.status === 'proven' && completionResult.statement
+    isComplete: playgroundMode ? false : isComplete,
+    celebrationText:
+      completionResult?.status === 'proven' && completionResult.statement
         ? completionResult.statement
         : 'Construction complete!',
     explorationNarration,
@@ -3852,9 +3851,11 @@ function EuclidCanvasInner({
             cursor:
               activeTool === 'move'
                 ? undefined // drag hook manages grab/grabbing cursor
-                : activeTool === 'macro' || activeTool === 'extend'
+                : activeTool === 'extend'
                   ? undefined
-                  : 'none',
+                  : activeTool === 'macro' && macroPhase.tag !== 'selecting'
+                    ? undefined
+                    : 'none',
           }}
         />
 

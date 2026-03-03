@@ -10,7 +10,7 @@
 
 import type { MacroPhase, ConstructionState, EuclidViewportState, GhostElement } from '../types'
 import { BYRNE_CYCLE } from '../types'
-import { getPoint } from '../engine/constructionState'
+import { getPoint, getAllPoints } from '../engine/constructionState'
 import { MACRO_PREVIEW_REGISTRY } from '../engine/macroPreview'
 import { MACRO_REGISTRY } from '../engine/macros'
 import { getGhostBaseOpacity } from './renderGhostGeometry'
@@ -22,6 +22,54 @@ function toScreen(wx: number, wy: number, vp: EuclidViewportState, w: number, h:
 
 function toWorld(sx: number, sy: number, vp: EuclidViewportState, w: number, h: number) {
   return screenToWorld2D(sx, sy, vp.center.x, vp.center.y, vp.pixelsPerUnit, vp.pixelsPerUnit, w, h)
+}
+
+/** Screen-space radius (px) at which the preview starts gravitating toward a construction point. */
+const ATTRACT_RADIUS = 60
+
+/**
+ * Smoothly attract `cursorWorld` toward nearby construction points using
+ * inverse-square falloff. Each point within ATTRACT_RADIUS contributes a
+ * pull vector weighted by 1 - (d/R)². Summing all contributions gives a
+ * smooth blend — no hard switch when the nearest point changes.
+ *
+ * When totalWeight > 1 (multiple strong pulls), displacement is normalized
+ * to prevent overshooting past the weighted centroid.
+ */
+function attractToNearest(
+  cursorWorld: { x: number; y: number },
+  state: ConstructionState,
+  viewport: EuclidViewportState,
+  w: number,
+  h: number
+): { x: number; y: number } {
+  const cursorScreen = toScreen(cursorWorld.x, cursorWorld.y, viewport, w, h)
+  let dx = 0
+  let dy = 0
+  let totalWeight = 0
+
+  for (const pt of getAllPoints(state)) {
+    const s = toScreen(pt.x, pt.y, viewport, w, h)
+    const sdx = cursorScreen.x - s.x
+    const sdy = cursorScreen.y - s.y
+    const dist = Math.sqrt(sdx * sdx + sdy * sdy)
+    if (dist >= ATTRACT_RADIUS) continue
+
+    const ratio = dist / ATTRACT_RADIUS
+    const t = 1 - ratio * ratio // 0 at edge, 1 at center
+    dx += t * (pt.x - cursorWorld.x)
+    dy += t * (pt.y - cursorWorld.y)
+    totalWeight += t
+  }
+
+  if (totalWeight === 0) return cursorWorld
+
+  // Normalize when total pull exceeds 1 to prevent overshooting
+  const scale = Math.min(1, 1 / totalWeight)
+  return {
+    x: cursorWorld.x + dx * scale,
+    y: cursorWorld.y + dy * scale,
+  }
 }
 
 /** Screen-space offsets for future unbound inputs (relative to cursor). */
@@ -63,13 +111,8 @@ export function buildMacroPreviewPositions(
     }
   }
 
-  // Primary unbound: snapped or raw pointer
-  const primaryUnbound = snappedPointId
-    ? (() => {
-        const pt = getPoint(constructionState, snappedPointId)
-        return pt ? { x: pt.x, y: pt.y } : pointerWorld
-      })()
-    : pointerWorld
+  // Primary unbound: gravitational pull toward nearest construction point
+  const primaryUnbound = attractToNearest(pointerWorld, constructionState, viewport, w, h)
 
   if (selectedCount < inputCount) {
     positions.push(primaryUnbound)
