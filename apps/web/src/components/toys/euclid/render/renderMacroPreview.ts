@@ -130,6 +130,20 @@ export function buildMacroPreviewPositions(
   return positions
 }
 
+// ── Transition state for click-time position shifts ──
+// When the user binds a point, all position indices shift and ghost geometry
+// would jump. We capture the displayed positions before the click, compute
+// per-position offsets from old→new, and decay those offsets over time.
+// Cursor tracking stays fully responsive — the offset decays independently.
+let _displayedPositions: { x: number; y: number }[] = []
+let _offsets: { x: number; y: number }[] = []
+let _transitionStart = 0
+let _lastPropId = -1
+let _lastSelectedCount = -1
+
+/** Half-life (ms) for offset decay after a selection click. */
+const OFFSET_HALF_LIFE = 60
+
 /**
  * Render the macro preview overlay.
  * Returns true if animation is ongoing (cursor is present → need continuous draw).
@@ -188,6 +202,58 @@ export function renderMacroPreview(
     w,
     h
   )
+
+  // ── Decaying offset for click transitions ──
+  // On each selection click, position indices shift and geometry would jump.
+  // We capture the delta between old displayed positions and new computed
+  // positions, then decay that delta over time. Cursor tracking stays
+  // responsive — the offset is additive and computed once per click.
+  {
+    const now = performance.now()
+
+    // Reset when macro changes or selectedCount goes backward (undo)
+    if (propId !== _lastPropId || selectedCount < _lastSelectedCount) {
+      _displayedPositions = []
+      _offsets = []
+    }
+
+    // Detect forward selection → start transition
+    if (
+      selectedCount > _lastSelectedCount &&
+      _lastSelectedCount >= 0 &&
+      _displayedPositions.length === positions.length
+    ) {
+      _offsets = positions.map((p, i) => ({
+        x: _displayedPositions[i].x - p.x,
+        y: _displayedPositions[i].y - p.y,
+      }))
+      _transitionStart = now
+    }
+
+    _lastPropId = propId
+    _lastSelectedCount = selectedCount
+
+    // Apply decaying offset
+    if (_offsets.length === positions.length) {
+      const elapsed = now - _transitionStart
+      const decay = Math.exp((-elapsed * Math.LN2) / OFFSET_HALF_LIFE)
+
+      if (decay > 0.01) {
+        for (let i = 0; i < positions.length; i++) {
+          positions[i] = {
+            x: positions[i].x + _offsets[i].x * decay,
+            y: positions[i].y + _offsets[i].y * decay,
+          }
+        }
+      } else {
+        // Transition done — clear offsets
+        _offsets = []
+      }
+    }
+
+    // Store displayed positions for next transition's offset computation
+    _displayedPositions = positions.map(p => ({ x: p.x, y: p.y }))
+  }
 
   // ── B. Unbound point markers ──
   for (let i = selectedCount; i < inputCount; i++) {
