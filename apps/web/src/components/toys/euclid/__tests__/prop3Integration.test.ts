@@ -3,6 +3,7 @@ import { PROP_3 } from '../propositions/prop3'
 import { validateStep } from '../propositions/validation'
 import { resolveSelector } from '../engine/selectors'
 import { MACRO_REGISTRY } from '../engine/macros'
+import { computeEquilateralApex, computeDirectionVector } from '../engine/geometryHelpers'
 import { initializeGiven, addCircle, addPoint, getPoint } from '../engine/constructionState'
 import { findNewIntersections } from '../engine/intersections'
 import { createFactStore, queryEquality } from '../engine/factStore'
@@ -43,7 +44,7 @@ describe('Proposition I.3 full construction', () => {
       steps[0].expected.type === 'macro' ? steps[0].expected.outputLabels : undefined
     const macroResult = macro.execute(
       state,
-      ['pt-A', 'pt-C', 'pt-D'],
+      ['pt-C', 'pt-D', 'pt-A'],
       candidates,
       factStore,
       0,
@@ -118,7 +119,7 @@ describe('Proposition I.3 full construction', () => {
     expect(distAF).toBeCloseTo(distCD, 8)
   })
 
-  it('point E is placed in the direction of C from A', () => {
+  it('point E is placed along ray from equilateral apex through A', () => {
     const state: ConstructionState = initializeGiven(PROP_3.givenElements)
     const candidates: IntersectionCandidate[] = []
     const factStore = createFactStore()
@@ -126,7 +127,7 @@ describe('Proposition I.3 full construction', () => {
     const macro = MACRO_REGISTRY[2]
     const macroResult = macro.execute(
       state,
-      ['pt-A', 'pt-C', 'pt-D'],
+      ['pt-C', 'pt-D', 'pt-A'],
       candidates,
       factStore,
       0,
@@ -138,10 +139,13 @@ describe('Proposition I.3 full construction', () => {
     const ptC = getPoint(macroResult.state, 'pt-C')!
     const ptE = getPoint(macroResult.state, 'pt-E')!
 
-    // E should be in the direction of C from A
-    const dirAC = Math.atan2(ptC.y - ptA.y, ptC.x - ptA.x)
+    // I.2 builds equilateral triangle on target→segFrom (A→C), then extends ray D→A.
+    // E should be along direction D→A from A.
+    const apex = computeEquilateralApex(ptA, ptC)!
+    const daDir = computeDirectionVector(apex, ptA)
+    const dirDA = Math.atan2(daDir.y, daDir.x)
     const dirAE = Math.atan2(ptE.y - ptA.y, ptE.x - ptA.x)
-    expect(dirAE).toBeCloseTo(dirAC, 8)
+    expect(dirAE).toBeCloseTo(dirDA, 8)
   })
 
   it('point F lies between A and B on segment AB', () => {
@@ -153,7 +157,7 @@ describe('Proposition I.3 full construction', () => {
     const macro = MACRO_REGISTRY[2]
     const macroResult = macro.execute(
       state,
-      ['pt-A', 'pt-C', 'pt-D'],
+      ['pt-C', 'pt-D', 'pt-A'],
       candidates,
       factStore,
       0,

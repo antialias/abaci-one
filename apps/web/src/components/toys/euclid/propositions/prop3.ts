@@ -1,5 +1,7 @@
 import type { PropositionDef, ConstructionElement, TutorialSubStep } from '../types'
 import { BYRNE } from '../types'
+import { deriveSteps } from '../engine/recipe/deriveSteps'
+import { RECIPE_PROP_3, PROP_3_ANNOTATIONS } from '../engine/recipe/definitions/prop3'
 
 function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tap = isTouch ? 'Tap' : 'Click'
@@ -9,29 +11,30 @@ function getProp3Tutorial(isTouch: boolean): TutorialSubStep[][] {
 
   return [
     // ── Step 0: Place at A a line equal to CD (I.2 macro) ──
+    // Input order: segment start (C), segment end (D), target (A)
     [
-      {
-        instruction: `${tap} point {pt:A}`,
-        speech: isTouch
-          ? "We need to copy the length of line CD to point A. We'll use Proposition Two to do this. Tap point A first — that's where the copy goes."
-          : "We need to copy the length of line CD to point A. We'll use Proposition Two to do this. Click point A first — that's where the copy goes.",
-        hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: { kind: 'macro-select', index: 0 },
-      },
       {
         instruction: `${tap} point {pt:C}`,
         speech: isTouch
-          ? 'Now tap point C — the start of the shorter line.'
-          : 'Now click point C — the start of the shorter line.',
+          ? "We need to copy the length of line CD to point A. We'll use Proposition Two to do this. Tap point C first — the start of the line to copy."
+          : "We need to copy the length of line CD to point A. We'll use Proposition Two to do this. Click point C first — the start of the line to copy.",
         hint: { type: 'point', pointId: 'pt-C' },
-        advanceOn: { kind: 'macro-select', index: 1 },
+        advanceOn: { kind: 'macro-select', index: 0 },
       },
       {
         instruction: `${tap} point {pt:D}`,
         speech: isTouch
-          ? 'Now tap point D to finish. This tells Proposition Two which line to copy.'
-          : 'Now click point D to finish. This tells Proposition Two which line to copy.',
+          ? 'Now tap point D — the end of the shorter line. This tells Proposition Two which line to copy.'
+          : 'Now click point D — the end of the shorter line. This tells Proposition Two which line to copy.',
         hint: { type: 'point', pointId: 'pt-D' },
+        advanceOn: { kind: 'macro-select', index: 1 },
+      },
+      {
+        instruction: `${tap} point {pt:A}`,
+        speech: isTouch
+          ? "Now tap point A — that's where the copy goes."
+          : "Now click point A — that's where the copy goes.",
+        hint: { type: 'point', pointId: 'pt-A' },
         advanceOn: null,
       },
     ],
@@ -154,42 +157,7 @@ export const PROP_3: PropositionDef = {
       origin: 'given',
     },
   ] as ConstructionElement[],
-  steps: [
-    // 0. Place at A a line equal to CD (I.2 macro)
-    {
-      instruction: 'Place at {pt:A} a line equal to {seg:CD} ({prop:2|I.2})',
-      expected: {
-        type: 'macro',
-        propId: 2,
-        inputPointIds: ['pt-A', 'pt-C', 'pt-D'],
-        outputLabels: { result: 'E' },
-      },
-      highlightIds: ['pt-A', 'pt-C', 'pt-D'],
-      tool: 'macro',
-      citation: 'I.2',
-    },
-    // 1. Draw circle centered at A through E
-    {
-      instruction: 'Draw a circle centered at {pt:A} through {pt:E}',
-      expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-E' },
-      highlightIds: ['pt-A', 'pt-E'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    // 2. Mark where circle crosses AB → pt-F
-    {
-      instruction: 'Mark where the circle crosses line {seg:AB}',
-      expected: {
-        type: 'intersection',
-        ofA: { kind: 'circle', centerId: 'pt-A', radiusPointId: 'pt-E' },
-        ofB: { kind: 'segment', fromId: 'pt-A', toId: 'pt-B' },
-        label: 'F',
-      },
-      highlightIds: [],
-      tool: null,
-      citation: 'Def.15',
-    },
-  ],
+  steps: deriveSteps(RECIPE_PROP_3, PROP_3_ANNOTATIONS),
   getTutorial: getProp3Tutorial,
   explorationNarration: {
     introSpeech:

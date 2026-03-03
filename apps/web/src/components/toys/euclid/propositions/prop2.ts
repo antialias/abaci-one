@@ -1,16 +1,14 @@
 import type {
   PropositionDef,
   ConstructionElement,
-  ConstructionState,
   TutorialSubStep,
   EuclidNarrationOptions,
 } from '../types'
 import { BYRNE } from '../types'
-import type { FactStore } from '../engine/factStore'
-import type { EqualityFact } from '../engine/facts'
-import { distancePair } from '../engine/facts'
-import { addFact, queryEquality } from '../engine/factStore'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
+import { deriveSteps } from '../engine/recipe/deriveSteps'
+import { RECIPE_PROP_2, PROP_2_ANNOTATIONS } from '../engine/recipe/definitions/prop2'
+import { recipeToConclusion } from '../engine/recipe/adapters'
 
 const DEFAULT_LANGUAGE_STYLE: KidLanguageStyle = 'standard'
 
@@ -247,53 +245,6 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
 }
 
 /**
- * Derive I.2 conclusion: AF = BC via C.N.3 + C.N.1
- */
-function deriveProp2Conclusion(
-  store: FactStore,
-  _state: ConstructionState,
-  atStep: number
-): EqualityFact[] {
-  const allNewFacts: EqualityFact[] = []
-
-  const dpAF = distancePair('pt-A', 'pt-F')
-  const dpBE = distancePair('pt-B', 'pt-E')
-  const dpBC = distancePair('pt-B', 'pt-C')
-  const dpDF = distancePair('pt-D', 'pt-F')
-  const dpDA = distancePair('pt-D', 'pt-A')
-
-  // Step 1: C.N.3 — AF = BE
-  allNewFacts.push(
-    ...addFact(
-      store,
-      dpAF,
-      dpBE,
-      { type: 'cn3', whole: dpDF, part: dpDA },
-      'AF = BE',
-      'C.N.3: If equals are subtracted from equals, the remainders are equal. Since DF = DE and DA = DB, AF = BE.',
-      atStep
-    )
-  )
-
-  // Step 2: C.N.1 transitivity — AF = BC
-  if (!queryEquality(store, dpAF, dpBC)) {
-    allNewFacts.push(
-      ...addFact(
-        store,
-        dpAF,
-        dpBC,
-        { type: 'cn1', via: dpBE },
-        'AF = BC',
-        'C.N.1: Things which equal the same thing also equal one another. Since AF = BE and BE = BC, AF = BC.',
-        atStep
-      )
-    )
-  }
-
-  return allNewFacts
-}
-
-/**
  * Proposition I.2: To place at a given point a straight line equal
  * to a given straight line.
  *
@@ -363,74 +314,7 @@ export const PROP_2: PropositionDef = {
       origin: 'given',
     },
   ] as ConstructionElement[],
-  steps: [
-    // 1. Join A and B
-    {
-      instruction: 'Join point {pt:A} to point {pt:B}',
-      expected: { type: 'straightedge', fromId: 'pt-A', toId: 'pt-B' },
-      highlightIds: ['pt-A', 'pt-B'],
-      tool: 'straightedge',
-      citation: 'Post.1',
-    },
-    // 2. Construct equilateral triangle on AB (I.1 macro)
-    {
-      instruction: 'Construct equilateral triangle on {seg:AB} ({prop:1|I.1})',
-      expected: {
-        type: 'macro',
-        propId: 1,
-        inputPointIds: ['pt-A', 'pt-B'],
-        outputLabels: { apex: 'D' },
-      },
-      highlightIds: ['pt-A', 'pt-B'],
-      tool: 'macro',
-      citation: 'I.1',
-    },
-    // 3. Circle at B through C
-    {
-      instruction: 'Draw a circle centered at {pt:B} through {pt:C}',
-      expected: { type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-C' },
-      highlightIds: ['pt-B', 'pt-C'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    // 4. Mark intersection E (Euclid's G — on extension of DB beyond B)
-    // Uses ElementSelectors: circle(B,C) and segment(D,B) instead of creation-order IDs
-    {
-      instruction: 'Mark where the circle crosses line {seg:DB}, past {pt:B}',
-      expected: {
-        type: 'intersection',
-        ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
-        ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-B' },
-        beyondId: 'pt-B',
-        label: 'E',
-      },
-      highlightIds: [],
-      tool: null,
-      citation: 'Def.15',
-    },
-    // 5. Circle at D through E
-    {
-      instruction: 'Draw a circle centered at {pt:D} through {pt:E}',
-      expected: { type: 'compass', centerId: 'pt-D', radiusPointId: 'pt-E' },
-      highlightIds: ['pt-D', 'pt-E'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    // 6. Mark intersection F (Euclid's L — on extension of DA beyond A)
-    {
-      instruction: 'Mark where the circle crosses line {seg:DA}, past {pt:A}',
-      expected: {
-        type: 'intersection',
-        ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
-        ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-A' },
-        beyondId: 'pt-A',
-        label: 'F',
-      },
-      highlightIds: [],
-      tool: null,
-      citation: 'Def.15',
-    },
-  ],
+  steps: deriveSteps(RECIPE_PROP_2, PROP_2_ANNOTATIONS),
   stepInstructionsByStyle: PROP_2_STEP_INSTRUCTIONS,
   getTutorial: getProp2Tutorial,
   explorationNarration: {
@@ -509,5 +393,5 @@ export const PROP_2: PropositionDef = {
       ],
     },
   },
-  deriveConclusion: deriveProp2Conclusion,
+  deriveConclusion: recipeToConclusion(RECIPE_PROP_2),
 }

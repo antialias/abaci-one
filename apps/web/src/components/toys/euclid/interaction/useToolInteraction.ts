@@ -314,7 +314,7 @@ export function useToolInteraction({
           e.stopPropagation()
 
           const newSelected = [...macro.selectedPointIds, hitPt.id]
-          if (newSelected.length >= macro.inputLabels.length) {
+          if (newSelected.length >= macro.inputs.length) {
             // All inputs collected — commit
             const idlePhase: MacroPhase = { tag: 'idle' }
             macroPhaseRef.current = idlePhase

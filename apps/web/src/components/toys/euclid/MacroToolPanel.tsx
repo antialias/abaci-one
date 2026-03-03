@@ -207,9 +207,7 @@ function CollapsedMacroDot({
         width: 28,
         height: 28,
         borderRadius: '50%',
-        border: isGuided
-          ? `2px solid ${BYRNE.yellow}`
-          : '1.5px solid rgba(203, 213, 225, 0.5)',
+        border: isGuided ? `2px solid ${BYRNE.yellow}` : '1.5px solid rgba(203, 213, 225, 0.5)',
         background: 'rgba(252, 252, 248, 0.8)',
         cursor: 'pointer',
         padding: 0,
@@ -333,14 +331,8 @@ function ExpandedMacroCard({
                 width: 7,
                 height: 7,
                 borderRadius: '50%',
-                background:
-                  i < selectedCount
-                    ? BYRNE_CYCLE[i % 3]
-                    : 'rgba(148, 163, 184, 0.25)',
-                border:
-                  i < selectedCount
-                    ? 'none'
-                    : '1px solid rgba(148, 163, 184, 0.4)',
+                background: i < selectedCount ? BYRNE_CYCLE[i % 3] : 'rgba(148, 163, 184, 0.25)',
+                border: i < selectedCount ? 'none' : '1px solid rgba(148, 163, 184, 0.4)',
                 transition: 'background 0.15s',
               }}
             />
@@ -398,8 +390,7 @@ export function MacroToolPanel({
   onSelect,
   isMobile,
 }: MacroToolPanelProps) {
-  const selectedPropId =
-    macroPhase.tag === 'selecting' ? macroPhase.propId : null
+  const selectedPropId = macroPhase.tag === 'selecting' ? macroPhase.propId : null
   const propPreviews = usePropPreviews()
   const isChoosing = macroPhase.tag === 'choosing'
 
@@ -409,12 +400,9 @@ export function MacroToolPanel({
   )
 
   // Selecting phase: compute progress for the expanded card
-  const selectedCount =
-    macroPhase.tag === 'selecting' ? macroPhase.selectedPointIds.length : 0
+  const selectedCount = macroPhase.tag === 'selecting' ? macroPhase.selectedPointIds.length : 0
   const nextLabel =
-    macroPhase.tag === 'selecting'
-      ? (macroPhase.inputs[selectedCount]?.label ?? null)
-      : null
+    macroPhase.tag === 'selecting' ? (macroPhase.inputs[selectedCount]?.label ?? null) : null
 
   // Wrap threshold: form a grid when many macros
   const wrapThreshold = isMobile ? 6 : 8
@@ -449,9 +437,7 @@ export function MacroToolPanel({
           ? {
               flexDirection: 'column' as const,
               gap: 6,
-              ...(isMobile
-                ? { maxWidth: 220 }
-                : { maxWidth: 280 }),
+              ...(isMobile ? { maxWidth: 220 } : { maxWidth: 280 }),
             }
           : {
               flexWrap: macros.length > wrapThreshold ? 'wrap' : ('nowrap' as const),
@@ -470,61 +456,61 @@ export function MacroToolPanel({
             }),
       }}
     >
-      {isChoosing
-        ? // ── Choosing phase: thumbnail grid + detail pane ──
-          <>
-            <div
-              data-element="macro-thumbnail-grid"
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 6,
-              }}
-            >
-              {macros.map(({ propId, title }) => (
-                <MacroThumbnailButton
-                  key={propId}
-                  propId={propId}
-                  title={title}
-                  isGuided={guidedPropId === propId}
-                  isFocused={focusedPropId === propId}
-                  previewSrc={propPreviews.get(propId)}
-                  isMobile={isMobile}
-                  onFocus={() => setFocusedPropId(propId)}
-                  onSelect={() => onSelect(propId)}
-                />
-              ))}
-            </div>
-            {focusedPropId != null && (
-              <MacroDetailPane propId={focusedPropId} />
-            )}
-          </>
-        : // ── Selecting phase: dots + expanded card ──
-          macros.map(({ propId, def, title }) => {
-            if (propId === selectedPropId) {
-              return (
-                <ExpandedMacroCard
-                  key={propId}
-                  propId={propId}
-                  def={def}
-                  title={title}
-                  previewSrc={propPreviews.get(propId)}
-                  selectedCount={selectedCount}
-                  nextLabel={nextLabel}
-                />
-              )
-            }
-            // Only show dots if there are multiple macros
-            if (macros.length <= 1) return null
-            return (
-              <CollapsedMacroDot
+      {isChoosing ? (
+        // ── Choosing phase: thumbnail grid + detail pane ──
+        <>
+          <div
+            data-element="macro-thumbnail-grid"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+            }}
+          >
+            {macros.map(({ propId, title }) => (
+              <MacroThumbnailButton
                 key={propId}
                 propId={propId}
+                title={title}
                 isGuided={guidedPropId === propId}
+                isFocused={focusedPropId === propId}
+                previewSrc={propPreviews.get(propId)}
+                isMobile={isMobile}
+                onFocus={() => setFocusedPropId(propId)}
                 onSelect={() => onSelect(propId)}
               />
+            ))}
+          </div>
+          {focusedPropId != null && <MacroDetailPane propId={focusedPropId} />}
+        </>
+      ) : (
+        // ── Selecting phase: dots + expanded card ──
+        macros.map(({ propId, def, title }) => {
+          if (propId === selectedPropId) {
+            return (
+              <ExpandedMacroCard
+                key={propId}
+                propId={propId}
+                def={def}
+                title={title}
+                previewSrc={propPreviews.get(propId)}
+                selectedCount={selectedCount}
+                nextLabel={nextLabel}
+              />
             )
-          })}
+          }
+          // Only show dots if there are multiple macros
+          if (macros.length <= 1) return null
+          return (
+            <CollapsedMacroDot
+              key={propId}
+              propId={propId}
+              isGuided={guidedPropId === propId}
+              onSelect={() => onSelect(propId)}
+            />
+          )
+        })
+      )}
     </div>
   )
 }

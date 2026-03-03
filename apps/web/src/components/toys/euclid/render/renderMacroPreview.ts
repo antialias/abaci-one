@@ -13,6 +13,7 @@ import { BYRNE_CYCLE } from '../types'
 import { getPoint } from '../engine/constructionState'
 import { MACRO_PREVIEW_REGISTRY } from '../engine/macroPreview'
 import { MACRO_REGISTRY } from '../engine/macros'
+import { getGhostBaseOpacity } from './renderGhostGeometry'
 import { worldToScreen2D, screenToWorld2D } from '../../shared/coordinateConversions'
 
 function toScreen(wx: number, wy: number, vp: EuclidViewportState, w: number, h: number) {
@@ -31,54 +32,25 @@ const FUTURE_OFFSETS = [
 ]
 
 /**
- * Render the macro preview overlay.
- * Returns true if animation is ongoing (cursor is present → need continuous draw).
+ * Build the world-space positions array for a macro preview.
+ * Extracted so the auto-fit system can compute preview geometry bounds
+ * without duplicating the position-building logic.
  */
-export function renderMacroPreview(
-  ctx: CanvasRenderingContext2D,
+export function buildMacroPreviewPositions(
   macroPhase: MacroPhase & { tag: 'selecting' },
   constructionState: ConstructionState,
+  pointerWorld: { x: number; y: number },
+  snappedPointId: string | null,
   viewport: EuclidViewportState,
   w: number,
-  h: number,
-  pointerWorld: { x: number; y: number } | null,
-  snappedPointId: string | null
-): boolean {
-  const { propId, selectedPointIds, inputLabels } = macroPhase
+  h: number
+): { x: number; y: number }[] {
+  const { propId, selectedPointIds } = macroPhase
   const macroDef = MACRO_REGISTRY[propId]
-  if (!macroDef) return false
+  if (!macroDef) return []
 
-  const inputCount = macroDef.inputCount
+  const inputCount = macroDef.inputs.length
   const selectedCount = selectedPointIds.length
-
-  // ── A. Bound point highlights ──
-  for (let i = 0; i < selectedCount; i++) {
-    const pt = getPoint(constructionState, selectedPointIds[i])
-    if (!pt) continue
-    const sp = toScreen(pt.x, pt.y, viewport, w, h)
-    const color = BYRNE_CYCLE[i % 3]
-
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(sp.x, sp.y, 12, 0, Math.PI * 2)
-    ctx.strokeStyle = color
-    ctx.lineWidth = 2
-    ctx.globalAlpha = 0.55
-    ctx.stroke()
-
-    // Small filled dot at center
-    ctx.beginPath()
-    ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2)
-    ctx.fillStyle = color
-    ctx.globalAlpha = 0.7
-    ctx.fill()
-    ctx.restore()
-  }
-
-  // If no pointer, we can't render unbound markers or preview geometry
-  if (!pointerWorld) return false
-
-  // ── Compute positions for all inputs ──
   const positions: { x: number; y: number }[] = []
 
   // Bound positions from construction state
@@ -112,6 +84,68 @@ export function renderMacroPreview(
     positions.push(worldPt)
   }
 
+  return positions
+}
+
+/**
+ * Render the macro preview overlay.
+ * Returns true if animation is ongoing (cursor is present → need continuous draw).
+ */
+export function renderMacroPreview(
+  ctx: CanvasRenderingContext2D,
+  macroPhase: MacroPhase & { tag: 'selecting' },
+  constructionState: ConstructionState,
+  viewport: EuclidViewportState,
+  w: number,
+  h: number,
+  pointerWorld: { x: number; y: number } | null,
+  snappedPointId: string | null
+): boolean {
+  const { propId, selectedPointIds, inputs } = macroPhase
+  const macroDef = MACRO_REGISTRY[propId]
+  if (!macroDef) return false
+
+  const inputCount = macroDef.inputs.length
+  const selectedCount = selectedPointIds.length
+
+  // ── A. Bound point highlights ──
+  for (let i = 0; i < selectedCount; i++) {
+    const pt = getPoint(constructionState, selectedPointIds[i])
+    if (!pt) continue
+    const sp = toScreen(pt.x, pt.y, viewport, w, h)
+    const color = BYRNE_CYCLE[i % 3]
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(sp.x, sp.y, 12, 0, Math.PI * 2)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 0.55
+    ctx.stroke()
+
+    // Small filled dot at center
+    ctx.beginPath()
+    ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.globalAlpha = 0.7
+    ctx.fill()
+    ctx.restore()
+  }
+
+  // If no pointer, we can't render unbound markers or preview geometry
+  if (!pointerWorld) return false
+
+  // ── Compute positions for all inputs ──
+  const positions = buildMacroPreviewPositions(
+    macroPhase,
+    constructionState,
+    pointerWorld,
+    snappedPointId,
+    viewport,
+    w,
+    h
+  )
+
   // ── B. Unbound point markers ──
   for (let i = selectedCount; i < inputCount; i++) {
     const pos = positions[i]
@@ -143,13 +177,49 @@ export function renderMacroPreview(
     }
 
     // Label letter
-    const label = (inputLabels[i] ?? '')[0] ?? String.fromCharCode(65 + i)
+    const label = (inputs[i]?.label ?? '')[0] ?? String.fromCharCode(65 + i)
     ctx.globalAlpha = isPrimary ? 0.9 : 0.5
     ctx.fillStyle = '#fff'
     ctx.font = `bold ${isPrimary ? 10 : 8}px system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(label, sp.x, sp.y + 0.5)
+
+    // Full input label below primary marker (dark pill + white text)
+    if (isPrimary) {
+      const fullLabel = inputs[i]?.label ?? ''
+      if (fullLabel) {
+        ctx.font = '11px system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        const metrics = ctx.measureText(fullLabel)
+        const px = 5
+        const py = 2
+        const tx = sp.x
+        const ty = sp.y + 20
+        const bw = metrics.width + px * 2
+        const bh = 14 + py * 2
+
+        // Dark rounded pill
+        ctx.globalAlpha = 0.75
+        ctx.fillStyle = '#1a1a1a'
+        ctx.beginPath()
+        ctx.roundRect(tx - bw / 2, ty - py, bw, bh, 4)
+        ctx.fill()
+
+        // Accent-colored left edge
+        ctx.fillStyle = color
+        ctx.globalAlpha = 0.9
+        ctx.beginPath()
+        ctx.roundRect(tx - bw / 2, ty - py, 3, bh, [4, 0, 0, 4])
+        ctx.fill()
+
+        // White text
+        ctx.globalAlpha = 0.95
+        ctx.fillStyle = '#fff'
+        ctx.fillText(fullLabel, tx, ty)
+      }
+    }
 
     ctx.restore()
   }
@@ -159,8 +229,10 @@ export function renderMacroPreview(
   if (previewFn && positions.length >= inputCount) {
     const result = previewFn(positions)
     if (result) {
-      renderPreviewElements(ctx, result.ghostElements, viewport, w, h, 0.25)
-      renderPreviewElements(ctx, result.resultElements, viewport, w, h, 0.4)
+      const base = getGhostBaseOpacity()
+      // Ghost elements scale with the debug slider; result elements are slightly brighter
+      renderPreviewElements(ctx, result.ghostElements, viewport, w, h, Math.max(0.1, base * 1.25))
+      renderPreviewElements(ctx, result.resultElements, viewport, w, h, Math.max(0.15, base * 2))
     }
   }
 

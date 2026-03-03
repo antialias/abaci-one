@@ -3,7 +3,7 @@
  * No construction state, fact store, or side effects.
  */
 
-import { circleCircleIntersections } from './intersections'
+import { circleCircleIntersections, circleLineIntersections } from './intersections'
 
 /**
  * Compute the apex of an equilateral triangle on segment A→B.
@@ -49,4 +49,39 @@ export function computeDirectionVector(
     return { x: 0, y: 1 }
   }
   return { x: dx / len, y: dy / len }
+}
+
+/**
+ * Find the intersection of a circle with a line (defined by two points)
+ * that lies "beyond" lineThrough — i.e., on the extension past lineThrough
+ * in the direction lineFrom→lineThrough.
+ *
+ * Uses computeDirectionVector for the line direction, which provides a (0,1)
+ * fallback when lineFrom and lineThrough are coincident.
+ */
+export function intersectionBeyond(
+  lineFrom: { x: number; y: number },
+  lineThrough: { x: number; y: number },
+  cx: number,
+  cy: number,
+  cr: number
+): { x: number; y: number } | null {
+  // Use computeDirectionVector to handle coincident points with (0,1) fallback
+  const dir = computeDirectionVector(lineFrom, lineThrough)
+  const pts = circleLineIntersections(
+    cx,
+    cy,
+    cr,
+    lineFrom.x,
+    lineFrom.y,
+    lineFrom.x + dir.x,
+    lineFrom.y + dir.y
+  )
+  const dx = dir.x
+  const dy = dir.y
+  for (const p of pts) {
+    const dot = (p.x - lineThrough.x) * dx + (p.y - lineThrough.y) * dy
+    if (dot > 0) return p
+  }
+  return null
 }

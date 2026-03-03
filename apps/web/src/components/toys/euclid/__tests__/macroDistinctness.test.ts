@@ -152,10 +152,10 @@ describe('wouldViolateDistinctness', () => {
       for (const [propId, macro] of Object.entries(MACRO_REGISTRY)) {
         for (const [i, j] of macro.distinctInputPairs) {
           expect(i, `Macro I.${propId} pair index ${i} out of bounds`).toBeLessThan(
-            macro.inputCount
+            macro.inputs.length
           )
           expect(j, `Macro I.${propId} pair index ${j} out of bounds`).toBeLessThan(
-            macro.inputCount
+            macro.inputs.length
           )
           expect(i, `Macro I.${propId} pair [${i},${j}] should have i < j`).toBeLessThan(j)
         }

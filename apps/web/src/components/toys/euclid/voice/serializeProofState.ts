@@ -366,15 +366,26 @@ export function serializeToolState(
           )
           break
         case 'selecting': {
-          const needed = mp.inputLabels.length
+          const needed = mp.inputs.length
           const selected = mp.selectedPointIds.length
-          const selectedLabels = mp.selectedPointIds.map((id) => pointLabel(state, id)).join(', ')
-          const remainingLabels = mp.inputLabels.slice(selected).join(', ')
+          const selectedDescriptions = mp.selectedPointIds
+            .map((id, i) => {
+              const input = mp.inputs[i]
+              const label = pointLabel(state, id)
+              return input ? `${input.label} (${label})` : label
+            })
+            .join(', ')
+          const remainingDescriptions = mp.inputs
+            .slice(selected)
+            .map((inp) => inp.label)
+            .join(', ')
           lines.push(`  Proposition tool: applying Prop I.${mp.propId}`)
-          lines.push(`    Input points needed: ${mp.inputLabels.join(', ')}`)
-          lines.push(`    Selected so far (${selected}/${needed}): ${selectedLabels || '(none)'}`)
+          lines.push(`    Input points needed: ${mp.inputs.map((inp) => inp.label).join(', ')}`)
+          lines.push(
+            `    Selected so far (${selected}/${needed}): ${selectedDescriptions || '(none)'}`
+          )
           if (selected < needed) {
-            lines.push(`    Waiting for: ${remainingLabels}`)
+            lines.push(`    Waiting for: ${remainingDescriptions}`)
           }
           break
         }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { MACRO_REGISTRY } from '../engine/macros'
+import { computeEquilateralApex, computeDirectionVector } from '../engine/geometryHelpers'
 import { initializeGiven, getPoint } from '../engine/constructionState'
 import { createFactStore, queryEquality } from '../engine/factStore'
 import { distancePair } from '../engine/facts'
@@ -42,14 +43,18 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('is registered in MACRO_REGISTRY', () => {
     expect(macro).toBeDefined()
     expect(macro.propId).toBe(2)
-    expect(macro.inputCount).toBe(3)
-    expect(macro.inputLabels).toHaveLength(3)
+    expect(macro.inputs).toHaveLength(3)
+    expect(macro.inputs.map((i) => i.label)).toEqual([
+      'Segment start',
+      'Segment end',
+      'Target point',
+    ])
   })
 
   it('creates one point and one segment', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false)
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false)
 
     const points = result.addedElements.filter((e) => e.kind === 'point')
     const segments = result.addedElements.filter((e) => e.kind === 'segment')
@@ -60,7 +65,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('uses explicit "result" label from outputLabels', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
@@ -73,7 +78,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('auto-generates label when no outputLabels provided', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false)
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false)
 
     const pt = result.addedElements.find((e) => e.kind === 'point')
     expect(pt).toBeDefined()
@@ -84,7 +89,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('places output at correct distance from target', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
@@ -98,10 +103,10 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     expect(distAE).toBeCloseTo(distCD, 10)
   })
 
-  it('places output in direction target → segFrom', () => {
+  it('places output along ray from equilateral apex through target', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
@@ -109,15 +114,19 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const ptC = getPoint(result.state, 'pt-C')!
     const ptE = getPoint(result.state, 'pt-E')!
 
-    const dirAC = Math.atan2(ptC.y - ptA.y, ptC.x - ptA.x)
+    // The I.2 construction builds an equilateral triangle on target→segFrom (A→C),
+    // then extends ray D→A past A. So E should be along direction D→A from A.
+    const apex = computeEquilateralApex(ptA, ptC)!
+    const daDir = computeDirectionVector(apex, ptA)
+    const dirDA = Math.atan2(daDir.y, daDir.x)
     const dirAE = Math.atan2(ptE.y - ptA.y, ptE.x - ptA.x)
-    expect(dirAE).toBeCloseTo(dirAC, 10)
+    expect(dirAE).toBeCloseTo(dirDA, 10)
   })
 
   it('adds equality fact: dist(target, output) = dist(segFrom, segTo)', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
@@ -133,7 +142,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('segment connects target to output point', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
@@ -148,7 +157,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('stamps facts with the provided atStep value', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 7, false)
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 7, false)
 
     for (const fact of result.newFacts) {
       expect(fact.atStep).toBe(7)
@@ -158,16 +167,28 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('works with collinear points', () => {
     const state = givenCollinear()
     const factStore = createFactStore()
-    // Copy length |BC| = 2 to point A, in direction A→B (along x-axis)
-    const result = macro.execute(state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false, {
+    // Copy length |BC| = 2 to point A (target), from B (segFrom) to C (segTo)
+    const result = macro.execute(state, ['pt-B', 'pt-C', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
+    const ptA = getPoint(result.state, 'pt-A')!
+    const ptB = getPoint(result.state, 'pt-B')!
+    const ptC = getPoint(result.state, 'pt-C')!
     const ptE = getPoint(result.state, 'pt-E')!
     expect(ptE).toBeDefined()
-    // |BC| = 2, direction A→B = (1,0), so E = A + 2*(1,0) = (2, 0)
-    expect(ptE.x).toBeCloseTo(2, 10)
-    expect(ptE.y).toBeCloseTo(0, 10)
+
+    // Distance |AE| should equal |BC| = 2
+    const distBC = Math.sqrt((ptB.x - ptC.x) ** 2 + (ptB.y - ptC.y) ** 2)
+    const distAE = Math.sqrt((ptA.x - ptE.x) ** 2 + (ptA.y - ptE.y) ** 2)
+    expect(distAE).toBeCloseTo(distBC, 10)
+
+    // Direction: E is along ray D→A past A (equilateral triangle construction)
+    const apex = computeEquilateralApex(ptA, ptB)!
+    const daDir = computeDirectionVector(apex, ptA)
+    const dirDA = Math.atan2(daDir.y, daDir.x)
+    const dirAE = Math.atan2(ptE.y - ptA.y, ptE.x - ptA.x)
+    expect(dirAE).toBeCloseTo(dirDA, 10)
   })
 
   it('uses fallback direction (0,1) when target coincides with segFrom', () => {
@@ -175,7 +196,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const factStore = createFactStore()
     // target=A(1,2), segFrom=B(1,2) — same position
     // |BC| = 3, fallback direction = (0,1), so output = (1, 5)
-    const result = macro.execute(state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-B', 'pt-C', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 
@@ -193,7 +214,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('returns empty result when input points are missing', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-MISSING'], [], factStore, 0, false)
+    const result = macro.execute(state, ['pt-C', 'pt-MISSING', 'pt-A'], [], factStore, 0, false)
 
     expect(result.newFacts).toHaveLength(0)
     expect(result.addedElements).toHaveLength(0)
@@ -203,7 +224,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
   it('facts in store match facts in result', () => {
     const state = givenACD()
     const factStore = createFactStore()
-    const result = macro.execute(state, ['pt-A', 'pt-C', 'pt-D'], [], factStore, 0, false)
+    const result = macro.execute(state, ['pt-C', 'pt-D', 'pt-A'], [], factStore, 0, false)
 
     expect(factStore.facts).toHaveLength(result.newFacts.length)
     for (let i = 0; i < result.newFacts.length; i++) {
@@ -221,7 +242,7 @@ describe('MACRO_PROP_2 (Transfer distance, I.2)', () => {
     const factStore = createFactStore()
 
     // |BC| = 0, so output should be at target
-    const result = macro.execute(state, ['pt-A', 'pt-B', 'pt-C'], [], factStore, 0, false, {
+    const result = macro.execute(state, ['pt-B', 'pt-C', 'pt-A'], [], factStore, 0, false, {
       result: 'E',
     })
 

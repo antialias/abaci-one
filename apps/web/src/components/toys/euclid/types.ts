@@ -111,7 +111,12 @@ export type MacroPhase =
   | { tag: 'idle' }
   /** Macro tool active, proposition not yet chosen — picker is open */
   | { tag: 'choosing' }
-  | { tag: 'selecting'; propId: number; inputLabels: string[]; selectedPointIds: string[] }
+  | {
+      tag: 'selecting'
+      propId: number
+      inputs: import('./engine/macros').MacroInput[]
+      selectedPointIds: string[]
+    }
 
 // ── Element selectors ─────────────────────────────────────────────
 // Reference circles/segments by their defining points, not creation-order IDs.
@@ -350,6 +355,12 @@ export interface MacroCeremonyState {
   postNarrationDelayMs: number
   /** The deferred step-advance closure */
   advanceStep: () => void
+  /**
+   * Layers pre-revealed from frame 1 (depth-1 layers already visible as the
+   * live macro preview). Maps layerKey → full group count. These stay visible
+   * throughout the ceremony while deeper layers animate in underneath.
+   */
+  preRevealedLayers: Map<string, number>
   /**
    * Per-element draw animation state.
    * Key = `${layerKey}:${elementIdx}`. Populated when each group is revealed.

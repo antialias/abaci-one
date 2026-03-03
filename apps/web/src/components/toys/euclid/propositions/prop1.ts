@@ -6,6 +6,8 @@ import type {
 } from '../types'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { BYRNE } from '../types'
+import { deriveSteps } from '../engine/recipe/deriveSteps'
+import { RECIPE_PROP_1, PROP_1_ANNOTATIONS } from '../engine/recipe/definitions/prop1'
 
 const DEFAULT_LANGUAGE_STYLE: KidLanguageStyle = 'standard'
 
@@ -227,43 +229,7 @@ export const PROP_1: PropositionDef = {
       origin: 'given',
     },
   ] as ConstructionElement[],
-  steps: [
-    {
-      instruction: 'Draw a circle centered at {pt:A} through {pt:B}',
-      expected: { type: 'compass', centerId: 'pt-A', radiusPointId: 'pt-B' },
-      highlightIds: ['pt-A', 'pt-B'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    {
-      instruction: 'Draw a circle centered at {pt:B} through {pt:A}',
-      expected: { type: 'compass', centerId: 'pt-B', radiusPointId: 'pt-A' },
-      highlightIds: ['pt-B', 'pt-A'],
-      tool: 'compass',
-      citation: 'Post.3',
-    },
-    {
-      instruction: 'Mark the point where the circles meet',
-      expected: { type: 'intersection', label: 'C' }, // accepts any intersection
-      highlightIds: [],
-      tool: null, // tap — no tool needed
-      citation: 'Def.15',
-    },
-    {
-      instruction: 'Draw a line from {pt:C} to {pt:A}',
-      expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-A' },
-      highlightIds: ['pt-C', 'pt-A'],
-      tool: 'straightedge',
-      citation: 'Post.1',
-    },
-    {
-      instruction: 'Draw a line from {pt:C} to {pt:B}',
-      expected: { type: 'straightedge', fromId: 'pt-C', toId: 'pt-B' },
-      highlightIds: ['pt-C', 'pt-B'],
-      tool: 'straightedge',
-      citation: 'Post.1',
-    },
-  ],
+  steps: deriveSteps(RECIPE_PROP_1, PROP_1_ANNOTATIONS),
   stepInstructionsByStyle: PROP_1_STEP_INSTRUCTIONS,
   // completionMessage derived from proof engine at runtime
   resultSegments: [

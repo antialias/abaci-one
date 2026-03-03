@@ -601,7 +601,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
           macroPhaseRef.current = {
             tag: 'selecting',
             propId,
-            inputLabels: macroDef.inputLabels,
+            inputs: macroDef.inputs,
             selectedPointIds: [],
           }
         }
