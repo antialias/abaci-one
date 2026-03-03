@@ -364,19 +364,28 @@ function collectSubTraceExportGhosts(
 }
 
 /**
- * Extract GhostCircles from a sub-trace's non-export circle ops.
+ * Extract ghost elements from a sub-trace's non-export ops (circles + internal segments).
+ * Exported segments are handled separately by collectSubTraceExportGhosts.
  */
-function collectSubTraceCircles(
+function collectSubTraceInternalGhosts(
   subTrace: ConstructionTrace,
   colorFn: () => string
 ): { elements: GhostElement[]; opIds: string[] } {
   const elements: GhostElement[] = []
   const opIds: string[] = []
+  const exportRefs = new Set(subTrace.recipe.exports.map((e) => e.ref))
   for (const opTrace of subTrace.opTraces) {
     if (opTrace.kind === 'circle') {
       elements.push({
         kind: 'circle',
         cx: opTrace.center.x, cy: opTrace.center.y, r: opTrace.radius,
+        color: colorFn(),
+      })
+      opIds.push(opTrace.opId)
+    } else if (opTrace.kind === 'segment' && !exportRefs.has(opTrace.opId)) {
+      elements.push({
+        kind: 'segment',
+        x1: opTrace.from.x, y1: opTrace.from.y, x2: opTrace.to.x, y2: opTrace.to.y,
         color: colorFn(),
       })
       opIds.push(opTrace.opId)
@@ -570,7 +579,7 @@ function buildSubTraceGhostElements(
   nextColorIndex: number
 } {
   let colorIndex = startColorIndex
-  const { elements, opIds } = collectSubTraceCircles(
+  const { elements, opIds } = collectSubTraceInternalGhosts(
     trace,
     () => BYRNE_CYCLE[colorIndex++ % 3]
   )
@@ -663,12 +672,12 @@ export function recipeToPreview(
           break
         }
         case 'apply': {
-          // Sub-trace's circles → ghost elements
-          const { elements: circleGhosts } = collectSubTraceCircles(
+          // Sub-trace's internal elements (circles + non-export segments) → ghost elements
+          const { elements: internalGhosts } = collectSubTraceInternalGhosts(
             opTrace.subTrace,
             () => BYRNE_CYCLE[ghostElements.length % 3]
           )
-          ghostElements.push(...circleGhosts)
+          ghostElements.push(...internalGhosts)
           // Sub-trace's exported points/segments → ghost at this level
           const exportGhosts = collectSubTraceExportGhosts(
             opTrace.subTrace,

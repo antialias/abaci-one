@@ -33,11 +33,13 @@ export const RECIPE_PROP_1: ConstructionRecipe = {
     },
     { kind: 'segment', id: 'seg-CA', from: 'C', to: 'A' },
     { kind: 'segment', id: 'seg-CB', from: 'C', to: 'B' },
+    { kind: 'segment', id: 'seg-AB', from: 'A', to: 'B' },
   ],
   exports: [
     { ref: 'C', kind: 'point', outputLabelKey: 'apex' },
     { ref: 'seg-CA', kind: 'segment' },
     { ref: 'seg-CB', kind: 'segment' },
+    { ref: 'seg-AB', kind: 'segment' },
   ],
   facts: [
     {

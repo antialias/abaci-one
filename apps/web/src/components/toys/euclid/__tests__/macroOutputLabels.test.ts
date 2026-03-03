@@ -81,15 +81,16 @@ describe('MACRO_PROP_1 with outputLabels', () => {
     expect(apex!.id).toBe('pt-D')
     expect((apex as { label: string }).label).toBe('D')
 
-    // Verify segments connect to the explicitly-labeled point
+    // Verify segments connect to the explicitly-labeled point (DA, DB, and base AB)
     const segments = result.addedElements.filter((e) => e.kind === 'segment')
-    expect(segments).toHaveLength(2)
+    expect(segments).toHaveLength(3)
     const segIds = segments.map((s) => {
       if (s.kind !== 'segment') return null
       return [s.fromId, s.toId].sort().join(',')
     })
     expect(segIds).toContain('pt-A,pt-D')
     expect(segIds).toContain('pt-B,pt-D')
+    expect(segIds).toContain('pt-A,pt-B')
   })
 
   it('generates Def.15 facts referencing the explicit label', () => {
@@ -111,10 +112,10 @@ describe('MACRO_PROP_1 with outputLabels', () => {
 
     const result = macro.execute(state, ['pt-A', 'pt-B'], [], factStore, 0, false)
 
-    // Macro creates: 1 point + 2 segments = 3 elements
-    expect(result.addedElements).toHaveLength(3)
+    // Macro creates: 1 point + 3 segments (CA, CB, AB) = 4 elements
+    expect(result.addedElements).toHaveLength(4)
     expect(result.addedElements.filter((e) => e.kind === 'point')).toHaveLength(1)
-    expect(result.addedElements.filter((e) => e.kind === 'segment')).toHaveLength(2)
+    expect(result.addedElements.filter((e) => e.kind === 'segment')).toHaveLength(3)
   })
 
   it('stamps facts with the provided atStep value', () => {
