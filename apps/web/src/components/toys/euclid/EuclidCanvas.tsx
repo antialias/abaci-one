@@ -90,6 +90,7 @@ import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
 import { renderCitationFlashes } from './render/renderCitationFlash'
 import type { CitationFlash, CitationFlashInit } from './render/renderCitationFlash'
+import { CITATIONS } from './engine/citations'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
@@ -672,9 +673,10 @@ function HecklerCallOverlay({
         color: '#f8fafc',
         fontSize: 13,
         fontFamily: 'system-ui, sans-serif',
-        boxShadow: phase === 'ringing'
-          ? '0 8px 32px rgba(0,0,0,0.4), 0 0 0 2px rgba(78, 121, 167, 0.4)'
-          : '0 8px 32px rgba(0,0,0,0.35)',
+        boxShadow:
+          phase === 'ringing'
+            ? '0 8px 32px rgba(0,0,0,0.4), 0 0 0 2px rgba(78, 121, 167, 0.4)'
+            : '0 8px 32px rgba(0,0,0,0.35)',
         zIndex: 20,
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: phase === 'watching' ? 0.7 : 1,
@@ -779,7 +781,8 @@ function HecklerCallOverlay({
             <MiniWaveform isDark active={isSpeaking} />
           </div>
           <span style={{ opacity: 0.6, fontSize: 12 }}>
-            Connecting<AnimatedDots />
+            Connecting
+            <AnimatedDots />
           </span>
           <button
             data-action="end-heckler-call"
@@ -823,7 +826,8 @@ function HecklerCallOverlay({
           >
             {isThinking ? (
               <span style={{ opacity: 0.7, fontSize: 12 }}>
-                Consulting scrolls<AnimatedDots />
+                Consulting scrolls
+                <AnimatedDots />
               </span>
             ) : (
               <>
@@ -1464,8 +1468,11 @@ function EuclidCanvasInner({
   tryActivateRef.current = () => {
     if (!pendingActivateRef.current) return
     if (euclidVoice.state !== 'preconnected') {
-      console.log('[heckler-activate] not yet — voiceState=%s, stallDone=%s',
-        euclidVoice.state, stallDoneRef.current)
+      console.log(
+        '[heckler-activate] not yet — voiceState=%s, stallDone=%s',
+        euclidVoice.state,
+        stallDoneRef.current
+      )
       return
     }
     if (!stallDoneRef.current) {
@@ -1481,8 +1488,12 @@ function EuclidCanvasInner({
 
   // Pre-dial when heckler enters 'ringing': switch attitude and start WebRTC
   useEffect(() => {
-    console.log('[heckler-predial] effect: stage=%s, voiceState=%s, preDialRef=%s',
-      heckler.stage, euclidVoice.state, hecklerPreDialRef.current)
+    console.log(
+      '[heckler-predial] effect: stage=%s, voiceState=%s, preDialRef=%s',
+      heckler.stage,
+      euclidVoice.state,
+      hecklerPreDialRef.current
+    )
     if (heckler.stage !== 'ringing') return
     // Already initiated pre-dial — don't schedule another
     if (hecklerPreDialRef.current) {
@@ -1509,8 +1520,12 @@ function EuclidCanvasInner({
 
   // When the user clicks "Answer": activate immediately or play stalling TTS
   const handleHecklerAnswer = useCallback(() => {
-    console.log('[heckler-answer] clicked: voiceState=%s, preDialRef=%s, stallDone=%s',
-      euclidVoice.state, hecklerPreDialRef.current, stallDoneRef.current)
+    console.log(
+      '[heckler-answer] clicked: voiceState=%s, preDialRef=%s, stallDone=%s',
+      euclidVoice.state,
+      hecklerPreDialRef.current,
+      stallDoneRef.current
+    )
     // Kill ring tone immediately so it doesn't overlap with speech
     euclidVoice.stopRing()
     heckler.answer() // transition stage to 'answered', prevent re-triggering
@@ -1556,7 +1571,10 @@ function EuclidCanvasInner({
   // Clean up pre-dial if heckler match is lost (e.g. undo reverts the construction)
   useEffect(() => {
     if (heckler.stage === 'idle' && hecklerPreDialRef.current) {
-      console.log('[heckler-cleanup] match lost — hanging up pre-dial, voiceState=%s', euclidVoice.state)
+      console.log(
+        '[heckler-cleanup] match lost — hanging up pre-dial, voiceState=%s',
+        euclidVoice.state
+      )
       hecklerPreDialRef.current = false
       pendingActivateRef.current = false
       stallTextRef.current = null
@@ -2601,6 +2619,19 @@ function EuclidCanvasInner({
         setProofFacts(proofFactsRef.current)
       }
 
+      // Citation flash at centroid of input points
+      const citationKey = `I.${propId}`
+      if (CITATIONS[citationKey]) {
+        const inputPts = inputPointIds
+          .map((id) => getPoint(constructionRef.current, id))
+          .filter(Boolean) as { x: number; y: number }[]
+        if (inputPts.length > 0) {
+          const cx = inputPts.reduce((s, p) => s + p.x, 0) / inputPts.length
+          const cy = inputPts.reduce((s, p) => s + p.y, 0) / inputPts.length
+          pushCitationFlash({ type: 'point', citation: citationKey, worldX: cx, worldY: cy })
+        }
+      }
+
       notifierRef.current.notifyConstruction({
         action: `Applied Proposition I.${propId}`,
         shouldPrompt: true,
@@ -2902,7 +2933,10 @@ function EuclidCanvasInner({
 
   /** Activate given-setup mode (admin only). */
   const handleActivateGivenSetup = useCallback(
-    (existingElements?: import('./types').SerializedElement[], existingFacts?: import('./types').SerializedEqualityFact[]) => {
+    (
+      existingElements?: import('./types').SerializedElement[],
+      existingFacts?: import('./types').SerializedEqualityFact[]
+    ) => {
       givenSetup.activate(existingElements, existingFacts)
       dynamicPropositionRef.current = null
       toolPhases.resetAll()
@@ -3025,21 +3059,22 @@ function EuclidCanvasInner({
     // Include custom givens if this was a given-setup construction
     const dynProp = dynamicPropositionRef.current
     if (dynProp) {
-      data.givenElements = givenSetup.givenElements.length > 0
-        ? givenSetup.givenElements
-        : dynProp.givenElements.map((el) => ({
-            kind: el.kind,
-            id: el.id,
-            label: el.kind === 'point' ? el.label : undefined,
-            x: el.kind === 'point' ? el.x : undefined,
-            y: el.kind === 'point' ? el.y : undefined,
-            fromId: el.kind === 'segment' ? el.fromId : undefined,
-            toId: el.kind === 'segment' ? el.toId : undefined,
-            centerId: el.kind === 'circle' ? el.centerId : undefined,
-            radiusPointId: el.kind === 'circle' ? el.radiusPointId : undefined,
-            color: el.color,
-            origin: el.origin,
-          }))
+      data.givenElements =
+        givenSetup.givenElements.length > 0
+          ? givenSetup.givenElements
+          : dynProp.givenElements.map((el) => ({
+              kind: el.kind,
+              id: el.id,
+              label: el.kind === 'point' ? el.label : undefined,
+              x: el.kind === 'point' ? el.x : undefined,
+              y: el.kind === 'point' ? el.y : undefined,
+              fromId: el.kind === 'segment' ? el.fromId : undefined,
+              toId: el.kind === 'segment' ? el.toId : undefined,
+              centerId: el.kind === 'circle' ? el.centerId : undefined,
+              radiusPointId: el.kind === 'circle' ? el.radiusPointId : undefined,
+              color: el.color,
+              origin: el.origin,
+            }))
       if (dynProp.givenFacts && dynProp.givenFacts.length > 0) {
         data.givenFacts = dynProp.givenFacts
       }
@@ -3075,7 +3110,13 @@ function EuclidCanvasInner({
         const res = await fetch('/api/euclid/creations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data, thumbnail, isPublic: false, playerId: playerId ?? null, title }),
+          body: JSON.stringify({
+            data,
+            thumbnail,
+            isPublic: false,
+            playerId: playerId ?? null,
+            title,
+          }),
         })
         const json = await res.json()
         if (res.ok) {
@@ -3197,12 +3238,7 @@ function EuclidCanvasInner({
           const actions = creation.data.actions ?? []
           postCompletionActionsRef.current = actions
           const dynProp = dynamicPropositionRef.current
-          const result = replayConstruction(
-            constructionElements,
-            dynProp.steps,
-            dynProp,
-            actions
-          )
+          const result = replayConstruction(constructionElements, dynProp.steps, dynProp, actions)
 
           constructionRef.current = result.state
           candidatesRef.current = result.candidates
@@ -3230,12 +3266,7 @@ function EuclidCanvasInner({
           // Replay actions
           const actions = creation.data.actions ?? []
           postCompletionActionsRef.current = actions
-          const result = replayConstruction(
-            givenElements,
-            proposition.steps,
-            proposition,
-            actions
-          )
+          const result = replayConstruction(givenElements, proposition.steps, proposition, actions)
 
           constructionRef.current = result.state
           candidatesRef.current = result.candidates
@@ -3332,12 +3363,20 @@ function EuclidCanvasInner({
       ]
       requestDraw()
 
+      // Citation flash at the point
+      pushCitationFlash({
+        type: 'point',
+        citation: 'Def.1',
+        worldX,
+        worldY,
+      })
+
       notifierRef.current.notifyConstruction({
         action: `Placed free point ${result.point.label}`,
         shouldPrompt: false,
       })
     },
-    [requestDraw]
+    [requestDraw, pushCitationFlash]
   )
 
   const handleRewindToStep = useCallback(
@@ -4990,41 +5029,37 @@ function EuclidCanvasInner({
             )}
 
             {/* Save (draft) — hidden during given-setup */}
-            {!givenSetup.isActive && <button
-              onClick={handleSave}
-              disabled={saveState === 'saving' || postCompletionActionsRef.current.length === 0}
-              title="Save draft"
-              style={{
-                padding: '7px 13px',
-                borderRadius: 8,
-                border: '1px solid rgba(203,213,225,0.9)',
-                background:
-                  saveState === 'saved'
-                    ? 'rgba(16,185,129,0.9)'
-                    : 'rgba(255,255,255,0.9)',
-                color: saveState === 'saved' ? '#fff' : '#374151',
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: 'system-ui, sans-serif',
-                cursor:
-                  saveState === 'saving' || postCompletionActionsRef.current.length === 0
-                    ? 'default'
-                    : 'pointer',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                opacity:
-                  postCompletionActionsRef.current.length === 0 && saveState !== 'saved'
-                    ? 0.5
-                    : 1,
-                transition: 'background 0.2s, color 0.2s, opacity 0.2s',
-              }}
-            >
-              {saveState === 'saving'
-                ? 'Saving...'
-                : saveState === 'saved'
-                  ? 'Saved'
-                  : 'Save'}
-            </button>}
+            {!givenSetup.isActive && (
+              <button
+                onClick={handleSave}
+                disabled={saveState === 'saving' || postCompletionActionsRef.current.length === 0}
+                title="Save draft"
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(203,213,225,0.9)',
+                  background:
+                    saveState === 'saved' ? 'rgba(16,185,129,0.9)' : 'rgba(255,255,255,0.9)',
+                  color: saveState === 'saved' ? '#fff' : '#374151',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor:
+                    saveState === 'saving' || postCompletionActionsRef.current.length === 0
+                      ? 'default'
+                      : 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  opacity:
+                    postCompletionActionsRef.current.length === 0 && saveState !== 'saved'
+                      ? 0.5
+                      : 1,
+                  transition: 'background 0.2s, color 0.2s, opacity 0.2s',
+                }}
+              >
+                {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save'}
+              </button>
+            )}
 
             {/* Share / Copy link — only visible after first save */}
             {!givenSetup.isActive && creationId && (
@@ -5035,10 +5070,7 @@ function EuclidCanvasInner({
                   padding: '7px 13px',
                   borderRadius: 8,
                   border: 'none',
-                  background:
-                    shareState === 'copied'
-                      ? '#10b981'
-                      : '#4E79A7',
+                  background: shareState === 'copied' ? '#10b981' : '#4E79A7',
                   color: '#fff',
                   fontSize: 13,
                   fontWeight: 600,
@@ -5159,7 +5191,9 @@ function EuclidCanvasInner({
                   // Warn if there are actions that will be lost
                   if (
                     postCompletionActionsRef.current.length > 0 &&
-                    !window.confirm('Editing givens will discard your construction actions. Continue?')
+                    !window.confirm(
+                      'Editing givens will discard your construction actions. Continue?'
+                    )
                   ) {
                     return
                   }
@@ -5664,8 +5698,7 @@ function EuclidCanvasInner({
         )}
 
         {/* ── Heckler call overlay (watching → ringing → connecting → active) ── */}
-        {playgroundMode &&
-          (heckler.stage !== 'idle' || euclidCallVisible) && (
+        {playgroundMode && (heckler.stage !== 'idle' || euclidCallVisible) && (
           <HecklerCallOverlay
             phase={
               euclidCallVisible
@@ -5679,8 +5712,7 @@ function EuclidCanvasInner({
             profileImage={smProfileImage}
             lgProfileImage={lgProfileImage}
             characterName={
-              teacherConfig.definition.nativeDisplayName ??
-              teacherConfig.definition.displayName
+              teacherConfig.definition.nativeDisplayName ?? teacherConfig.definition.displayName
             }
             isSpeaking={euclidVoice.isSpeaking}
             isThinking={euclidVoice.isThinking}

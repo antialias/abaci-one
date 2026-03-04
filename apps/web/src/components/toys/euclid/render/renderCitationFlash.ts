@@ -37,6 +37,13 @@ export type CitationFlash =
       endX: number
       endY: number
     }
+  | {
+      type: 'point'
+      startTime: number
+      citation: string
+      worldX: number
+      worldY: number
+    }
 
 /** Distributive Omit that works across union members */
 export type CitationFlashInit = CitationFlash extends infer T
@@ -156,7 +163,7 @@ export function renderArcLabel(
     ctx.translate(cx, cy)
     ctx.rotate(charAngle)
     ctx.translate(textRadius, 0) // move along radius to circumference
-    ctx.rotate(Math.PI / 2)     // align with tangent direction
+    ctx.rotate(Math.PI / 2) // align with tangent direction
     ctx.textBaseline = 'bottom' // text renders outside the circle
     ctx.fillText(label[i], 0, 0)
     ctx.restore()
@@ -226,9 +233,7 @@ export function renderCitationFlashes(
         const perpOffset = -(10 + t * FLOAT_DISTANCE)
 
         // Skip label for very short segments (< 40px)
-        const segLen = Math.sqrt(
-          (to.sx - from.sx) ** 2 + (to.sy - from.sy) ** 2
-        )
+        const segLen = Math.sqrt((to.sx - from.sx) ** 2 + (to.sy - from.sy) ** 2)
         if (segLen < 40) continue
 
         renderLineAlignedLabel(ctx, label, midX, midY, angle, alpha, FONT_SIZE, perpOffset)
@@ -259,6 +264,26 @@ export function renderCitationFlashes(
         } else {
           renderArcLabel(ctx, label, sc.sx, sc.sy, driftRadius, alpha, FONT_SIZE)
         }
+        break
+      }
+
+      case 'point': {
+        const sp = toScreen(flash.worldX, flash.worldY, viewport, w, h)
+        // Float upward over lifetime
+        const floatOffset = t * FLOAT_DISTANCE
+
+        ctx.save()
+        ctx.globalAlpha = alpha
+        ctx.font = `${FONT_SIZE}px system-ui, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)'
+        ctx.shadowBlur = 3
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 1
+        ctx.fillStyle = COLOR
+        ctx.fillText(label, sp.sx, sp.sy - 28 - floatOffset)
+        ctx.restore()
         break
       }
     }

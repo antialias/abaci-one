@@ -14,6 +14,11 @@ export interface CitationDef {
  * to full human-readable labels and axiom text.
  */
 export const CITATIONS: Record<string, CitationDef> = {
+  'Def.1': {
+    key: 'Def.1',
+    label: 'Definition 1',
+    text: 'A point is that which has no part.',
+  },
   'Post.1': {
     key: 'Post.1',
     label: 'Postulate 1',

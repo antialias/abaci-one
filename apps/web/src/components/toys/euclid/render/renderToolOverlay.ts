@@ -915,7 +915,16 @@ export function renderToolOverlay(
             const segMidX = (sf.x + sp.x) / 2
             const segMidY = (sf.y + sp.y) / 2
             const segAngle = Math.atan2(sp.y - sf.y, sp.x - sf.x)
-            renderLineAlignedLabel(ctx, CITATIONS['Post.1'].label, segMidX, segMidY, segAngle, 0.5, 12, -10)
+            renderLineAlignedLabel(
+              ctx,
+              CITATIONS['Post.1'].label,
+              segMidX,
+              segMidY,
+              segAngle,
+              0.5,
+              12,
+              -10
+            )
           }
         }
 
@@ -973,7 +982,16 @@ export function renderToolOverlay(
                 const extMidX = (bs.x + ps.x) / 2
                 const extMidY = (bs.y + ps.y) / 2
                 const extAngle = Math.atan2(ps.y - bs.y, ps.x - bs.x)
-                renderLineAlignedLabel(ctx, CITATIONS['Post.2'].label, extMidX, extMidY, extAngle, 0.5, 12, -10)
+                renderLineAlignedLabel(
+                  ctx,
+                  CITATIONS['Post.2'].label,
+                  extMidX,
+                  extMidY,
+                  extAngle,
+                  0.5,
+                  12,
+                  -10
+                )
               }
             }
 
