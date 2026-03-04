@@ -14,13 +14,13 @@ describe('BASE_SKILL_COMPLEXITY', () => {
     expect(Object.keys(BASE_SKILL_COMPLEXITY).length).toBe(34)
   })
 
-  it('should have base cost 0 for basic skills', () => {
-    expect(BASE_SKILL_COMPLEXITY['basic.directAddition']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.directSubtraction']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.heavenBead']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.heavenBeadSubtraction']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinations']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinationsSub']).toBe(0)
+  it('should have base cost 0.5 for basic skills', () => {
+    expect(BASE_SKILL_COMPLEXITY['basic.directAddition']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.directSubtraction']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.heavenBead']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.heavenBeadSubtraction']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinations']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinationsSub']).toBe(0.5)
   })
 
   it('should have base cost 1 for five complement skills', () => {
@@ -79,7 +79,7 @@ describe('ROTATION_MULTIPLIERS', () => {
 
 describe('getBaseComplexity', () => {
   it('should return base complexity for known skills', () => {
-    expect(getBaseComplexity('basic.directAddition')).toBe(0)
+    expect(getBaseComplexity('basic.directAddition')).toBe(0.5)
     expect(getBaseComplexity('fiveComplements.4=5-1')).toBe(1)
     expect(getBaseComplexity('tenComplements.9=10-1')).toBe(2)
     expect(getBaseComplexity('advanced.cascadingCarry')).toBe(3)
