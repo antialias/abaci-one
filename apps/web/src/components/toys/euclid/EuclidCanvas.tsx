@@ -89,7 +89,7 @@ import { renderAngleArcs } from './render/renderAngleArcs'
 import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
 import { renderCitationFlashes } from './render/renderCitationFlash'
-import type { CitationFlash } from './render/renderCitationFlash'
+import type { CitationFlash, CitationFlashInit } from './render/renderCitationFlash'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
@@ -2224,10 +2224,10 @@ function EuclidCanvasInner({
   // ── Citation flash helper ──
 
   const pushCitationFlash = useCallback(
-    (citation: string, worldX: number, worldY: number) => {
+    (init: CitationFlashInit) => {
       citationFlashesRef.current = [
         ...citationFlashesRef.current,
-        { startTime: performance.now(), citation, worldX, worldY },
+        { ...init, startTime: performance.now() } as CitationFlash,
       ]
       requestDraw()
     },
@@ -2261,10 +2261,19 @@ function EuclidCanvasInner({
       requestDraw()
       musicRef.current?.notifyChange()
 
-      // Citation flash at circle center
+      // Citation flash at circle
       const centerPt = getPoint(result.state, centerId)
-      if (centerPt) {
-        pushCitationFlash('Post.3', centerPt.x, centerPt.y)
+      const radiusPt = getPoint(result.state, radiusPointId)
+      if (centerPt && radiusPt) {
+        const dx = radiusPt.x - centerPt.x
+        const dy = radiusPt.y - centerPt.y
+        pushCitationFlash({
+          type: 'circle',
+          citation: 'Post.3',
+          centerX: centerPt.x,
+          centerY: centerPt.y,
+          radius: Math.sqrt(dx * dx + dy * dy),
+        })
       }
 
       const cLabel = getPoint(result.state, centerId)?.label ?? centerId.replace(/^pt-/, '')
@@ -2330,11 +2339,18 @@ function EuclidCanvasInner({
       requestDraw()
       musicRef.current?.notifyChange()
 
-      // Citation flash at segment midpoint
+      // Citation flash along segment
       const fromPtFlash = getPoint(result.state, fromId)
       const toPtFlash = getPoint(result.state, toId)
       if (fromPtFlash && toPtFlash) {
-        pushCitationFlash('Post.1', (fromPtFlash.x + toPtFlash.x) / 2, (fromPtFlash.y + toPtFlash.y) / 2)
+        pushCitationFlash({
+          type: 'segment',
+          citation: 'Post.1',
+          fromX: fromPtFlash.x,
+          fromY: fromPtFlash.y,
+          toX: toPtFlash.x,
+          toY: toPtFlash.y,
+        })
       }
 
       const fLabel = getPoint(result.state, fromId)?.label ?? fromId.replace(/^pt-/, '')
@@ -2406,8 +2422,15 @@ function EuclidCanvasInner({
       }
       requestDraw()
 
-      // Citation flash at the new endpoint
-      pushCitationFlash('Post.2', newX, newY)
+      // Citation flash along extended segment
+      pushCitationFlash({
+        type: 'extend',
+        citation: 'Post.2',
+        throughX: throughPt.x,
+        throughY: throughPt.y,
+        endX: newX,
+        endY: newY,
+      })
 
       const throughLabel =
         getPoint(constructionRef.current, throughId)?.label ?? throughId.replace(/^pt-/, '')

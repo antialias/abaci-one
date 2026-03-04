@@ -8,6 +8,8 @@ import type {
 } from '../types'
 import { getPoint } from '../engine/constructionState'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
+import { renderLineAlignedLabel, renderArcLabel } from './renderCitationFlash'
+import { CITATIONS } from '../engine/citations'
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -809,6 +811,9 @@ export function renderToolOverlay(
         const scriberSx = sc.x + radiusScreen * Math.cos(currentAngle)
         const scriberSy = sc.y - radiusScreen * Math.sin(currentAngle)
         renderCompass(ctx, sc.x, sc.y, scriberSx, scriberSy, 0.7, nextColor)
+
+        // Real-time citation preview: "Postulate 3" curved along the arc
+        renderArcLabel(ctx, CITATIONS['Post.3'].label, sc.x, sc.y, radiusScreen, 0.5, 12)
       }
       return
     }
@@ -902,6 +907,18 @@ export function renderToolOverlay(
         renderStraightedgeBar(ctx, sf.x, sf.y, sp.x, sp.y, 0.6)
         renderStraightedgeEndpoint(ctx, sp.x, sp.y, sf.x, sf.y, 0.6)
 
+        // Real-time citation preview: "Postulate 1" along the segment
+        // Skip when extend is active (extend has its own label) or segment too short
+        if (extendPhase?.tag !== 'extending') {
+          const segScreenLen = Math.sqrt((sp.x - sf.x) ** 2 + (sp.y - sf.y) ** 2)
+          if (segScreenLen >= 40) {
+            const segMidX = (sf.x + sp.x) / 2
+            const segMidY = (sf.y + sp.y) / 2
+            const segAngle = Math.atan2(sp.y - sf.y, sp.x - sf.x)
+            renderLineAlignedLabel(ctx, CITATIONS['Post.1'].label, segMidX, segMidY, segAngle, 0.5, 12, -10)
+          }
+        }
+
         // ── Extend preview overlay (Post.2: produce a line) ──
         if (extendPhase?.tag === 'extending') {
           const basePt = getPoint(state, extendPhase.baseId)
@@ -949,6 +966,15 @@ export function renderToolOverlay(
               ctx.strokeStyle = 'rgba(40, 40, 40, 0.5)'
               ctx.lineWidth = 1
               ctx.stroke()
+
+              // Real-time citation preview: "Postulate 2" along the extension
+              const extScreenLen = Math.sqrt((ps.x - bs.x) ** 2 + (ps.y - bs.y) ** 2)
+              if (extScreenLen >= 40) {
+                const extMidX = (bs.x + ps.x) / 2
+                const extMidY = (bs.y + ps.y) / 2
+                const extAngle = Math.atan2(ps.y - bs.y, ps.x - bs.x)
+                renderLineAlignedLabel(ctx, CITATIONS['Post.2'].label, extMidX, extMidY, extAngle, 0.5, 12, -10)
+              }
             }
 
             // Highlight through point with dashed ring
