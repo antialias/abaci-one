@@ -1,6 +1,10 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { PostCompletionAction } from '../../components/toys/euclid/engine/replayConstruction'
+import type {
+  SerializedElement,
+  SerializedEqualityFact,
+} from '../../components/toys/euclid/types'
 
 export interface CreationData {
   /** Positions of given points at save time (e.g. pt-A) */
@@ -9,6 +13,10 @@ export interface CreationData {
   actions: PostCompletionAction[]
   /** Viewport state at save time */
   viewport?: { centerX: number; centerY: number; ppu: number }
+  /** Full given element definitions (admin constructions with custom givens) */
+  givenElements?: SerializedElement[]
+  /** Equality constraints declared during given-setup */
+  givenFacts?: SerializedEqualityFact[]
 }
 
 export const euclidCreations = sqliteTable(

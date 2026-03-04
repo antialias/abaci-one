@@ -6,7 +6,14 @@
  */
 
 import type { PostCompletionAction } from '../engine/replayConstruction'
-import type { ProofJSON, SerializedElement, SerializedStep, SerializedAction } from '../types'
+import type {
+  ProofJSON,
+  SerializedElement,
+  SerializedStep,
+  SerializedAction,
+  SerializedEqualityFact,
+  SerializedAngleEqualityFact,
+} from '../types'
 import { BYRNE } from '../types'
 import type { ConstructionState } from '../types'
 import { getPoint } from '../engine/constructionState'
@@ -103,6 +110,10 @@ export interface PlaygroundToProofOptions {
   title?: string
   /** Kind of construction (default: 'construction') */
   kind?: 'construction' | 'theorem'
+  /** Equality constraints from given-setup mode */
+  givenFacts?: SerializedEqualityFact[]
+  /** Angle equality constraints from given-setup mode */
+  givenAngleFacts?: SerializedAngleEqualityFact[]
 }
 
 /**
@@ -119,7 +130,7 @@ export function playgroundToProofJSON(
   state: ConstructionState,
   options: PlaygroundToProofOptions = {}
 ): ProofJSON {
-  const { id = 0, title = 'Playground Construction', kind = 'construction' } = options
+  const { id = 0, title = 'Playground Construction', kind = 'construction', givenFacts, givenAngleFacts } = options
 
   // Convert given elements to serialized format
   const serializedGiven: SerializedElement[] = givenElements
@@ -170,11 +181,14 @@ export function playgroundToProofJSON(
     })
   }
 
-  return {
+  const result: ProofJSON = {
     id,
     title,
     kind,
     givenElements: serializedGiven,
     steps,
   }
+  if (givenFacts && givenFacts.length > 0) result.givenFacts = givenFacts
+  if (givenAngleFacts && givenAngleFacts.length > 0) result.givenAngleFacts = givenAngleFacts
+  return result
 }

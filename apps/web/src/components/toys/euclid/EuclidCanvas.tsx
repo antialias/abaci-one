@@ -88,6 +88,8 @@ import { renderProductionSegments } from './render/renderProductionSegments'
 import { renderAngleArcs } from './render/renderAngleArcs'
 import { renderSuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
+import { renderCitationFlashes } from './render/renderCitationFlash'
+import type { CitationFlash } from './render/renderCitationFlash'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
 import type { ShortcutEntry } from '../shared/KeyboardShortcutsOverlay'
 import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
@@ -127,6 +129,8 @@ import { MiniWaveform, AnimatedDots, formatTime } from '@/lib/voice/PhoneCallOve
 import { renderChatHighlight } from './render/renderChatHighlight'
 import { playgroundToProofJSON } from './editor/playgroundToProofJSON'
 import { exportPropositionDef, generateClaudePrompt } from './editor/exportPropositionDef'
+import { useGivenSetup } from './interaction/useGivenSetup'
+import { GivenSetupPanel } from './GivenSetupPanel'
 
 // ── Keyboard shortcuts ──
 
@@ -1004,6 +1008,7 @@ function EuclidCanvasInner({
   const panZoomDisabledRef = useRef(true)
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
   const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
+  const citationFlashesRef = useRef<CitationFlash[]>([])
   const dragPointIdRef = useRef<string | null>(null)
   const dragLabelRef = useRef<string | null>(null)
   const isCompleteRef = useRef(false)
@@ -1038,6 +1043,20 @@ function EuclidCanvasInner({
   const notifierForwardRef = useRef<{ notifyToolState: () => void }>({
     notifyToolState: () => {},
   })
+
+  // ── Given-setup mode (admin only, playground) ──
+  const givenSetup = useGivenSetup({
+    constructionRef,
+    candidatesRef,
+    postCompletionActionsRef,
+    factStoreRef,
+    needsDrawRef,
+  })
+  const givenSetupActiveRef = useRef(false)
+  givenSetupActiveRef.current = givenSetup.isActive
+  // Ref to hold a dynamic proposition created from custom givens
+  const dynamicPropositionRef = useRef<import('./types').PropositionDef | null>(null)
+  const [propositionIdInput, setPropositionIdInput] = useState(0)
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(
@@ -2202,6 +2221,19 @@ function EuclidCanvasInner({
     setCurrentStep(nextStep)
   }, [steps])
 
+  // ── Citation flash helper ──
+
+  const pushCitationFlash = useCallback(
+    (citation: string, worldX: number, worldY: number) => {
+      citationFlashesRef.current = [
+        ...citationFlashesRef.current,
+        { startTime: performance.now(), citation, worldX, worldY },
+      ]
+      requestDraw()
+    },
+    [requestDraw]
+  )
+
   // ── Commit handlers ──
 
   const handleCommitCircle = useCallback(
@@ -2229,6 +2261,12 @@ function EuclidCanvasInner({
       requestDraw()
       musicRef.current?.notifyChange()
 
+      // Citation flash at circle center
+      const centerPt = getPoint(result.state, centerId)
+      if (centerPt) {
+        pushCitationFlash('Post.3', centerPt.x, centerPt.y)
+      }
+
       const cLabel = getPoint(result.state, centerId)?.label ?? centerId.replace(/^pt-/, '')
       const rLabel =
         getPoint(result.state, radiusPointId)?.label ?? radiusPointId.replace(/^pt-/, '')
@@ -2237,11 +2275,19 @@ function EuclidCanvasInner({
         shouldPrompt: true,
       })
     },
-    [checkStep, requestDraw, extendSegments]
+    [checkStep, requestDraw, extendSegments, pushCitationFlash]
   )
 
   const handleCommitSegment = useCallback(
     (fromId: string, toId: string) => {
+      // Given-setup mode: add a given segment instead
+      if (givenSetupActiveRef.current) {
+        givenSetup.addSegment(fromId, toId)
+        // Reset straightedge phase so the tool is ready for next segment
+        straightedgePhaseRef.current = { tag: 'idle' }
+        requestDraw()
+        return
+      }
       const result = addSegment(constructionRef.current, fromId, toId)
       constructionRef.current = result.state
 
@@ -2284,6 +2330,13 @@ function EuclidCanvasInner({
       requestDraw()
       musicRef.current?.notifyChange()
 
+      // Citation flash at segment midpoint
+      const fromPtFlash = getPoint(result.state, fromId)
+      const toPtFlash = getPoint(result.state, toId)
+      if (fromPtFlash && toPtFlash) {
+        pushCitationFlash('Post.1', (fromPtFlash.x + toPtFlash.x) / 2, (fromPtFlash.y + toPtFlash.y) / 2)
+      }
+
       const fLabel = getPoint(result.state, fromId)?.label ?? fromId.replace(/^pt-/, '')
       const tLabel = getPoint(result.state, toId)?.label ?? toId.replace(/^pt-/, '')
       notifierRef.current.notifyConstruction({
@@ -2291,7 +2344,7 @@ function EuclidCanvasInner({
         shouldPrompt: true,
       })
     },
-    [checkStep, requestDraw, extendSegments]
+    [checkStep, requestDraw, extendSegments, pushCitationFlash]
   )
 
   const handleCommitExtend = useCallback(
@@ -2353,6 +2406,9 @@ function EuclidCanvasInner({
       }
       requestDraw()
 
+      // Citation flash at the new endpoint
+      pushCitationFlash('Post.2', newX, newY)
+
       const throughLabel =
         getPoint(constructionRef.current, throughId)?.label ?? throughId.replace(/^pt-/, '')
       const newLabel = ptResult.point.label
@@ -2381,7 +2437,7 @@ function EuclidCanvasInner({
         ]
       }
     },
-    [steps, checkStep, requestDraw, extendSegments]
+    [steps, checkStep, requestDraw, extendSegments, pushCitationFlash]
   )
 
   const handleMarkIntersection = useCallback(
@@ -2821,6 +2877,68 @@ function EuclidCanvasInner({
     setShareState('idle')
   }, [proposition.givenElements, toolPhases])
 
+  /** Activate given-setup mode (admin only). */
+  const handleActivateGivenSetup = useCallback(
+    (existingElements?: import('./types').SerializedElement[], existingFacts?: import('./types').SerializedEqualityFact[]) => {
+      givenSetup.activate(existingElements, existingFacts)
+      dynamicPropositionRef.current = null
+      toolPhases.resetAll()
+      setActiveTool('point')
+      activeToolRef.current = 'point'
+      setCreationId(null)
+      setCreationIsPublic(false)
+      setCreationTitle('')
+      setSaveState('idle')
+      setShareState('idle')
+      ghostLayersRef.current = []
+      proofFactsRef.current = []
+      setProofFacts([])
+    },
+    [givenSetup, toolPhases, activeToolRef]
+  )
+
+  /** Cancel given-setup, revert to normal playground. */
+  const handleCancelGivenSetup = useCallback(() => {
+    givenSetup.reset()
+    dynamicPropositionRef.current = null
+    constructionRef.current = initializeGiven(proposition.givenElements)
+    candidatesRef.current = []
+    postCompletionActionsRef.current = []
+    toolPhases.resetAll()
+    setActiveTool('move')
+    activeToolRef.current = 'move'
+    needsDrawRef.current = true
+  }, [givenSetup, proposition.givenElements, toolPhases, activeToolRef, needsDrawRef])
+
+  /** Transition from given-setup to construction mode. */
+  const handleStartGivenConstruction = useCallback(() => {
+    const result = givenSetup.startConstruction()
+
+    // Create a dynamic proposition so exports use the custom givens
+    dynamicPropositionRef.current = {
+      id: propositionIdInput,
+      title: creationTitle || 'Custom Construction',
+      givenElements: result.givenElements,
+      givenFacts: result.givenFacts,
+      draggablePointIds: result.draggablePointIds,
+      steps: [],
+    }
+
+    // Pre-load proof facts from given facts
+    proofFactsRef.current = result.proofFacts
+    setProofFacts(result.proofFacts)
+
+    // Set isComplete so free construction tools work
+    isCompleteRef.current = true
+    setIsComplete(true)
+
+    // Switch to move tool
+    setActiveTool('move')
+    activeToolRef.current = 'move'
+    toolPhases.resetAll()
+    needsDrawRef.current = true
+  }, [givenSetup, propositionIdInput, creationTitle, toolPhases, activeToolRef, needsDrawRef])
+
   /** Revert the playground to the state just after a given action index.
    *  Truncates postCompletionActions and replays the full construction. */
   const handleRevertToAction = useCallback(
@@ -2875,8 +2993,36 @@ function EuclidCanvasInner({
     const givenPoints = getAllPoints(constructionRef.current)
       .filter((pt) => pt.origin === 'given')
       .map((pt) => ({ id: pt.id, x: pt.x, y: pt.y }))
-    return { givenPoints, actions: postCompletionActionsRef.current }
-  }, [])
+    const data: {
+      givenPoints: Array<{ id: string; x: number; y: number }>
+      actions: PostCompletionAction[]
+      givenElements?: import('./types').SerializedElement[]
+      givenFacts?: import('./types').SerializedEqualityFact[]
+    } = { givenPoints, actions: postCompletionActionsRef.current }
+    // Include custom givens if this was a given-setup construction
+    const dynProp = dynamicPropositionRef.current
+    if (dynProp) {
+      data.givenElements = givenSetup.givenElements.length > 0
+        ? givenSetup.givenElements
+        : dynProp.givenElements.map((el) => ({
+            kind: el.kind,
+            id: el.id,
+            label: el.kind === 'point' ? el.label : undefined,
+            x: el.kind === 'point' ? el.x : undefined,
+            y: el.kind === 'point' ? el.y : undefined,
+            fromId: el.kind === 'segment' ? el.fromId : undefined,
+            toId: el.kind === 'segment' ? el.toId : undefined,
+            centerId: el.kind === 'circle' ? el.centerId : undefined,
+            radiusPointId: el.kind === 'circle' ? el.radiusPointId : undefined,
+            color: el.color,
+            origin: el.origin,
+          }))
+      if (dynProp.givenFacts && dynProp.givenFacts.length > 0) {
+        data.givenFacts = dynProp.givenFacts
+      }
+    }
+    return data
+  }, [givenSetup.givenElements])
 
   /** Save as draft (POST new or PATCH existing). */
   const handleSave = useCallback(async () => {
@@ -2961,36 +3107,118 @@ function EuclidCanvasInner({
         const json = await res.json()
         const creation = json.creation as {
           id: string
-          data: { givenPoints: Array<{ id: string; x: number; y: number }>; actions: PostCompletionAction[] }
+          data: {
+            givenPoints: Array<{ id: string; x: number; y: number }>
+            actions: PostCompletionAction[]
+            givenElements?: import('./types').SerializedElement[]
+            givenFacts?: import('./types').SerializedEqualityFact[]
+          }
           title: string | null
           isPublic: boolean
         }
 
-        // Reset construction using given points from the creation
-        let givenElements = proposition.givenElements
-        if (creation.data.givenPoints?.length > 0) {
-          givenElements = givenElements.map((el) => {
-            if (el.kind === 'point') {
-              const saved = creation.data.givenPoints.find((gp) => gp.id === el.id)
-              if (saved) return { ...el, x: saved.x, y: saved.y }
-            }
-            return el
-          })
-        }
-        // Replay actions
-        const actions = creation.data.actions ?? []
-        postCompletionActionsRef.current = actions
-        const result = replayConstruction(
-          givenElements,
-          proposition.steps,
-          proposition,
-          actions
-        )
+        // Check if this is a custom-givens creation
+        if (creation.data.givenElements && creation.data.givenElements.length > 0) {
+          // Restore as a given-setup construction (already completed)
+          const customGivens = creation.data.givenElements
+          const customFacts = creation.data.givenFacts ?? []
 
-        constructionRef.current = result.state
-        candidatesRef.current = result.candidates
-        ghostLayersRef.current = result.ghostLayers
-        proofFactsRef.current = result.proofFacts
+          // Convert serialized → construction elements
+          const constructionElements: ConstructionElement[] = customGivens.map((el) => {
+            if (el.kind === 'point') {
+              return {
+                kind: 'point' as const,
+                id: el.id!,
+                x: el.x!,
+                y: el.y!,
+                label: el.label!,
+                color: el.color,
+                origin: 'given' as const,
+              }
+            }
+            if (el.kind === 'segment') {
+              return {
+                kind: 'segment' as const,
+                id: el.id!,
+                fromId: el.fromId!,
+                toId: el.toId!,
+                color: el.color,
+                origin: 'given' as const,
+              }
+            }
+            return {
+              kind: 'circle' as const,
+              id: el.id!,
+              centerId: el.centerId!,
+              radiusPointId: el.radiusPointId!,
+              color: el.color,
+              origin: 'compass' as const,
+            }
+          })
+
+          const draggablePointIds = customGivens
+            .filter((el) => el.kind === 'point')
+            .map((el) => el.id!)
+
+          // Store as dynamic proposition
+          dynamicPropositionRef.current = {
+            id: 0,
+            title: creation.title || 'Custom Construction',
+            givenElements: constructionElements,
+            givenFacts: customFacts,
+            draggablePointIds,
+            steps: [],
+          }
+
+          // Replay with custom givens
+          const actions = creation.data.actions ?? []
+          postCompletionActionsRef.current = actions
+          const dynProp = dynamicPropositionRef.current
+          const result = replayConstruction(
+            constructionElements,
+            dynProp.steps,
+            dynProp,
+            actions
+          )
+
+          constructionRef.current = result.state
+          candidatesRef.current = result.candidates
+          ghostLayersRef.current = result.ghostLayers
+          proofFactsRef.current = result.proofFacts
+
+          // Make sure given-setup is not active (we loaded a completed construction)
+          givenSetup.reset()
+          isCompleteRef.current = true
+          setIsComplete(true)
+        } else {
+          // Standard playground creation — reset using proposition givens
+          let givenElements = proposition.givenElements
+          if (creation.data.givenPoints?.length > 0) {
+            givenElements = givenElements.map((el) => {
+              if (el.kind === 'point') {
+                const saved = creation.data.givenPoints.find((gp) => gp.id === el.id)
+                if (saved) return { ...el, x: saved.x, y: saved.y }
+              }
+              return el
+            })
+          }
+          dynamicPropositionRef.current = null
+
+          // Replay actions
+          const actions = creation.data.actions ?? []
+          postCompletionActionsRef.current = actions
+          const result = replayConstruction(
+            givenElements,
+            proposition.steps,
+            proposition,
+            actions
+          )
+
+          constructionRef.current = result.state
+          candidatesRef.current = result.candidates
+          ghostLayersRef.current = result.ghostLayers
+          proofFactsRef.current = result.proofFacts
+        }
 
         // Reset tool phases
         toolPhases.resetAll()
@@ -3012,41 +3240,59 @@ function EuclidCanvasInner({
         console.error('[EuclidCanvas] Failed to load creation:', err)
       }
     },
-    [proposition, toolPhases]
+    [proposition, toolPhases, givenSetup]
   )
 
   const [exportCopied, setExportCopied] = useState<'ts' | 'claude' | null>(null)
 
   /** Admin export: copy PropositionDef TypeScript to clipboard. */
   const handleExportTypeScript = useCallback(async () => {
+    const dynProp = dynamicPropositionRef.current
+    const givenEls = dynProp ? dynProp.givenElements : proposition.givenElements
     const proofJSON = playgroundToProofJSON(
-      proposition.givenElements,
+      givenEls,
       postCompletionActionsRef.current,
       constructionRef.current,
-      { title: creationTitle || 'Playground Construction' }
+      {
+        id: propositionIdInput,
+        title: creationTitle || 'Playground Construction',
+        givenFacts: dynProp?.givenFacts,
+      }
     )
     const code = exportPropositionDef(proofJSON)
     await navigator.clipboard.writeText(code)
     setExportCopied('ts')
     setTimeout(() => setExportCopied(null), 2000)
-  }, [proposition.givenElements, creationTitle])
+  }, [proposition.givenElements, creationTitle, propositionIdInput])
 
   /** Admin export: copy Claude prompt to clipboard. */
   const handleExportClaudePrompt = useCallback(async () => {
+    const dynProp = dynamicPropositionRef.current
+    const givenEls = dynProp ? dynProp.givenElements : proposition.givenElements
     const proofJSON = playgroundToProofJSON(
-      proposition.givenElements,
+      givenEls,
       postCompletionActionsRef.current,
       constructionRef.current,
-      { title: creationTitle || 'Playground Construction' }
+      {
+        id: propositionIdInput,
+        title: creationTitle || 'Playground Construction',
+        givenFacts: dynProp?.givenFacts,
+      }
     )
     const prompt = generateClaudePrompt(proofJSON)
     await navigator.clipboard.writeText(prompt)
     setExportCopied('claude')
     setTimeout(() => setExportCopied(null), 2000)
-  }, [proposition.givenElements, creationTitle])
+  }, [proposition.givenElements, creationTitle, propositionIdInput])
 
   const handlePlaceFreePoint = useCallback(
     (worldX: number, worldY: number) => {
+      // Given-setup mode: place a given point instead
+      if (givenSetupActiveRef.current) {
+        givenSetup.addPoint(worldX, worldY)
+        requestDraw()
+        return
+      }
       if (!isCompleteRef.current) return
       const result = addPoint(constructionRef.current, worldX, worldY, 'free')
       constructionRef.current = result.state
@@ -3081,6 +3327,7 @@ function EuclidCanvasInner({
       macroAnimationRef.current = null
       macroRevealRef.current = null
       superpositionFlashRef.current = null
+      citationFlashesRef.current = []
       postCompletionActionsRef.current = []
 
       // 2. Restore construction, candidates, proofFacts, ghostLayers from snapshot
@@ -4203,6 +4450,21 @@ function EuclidCanvasInner({
             }
           }
 
+          // Render citation flashes (Post.1/2/3)
+          if (citationFlashesRef.current.length > 0) {
+            citationFlashesRef.current = renderCitationFlashes(
+              ctx,
+              citationFlashesRef.current,
+              viewportRef.current,
+              cssWidth,
+              cssHeight,
+              performance.now()
+            )
+            if (citationFlashesRef.current.length > 0) {
+              needsDrawRef.current = true
+            }
+          }
+
           // Render drag invitation text post-completion
           if (
             complete &&
@@ -4456,29 +4718,31 @@ function EuclidCanvasInner({
                 size={isMobile ? 44 : 48}
               />
             )}
-            <ToolButton
-              label="Compass"
-              icon={
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="5" r="1" />
-                  <path d="M12 6l-4 14" />
-                  <path d="M12 6l4 14" />
-                  <path d="M6 18a6 6 0 0 0 12 0" />
-                </svg>
-              }
-              active={activeTool === 'compass'}
-              onClick={() => setActiveTool('compass')}
-              size={isMobile ? 44 : 48}
-            />
+            {!givenSetup.isActive && (
+              <ToolButton
+                label="Compass"
+                icon={
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="5" r="1" />
+                    <path d="M12 6l-4 14" />
+                    <path d="M12 6l4 14" />
+                    <path d="M6 18a6 6 0 0 0 12 0" />
+                  </svg>
+                }
+                active={activeTool === 'compass'}
+                onClick={() => setActiveTool('compass')}
+                size={isMobile ? 44 : 48}
+              />
+            )}
             <ToolButton
               label="Straightedge"
               icon={
@@ -4499,7 +4763,7 @@ function EuclidCanvasInner({
               onClick={() => setActiveTool('straightedge')}
               size={isMobile ? 44 : 48}
             />
-            {availableMacros.length > 0 && (
+            {availableMacros.length > 0 && !givenSetup.isActive && (
               <ToolButton
                 label="Proposition"
                 icon={
@@ -4552,7 +4816,7 @@ function EuclidCanvasInner({
                 size={isMobile ? 44 : 48}
               />
             )}
-            {playgroundMode && (
+            {playgroundMode && !givenSetup.isActive && (
               <ToolButton
                 label="Wiggle"
                 icon={
@@ -4625,28 +4889,85 @@ function EuclidCanvasInner({
             />
 
             {/* New */}
-            <button
-              onClick={handleNewCanvas}
-              title="New canvas"
-              style={{
-                padding: '7px 13px',
-                borderRadius: 8,
-                border: '1px solid rgba(203,213,225,0.9)',
-                background: 'rgba(255,255,255,0.9)',
-                color: '#374151',
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: 'system-ui, sans-serif',
-                cursor: 'pointer',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              }}
-            >
-              + New
-            </button>
+            {!givenSetup.isActive && (
+              <button
+                onClick={handleNewCanvas}
+                title="New canvas"
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(203,213,225,0.9)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#374151',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                + New
+              </button>
+            )}
 
-            {/* Save (draft) */}
-            <button
+            {/* New with Givens (admin only) */}
+            {isAdmin && !givenSetup.isActive && (
+              <button
+                onClick={() => handleActivateGivenSetup()}
+                title="New with custom givens"
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(203,213,225,0.9)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#4E79A7',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                + Givens
+              </button>
+            )}
+
+            {/* Start Construction (given-setup mode) */}
+            {givenSetup.isActive && (
+              <button
+                onClick={handleStartGivenConstruction}
+                disabled={givenSetup.givenElements.filter((e) => e.kind === 'point').length < 2}
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background:
+                    givenSetup.givenElements.filter((e) => e.kind === 'point').length >= 2
+                      ? '#10b981'
+                      : '#e5e7eb',
+                  color:
+                    givenSetup.givenElements.filter((e) => e.kind === 'point').length >= 2
+                      ? '#fff'
+                      : '#9ca3af',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'system-ui, sans-serif',
+                  cursor:
+                    givenSetup.givenElements.filter((e) => e.kind === 'point').length >= 2
+                      ? 'pointer'
+                      : 'default',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  transition: 'background 0.2s',
+                }}
+              >
+                Start Construction
+              </button>
+            )}
+
+            {/* Save (draft) — hidden during given-setup */}
+            {!givenSetup.isActive && <button
               onClick={handleSave}
               disabled={saveState === 'saving' || postCompletionActionsRef.current.length === 0}
               title="Save draft"
@@ -4680,10 +5001,10 @@ function EuclidCanvasInner({
                 : saveState === 'saved'
                   ? 'Saved'
                   : 'Save'}
-            </button>
+            </button>}
 
             {/* Share / Copy link — only visible after first save */}
-            {creationId && (
+            {!givenSetup.isActive && creationId && (
               <button
                 onClick={handleShare}
                 disabled={shareState === 'sharing'}
@@ -4714,34 +5035,36 @@ function EuclidCanvasInner({
               </button>
             )}
 
-            {/* My creations */}
-            <button
-              onClick={() => setShowCreationsPanel(true)}
-              title="My creations"
-              style={{
-                width: 36,
-                height: 36,
-                padding: 0,
-                borderRadius: 8,
-                border: '1px solid rgba(203,213,225,0.9)',
-                background: 'rgba(255,255,255,0.9)',
-                color: '#374151',
-                fontSize: 16,
-                cursor: 'pointer',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              ⊞
-            </button>
+            {/* My creations — hidden during given-setup */}
+            {!givenSetup.isActive && (
+              <button
+                onClick={() => setShowCreationsPanel(true)}
+                title="My creations"
+                style={{
+                  width: 36,
+                  height: 36,
+                  padding: 0,
+                  borderRadius: 8,
+                  border: '1px solid rgba(203,213,225,0.9)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#374151',
+                  fontSize: 16,
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ⊞
+              </button>
+            )}
           </div>
         )}
 
         {/* Admin-only export buttons */}
-        {playgroundMode && isAdmin && (
+        {playgroundMode && isAdmin && !givenSetup.isActive && (
           <div
             data-element="admin-export-bar"
             style={{
@@ -4756,6 +5079,20 @@ function EuclidCanvasInner({
               fontSize: 11,
             }}
           >
+            <span style={{ color: '#9ca3af' }}>Prop ID:</span>
+            <input
+              type="number"
+              value={propositionIdInput}
+              onChange={(e) => setPropositionIdInput(Number(e.target.value) || 0)}
+              style={{
+                width: 40,
+                padding: '2px 4px',
+                fontSize: 11,
+                borderRadius: 4,
+                border: '1px solid #d1d5db',
+                textAlign: 'center',
+              }}
+            />
             <span style={{ color: '#9ca3af' }}>Export:</span>
             <button
               onClick={handleExportTypeScript}
@@ -4791,6 +5128,51 @@ function EuclidCanvasInner({
             >
               {exportCopied === 'claude' ? 'Copied!' : 'Claude Prompt'}
             </button>
+            {dynamicPropositionRef.current && (
+              <button
+                onClick={() => {
+                  const dynProp = dynamicPropositionRef.current
+                  if (!dynProp) return
+                  // Warn if there are actions that will be lost
+                  if (
+                    postCompletionActionsRef.current.length > 0 &&
+                    !window.confirm('Editing givens will discard your construction actions. Continue?')
+                  ) {
+                    return
+                  }
+                  // Re-enter given-setup with existing elements/facts
+                  const serializedElements = dynProp.givenElements.map(
+                    (el): import('./types').SerializedElement => ({
+                      kind: el.kind,
+                      id: el.id,
+                      label: el.kind === 'point' ? el.label : undefined,
+                      x: el.kind === 'point' ? el.x : undefined,
+                      y: el.kind === 'point' ? el.y : undefined,
+                      fromId: el.kind === 'segment' ? el.fromId : undefined,
+                      toId: el.kind === 'segment' ? el.toId : undefined,
+                      centerId: el.kind === 'circle' ? el.centerId : undefined,
+                      radiusPointId: el.kind === 'circle' ? el.radiusPointId : undefined,
+                      color: el.color,
+                      origin: el.origin,
+                    })
+                  )
+                  handleActivateGivenSetup(serializedElements, dynProp.givenFacts)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#4E79A7',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 400,
+                  fontFamily: 'system-ui, sans-serif',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Edit Givens
+              </button>
+            )}
           </div>
         )}
 
@@ -5304,20 +5686,37 @@ function EuclidCanvasInner({
             height: isMobile ? `${MOBILE_PROOF_PANEL_HEIGHT_RATIO * 100}dvh` : '100%',
           }}
         >
-          <ProofLedger
-            constructionState={constructionRef.current}
-            actions={postCompletionActionsRef.current}
-            givenElements={proposition.givenElements}
-            eventBus={eventBusRef.current}
-            pointLabels={getAllPoints(constructionRef.current).map((p) => p.label)}
-            renderEntity={renderEntity}
-            onRevertToAction={handleRevertToAction}
-            onCitationPointerEnter={handleCitationPointerEnter}
-            onCitationPointerLeave={handleCitationPointerLeave}
-            onCitationPointerDown={handleCitationPointerDown}
-            toolPreview={toolPreview}
-            isMobile={isMobile}
-          />
+          {givenSetup.isActive ? (
+            <GivenSetupPanel
+              givenElements={givenSetup.givenElements}
+              givenFacts={givenSetup.givenFacts}
+              onRenamePoint={givenSetup.renamePoint}
+              onDeleteElement={givenSetup.deleteElement}
+              onAddFact={givenSetup.addFact}
+              onDeleteFact={givenSetup.deleteFact}
+              onStartConstruction={handleStartGivenConstruction}
+              onCancel={handleCancelGivenSetup}
+            />
+          ) : (
+            <ProofLedger
+              constructionState={constructionRef.current}
+              actions={postCompletionActionsRef.current}
+              givenElements={
+                dynamicPropositionRef.current
+                  ? dynamicPropositionRef.current.givenElements
+                  : proposition.givenElements
+              }
+              eventBus={eventBusRef.current}
+              pointLabels={getAllPoints(constructionRef.current).map((p) => p.label)}
+              renderEntity={renderEntity}
+              onRevertToAction={handleRevertToAction}
+              onCitationPointerEnter={handleCitationPointerEnter}
+              onCitationPointerLeave={handleCitationPointerLeave}
+              onCitationPointerDown={handleCitationPointerDown}
+              toolPreview={toolPreview}
+              isMobile={isMobile}
+            />
+          )}
         </div>
       )}
 

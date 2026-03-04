@@ -62,11 +62,6 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Reliability tests',
   },
   {
-    href: '/admin/euclid-editor',
-    label: 'Euclid',
-    description: 'Proof editor',
-  },
-  {
     href: '/admin/characters',
     label: 'Characters',
     description: 'Prompt system',
