@@ -104,6 +104,8 @@ export interface UseGeometryVoiceReturn {
   voiceCallRef: React.RefObject<UseVoiceCallReturn | null>
   /** Unmute mic and trigger initial model response (use with deferGreeting). */
   activateSession: (priorAssistantText?: string) => void
+  /** Stop ring tone immediately. */
+  stopRing: () => void
 }
 
 /**
@@ -404,5 +406,6 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
     sendUserText: voiceCall.sendUserText,
     voiceCallRef,
     activateSession: voiceCall.activateSession,
+    stopRing: voiceCall.stopRing,
   }
 }

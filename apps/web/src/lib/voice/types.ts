@@ -193,4 +193,6 @@ export interface UseVoiceCallReturn {
   sendUserText: (text: string) => void
   /** Unmute mic and trigger initial model response (use with deferGreeting). */
   activateSession: (priorAssistantText?: string) => void
+  /** Stop the ring tone immediately (e.g. when the user answers a deferred call). */
+  stopRing: () => void
 }

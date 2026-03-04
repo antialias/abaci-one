@@ -1231,46 +1231,110 @@ function EuclidCanvasInner({
   notifierForwardRef.current = notifierRef.current
 
   // ── Heckler trigger — watches construction in playground for proposition patterns ──
+  //
+  // When the user clicks Answer, the WebRTC session may not be ready yet. Stall
+  // TTS lines fill the gap with in-character speech ("One moment — I need to
+  // collect my thoughts...") while the session finishes connecting in the background.
+  //
+  // IMPORTANT: We must wait for the stall TTS to finish before activating the
+  // realtime session (unmuting mic + sending response.create). If we activate
+  // while the stall is still playing through the speakers, the mic picks up
+  // the stall audio → VAD fires → cancels Euclid's first response → stuttering
+  // loop. The stall text is injected into the voice model's conversation context
+  // so Euclid continues naturally from where the stall left off.
+  //
+  // Activation requires TWO conditions:
+  //   1. Voice session is 'preconnected' (WebRTC ready)
+  //   2. Stall TTS has finished (or was never started)
+  // The tryActivate helper checks both and fires activateSession when both are met.
   const pendingActivateRef = useRef(false)
   const stallTextRef = useRef<string | null>(null)
+  const stallDoneRef = useRef(true) // true = no stall playing (safe to activate)
   // Track that the current dial is a heckler pre-dial (to suppress call UI)
   const hecklerPreDialRef = useRef(false)
 
   const heckler = useHecklerTrigger(constructionRef, !!playgroundMode)
 
+  /** Try to activate — only fires when BOTH session is ready AND stall TTS is done. */
+  const tryActivateRef = useRef(() => {})
+  tryActivateRef.current = () => {
+    if (!pendingActivateRef.current) return
+    if (euclidVoice.state !== 'preconnected') {
+      console.log('[heckler-activate] not yet — voiceState=%s, stallDone=%s',
+        euclidVoice.state, stallDoneRef.current)
+      return
+    }
+    if (!stallDoneRef.current) {
+      console.log('[heckler-activate] not yet — session ready but stall TTS still playing')
+      return
+    }
+    console.log('[heckler-activate] both ready — activating now')
+    pendingActivateRef.current = false
+    hecklerPreDialRef.current = false
+    euclidVoice.activateSession(stallTextRef.current ?? undefined)
+    stallTextRef.current = null
+  }
+
   // Pre-dial when heckler enters 'ringing': switch attitude and start WebRTC
   useEffect(() => {
+    console.log('[heckler-predial] effect: stage=%s, voiceState=%s, preDialRef=%s',
+      heckler.stage, euclidVoice.state, hecklerPreDialRef.current)
     if (heckler.stage !== 'ringing') return
     // Already initiated pre-dial — don't schedule another
-    if (hecklerPreDialRef.current) return
+    if (hecklerPreDialRef.current) {
+      console.log('[heckler-predial] skipped — already initiated')
+      return
+    }
     // Already dialing or connected — skip
-    if (euclidVoice.state !== 'idle' && euclidVoice.state !== 'error') return
+    if (euclidVoice.state !== 'idle' && euclidVoice.state !== 'error') {
+      console.log('[heckler-predial] skipped — voice not idle (state=%s)', euclidVoice.state)
+      return
+    }
+    console.log('[heckler-predial] initiating pre-dial')
     onAttitudeChange?.('heckler')
     hecklerPreDialRef.current = true
     pendingActivateRef.current = false
     stallTextRef.current = null
+    stallDoneRef.current = true
     // Dial after a microtask to let the config update (deferGreeting) propagate
-    setTimeout(() => euclidVoice.dial(), 50)
+    setTimeout(() => {
+      console.log('[heckler-predial] setTimeout fired, calling dial()')
+      euclidVoice.dial()
+    }, 50)
   }, [heckler.stage, euclidVoice.state, euclidVoice.dial, onAttitudeChange])
 
   // When the user clicks "Answer": activate immediately or play stalling TTS
   const handleHecklerAnswer = useCallback(() => {
+    console.log('[heckler-answer] clicked: voiceState=%s, preDialRef=%s, stallDone=%s',
+      euclidVoice.state, hecklerPreDialRef.current, stallDoneRef.current)
+    // Kill ring tone immediately so it doesn't overlap with speech
+    euclidVoice.stopRing()
     heckler.answer() // transition stage to 'answered', prevent re-triggering
+    pendingActivateRef.current = true
     if (euclidVoice.state === 'preconnected') {
-      // Connection ready — activate immediately
+      // Connection already ready — activate immediately (no stall needed)
+      console.log('[heckler-answer] preconnected — activating immediately')
+      stallDoneRef.current = true
       hecklerPreDialRef.current = false
+      pendingActivateRef.current = false
       euclidVoice.activateSession(stallTextRef.current ?? undefined)
       stallTextRef.current = null
     } else {
       // Connection not ready yet — play stalling TTS while we wait
+      console.log('[heckler-answer] not preconnected — stalling (voiceState=%s)', euclidVoice.state)
       const lines = teacherConfig.stallLines ?? DEFAULT_STALL_LINES
       const line = lines[Math.floor(Math.random() * lines.length)]
       stallTextRef.current = line
-      speakHecklerStallRef.current({ say: { en: line } })
-      pendingActivateRef.current = true
+      stallDoneRef.current = false
+      speakHecklerStallRef.current({ say: { en: line } }).then(() => {
+        console.log('[heckler-stall] TTS finished')
+        stallDoneRef.current = true
+        tryActivateRef.current()
+      })
       // If dial hasn't started yet (user clicked Answer before pre-dial effect fired),
       // ensure we kick it off now
       if (euclidVoice.state === 'idle' || euclidVoice.state === 'error') {
+        console.log('[heckler-answer] voice still idle — kicking off dial')
         hecklerPreDialRef.current = true
         onAttitudeChange?.('heckler')
         setTimeout(() => euclidVoice.dial(), 50)
@@ -1278,36 +1342,39 @@ function EuclidCanvasInner({
     }
   }, [heckler, euclidVoice, teacherConfig.stallLines, onAttitudeChange])
 
-  // Activate when pre-connect completes (if user already answered)
+  // When session reaches preconnected, try to activate (also needs stall to be done)
   useEffect(() => {
     if (euclidVoice.state === 'preconnected' && pendingActivateRef.current) {
-      pendingActivateRef.current = false
-      hecklerPreDialRef.current = false
-      euclidVoice.activateSession(stallTextRef.current ?? undefined)
-      stallTextRef.current = null
+      tryActivateRef.current()
     }
-  }, [euclidVoice.state, euclidVoice.activateSession])
+  }, [euclidVoice.state])
 
   // Clean up pre-dial if heckler match is lost (e.g. undo reverts the construction)
   useEffect(() => {
     if (heckler.stage === 'idle' && hecklerPreDialRef.current) {
+      console.log('[heckler-cleanup] match lost — hanging up pre-dial, voiceState=%s', euclidVoice.state)
       hecklerPreDialRef.current = false
       pendingActivateRef.current = false
       stallTextRef.current = null
+      stallDoneRef.current = true
+      stopAudio() // kill stall TTS if playing
       if (euclidVoice.state !== 'idle') euclidVoice.hangUp()
       onAttitudeChange?.('teacher')
     }
-  }, [heckler.stage, euclidVoice, onAttitudeChange])
+  }, [heckler.stage, euclidVoice, onAttitudeChange, stopAudio])
 
   // Dismiss: clean up pre-connection and revert to teacher
   const handleHecklerDismiss = useCallback(() => {
+    console.log('[heckler-dismiss] voiceState=%s', euclidVoice.state)
     heckler.dismiss()
+    stopAudio() // kill stall TTS if playing
     if (euclidVoice.state !== 'idle') euclidVoice.hangUp()
     hecklerPreDialRef.current = false
     pendingActivateRef.current = false
     stallTextRef.current = null
+    stallDoneRef.current = true
     onAttitudeChange?.('teacher')
-  }, [heckler, euclidVoice, onAttitudeChange])
+  }, [heckler, euclidVoice, onAttitudeChange, stopAudio])
 
   // Trigger heckler topology check whenever a construction event fires.
   useEffect(() => {

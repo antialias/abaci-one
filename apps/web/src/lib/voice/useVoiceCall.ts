@@ -337,6 +337,12 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
     sendUserTextHelper(dc, text)
   }, [])
 
+  // ── Stop ring tone immediately (for deferred greeting flows) ──
+  const stopRing = useCallback(() => {
+    ringRef.current?.stop()
+    ringRef.current = null
+  }, [])
+
   // ── Activate a pre-connected session (deferred greeting) ──
   const activateSession = useCallback(
     (priorAssistantText?: string) => {
@@ -966,5 +972,6 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
     audioElRef,
     sendUserText,
     activateSession,
+    stopRing,
   }
 }
