@@ -123,7 +123,10 @@ import type {
 import { isGeometricEntity, foundationToCitationKey } from './chat/parseGeometricEntities'
 import { useEuclidEntityRenderer } from './chat/useEuclidEntityRenderer'
 import { generateId } from '@/lib/character/useCharacterChat'
+import { MiniWaveform, AnimatedDots, formatTime } from '@/lib/voice/PhoneCallOverlay'
 import { renderChatHighlight } from './render/renderChatHighlight'
+import { playgroundToProofJSON } from './editor/playgroundToProofJSON'
+import { exportPropositionDef, generateClaudePrompt } from './editor/exportPropositionDef'
 
 // ── Keyboard shortcuts ──
 
@@ -580,6 +583,8 @@ interface EuclidCanvasProps {
    * (e.g. a blog post). The user can still toggle audio on via the speaker button.
    */
   disableAudio?: boolean
+  /** Whether the current user is an admin (enables export buttons in playground mode) */
+  isAdmin?: boolean
 }
 
 // ── Heckler incoming call overlay ──
@@ -700,6 +705,151 @@ function HecklerIncomingOverlay({
   )
 }
 
+// ── Heckler active call presence ──
+
+function HecklerCallPresence({
+  profileImage,
+  characterName,
+  isSpeaking,
+  isThinking,
+  timeRemaining,
+  onHangUp,
+}: {
+  profileImage: string
+  characterName: string
+  isSpeaking: boolean
+  isThinking: boolean
+  timeRemaining: number | null
+  onHangUp: () => void
+}) {
+  const glowColor = isSpeaking
+    ? 'rgba(168, 85, 247, 0.7)'
+    : isThinking
+      ? 'rgba(168, 85, 247, 0.35)'
+      : 'transparent'
+  const glowShadow = isSpeaking
+    ? `0 0 0 3px ${glowColor}, 0 0 20px ${glowColor}`
+    : isThinking
+      ? `0 0 0 2px ${glowColor}, 0 0 12px ${glowColor}`
+      : '0 4px 16px rgba(0,0,0,0.3)'
+
+  return (
+    <div
+      data-element="heckler-call-presence"
+      style={{
+        position: 'absolute',
+        bottom: 24,
+        left: 24,
+        zIndex: 18,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        padding: '16px 20px',
+        borderRadius: 16,
+        background: 'rgba(15, 23, 42, 0.88)',
+        backdropFilter: 'blur(12px)',
+        color: '#f8fafc',
+        fontFamily: 'system-ui, sans-serif',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+        animation: 'hecklerPresenceFadeIn 0.3s ease-out',
+        minWidth: 140,
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {/* Avatar */}
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: '50%',
+          overflow: 'hidden',
+          flexShrink: 0,
+          boxShadow: glowShadow,
+          transition: 'box-shadow 0.3s ease',
+          animation: isSpeaking
+            ? 'hecklerSpeakingPulse 1.5s ease-in-out infinite'
+            : isThinking
+              ? 'hecklerSpeakingPulse 2.5s ease-in-out infinite'
+              : undefined,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={profileImage}
+          alt={characterName}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      </div>
+
+      {/* Name + waveform + timer row */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 13,
+          fontWeight: 500,
+        }}
+      >
+        {isThinking ? (
+          <span style={{ opacity: 0.7, fontSize: 12 }}>
+            Consulting scrolls<AnimatedDots />
+          </span>
+        ) : (
+          <>
+            <span>{characterName}</span>
+            <MiniWaveform isDark active={isSpeaking} />
+            {timeRemaining != null && (
+              <span style={{ opacity: 0.6, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+                {formatTime(timeRemaining)}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* End Call button */}
+      <button
+        data-action="end-heckler-call"
+        onClick={onHangUp}
+        onPointerDown={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          border: 'none',
+          borderRadius: 20,
+          padding: '8px 0',
+          background: 'rgba(239, 68, 68, 0.85)',
+          color: '#fff',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={(e) => {
+          ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 1)'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.85)'
+        }}
+      >
+        End Call
+      </button>
+
+      <style>{`
+        @keyframes hecklerPresenceFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes hecklerSpeakingPulse {
+          0%, 100% { box-shadow: ${glowShadow}; }
+          50% { box-shadow: 0 0 0 ${isSpeaking ? 4 : 3}px ${glowColor}, 0 0 ${isSpeaking ? 28 : 16}px ${glowColor}; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 const WRONG_MOVE_PHRASES = [
   "Not quite. Let's try that step again.",
   "Hmm, that's not right. Try again.",
@@ -735,9 +885,11 @@ function EuclidCanvasInner({
   initialGivenPoints,
   playerId,
   disableAudio,
+  isAdmin: isAdminProp,
   onAttitudeChange,
 }: EuclidCanvasProps & { onAttitudeChange?: (attitudeId: AttitudeId) => void }) {
   const isMobile = useIsMobile()
+  const isAdmin = isAdminProp === true
   const { isVisualDebugEnabled } = useVisualDebugSafe()
   const propositionBase =
     propositionProp ??
@@ -1204,6 +1356,11 @@ function EuclidCanvasInner({
   const smProfileImage = useCharacterProfileImage(
     teacherConfig.definition.profileImage,
     'sm',
+    euclidVoice.isSpeaking
+  )
+  const lgProfileImage = useCharacterProfileImage(
+    teacherConfig.definition.profileImage,
+    'lg',
     euclidVoice.isSpeaking
   )
 
@@ -2507,9 +2664,11 @@ function EuclidCanvasInner({
   )
 
   // ── Save / share / new / panel (playground mode only) ──
+  const [creationId, setCreationId] = useState<string | null>(null)
+  const [creationIsPublic, setCreationIsPublic] = useState(false)
+  const [creationTitle, setCreationTitle] = useState('')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [savedId, setSavedId] = useState<string | null>(null)
-  const [linkCopied, setLinkCopied] = useState(false)
+  const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied'>('idle')
   const [showCreationsPanel, setShowCreationsPanel] = useState(false)
 
   // Drag state for euclid-quad (draggable by avatar)
@@ -2627,9 +2786,11 @@ function EuclidCanvasInner({
     ghostLayersRef.current = []
     proofFactsRef.current = []
     toolPhases.resetAll()
+    setCreationId(null)
+    setCreationIsPublic(false)
+    setCreationTitle('')
     setSaveState('idle')
-    setSavedId(null)
-    setLinkCopied(false)
+    setShareState('idle')
   }, [proposition.givenElements, toolPhases])
 
   /** Revert the playground to the state just after a given action index.
@@ -2666,62 +2827,195 @@ function EuclidCanvasInner({
     [proposition, toolPhases]
   )
 
+  /** Capture a thumbnail from the main canvas. */
+  const captureThumbnail = useCallback((): string | undefined => {
+    const srcCanvas = canvasRef.current
+    if (!srcCanvas) return undefined
+    const THUMB_W = 400
+    const THUMB_H = 300
+    const off = document.createElement('canvas')
+    off.width = THUMB_W
+    off.height = THUMB_H
+    const ctx = off.getContext('2d')
+    if (!ctx) return undefined
+    ctx.drawImage(srcCanvas, 0, 0, THUMB_W, THUMB_H)
+    return off.toDataURL('image/jpeg', 0.75)
+  }, [])
+
+  /** Collect creation data payload. */
+  const collectCreationData = useCallback(() => {
+    const givenPoints = getAllPoints(constructionRef.current)
+      .filter((pt) => pt.origin === 'given')
+      .map((pt) => ({ id: pt.id, x: pt.x, y: pt.y }))
+    return { givenPoints, actions: postCompletionActionsRef.current }
+  }, [])
+
+  /** Save as draft (POST new or PATCH existing). */
   const handleSave = useCallback(async () => {
     if (saveState === 'saving') return
     setSaveState('saving')
 
-    // Capture thumbnail: draw main canvas onto a small offscreen canvas
-    let thumbnail: string | undefined
-    const srcCanvas = canvasRef.current
-    if (srcCanvas) {
-      const THUMB_W = 400
-      const THUMB_H = 300
-      const off = document.createElement('canvas')
-      off.width = THUMB_W
-      off.height = THUMB_H
-      const ctx = off.getContext('2d')
-      if (ctx) {
-        ctx.drawImage(srcCanvas, 0, 0, THUMB_W, THUMB_H)
-        thumbnail = off.toDataURL('image/jpeg', 0.75)
-      }
-    }
-
-    // Collect given point positions
-    const givenPoints = getAllPoints(constructionRef.current)
-      .filter((pt) => pt.origin === 'given')
-      .map((pt) => ({ id: pt.id, x: pt.x, y: pt.y }))
-
-    const data = {
-      givenPoints,
-      actions: postCompletionActionsRef.current,
-    }
+    const thumbnail = captureThumbnail()
+    const data = collectCreationData()
+    const title = creationTitle || null
 
     try {
-      const res = await fetch('/api/euclid/creations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, thumbnail, isPublic: true, playerId: playerId ?? null }),
-      })
-      const json = await res.json()
-      if (res.ok) {
-        setSavedId(json.id)
-        setSaveState('saved')
+      if (creationId) {
+        // PATCH existing
+        const res = await fetch(`/api/euclid/creations/${creationId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data, thumbnail, title }),
+        })
+        if (res.ok) {
+          setSaveState('saved')
+          setTimeout(() => setSaveState('idle'), 1500)
+        } else {
+          setSaveState('idle')
+        }
       } else {
-        setSaveState('idle')
+        // POST new (private draft)
+        const res = await fetch('/api/euclid/creations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data, thumbnail, isPublic: false, playerId: playerId ?? null, title }),
+        })
+        const json = await res.json()
+        if (res.ok) {
+          setCreationId(json.id)
+          setSaveState('saved')
+          setTimeout(() => setSaveState('idle'), 1500)
+        } else {
+          setSaveState('idle')
+        }
       }
     } catch {
       setSaveState('idle')
     }
-  }, [saveState])
+  }, [saveState, creationId, creationTitle, captureThumbnail, collectCreationData, playerId])
 
-  const handleCopyLink = useCallback(() => {
-    if (!savedId) return
-    const url = `${window.location.origin}/toys/euclid/creations/${savedId}`
-    navigator.clipboard.writeText(url).then(() => {
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2000)
-    })
-  }, [savedId])
+  /** Share: make public + copy link. */
+  const handleShare = useCallback(async () => {
+    if (!creationId || shareState === 'sharing') return
+    setShareState('sharing')
+
+    try {
+      if (!creationIsPublic) {
+        // Make public
+        const res = await fetch(`/api/euclid/creations/${creationId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isPublic: true }),
+        })
+        if (!res.ok) {
+          setShareState('idle')
+          return
+        }
+        setCreationIsPublic(true)
+      }
+
+      // Copy link
+      const url = `${window.location.origin}/toys/euclid/creations/${creationId}`
+      await navigator.clipboard.writeText(url)
+      setShareState('copied')
+      setTimeout(() => setShareState('idle'), 2000)
+    } catch {
+      setShareState('idle')
+    }
+  }, [creationId, creationIsPublic, shareState])
+
+  /** Load a creation in-place from the creations panel. */
+  const handleLoadCreation = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetch(`/api/euclid/creations/${id}`)
+        if (!res.ok) return
+        const json = await res.json()
+        const creation = json.creation as {
+          id: string
+          data: { givenPoints: Array<{ id: string; x: number; y: number }>; actions: PostCompletionAction[] }
+          title: string | null
+          isPublic: boolean
+        }
+
+        // Reset construction using given points from the creation
+        let givenElements = proposition.givenElements
+        if (creation.data.givenPoints?.length > 0) {
+          givenElements = givenElements.map((el) => {
+            if (el.kind === 'point') {
+              const saved = creation.data.givenPoints.find((gp) => gp.id === el.id)
+              if (saved) return { ...el, x: saved.x, y: saved.y }
+            }
+            return el
+          })
+        }
+        // Replay actions
+        const actions = creation.data.actions ?? []
+        postCompletionActionsRef.current = actions
+        const result = replayConstruction(
+          givenElements,
+          proposition.steps,
+          proposition,
+          actions
+        )
+
+        constructionRef.current = result.state
+        candidatesRef.current = result.candidates
+        ghostLayersRef.current = result.ghostLayers
+        proofFactsRef.current = result.proofFacts
+
+        // Reset tool phases
+        toolPhases.resetAll()
+        macroAnimationRef.current = null
+        macroRevealRef.current = null
+
+        // Update creation tracking state
+        setCreationId(creation.id)
+        setCreationTitle(creation.title ?? '')
+        setCreationIsPublic(creation.isPublic)
+        setSaveState('idle')
+        setShareState('idle')
+
+        // Notify and redraw
+        eventBusRef.current.emit({ action: 'reset', shouldPrompt: false, reset: true })
+        needsDrawRef.current = true
+        setShowCreationsPanel(false)
+      } catch (err) {
+        console.error('[EuclidCanvas] Failed to load creation:', err)
+      }
+    },
+    [proposition, toolPhases]
+  )
+
+  const [exportCopied, setExportCopied] = useState<'ts' | 'claude' | null>(null)
+
+  /** Admin export: copy PropositionDef TypeScript to clipboard. */
+  const handleExportTypeScript = useCallback(async () => {
+    const proofJSON = playgroundToProofJSON(
+      proposition.givenElements,
+      postCompletionActionsRef.current,
+      constructionRef.current,
+      { title: creationTitle || 'Playground Construction' }
+    )
+    const code = exportPropositionDef(proofJSON)
+    await navigator.clipboard.writeText(code)
+    setExportCopied('ts')
+    setTimeout(() => setExportCopied(null), 2000)
+  }, [proposition.givenElements, creationTitle])
+
+  /** Admin export: copy Claude prompt to clipboard. */
+  const handleExportClaudePrompt = useCallback(async () => {
+    const proofJSON = playgroundToProofJSON(
+      proposition.givenElements,
+      postCompletionActionsRef.current,
+      constructionRef.current,
+      { title: creationTitle || 'Playground Construction' }
+    )
+    const prompt = generateClaudePrompt(proofJSON)
+    await navigator.clipboard.writeText(prompt)
+    setExportCopied('claude')
+    setTimeout(() => setExportCopied(null), 2000)
+  }, [proposition.givenElements, creationTitle])
 
   const handlePlaceFreePoint = useCallback(
     (worldX: number, worldY: number) => {
@@ -4269,6 +4563,39 @@ function EuclidCanvasInner({
               zIndex: 12,
             }}
           >
+            {/* Title input */}
+            <input
+              data-element="creation-title"
+              type="text"
+              value={creationTitle}
+              onChange={(e) => setCreationTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur()
+              }}
+              placeholder="Untitled construction"
+              style={{
+                width: 180,
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: '1px solid transparent',
+                background: 'rgba(255,255,255,0.85)',
+                color: '#1A1A2E',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'system-ui, sans-serif',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                outline: 'none',
+                transition: 'border-color 0.15s',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(78,121,167,0.5)'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'transparent'
+              }}
+            />
+
             {/* New */}
             <button
               onClick={handleNewCanvas}
@@ -4290,44 +4617,72 @@ function EuclidCanvasInner({
               + New
             </button>
 
-            {/* Share / Copy link */}
-            {saveState === 'saved' && savedId ? (
+            {/* Save (draft) */}
+            <button
+              onClick={handleSave}
+              disabled={saveState === 'saving' || postCompletionActionsRef.current.length === 0}
+              title="Save draft"
+              style={{
+                padding: '7px 13px',
+                borderRadius: 8,
+                border: '1px solid rgba(203,213,225,0.9)',
+                background:
+                  saveState === 'saved'
+                    ? 'rgba(16,185,129,0.9)'
+                    : 'rgba(255,255,255,0.9)',
+                color: saveState === 'saved' ? '#fff' : '#374151',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'system-ui, sans-serif',
+                cursor:
+                  saveState === 'saving' || postCompletionActionsRef.current.length === 0
+                    ? 'default'
+                    : 'pointer',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                opacity:
+                  postCompletionActionsRef.current.length === 0 && saveState !== 'saved'
+                    ? 0.5
+                    : 1,
+                transition: 'background 0.2s, color 0.2s, opacity 0.2s',
+              }}
+            >
+              {saveState === 'saving'
+                ? 'Saving...'
+                : saveState === 'saved'
+                  ? 'Saved'
+                  : 'Save'}
+            </button>
+
+            {/* Share / Copy link — only visible after first save */}
+            {creationId && (
               <button
-                onClick={handleCopyLink}
+                onClick={handleShare}
+                disabled={shareState === 'sharing'}
                 style={{
                   padding: '7px 13px',
                   borderRadius: 8,
                   border: 'none',
-                  background: linkCopied ? '#10b981' : '#4E79A7',
+                  background:
+                    shareState === 'copied'
+                      ? '#10b981'
+                      : '#4E79A7',
                   color: '#fff',
                   fontSize: 13,
                   fontWeight: 600,
                   fontFamily: 'system-ui, sans-serif',
-                  cursor: 'pointer',
+                  cursor: shareState === 'sharing' ? 'wait' : 'pointer',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                   transition: 'background 0.2s',
                 }}
               >
-                {linkCopied ? '✓ Copied!' : '🔗 Copy link'}
-              </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={saveState === 'saving'}
-                style={{
-                  padding: '7px 13px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: saveState === 'saving' ? 'rgba(78,121,167,0.6)' : '#4E79A7',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  fontFamily: 'system-ui, sans-serif',
-                  cursor: saveState === 'saving' ? 'wait' : 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                }}
-              >
-                {saveState === 'saving' ? 'Saving…' : '↑ Share'}
+                {shareState === 'copied'
+                  ? 'Link copied!'
+                  : shareState === 'sharing'
+                    ? 'Sharing...'
+                    : creationIsPublic
+                      ? 'Copy link'
+                      : 'Share'}
               </button>
             )}
 
@@ -4353,6 +4708,60 @@ function EuclidCanvasInner({
               }}
             >
               ⊞
+            </button>
+          </div>
+        )}
+
+        {/* Admin-only export buttons */}
+        {playgroundMode && isAdmin && (
+          <div
+            data-element="admin-export-bar"
+            style={{
+              position: 'absolute',
+              top: 52,
+              right: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              zIndex: 12,
+              fontFamily: 'system-ui, sans-serif',
+              fontSize: 11,
+            }}
+          >
+            <span style={{ color: '#9ca3af' }}>Export:</span>
+            <button
+              onClick={handleExportTypeScript}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: exportCopied === 'ts' ? '#10b981' : '#4E79A7',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: exportCopied === 'ts' ? 600 : 400,
+                fontFamily: 'system-ui, sans-serif',
+                textDecoration: exportCopied === 'ts' ? 'none' : 'underline',
+                padding: 0,
+                transition: 'color 0.15s',
+              }}
+            >
+              {exportCopied === 'ts' ? 'Copied!' : 'TypeScript'}
+            </button>
+            <button
+              onClick={handleExportClaudePrompt}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: exportCopied === 'claude' ? '#10b981' : '#4E79A7',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: exportCopied === 'claude' ? 600 : 400,
+                fontFamily: 'system-ui, sans-serif',
+                textDecoration: exportCopied === 'claude' ? 'none' : 'underline',
+                padding: 0,
+                transition: 'color 0.15s',
+              }}
+            >
+              {exportCopied === 'claude' ? 'Copied!' : 'Claude Prompt'}
             </button>
           </div>
         )}
@@ -4755,7 +5164,8 @@ function EuclidCanvasInner({
         {showCreationsPanel && (
           <PlaygroundCreationsPanel
             onClose={() => setShowCreationsPanel(false)}
-            currentId={savedId}
+            onLoad={handleLoadCreation}
+            currentId={creationId}
             playerId={playerId}
           />
         )}
@@ -4829,6 +5239,21 @@ function EuclidCanvasInner({
             matchDescription={heckler.matchDescription}
             onAnswer={handleHecklerAnswer}
             onDismiss={handleHecklerDismiss}
+          />
+        )}
+
+        {/* ── Heckler active call presence (playground mode) ── */}
+        {playgroundMode && euclidCallVisible && (
+          <HecklerCallPresence
+            profileImage={lgProfileImage}
+            characterName={
+              teacherConfig.definition.nativeDisplayName ??
+              teacherConfig.definition.displayName
+            }
+            isSpeaking={euclidVoice.isSpeaking}
+            isThinking={euclidVoice.isThinking}
+            timeRemaining={euclidVoice.timeRemaining}
+            onHangUp={euclidVoice.hangUp}
           />
         )}
       </div>

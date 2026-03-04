@@ -11,6 +11,8 @@ export interface CreationMeta {
   thumbnail: string | null
   isPublic: boolean
   createdAt: Date
+  title: string | null
+  updatedAt: Date | null
 }
 
 async function fetchCreations(

@@ -12,11 +12,12 @@ export const POST = withAuth(async (request: NextRequest) => {
     const userId = await getUserId()
     const body = await request.json()
 
-    const { data, thumbnail, isPublic, playerId } = body as {
+    const { data, thumbnail, isPublic, playerId, title } = body as {
       data: CreationData
       thumbnail?: string
       isPublic?: boolean
       playerId?: string | null
+      title?: string | null
     }
 
     if (!data || !data.actions) {
@@ -31,6 +32,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         data,
         thumbnail: thumbnail ?? null,
         isPublic: isPublic ?? false,
+        title: title ?? null,
       })
       .returning()
 
@@ -66,6 +68,8 @@ export const GET = withAuth(async (request: NextRequest) => {
       thumbnail: schema.euclidCreations.thumbnail,
       isPublic: schema.euclidCreations.isPublic,
       createdAt: schema.euclidCreations.createdAt,
+      title: schema.euclidCreations.title,
+      updatedAt: schema.euclidCreations.updatedAt,
     }
 
     // Fetch specific IDs (for "seen" tab)

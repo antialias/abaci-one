@@ -30,12 +30,18 @@ export const euclidCreations = sqliteTable(
     /** Downsampled JPEG data URL for gallery display */
     thumbnail: text('thumbnail'),
 
+    /** User-facing title for the creation */
+    title: text('title'),
+
     /** Whether this appears in the public gallery */
     isPublic: integer('is_public', { mode: 'boolean' }).notNull().default(false),
 
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
+
+    /** Last update timestamp (null for legacy rows) */
+    updatedAt: integer('updated_at', { mode: 'timestamp' }),
   },
   (table) => ({
     userIdIdx: index('euclid_creations_user_id_idx').on(table.userId),
