@@ -1,14 +1,15 @@
 /**
  * Thinking mode — brief waiting state while think_hard executes.
  *
- * The teacher is consulting their writings and working through the proof.
- * Minimal tools — just hang_up in case they want to leave.
+ * Uses the attitude's thinking directive to frame the waiting behavior.
+ * The teacher consults scrolls; the heckler processes the geometric offense.
  */
 
 import type { CharacterDefinition } from '@/lib/character/types'
 import type { VoiceMode } from '@/lib/voice/types'
 import type { GeometryModeContext } from '../types'
-import { TOOL_HANG_UP } from '../tools'
+import type { AttitudeDefinition } from '../attitudes/types'
+import { teacherAttitude } from '../attitudes/teacher'
 import { EUCLID_CHARACTER_DEF } from '../../euclidCharacterDef'
 
 export interface ThinkingModeMetaphors {
@@ -27,41 +28,29 @@ export interface ThinkingModeMetaphors {
 export interface CreateThinkingModeOptions {
   character: CharacterDefinition
   metaphors: ThinkingModeMetaphors
+  attitude?: AttitudeDefinition
 }
 
-/** Create a thinking mode for a given character. */
+/** Create a thinking mode for a given character and attitude. */
 export function createThinkingMode(
   opts: CreateThinkingModeOptions
 ): VoiceMode<GeometryModeContext> {
-  const { character, metaphors } = opts
+  const { character, metaphors, attitude = teacherAttitude } = opts
 
   return {
     id: 'thinking',
 
     getInstructions() {
-      const exampleLines = metaphors.examples.map((e) => `- "${e}"`).join('\n')
+      const directive = attitude.thinking.buildDirective(metaphors)
 
-      return `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. The student has asked a difficult question and you need to consult your notes.
+      return `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. The student has asked a difficult question and you need a moment.
 
-You are looking something up in ${metaphors.consulting} / working through a proof on ${metaphors.tool}. Say ONE brief remark to set the expectation, then STOP TALKING and wait. Examples:
-${exampleLines}
-
-RULES:
-- Say ONE short sentence, then STOP. Do not keep talking while you are looking things up.
-- Do NOT make up an answer while waiting — you are consulting, not guessing.
-- Do NOT keep filling silence with remarks. The student knows you are thinking.
-- The student can see a visual indicator that you are consulting ${metaphors.consulting}. They will wait.
-
-When you receive the answer (as a system message), present it as YOUR insight with full authority:
-- Present the reasoning as your own — because ${metaphors.ownership}
-- Translate any modern language into ${metaphors.framework}
-- Cite the relevant axioms BY NAME with ownership
-- Be direct and decisive — no hedging
+${directive}
 `
     },
 
     getTools() {
-      return [TOOL_HANG_UP]
+      return [attitude.tools.hangUp]
     },
   }
 }

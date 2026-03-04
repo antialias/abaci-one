@@ -286,6 +286,7 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
       getSessionBody: () => ({
         propositionId,
         characterId: teacherConfig.definition.id,
+        attitudeId: teacherConfig.attitudeId,
         currentStep: currentStepRef.current ?? 0,
         isComplete,
         playgroundMode,

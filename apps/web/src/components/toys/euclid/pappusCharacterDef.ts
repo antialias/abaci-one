@@ -14,10 +14,14 @@ export const PAPPUS_CHARACTER_DEF: CharacterDefinition = {
   profileImage: '/images/pappus-profile.png',
   personality: {
     character: PAPPUS_CHARACTER,
-    teachingStyle: PAPPUS_TEACHING_STYLE,
-    dontDo: PAPPUS_WHAT_NOT_TO_DO,
-    hiddenDepth: PAPPUS_HIDDEN_DEPTH,
     pointLabeling: PAPPUS_POINT_LABELING,
+    attitudes: {
+      teacher: {
+        style: PAPPUS_TEACHING_STYLE,
+        dontDo: PAPPUS_WHAT_NOT_TO_DO,
+        hiddenDepth: PAPPUS_HIDDEN_DEPTH,
+      },
+    },
   },
   chat: {
     placeholder: 'Ask Pappus...',

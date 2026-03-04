@@ -41,14 +41,14 @@ const PERSONALITY_BLOCKS = [
     sourceExport: 'PAPPUS_CHARACTER',
   },
   {
-    key: 'teachingStyle',
+    key: 'attitudes.teacher.style',
     label: 'TEACHING STYLE',
     text: PAPPUS_TEACHING_STYLE,
     sourceFile: 'src/components/toys/euclid/pappusCharacter.ts',
     sourceExport: 'PAPPUS_TEACHING_STYLE',
   },
   {
-    key: 'dontDo',
+    key: 'attitudes.teacher.dontDo',
     label: 'WHAT NOT TO DO',
     text: PAPPUS_WHAT_NOT_TO_DO,
     sourceFile: 'src/components/toys/euclid/pappusCharacter.ts',
@@ -62,7 +62,7 @@ const PERSONALITY_BLOCKS = [
     sourceExport: 'PAPPUS_POINT_LABELING',
   },
   {
-    key: 'hiddenDepth',
+    key: 'attitudes.teacher.hiddenDepth',
     label: 'THE COMPLETENESS QUESTION',
     text: PAPPUS_HIDDEN_DEPTH,
     sourceFile: 'src/components/toys/euclid/pappusCharacter.ts',

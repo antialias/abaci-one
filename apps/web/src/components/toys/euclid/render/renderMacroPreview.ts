@@ -252,7 +252,7 @@ export function renderMacroPreview(
     }
 
     // Store displayed positions for next transition's offset computation
-    _displayedPositions = positions.map(p => ({ x: p.x, y: p.y }))
+    _displayedPositions = positions.map((p) => ({ x: p.x, y: p.y }))
   }
 
   // ── Mating indicator ──

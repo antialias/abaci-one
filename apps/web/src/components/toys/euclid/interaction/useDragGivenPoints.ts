@@ -203,9 +203,7 @@ export function useDragGivenPoints({
           postCompletionActionsRef.current = actions
         } else if (draggedPt?.origin === 'extend') {
           // Ray-constrained drag: project cursor onto the ray and update distance
-          const extendAction = actions.find(
-            (a) => a.type === 'extend' && a.pointId === dragPointId
-          )
+          const extendAction = actions.find((a) => a.type === 'extend' && a.pointId === dragPointId)
           if (extendAction && extendAction.type === 'extend') {
             const basePt = getPoint(constructionRef.current, extendAction.baseId)
             const throughPt = getPoint(constructionRef.current, extendAction.throughId)

@@ -1,9 +1,9 @@
 /**
- * Pappus's GeometryTeacherConfig — assembles all Pappus-specific pieces
+ * Pappus's GeometryVoiceConfig — assembles all Pappus-specific pieces
  * into a single config object consumed by the context provider.
  */
 
-import type { GeometryTeacherConfig } from '../GeometryTeacherConfig'
+import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
 import { PAPPUS_CHARACTER_DEF } from '../pappusCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
 import { buildPappusCompletionContext } from '../pappusCharacter'
@@ -11,9 +11,11 @@ import { createGreetingMode } from '../voice/modes/greetingMode'
 import { createConversingMode } from '../voice/modes/conversingMode'
 import { createThinkingMode } from '../voice/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
+import { teacherAttitude } from '../voice/attitudes/teacher'
 
-export const pappusConfig: GeometryTeacherConfig = {
+export const pappusConfig: GeometryVoiceConfig = {
   definition: PAPPUS_CHARACTER_DEF,
+  attitudeId: 'teacher',
   entityMarkers: EUCLID_ENTITY_MARKERS,
 
   voice: {
@@ -26,10 +28,11 @@ export const pappusConfig: GeometryTeacherConfig = {
   },
 
   modes: {
-    greeting: createGreetingMode(PAPPUS_CHARACTER_DEF),
+    greeting: createGreetingMode({ character: PAPPUS_CHARACTER_DEF, attitude: teacherAttitude }),
     conversing: createConversingMode({
       character: PAPPUS_CHARACTER_DEF,
       buildCompletionContext: buildPappusCompletionContext,
+      attitude: teacherAttitude,
     }),
     thinking: createThinkingMode({
       character: PAPPUS_CHARACTER_DEF,
@@ -46,6 +49,7 @@ export const pappusConfig: GeometryTeacherConfig = {
           'Hold on — let me think this through.',
         ],
       },
+      attitude: teacherAttitude,
     }),
   },
 

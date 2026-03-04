@@ -314,7 +314,11 @@ function resolveTemplate(template: string, refToLabel: Map<Ref, string>): string
  */
 export function recipeToConclusion(
   recipe: ConstructionRecipe
-): (store: FactStore, state: import('../../types').ConstructionState, atStep: number) => EqualityFact[] {
+): (
+  store: FactStore,
+  state: import('../../types').ConstructionState,
+  atStep: number
+) => EqualityFact[] {
   return (store, _state, atStep) => {
     const refToId = new Map<Ref, string>()
     for (const slot of recipe.inputSlots) {
@@ -347,14 +351,23 @@ function collectSubTraceExportGhosts(
     if (exp.kind === 'point') {
       const pt = subTrace.pointMap.get(exp.ref)
       if (pt) {
-        elements.push({ kind: 'point', x: pt.x, y: pt.y, label: labelFn(exp.ref), color: colorFn() })
+        elements.push({
+          kind: 'point',
+          x: pt.x,
+          y: pt.y,
+          label: labelFn(exp.ref),
+          color: colorFn(),
+        })
       }
     } else if (exp.kind === 'segment') {
       const seg = subTrace.segmentMap.get(exp.ref)
       if (seg) {
         elements.push({
           kind: 'segment',
-          x1: seg.from.x, y1: seg.from.y, x2: seg.to.x, y2: seg.to.y,
+          x1: seg.from.x,
+          y1: seg.from.y,
+          x2: seg.to.x,
+          y2: seg.to.y,
           color: colorFn(),
         })
       }
@@ -378,14 +391,19 @@ function collectSubTraceInternalGhosts(
     if (opTrace.kind === 'circle') {
       elements.push({
         kind: 'circle',
-        cx: opTrace.center.x, cy: opTrace.center.y, r: opTrace.radius,
+        cx: opTrace.center.x,
+        cy: opTrace.center.y,
+        r: opTrace.radius,
         color: colorFn(),
       })
       opIds.push(opTrace.opId)
     } else if (opTrace.kind === 'segment' && !exportRefs.has(opTrace.opId)) {
       elements.push({
         kind: 'segment',
-        x1: opTrace.from.x, y1: opTrace.from.y, x2: opTrace.to.x, y2: opTrace.to.y,
+        x1: opTrace.from.x,
+        y1: opTrace.from.y,
+        x2: opTrace.to.x,
+        y2: opTrace.to.y,
         color: colorFn(),
       })
       opIds.push(opTrace.opId)

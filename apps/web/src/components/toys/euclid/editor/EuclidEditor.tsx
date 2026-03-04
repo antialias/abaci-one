@@ -582,8 +582,8 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
         activeToolRef.current = 'straightedge'
         expectedActionRef.current = null
       } else if (citation === 'Post.2') {
-        setActiveTool('extend')
-        activeToolRef.current = 'extend'
+        setActiveTool('straightedge')
+        activeToolRef.current = 'straightedge'
         extendPhaseRef.current = { tag: 'idle' }
         extendPreviewRef.current = null
         expectedActionRef.current = null
@@ -1171,8 +1171,8 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
       if (tool !== 'macro') {
         macroPhaseRef.current = { tag: 'idle' }
       }
-      // Clear custom cursor when switching away from move/extend
-      if (tool !== 'move' && tool !== 'extend' && canvasRef.current) {
+      // Clear custom cursor when switching away from move
+      if (tool !== 'move' && canvasRef.current) {
         canvasRef.current.style.cursor = ''
       }
       requestDraw()
@@ -1210,12 +1210,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
             display: 'block',
             width: '100%',
             height: '100%',
-            cursor:
-              activeTool === 'move' || activeTool === 'extend'
-                ? undefined
-                : activeTool !== 'macro'
-                  ? 'none'
-                  : undefined,
+            cursor: activeTool === 'move' ? undefined : activeTool !== 'macro' ? 'none' : undefined,
           }}
         />
 

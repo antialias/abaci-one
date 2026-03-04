@@ -41,14 +41,14 @@ const PERSONALITY_BLOCKS = [
     sourceExport: 'EUCLID_CHARACTER',
   },
   {
-    key: 'teachingStyle',
+    key: 'attitudes.teacher.style',
     label: 'TEACHING STYLE',
     text: EUCLID_TEACHING_STYLE,
     sourceFile: 'src/components/toys/euclid/euclidCharacter.ts',
     sourceExport: 'EUCLID_TEACHING_STYLE',
   },
   {
-    key: 'dontDo',
+    key: 'attitudes.teacher.dontDo',
     label: 'WHAT NOT TO DO',
     text: EUCLID_WHAT_NOT_TO_DO,
     sourceFile: 'src/components/toys/euclid/euclidCharacter.ts',
@@ -62,7 +62,7 @@ const PERSONALITY_BLOCKS = [
     sourceExport: 'EUCLID_POINT_LABELING',
   },
   {
-    key: 'hiddenDepth',
+    key: 'attitudes.teacher.hiddenDepth',
     label: 'THE DIAGRAM QUESTION',
     text: EUCLID_DIAGRAM_QUESTION,
     sourceFile: 'src/components/toys/euclid/euclidCharacter.ts',

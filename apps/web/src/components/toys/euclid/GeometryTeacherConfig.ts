@@ -1,9 +1,10 @@
 /**
- * Configuration interface for a geometry teacher character.
+ * Configuration interface for a geometry voice character.
  *
  * Abstracts everything character-specific (personality, voice, prompts,
  * messages) so the same construction engine, proof system, and UI can
- * host different teacher characters (Euclid, Pappus, etc.).
+ * host different characters in different attitudes (Euclid teacher,
+ * Euclid heckler, Pappus teacher, etc.).
  */
 
 import type { CharacterDefinition, EntityMarkerConfig } from '@/lib/character/types'
@@ -11,10 +12,13 @@ import type { VoiceMode } from '@/lib/voice/types'
 import type { GeometryModeContext } from './voice/types'
 import type { EuclidEntityRef } from './chat/parseGeometricEntities'
 import type { ChatSystemPromptContext } from './chat/buildChatSystemPrompt'
+import type { AttitudeId } from './voice/attitudes/types'
 
-export interface GeometryTeacherConfig {
+export interface GeometryVoiceConfig {
   /** Static character identity (personality blocks, profile image, chat UI strings) */
   definition: CharacterDefinition
+  /** Which attitude this config uses ('teacher' | 'heckler') */
+  attitudeId: AttitudeId
   /** Entity marker config for parsing inline markers in chat text */
   entityMarkers: EntityMarkerConfig<EuclidEntityRef>
 
@@ -64,3 +68,6 @@ export interface GeometryTeacherConfig {
     thinkingResultPrefix: string
   }
 }
+
+/** @deprecated Use GeometryVoiceConfig instead. */
+export type GeometryTeacherConfig = GeometryVoiceConfig

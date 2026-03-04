@@ -37,7 +37,14 @@ export type PostCompletionAction =
   /** A user-placed free point (playground mode). Dragging updates x/y in place. */
   | { type: 'free-point'; id: string; label: string; x: number; y: number }
   /** Post.2 extend: new point + segment beyond an existing segment endpoint */
-  | { type: 'extend'; baseId: string; throughId: string; pointId: string; segmentId: string; distance: number }
+  | {
+      type: 'extend'
+      baseId: string
+      throughId: string
+      pointId: string
+      segmentId: string
+      distance: number
+    }
 
 export interface ReplayResult {
   state: ConstructionState
@@ -369,7 +376,12 @@ export function replayConstruction(
             const segResult = addSegment(state, action.throughId, ptResult.point.id)
             state = segResult.state
             const ptCands = findNewIntersections(state, ptResult.point, candidates, true)
-            const segCands = findNewIntersections(state, segResult.segment, [...candidates, ...ptCands], true)
+            const segCands = findNewIntersections(
+              state,
+              segResult.segment,
+              [...candidates, ...ptCands],
+              true
+            )
             candidates = [...candidates, ...ptCands, ...segCands]
           }
         }

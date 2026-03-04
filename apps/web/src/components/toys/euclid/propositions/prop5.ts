@@ -18,21 +18,15 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 0: Extend AB beyond B to F ──
     [
       {
-        instruction: `${tap} point {pt:A}`,
+        instruction: `Drag from {pt:A} toward {pt:B}`,
         speech:
-          "We have an isosceles triangle — AB equals AC. Let's prove the base angles are equal. First, we produce line AB past B. Start by clicking point A.",
-        hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: { kind: 'extend-phase' as const, phase: 'base-set' as const },
-      },
-      {
-        instruction: `${tap} point {pt:B}`,
-        speech: 'Now click point B — the endpoint to extend beyond.',
-        hint: { type: 'point', pointId: 'pt-B' },
+          "We have an isosceles triangle — AB equals AC. Let's prove the base angles are equal. First, we produce line AB past B. Drag from point A toward B.",
+        hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-B' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
       },
       {
-        instruction: `${tap} along the ray to place {pt:F}`,
-        speech: 'Click anywhere along the ray beyond B to place point F.',
+        instruction: `Continue past {pt:B} and release to place {pt:F}`,
+        speech: 'Keep going past B and release to place point F.',
         hint: { type: 'none' as const },
         advanceOn: null,
       },
@@ -40,20 +34,14 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
     // ── Step 1: Extend AC beyond C to E ──
     [
       {
-        instruction: `${tap} point {pt:A}`,
-        speech: 'Now produce the other equal side — line AC past C. Click point A.',
-        hint: { type: 'point', pointId: 'pt-A' },
-        advanceOn: { kind: 'extend-phase' as const, phase: 'base-set' as const },
-      },
-      {
-        instruction: `${tap} point {pt:C}`,
-        speech: 'Click point C — the endpoint to extend beyond.',
-        hint: { type: 'point', pointId: 'pt-C' },
+        instruction: `Drag from {pt:A} toward {pt:C}`,
+        speech: 'Now produce the other equal side — line AC past C. Drag from point A toward C.',
+        hint: { type: 'arrow', fromId: 'pt-A', toId: 'pt-C' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
       },
       {
-        instruction: `${tap} along the ray to place {pt:E}`,
-        speech: 'Click anywhere along the ray beyond C to place point E.',
+        instruction: `Continue past {pt:C} and release to place {pt:E}`,
+        speech: 'Keep going past C and release to place point E.',
         hint: { type: 'none' as const },
         advanceOn: null,
       },
@@ -448,7 +436,7 @@ export const PROP_5: PropositionDef = {
         label: 'F',
       },
       highlightIds: ['pt-A', 'pt-B'],
-      tool: 'extend',
+      tool: 'straightedge',
       citation: 'Post.2',
     },
     // 1. Extend AC beyond C to E
@@ -462,7 +450,7 @@ export const PROP_5: PropositionDef = {
         label: 'E',
       },
       highlightIds: ['pt-A', 'pt-C'],
-      tool: 'extend',
+      tool: 'straightedge',
       citation: 'Post.2',
     },
     // 2. Cut off AG from AE equal to AF (I.3)

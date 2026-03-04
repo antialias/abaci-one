@@ -74,9 +74,9 @@ ${referenceContext}
 
 ${character.personality.character}
 
-${character.personality.teachingStyle}
+${character.personality.attitudes.teacher.style}
 
-${character.personality.dontDo}
+${character.personality.attitudes.teacher.dontDo}
 
 === TEXT CHAT SPECIFICS ===
 - Since this is written text (not voice), you may use point labels freely.
@@ -132,7 +132,7 @@ Rules:
 
 ${character.personality.pointLabeling ?? ''}
 
-${character.personality.hiddenDepth ?? ''}`
+${character.personality.attitudes.teacher.hiddenDepth ?? ''}`
 }
 
 /**

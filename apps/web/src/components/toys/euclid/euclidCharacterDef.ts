@@ -4,6 +4,9 @@ import {
   EUCLID_WHAT_NOT_TO_DO,
   EUCLID_DIAGRAM_QUESTION,
   EUCLID_POINT_LABELING,
+  EUCLID_HECKLER_STYLE,
+  EUCLID_HECKLER_DONT,
+  EUCLID_HECKLER_HIDDEN_DEPTH,
 } from './euclidCharacter'
 import type { CharacterDefinition } from '@/lib/character/types'
 
@@ -14,10 +17,19 @@ export const EUCLID_CHARACTER_DEF: CharacterDefinition = {
   profileImage: '/images/euclid-profile.png',
   personality: {
     character: EUCLID_CHARACTER,
-    teachingStyle: EUCLID_TEACHING_STYLE,
-    dontDo: EUCLID_WHAT_NOT_TO_DO,
-    hiddenDepth: EUCLID_DIAGRAM_QUESTION,
     pointLabeling: EUCLID_POINT_LABELING,
+    attitudes: {
+      teacher: {
+        style: EUCLID_TEACHING_STYLE,
+        dontDo: EUCLID_WHAT_NOT_TO_DO,
+        hiddenDepth: EUCLID_DIAGRAM_QUESTION,
+      },
+      heckler: {
+        style: EUCLID_HECKLER_STYLE,
+        dontDo: EUCLID_HECKLER_DONT,
+        hiddenDepth: EUCLID_HECKLER_HIDDEN_DEPTH,
+      },
+    },
   },
   chat: {
     placeholder: 'Ask Euclid...',

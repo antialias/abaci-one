@@ -26,6 +26,7 @@ import type { ProofFact } from '../engine/facts'
 import type { UseVoiceCallReturn } from '@/lib/voice/types'
 import type { ChatMessage } from '@/lib/character/types'
 import { generateId } from '@/lib/character/useCharacterChat'
+import type { ConstructionEventBus } from './ConstructionEventBus'
 import { captureScreenshot } from '@/lib/character/captureScreenshot'
 import {
   serializeConstructionGraph,
@@ -42,6 +43,8 @@ export interface ConstructionEvent {
   /** When true, replace trailing event messages in chat instead of appending.
    *  Use for rapid-fire events (e.g. topology changes during drag) to avoid spam. */
   collapseInChat?: boolean
+  /** When true, signals a full construction reset (new canvas). */
+  reset?: boolean
 }
 
 export interface NotifierLogEntry {
@@ -79,6 +82,8 @@ interface UseConstructionNotifierOptions {
   addMessage: (msg: ChatMessage) => void
   /** Replace trailing events with one message (or remove them if null) */
   setTrailingEvent: (msg: ChatMessage | null) => void
+  /** Optional event bus — emits construction events for external subscribers */
+  eventBus?: ConstructionEventBus
 }
 
 export function useConstructionNotifier(
@@ -100,6 +105,7 @@ export function useConstructionNotifier(
     voiceCallRef,
     addMessage,
     setTrailingEvent,
+    eventBus,
   } = options
 
   const toolTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -226,9 +232,12 @@ export function useConstructionNotifier(
       const delivered = sendToVoice(event.action, event.shouldPrompt, screenshot)
       addLogEntry('construction', event.action, delivered)
 
+      // Emit to event bus for external subscribers (heckler, proof ledger, etc.)
+      eventBus?.emit(event)
+
       console.log('[notifier] construction: %s (delivered=%s)', event.action, delivered)
     },
-    [sendToVoice, addMessage, setTrailingEvent, addLogEntry, canvasRef]
+    [sendToVoice, addMessage, setTrailingEvent, addLogEntry, canvasRef, eventBus]
   )
 
   const notifyToolState = useCallback(() => {

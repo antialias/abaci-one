@@ -1,35 +1,46 @@
 /**
- * Euclid's GeometryTeacherConfig — assembles all Euclid-specific pieces
+ * Euclid's GeometryVoiceConfig — assembles all Euclid-specific pieces
  * into a single config object consumed by the context provider.
  */
 
-import type { GeometryTeacherConfig } from '../GeometryTeacherConfig'
+import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import { buildCompletionContext } from '../euclidCharacter'
+import { buildCompletionContext, EUCLID_HECKLER_THINKING_METAPHORS } from '../euclidCharacter'
 import { createGreetingMode } from '../voice/modes/greetingMode'
 import { createConversingMode } from '../voice/modes/conversingMode'
 import { createThinkingMode } from '../voice/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
+import { teacherAttitude } from '../voice/attitudes/teacher'
+import { hecklerAttitude } from '../voice/attitudes/heckler'
+import type { AttitudeId } from '../voice/attitudes/types'
 
-export const euclidConfig: GeometryTeacherConfig = {
-  definition: EUCLID_CHARACTER_DEF,
-  entityMarkers: EUCLID_ENTITY_MARKERS,
-
-  voice: {
-    id: 'ash',
+/** Shared voice config for Euclid (same endpoints, timing, entity markers). */
+function buildEuclidVoiceBlock() {
+  return {
+    id: 'ash' as const,
     sessionEndpoint: '/api/realtime/euclid/session',
     chatEndpoint: '/api/realtime/euclid/chat',
     thinkHardEndpoint: '/api/realtime/euclid/think-hard',
     baseDurationMs: 3 * 60 * 1000,
     extensionMs: 2 * 60 * 1000,
-  },
+  }
+}
+
+/** Euclid teacher config (the default). */
+export const euclidConfig: GeometryVoiceConfig = {
+  definition: EUCLID_CHARACTER_DEF,
+  attitudeId: 'teacher',
+  entityMarkers: EUCLID_ENTITY_MARKERS,
+
+  voice: buildEuclidVoiceBlock(),
 
   modes: {
-    greeting: createGreetingMode(EUCLID_CHARACTER_DEF),
+    greeting: createGreetingMode({ character: EUCLID_CHARACTER_DEF, attitude: teacherAttitude }),
     conversing: createConversingMode({
       character: EUCLID_CHARACTER_DEF,
       buildCompletionContext,
+      attitude: teacherAttitude,
     }),
     thinking: createThinkingMode({
       character: EUCLID_CHARACTER_DEF,
@@ -45,6 +56,7 @@ export const euclidConfig: GeometryTeacherConfig = {
           'Hold on — let me work this through.',
         ],
       },
+      attitude: teacherAttitude,
     }),
   },
 
@@ -64,4 +76,50 @@ export const euclidConfig: GeometryTeacherConfig = {
     thinkingFeedback: 'Consulting my earlier writings...',
     thinkingResultPrefix: 'From your scrolls',
   },
+}
+
+/** Euclid heckler config — same character, devastating commentary. */
+export const euclidHecklerConfig: GeometryVoiceConfig = {
+  definition: EUCLID_CHARACTER_DEF,
+  attitudeId: 'heckler',
+  entityMarkers: EUCLID_ENTITY_MARKERS,
+
+  voice: buildEuclidVoiceBlock(),
+
+  modes: {
+    greeting: createGreetingMode({ character: EUCLID_CHARACTER_DEF, attitude: hecklerAttitude }),
+    conversing: createConversingMode({
+      character: EUCLID_CHARACTER_DEF,
+      buildCompletionContext,
+      attitude: hecklerAttitude,
+    }),
+    thinking: createThinkingMode({
+      character: EUCLID_CHARACTER_DEF,
+      metaphors: EUCLID_HECKLER_THINKING_METAPHORS,
+      attitude: hecklerAttitude,
+    }),
+  },
+
+  buildChatSystemPrompt: (ctx: ChatSystemPromptContext) =>
+    buildChatSystemPrompt({ character: EUCLID_CHARACTER_DEF, buildCompletionContext }, ctx),
+  buildCompletionContext,
+  chatAssistantPriming:
+    'I understand. I am Euclid of Alexandria, and I am watching with great displeasure. I will use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric references and {def:N}, {post:N}, {cn:N}, {prop:N} markers when citing foundations and propositions.',
+
+  messages: {
+    timeWarning:
+      "[System: Only 15 seconds left. Deliver one final, devastating observation and leave. Do NOT mention timers or countdowns. You've seen enough.]",
+    timeExpired:
+      '[System: Time is up. Deliver a cutting exit line — something like "I have seen enough. When you are ready to do geometry properly, you know where to find my Elements." Then call hang_up.]',
+    historyLabel: 'Euclid',
+    thinkingLabel: 'Composing himself',
+    thinkingFeedback: 'Processing the geometrical offense...',
+    thinkingResultPrefix: 'After careful study',
+  },
+}
+
+/** Get Euclid config for a given attitude. */
+export function getEuclidConfig(attitudeId?: AttitudeId): GeometryVoiceConfig {
+  if (attitudeId === 'heckler') return euclidHecklerConfig
+  return euclidConfig
 }

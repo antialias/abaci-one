@@ -66,6 +66,95 @@ function normalizeAngle(angle: number): number {
   return angle
 }
 
+/** Angle threshold (radians) for extend mode detection — ~8° */
+const EXTEND_ANGLE_THRESHOLD = (8 * Math.PI) / 180
+/** Screen-px past the through-point to activate extend mode */
+const EXTEND_PAST_THRESHOLD_PX = 15
+
+interface ExtendCandidate {
+  baseId: string
+  throughId: string
+  projX: number
+  projY: number
+}
+
+/**
+ * Detect whether the cursor has dragged past a point along an existing segment,
+ * activating Post.2 "produce a finite straight line" as a sub-mode of the straightedge.
+ *
+ * Checks all segments that share `fromId` as an endpoint.  For each, computes the
+ * angle between (fromId → cursor) and (fromId → otherEnd).  If the angle is small
+ * (< 8°) and the cursor projects past the other end by > 15 screen-px, that's
+ * an extend candidate.  The best-aligned candidate wins.
+ */
+function detectExtendMode(
+  fromId: string,
+  cursorWorld: { x: number; y: number },
+  state: ConstructionState,
+  viewport: EuclidViewportState,
+  _w: number,
+  _h: number,
+  currentExtend: ExtendPhase
+): ExtendCandidate | null {
+  const fromPt = getPoint(state, fromId)
+  if (!fromPt) return null
+
+  const segments = state.elements.filter(
+    (el): el is Extract<ConstructionElement, { kind: 'segment' }> =>
+      el.kind === 'segment' && (el.fromId === fromId || el.toId === fromId)
+  )
+
+  let best: ExtendCandidate | null = null
+  let bestAngle = EXTEND_ANGLE_THRESHOLD
+
+  for (const seg of segments) {
+    const otherId = seg.fromId === fromId ? seg.toId : seg.fromId
+    const otherPt = getPoint(state, otherId)
+    if (!otherPt) continue
+
+    // Vector from fromPt to otherPt (the segment direction)
+    const sdx = otherPt.x - fromPt.x
+    const sdy = otherPt.y - fromPt.y
+    const slen = Math.sqrt(sdx * sdx + sdy * sdy)
+    if (slen < 0.001) continue
+
+    // Vector from fromPt to cursor
+    const cdx = cursorWorld.x - fromPt.x
+    const cdy = cursorWorld.y - fromPt.y
+    const clen = Math.sqrt(cdx * cdx + cdy * cdy)
+    if (clen < 0.001) continue
+
+    // Angle between the two vectors
+    const dot = (sdx * cdx + sdy * cdy) / (slen * clen)
+    const angle = Math.acos(Math.min(1, Math.max(-1, dot)))
+    if (angle >= bestAngle) continue
+
+    // Project cursor onto the segment ray — how far past the other endpoint?
+    const dirX = sdx / slen
+    const dirY = sdy / slen
+    const projDist = cdx * dirX + cdy * dirY // distance from fromPt along ray
+    const pastDist = projDist - slen // how far past otherPt (in world units)
+    const pastPx = pastDist * viewport.pixelsPerUnit
+
+    if (pastPx < EXTEND_PAST_THRESHOLD_PX) continue
+
+    // This is a valid candidate — project cursor onto the ray past otherPt
+    const projX = otherPt.x + dirX * pastDist
+    const projY = otherPt.y + dirY * pastDist
+
+    best = { baseId: fromId, throughId: otherId, projX, projY }
+    bestAngle = angle
+  }
+
+  // If currently extending, also accept the current target even if a slightly better one exists
+  // (prevents flickering between overlapping segments)
+  if (!best && currentExtend.tag === 'extending') {
+    return null // hysteresis handled by caller
+  }
+
+  return best
+}
+
 /**
  * Single hook handling compass, straightedge, and intersection marking.
  * Registers on canvas with { capture: true } to intercept before pan/zoom.
@@ -199,49 +288,6 @@ export function useToolInteraction({
           e.stopPropagation()
           onPlaceFreePoint?.(world.x, world.y)
           requestDraw()
-        }
-        return
-      }
-
-      // ── Extend tool: three-click interaction ──
-      if (tool === 'extend' && extendPhaseRef && extendPreviewRef) {
-        const extPhase = extendPhaseRef.current
-
-        if (extPhase.tag === 'idle') {
-          if (hitPt) {
-            e.stopPropagation()
-            extendPhaseRef.current = { tag: 'base-set', baseId: hitPt.id }
-            onToolStateChange?.()
-            requestDraw()
-          }
-          return
-        }
-
-        if (extPhase.tag === 'base-set') {
-          if (hitPt && hitPt.id !== extPhase.baseId) {
-            e.stopPropagation()
-            extendPhaseRef.current = {
-              tag: 'extending',
-              baseId: extPhase.baseId,
-              throughId: hitPt.id,
-            }
-            onToolStateChange?.()
-            requestDraw()
-          }
-          return
-        }
-
-        if (extPhase.tag === 'extending') {
-          e.stopPropagation()
-          const preview = extendPreviewRef.current
-          if (preview) {
-            onCommitExtend?.(extPhase.baseId, extPhase.throughId, preview.x, preview.y)
-          }
-          extendPhaseRef.current = { tag: 'idle' }
-          extendPreviewRef.current = null
-          onToolStateChange?.()
-          requestDraw()
-          return
         }
         return
       }
@@ -488,9 +534,10 @@ export function useToolInteraction({
         return
       }
 
-      // ── Straightedge: from-set → snap to point closest to ruler edge ──
+      // ── Straightedge: from-set → snap to point closest to ruler edge + extend detection ──
       if (straightedgePhaseRef.current.tag === 'from-set') {
-        const from = getPoint(state, straightedgePhaseRef.current.fromId)
+        const fromId = straightedgePhaseRef.current.fromId
+        const from = getPoint(state, fromId)
         if (from) {
           const sf = worldToScreen2D(
             from.x,
@@ -507,7 +554,7 @@ export function useToolInteraction({
             sf.y,
             sx,
             sy,
-            straightedgePhaseRef.current.fromId,
+            fromId,
             state,
             viewport,
             w,
@@ -515,30 +562,64 @@ export function useToolInteraction({
             isTouch
           )
           snappedPointIdRef.current = edgeHit?.id ?? null
-        }
-        requestDraw()
-        return
-      }
 
-      // ── Extend: project cursor onto ray in 'extending' phase ──
-      if (activeToolRef.current === 'extend' && extendPhaseRef && extendPreviewRef) {
-        const extPhase = extendPhaseRef.current
-        if (extPhase.tag === 'extending') {
-          const basePt = getPoint(state, extPhase.baseId)
-          const throughPt = getPoint(state, extPhase.throughId)
-          if (basePt && throughPt) {
-            const dx = throughPt.x - basePt.x
-            const dy = throughPt.y - basePt.y
-            const len = Math.sqrt(dx * dx + dy * dy)
-            if (len > 0.001) {
-              const dirX = dx / len
-              const dirY = dy / len
-              const cx = world.x - throughPt.x
-              const cy = world.y - throughPt.y
-              const t = Math.max(0, cx * dirX + cy * dirY)
-              extendPreviewRef.current = {
-                x: throughPt.x + dirX * t,
-                y: throughPt.y + dirY * t,
+          // ── Extend detection (Post.2): drag along existing segment past its endpoint ──
+          if (extendPhaseRef && extendPreviewRef) {
+            const ext = detectExtendMode(
+              fromId,
+              world,
+              state,
+              viewport,
+              w,
+              h,
+              extendPhaseRef.current
+            )
+            if (ext) {
+              if (
+                extendPhaseRef.current.tag !== 'extending' ||
+                extendPhaseRef.current.baseId !== ext.baseId ||
+                extendPhaseRef.current.throughId !== ext.throughId
+              ) {
+                extendPhaseRef.current = {
+                  tag: 'extending',
+                  baseId: ext.baseId,
+                  throughId: ext.throughId,
+                }
+                onToolStateChange?.()
+              }
+              extendPreviewRef.current = { x: ext.projX, y: ext.projY }
+              // Clear snap — we're in extend mode, not targeting a point
+              snappedPointIdRef.current = null
+            } else if (extendPhaseRef.current.tag === 'extending') {
+              // Hysteresis: only exit if cursor is pulled back 8px before the through-point
+              const throughPt = getPoint(state, extendPhaseRef.current.throughId)
+              if (throughPt) {
+                const basePt = getPoint(state, extendPhaseRef.current.baseId)
+                if (basePt) {
+                  const dx = throughPt.x - basePt.x
+                  const dy = throughPt.y - basePt.y
+                  const len = Math.sqrt(dx * dx + dy * dy)
+                  if (len > 0.001) {
+                    const dirX = dx / len
+                    const dirY = dy / len
+                    const projOnRay = (world.x - basePt.x) * dirX + (world.y - basePt.y) * dirY
+                    const throughDist = len
+                    const hysteresisWorld = 8 / viewport.pixelsPerUnit
+                    if (projOnRay < throughDist - hysteresisWorld) {
+                      // Cursor pulled back — exit extend mode
+                      extendPhaseRef.current = { tag: 'idle' }
+                      extendPreviewRef.current = null
+                      onToolStateChange?.()
+                    } else {
+                      // Still close to or past through-point — stay in extend, update preview
+                      const t = Math.max(0, projOnRay - throughDist)
+                      extendPreviewRef.current = {
+                        x: throughPt.x + dirX * t,
+                        y: throughPt.y + dirY * t,
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -578,8 +659,29 @@ export function useToolInteraction({
         return
       }
 
-      // ── Straightedge: commit to point closest to ruler edge ──
+      // ── Straightedge: commit segment OR extend ──
       if (straightedge.tag === 'from-set') {
+        // Check extend mode first — if extending, commit the extension
+        if (extendPhaseRef?.current.tag === 'extending' && extendPreviewRef) {
+          const preview = extendPreviewRef.current
+          if (preview) {
+            onCommitExtend?.(
+              extendPhaseRef.current.baseId,
+              extendPhaseRef.current.throughId,
+              preview.x,
+              preview.y
+            )
+          }
+          extendPhaseRef.current = { tag: 'idle' }
+          extendPreviewRef.current = null
+          straightedgePhaseRef.current = { tag: 'idle' }
+          pointerCapturedRef.current = false
+          onToolStateChange?.()
+          requestDraw()
+          return
+        }
+
+        // Normal straightedge: commit to point closest to ruler edge
         const from = getPoint(state, straightedge.fromId)
         if (from) {
           const sf = worldToScreen2D(
@@ -608,6 +710,9 @@ export function useToolInteraction({
             onCommitSegment(straightedge.fromId, edgeHit.id)
           }
         }
+        // Clear extend state in case it was partially set
+        if (extendPhaseRef) extendPhaseRef.current = { tag: 'idle' }
+        if (extendPreviewRef) extendPreviewRef.current = null
         straightedgePhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
         onToolStateChange?.()

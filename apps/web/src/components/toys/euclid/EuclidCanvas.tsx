@@ -30,10 +30,7 @@ import {
   getAllSegments,
   getRadius,
 } from './engine/constructionState'
-import {
-  findNewIntersections,
-  isCandidateBeyondPoint,
-} from './engine/intersections'
+import { findNewIntersections, isCandidateBeyondPoint } from './engine/intersections'
 import { renderConstruction, renderDragInvitation } from './render/renderConstruction'
 import {
   renderToolOverlay,
@@ -53,6 +50,7 @@ import { validateStep } from './propositions/validation'
 import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { PlaygroundCreationsPanel } from './PlaygroundCreationsPanel'
+import { ProofLedger } from './ledger/ProofLedger'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useTTS } from '@/hooks/useTTS'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
@@ -116,6 +114,9 @@ import { useGeometryVoice } from './voice/useGeometryVoice'
 import { GeometryTeacherProvider, useGeometryTeacher } from './GeometryTeacherContext'
 import { getTeacherConfig } from './characters/registry'
 import { useConstructionNotifier } from './voice/useConstructionNotifier'
+import { ConstructionEventBus } from './voice/ConstructionEventBus'
+import { useHecklerTrigger, type HecklerStage } from './voice/useHecklerTrigger'
+import type { AttitudeId } from './voice/attitudes/types'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ChatCallState } from '@/lib/character/types'
@@ -616,6 +617,169 @@ interface EuclidCanvasProps {
   disableAudio?: boolean
 }
 
+// ── Heckler incoming call overlay ──
+
+function HecklerIncomingOverlay({
+  stage,
+  profileImage,
+  characterName,
+  matchDescription: _matchDescription,
+  onAnswer,
+  onDismiss,
+}: {
+  stage: HecklerStage
+  profileImage: string
+  characterName: string
+  matchDescription: string | null
+  onAnswer: () => void
+  onDismiss: () => void
+}) {
+  const isRinging = stage === 'ringing'
+
+  // Play a repeating ring tone when in ringing state
+  useEffect(() => {
+    if (!isRinging) return
+
+    let stopped = false
+    const ctx = new AudioContext()
+    const master = ctx.createGain()
+    master.connect(ctx.destination)
+
+    function playRing() {
+      if (stopped) return
+      const osc = ctx.createOscillator()
+      const g = ctx.createGain()
+      osc.connect(g)
+      g.connect(master)
+      osc.frequency.value = 440
+      osc.type = 'sine'
+      g.gain.setValueAtTime(0.15, ctx.currentTime)
+      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.3)
+
+      const osc2 = ctx.createOscillator()
+      const g2 = ctx.createGain()
+      osc2.connect(g2)
+      g2.connect(master)
+      osc2.frequency.value = 554
+      osc2.type = 'sine'
+      g2.gain.setValueAtTime(0, ctx.currentTime + 0.35)
+      g2.gain.setValueAtTime(0.15, ctx.currentTime + 0.35)
+      g2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65)
+      osc2.start(ctx.currentTime + 0.35)
+      osc2.stop(ctx.currentTime + 0.65)
+    }
+
+    playRing()
+    const interval = setInterval(playRing, 2500)
+
+    return () => {
+      stopped = true
+      clearInterval(interval)
+      master.disconnect()
+      ctx.close().catch(() => {})
+    }
+  }, [isRinging])
+
+  return (
+    <div
+      data-element="heckler-incoming"
+      style={{
+        position: 'absolute',
+        bottom: 80,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: isRinging ? '12px 20px' : '8px 16px',
+        borderRadius: 16,
+        background: isRinging ? 'rgba(15, 23, 42, 0.92)' : 'rgba(15, 23, 42, 0.6)',
+        color: '#f8fafc',
+        fontSize: 13,
+        fontFamily: 'system-ui, sans-serif',
+        boxShadow: isRinging
+          ? '0 8px 32px rgba(0,0,0,0.4), 0 0 0 2px rgba(78, 121, 167, 0.4)'
+          : '0 4px 16px rgba(0,0,0,0.2)',
+        zIndex: 20,
+        transition: 'all 0.3s ease',
+        opacity: stage === 'watching' ? 0.7 : 1,
+        animation: isRinging ? 'heckler-ring 1s ease-in-out infinite' : undefined,
+        pointerEvents: isRinging ? 'auto' : 'none',
+      }}
+    >
+      <img
+        src={profileImage}
+        alt={characterName}
+        style={{
+          width: isRinging ? 40 : 32,
+          height: isRinging ? 40 : 32,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          transition: 'all 0.3s ease',
+        }}
+      />
+      {isRinging ? (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{characterName} is calling...</span>
+            <span style={{ fontSize: 11, opacity: 0.7 }}>Incoming observation</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 8 }}>
+            <button
+              data-action="answer-heckler"
+              onClick={onAnswer}
+              style={{
+                border: 'none',
+                borderRadius: 20,
+                padding: '6px 16px',
+                background: '#22c55e',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Answer
+            </button>
+            <button
+              data-action="dismiss-heckler"
+              onClick={onDismiss}
+              style={{
+                border: 'none',
+                borderRadius: 20,
+                padding: '6px 16px',
+                background: '#ef4444',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </>
+      ) : (
+        <span style={{ fontSize: 12, opacity: 0.8 }}>{characterName} is watching...</span>
+      )}
+      {/* Keyframe animation for the ring effect */}
+      {isRinging && (
+        <style>{`
+          @keyframes heckler-ring {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            10% { transform: translateX(-50%) scale(1.02) rotate(-1deg); }
+            20% { transform: translateX(-50%) scale(1.02) rotate(1deg); }
+            30% { transform: translateX(-50%) scale(1.02) rotate(-1deg); }
+            40% { transform: translateX(-50%) scale(1); }
+          }
+        `}</style>
+      )}
+    </div>
+  )
+}
+
 const WRONG_MOVE_PHRASES = [
   "Not quite. Let's try that step again.",
   "Hmm, that's not right. Try again.",
@@ -625,12 +789,17 @@ const WRONG_MOVE_PHRASES = [
 
 /**
  * Public EuclidCanvas — wraps the inner canvas with the geometry teacher provider.
+ * Manages dynamic attitude switching (teacher → heckler) for the heckler trigger.
  */
 export function EuclidCanvas(props: EuclidCanvasProps) {
-  const teacherConfig = getTeacherConfig(props.proposition?.characterId)
+  const [attitudeId, setAttitudeId] = useState<AttitudeId>('teacher')
+  const voiceConfig = useMemo(
+    () => getTeacherConfig(props.proposition?.characterId, attitudeId),
+    [props.proposition?.characterId, attitudeId]
+  )
   return (
-    <GeometryTeacherProvider config={teacherConfig}>
-      <EuclidCanvasInner {...props} />
+    <GeometryTeacherProvider config={voiceConfig}>
+      <EuclidCanvasInner {...props} onAttitudeChange={setAttitudeId} />
     </GeometryTeacherProvider>
   )
 }
@@ -646,7 +815,8 @@ function EuclidCanvasInner({
   initialGivenPoints,
   playerId,
   disableAudio,
-}: EuclidCanvasProps) {
+  onAttitudeChange,
+}: EuclidCanvasProps & { onAttitudeChange?: (attitudeId: AttitudeId) => void }) {
   const isMobile = useIsMobile()
   const { isVisualDebugEnabled } = useVisualDebugSafe()
   const proofFont = {
@@ -745,6 +915,7 @@ function EuclidCanvasInner({
   const isCompleteRef = useRef(false)
   const completionTimeRef = useRef<number>(0)
   const postCompletionActionsRef = useRef<PostCompletionAction[]>(initialActions ?? [])
+  const eventBusRef = useRef(new ConstructionEventBus())
   const ghostLayersRef = useRef<GhostLayer[]>([])
   const hoveredMacroStepRef = useRef<number | null>(null)
   const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
@@ -1191,7 +1362,29 @@ function EuclidCanvasInner({
     voiceCallRef: euclidVoice.voiceCallRef,
     addMessage: euclidChat.addMessage,
     setTrailingEvent: euclidChat.setTrailingEvent,
+    eventBus: eventBusRef.current,
   })
+
+  // ── Heckler trigger — watches construction in playground for proposition patterns ──
+  const handleHecklerAnswer = useCallback(
+    (_propId: number) => {
+      // Switch to heckler attitude and dial
+      onAttitudeChange?.('heckler')
+      // Dial after a microtask to let the config update propagate
+      setTimeout(() => {
+        euclidVoice.dial()
+      }, 50)
+    },
+    [onAttitudeChange, euclidVoice.dial]
+  )
+  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode, handleHecklerAnswer)
+  // Trigger heckler topology check whenever a construction event fires.
+  useEffect(() => {
+    if (!playgroundMode) return
+    return eventBusRef.current.subscribe(() => {
+      heckler.notifyConstructionChange()
+    })
+  }, [playgroundMode, heckler.notifyConstructionChange])
 
   // ── Unified send handler: routes to voice session or SSE chat ──
   const handleChatSend = useCallback(
@@ -1936,8 +2129,7 @@ function EuclidCanvasInner({
   const handleCommitExtend = useCallback(
     (baseId: string, throughId: string, projX: number, projY: number) => {
       const step = currentStepRef.current
-      const isGuidedExtend =
-        step < steps.length && steps[step].expected.type === 'extend'
+      const isGuidedExtend = step < steps.length && steps[step].expected.type === 'extend'
 
       const basePt = getPoint(constructionRef.current, baseId)
       const throughPt = getPoint(constructionRef.current, throughId)
@@ -1994,8 +2186,7 @@ function EuclidCanvasInner({
       requestDraw()
 
       const throughLabel =
-        getPoint(constructionRef.current, throughId)?.label ??
-        throughId.replace(/^pt-/, '')
+        getPoint(constructionRef.current, throughId)?.label ?? throughId.replace(/^pt-/, '')
       const newLabel = ptResult.point.label
       notifierRef.current.notifyConstruction({
         action: `Extended line through ${throughLabel} to new point ${newLabel}`,
@@ -2183,6 +2374,7 @@ function EuclidCanvasInner({
           ...postCompletionActionsRef.current,
           { type: 'macro' as const, propId, inputPointIds, atStep: step },
         ]
+
         // Add ghost layers immediately (no ceremony in free-form)
         const macroGhosts = result.ghostLayers.map((gl) => ({ ...gl, atStep: step }))
         ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
@@ -2453,6 +2645,7 @@ function EuclidCanvasInner({
     constructionRef.current = initializeGiven(proposition.givenElements)
     candidatesRef.current = []
     postCompletionActionsRef.current = []
+    eventBusRef.current.emit({ action: 'reset', shouldPrompt: false, reset: true })
     ghostLayersRef.current = []
     proofFactsRef.current = []
     compassPhaseRef.current = { tag: 'idle' }
@@ -3579,7 +3772,10 @@ function EuclidCanvasInner({
             complete
               ? playgroundMode
                 ? getAllPoints(drawState)
-                    .filter((pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend')
+                    .filter(
+                      (pt) =>
+                        pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend'
+                    )
                     .map((pt) => pt.id)
                 : proposition.draggablePointIds
               : undefined,
@@ -3590,7 +3786,9 @@ function EuclidCanvasInner({
           if (
             complete &&
             (playgroundMode
-              ? getAllPoints(drawState).some((pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend')
+              ? getAllPoints(drawState).some(
+                  (pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend'
+                )
               : proposition.draggablePointIds?.length)
           ) {
             needsDrawRef.current = true
@@ -4690,7 +4888,48 @@ function EuclidCanvasInner({
             isDark={false}
           />
         )}
+
+        {/* ── Heckler incoming call overlay (playground mode) ── */}
+        {playgroundMode && (heckler.stage === 'watching' || heckler.stage === 'ringing') && (
+          <HecklerIncomingOverlay
+            stage={heckler.stage}
+            profileImage={smProfileImage}
+            characterName={teacherConfig.definition.displayName}
+            matchDescription={heckler.matchDescription}
+            onAnswer={heckler.answer}
+            onDismiss={heckler.dismiss}
+          />
+        )}
       </div>
+
+      {/* ── Right pane: Construction log (playground mode) ── */}
+      {playgroundMode && (
+        <div
+          data-element="proof-ledger-panel"
+          style={{
+            width: isMobile ? '100%' : 340,
+            minWidth: isMobile ? 0 : 340,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            background: '#FAFAF0',
+            borderLeft: isMobile ? undefined : '1px solid rgba(203, 213, 225, 0.6)',
+            borderTop: isMobile ? '1px solid rgba(203, 213, 225, 0.6)' : undefined,
+            position: 'relative',
+            height: isMobile ? `${MOBILE_PROOF_PANEL_HEIGHT_RATIO * 100}dvh` : '100%',
+          }}
+        >
+          <ProofLedger
+            constructionState={constructionRef.current}
+            actions={postCompletionActionsRef.current}
+            givenElements={proposition.givenElements}
+            eventBus={eventBusRef.current}
+            pointLabels={getAllPoints(constructionRef.current).map((p) => p.label)}
+            renderEntity={renderEntity}
+            isMobile={isMobile}
+          />
+        </div>
+      )}
 
       {/* ── Right pane: Proof panel (hidden in playground mode) ── */}
       {!playgroundMode && showProofPanel && (

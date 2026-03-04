@@ -18,7 +18,7 @@ function toolForAction(action: SerializedAction): string | null {
     case 'fact-only':
       return 'null'
     case 'extend':
-      return "'extend'"
+      return "'straightedge'"
   }
 }
 

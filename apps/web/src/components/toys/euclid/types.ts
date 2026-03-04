@@ -23,7 +23,13 @@ export interface EuclidViewportState {
 
 // ── Geometric elements ─────────────────────────────────────────────
 
-export type ElementOrigin = 'given' | 'compass' | 'straightedge' | 'intersection' | 'free' | 'extend'
+export type ElementOrigin =
+  | 'given'
+  | 'compass'
+  | 'straightedge'
+  | 'intersection'
+  | 'free'
+  | 'extend'
 
 export interface ConstructionPoint {
   kind: 'point'

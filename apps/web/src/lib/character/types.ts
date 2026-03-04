@@ -1,3 +1,13 @@
+/** Attitude-specific personality block for a character. */
+export interface CharacterAttitudePersonality {
+  /** How they behave in this attitude (was `teachingStyle` for teacher) */
+  style: string
+  /** What they must NOT do in this attitude */
+  dontDo: string
+  /** Hidden vulnerability triggered by specific topics */
+  hiddenDepth?: string
+}
+
 /** Static character identity — personality, visual identity, chat config. */
 export interface CharacterDefinition {
   id: string
@@ -5,15 +15,17 @@ export interface CharacterDefinition {
   /** Native-script name (e.g., "Εὐκλείδης") — shown in chat header */
   nativeDisplayName?: string
   profileImage: string
-  /** Personality blocks — concatenated into system prompts */
+  /** Personality blocks — core identity + attitude-keyed behaviors */
   personality: {
+    /** Core identity — WHO they are (shared across all attitudes) */
     character: string
-    teachingStyle: string
-    dontDo: string
-    /** Triggered only by specific topics */
-    hiddenDepth?: string
-    /** Domain-specific point/label naming conventions */
+    /** Domain-specific point/label naming conventions (shared) */
     pointLabeling?: string
+    /** Attitude-specific personality blocks */
+    attitudes: {
+      teacher: CharacterAttitudePersonality
+      heckler?: CharacterAttitudePersonality
+    }
   }
   /** Chat-specific UI strings */
   chat: {

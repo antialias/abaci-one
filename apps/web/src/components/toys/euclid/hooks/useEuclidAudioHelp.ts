@@ -69,7 +69,7 @@ export function useEuclidAudioHelp({
       playedExplorationRef.current = true
       playedCelebrationRef.current = true // suppress generic celebration
       sayExplorationIntro()
-    } else if (!playedCelebrationRef.current) {
+    } else if (!playedCelebrationRef.current && celebrationText) {
       playedCelebrationRef.current = true
       sayCelebration()
     }

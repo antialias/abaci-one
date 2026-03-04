@@ -173,7 +173,8 @@ export function renderConstruction(
     const extendActions = new Map<string, { baseId: string; throughId: string }>()
     if (postCompletionActions) {
       for (const a of postCompletionActions) {
-        if (a.type === 'extend') extendActions.set(a.pointId, { baseId: a.baseId, throughId: a.throughId })
+        if (a.type === 'extend')
+          extendActions.set(a.pointId, { baseId: a.baseId, throughId: a.throughId })
       }
     }
 
@@ -224,9 +225,15 @@ export function renderConstruction(
               const arrowSize = 5
               ctx.beginPath()
               ctx.moveTo(arrowX, arrowY)
-              ctx.lineTo(arrowX - snx * arrowSize + sny * arrowSize * 0.5, arrowY - sny * arrowSize - snx * arrowSize * 0.5)
+              ctx.lineTo(
+                arrowX - snx * arrowSize + sny * arrowSize * 0.5,
+                arrowY - sny * arrowSize - snx * arrowSize * 0.5
+              )
               ctx.moveTo(arrowX, arrowY)
-              ctx.lineTo(arrowX - snx * arrowSize - sny * arrowSize * 0.5, arrowY - sny * arrowSize + snx * arrowSize * 0.5)
+              ctx.lineTo(
+                arrowX - snx * arrowSize - sny * arrowSize * 0.5,
+                arrowY - sny * arrowSize + snx * arrowSize * 0.5
+              )
               ctx.strokeStyle = 'rgba(225, 87, 89, 0.35)'
               ctx.lineWidth = 1.5
               ctx.stroke()

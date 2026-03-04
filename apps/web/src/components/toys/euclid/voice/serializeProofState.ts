@@ -323,34 +323,23 @@ export function serializeToolState(
     }
     case 'straightedge': {
       const sp = info.straightedgePhase
-      switch (sp.tag) {
-        case 'idle':
-          lines.push('  Straightedge: idle — no endpoint selected yet')
-          break
-        case 'from-set':
-          lines.push(
-            `  Straightedge: first endpoint=${pointLabel(state, sp.fromId)} — reaching for the second endpoint`
-          )
-          break
-      }
-      break
-    }
-    case 'extend': {
       const ep = info.extendPhase
-      switch (ep.tag) {
-        case 'idle':
-          lines.push('  Extend: idle — no base segment selected yet')
-          break
-        case 'base-set':
-          lines.push(
-            `  Extend: base endpoint=${pointLabel(state, ep.baseId)} — selecting the through-point to define direction`
-          )
-          break
-        case 'extending':
-          lines.push(
-            `  Extend: extending segment from ${pointLabel(state, ep.baseId)} through ${pointLabel(state, ep.throughId)}`
-          )
-          break
+      // Check if extend sub-mode is active during straightedge
+      if (ep.tag === 'extending') {
+        lines.push(
+          `  Straightedge (extending): producing segment from ${pointLabel(state, ep.baseId)} through ${pointLabel(state, ep.throughId)}`
+        )
+      } else {
+        switch (sp.tag) {
+          case 'idle':
+            lines.push('  Straightedge: idle — no endpoint selected yet')
+            break
+          case 'from-set':
+            lines.push(
+              `  Straightedge: first endpoint=${pointLabel(state, sp.fromId)} — reaching for the second endpoint`
+            )
+            break
+        }
       }
       break
     }
@@ -437,15 +426,13 @@ export function toolStateFingerprint(info: ToolStateInfo): string {
     }
     case 'straightedge': {
       const sp = info.straightedgePhase
-      parts.push(sp.tag)
-      if (sp.tag === 'from-set') parts.push(sp.fromId)
-      break
-    }
-    case 'extend': {
       const ep = info.extendPhase
-      parts.push(ep.tag)
-      if (ep.tag === 'base-set') parts.push(ep.baseId)
-      if (ep.tag === 'extending') parts.push(ep.baseId, ep.throughId)
+      if (ep.tag === 'extending') {
+        parts.push('extending', ep.baseId, ep.throughId)
+      } else {
+        parts.push(sp.tag)
+        if (sp.tag === 'from-set') parts.push(sp.fromId)
+      }
       break
     }
     case 'macro': {

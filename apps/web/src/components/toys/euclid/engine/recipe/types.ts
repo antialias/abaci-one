@@ -142,7 +142,7 @@ export interface ConstructionRecipe {
 
 export interface OpAnnotation {
   instruction: string
-  tool: 'compass' | 'straightedge' | 'macro' | 'move' | 'point' | 'extend' | null
+  tool: 'compass' | 'straightedge' | 'macro' | 'move' | 'point' | null
   citation?: string
   highlightIds?: string[]
   /** Override the automatically derived ExpectedAction (for special cases like wildcard intersections) */
