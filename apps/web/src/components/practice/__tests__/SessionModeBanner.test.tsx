@@ -59,7 +59,12 @@ function createRemediationMode(overrides: Partial<RemediationMode> = {}): Remedi
 function createProgressionMode(overrides: Partial<ProgressionMode> = {}): ProgressionMode {
   return {
     type: 'progression',
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+      hasMathSentence: true,
+    },
     phase: { id: 'phase2', name: 'Heaven Bead', primarySkillId: 'heaven.5' } as any,
     tutorialRequired: true,
     skipCount: 0,
@@ -118,7 +123,12 @@ describe('SessionModeBanner - Remediation', () => {
   it('shows blocked promotion next skill name', () => {
     const mode = createRemediationMode({
       blockedPromotion: {
-        nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven)', pKnown: 0, hasMathSentence: true },
+        nextSkill: {
+          skillId: 'heaven.5',
+          displayName: '+5 (Heaven)',
+          pKnown: 0,
+          hasMathSentence: true,
+        },
         reason: 'Strengthen prerequisites',
         phase: { id: 'p2', name: 'Heaven', primarySkillId: 'heaven.5' } as any,
         tutorialReady: false,
@@ -344,7 +354,12 @@ describe('SessionModeBanner - Maintenance', () => {
   it('shows working toward skill with deferred progression', () => {
     const mode = createMaintenanceMode({
       deferredProgression: {
-        nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven)', pKnown: 0, hasMathSentence: true },
+        nextSkill: {
+          skillId: 'heaven.5',
+          displayName: '+5 (Heaven)',
+          pKnown: 0,
+          hasMathSentence: true,
+        },
         readiness: {
           'basic.+3': {
             skillId: 'basic.+3',

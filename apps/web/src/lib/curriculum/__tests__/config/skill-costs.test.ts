@@ -50,13 +50,13 @@ describe('DEFAULT_BASE_COMPLEXITY', () => {
 // =============================================================================
 
 describe('BASE_SKILL_COMPLEXITY', () => {
-  it('basic skills have complexity 0 (trivial)', () => {
-    expect(BASE_SKILL_COMPLEXITY['basic.directAddition']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.directSubtraction']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.heavenBead']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.heavenBeadSubtraction']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinations']).toBe(0)
-    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinationsSub']).toBe(0)
+  it('basic skills have complexity 0.5 (low but non-zero for term-count scaling)', () => {
+    expect(BASE_SKILL_COMPLEXITY['basic.directAddition']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.directSubtraction']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.heavenBead']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.heavenBeadSubtraction']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinations']).toBe(0.5)
+    expect(BASE_SKILL_COMPLEXITY['basic.simpleCombinationsSub']).toBe(0.5)
   })
 
   it('five complement skills have complexity 1 (single substitution)', () => {
@@ -101,10 +101,9 @@ describe('BASE_SKILL_COMPLEXITY', () => {
     expect(tenComp).toBeLessThan(advanced)
   })
 
-  it('all complexity values are non-negative integers', () => {
+  it('all complexity values are non-negative', () => {
     for (const [skillId, cost] of Object.entries(BASE_SKILL_COMPLEXITY)) {
       expect(cost, `${skillId} should be non-negative`).toBeGreaterThanOrEqual(0)
-      expect(Number.isInteger(cost), `${skillId} should be integer`).toBe(true)
     }
   })
 
@@ -125,7 +124,7 @@ describe('BASE_SKILL_COMPLEXITY', () => {
 
 describe('getBaseComplexity', () => {
   it('returns correct cost for known skills', () => {
-    expect(getBaseComplexity('basic.directAddition')).toBe(0)
+    expect(getBaseComplexity('basic.directAddition')).toBe(0.5)
     expect(getBaseComplexity('fiveComplements.4=5-1')).toBe(1)
     expect(getBaseComplexity('tenComplements.9=10-1')).toBe(2)
     expect(getBaseComplexity('advanced.cascadingCarry')).toBe(3)

@@ -23,7 +23,8 @@ const mockRemediationMode: RemediationMode = {
     nextSkill: {
       skillId: 'sub-5-complement-4',
       displayName: '+5 - 4',
-      pKnown: 0, hasMathSentence: true
+      pKnown: 0,
+      hasMathSentence: true,
     },
     reason: 'Strengthen +3 and +5 - 2 first',
     phase: {
@@ -57,7 +58,8 @@ const mockProgressionModeWithTutorial: ProgressionMode = {
   nextSkill: {
     skillId: 'sub-5-complement-4',
     displayName: '+5 - 4',
-    pKnown: 0, hasMathSentence: true
+    pKnown: 0,
+    hasMathSentence: true,
   },
   phase: {
     id: 'L1.sub.-4.five',
@@ -490,7 +492,12 @@ export const RemediationManyWeakSkills: Story = {
         { skillId: 'add-2', displayName: '+2', pKnown: 0.28, hasMathSentence: true },
         { skillId: 'add-3', displayName: '+3', pKnown: 0.31, hasMathSentence: true },
         { skillId: 'add-4', displayName: '+4', pKnown: 0.35, hasMathSentence: true },
-        { skillId: 'sub-5-complement-1', displayName: '+5 - 1', pKnown: 0.38, hasMathSentence: true },
+        {
+          skillId: 'sub-5-complement-1',
+          displayName: '+5 - 1',
+          pKnown: 0.38,
+          hasMathSentence: true,
+        },
       ],
       focusDescription: 'Strengthening: +1, +2, +3 +2 more',
     } satisfies RemediationMode,
@@ -610,7 +617,8 @@ const mockMaintenanceModeWithDeferred: MaintenanceMode = {
     nextSkill: {
       skillId: 'sub-5-complement-4',
       displayName: '+5 - 4',
-      pKnown: 0, hasMathSentence: true
+      pKnown: 0,
+      hasMathSentence: true,
     },
     readiness: mockDeferredReadinessAllMet,
     phase: {
@@ -636,7 +644,8 @@ const mockMaintenanceModeWithDeferredPartial: MaintenanceMode = {
     nextSkill: {
       skillId: 'sub-5-complement-4',
       displayName: '+5 - 4',
-      pKnown: 0, hasMathSentence: true
+      pKnown: 0,
+      hasMathSentence: true,
     },
     readiness: mockDeferredReadinessPartial,
     phase: {

@@ -1241,6 +1241,8 @@ function EuclidCanvasInner({
   // Pre-dial when heckler enters 'ringing': switch attitude and start WebRTC
   useEffect(() => {
     if (heckler.stage !== 'ringing') return
+    // Already initiated pre-dial — don't schedule another
+    if (hecklerPreDialRef.current) return
     // Already dialing or connected — skip
     if (euclidVoice.state !== 'idle' && euclidVoice.state !== 'error') return
     onAttitudeChange?.('heckler')
@@ -1285,6 +1287,17 @@ function EuclidCanvasInner({
       stallTextRef.current = null
     }
   }, [euclidVoice.state, euclidVoice.activateSession])
+
+  // Clean up pre-dial if heckler match is lost (e.g. undo reverts the construction)
+  useEffect(() => {
+    if (heckler.stage === 'idle' && hecklerPreDialRef.current) {
+      hecklerPreDialRef.current = false
+      pendingActivateRef.current = false
+      stallTextRef.current = null
+      if (euclidVoice.state !== 'idle') euclidVoice.hangUp()
+      onAttitudeChange?.('teacher')
+    }
+  }, [heckler.stage, euclidVoice, onAttitudeChange])
 
   // Dismiss: clean up pre-connection and revert to teacher
   const handleHecklerDismiss = useCallback(() => {

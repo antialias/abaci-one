@@ -405,6 +405,8 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
   const dial = useCallback(async () => {
     const cur = stateRef.current
     if (cur !== 'idle' && cur !== 'error') return
+    // Update ref synchronously to prevent a second dial() in the same tick
+    stateRef.current = 'ringing'
 
     setError(null)
     setErrorCode(null)

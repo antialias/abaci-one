@@ -12,8 +12,7 @@ describe('validateMarkupStrict', () => {
 
   it('accepts clean markup with no changes to surrounding text', () => {
     const original = 'Place the compass at A and draw through B.'
-    const marked =
-      'Place the compass at {pt:A} and draw through {pt:B}.'
+    const marked = 'Place the compass at {pt:A} and draw through {pt:B}.'
     expect(validateMarkupStrict(original, marked)).toBe(true)
   })
 

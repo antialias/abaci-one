@@ -30,15 +30,30 @@ import {
 const remediationMode: RemediationMode = {
   type: 'remediation',
   weakSkills: [
-    { skillId: 'fiveComplements.4=5-1', displayName: 'Add 4 (5-1)', pKnown: 0.2, hasMathSentence: true },
-    { skillId: 'fiveComplements.3=5-2', displayName: 'Add 3 (5-2)', pKnown: 0.3, hasMathSentence: true },
+    {
+      skillId: 'fiveComplements.4=5-1',
+      displayName: 'Add 4 (5-1)',
+      pKnown: 0.2,
+      hasMathSentence: true,
+    },
+    {
+      skillId: 'fiveComplements.3=5-2',
+      displayName: 'Add 3 (5-2)',
+      pKnown: 0.3,
+      hasMathSentence: true,
+    },
   ],
   focusDescription: 'Strengthening: Add 4 (5-1) and Add 3 (5-2)',
 }
 
 const progressionMode: ProgressionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'tenComplements.9=10-1', displayName: 'Add 9 (10-1)', pKnown: 0, hasMathSentence: true },
+  nextSkill: {
+    skillId: 'tenComplements.9=10-1',
+    displayName: 'Add 9 (10-1)',
+    pKnown: 0,
+    hasMathSentence: true,
+  },
   phase: {
     id: 'L2.add.+9.direct',
     levelId: 2,
@@ -68,7 +83,12 @@ const maintenanceModeWithDeferred: MaintenanceMode = {
   focusDescription: 'Mixed practice',
   skillCount: 3,
   deferredProgression: {
-    nextSkill: { skillId: 'tenComplements.9=10-1', displayName: 'Add 9 (10-1)', pKnown: 0, hasMathSentence: true },
+    nextSkill: {
+      skillId: 'tenComplements.9=10-1',
+      displayName: 'Add 9 (10-1)',
+      pKnown: 0,
+      hasMathSentence: true,
+    },
     readiness: {},
     phase: {
       id: 'L2.add.+9.direct',

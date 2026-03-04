@@ -38,7 +38,8 @@ const mockRemediationBlockedMode: SessionMode = {
     nextSkill: {
       skillId: 'heaven.5',
       displayName: '+5 (Heaven Bead)',
-      pKnown: 0, hasMathSentence: true
+      pKnown: 0,
+      hasMathSentence: true,
     },
     reason: 'Strengthen +3 and +4 first',
     phase: {
@@ -55,7 +56,8 @@ const mockProgressionMode: SessionMode = {
   nextSkill: {
     skillId: 'heaven.5',
     displayName: '+5 (Heaven Bead)',
-    pKnown: 0, hasMathSentence: true
+    pKnown: 0,
+    hasMathSentence: true,
   },
   phase: {
     id: 'level1-phase2',
@@ -93,7 +95,8 @@ const mockProgressionSoftNudge: SessionMode = {
   nextSkill: {
     skillId: 'heaven.5',
     displayName: '+5 (Heaven Bead)',
-    pKnown: 0, hasMathSentence: true
+    pKnown: 0,
+    hasMathSentence: true,
   },
   phase: {
     id: 'level1-phase2',
@@ -114,7 +117,8 @@ const mockMaintenanceDeferredAllMet: SessionMode = {
     nextSkill: {
       skillId: 'heaven.5',
       displayName: '+5 (Heaven Bead)',
-      pKnown: 0, hasMathSentence: true
+      pKnown: 0,
+      hasMathSentence: true,
     },
     readiness: {
       'add.3': {
@@ -164,7 +168,8 @@ const mockMaintenanceDeferredPartial: SessionMode = {
     nextSkill: {
       skillId: 'heaven.5',
       displayName: '+5 (Heaven Bead)',
-      pKnown: 0, hasMathSentence: true
+      pKnown: 0,
+      hasMathSentence: true,
     },
     readiness: {
       'add.3': {

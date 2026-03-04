@@ -6,13 +6,29 @@ import type { SlotResult } from '@/db/schema/session-plans'
 import {
   calculateResponseTimeStats,
   calculateAutoPauseInfo,
+  calculateComplexityScaledThresholds,
+  calculateNormalizedResponseTimeStats,
   getAutoPauseExplanation,
+  getComplexityCost,
   formatMs,
   DEFAULT_PAUSE_TIMEOUT_MS,
   MIN_SAMPLES_FOR_STATISTICS,
   MIN_PAUSE_THRESHOLD_MS,
   MAX_PAUSE_THRESHOLD_MS,
 } from './autoPauseCalculator'
+import type { ProgressiveAssistanceTimingConfig } from '@/constants/helpTiming'
+
+// Mirror production timing values for tests (avoids runtime import issues)
+const PRODUCTION_TIMING: ProgressiveAssistanceTimingConfig = {
+  defaultEncouragementMs: 15_000,
+  defaultHelpOfferMs: 30_000,
+  minEncouragementMs: 8_000,
+  maxEncouragementMs: 45_000,
+  minHelpOfferMs: 15_000,
+  maxHelpOfferMs: 90_000,
+  wrongAnswerThreshold: 3,
+  moveOnGraceMs: 12_000,
+}
 
 // Helper to create mock SlotResult with only responseTimeMs
 function mockResult(responseTimeMs: number): SlotResult {
@@ -28,6 +44,25 @@ function mockResult(responseTimeMs: number): SlotResult {
     timestamp: new Date(),
     hadHelp: false,
     incorrectAttempts: 0,
+  }
+}
+
+// Helper to create mock SlotResult with a complexity cost in the generation trace
+function mockResultWithCost(responseTimeMs: number, totalComplexityCost: number): SlotResult {
+  return {
+    ...mockResult(responseTimeMs),
+    problem: {
+      terms: [1, 2],
+      answer: 3,
+      skillsRequired: [],
+      generationTrace: {
+        terms: [1, 2],
+        answer: 3,
+        steps: [],
+        allSkills: [],
+        totalComplexityCost,
+      },
+    },
   }
 }
 
@@ -283,6 +318,181 @@ describe('autoPauseCalculator', () => {
       expect(MIN_SAMPLES_FOR_STATISTICS).toBe(5)
       expect(MIN_PAUSE_THRESHOLD_MS).toBe(30_000) // 30 seconds
       expect(MAX_PAUSE_THRESHOLD_MS).toBe(DEFAULT_PAUSE_TIMEOUT_MS) // 5 minutes
+    })
+  })
+
+  // ==========================================================================
+  // Complexity-Scaled Threshold Tests
+  // ==========================================================================
+
+  describe('getComplexityCost', () => {
+    it('returns cost when generationTrace has positive totalComplexityCost', () => {
+      expect(getComplexityCost({ generationTrace: { totalComplexityCost: 42 } })).toBe(42)
+    })
+
+    it('returns null when generationTrace is missing', () => {
+      expect(getComplexityCost({})).toBeNull()
+      expect(getComplexityCost({ generationTrace: undefined })).toBeNull()
+    })
+
+    it('returns null when totalComplexityCost is undefined', () => {
+      expect(getComplexityCost({ generationTrace: {} })).toBeNull()
+    })
+
+    it('returns null when totalComplexityCost is 0', () => {
+      expect(getComplexityCost({ generationTrace: { totalComplexityCost: 0 } })).toBeNull()
+    })
+
+    it('returns null for null/undefined problem', () => {
+      expect(getComplexityCost(null)).toBeNull()
+      expect(getComplexityCost(undefined)).toBeNull()
+    })
+  })
+
+  describe('calculateNormalizedResponseTimeStats', () => {
+    it('returns zeros for empty array', () => {
+      const stats = calculateNormalizedResponseTimeStats([])
+      expect(stats).toEqual({ meanPerUnit: 0, stdDevPerUnit: 0, count: 0, skippedCount: 0 })
+    })
+
+    it('normalizes response times by complexity cost', () => {
+      // All same rate: 1000ms per unit of cost
+      const results = [
+        mockResultWithCost(2000, 2), // 1000 ms/cost
+        mockResultWithCost(3000, 3), // 1000 ms/cost
+        mockResultWithCost(5000, 5), // 1000 ms/cost
+        mockResultWithCost(4000, 4), // 1000 ms/cost
+        mockResultWithCost(1000, 1), // 1000 ms/cost
+      ]
+      const stats = calculateNormalizedResponseTimeStats(results)
+      expect(stats.meanPerUnit).toBe(1000)
+      expect(stats.stdDevPerUnit).toBe(0)
+      expect(stats.count).toBe(5)
+      expect(stats.skippedCount).toBe(0)
+    })
+
+    it('skips results without complexity cost', () => {
+      const results = [
+        mockResultWithCost(2000, 2), // 1000 ms/cost — included
+        mockResult(5000), // no cost — skipped
+        mockResultWithCost(6000, 3), // 2000 ms/cost — included
+      ]
+      const stats = calculateNormalizedResponseTimeStats(results)
+      expect(stats.count).toBe(2)
+      expect(stats.skippedCount).toBe(1)
+      expect(stats.meanPerUnit).toBe(1500) // (1000 + 2000) / 2
+    })
+
+    it('returns count 0 when all results are missing cost', () => {
+      const results = [mockResult(1000), mockResult(2000), mockResult(3000)]
+      const stats = calculateNormalizedResponseTimeStats(results)
+      expect(stats.count).toBe(0)
+      expect(stats.skippedCount).toBe(3)
+      expect(stats.meanPerUnit).toBe(0)
+    })
+
+    it('handles single result with cost', () => {
+      const results = [mockResultWithCost(6000, 3)]
+      const stats = calculateNormalizedResponseTimeStats(results)
+      expect(stats.count).toBe(1)
+      expect(stats.meanPerUnit).toBe(2000) // 6000/3
+      expect(stats.stdDevPerUnit).toBe(0) // single sample, no stdDev
+    })
+  })
+
+  describe('calculateComplexityScaledThresholds', () => {
+    const timing = PRODUCTION_TIMING
+
+    it('returns flat 5-min defaults when currentProblemCost is null', () => {
+      const results = Array(10)
+        .fill(null)
+        .map(() => mockResultWithCost(5000, 5))
+      const thresholds = calculateComplexityScaledThresholds(results, timing, null)
+
+      expect(thresholds.encouragementMs).toBe(DEFAULT_PAUSE_TIMEOUT_MS)
+      expect(thresholds.helpOfferMs).toBe(DEFAULT_PAUSE_TIMEOUT_MS)
+      expect(thresholds.autoPauseMs).toBe(DEFAULT_PAUSE_TIMEOUT_MS)
+    })
+
+    it('returns timing defaults when insufficient valid data', () => {
+      // Only 3 results with cost (< MIN_SAMPLES_FOR_STATISTICS)
+      const results = [
+        mockResultWithCost(3000, 3),
+        mockResultWithCost(4000, 4),
+        mockResultWithCost(5000, 5),
+      ]
+      const thresholds = calculateComplexityScaledThresholds(results, timing, 10)
+
+      expect(thresholds.encouragementMs).toBe(timing.defaultEncouragementMs)
+      expect(thresholds.helpOfferMs).toBe(timing.defaultHelpOfferMs)
+      expect(thresholds.autoPauseMs).toBe(DEFAULT_PAUSE_TIMEOUT_MS)
+    })
+
+    it('scales thresholds proportionally to current problem cost', () => {
+      // Uniform rate: 1000ms per unit of cost, stdDev = 0
+      const results = [
+        mockResultWithCost(2000, 2),
+        mockResultWithCost(3000, 3),
+        mockResultWithCost(5000, 5),
+        mockResultWithCost(4000, 4),
+        mockResultWithCost(1000, 1),
+      ]
+
+      const lowCost = calculateComplexityScaledThresholds(results, timing, 2)
+      const highCost = calculateComplexityScaledThresholds(results, timing, 10)
+
+      // With stdDev=0: encouragement = mean*cost = 1000*cost
+      // Low cost (2): 1000*2 = 2000 → clamped to minEncouragementMs (8000)
+      expect(lowCost.encouragementMs).toBe(timing.minEncouragementMs)
+
+      // High cost (10): 1000*10 = 10000 → within [8000, 45000]
+      expect(highCost.encouragementMs).toBe(10000)
+
+      // autoPause = (mean + 2σ)*cost = 1000*cost (σ=0)
+      // Low: 2000 → clamped to 30s
+      expect(lowCost.autoPauseMs).toBe(MIN_PAUSE_THRESHOLD_MS)
+      // High: 10000 → clamped to 30s
+      expect(highCost.autoPauseMs).toBe(MIN_PAUSE_THRESHOLD_MS)
+    })
+
+    it('harder problems get longer thresholds', () => {
+      // Rate: ~2000ms/cost with some variance
+      const results = [
+        mockResultWithCost(4000, 2), // 2000 ms/cost
+        mockResultWithCost(6000, 3), // 2000 ms/cost
+        mockResultWithCost(10000, 5), // 2000 ms/cost
+        mockResultWithCost(8000, 4), // 2000 ms/cost
+        mockResultWithCost(2000, 1), // 2000 ms/cost
+      ]
+
+      const easy = calculateComplexityScaledThresholds(results, timing, 3)
+      const hard = calculateComplexityScaledThresholds(results, timing, 15)
+
+      // encouragement: mean*cost = 2000*cost
+      // easy: 2000*3 = 6000 → clamped to minEncouragementMs (8000)
+      // hard: 2000*15 = 30000
+      expect(easy.encouragementMs).toBeLessThanOrEqual(hard.encouragementMs)
+
+      // helpOffer: (mean+σ)*cost = 2000*cost (σ=0)
+      // easy: 2000*3 = 6000 → clamped to minHelpOfferMs (15000)
+      // hard: 2000*15 = 30000
+      expect(easy.helpOfferMs).toBeLessThanOrEqual(hard.helpOfferMs)
+    })
+
+    it('clamps auto-pause to 30s minimum and 5min maximum', () => {
+      // Very fast rate: 100ms/cost
+      const fastResults = Array(5)
+        .fill(null)
+        .map((_, i) => mockResultWithCost(100 * (i + 1), i + 1))
+      const fastThresholds = calculateComplexityScaledThresholds(fastResults, timing, 1)
+      expect(fastThresholds.autoPauseMs).toBe(MIN_PAUSE_THRESHOLD_MS)
+
+      // Very slow rate: 50000ms/cost
+      const slowResults = Array(5)
+        .fill(null)
+        .map((_, i) => mockResultWithCost(50000 * (i + 1), i + 1))
+      const slowThresholds = calculateComplexityScaledThresholds(slowResults, timing, 20)
+      expect(slowThresholds.autoPauseMs).toBe(MAX_PAUSE_THRESHOLD_MS)
     })
   })
 })

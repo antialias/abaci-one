@@ -234,7 +234,12 @@ const allSolidSkills: ProcessedSkill[] = [
 
 const mockProgressionSoftNudge: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
+  nextSkill: {
+    skillId: 'heaven.5',
+    displayName: '+5 (Heaven Bead)',
+    pKnown: 0,
+    hasMathSentence: true,
+  },
   phase: {
     id: 'level1-phase2',
     name: 'Heaven Bead',
@@ -251,7 +256,12 @@ const mockMaintenanceDeferredPartial: SessionMode = {
   skillCount: 5,
   focusDescription: 'Mixed practice',
   deferredProgression: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+      hasMathSentence: true,
+    },
     readiness: {
       'add.3': {
         skillId: 'add.3',
@@ -278,7 +288,12 @@ const mockMaintenanceDeferredAllMet: SessionMode = {
   skillCount: 5,
   focusDescription: 'Mixed practice',
   deferredProgression: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+      hasMathSentence: true,
+    },
     readiness: {
       'add.3': {
         skillId: 'add.3',
@@ -309,7 +324,12 @@ const mockRemediationBlocked: SessionMode = {
   ],
   focusDescription: 'Strengthen prerequisites to unlock +5',
   blockedPromotion: {
-    nextSkill: { skillId: 'heaven.5', displayName: '+5 (Heaven Bead)', pKnown: 0, hasMathSentence: true },
+    nextSkill: {
+      skillId: 'heaven.5',
+      displayName: '+5 (Heaven Bead)',
+      pKnown: 0,
+      hasMathSentence: true,
+    },
     reason: 'Strengthen +3 and +4 first',
     phase: { id: 'level1-phase2', name: 'Heaven Bead', primarySkillId: 'heaven.5' } as any,
     tutorialReady: false,

@@ -16,7 +16,8 @@ const mockProgressionMode: SessionMode = {
   nextSkill: {
     skillId: 'heaven.5',
     displayName: '+5 (Heaven Bead)',
-    pKnown: 0, hasMathSentence: true
+    pKnown: 0,
+    hasMathSentence: true,
   },
   phase: {
     id: 'level1-phase2',

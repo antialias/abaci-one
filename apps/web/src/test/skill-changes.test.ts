@@ -233,7 +233,9 @@ describe('formatSkillChanges', () => {
 
   it('formats weak skills message', () => {
     const changes: SkillChanges = {
-      newWeakSkills: [{ skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3, hasMathSentence: true }],
+      newWeakSkills: [
+        { skillId: 'skill-a', displayName: 'Skill A', pKnown: 0.3, hasMathSentence: true },
+      ],
       newPracticingSkills: [],
       removedSkills: [],
       masteredSkills: [],

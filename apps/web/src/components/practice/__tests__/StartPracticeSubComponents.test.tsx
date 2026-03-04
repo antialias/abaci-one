@@ -131,7 +131,12 @@ const mockPhase: CurriculumPhase = {
 // Default session mode for tests
 const defaultSessionMode: SessionMode = {
   type: 'progression',
-  nextSkill: { skillId: 'test-skill', displayName: 'Test Skill', pKnown: 0.8, hasMathSentence: true },
+  nextSkill: {
+    skillId: 'test-skill',
+    displayName: 'Test Skill',
+    pKnown: 0.8,
+    hasMathSentence: true,
+  },
   tutorialRequired: false,
   phase: mockPhase,
   skipCount: 0,
@@ -144,7 +149,8 @@ const tutorialSessionMode: SessionMode = {
   nextSkill: {
     skillId: 'skill-with-tutorial',
     displayName: 'Skill With Tutorial',
-    pKnown: 0.8, hasMathSentence: true
+    pKnown: 0.8,
+    hasMathSentence: true,
   },
   tutorialRequired: true,
   phase: mockPhase,
@@ -481,7 +487,12 @@ describe('SessionFocusInfo', () => {
   it('should show progression-no-tutorial fallback when no tutorial config', () => {
     const progressionNoTutorial: SessionMode = {
       type: 'progression',
-      nextSkill: { skillId: 'no-tutorial-skill', displayName: 'No Tutorial Skill', pKnown: 0.8, hasMathSentence: true },
+      nextSkill: {
+        skillId: 'no-tutorial-skill',
+        displayName: 'No Tutorial Skill',
+        pKnown: 0.8,
+        hasMathSentence: true,
+      },
       tutorialRequired: false,
       phase: mockPhase,
       skipCount: 0,

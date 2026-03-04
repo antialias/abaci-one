@@ -13,7 +13,8 @@ const mockProgressionMode: ProgressionMode = {
   nextSkill: {
     skillId: 'add-5-complement-3',
     displayName: '+5 − 3',
-    pKnown: 0, hasMathSentence: true
+    pKnown: 0,
+    hasMathSentence: true,
   },
   phase: {
     id: 'L1.add.+5-3.five',
