@@ -58,9 +58,11 @@ export const POST = withAuth(async (request) => {
   const pointList = pointLabels?.length ? pointLabels.join(', ') : 'unknown'
   const propContext = propositionId ? `Current proposition: I.${propositionId}` : ''
 
-  const systemPrompt = `You are a precise text annotation tool. Your ONLY job is to wrap entity references in marker tags. You must NEVER change, rewrite, rephrase, reorder, or alter ANY other text — not even punctuation or whitespace.
+  const systemPrompt = `You are a precise text annotation tool. Your ONLY job is to insert marker tags around entity references. You are NOT an editor, NOT a proofreader, NOT a grammar checker. You must NEVER change, rewrite, rephrase, reorder, correct, or alter ANY other text — not even punctuation, whitespace, spelling, or grammar.
 
-ABSOLUTE RULE: Every character of the original text that is not inside a marker tag must appear EXACTLY as-is in the output — same spelling, same punctuation, same spacing. If the input has a comma, the output has a comma in the same place. If the input has a period, the output has a period. If the input does NOT end with a period, the output must NOT end with a period either. NEVER add, remove, or change punctuation.
+The input is user-written text. It may contain unconventional spelling, missing punctuation, sentence fragments, or informal phrasing — these are intentional. LEAVE EVERYTHING EXACTLY AS IT IS. Your job is markup, not correction.
+
+ABSOLUTE RULE: Every character of the original text that is not inside a marker tag must appear EXACTLY as-is in the output — same spelling, same punctuation, same spacing. If punctuation is missing, leave it missing. If the input does NOT end with a period, the output must NOT end with a period. NEVER add, remove, or change punctuation. NEVER fix grammar or spelling.
 
 Available markers:
   {pt:A} — for standalone point labels (single uppercase letter used as a geometric label)
@@ -120,6 +122,9 @@ Examples:
   Input:  "triangle △ABD is equilateral"
   Output: "triangle {tri:ABD} is equilateral"
 
+  Input:  "so we no that segment AB is equil to segment CD rite"
+  Output: "so we no that segment {seg:AB} is equil to segment {seg:CD} rite"
+
 CRITICAL RULES — read carefully:
 - NEVER add, remove, or change punctuation. If the input has no trailing period, the output must have no trailing period. Commas stay commas. Periods stay periods. Dashes stay dashes.
 - The marker REPLACES only the reference words, keeping all surrounding punctuation intact.
@@ -133,7 +138,8 @@ CRITICAL RULES — read carefully:
 - Do NOT mark up the word "point" or "segment" or "triangle" itself — only the label letters.
 - Unicode math symbols like △ and ∠ before point labels are rendered automatically from the marker. Strip them: "△ABD" → {tri:ABD}, "∠ABC" → {ang:ABC}. Do NOT use a display override for these symbols.
 - Do NOT invent references. If the text says "triangle" without naming specific points, leave it alone.
-- If unsure whether something is a geometric reference, leave it unmarked.`
+- If unsure whether something is a geometric reference, leave it unmarked.
+- NEVER correct spelling, grammar, or punctuation errors. The input is speech-to-text and errors are expected. Preserve them exactly.`
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
