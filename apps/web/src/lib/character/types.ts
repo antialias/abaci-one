@@ -25,6 +25,7 @@ export interface CharacterDefinition {
     attitudes: {
       teacher: CharacterAttitudePersonality
       heckler?: CharacterAttitudePersonality
+      author?: CharacterAttitudePersonality
     }
   }
   /** Chat-specific UI strings */
@@ -49,6 +50,8 @@ export interface ChatMessage {
   isEvent?: boolean
   /** Data URL of a screenshot sent alongside this event (e.g. what the voice model sees). */
   imageDataUrl?: string
+  /** True when this message represents a tool action (compact display, not conversation). */
+  isToolAction?: boolean
 }
 
 /**

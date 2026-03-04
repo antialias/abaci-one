@@ -14,7 +14,7 @@ import type { RealtimeTool } from '@/lib/voice/types'
 import type { GeometryModeContext } from '../types'
 import type { ThinkingModeMetaphors } from '../modes/thinkingMode'
 
-export type AttitudeId = 'teacher' | 'heckler'
+export type AttitudeId = 'teacher' | 'heckler' | 'author'
 
 export interface AttitudeDefinition {
   id: AttitudeId
@@ -59,6 +59,14 @@ export interface AttitudeDefinition {
     thinkHard: RealtimeTool
     hangUp: RealtimeTool
   }
+
+  /** Tools available in text chat for this attitude. When set, the chat endpoint
+   *  includes these in the OpenAI request and the hook handles tool call events.
+   *  Also included in voice conversingMode.getTools() alongside base tools. */
+  chatTools?: RealtimeTool[]
+
+  /** Extra system prompt block appended to chat when this attitude is active. */
+  chatDirective?: string
 }
 
 /**

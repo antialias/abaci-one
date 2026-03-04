@@ -43,6 +43,7 @@ import { useToolInteraction } from './interaction/useToolInteraction'
 import { useToolPhaseManager } from './interaction/useToolPhaseManager'
 import { useDragGivenPoints } from './interaction/useDragGivenPoints'
 import type { PostCompletionAction, ReplayResult } from './engine/replayConstruction'
+import { useAuthorCallbacks } from './useAuthorCallbacks'
 import { replayConstruction } from './engine/replayConstruction'
 import { validateStep } from './propositions/validation'
 import { PROP_REGISTRY } from './propositions/registry'
@@ -1316,6 +1317,25 @@ function EuclidCanvasInner({
   // ── Pending action ref — shared between notifier, voice, and chat ──
   const pendingActionRef = useRef<string | null>(null)
 
+  // ── Author tool callbacks (extracted to useAuthorCallbacks hook) ──
+  const { callbacks: authorCallbacks, refs: authorRefs } = useAuthorCallbacks({
+    constructionRef,
+    postCompletionActionsRef,
+    candidatesRef,
+    currentStepRef,
+    factStoreRef,
+    proofFactsRef,
+    setProofFacts,
+  })
+
+  // Current attitude from config — useGeometryTeacher is safe to call multiple times
+  const teacherConfig = useGeometryTeacher()
+  const currentAttitudeId = teacherConfig.attitudeId as
+    | import('./voice/attitudes/types').AttitudeId
+    | undefined
+  /** Playground with author attitude active — show full chat/voice UI instead of heckler overlay */
+  const isAuthorPlayground = playgroundMode && isAdmin && currentAttitudeId === 'author'
+
   // ── Text chat (must come before voice so transcript callbacks can reference addMessage) ──
   const euclidChat = useEuclidChat({
     canvasRef,
@@ -1334,6 +1354,8 @@ function EuclidCanvasInner({
     steps,
     pendingActionRef,
     isMobile,
+    attitudeId: currentAttitudeId,
+    authorCallbacks: currentAttitudeId === 'author' ? authorCallbacks : undefined,
   })
 
   // Keep a ref to chat messages for voice session context injection
@@ -1400,10 +1422,10 @@ function EuclidCanvasInner({
     compactForVoice: euclidChat.compaction.compactForVoice,
     onModelSpeech: handleModelSpeech,
     onChildSpeech: handleChildSpeech,
+    authorCallbacks: currentAttitudeId === 'author' ? authorCallbacks : undefined,
   })
 
   // ── Speaking-aware profile image (needs euclidVoice.isSpeaking) ──
-  const teacherConfig = useGeometryTeacher()
   const smProfileImage = useCharacterProfileImage(
     teacherConfig.definition.profileImage,
     'sm',
@@ -3029,6 +3051,15 @@ function EuclidCanvasInner({
     },
     [proposition, toolPhases]
   )
+
+  // ── Assign author tool callback refs (now that handlers are defined) ──
+  authorRefs.handleCommitCircle.current = handleCommitCircle
+  authorRefs.handleCommitSegment.current = handleCommitSegment
+  authorRefs.handleCommitExtend.current = handleCommitExtend
+  authorRefs.handleMarkIntersection.current = handleMarkIntersection
+  authorRefs.handleCommitMacro.current = handleCommitMacro
+  authorRefs.handleRevertToAction.current = handleRevertToAction
+  authorRefs.requestDraw.current = requestDraw
 
   /** Capture a thumbnail from the main canvas. */
   const captureThumbnail = useCallback((): string | undefined => {
@@ -5230,12 +5261,38 @@ function EuclidCanvasInner({
                 Edit Givens
               </button>
             )}
+            <span style={{ color: '#d1d5db' }}>|</span>
+            <span style={{ color: '#9ca3af' }}>Mode:</span>
+            {(['teacher', 'author'] as const).map((aid) => (
+              <button
+                key={aid}
+                onClick={() => {
+                  onAttitudeChange?.(aid)
+                }}
+                style={{
+                  background: currentAttitudeId === aid ? '#4E79A7' : 'none',
+                  border: currentAttitudeId === aid ? '1px solid #4E79A7' : '1px solid #d1d5db',
+                  color: currentAttitudeId === aid ? '#fff' : '#6b7280',
+                  cursor: 'pointer',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  fontFamily: 'system-ui, sans-serif',
+                  padding: '1px 6px',
+                  borderRadius: 3,
+                  textTransform: 'capitalize',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {aid}
+              </button>
+            ))}
           </div>
         )}
 
         {/* Euclid assembly — quad + floating chat, positioned at bottom-right */}
         {/* Hidden on mobile — controls live in the always-visible mobile chat strip */}
-        {!playgroundMode && !isMobile && (
+        {/* Also shown in playground mode when author attitude is active */}
+        {(!playgroundMode || (isAdmin && currentAttitudeId === 'author')) && !isMobile && (
           <div
             ref={quadRef}
             data-component="euclid-assembly"
@@ -5288,8 +5345,8 @@ function EuclidCanvasInner({
                   }
                   callState={chatCallState}
                 />
-                {/* Dock button — pins chat into proof column */}
-                <button
+                {/* Dock button — pins chat into proof column (hidden in playground — no proof panel) */}
+                {!playgroundMode && <button
                   data-action="dock-chat"
                   onClick={() => setChatMode('docked')}
                   title="Dock into proof panel"
@@ -5322,7 +5379,7 @@ function EuclidCanvasInner({
                     <rect x="14" y="3" width="7" height="18" rx="1" />
                     <rect x="3" y="14" width="7" height="7" rx="1" />
                   </svg>
-                </button>
+                </button>}
               </div>
             )}
             {/* Quad: avatar (TL), mute (TR), call (BL), chat (BR) */}
@@ -5698,7 +5755,8 @@ function EuclidCanvasInner({
         )}
 
         {/* ── Heckler call overlay (watching → ringing → connecting → active) ── */}
-        {playgroundMode && (heckler.stage !== 'idle' || euclidCallVisible) && (
+        {/* Hidden in author mode — author uses the full chat/voice UI instead */}
+        {playgroundMode && !isAuthorPlayground && (heckler.stage !== 'idle' || euclidCallVisible) && (
           <HecklerCallOverlay
             phase={
               euclidCallVisible
@@ -5770,6 +5828,30 @@ function EuclidCanvasInner({
               onCitationPointerDown={handleCitationPointerDown}
               toolPreview={toolPreview}
               isMobile={isMobile}
+            />
+          )}
+          {/* Docked chat — author mode in playground (desktop) */}
+          {isAuthorPlayground && !isMobile && (
+            <DockedEuclidChat
+              messages={euclidChat.messages}
+              isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}
+              onSend={handleChatSend}
+              onHighlight={handleChatHighlight}
+              renderEntity={renderEntity}
+              callState={chatCallState}
+              isMobile={false}
+              collapsed={chatMode !== 'docked'}
+              onUndock={() => setChatMode('floating')}
+              inputRef={dockedInputRef}
+              debugCompaction={
+                isVisualDebugEnabled
+                  ? {
+                      coversUpTo: euclidChat.compaction.coversUpTo,
+                      isSummarizing: !!euclidChat.compaction.isSummarizingRef.current,
+                      onCompactUpTo: euclidChat.compaction.manualCompactUpTo,
+                    }
+                  : undefined
+              }
             />
           )}
         </div>
@@ -5852,8 +5934,8 @@ function EuclidCanvasInner({
         </div>
       )}
 
-      {/* Docked chat — mobile: compact strip below proof panel */}
-      {isMobile && !playgroundMode && showProofPanel && (
+      {/* Docked chat — mobile: compact strip below proof panel (also in author playground) */}
+      {isMobile && (!playgroundMode || isAuthorPlayground) && (
         <DockedEuclidChat
           messages={euclidChat.messages}
           isStreaming={euclidVoice.state === 'active' ? false : euclidChat.isStreaming}

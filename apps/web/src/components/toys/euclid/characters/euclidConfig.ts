@@ -17,6 +17,7 @@ import { createThinkingMode } from '../voice/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
 import { teacherAttitude } from '../voice/attitudes/teacher'
 import { hecklerAttitude } from '../voice/attitudes/heckler'
+import { authorAttitude } from '../voice/attitudes/author'
 import type { AttitudeId } from '../voice/attitudes/types'
 
 /** Shared voice config for Euclid (same endpoints, timing, entity markers). */
@@ -124,8 +125,60 @@ export const euclidHecklerConfig: GeometryVoiceConfig = {
   },
 }
 
+/** Euclid author config — collaborative proposition authoring. */
+export const euclidAuthorConfig: GeometryVoiceConfig = {
+  definition: EUCLID_CHARACTER_DEF,
+  attitudeId: 'author',
+  entityMarkers: EUCLID_ENTITY_MARKERS,
+
+  voice: buildEuclidVoiceBlock(),
+
+  modes: {
+    greeting: createGreetingMode({ character: EUCLID_CHARACTER_DEF, attitude: authorAttitude }),
+    conversing: createConversingMode({
+      character: EUCLID_CHARACTER_DEF,
+      buildCompletionContext,
+      attitude: authorAttitude,
+    }),
+    thinking: createThinkingMode({
+      character: EUCLID_CHARACTER_DEF,
+      metaphors: {
+        consulting: 'the proof structure',
+        tool: 'the equality chain',
+        ownership: 'this is standard axiomatic reasoning',
+        framework: 'Euclidean axioms (postulates, definitions, common notions)',
+        examples: [
+          'Let me work through the equality chain.',
+          'Checking if the construction is complete.',
+          'Verifying the fact store covers all steps.',
+          'Let me trace the citations.',
+        ],
+      },
+      attitude: authorAttitude,
+    }),
+  },
+
+  buildChatSystemPrompt: (ctx: ChatSystemPromptContext) =>
+    buildChatSystemPrompt({ character: EUCLID_CHARACTER_DEF, buildCompletionContext }, ctx),
+  buildCompletionContext,
+  chatAssistantPriming:
+    'I understand. I am ready to collaborate on proposition authoring. I will use construction tools (postulate_1, postulate_2, postulate_3, mark_intersection, apply_proposition) and fact store tools (declare_equality, declare_angle_equality) to build the proposition. I will use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric references and {def:N}, {post:N}, {cn:N}, {prop:N} markers for citations.',
+
+  messages: {
+    timeWarning:
+      '[System: Only 15 seconds left. Wrap up the current step and summarize what remains to be done.]',
+    timeExpired:
+      '[System: Time is up. Summarize the current state of the construction and fact store, then hang up.]',
+    historyLabel: 'Author',
+    thinkingLabel: 'Analyzing proof',
+    thinkingFeedback: 'Analyzing proof structure...',
+    thinkingResultPrefix: 'Analysis',
+  },
+}
+
 /** Get Euclid config for a given attitude. */
 export function getEuclidConfig(attitudeId?: AttitudeId): GeometryVoiceConfig {
   if (attitudeId === 'heckler') return euclidHecklerConfig
+  if (attitudeId === 'author') return euclidAuthorConfig
   return euclidConfig
 }

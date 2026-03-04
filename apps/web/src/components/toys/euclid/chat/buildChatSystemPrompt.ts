@@ -13,6 +13,7 @@ import {
 } from '@/components/toys/euclid/voice/euclidReferenceContext'
 import { EUCLID_CHARACTER_DEF } from '@/components/toys/euclid/euclidCharacterDef'
 import { buildCompletionContext as buildEuclidCompletionContext } from '@/components/toys/euclid/euclidCharacter'
+import { buildMacroInstructions } from '@/components/toys/euclid/engine/macroInstructions'
 
 export interface ChatSystemPromptContext {
   propositionId: number
@@ -24,6 +25,7 @@ export interface ChatSystemPromptContext {
   proofFacts: string
   stepList: string
   isMobile?: boolean
+  attitudeId?: string
 }
 
 export interface BuildChatSystemPromptOptions {
@@ -40,6 +42,7 @@ export function buildChatSystemPrompt(
   const prop = PROP_REGISTRY[propId]
   const propSummary = PROPOSITION_SUMMARIES[propId]
   const referenceContext = buildReferenceContext(propId)
+  const isAuthor = ctx.attitudeId === 'author'
 
   const propDesc = propSummary
     ? `Proposition I.${propId}: "${propSummary.statement}" (${propSummary.type})`
@@ -49,6 +52,44 @@ export function buildChatSystemPrompt(
   if (ctx.isComplete) {
     completionContext = buildCompletionContext(propId)
   }
+
+  // Author mode: functional prompt without character personality
+  if (isAuthor) {
+    return `You are a geometric reasoning assistant collaborating with an admin to author a Euclidean proposition.
+
+=== CURRENT PROPOSITION ===
+${propDesc}
+${ctx.isComplete ? completionContext : `Current step: ${typeof ctx.currentStep === 'number' ? ctx.currentStep + 1 : 'unknown'}`}
+${ctx.playgroundMode ? 'This is a free-form playground construction.' : ''}
+
+=== CONSTRUCTION GRAPH (with element IDs for tool calls) ===
+${typeof ctx.constructionGraph === 'string' ? ctx.constructionGraph : 'Empty construction'}
+
+=== PROVEN FACTS (current fact store) ===
+${typeof ctx.proofFacts === 'string' ? ctx.proofFacts : 'No facts proven yet.'}
+
+${buildMacroInstructions()}
+
+=== REFERENCE MATERIAL ===
+${referenceContext}
+
+=== TEXT CHAT SPECIFICS ===
+- Use element IDs (pt-A, seg-1, cir-1) in tool calls, point labels (A, B, C) in conversation
+- Be concise and direct — 1-3 sentences per response
+- Focus on the next construction step or fact to record
+
+=== FORMATTING RULES ===
+- Write in PLAIN TEXT only. No markdown, no LaTeX.
+- Use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric entities
+- Use {def:N}, {post:N}, {cn:N}, {prop:N} markers for citations
+
+${character.personality.pointLabeling ?? ''}`
+  }
+
+  // Teacher/heckler mode: full character personality prompt
+  const attitudeKey = ctx.attitudeId === 'heckler' ? 'heckler' : 'teacher'
+  const attitudePersonality =
+    character.personality.attitudes[attitudeKey] ?? character.personality.attitudes.teacher
 
   return `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. You are communicating with a student through written text.
 
@@ -74,9 +115,9 @@ ${referenceContext}
 
 ${character.personality.character}
 
-${character.personality.attitudes.teacher.style}
+${attitudePersonality.style}
 
-${character.personality.attitudes.teacher.dontDo}
+${attitudePersonality.dontDo}
 
 === TEXT CHAT SPECIFICS ===
 - Since this is written text (not voice), you may use point labels freely.
@@ -132,7 +173,7 @@ Rules:
 
 ${character.personality.pointLabeling ?? ''}
 
-${character.personality.attitudes.teacher.hiddenDepth ?? ''}`
+${attitudePersonality.hiddenDepth ?? ''}`
 }
 
 /**

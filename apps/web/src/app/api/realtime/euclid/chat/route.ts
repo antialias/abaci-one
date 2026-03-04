@@ -3,16 +3,31 @@
  *
  * POST /api/realtime/euclid/chat
  * Body: { messages, propositionId, currentStep, isComplete, playgroundMode,
- *         constructionGraph, toolState, proofFacts, stepList, screenshot?, characterId? }
- * Returns: SSE stream of { text } deltas, ending with [DONE]
+ *         constructionGraph, toolState, proofFacts, stepList, screenshot?,
+ *         characterId?, attitudeId?, tools? }
+ * Returns: SSE stream of { text } deltas and { toolCall } events, ending with [DONE]
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
 import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
+import type { AttitudeId } from '@/components/toys/euclid/voice/attitudes/types'
+import { getAttitude } from '@/components/toys/euclid/voice/attitudes'
+import type { RealtimeTool } from '@/lib/voice/types'
 
 interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'tool'
   content: string
+  toolCallId?: string
+}
+
+/** Convert our RealtimeTool format to OpenAI Responses API function tool format. */
+function toOpenAITool(tool: RealtimeTool) {
+  return {
+    type: 'function' as const,
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+  }
 }
 
 export const POST = withAuth(async (request) => {
@@ -30,6 +45,8 @@ export const POST = withAuth(async (request) => {
     screenshot,
     isMobile,
     characterId,
+    attitudeId,
+    tools: clientTools,
   } = body as {
     messages: ChatMessage[]
     propositionId: number
@@ -43,6 +60,8 @@ export const POST = withAuth(async (request) => {
     screenshot?: string
     isMobile?: boolean
     characterId?: string
+    attitudeId?: AttitudeId
+    tools?: RealtimeTool[]
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -60,10 +79,11 @@ export const POST = withAuth(async (request) => {
     })
   }
 
-  const config = getTeacherConfig(characterId)
+  const config = getTeacherConfig(characterId, attitudeId)
 
-  // Build system context
-  const systemText = config.buildChatSystemPrompt({
+  // Build system context — append chatDirective for author mode
+  const attitude = attitudeId ? getAttitude(attitudeId) : undefined
+  let systemText = config.buildChatSystemPrompt({
     propositionId: typeof propositionId === 'number' ? propositionId : 1,
     currentStep,
     isComplete,
@@ -73,11 +93,15 @@ export const POST = withAuth(async (request) => {
     proofFacts,
     stepList,
     isMobile,
+    attitudeId,
   })
+  if (attitude?.chatDirective) {
+    systemText += `\n\n=== AUTHOR COLLABORATION DIRECTIVE ===\n${attitude.chatDirective}`
+  }
 
   // Build input for the Responses API
   // System context goes as the first user message, then conversation history
-  const input: Array<{ role: string; content: unknown }> = [
+  const input: Array<Record<string, unknown>> = [
     {
       role: 'user',
       content: [
@@ -98,13 +122,20 @@ export const POST = withAuth(async (request) => {
     },
   ]
 
-  // Add conversation history
+  // Add conversation history — handle tool call/result messages
   for (const msg of messages) {
     if (msg.role === 'user') {
       const contentParts: Array<Record<string, unknown>> = [
         { type: 'input_text', text: msg.content },
       ]
       input.push({ role: 'user', content: contentParts })
+    } else if (msg.role === 'tool' && msg.toolCallId) {
+      // Tool result — follows the function_call_output format for Responses API
+      input.push({
+        type: 'function_call_output',
+        call_id: msg.toolCallId,
+        output: msg.content,
+      })
     } else {
       input.push({
         role: 'assistant',
@@ -115,7 +146,7 @@ export const POST = withAuth(async (request) => {
 
   // Attach screenshot to the last user message if provided
   if (screenshot && typeof screenshot === 'string') {
-    let lastUserMsg: { role: string; content: unknown } | undefined
+    let lastUserMsg: Record<string, unknown> | undefined
     for (let i = input.length - 1; i >= 0; i--) {
       if (input[i].role === 'user') {
         lastUserMsg = input[i]
@@ -131,12 +162,29 @@ export const POST = withAuth(async (request) => {
     }
   }
 
+  // Build OpenAI request body
+  const openaiBody: Record<string, unknown> = {
+    model: 'gpt-5.2',
+    input,
+    stream: true,
+    reasoning: {
+      effort: 'none',
+    },
+  }
+
+  // Include tools if provided (author mode)
+  if (clientTools && clientTools.length > 0) {
+    openaiBody.tools = clientTools.map(toOpenAITool)
+  }
+
   // Call the Responses API with streaming
   console.log(
-    '[euclid-chat-api] calling OpenAI Responses API, messageCount=%d, hasScreenshot=%s, character=%s',
+    '[euclid-chat-api] calling OpenAI Responses API, messageCount=%d, hasScreenshot=%s, character=%s, attitude=%s, tools=%d',
     messages.length,
     !!screenshot,
-    config.definition.id
+    config.definition.id,
+    attitudeId ?? 'default',
+    clientTools?.length ?? 0
   )
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -144,14 +192,7 @@ export const POST = withAuth(async (request) => {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'gpt-5.2',
-      input,
-      stream: true,
-      reasoning: {
-        effort: 'none',
-      },
-    }),
+    body: JSON.stringify(openaiBody),
   })
 
   console.log('[euclid-chat-api] OpenAI response status: %d', response.status)
@@ -182,6 +223,9 @@ export const POST = withAuth(async (request) => {
       const decoder = new TextDecoder()
       let buffer = ''
 
+      // Track function calls being accumulated
+      const pendingCalls = new Map<string, { callId: string; name: string; arguments: string }>()
+
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -200,13 +244,60 @@ export const POST = withAuth(async (request) => {
 
             try {
               const event = JSON.parse(data)
-              // The Responses API streaming emits events with type field
+
+              // Text deltas
               if (event.type === 'response.output_text.delta' && event.delta) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ text: event.delta })}\n\n`)
                 )
-              } else if (event.type === 'error') {
-                // Surface in-stream errors to the client as error events
+              }
+              // Function call: output item added
+              else if (
+                event.type === 'response.output_item.added' &&
+                event.item?.type === 'function_call'
+              ) {
+                pendingCalls.set(event.item.id || event.output_index?.toString(), {
+                  callId: event.item.call_id || event.item.id || '',
+                  name: event.item.name || '',
+                  arguments: '',
+                })
+              }
+              // Function call: arguments delta
+              else if (event.type === 'response.function_call_arguments.delta') {
+                const key = event.item_id || event.output_index?.toString()
+                const pending = pendingCalls.get(key)
+                if (pending) {
+                  pending.arguments += event.delta || ''
+                }
+              }
+              // Function call: arguments complete
+              else if (event.type === 'response.function_call_arguments.done') {
+                const key = event.item_id || event.output_index?.toString()
+                const pending = pendingCalls.get(key)
+                if (pending) {
+                  // Use the final arguments from the done event if available
+                  const finalArgs = event.arguments || pending.arguments
+                  try {
+                    const parsedArgs = JSON.parse(finalArgs)
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({
+                          toolCall: {
+                            callId: pending.callId,
+                            name: pending.name,
+                            arguments: parsedArgs,
+                          },
+                        })}\n\n`
+                      )
+                    )
+                  } catch {
+                    console.error('[euclid-chat-api] failed to parse function args:', finalArgs)
+                  }
+                  pendingCalls.delete(key)
+                }
+              }
+              // Error events
+              else if (event.type === 'error') {
                 const errMsg = event.error?.message || 'An error occurred'
                 const errCode = event.error?.code || 'unknown'
                 console.error('[euclid-chat-api] stream error: %s — %s', errCode, errMsg)

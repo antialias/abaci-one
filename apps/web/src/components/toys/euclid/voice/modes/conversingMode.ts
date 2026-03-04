@@ -15,6 +15,7 @@ import { PROPOSITION_SUMMARIES, buildReferenceContext } from '../euclidReference
 import { serializeFullProofState } from '../serializeProofState'
 import { EUCLID_CHARACTER_DEF } from '../../euclidCharacterDef'
 import { buildCompletionContext as buildEuclidCompletionContext } from '../../euclidCharacter'
+import { buildMacroInstructions } from '../../engine/macroInstructions'
 
 export interface CreateConversingModeOptions {
   character: CharacterDefinition
@@ -62,6 +63,8 @@ ${proofState}
 === REFERENCE MATERIAL ===
 ${referenceContext}
 
+${attitude.chatTools ? buildMacroInstructions() : ''}
+
 ${character.personality.character}
 
 ${attitudePersonality.style}
@@ -88,7 +91,8 @@ ${conv.responseGuidelines}
     },
 
     getTools() {
-      return [attitude.tools.highlight, attitude.tools.thinkHard, attitude.tools.hangUp]
+      const base = [attitude.tools.highlight, attitude.tools.thinkHard, attitude.tools.hangUp]
+      return attitude.chatTools ? [...base, ...attitude.chatTools] : base
     },
   }
 }

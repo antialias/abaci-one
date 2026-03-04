@@ -6,9 +6,12 @@
  * Provides Euclid-specific context serialization (construction graph,
  * proof facts, tool state, step list) while delegating SSE streaming,
  * message state, and open/close to the generic hook.
+ *
+ * In author mode, includes axiom-framed tools and dispatches tool calls
+ * to construction mutation + fact store callbacks.
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useMemo } from 'react'
 import { useGeometryTeacher } from '../GeometryTeacherContext'
 import { useCharacterChat } from '@/lib/character/useCharacterChat'
 import type { UseCharacterChatReturn } from '@/lib/character/useCharacterChat'
@@ -29,9 +32,15 @@ import {
   serializeToolState,
   type ToolStateInfo,
 } from '../voice/serializeProofState'
+import { getAttitude } from '../voice/attitudes'
+import type { AttitudeId } from '../voice/attitudes/types'
 
 // Re-export ChatMessage from the generic types for backward compatibility
 export type { ChatMessage } from '@/lib/character/types'
+
+// Re-export AuthorToolCallbacks from shared location
+import type { AuthorToolCallbacks } from '../authorToolCallbacks'
+export type { AuthorToolCallbacks } from '../authorToolCallbacks'
 
 export interface UseEuclidChatOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
@@ -52,6 +61,10 @@ export interface UseEuclidChatOptions {
   pendingActionRef?: React.RefObject<string | null>
   /** Whether the user is on a mobile device — triggers concise response mode */
   isMobile?: boolean
+  /** Current attitude ID — when 'author', includes tools in chat */
+  attitudeId?: AttitudeId
+  /** Callbacks for author-mode tool dispatch */
+  authorCallbacks?: AuthorToolCallbacks
 }
 
 export interface UseEuclidChatReturn extends UseCharacterChatReturn {
@@ -79,7 +92,13 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     steps,
     pendingActionRef,
     isMobile,
+    attitudeId,
+    authorCallbacks,
   } = options
+
+  // Look up attitude tools
+  const attitude = attitudeId ? getAttitude(attitudeId) : undefined
+  const chatTools = attitude?.chatTools
 
   const readToolState = useCallback(
     (): ToolStateInfo => ({
@@ -100,9 +119,13 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     ]
   )
 
+  // Stable ref for authorCallbacks to avoid stale closures in onToolCall
+  const authorCallbacksRef = useRef(authorCallbacks)
+  authorCallbacksRef.current = authorCallbacks
+
   const buildRequestBody = useCallback(
     (
-      messages: Array<{ role: string; content: string }>,
+      messages: Array<{ role: string; content: string; toolCallId?: string }>,
       screenshot: string | undefined
     ): Record<string, unknown> => {
       const emptyState = { elements: [], nextLabelIndex: 0, nextColorIndex: 0 } as ConstructionState
@@ -131,7 +154,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
       // Read pending action (not cleared — the notifier overwrites it on next event)
       const recentAction = pendingActionRef?.current ?? null
 
-      const body = {
+      const body: Record<string, unknown> = {
         messages,
         propositionId,
         characterId: teacherConfig.definition.id,
@@ -146,12 +169,22 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
         ...(recentAction ? { recentAction } : {}),
         ...(isMobile ? { isMobile: true } : {}),
       }
+
+      // Include attitude and tools for author mode
+      if (attitudeId) {
+        body.attitudeId = attitudeId
+      }
+      if (chatTools) {
+        body.tools = chatTools
+      }
+
       console.log(
-        '[euclid-chat] buildRequestBody: step=%d, isComplete=%s, recentAction=%s, messageCount=%d',
+        '[euclid-chat] buildRequestBody: step=%d, isComplete=%s, recentAction=%s, messageCount=%d, attitude=%s',
         step,
         isComplete,
         recentAction,
-        messages.length
+        messages.length,
+        attitudeId ?? 'default'
       )
       return body
     },
@@ -167,8 +200,82 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
       readToolState,
       pendingActionRef,
       isMobile,
+      attitudeId,
+      chatTools,
     ]
   )
+
+  // Tool call handler for author mode
+  const onToolCall = useMemo(() => {
+    if (!chatTools) return undefined
+
+    return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
+      const cb = authorCallbacksRef.current
+      if (!cb) return { success: false, error: 'No author callbacks available' }
+
+      switch (name) {
+        case 'place_point':
+          return cb.placePoint(
+            Number(args.x),
+            Number(args.y),
+            args.label ? String(args.label) : undefined
+          )
+        case 'postulate_1':
+          return cb.commitSegment(String(args.from_label), String(args.to_label))
+        case 'postulate_2':
+          return cb.commitExtend(
+            String(args.base_label),
+            String(args.through_label),
+            Number(args.distance) || 1
+          )
+        case 'postulate_3':
+          return cb.commitCircle(String(args.center_label), String(args.radius_point_label))
+        case 'mark_intersection':
+          return cb.markIntersection(
+            String(args.of_a),
+            String(args.of_b),
+            args.which ? String(args.which) : undefined
+          )
+        case 'apply_proposition':
+          return cb.commitMacro(
+            Number(args.prop_id),
+            String(args.input_labels)
+              .split(',')
+              .map((s) => s.trim())
+          )
+        case 'declare_equality':
+          return cb.addFact(
+            String(args.left_a),
+            String(args.left_b),
+            String(args.right_a),
+            String(args.right_b),
+            String(args.citation_type),
+            args.citation_detail ? String(args.citation_detail) : undefined,
+            String(args.statement),
+            String(args.justification)
+          )
+        case 'declare_angle_equality':
+          return cb.addAngleFact(
+            String(args.left_vertex),
+            String(args.left_ray1),
+            String(args.left_ray2),
+            String(args.right_vertex),
+            String(args.right_ray1),
+            String(args.right_ray2),
+            String(args.citation_type),
+            args.citation_detail ? String(args.citation_detail) : undefined,
+            String(args.statement),
+            String(args.justification)
+          )
+        case 'undo_last':
+          return cb.undoLast()
+        case 'highlight':
+          return cb.highlight(String(args.entity_type), String(args.labels))
+        default:
+          return { success: false, error: `Unknown tool: ${name}` }
+      }
+    }
+  }, [chatTools])
 
   const markupMessageImpl = useCallback(
     (
@@ -228,6 +335,8 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     buildRequestBody,
     canvasRef,
     onUserMessageAdded,
+    tools: chatTools,
+    onToolCall,
   })
 
   chatRef.current = chat

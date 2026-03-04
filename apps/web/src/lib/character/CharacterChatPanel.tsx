@@ -390,6 +390,30 @@ export function CharacterChatPanel<TEntityRef>({
                 })()
               : null
 
+          // Tool action messages render as compact monospace notices
+          if (msg.isToolAction) {
+            return (
+              <React.Fragment key={msg.id}>
+                {compactionDivider}
+                <div
+                  data-element="chat-message-tool-action"
+                  style={{
+                    textAlign: 'center',
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    color: '#6d28d9',
+                    background: 'rgba(124, 58, 237, 0.06)',
+                    borderRadius: 4,
+                    border: '1px solid rgba(124, 58, 237, 0.15)',
+                    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                    margin: '2px 0',
+                  }}
+                >
+                  {msg.content}
+                </div>
+              </React.Fragment>
+            )
+          }
           // Event messages render as small centered notices
           if (msg.isEvent) {
             return (

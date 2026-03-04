@@ -69,3 +69,283 @@ export const TOOL_THINK_HARD: RealtimeTool = {
     required: ['question', 'effort'],
   },
 }
+
+// ── Author tools: axiom-framed construction + fact store ──
+
+export const TOOL_PLACE_POINT: RealtimeTool = {
+  type: 'function',
+  name: 'place_point',
+  description:
+    'Place a new free point on the construction canvas at the given coordinates. ' +
+    'Use this to establish initial/given points before applying postulates. ' +
+    'The label is auto-assigned (A, B, C, ...) unless explicitly specified. ' +
+    'Coordinates are in construction units — the visible canvas is roughly -3 to 3 in both axes, ' +
+    'with (0, 0) at center.',
+  parameters: {
+    type: 'object',
+    properties: {
+      x: {
+        type: 'number',
+        description: 'X coordinate in construction units (e.g. -1.5, 0, 2.0).',
+      },
+      y: {
+        type: 'number',
+        description: 'Y coordinate in construction units (e.g. -1.0, 0, 1.5).',
+      },
+      label: {
+        type: 'string',
+        description:
+          'Optional explicit label for the point (single uppercase letter, e.g. "A"). If omitted, auto-assigned.',
+      },
+    },
+    required: ['x', 'y'],
+  },
+}
+
+export const TOOL_POSTULATE_1: RealtimeTool = {
+  type: 'function',
+  name: 'postulate_1',
+  description:
+    'Postulate 1: "To draw a straight line from any point to any point." ' +
+    'Draws a segment between two existing points on the construction.',
+  parameters: {
+    type: 'object',
+    properties: {
+      from_label: {
+        type: 'string',
+        description: 'Label of the starting point (e.g. "A").',
+      },
+      to_label: {
+        type: 'string',
+        description: 'Label of the ending point (e.g. "B").',
+      },
+    },
+    required: ['from_label', 'to_label'],
+  },
+}
+
+export const TOOL_POSTULATE_2: RealtimeTool = {
+  type: 'function',
+  name: 'postulate_2',
+  description:
+    'Postulate 2: "To produce a finite straight line continuously in a straight line." ' +
+    'Extends a segment through one endpoint to a new point. Requires a base point, ' +
+    'a through point (the endpoint to extend past), and the distance to extend.',
+  parameters: {
+    type: 'object',
+    properties: {
+      base_label: {
+        type: 'string',
+        description: 'Label of the base point defining the ray direction (e.g. "A").',
+      },
+      through_label: {
+        type: 'string',
+        description: 'Label of the point to extend through (e.g. "B").',
+      },
+      distance: {
+        type: 'number',
+        description: 'How far to extend past the through point (in construction units).',
+      },
+    },
+    required: ['base_label', 'through_label', 'distance'],
+  },
+}
+
+export const TOOL_POSTULATE_3: RealtimeTool = {
+  type: 'function',
+  name: 'postulate_3',
+  description:
+    'Postulate 3: "To describe a circle with any center and distance." ' +
+    'Draws a circle centered at one point, with radius equal to the distance to another point.',
+  parameters: {
+    type: 'object',
+    properties: {
+      center_label: {
+        type: 'string',
+        description: 'Label of the center point (e.g. "A").',
+      },
+      radius_point_label: {
+        type: 'string',
+        description: 'Label of the point defining the radius (e.g. "B").',
+      },
+    },
+    required: ['center_label', 'radius_point_label'],
+  },
+}
+
+export const TOOL_MARK_INTERSECTION: RealtimeTool = {
+  type: 'function',
+  name: 'mark_intersection',
+  description:
+    'Mark an intersection point between two construction elements (circles or segments). ' +
+    'The system finds available intersection candidates and marks the one matching the specified elements. ' +
+    'When two elements intersect at two points, use "which" to select "first" or "second" (ordered by x then y).',
+  parameters: {
+    type: 'object',
+    properties: {
+      of_a: {
+        type: 'string',
+        description:
+          'ID or description of the first element (e.g. "cir-1" for a circle, "seg-1" for a segment).',
+      },
+      of_b: {
+        type: 'string',
+        description: 'ID or description of the second element.',
+      },
+      which: {
+        type: 'string',
+        enum: ['first', 'second'],
+        description:
+          'Which intersection to mark when two elements meet at two points. "first" = lower x (or lower y if same x). Default: "first".',
+      },
+    },
+    required: ['of_a', 'of_b'],
+  },
+}
+
+export const TOOL_APPLY_PROPOSITION: RealtimeTool = {
+  type: 'function',
+  name: 'apply_proposition',
+  description:
+    'Apply a previously proven proposition as a macro construction. ' +
+    'Executes the full construction of the proposition on the given input points, ' +
+    'adding all intermediate elements and deriving all facts.',
+  parameters: {
+    type: 'object',
+    properties: {
+      prop_id: {
+        type: 'number',
+        description: 'The proposition number (e.g. 1 for Proposition I.1).',
+      },
+      input_labels: {
+        type: 'string',
+        description:
+          'Comma-separated labels of the input points in order (e.g. "A,B" for Prop I.1).',
+      },
+    },
+    required: ['prop_id', 'input_labels'],
+  },
+}
+
+export const TOOL_DECLARE_EQUALITY: RealtimeTool = {
+  type: 'function',
+  name: 'declare_equality',
+  description:
+    'Assert that two distances are equal, with a citation from the axiomatic system. ' +
+    "This adds an equality fact to the proof's fact store. " +
+    'Citation types: "def15" (radii of a circle), "cn1" (transitivity), "cn2" (addition), ' +
+    '"cn3" (subtraction), "cn4" (superposition), "given" (hypothesis), "prop" (prior proposition).',
+  parameters: {
+    type: 'object',
+    properties: {
+      left_a: { type: 'string', description: 'First point of the left distance pair (e.g. "A").' },
+      left_b: {
+        type: 'string',
+        description: 'Second point of the left distance pair (e.g. "B").',
+      },
+      right_a: {
+        type: 'string',
+        description: 'First point of the right distance pair (e.g. "C").',
+      },
+      right_b: {
+        type: 'string',
+        description: 'Second point of the right distance pair (e.g. "D").',
+      },
+      citation_type: {
+        type: 'string',
+        enum: ['def15', 'cn1', 'cn2', 'cn3', 'cn4', 'given', 'prop'],
+        description: 'The type of citation justifying the equality.',
+      },
+      citation_detail: {
+        type: 'string',
+        description:
+          'Additional detail for the citation. For def15: circle ID (e.g. "cir-1"). ' +
+          'For cn1: the two point labels of the shared distance (e.g. "A,B"). ' +
+          'For cn3: "wholeA,wholeB,partA,partB". For prop: the proposition number. ' +
+          'For cn2, cn4, given: leave empty.',
+      },
+      statement: {
+        type: 'string',
+        description: 'Human-readable statement (e.g. "CA = AB").',
+      },
+      justification: {
+        type: 'string',
+        description:
+          'Human-readable justification (e.g. "Def.15: C on circle centered at A through B").',
+      },
+    },
+    required: [
+      'left_a',
+      'left_b',
+      'right_a',
+      'right_b',
+      'citation_type',
+      'statement',
+      'justification',
+    ],
+  },
+}
+
+export const TOOL_DECLARE_ANGLE_EQUALITY: RealtimeTool = {
+  type: 'function',
+  name: 'declare_angle_equality',
+  description:
+    'Assert that two angles are equal, with a citation from the axiomatic system. ' +
+    'Angles are defined by vertex + two ray endpoints.',
+  parameters: {
+    type: 'object',
+    properties: {
+      left_vertex: { type: 'string', description: 'Vertex of the left angle.' },
+      left_ray1: { type: 'string', description: 'First ray endpoint of the left angle.' },
+      left_ray2: { type: 'string', description: 'Second ray endpoint of the left angle.' },
+      right_vertex: { type: 'string', description: 'Vertex of the right angle.' },
+      right_ray1: { type: 'string', description: 'First ray endpoint of the right angle.' },
+      right_ray2: { type: 'string', description: 'Second ray endpoint of the right angle.' },
+      citation_type: {
+        type: 'string',
+        enum: ['cn1', 'cn2', 'cn3-angle', 'cn4', 'given', 'prop'],
+        description: 'The type of citation justifying the equality.',
+      },
+      citation_detail: {
+        type: 'string',
+        description: 'Additional detail for the citation (same format as declare_equality).',
+      },
+      statement: { type: 'string', description: 'Human-readable statement (e.g. "∠ABC = ∠DEF").' },
+      justification: { type: 'string', description: 'Human-readable justification.' },
+    },
+    required: [
+      'left_vertex',
+      'left_ray1',
+      'left_ray2',
+      'right_vertex',
+      'right_ray1',
+      'right_ray2',
+      'citation_type',
+      'statement',
+      'justification',
+    ],
+  },
+}
+
+export const TOOL_UNDO_LAST: RealtimeTool = {
+  type: 'function',
+  name: 'undo_last',
+  description: 'Revert the most recent construction action, restoring the previous state.',
+  parameters: {
+    type: 'object',
+    properties: {},
+  },
+}
+
+/** All author-mode construction + fact store tools. */
+export const AUTHOR_TOOLS: RealtimeTool[] = [
+  TOOL_PLACE_POINT,
+  TOOL_POSTULATE_1,
+  TOOL_POSTULATE_2,
+  TOOL_POSTULATE_3,
+  TOOL_MARK_INTERSECTION,
+  TOOL_APPLY_PROPOSITION,
+  TOOL_DECLARE_EQUALITY,
+  TOOL_DECLARE_ANGLE_EQUALITY,
+  TOOL_UNDO_LAST,
+]
