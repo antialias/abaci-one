@@ -18,62 +18,14 @@
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
-
-const MARKER_RE = /\{(seg|tri|ang|pt|def|post|cn|prop):[A-Za-z0-9]+(?:\|[^}]*)?\}/g
-
-/** Tokenize text into lowercase words (letters/digits/apostrophes). */
-function words(text: string): string[] {
-  return text.toLowerCase().match(/[a-z\d']+/g) ?? []
-}
-
-/**
- * Word overlap ratio: fraction of original words that appear in the stripped output.
- * Returns 0–1. High values mean the model preserved most of the original prose.
- */
-function wordOverlapRatio(original: string, stripped: string): number {
-  const origWords = words(original)
-  if (origWords.length === 0) return 1
-
-  // Build a bag (multiset) of stripped words so each can only match once
-  const bag = new Map<string, number>()
-  for (const w of words(stripped)) {
-    bag.set(w, (bag.get(w) ?? 0) + 1)
-  }
-
-  let matched = 0
-  for (const w of origWords) {
-    const count = bag.get(w) ?? 0
-    if (count > 0) {
-      matched++
-      bag.set(w, count - 1)
-    }
-  }
-
-  return matched / origWords.length
-}
+import {
+  MARKER_RE,
+  validateMarkupStrict,
+  wordOverlapRatio,
+} from './validation'
 
 /** Minimum word overlap ratio for non-strict (sanity check) mode. */
 const SANITY_OVERLAP_THRESHOLD = 0.6
-
-/**
- * Strict validation: remaining text (markers stripped) must be a subsequence of
- * the original, and at least 50% of the original length. Use for user-written text.
- */
-function validateMarkupStrict(original: string, marked: string): boolean {
-  const remaining = marked.replace(MARKER_RE, '')
-
-  // Remaining text should be a significant portion of the original
-  if (remaining.length < original.length * 0.5) return false
-
-  // The remaining characters should be a subsequence of the original
-  let oi = 0
-  for (const ch of remaining) {
-    while (oi < original.length && original[oi] !== ch) oi++
-    if (oi >= original.length) return false
-    oi++
-  }
-  return true
-}
 
 export const POST = withAuth(async (request) => {
   const body = await request.json()
@@ -108,7 +60,7 @@ export const POST = withAuth(async (request) => {
 
   const systemPrompt = `You are a precise text annotation tool. Your ONLY job is to wrap entity references in marker tags. You must NEVER change, rewrite, rephrase, reorder, or alter ANY other text — not even punctuation or whitespace.
 
-ABSOLUTE RULE: Every character of the original text that is not inside a marker tag must appear EXACTLY as-is in the output — same spelling, same punctuation, same spacing. If the input has a comma, the output has a comma in the same place. If the input has a period, the output has a period. NEVER replace commas with dashes, NEVER change punctuation.
+ABSOLUTE RULE: Every character of the original text that is not inside a marker tag must appear EXACTLY as-is in the output — same spelling, same punctuation, same spacing. If the input has a comma, the output has a comma in the same place. If the input has a period, the output has a period. If the input does NOT end with a period, the output must NOT end with a period either. NEVER add, remove, or change punctuation.
 
 Available markers:
   {pt:A} — for standalone point labels (single uppercase letter used as a geometric label)
@@ -159,8 +111,17 @@ Examples:
   Input:  "Let us begin with the first step."
   Output: "Let us begin with the first step."
 
+  Input:  "Describe circle with center A through B noting that we also have triangle △ABD"
+  Output: "Describe circle with center {pt:A} through {pt:B} noting that we also have triangle {tri:ABD}"
+
+  Input:  "we need ∠ABC to be a right angle"
+  Output: "we need {ang:ABC} to be a right angle"
+
+  Input:  "triangle △ABD is equilateral"
+  Output: "triangle {tri:ABD} is equilateral"
+
 CRITICAL RULES — read carefully:
-- NEVER change punctuation. Commas stay commas. Periods stay periods. Dashes stay dashes.
+- NEVER add, remove, or change punctuation. If the input has no trailing period, the output must have no trailing period. Commas stay commas. Periods stay periods. Dashes stay dashes.
 - The marker REPLACES only the reference words, keeping all surrounding punctuation intact.
 - ONLY wrap specific named references, NOT generic nouns. "point A" → "point {pt:A}" but "a point" → leave as-is.
 - "segment B C" or "B C" (as a geometric reference) → {seg:BC}. But "a segment" or "such a segment" → leave as-is.
@@ -170,6 +131,7 @@ CRITICAL RULES — read carefully:
 - When a foundation is referred to by both its formal name AND an informal paraphrase in the same phrase (e.g., "Proposition I.1—my first proposition"), mark BOTH references separately with overrides.
 - Do NOT mark up "I", "THE", "We", "No", or any word that is not a geometric point label.
 - Do NOT mark up the word "point" or "segment" or "triangle" itself — only the label letters.
+- Unicode math symbols like △ and ∠ before point labels are rendered automatically from the marker. Strip them: "△ABD" → {tri:ABD}, "∠ABC" → {ang:ABC}. Do NOT use a display override for these symbols.
 - Do NOT invent references. If the text says "triangle" without naming specific points, leave it alone.
 - If unsure whether something is a geometric reference, leave it unmarked.`
 
