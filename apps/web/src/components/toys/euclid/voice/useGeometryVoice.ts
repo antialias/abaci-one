@@ -102,6 +102,8 @@ export interface UseGeometryVoiceReturn {
   sendUserText: (text: string) => void
   /** Ref to the underlying voice call — needed by the construction notifier */
   voiceCallRef: React.RefObject<UseVoiceCallReturn | null>
+  /** Unmute mic and trigger initial model response (use with deferGreeting). */
+  activateSession: (priorAssistantText?: string) => void
 }
 
 /**
@@ -272,6 +274,7 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
   const config = useMemo(
     (): VoiceSessionConfig<GeometryModeContext> => ({
       sessionEndpoint: teacherConfig.voice.sessionEndpoint,
+      deferGreeting: teacherConfig.deferGreeting,
       buildContext,
       initialModeId: 'greeting',
       modes: {
@@ -379,7 +382,7 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
   const voiceCallRef = useRef(voiceCall)
   voiceCallRef.current = voiceCall
 
-  // Clear voice highlight when call ends
+  // Clear voice highlight when call is not actively conversing
   if (voiceCall.state !== 'active') {
     voiceHighlightRef.current = null
     if (highlightTimerRef.current) {
@@ -400,5 +403,6 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
     voiceHighlightRef,
     sendUserText: voiceCall.sendUserText,
     voiceCallRef,
+    activateSession: voiceCall.activateSession,
   }
 }

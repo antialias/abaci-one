@@ -49,7 +49,7 @@ export interface ToolCallResult {
 }
 
 /** Call lifecycle state. Consumers can extend with domain-specific states. */
-export type CallState = 'idle' | 'ringing' | 'active' | 'ending' | 'error'
+export type CallState = 'idle' | 'ringing' | 'preconnected' | 'active' | 'ending' | 'error'
 
 /** Timer configuration for call duration limits. */
 export interface TimerConfig {
@@ -134,6 +134,11 @@ export interface VoiceSessionConfig<TContext> {
    * Receives the target and a cleanup callback.
    */
   onTransfer?: (target: number, cleanup: () => void, redial: () => void) => void
+  /**
+   * Skip ring tone + min ring time, mute mic, defer response.create until
+   * activateSession(). Transitions to 'preconnected' instead of 'active'.
+   */
+  deferGreeting?: boolean
 }
 
 /** Debug info for mode transitions. */
@@ -186,4 +191,6 @@ export interface UseVoiceCallReturn {
   audioElRef: React.RefObject<HTMLAudioElement | null>
   /** Send a user text message to the voice session and prompt a response */
   sendUserText: (text: string) => void
+  /** Unmute mic and trigger initial model response (use with deferGreeting). */
+  activateSession: (priorAssistantText?: string) => void
 }

@@ -138,6 +138,13 @@ Your reaction:
 
 This should feel like a critic at a comedy show who accidentally laughs — and then gets meaner to cover it.`
 
+/** TTS stalling lines for the heckler pre-connected call. */
+export const EUCLID_HECKLER_STALL_LINES = [
+  'Ah... yes. I called you. One moment — I need to collect my thoughts about whatever it is you are doing over there.',
+  'Hold on. I was watching your construction and I — give me a moment. The sheer audacity requires preparation.',
+  'Yes, hello. I... wait, let me look at this again. I want to be precise about exactly how wrong this is.',
+]
+
 /** Thinking metaphors for Euclid in heckler mode. */
 export const EUCLID_HECKLER_THINKING_METAPHORS = {
   consulting: 'your sense of outrage',

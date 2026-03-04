@@ -463,6 +463,7 @@ export function useToolInteraction({
                 radius: Math.sqrt(dx * dx + dy * dy),
                 enterTime: performance.now(),
               }
+              onToolStateChange?.()
             }
           }
           // Still on a point — don't start sweeping yet
@@ -475,6 +476,7 @@ export function useToolInteraction({
         const dwellTime = performance.now() - compass.enterTime
         if (dwellTime < 150) {
           compassPhaseRef.current = { tag: 'center-set', centerId: compass.centerId }
+          onToolStateChange?.()
           requestDraw()
           return
         }
@@ -497,6 +499,7 @@ export function useToolInteraction({
           // Capture pointer so sweep continues even when cursor leaves canvas
           // (e.g. moves over proof-steps panel or outside the viewport)
           canvas!.setPointerCapture(e.pointerId)
+          onToolStateChange?.()
         }
         requestDraw()
         return
@@ -561,7 +564,11 @@ export function useToolInteraction({
             h,
             isTouch
           )
+          const prevSnapped = snappedPointIdRef.current
           snappedPointIdRef.current = edgeHit?.id ?? null
+          if (snappedPointIdRef.current !== prevSnapped) {
+            onToolStateChange?.()
+          }
 
           // ── Extend detection (Post.2): drag along existing segment past its endpoint ──
           if (extendPhaseRef && extendPreviewRef) {
@@ -655,6 +662,7 @@ export function useToolInteraction({
         }
         compassPhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
+        onToolStateChange?.()
         requestDraw()
         return
       }
@@ -745,6 +753,7 @@ export function useToolInteraction({
       pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
+      onToolStateChange?.()
       requestDraw()
     }
 

@@ -96,6 +96,8 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
   const hangUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stateRef = useRef<CallState>('idle')
   const agentAudioPlayingRef = useRef(false)
+  /** Stall text to inject when session.created fires after activateSession ran early */
+  const pendingStallTextRef = useRef<string | null>(null)
 
   // Suppress error codes from consumer + defaults
   const suppressCodes = useRef(
@@ -160,6 +162,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
     previousModeRef.current = null
     childHasSpokenRef.current = false
     currentInstructionsRef.current = null
+    pendingStallTextRef.current = null
     setModeDebug({
       current: configRef.current.initialModeId,
       previous: null,
@@ -334,6 +337,67 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
     sendUserTextHelper(dc, text)
   }, [])
 
+  // ── Activate a pre-connected session (deferred greeting) ──
+  const activateSession = useCallback(
+    (priorAssistantText?: string) => {
+      if (stateRef.current !== 'preconnected') return
+      // Unmute mic
+      const ctx = audioCtxRef.current
+      if (micGainRef.current && ctx) {
+        micGainRef.current.gain.setTargetAtTime(1.0, ctx.currentTime, 0.02)
+      }
+      const dc = dcRef.current
+      if (dc?.readyState === 'open') {
+        // Inject stalling text so the model knows what was already "said"
+        if (priorAssistantText) {
+          dc.send(
+            JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'message',
+                role: 'assistant',
+                content: [{ type: 'text', text: priorAssistantText }],
+              },
+            })
+          )
+        }
+        // Trigger model greeting
+        dc.send(JSON.stringify({ type: 'response.create' }))
+        pendingStallTextRef.current = null
+      } else {
+        // DC not open yet — session.created handler will send response.create
+        pendingStallTextRef.current = priorAssistantText ?? null
+      }
+      // Go fully active + start timer
+      console.log('[voice] activateSession → active')
+      setState('active')
+      deadlineRef.current = Date.now() + timer.baseDurationMs
+      timerRef.current = setInterval(() => {
+        const remaining = Math.max(0, deadlineRef.current - Date.now())
+        setTimeRemaining(Math.ceil(remaining / 1000))
+        if (
+          !warningSentRef.current &&
+          remaining < timer.warningBeforeEndMs &&
+          remaining > 0 &&
+          dcRef.current?.readyState === 'open'
+        ) {
+          warningSentRef.current = true
+          configRef.current.onTimeWarning?.(dcRef.current, remaining)
+        }
+        if (remaining <= 0 && !expiredSentRef.current) {
+          expiredSentRef.current = true
+          if (dcRef.current?.readyState === 'open') {
+            configRef.current.onTimeExpired?.(dcRef.current)
+          }
+          if (!configRef.current.onTimeExpired) {
+            hangUp()
+          }
+        }
+      }, 1000)
+    },
+    [timer, hangUp]
+  )
+
   // ── Dial ──
   const dial = useCallback(async () => {
     const cur = stateRef.current
@@ -371,15 +435,18 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       return
     }
 
-    // 2. Ring tone
+    // 2. Ring tone (skipped when deferring greeting — heckler has its own ring UI)
     setState('ringing')
     const ringStartedAt = Date.now()
-    try {
-      const audioCtx = new AudioContext()
-      audioCtxRef.current = audioCtx
-      ringRef.current = playRingTone(audioCtx)
-    } catch {
-      // Ring tone is cosmetic
+    const deferring = configRef.current.deferGreeting
+    if (!deferring) {
+      try {
+        const audioCtx = new AudioContext()
+        audioCtxRef.current = audioCtx
+        ringRef.current = playRingTone(audioCtx)
+      } catch {
+        // Ring tone is cosmetic
+      }
     }
 
     // 3. Fetch session token
@@ -437,7 +504,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       }
       const micSource = audioCtx.createMediaStreamSource(stream)
       const micGain = audioCtx.createGain()
-      micGain.gain.value = 1.0
+      micGain.gain.value = deferring ? 0 : 1.0
       const micDest = audioCtx.createMediaStreamDestination()
       micSource.connect(micGain)
       micGain.connect(micDest)
@@ -455,7 +522,10 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       pc.ontrack = (event) => {
         audioEl.srcObject = event.streams[0]
         audioEl.play().catch((err) => {
-          console.error('[voice] audio play failed:', err.name, err.message)
+          // AbortError from play/pause race is harmless — audio will play when model speaks
+          if (err.name !== 'AbortError') {
+            console.error('[voice] audio play failed:', err.name, err.message)
+          }
         })
 
         // Speaking detection via audio analysis
@@ -480,7 +550,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
             const st = stateRef.current
             if (st === 'idle' || st === 'error' || st === 'ending') return
 
-            if (st === 'active') {
+            if (st === 'active' || st === 'preconnected') {
               analyser.getByteFrequencyData(dataArray)
               let sum = 0
               for (let i = 0; i < dataArray.length; i++) sum += dataArray[i]
@@ -523,7 +593,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       dcRef.current = dc
       dc.onclose = () => {
         const st = stateRef.current
-        if (st === 'ringing' || st === 'active') {
+        if (st === 'ringing' || st === 'preconnected' || st === 'active') {
           hangUp()
         }
       }
@@ -539,7 +609,33 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
           // ── session.created ──
           if (msg.type === 'session.created') {
             configRef.current.onSessionEstablished?.(dc)
-            dc.send(JSON.stringify({ type: 'response.create' }))
+            if (configRef.current.deferGreeting) {
+              // Data channel is open — now safe to transition to preconnected.
+              // activateSession() will send response.create when the user is ready.
+              if (stateRef.current === 'ringing') {
+                console.log('[voice] session.created → preconnected (deferred greeting)')
+                setState('preconnected')
+              } else if (stateRef.current === 'active') {
+                // activateSession() already ran (fast path) — send stall text + response.create now
+                console.log('[voice] session.created → sending deferred response.create')
+                if (pendingStallTextRef.current) {
+                  dc.send(
+                    JSON.stringify({
+                      type: 'conversation.item.create',
+                      item: {
+                        type: 'message',
+                        role: 'assistant',
+                        content: [{ type: 'text', text: pendingStallTextRef.current }],
+                      },
+                    })
+                  )
+                  pendingStallTextRef.current = null
+                }
+                dc.send(JSON.stringify({ type: 'response.create' }))
+              }
+            } else {
+              dc.send(JSON.stringify({ type: 'response.create' }))
+            }
           }
 
           // ── error ──
@@ -750,56 +846,70 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       const answerSdp = await sdpResponse.text()
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
 
-      // Minimum ring time
-      const MIN_RING_MS = 1500
-      const elapsed = Date.now() - ringStartedAt
-      if (elapsed < MIN_RING_MS) {
-        await new Promise((resolve) => setTimeout(resolve, MIN_RING_MS - elapsed))
-      }
-
-      if (stateRef.current !== 'ringing') {
-        cleanup()
-        return
-      }
-
-      // Stop ring tone
-      ringRef.current?.stop()
-      ringRef.current = null
-
-      // Go active
-      console.log('[voice] call active')
-      setState('active')
-
-      deadlineRef.current = Date.now() + timer.baseDurationMs
-
-      // Timer countdown
-      timerRef.current = setInterval(() => {
-        const remaining = Math.max(0, deadlineRef.current - Date.now())
-        setTimeRemaining(Math.ceil(remaining / 1000))
-
-        // Time warning
-        if (
-          !warningSentRef.current &&
-          remaining < timer.warningBeforeEndMs &&
-          remaining > 0 &&
-          dcRef.current?.readyState === 'open'
-        ) {
-          warningSentRef.current = true
-          configRef.current.onTimeWarning?.(dcRef.current, remaining)
+      if (deferring) {
+        // Deferred greeting: SDP done but data channel not yet open.
+        // Stay in 'ringing' — session.created handler will transition to 'preconnected'
+        // once the data channel is ready.
+        if (stateRef.current !== 'ringing') {
+          cleanup()
+          return
+        }
+        ringRef.current?.stop()
+        ringRef.current = null
+        console.log('[voice] SDP complete (deferred greeting), waiting for session.created')
+        // Timer and mic activation deferred to activateSession()
+      } else {
+        // Normal flow: minimum ring time then go active
+        const MIN_RING_MS = 1500
+        const elapsed = Date.now() - ringStartedAt
+        if (elapsed < MIN_RING_MS) {
+          await new Promise((resolve) => setTimeout(resolve, MIN_RING_MS - elapsed))
         }
 
-        // Time expired (guard prevents repeated firings every interval tick)
-        if (remaining <= 0 && !expiredSentRef.current) {
-          expiredSentRef.current = true
-          if (dcRef.current?.readyState === 'open') {
-            configRef.current.onTimeExpired?.(dcRef.current)
-          }
-          // If consumer doesn't handle it, force hangup
-          if (!configRef.current.onTimeExpired) {
-            hangUp()
-          }
+        if (stateRef.current !== 'ringing') {
+          cleanup()
+          return
         }
-      }, 1000)
+
+        // Stop ring tone
+        ringRef.current?.stop()
+        ringRef.current = null
+
+        // Go active
+        console.log('[voice] call active')
+        setState('active')
+
+        deadlineRef.current = Date.now() + timer.baseDurationMs
+
+        // Timer countdown
+        timerRef.current = setInterval(() => {
+          const remaining = Math.max(0, deadlineRef.current - Date.now())
+          setTimeRemaining(Math.ceil(remaining / 1000))
+
+          // Time warning
+          if (
+            !warningSentRef.current &&
+            remaining < timer.warningBeforeEndMs &&
+            remaining > 0 &&
+            dcRef.current?.readyState === 'open'
+          ) {
+            warningSentRef.current = true
+            configRef.current.onTimeWarning?.(dcRef.current, remaining)
+          }
+
+          // Time expired (guard prevents repeated firings every interval tick)
+          if (remaining <= 0 && !expiredSentRef.current) {
+            expiredSentRef.current = true
+            if (dcRef.current?.readyState === 'open') {
+              configRef.current.onTimeExpired?.(dcRef.current)
+            }
+            // If consumer doesn't handle it, force hangup
+            if (!configRef.current.onTimeExpired) {
+              hangUp()
+            }
+          }
+        }, 1000)
+      }
 
       // Connection closure
       pc.onconnectionstatechange = () => {
@@ -854,5 +964,6 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
     extendTimer,
     audioElRef,
     sendUserText,
+    activateSession,
   }
 }

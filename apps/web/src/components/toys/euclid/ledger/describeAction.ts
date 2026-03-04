@@ -6,7 +6,14 @@
  */
 
 import type { PostCompletionAction } from '../engine/replayConstruction'
-import type { ConstructionState, ConstructionElement } from '../types'
+import type {
+  ConstructionState,
+  ConstructionElement,
+  CompassPhase,
+  StraightedgePhase,
+  ExtendPhase,
+  MacroPhase,
+} from '../types'
 import { getPoint } from '../engine/constructionState'
 
 export interface LedgerEntryDescriptor {
@@ -82,6 +89,78 @@ export function describeAction(
       }
     }
   }
+}
+
+export interface ToolPhaseSnapshot {
+  compass: CompassPhase
+  straightedge: StraightedgePhase
+  extend: ExtendPhase
+  macro: MacroPhase
+  /** Currently snapped point ID (from cursor hover during straightedge drag) */
+  snappedPointId: string | null
+}
+
+/**
+ * Derive a preview ledger entry from the current tool phase state.
+ * Returns null when all tools are idle (nothing to preview).
+ */
+export function describeToolPhase(
+  phases: ToolPhaseSnapshot,
+  state: ConstructionState
+): LedgerEntryDescriptor | null {
+  // Extend takes priority over straightedge (it's a sub-mode)
+  if (phases.extend.tag === 'extending') {
+    const base = label(state, phases.extend.baseId)
+    const through = label(state, phases.extend.throughId)
+    return {
+      citation: 'Post.2',
+      markedDescription: `Produce {seg:${base}${through}} beyond {pt:${through}} …`,
+    }
+  }
+
+  if (phases.straightedge.tag === 'from-set') {
+    const from = label(state, phases.straightedge.fromId)
+    if (phases.snappedPointId && phases.snappedPointId !== phases.straightedge.fromId) {
+      const to = label(state, phases.snappedPointId)
+      return {
+        citation: 'Post.1',
+        markedDescription: `Join {pt:${from}} to {pt:${to}}`,
+      }
+    }
+    return {
+      citation: 'Post.1',
+      markedDescription: `Join {pt:${from}} to …`,
+    }
+  }
+
+  if (phases.compass.tag !== 'idle') {
+    const center = label(state, phases.compass.centerId)
+    if (phases.compass.tag === 'center-set') {
+      return {
+        citation: 'Post.3',
+        markedDescription: `Circle with center {pt:${center}} …`,
+      }
+    }
+    // radius-set or sweeping — both carry radiusPointId
+    const radius = label(state, phases.compass.radiusPointId)
+    return {
+      citation: 'Post.3',
+      markedDescription: `Describe circle with center {pt:${center}} through {pt:${radius}}`,
+    }
+  }
+
+  if (phases.macro.tag === 'selecting') {
+    const { propId, inputs, selectedPointIds } = phases.macro
+    const selected = selectedPointIds.map((id) => `{pt:${label(state, id)}}`)
+    const remaining = inputs.length - selectedPointIds.length
+    const suffix = remaining > 0 ? ', …' : ''
+    return {
+      citation: `I.${propId}`,
+      markedDescription: `Apply {prop:${propId}} to ${selected.join(', ')}${suffix}`,
+    }
+  }
+
+  return null
 }
 
 /** Generate a ledger entry descriptor for a given (initial) element. */

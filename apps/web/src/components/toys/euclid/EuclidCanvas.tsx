@@ -51,6 +51,8 @@ import { PROP_REGISTRY } from './propositions/registry'
 import { PLAYGROUND_PROP } from './propositions/playground'
 import { PlaygroundCreationsPanel } from './PlaygroundCreationsPanel'
 import { ProofLedger } from './ledger/ProofLedger'
+import type { LedgerEntryDescriptor } from './ledger/describeAction'
+import { describeToolPhase } from './ledger/describeAction'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useTTS } from '@/hooks/useTTS'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
@@ -918,6 +920,7 @@ function EuclidCanvasInner({
   ])
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
+  const [toolPreview, setToolPreview] = useState<LedgerEntryDescriptor | null>(null)
   const [isToolDockActive, setIsToolDockActive] = useState(false)
   const [isCorrectionActive, setIsCorrectionActive] = useState(false)
   const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
@@ -1001,6 +1004,23 @@ function EuclidCanvasInner({
     setMacroPhase(phase)
   }, [])
 
+  /** Recompute the ledger tool preview from current ref state (playground mode only). */
+  const updateToolPreview = useCallback(() => {
+    if (!playgroundMode) return
+    setToolPreview(
+      describeToolPhase(
+        {
+          compass: compassPhaseRef.current,
+          straightedge: straightedgePhaseRef.current,
+          extend: extendPhaseRef.current,
+          macro: macroPhaseRef.current,
+          snappedPointId: snappedPointIdRef.current,
+        },
+        constructionRef.current
+      )
+    )
+  }, [playgroundMode])
+
   const handleMacroToolClick = useCallback(() => {
     setActiveTool('macro')
     activeToolRef.current = 'macro'
@@ -1015,12 +1035,13 @@ function EuclidCanvasInner({
       }
       macroPhaseRef.current = phase
       setMacroPhase(phase)
+      updateToolPreview()
     } else {
       const choosingPhase: MacroPhase = { tag: 'choosing' }
       macroPhaseRef.current = choosingPhase
       setMacroPhase(choosingPhase)
     }
-  }, [availableMacros])
+  }, [availableMacros, updateToolPreview])
 
   const handleMacroPropositionSelect = useCallback((propId: number) => {
     const macroDef = MACRO_REGISTRY[propId]
@@ -1033,7 +1054,8 @@ function EuclidCanvasInner({
     }
     macroPhaseRef.current = phase
     setMacroPhase(phase)
-  }, [])
+    updateToolPreview()
+  }, [updateToolPreview])
 
   // ── Completion result derived from proof ──
   const completionResult = useMemo(() => {
@@ -1260,35 +1282,50 @@ function EuclidCanvasInner({
   // ── Heckler trigger — watches construction in playground for proposition patterns ──
   const pendingActivateRef = useRef(false)
   const stallTextRef = useRef<string | null>(null)
+  // Track that the current dial is a heckler pre-dial (to suppress call UI)
   const hecklerPreDialRef = useRef(false)
 
-  const handleHecklerPreDial = useCallback(
-    (_propId: number) => {
-      onAttitudeChange?.('heckler')
-      hecklerPreDialRef.current = true
-      pendingActivateRef.current = false
-      stallTextRef.current = null
-      setTimeout(() => euclidVoice.dial(), 50)
-    },
-    [onAttitudeChange, euclidVoice.dial]
-  )
+  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode)
 
-  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode, handleHecklerPreDial)
+  // Pre-dial when heckler enters 'ringing': switch attitude and start WebRTC
+  useEffect(() => {
+    if (heckler.stage !== 'ringing') return
+    // Already dialing or connected — skip
+    if (euclidVoice.state !== 'idle' && euclidVoice.state !== 'error') return
+    onAttitudeChange?.('heckler')
+    hecklerPreDialRef.current = true
+    pendingActivateRef.current = false
+    stallTextRef.current = null
+    // Dial after a microtask to let the config update (deferGreeting) propagate
+    setTimeout(() => euclidVoice.dial(), 50)
+  }, [heckler.stage, euclidVoice.state, euclidVoice.dial, onAttitudeChange])
 
+  // When the user clicks "Answer": activate immediately or play stalling TTS
   const handleHecklerAnswer = useCallback(() => {
+    heckler.answer() // transition stage to 'answered', prevent re-triggering
     if (euclidVoice.state === 'preconnected') {
+      // Connection ready — activate immediately
       hecklerPreDialRef.current = false
       euclidVoice.activateSession(stallTextRef.current ?? undefined)
       stallTextRef.current = null
     } else {
+      // Connection not ready yet — play stalling TTS while we wait
       const lines = teacherConfig.stallLines ?? DEFAULT_STALL_LINES
       const line = lines[Math.floor(Math.random() * lines.length)]
       stallTextRef.current = line
       speakHecklerStallRef.current({ say: { en: line } })
       pendingActivateRef.current = true
+      // If dial hasn't started yet (user clicked Answer before pre-dial effect fired),
+      // ensure we kick it off now
+      if (euclidVoice.state === 'idle' || euclidVoice.state === 'error') {
+        hecklerPreDialRef.current = true
+        onAttitudeChange?.('heckler')
+        setTimeout(() => euclidVoice.dial(), 50)
+      }
     }
-  }, [euclidVoice, teacherConfig.stallLines])
+  }, [heckler, euclidVoice, teacherConfig.stallLines, onAttitudeChange])
 
+  // Activate when pre-connect completes (if user already answered)
   useEffect(() => {
     if (euclidVoice.state === 'preconnected' && pendingActivateRef.current) {
       pendingActivateRef.current = false
@@ -1298,6 +1335,7 @@ function EuclidCanvasInner({
     }
   }, [euclidVoice.state, euclidVoice.activateSession])
 
+  // Dismiss: clean up pre-connection and revert to teacher
   const handleHecklerDismiss = useCallback(() => {
     heckler.dismiss()
     if (euclidVoice.state !== 'idle') euclidVoice.hangUp()
@@ -1307,6 +1345,7 @@ function EuclidCanvasInner({
     onAttitudeChange?.('teacher')
   }, [heckler, euclidVoice, onAttitudeChange])
 
+  // Trigger heckler topology check whenever a construction event fires.
   useEffect(() => {
     if (!playgroundMode) return
     return eventBusRef.current.subscribe(() => {
@@ -2321,6 +2360,7 @@ function EuclidCanvasInner({
           }
           macroPhaseRef.current = nextPhase
           setMacroPhase(nextPhase)
+          updateToolPreview()
         } else {
           const choosingPhase: MacroPhase = { tag: 'choosing' }
           macroPhaseRef.current = choosingPhase
@@ -2937,7 +2977,8 @@ function EuclidCanvasInner({
     onCommitExtend: handleCommitExtend,
     onToolStateChange: useCallback(() => {
       notifierRef.current.notifyToolState()
-    }, []),
+      updateToolPreview()
+    }, [updateToolPreview]),
   })
 
   // ── Hook up drag interaction for post-completion play ──
@@ -4853,6 +4894,7 @@ function EuclidCanvasInner({
             onCitationPointerEnter={handleCitationPointerEnter}
             onCitationPointerLeave={handleCitationPointerLeave}
             onCitationPointerDown={handleCitationPointerDown}
+            toolPreview={toolPreview}
             isMobile={isMobile}
           />
         </div>

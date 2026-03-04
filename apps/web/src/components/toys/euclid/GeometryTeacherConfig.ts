@@ -53,6 +53,12 @@ export interface GeometryVoiceConfig {
   /** Priming assistant message for the chat route (acknowledges entity marker syntax) */
   chatAssistantPriming: string
 
+  /** Skip ring tone + min ring time when dialing; caller uses activateSession() to start. */
+  deferGreeting?: boolean
+  /** Character-specific stalling lines for pre-connected calls.
+   *  Falls back to generic defaults if not provided. */
+  stallLines?: string[]
+
   messages: {
     /** Injected into voice session at 15s remaining */
     timeWarning: string

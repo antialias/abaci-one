@@ -14,8 +14,10 @@ import type { ConstructionState, ConstructionElement } from '../types'
 import type { PostCompletionAction } from '../engine/replayConstruction'
 import type { EuclidEntityRef } from '../chat/parseGeometricEntities'
 import type { ConstructionEventBus } from '../voice/ConstructionEventBus'
+import type { LedgerEntryDescriptor } from './describeAction'
 import { describeAction, describeGivenElement } from './describeAction'
 import { LedgerEntry } from './LedgerEntry'
+import { LedgerPreviewEntry } from './LedgerPreviewEntry'
 import { SECTION_LABEL_STYLE, EMPTY_STATE_STYLE } from '../proof/styles'
 
 interface ProofLedgerProps {
@@ -29,6 +31,7 @@ interface ProofLedgerProps {
   onCitationPointerEnter?: (key: string, e: React.PointerEvent) => void
   onCitationPointerLeave?: () => void
   onCitationPointerDown?: (key: string, e: React.PointerEvent) => void
+  toolPreview?: LedgerEntryDescriptor | null
   isMobile: boolean
 }
 
@@ -43,6 +46,7 @@ export function ProofLedger({
   onCitationPointerEnter,
   onCitationPointerLeave,
   onCitationPointerDown,
+  toolPreview,
   isMobile,
 }: ProofLedgerProps) {
   const [editedDescriptions, setEditedDescriptions] = useState<Map<number, string>>(new Map())
@@ -100,13 +104,19 @@ export function ProofLedger({
     })
   }, [actionEntries])
 
-  // Auto-scroll to bottom on new entries
+  // Auto-scroll to bottom on new entries or preview changes
   useEffect(() => {
     if (ledgerVersion > prevVersionRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
     prevVersionRef.current = ledgerVersion
   }, [ledgerVersion])
+
+  useEffect(() => {
+    if (toolPreview && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [toolPreview])
 
   const handleStartEdit = useCallback((index: number) => {
     setEditingIndex(index)
@@ -239,6 +249,17 @@ export function ProofLedger({
             isMobile={isMobile}
           />
         ))}
+
+        {/* In-progress tool preview */}
+        {toolPreview && (
+          <LedgerPreviewEntry
+            citation={toolPreview.citation}
+            markedDescription={toolPreview.markedDescription}
+            stepNumber={actionEntries.length + 1}
+            renderEntity={renderEntity}
+            isMobile={isMobile}
+          />
+        )}
       </div>
     </div>
   )

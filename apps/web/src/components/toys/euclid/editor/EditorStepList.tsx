@@ -1,10 +1,16 @@
 'use client'
 
+import type React from 'react'
 import { useState, useRef, useEffect } from 'react'
 import type { SerializedStep } from '../types'
 import type { ProofFact } from '../engine/facts'
-import { isAngleFact } from '../engine/facts'
-import { CITATIONS, citationDefFromFact } from '../engine/citations'
+import { CITATIONS } from '../engine/citations'
+import type { EuclidEntityRef } from '../chat/parseGeometricEntities'
+import { StepIndicator } from '../proof/StepIndicator'
+import { CitationBadge, citationColor } from '../proof/CitationBadge'
+import { FactRow } from '../proof/FactRow'
+import { ProofInstruction } from '../proof/ProofInstruction'
+import { SECTION_LABEL_STYLE, EMPTY_STATE_STYLE, PROOF_COLORS, PROOF_FONTS } from '../proof/styles'
 
 interface EditorStepListProps {
   steps: SerializedStep[]
@@ -13,6 +19,10 @@ interface EditorStepListProps {
   onUpdateNotes: (index: number, notes: string) => void
   onDeleteLast: () => void
   onRewind: (targetStep: number) => void
+  /** Optional entity renderer for marked-text instructions */
+  renderEntity?: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
+  /** Optional highlight handler for entity hover */
+  onHighlight?: (entity: EuclidEntityRef | null) => void
 }
 
 export function EditorStepList({
@@ -22,6 +32,8 @@ export function EditorStepList({
   onUpdateNotes,
   onDeleteLast,
   onRewind,
+  renderEntity,
+  onHighlight,
 }: EditorStepListProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -52,10 +64,7 @@ export function EditorStepList({
           flex: 1,
           minHeight: 0,
           padding: '16px 20px',
-          color: '#94a3b8',
-          fontSize: 13,
-          fontFamily: 'Georgia, serif',
-          fontStyle: 'italic',
+          ...EMPTY_STATE_STYLE,
         }}
       >
         Select a citation above, then perform an action on the canvas.
@@ -82,18 +91,7 @@ export function EditorStepList({
           justifyContent: 'space-between',
         }}
       >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#94a3b8',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          Steps ({steps.length})
-        </span>
+        <span style={SECTION_LABEL_STYLE}>Steps ({steps.length})</span>
         <button
           data-action="delete-last-step"
           onClick={onDeleteLast}
@@ -143,32 +141,12 @@ export function EditorStepList({
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 {/* Step indicator — click to rewind */}
-                <button
-                  data-action="rewind-to-step"
+                <StepIndicator
+                  state="done"
+                  stepNumber={i + 1}
+                  isHovered={isHovered}
                   onClick={() => onRewind(i)}
-                  title={`Rewind to step ${i + 1}`}
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    flexShrink: 0,
-                    marginTop: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    fontFamily: 'system-ui, sans-serif',
-                    background: isHovered ? '#0d9668' : '#10b981',
-                    color: '#fff',
-                    transition: 'all 0.15s ease',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {isHovered ? '\u21BA' : '\u2713'}
-                </button>
+                />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Instruction (editable) */}
@@ -208,39 +186,28 @@ export function EditorStepList({
                       style={{
                         fontSize: 13,
                         fontWeight: 400,
-                        color: '#475569',
-                        fontFamily: 'Georgia, serif',
+                        color: PROOF_COLORS.text,
+                        fontFamily: PROOF_FONTS.serif,
                         lineHeight: 1.4,
                       }}
                     >
-                      {step.instruction}
+                      <ProofInstruction
+                        text={step.instruction}
+                        renderEntity={renderEntity}
+                        onHighlight={onHighlight}
+                      />
                     </div>
                   )}
 
                   {/* Citation badge */}
-                  <div
-                    style={{
-                      marginTop: 3,
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: '#6b9b6b',
-                      fontFamily: 'system-ui, sans-serif',
-                    }}
-                  >
-                    [{step.citation}]
-                    {citDef && (
-                      <span
-                        style={{
-                          fontWeight: 400,
-                          fontStyle: 'italic',
-                          fontFamily: 'Georgia, serif',
-                          color: '#94a3b8',
-                          marginLeft: 4,
-                        }}
-                      >
-                        {citDef.text}
-                      </span>
-                    )}
+                  <div style={{ marginTop: 3 }}>
+                    <CitationBadge
+                      citationKey={step.citation}
+                      fontSize={10}
+                      showText={!!citDef}
+                      citationText={citDef?.text}
+                      color={citationColor(step.citation)}
+                    />
                   </div>
 
                   {/* Action type indicator */}
@@ -267,25 +234,7 @@ export function EditorStepList({
                   {stepFacts.length > 0 && (
                     <div style={{ marginTop: 4 }}>
                       {stepFacts.map((fact) => (
-                        <div
-                          key={fact.id}
-                          style={{
-                            fontSize: 11,
-                            marginBottom: 2,
-                            paddingLeft: 8,
-                            borderLeft: '2px solid rgba(78, 121, 167, 0.2)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: '#4E79A7',
-                              fontWeight: 600,
-                              fontFamily: 'Georgia, serif',
-                            }}
-                          >
-                            {fact.statement}
-                          </span>
-                        </div>
+                        <FactRow key={fact.id} fact={fact} fontSize={11} />
                       ))}
                     </div>
                   )}
