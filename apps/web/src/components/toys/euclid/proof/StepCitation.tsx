@@ -7,10 +7,15 @@ import { PROOF_COLORS, PROOF_FONTS, getProofFontSizes } from './styles'
 
 interface StepCitationProps {
   citationKey: string
-  /** Override label text (for progressive disclosure) */
-  label?: string
-  /** Show definition text after label */
-  showText?: boolean
+  /**
+   * Progressive disclosure ordinal (1 = first time this citation appears, 2 = second, etc.).
+   * Controls label and definition text display:
+   *   1: full label ("Postulate 1") + definition text
+   *   2: full label, no definition text
+   *   3+: abbreviated key ("Post.1"), no definition text
+   * Defaults to 1 if omitted.
+   */
+  ordinal?: number
   /** Color for the citation block (state-aware: green for done steps, blue for current) */
   color?: string
   /** Font size for the citation text block */
@@ -31,20 +36,18 @@ interface StepCitationProps {
 /**
  * Renders the italic citation text block below a proof step's instruction.
  *
- * Example output:
- *   Post.1 — To draw a straight-line from any point to any point.
+ * Example output (ordinal 1):
+ *   Postulate 1 — To draw a straight-line from any point to any point.
  *
  * Label is bold non-italic. If citationKey is a foundation (Post/Def/C.N.) or
  * proposition (I.*), the label is wrapped in a link. Definition text follows
- * after an em-dash separator.
+ * after an em-dash separator on first appearance.
  *
- * Extracted from GuidedProofPanel's inline citation rendering for reuse in
- * both guided proof and playground ledger panels.
+ * Shared between GuidedProofPanel and playground ProofLedger.
  */
 export function StepCitation({
   citationKey,
-  label,
-  showText,
+  ordinal = 1,
   color,
   fontSize,
   citationFontSize,
@@ -56,7 +59,11 @@ export function StepCitation({
   isMobile,
 }: StepCitationProps) {
   const cit = CITATIONS[citationKey]
-  const displayLabel = label ?? citationKey
+
+  // Progressive disclosure: derive label and showText from ordinal
+  const displayLabel = ordinal <= 2 ? (cit?.label ?? citationKey) : citationKey
+  const showText = ordinal === 1
+
   const displayColor = color ?? '#7893ab'
 
   // Determine href: explicit prop takes precedence, then auto-detect

@@ -89,6 +89,17 @@ export function ProofLedger({
     [ledgerVersion, editedDescriptions]
   )
 
+  // Progressive disclosure ordinals: track how many times each citation key appears
+  const citationOrdinals = useMemo(() => {
+    const counts = new Map<string, number>()
+    return actionEntries.map((entry) => {
+      if (!entry.citation) return 1
+      const n = (counts.get(entry.citation) ?? 0) + 1
+      counts.set(entry.citation, n)
+      return n
+    })
+  }, [actionEntries])
+
   // Auto-scroll to bottom on new entries
   useEffect(() => {
     if (ledgerVersion > prevVersionRef.current && scrollRef.current) {
@@ -213,6 +224,7 @@ export function ProofLedger({
             index={i}
             stepNumber={i + 1}
             citation={entry.citation}
+            citationOrdinal={citationOrdinals[i]}
             markedDescription={entry.markedDescription}
             isEditing={editingIndex === i}
             isLoadingMarkup={markupLoadingIndex === i}

@@ -6,7 +6,7 @@ import type { PropositionDef, PropositionStep, ConstructionState } from '../type
 import type { ProofFact } from '../engine/facts'
 import { isAngleFact, distancePairKey, angleMeasureKey } from '../engine/facts'
 import type { DistancePair } from '../engine/facts'
-import { CITATIONS, citationDefFromFact } from '../engine/citations'
+import { citationDefFromFact } from '../engine/citations'
 import type { FactStore } from '../engine/factStore'
 import { getEqualDistances, getEqualAngles } from '../engine/factStore'
 import { MarkedText } from '@/lib/character/MarkedText'
@@ -392,27 +392,20 @@ export function GuidedProofPanel({
                     </div>
 
                     {/* Citation: progressive disclosure */}
-                    {step.citation &&
-                      (() => {
-                        const cit = CITATIONS[step.citation]
-                        const ord = citationOrdinals.get(`step-${i}`) ?? 1
-                        const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
-                        return (
-                          <StepCitation
-                            citationKey={step.citation}
-                            label={label}
-                            showText={ord === 1}
-                            color={isDone ? '#6b9b6b' : '#7893ab'}
-                            fontSize={proofFont.stepText}
-                            citationFontSize={proofFont.citation}
-                            lineHeight={isMobile ? 1.25 : 1.4}
-                            onPointerEnter={onCitationPointerEnter}
-                            onPointerLeave={onCitationPointerLeave}
-                            onPointerDown={onCitationPointerDown}
-                            isMobile={isMobile}
-                          />
-                        )
-                      })()}
+                    {step.citation && (
+                      <StepCitation
+                        citationKey={step.citation}
+                        ordinal={citationOrdinals.get(`step-${i}`) ?? 1}
+                        color={isDone ? '#6b9b6b' : '#7893ab'}
+                        fontSize={proofFont.stepText}
+                        citationFontSize={proofFont.citation}
+                        lineHeight={isMobile ? 1.25 : 1.4}
+                        onPointerEnter={onCitationPointerEnter}
+                        onPointerLeave={onCitationPointerLeave}
+                        onPointerDown={onCitationPointerDown}
+                        isMobile={isMobile}
+                      />
+                    )}
 
                     {/* Tutorial guidance for current step */}
                     {isCurrent && currentInstruction && (

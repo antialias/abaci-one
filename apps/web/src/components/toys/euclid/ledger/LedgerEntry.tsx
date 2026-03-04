@@ -24,6 +24,8 @@ interface LedgerEntryProps {
   index: number
   stepNumber?: number
   citation: string | null
+  /** Progressive disclosure ordinal — passed to StepCitation */
+  citationOrdinal?: number
   markedDescription: string
   isEditing: boolean
   isLoadingMarkup: boolean
@@ -42,6 +44,7 @@ interface LedgerEntryProps {
 export function LedgerEntry({
   stepNumber,
   citation,
+  citationOrdinal,
   markedDescription,
   isEditing,
   isLoadingMarkup,
@@ -195,7 +198,7 @@ export function LedgerEntry({
           {citation && (
             <StepCitation
               citationKey={citation}
-              showText
+              ordinal={citationOrdinal}
               color="#6b9b6b"
               fontSize={proofFont.stepText}
               citationFontSize={proofFont.citation}
