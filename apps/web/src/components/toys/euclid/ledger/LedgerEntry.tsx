@@ -32,6 +32,9 @@ interface LedgerEntryProps {
   onCancelEdit: () => void
   onRevert?: () => void
   renderEntity: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
+  onCitationPointerEnter?: (key: string, e: React.PointerEvent) => void
+  onCitationPointerLeave?: () => void
+  onCitationPointerDown?: (key: string, e: React.PointerEvent) => void
   isGiven?: boolean
   isMobile?: boolean
 }
@@ -47,6 +50,9 @@ export function LedgerEntry({
   onCancelEdit,
   onRevert,
   renderEntity,
+  onCitationPointerEnter,
+  onCitationPointerLeave,
+  onCitationPointerDown,
   isGiven,
   isMobile,
 }: LedgerEntryProps) {
@@ -194,6 +200,9 @@ export function LedgerEntry({
               fontSize={proofFont.stepText}
               citationFontSize={proofFont.citation}
               lineHeight={isMobile ? 1.25 : 1.4}
+              onPointerEnter={onCitationPointerEnter}
+              onPointerLeave={onCitationPointerLeave}
+              onPointerDown={onCitationPointerDown}
               isMobile={isMobile}
             />
           )}

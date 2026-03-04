@@ -4850,6 +4850,9 @@ function EuclidCanvasInner({
             pointLabels={getAllPoints(constructionRef.current).map((p) => p.label)}
             renderEntity={renderEntity}
             onRevertToAction={handleRevertToAction}
+            onCitationPointerEnter={handleCitationPointerEnter}
+            onCitationPointerLeave={handleCitationPointerLeave}
+            onCitationPointerDown={handleCitationPointerDown}
             isMobile={isMobile}
           />
         </div>

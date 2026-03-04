@@ -26,6 +26,9 @@ interface ProofLedgerProps {
   pointLabels: string[]
   renderEntity: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
   onRevertToAction?: (actionIndex: number) => void
+  onCitationPointerEnter?: (key: string, e: React.PointerEvent) => void
+  onCitationPointerLeave?: () => void
+  onCitationPointerDown?: (key: string, e: React.PointerEvent) => void
   isMobile: boolean
 }
 
@@ -37,6 +40,9 @@ export function ProofLedger({
   pointLabels,
   renderEntity,
   onRevertToAction,
+  onCitationPointerEnter,
+  onCitationPointerLeave,
+  onCitationPointerDown,
   isMobile,
 }: ProofLedgerProps) {
   const [editedDescriptions, setEditedDescriptions] = useState<Map<number, string>>(new Map())
@@ -215,6 +221,9 @@ export function ProofLedger({
             onCancelEdit={handleCancelEdit}
             onRevert={onRevertToAction ? () => onRevertToAction(i) : undefined}
             renderEntity={renderEntity}
+            onCitationPointerEnter={onCitationPointerEnter}
+            onCitationPointerLeave={onCitationPointerLeave}
+            onCitationPointerDown={onCitationPointerDown}
             isMobile={isMobile}
           />
         ))}
