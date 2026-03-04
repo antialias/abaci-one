@@ -61,21 +61,11 @@ import {
   addFact,
   addAngleFact,
   queryEquality,
-  getEqualDistances,
-  getEqualAngles,
   rebuildFactStore,
 } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { ProofFact } from './engine/facts'
-import {
-  distancePair,
-  distancePairKey,
-  angleMeasure,
-  angleMeasureKey,
-  isAngleFact,
-} from './engine/facts'
-import type { AngleMeasure } from './engine/facts'
-import type { DistancePair } from './engine/facts'
+import { distancePair, angleMeasure } from './engine/facts'
 import { deriveDef15Facts } from './engine/factDerivation'
 import { MACRO_REGISTRY } from './engine/macros'
 import { resolveSelector } from './engine/selectors'
@@ -85,7 +75,6 @@ import {
   tickMacroAnimation,
   getHiddenElementIds,
 } from './engine/macroExecution'
-import { CITATIONS, citationDefFromFact } from './engine/citations'
 import {
   renderGhostGeometry,
   getGhostFalloff,
@@ -106,7 +95,6 @@ import { useEuclidMusic } from './audio/useEuclidMusic'
 import type { UseEuclidMusicReturn } from './audio/useEuclidMusic'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { CitationPopover } from './foundations/CitationPopover'
-import { getFoundationHref } from './foundations/citationUtils'
 import { MacroToolPanel } from './MacroToolPanel'
 import { renderMacroPreview } from './render/renderMacroPreview'
 import { MACRO_PREVIEW_REGISTRY } from './engine/macroPreview'
@@ -116,6 +104,7 @@ import { getTeacherConfig } from './characters/registry'
 import { useConstructionNotifier } from './voice/useConstructionNotifier'
 import { ConstructionEventBus } from './voice/ConstructionEventBus'
 import { useHecklerTrigger, type HecklerStage } from './voice/useHecklerTrigger'
+import { DEFAULT_STALL_LINES } from '@/lib/voice/stallLines'
 import type { AttitudeId } from './voice/attitudes/types'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -123,6 +112,8 @@ import type { ChatCallState } from '@/lib/character/types'
 import { useEuclidChat } from './chat/useEuclidChat'
 import { DockedEuclidChat } from './chat/DockedEuclidChat'
 import { EuclidChatPanel } from './chat/EuclidChatPanel'
+import { GuidedProofPanel } from './proof/GuidedProofPanel'
+import type { CompletionResult, CompletionSegment } from './proof/types'
 import { latexToMarkers } from './chat/parseGeometricEntities'
 import type {
   GeometricEntityRef,
@@ -131,8 +122,6 @@ import type {
 } from './chat/parseGeometricEntities'
 import { isGeometricEntity, foundationToCitationKey } from './chat/parseGeometricEntities'
 import { useEuclidEntityRenderer } from './chat/useEuclidEntityRenderer'
-import { MarkedText } from '@/lib/character/MarkedText'
-import { EUCLID_ENTITY_MARKERS } from './euclidEntityMarkers'
 import { generateId } from '@/lib/character/useCharacterChat'
 import { renderChatHighlight } from './render/renderChatHighlight'
 
@@ -475,16 +464,6 @@ function rotatePoint(
  * Compute a citation group key for cross-type hover highlighting.
  * Facts from the same derivation (e.g., same I.4 triangle congruence) share a group.
  */
-function citGroupKey(fact: ProofFact): string | null {
-  const j = fact.justification
-  // Match triangle congruence pattern: △ABC ≅ △DEF
-  const triMatch = j.match(/△\w+ ≅ △\w+/)
-  if (triMatch) return `${fact.atStep}:tri:${triMatch[0]}`
-  // Group C.N.4 facts at the same step (superposition derives all conclusions at once)
-  if (fact.citation.type === 'cn4') return `${fact.atStep}:cn4`
-  return null
-}
-
 interface ProofSnapshot {
   construction: ConstructionState
   candidates: IntersectionCandidate[]
@@ -503,20 +482,6 @@ function captureSnapshot(
   // proofFacts is also replaced via proofFactsRef.current = [...].
   // ghostLayers is also replaced via ghostLayersRef.current = [...].
   return { construction, candidates, proofFacts, ghostLayers }
-}
-
-interface CompletionSegment {
-  label: string
-  dp: DistancePair
-}
-
-interface CompletionResult {
-  /** 'proven' when the fact store confirms the result, 'unproven' if it doesn't */
-  status: 'proven' | 'unproven'
-  /** The equality statement, e.g. "AF = BC" */
-  statement: string | null
-  /** Individual segments in the equality chain, for hover provenance */
-  segments: CompletionSegment[]
 }
 
 /**
@@ -819,15 +784,6 @@ function EuclidCanvasInner({
 }: EuclidCanvasProps & { onAttitudeChange?: (attitudeId: AttitudeId) => void }) {
   const isMobile = useIsMobile()
   const { isVisualDebugEnabled } = useVisualDebugSafe()
-  const proofFont = {
-    header: isMobile ? 11 : 14,
-    title: isMobile ? 11 : 14,
-    stepTitle: isMobile ? 11 : 13,
-    stepText: isMobile ? 10 : 12,
-    hint: isMobile ? 9 : 11,
-    citation: isMobile ? 9 : 10,
-    conclusion: isMobile ? 12 : 15,
-  }
   const propositionBase =
     propositionProp ??
     (propositionId === 0 ? PLAYGROUND_PROP : PROP_REGISTRY[propositionId]) ??
@@ -980,9 +936,6 @@ function EuclidCanvasInner({
   // Sync ceremony debug state → ref for RAF loop
   ceremonyDebugRef.current.speedMultiplier = ceremonySpeed
   ceremonyDebugRef.current.paused = ceremonyPaused
-  const [hoveredProofDp, setHoveredProofDp] = useState<DistancePair | null>(null)
-  const [hoveredFactId, setHoveredFactId] = useState<number | null>(null)
-  const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null)
   const [activeCitation, setActiveCitation] = useState<{ key: string; rect: DOMRect } | null>(null)
   const citationShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const citationHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -992,44 +945,6 @@ function EuclidCanvasInner({
   const lastSweepTimeRef = useRef<number>(0)
   const lastSweepCenterRef = useRef<string | null>(null)
 
-  // Combined highlight state: distance keys, angle keys, citation group
-  const highlightState = useMemo(() => {
-    const dpKeys = new Set<string>()
-    const angleKeys = new Set<string>()
-    let citGroup: string | null = null
-
-    // From conclusion bar segment hover (distance only)
-    if (hoveredProofDp) {
-      for (const dp of getEqualDistances(factStoreRef.current, hoveredProofDp)) {
-        dpKeys.add(distancePairKey(dp))
-      }
-    }
-
-    // From fact row hover
-    if (hoveredFactId != null) {
-      const fact = proofFacts.find((f) => f.id === hoveredFactId)
-      if (fact) {
-        if (isAngleFact(fact)) {
-          for (const am of getEqualAngles(factStoreRef.current, fact.left)) {
-            angleKeys.add(angleMeasureKey(am))
-          }
-        } else {
-          for (const dp of getEqualDistances(factStoreRef.current, fact.left)) {
-            dpKeys.add(distancePairKey(dp))
-          }
-        }
-        citGroup = citGroupKey(fact)
-      }
-    }
-
-    return {
-      dpKeys: dpKeys.size > 0 ? dpKeys : null,
-      angleKeys: angleKeys.size > 0 ? angleKeys : null,
-      citGroup,
-    }
-  }, [hoveredProofDp, hoveredFactId, proofFacts])
-
-  /** Check if a proof fact should be highlighted given the current hover state */
   // Citation popover handlers
   const handleCitationPointerEnter = useCallback(
     (key: string, e: React.PointerEvent) => {
@@ -1072,33 +987,6 @@ function EuclidCanvasInner({
       window.removeEventListener('pointercancel', dismiss)
     }
   }, [isMobile])
-
-  const isFactHighlighted = useCallback(
-    (fact: ProofFact): boolean => {
-      const { dpKeys, angleKeys, citGroup } = highlightState
-      // Distance equivalence class
-      if (!isAngleFact(fact) && dpKeys != null) {
-        if (dpKeys.has(distancePairKey(fact.left)) || dpKeys.has(distancePairKey(fact.right))) {
-          return true
-        }
-      }
-      // Angle equivalence class
-      if (isAngleFact(fact) && angleKeys != null) {
-        if (
-          angleKeys.has(angleMeasureKey(fact.left)) ||
-          angleKeys.has(angleMeasureKey(fact.right))
-        ) {
-          return true
-        }
-      }
-      // Citation group (cross-type: same derivation highlights related facts)
-      if (citGroup != null && citGroupKey(fact) === citGroup) {
-        return true
-      }
-      return false
-    },
-    [highlightState]
-  )
 
   // ── Macro tool handlers ──
 
@@ -1248,6 +1136,10 @@ function EuclidCanvasInner({
   const speakStepCorrection = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
   const speakStepCorrectionRef = useRef(speakStepCorrection)
   speakStepCorrectionRef.current = speakStepCorrection
+  // Heckler stall speaker — plays a TTS line while WebRTC finishes connecting
+  const speakHecklerStall = useTTS({ say: { en: '' }, tone: 'tutorial-instruction' })
+  const speakHecklerStallRef = useRef(speakHecklerStall)
+  speakHecklerStallRef.current = speakHecklerStall
   // ── Pending action ref — shared between notifier, voice, and chat ──
   const pendingActionRef = useRef<string | null>(null)
 
@@ -1366,19 +1258,55 @@ function EuclidCanvasInner({
   })
 
   // ── Heckler trigger — watches construction in playground for proposition patterns ──
-  const handleHecklerAnswer = useCallback(
+  const pendingActivateRef = useRef(false)
+  const stallTextRef = useRef<string | null>(null)
+  const hecklerPreDialRef = useRef(false)
+
+  const handleHecklerPreDial = useCallback(
     (_propId: number) => {
-      // Switch to heckler attitude and dial
       onAttitudeChange?.('heckler')
-      // Dial after a microtask to let the config update propagate
-      setTimeout(() => {
-        euclidVoice.dial()
-      }, 50)
+      hecklerPreDialRef.current = true
+      pendingActivateRef.current = false
+      stallTextRef.current = null
+      setTimeout(() => euclidVoice.dial(), 50)
     },
     [onAttitudeChange, euclidVoice.dial]
   )
-  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode, handleHecklerAnswer)
-  // Trigger heckler topology check whenever a construction event fires.
+
+  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode, handleHecklerPreDial)
+
+  const handleHecklerAnswer = useCallback(() => {
+    if (euclidVoice.state === 'preconnected') {
+      hecklerPreDialRef.current = false
+      euclidVoice.activateSession(stallTextRef.current ?? undefined)
+      stallTextRef.current = null
+    } else {
+      const lines = teacherConfig.stallLines ?? DEFAULT_STALL_LINES
+      const line = lines[Math.floor(Math.random() * lines.length)]
+      stallTextRef.current = line
+      speakHecklerStallRef.current({ say: { en: line } })
+      pendingActivateRef.current = true
+    }
+  }, [euclidVoice, teacherConfig.stallLines])
+
+  useEffect(() => {
+    if (euclidVoice.state === 'preconnected' && pendingActivateRef.current) {
+      pendingActivateRef.current = false
+      hecklerPreDialRef.current = false
+      euclidVoice.activateSession(stallTextRef.current ?? undefined)
+      stallTextRef.current = null
+    }
+  }, [euclidVoice.state, euclidVoice.activateSession])
+
+  const handleHecklerDismiss = useCallback(() => {
+    heckler.dismiss()
+    if (euclidVoice.state !== 'idle') euclidVoice.hangUp()
+    hecklerPreDialRef.current = false
+    pendingActivateRef.current = false
+    stallTextRef.current = null
+    onAttitudeChange?.('teacher')
+  }, [heckler, euclidVoice, onAttitudeChange])
+
   useEffect(() => {
     if (!playgroundMode) return
     return eventBusRef.current.subscribe(() => {
@@ -1464,28 +1392,32 @@ function EuclidCanvasInner({
     subtle: true,
   })
 
-  // Mute TTS narration while a voice call is active, and stop any playing audio
-  const euclidCallActive = euclidVoice.state !== 'idle'
+  // Mute TTS narration while a voice call is active, and stop any playing audio.
+  // During heckler pre-dial (ringing/preconnected), the call is invisible to the user.
+  const euclidCallVisible =
+    euclidVoice.state === 'active' ||
+    euclidVoice.state === 'ending' ||
+    euclidVoice.state === 'error' ||
+    (euclidVoice.state === 'ringing' && !hecklerPreDialRef.current)
   useEffect(() => {
-    if (euclidCallActive) stopAudio()
-  }, [euclidCallActive, stopAudio])
-  const narrationEnabled = disableAudio ? audioEnabled : euclidCallActive ? false : undefined
+    if (euclidCallVisible) stopAudio()
+  }, [euclidCallVisible, stopAudio])
+  const narrationEnabled = disableAudio ? audioEnabled : euclidCallVisible ? false : undefined
 
   // ── Build chatCallState from euclidVoice ──
-  const chatCallState: ChatCallState | undefined =
-    euclidVoice.state !== 'idle'
-      ? {
-          state: euclidVoice.state,
-          timeRemaining: euclidVoice.timeRemaining,
-          isSpeaking: euclidVoice.isSpeaking,
-          isThinking: euclidVoice.isThinking,
-          thinkingLabel: 'Consulting scrolls',
-          error: euclidVoice.error,
-          errorCode: euclidVoice.errorCode,
-          onHangUp: euclidVoice.hangUp,
-          onRetry: euclidVoice.dial,
-        }
-      : undefined
+  const chatCallState: ChatCallState | undefined = euclidCallVisible
+    ? {
+        state: euclidVoice.state,
+        timeRemaining: euclidVoice.timeRemaining,
+        isSpeaking: euclidVoice.isSpeaking,
+        isThinking: euclidVoice.isThinking,
+        thinkingLabel: 'Consulting scrolls',
+        error: euclidVoice.error,
+        errorCode: euclidVoice.errorCode,
+        onHangUp: euclidVoice.hangUp,
+        onRetry: euclidVoice.dial,
+      }
+    : undefined
 
   // Inject "Call ended" event when transitioning from active → ending
   const prevVoiceStateRef = useRef(euclidVoice.state)
@@ -2634,9 +2566,13 @@ function EuclidCanvasInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatMode])
 
-  // Auto-open docked chat when a call starts ringing
+  // Auto-open docked chat when a visible call starts (skip heckler pre-dial)
   useEffect(() => {
-    if (euclidVoice.state === 'ringing' && chatMode === 'closed') {
+    if (euclidVoice.state === 'active' && chatMode === 'closed') {
+      setChatMode('docked')
+    }
+    // Also open on normal ringing (non-heckler pre-dial)
+    if (euclidVoice.state === 'ringing' && !hecklerPreDialRef.current && chatMode === 'closed') {
       setChatMode('docked')
     }
   }, [euclidVoice.state, chatMode])
@@ -2658,6 +2594,46 @@ function EuclidCanvasInner({
     setLinkCopied(false)
     needsDrawRef.current = true
   }, [proposition.givenElements])
+
+  /** Revert the playground to the state just after a given action index.
+   *  Truncates postCompletionActions and replays the full construction. */
+  const handleRevertToAction = useCallback(
+    (actionIndex: number) => {
+      // Truncate actions: keep [0..actionIndex] (the clicked step stays)
+      postCompletionActionsRef.current = postCompletionActionsRef.current.slice(0, actionIndex + 1)
+
+      // Replay the entire construction with the truncated action list
+      const result = replayConstruction(
+        proposition.givenElements,
+        proposition.steps,
+        proposition,
+        postCompletionActionsRef.current
+      )
+
+      // Restore all state refs atomically
+      constructionRef.current = result.state
+      candidatesRef.current = result.candidates
+      ghostLayersRef.current = result.ghostLayers
+      proofFactsRef.current = result.proofFacts
+      setProofFacts(result.proofFacts)
+      factStoreRef.current = result.factStore
+
+      // Reset tool phases to idle
+      compassPhaseRef.current = { tag: 'idle' }
+      straightedgePhaseRef.current = { tag: 'idle' }
+      const idlePhase: MacroPhase = { tag: 'idle' }
+      macroPhaseRef.current = idlePhase
+      setMacroPhase(idlePhase)
+      macroAnimationRef.current = null
+      macroRevealRef.current = null
+
+      // Notify ledger to re-derive entries
+      eventBusRef.current.emit({ action: 'revert', shouldPrompt: false, reset: true })
+
+      needsDrawRef.current = true
+    },
+    [proposition]
+  )
 
   const handleSave = useCallback(async () => {
     if (saveState === 'saving') return
@@ -2784,11 +2760,9 @@ function EuclidCanvasInner({
       })
       setIsComplete(false)
 
-      // 6. Reset tutorial sub-step and hover state
+      // 6. Reset tutorial sub-step
       tutorialSubStepRef.current = 0
       setTutorialSubStep(0)
-      setHoveredProofDp(null)
-      setHoveredFactId(null)
       prevCompassTagRef.current = 'idle'
       prevStraightedgeTagRef.current = 'idle'
 
@@ -3987,57 +3961,6 @@ function EuclidCanvasInner({
     }
   }, [])
 
-  // ── Citation ordinals: track how many times each citation has appeared ──
-  // 1st: full label + axiom text. 2nd: full label only. 3rd+: abbreviation.
-  const citationOrdinals = useMemo(() => {
-    const counts = new Map<string, number>()
-    const ordinals = new Map<string, number>()
-
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i]
-      if (step.citation) {
-        const n = (counts.get(step.citation) ?? 0) + 1
-        counts.set(step.citation, n)
-        ordinals.set(`step-${i}`, n)
-      }
-      for (const fact of factsByStep.get(i) ?? []) {
-        const cd = citationDefFromFact(fact.citation)
-        if (cd) {
-          const n = (counts.get(cd.key) ?? 0) + 1
-          counts.set(cd.key, n)
-          ordinals.set(`fact-${fact.id}`, n)
-        }
-      }
-    }
-    for (const fact of factsByStep.get(steps.length) ?? []) {
-      const cd = citationDefFromFact(fact.citation)
-      if (cd) {
-        const n = (counts.get(cd.key) ?? 0) + 1
-        counts.set(cd.key, n)
-        ordinals.set(`fact-${fact.id}`, n)
-      }
-    }
-    return ordinals
-  }, [steps, factsByStep])
-
-  // Scroll the proof panel to keep current step visible.
-  // Uses container-local scrollTop to avoid scrollIntoView triggering page-level scroll.
-  const proofScrollRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const container = proofScrollRef.current
-    if (!container) return
-    const active = container.querySelector('[data-step-current="true"]') as HTMLElement | null
-    if (!active) return
-    const pad = 8
-    const top = active.offsetTop
-    const bottom = top + active.offsetHeight
-    if (top < container.scrollTop + pad) {
-      container.scrollTop = top - pad
-    } else if (bottom > container.scrollTop + container.clientHeight - pad) {
-      container.scrollTop = bottom - container.clientHeight + pad
-    }
-  }, [currentStep])
-
   return (
     <div
       data-component="euclid-canvas"
@@ -4896,8 +4819,8 @@ function EuclidCanvasInner({
             profileImage={smProfileImage}
             characterName={teacherConfig.definition.displayName}
             matchDescription={heckler.matchDescription}
-            onAnswer={heckler.answer}
-            onDismiss={heckler.dismiss}
+            onAnswer={handleHecklerAnswer}
+            onDismiss={handleHecklerDismiss}
           />
         )}
       </div>
@@ -4926,6 +4849,7 @@ function EuclidCanvasInner({
             eventBus={eventBusRef.current}
             pointLabels={getAllPoints(constructionRef.current).map((p) => p.label)}
             renderEntity={renderEntity}
+            onRevertToAction={handleRevertToAction}
             isMobile={isMobile}
           />
         </div>
@@ -4954,946 +4878,33 @@ function EuclidCanvasInner({
             boxShadow: isMobile ? '0 -10px 24px rgba(0,0,0,0.12)' : undefined,
           }}
         >
-          {/* Proposition header (hidden on mobile to save space) */}
-          {!isMobile && (
-            <div
-              data-element="proof-header"
-              style={{
-                padding: '16px 20px 12px',
-                borderBottom: '1px solid rgba(203, 213, 225, 0.5)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: 12,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: '#94a3b8',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: 4,
-                    fontFamily: 'system-ui, sans-serif',
-                  }}
-                >
-                  Proposition I.{proposition.id}
-                </div>
-                <div
-                  style={{
-                    fontSize: proofFont.header,
-                    fontWeight: 500,
-                    color: '#334155',
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {proposition.title}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Proof body — wraps steps + conclusion + completion dock, flex:1 so chat docks below */}
-          <div
-            data-element="proof-body"
-            style={{
-              flex: 1,
-              minHeight: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
+          <GuidedProofPanel
+            proposition={proposition}
+            steps={steps}
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            isComplete={isComplete}
+            proofFacts={proofFacts}
+            factsByStep={factsByStep}
+            completionResult={completionResult}
+            completionMeta={completionMeta}
+            currentInstruction={currentInstruction}
+            constructionState={constructionRef.current}
+            onRewindToStep={handleRewindToStep}
+            advanceObservation={advanceObservation}
+            onHoverMacroStep={(stepIdx) => {
+              hoveredMacroStepRef.current = stepIdx
+              needsDrawRef.current = true
             }}
-          >
-            {/* Scrollable steps + proof chain */}
-            <div
-              ref={proofScrollRef}
-              data-element="proof-steps"
-              style={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                padding: isMobile ? '10px 14px' : '12px 20px',
-              }}
-            >
-              {/* Given facts (atStep === -1, displayed before construction steps) */}
-              {(() => {
-                const givenFacts = factsByStep.get(-1) ?? []
-                if (givenFacts.length === 0) return null
-                return (
-                  <div data-element="given-facts" style={{ marginBottom: isMobile ? 8 : 16 }}>
-                    {givenFacts.map((fact) => {
-                      const highlighted = isFactHighlighted(fact)
-                      return (
-                        <div
-                          key={fact.id}
-                          onMouseEnter={() => setHoveredFactId(fact.id)}
-                          onMouseLeave={() => setHoveredFactId(null)}
-                          style={{
-                            fontSize: proofFont.stepText,
-                            marginBottom: 3,
-                            paddingLeft: 8,
-                            cursor: 'default',
-                            borderLeft: highlighted
-                              ? '2px solid #10b981'
-                              : '2px solid rgba(78, 121, 167, 0.2)',
-                            background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                            borderRadius: highlighted ? 2 : 0,
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <div>
-                            <span
-                              style={{
-                                color: '#4E79A7',
-                                fontWeight: 600,
-                                fontFamily: 'Georgia, serif',
-                              }}
-                            >
-                              {fact.statement}
-                            </span>
-                            <span
-                              style={{
-                                color: '#94a3b8',
-                                fontFamily: 'Georgia, serif',
-                                fontSize: proofFont.citation,
-                                fontWeight: 600,
-                                marginLeft: 6,
-                              }}
-                            >
-                              [Given]
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-              {steps.map((step, i) => {
-                const isDone = completedSteps[i]
-                const isCurrent = i === currentStep && !isComplete
-                const isFuture = !isDone && !isCurrent
-                const stepFacts = factsByStep.get(i) ?? []
-
-                const isHovered = isDone && hoveredStepIndex === i
-
-                return (
-                  <div
-                    key={i}
-                    data-element="proof-step"
-                    data-step-current={isCurrent ? 'true' : undefined}
-                    onClick={isDone ? () => handleRewindToStep(i) : undefined}
-                    onMouseEnter={
-                      isDone
-                        ? () => {
-                            setHoveredStepIndex(i)
-                            // Activate ghost geometry hover for macro steps
-                            if (step.expected.type === 'macro') {
-                              hoveredMacroStepRef.current = i
-                              needsDrawRef.current = true
-                            }
-                          }
-                        : undefined
-                    }
-                    onMouseLeave={
-                      isDone
-                        ? () => {
-                            setHoveredStepIndex(null)
-                            hoveredMacroStepRef.current = null
-                            needsDrawRef.current = true
-                          }
-                        : undefined
-                    }
-                    style={{
-                      marginBottom: isMobile ? 8 : 16,
-                      opacity: isFuture ? 0.35 : 1,
-                      transition: 'opacity 0.3s ease',
-                      cursor: isDone ? 'pointer' : undefined,
-                      borderRadius: 6,
-                      background: isHovered ? 'rgba(16, 185, 129, 0.06)' : undefined,
-                    }}
-                  >
-                    {/* Step header: number + instruction + citation */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                      }}
-                    >
-                      {/* Step indicator */}
-                      <div
-                        style={{
-                          width: isMobile ? 18 : 20,
-                          height: isMobile ? 18 : 20,
-                          borderRadius: '50%',
-                          flexShrink: 0,
-                          marginTop: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: isMobile ? 10 : 11,
-                          fontWeight: 700,
-                          fontFamily: 'system-ui, sans-serif',
-                          background: isDone
-                            ? isHovered
-                              ? '#0d9668'
-                              : '#10b981'
-                            : isCurrent
-                              ? '#4E79A7'
-                              : '#e2e8f0',
-                          color: isDone || isCurrent ? '#fff' : '#94a3b8',
-                          transition: 'all 0.3s ease',
-                        }}
-                      >
-                        {isDone ? (isHovered ? '\u21BA' : '\u2713') : i + 1}
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Formal instruction */}
-                        <div
-                          style={{
-                            fontSize: proofFont.stepTitle,
-                            fontWeight: isCurrent ? 600 : 400,
-                            color: isCurrent ? '#1e293b' : '#475569',
-                            fontFamily: 'Georgia, serif',
-                            lineHeight: isMobile ? 1.25 : 1.4,
-                          }}
-                        >
-                          <MarkedText
-                            text={step.instruction}
-                            markers={EUCLID_ENTITY_MARKERS}
-                            onHighlight={handleChatHighlight}
-                            renderEntity={renderEntity}
-                          />
-                        </div>
-
-                        {/* Citation: progressive disclosure */}
-                        {step.citation &&
-                          (() => {
-                            const cit = CITATIONS[step.citation]
-                            const ord = citationOrdinals.get(`step-${i}`) ?? 1
-                            const label = ord <= 2 ? (cit?.label ?? step.citation) : step.citation
-                            const showText = ord === 1
-                            const foundationHref = getFoundationHref(step.citation)
-                            return (
-                              <div
-                                data-element="citation-text"
-                                style={{
-                                  marginTop: 4,
-                                  fontSize: proofFont.stepText,
-                                  lineHeight: isMobile ? 1.25 : 1.4,
-                                  color: isDone ? '#6b9b6b' : '#7893ab',
-                                  fontFamily: 'Georgia, serif',
-                                  fontStyle: 'italic',
-                                }}
-                              >
-                                {foundationHref || step.citation.match(/^I\./) ? (
-                                  <a
-                                    href={
-                                      foundationHref ??
-                                      `/toys/euclid/${step.citation.replace('I.', '')}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onPointerEnter={(e) =>
-                                      handleCitationPointerEnter(step.citation!, e)
-                                    }
-                                    onPointerLeave={handleCitationPointerLeave}
-                                    onPointerDown={(e) =>
-                                      handleCitationPointerDown(step.citation!, e)
-                                    }
-                                    style={{
-                                      fontWeight: 600,
-                                      fontStyle: 'normal',
-                                      fontSize: proofFont.citation,
-                                      color: 'inherit',
-                                      textDecoration: 'underline',
-                                      textDecorationColor: 'rgba(16, 185, 129, 0.45)',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    {label}
-                                  </a>
-                                ) : (
-                                  <span
-                                    style={{
-                                      fontWeight: 600,
-                                      fontStyle: 'normal',
-                                      fontSize: proofFont.citation,
-                                    }}
-                                  >
-                                    {label}
-                                  </span>
-                                )}
-                                {showText && cit?.text && (
-                                  <span style={{ marginLeft: 4 }}>— {cit.text}</span>
-                                )}
-                              </div>
-                            )
-                          })()}
-
-                        {/* Tutorial guidance for current step */}
-                        {isCurrent && currentInstruction && (
-                          <div
-                            data-element="step-guidance"
-                            style={{
-                              marginTop: 6,
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              background: 'rgba(78, 121, 167, 0.06)',
-                              border: '1px solid rgba(78, 121, 167, 0.15)',
-                              fontSize: proofFont.stepText,
-                              color: '#4E79A7',
-                              fontFamily: 'system-ui, sans-serif',
-                              lineHeight: isMobile ? 1.25 : 1.4,
-                            }}
-                          >
-                            <MarkedText
-                              text={currentInstruction}
-                              markers={EUCLID_ENTITY_MARKERS}
-                              onHighlight={handleChatHighlight}
-                              renderEntity={renderEntitySubtle}
-                            />
-                          </div>
-                        )}
-
-                        {/* Observation step: Continue button */}
-                        {isCurrent && step.expected.type === 'observation' && (
-                          <button
-                            data-action="advance-observation"
-                            type="button"
-                            onClick={advanceObservation}
-                            style={{
-                              marginTop: 8,
-                              padding: '6px 20px',
-                              borderRadius: 16,
-                              border: 'none',
-                              background: '#4E79A7',
-                              color: '#fff',
-                              fontSize: proofFont.stepText,
-                              fontWeight: 600,
-                              fontFamily: 'Georgia, serif',
-                              cursor: 'pointer',
-                              letterSpacing: '0.02em',
-                            }}
-                          >
-                            Continue
-                          </button>
-                        )}
-
-                        {/* Facts derived at this step */}
-                        {stepFacts.length > 0 && (
-                          <div style={{ marginTop: 6 }}>
-                            {stepFacts.map((fact) => {
-                              const factCit = citationDefFromFact(fact.citation)
-                              const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
-                              const citLabel = factCit
-                                ? ord <= 2
-                                  ? factCit.label
-                                  : factCit.key
-                                : null
-                              const foundationHref = factCit ? getFoundationHref(factCit.key) : null
-                              const showText = ord === 1 && factCit
-                              const explanation = fact.justification.replace(
-                                /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
-                                ''
-                              )
-                              const highlighted = isFactHighlighted(fact)
-                              return (
-                                <div
-                                  key={fact.id}
-                                  onMouseEnter={() => setHoveredFactId(fact.id)}
-                                  onMouseLeave={() => setHoveredFactId(null)}
-                                  style={{
-                                    fontSize: proofFont.stepText,
-                                    marginBottom: 3,
-                                    paddingLeft: 8,
-                                    cursor: 'default',
-                                    borderLeft: highlighted
-                                      ? '2px solid #10b981'
-                                      : '2px solid rgba(78, 121, 167, 0.2)',
-                                    background: highlighted
-                                      ? 'rgba(16, 185, 129, 0.08)'
-                                      : 'transparent',
-                                    borderRadius: highlighted ? 2 : 0,
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                >
-                                  <div>
-                                    <span
-                                      style={{
-                                        color: '#4E79A7',
-                                        fontWeight: 600,
-                                        fontFamily: 'Georgia, serif',
-                                      }}
-                                    >
-                                      {fact.statement}
-                                    </span>
-                                    {citLabel && factCit && (
-                                      <>
-                                        {foundationHref || factCit.key.match(/^I\./) ? (
-                                          <a
-                                            href={
-                                              foundationHref ??
-                                              `/toys/euclid/${factCit.key.replace('I.', '')}`
-                                            }
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onPointerEnter={(e) =>
-                                              handleCitationPointerEnter(factCit.key, e)
-                                            }
-                                            onPointerLeave={handleCitationPointerLeave}
-                                            onPointerDown={(e) =>
-                                              handleCitationPointerDown(factCit.key, e)
-                                            }
-                                            style={{
-                                              color: '#94a3b8',
-                                              fontFamily: 'Georgia, serif',
-                                              fontSize: proofFont.citation,
-                                              fontWeight: 600,
-                                              marginLeft: 6,
-                                              textDecoration: 'underline',
-                                              textDecorationColor: 'rgba(16, 185, 129, 0.45)',
-                                              cursor: 'pointer',
-                                            }}
-                                          >
-                                            [{citLabel}]
-                                          </a>
-                                        ) : (
-                                          <span
-                                            style={{
-                                              color: '#94a3b8',
-                                              fontFamily: 'Georgia, serif',
-                                              fontSize: proofFont.citation,
-                                              fontWeight: 600,
-                                              marginLeft: 6,
-                                            }}
-                                          >
-                                            [{citLabel}]
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                  {showText && factCit?.text && (
-                                    <div
-                                      style={{
-                                        color: '#94a3b8',
-                                        fontStyle: 'italic',
-                                        fontFamily: 'Georgia, serif',
-                                        fontSize: proofFont.citation,
-                                        lineHeight: 1.3,
-                                        marginTop: 1,
-                                      }}
-                                    >
-                                      {factCit.text}
-                                    </div>
-                                  )}
-                                  <div
-                                    style={{
-                                      color: '#94a3b8',
-                                      fontStyle: 'italic',
-                                      fontFamily: 'Georgia, serif',
-                                      fontSize: proofFont.citation,
-                                      lineHeight: 1.3,
-                                      marginTop: 1,
-                                    }}
-                                  >
-                                    {explanation}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-
-              {/* Conclusion facts (atStep === steps.length) */}
-              {(() => {
-                const conclusionFacts = factsByStep.get(steps.length) ?? []
-                if (conclusionFacts.length === 0 && !isComplete) return null
-                return conclusionFacts.map((fact) => {
-                  const factCit = citationDefFromFact(fact.citation)
-                  const ord = citationOrdinals.get(`fact-${fact.id}`) ?? 1
-                  const citLabel = factCit ? (ord <= 2 ? factCit.label : factCit.key) : null
-                  const showText = ord === 1 && factCit
-                  const explanation = fact.justification.replace(
-                    /^(Def\.15|C\.N\.\d|I\.\d+):\s*/,
-                    ''
-                  )
-                  const foundationHref = factCit ? getFoundationHref(factCit.key) : null
-                  const highlighted = isFactHighlighted(fact)
-                  return (
-                    <div
-                      key={fact.id}
-                      onMouseEnter={() => setHoveredFactId(fact.id)}
-                      onMouseLeave={() => setHoveredFactId(null)}
-                      style={{
-                        fontSize: proofFont.stepText,
-                        marginBottom: 3,
-                        paddingLeft: 28,
-                        marginLeft: 0,
-                        cursor: 'default',
-                      }}
-                    >
-                      <div
-                        style={{
-                          paddingLeft: 8,
-                          borderLeft: highlighted
-                            ? '2px solid #10b981'
-                            : '2px solid rgba(16, 185, 129, 0.3)',
-                          background: highlighted ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                          borderRadius: highlighted ? 2 : 0,
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <div>
-                          <span
-                            style={{
-                              color: '#4E79A7',
-                              fontWeight: 600,
-                              fontFamily: 'Georgia, serif',
-                            }}
-                          >
-                            {fact.statement}
-                          </span>
-                          {citLabel && factCit && (
-                            <>
-                              {foundationHref || factCit.key.match(/^I\./) ? (
-                                <a
-                                  href={
-                                    foundationHref ??
-                                    `/toys/euclid/${factCit.key.replace('I.', '')}`
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onPointerEnter={(e) => handleCitationPointerEnter(factCit.key, e)}
-                                  onPointerLeave={handleCitationPointerLeave}
-                                  onPointerDown={(e) => handleCitationPointerDown(factCit.key, e)}
-                                  style={{
-                                    color: '#94a3b8',
-                                    fontFamily: 'Georgia, serif',
-                                    fontSize: proofFont.citation,
-                                    fontWeight: 600,
-                                    marginLeft: 6,
-                                    textDecoration: 'underline',
-                                    textDecorationColor: 'rgba(16, 185, 129, 0.45)',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  [{citLabel}]
-                                </a>
-                              ) : (
-                                <span
-                                  style={{
-                                    color: '#94a3b8',
-                                    fontFamily: 'Georgia, serif',
-                                    fontSize: proofFont.citation,
-                                    fontWeight: 600,
-                                    marginLeft: 6,
-                                  }}
-                                >
-                                  [{citLabel}]
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        {showText && factCit?.text && (
-                          <div
-                            style={{
-                              color: '#94a3b8',
-                              fontStyle: 'italic',
-                              fontFamily: 'Georgia, serif',
-                              fontSize: proofFont.citation,
-                              lineHeight: 1.3,
-                              marginTop: 1,
-                            }}
-                          >
-                            {factCit.text}
-                          </div>
-                        )}
-                        <div
-                          style={{
-                            color: '#94a3b8',
-                            fontStyle: 'italic',
-                            fontFamily: 'Georgia, serif',
-                            fontSize: proofFont.citation,
-                            lineHeight: 1.3,
-                            marginTop: 1,
-                          }}
-                        >
-                          {explanation}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
-              })()}
-            </div>
-
-            {/* Conclusion + completion (merged on mobile) */}
-            {isComplete && completionResult && (
-              <div
-                data-element="proof-conclusion"
-                style={{
-                  padding: isMobile ? '6px 10px' : '12px 20px',
-                  borderTop:
-                    completionResult.status === 'proven'
-                      ? '2px solid rgba(16, 185, 129, 0.4)'
-                      : '2px solid rgba(239, 68, 68, 0.4)',
-                  background:
-                    completionResult.status === 'proven'
-                      ? 'rgba(16, 185, 129, 0.06)'
-                      : 'rgba(239, 68, 68, 0.06)',
-                }}
-                onMouseLeave={() => {
-                  setHoveredProofDp(null)
-                  setHoveredFactId(null)
-                }}
-              >
-                {completionResult.status === 'proven' ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      gap: 6,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: 5,
-                        flexWrap: 'wrap',
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: '#10b981',
-                          fontWeight: 700,
-                          fontSize: proofFont.conclusion,
-                          fontFamily: 'Georgia, serif',
-                        }}
-                      >
-                        {'∴ '}
-                        {completionResult.segments.map((seg, idx) => (
-                          <span key={seg.label}>
-                            {idx > 0 && (
-                              <span style={{ fontWeight: 400, margin: '0 2px' }}> = </span>
-                            )}
-                            <span
-                              data-element="conclusion-segment"
-                              onMouseEnter={() => setHoveredProofDp(seg.dp)}
-                              style={{
-                                cursor: 'default',
-                                borderBottom: highlightState.dpKeys?.has(distancePairKey(seg.dp))
-                                  ? '2px solid #10b981'
-                                  : '2px solid transparent',
-                                transition: 'border-color 0.15s ease',
-                              }}
-                            >
-                              {seg.label}
-                            </span>
-                          </span>
-                        ))}
-                      </span>
-                      {(() => {
-                        // Render angle conclusion facts as interactive hoverable spans
-                        const conclusionAngleFacts = (factsByStep.get(steps.length) ?? []).filter(
-                          isAngleFact
-                        )
-                        // Dynamic conclusion takes precedence over static
-                        const conclusionText = proposition.computeTheoremConclusion
-                          ? proposition.computeTheoremConclusion(constructionRef.current)
-                          : proposition.theoremConclusion
-
-                        return (
-                          <>
-                            {conclusionAngleFacts.length > 0 && (
-                              <div
-                                style={{
-                                  color: '#10b981',
-                                  fontSize: proofFont.stepText,
-                                  fontFamily: 'Georgia, serif',
-                                  fontStyle: 'italic',
-                                  marginTop: 0,
-                                  width: '100%',
-                                }}
-                              >
-                                {conclusionAngleFacts.map((fact, idx) => (
-                                  <span key={fact.id}>
-                                    {idx > 0 && ', '}
-                                    <span
-                                      data-element="conclusion-angle"
-                                      onMouseEnter={() => setHoveredFactId(fact.id)}
-                                      onMouseLeave={() => setHoveredFactId(null)}
-                                      style={{
-                                        cursor: 'default',
-                                        borderBottom: isFactHighlighted(fact)
-                                          ? '2px solid #10b981'
-                                          : '2px solid transparent',
-                                        transition: 'border-color 0.15s ease',
-                                      }}
-                                    >
-                                      {fact.statement}
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {conclusionText && (
-                              <div
-                                style={{
-                                  color: '#10b981',
-                                  fontSize: proofFont.stepText,
-                                  fontFamily: 'Georgia, serif',
-                                  fontStyle: 'italic',
-                                  marginTop: 0,
-                                  width: '100%',
-                                  whiteSpace: 'pre-line',
-                                }}
-                              >
-                                {conclusionText}
-                              </div>
-                            )}
-                          </>
-                        )
-                      })()}
-                      <span
-                        style={{
-                          color: '#10b981',
-                          fontStyle: 'italic',
-                          fontSize: proofFont.stepText,
-                          fontWeight: 600,
-                          fontFamily: 'Georgia, serif',
-                          letterSpacing: '0.02em',
-                        }}
-                      >
-                        {proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}
-                      </span>
-                    </div>
-                    {isMobile && completionMeta?.nextPropId && (
-                      <button
-                        type="button"
-                        data-action="navigate-next"
-                        onClick={() => completionMeta.onNavigateNext(completionMeta.nextPropId!)}
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: proofFont.stepText,
-                          fontWeight: 600,
-                          fontFamily: 'Georgia, serif',
-                          background: '#10b981',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                          marginLeft: 'auto',
-                        }}
-                      >
-                        {completionMeta.unlocked.includes(completionMeta.nextPropId)
-                          ? `Unlocked: I.${completionMeta.nextPropId} →`
-                          : `Next: I.${completionMeta.nextPropId} →`}
-                      </button>
-                    )}
-                    {!isMobile && proposition.draggablePointIds && (
-                      <div
-                        data-element="drag-invitation"
-                        style={{
-                          marginTop: 10,
-                          padding: '8px 12px',
-                          borderRadius: 8,
-                          background: 'rgba(78, 121, 167, 0.08)',
-                          border: '1px solid rgba(78, 121, 167, 0.15)',
-                          color: '#4E79A7',
-                          fontSize: proofFont.stepText,
-                          fontFamily: 'system-ui, sans-serif',
-                          fontStyle: 'normal',
-                          fontWeight: 500,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        Now try dragging the points to see that it always works.
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <span
-                    style={{
-                      color: '#ef4444',
-                      fontWeight: 600,
-                      fontSize: proofFont.stepText,
-                      fontFamily: 'Georgia, serif',
-                    }}
-                  >
-                    Proof incomplete — could not establish equality for {completionResult.statement}
-                  </span>
-                )}
-                {isMobile &&
-                  completionMeta &&
-                  (completionResult.status !== 'proven' ||
-                    (completionMeta.unlocked.length > 0 &&
-                      !(
-                        completionMeta.nextPropId &&
-                        completionMeta.unlocked.length === 1 &&
-                        completionMeta.unlocked[0] === completionMeta.nextPropId
-                      ))) && (
-                    <div
-                      data-element="proof-completion-dock"
-                      style={{
-                        marginTop: 4,
-                        paddingTop: 4,
-                        borderTop: '1px dashed rgba(148, 163, 184, 0.5)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 10,
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        {completionResult.status !== 'proven' && (
-                          <div
-                            style={{
-                              color: '#b91c1c',
-                              fontFamily: 'Georgia, serif',
-                              fontSize: proofFont.stepText,
-                              fontWeight: 600,
-                            }}
-                          >
-                            Incomplete
-                          </div>
-                        )}
-                      </div>
-                      {completionMeta.unlocked.length > 0 &&
-                        !(
-                          completionMeta.nextPropId &&
-                          completionMeta.unlocked.length === 1 &&
-                          completionMeta.unlocked[0] === completionMeta.nextPropId
-                        ) && (
-                          <div
-                            style={{
-                              marginTop: 2,
-                              fontSize: proofFont.stepText,
-                              color: '#475569',
-                              fontFamily: 'Georgia, serif',
-                              lineHeight: isMobile ? 1.2 : 1.4,
-                            }}
-                          >
-                            <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
-                            {completionMeta.unlocked.map((id, i) => (
-                              <span key={id}>
-                                {i > 0 && ', '}
-                                <strong>I.{id}</strong>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-                  )}
-              </div>
-            )}
-
-            {!isMobile && isComplete && completionResult && completionMeta && (
-              <div
-                data-element="proof-completion-dock"
-                style={{
-                  padding: '10px 20px 12px',
-                  borderTop: '1px dashed rgba(148, 163, 184, 0.5)',
-                  background: 'rgba(248, 250, 252, 0.9)',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div
-                    style={{
-                      color: completionResult.status === 'proven' ? '#0f766e' : '#b91c1c',
-                      fontFamily: 'Georgia, serif',
-                      fontSize: proofFont.stepText,
-                      fontWeight: 600,
-                    }}
-                  >
-                    ✓ I.{proposition.id}{' '}
-                    {completionResult.status === 'proven'
-                      ? `Complete • ${proposition.kind === 'theorem' ? 'Q.E.D.' : 'Q.E.F.'}`
-                      : 'Incomplete'}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {completionMeta.nextPropId && (
-                      <button
-                        type="button"
-                        data-action="navigate-next"
-                        onClick={() => completionMeta.onNavigateNext(completionMeta.nextPropId!)}
-                        style={{
-                          padding: '5px 12px',
-                          fontSize: proofFont.stepText,
-                          fontWeight: 600,
-                          fontFamily: 'Georgia, serif',
-                          background: '#10b981',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {completionMeta.unlocked.includes(completionMeta.nextPropId)
-                          ? `Unlocked: I.${completionMeta.nextPropId} →`
-                          : `Next: I.${completionMeta.nextPropId} →`}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {completionMeta.unlocked.length > 0 &&
-                  !(
-                    completionMeta.nextPropId &&
-                    completionMeta.unlocked.length === 1 &&
-                    completionMeta.unlocked[0] === completionMeta.nextPropId
-                  ) && (
-                    <div
-                      style={{
-                        marginTop: 6,
-                        fontSize: proofFont.stepText,
-                        color: '#475569',
-                        fontFamily: 'Georgia, serif',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      <span style={{ color: '#10b981', fontWeight: 600 }}>Unlocked: </span>
-                      {completionMeta.unlocked.map((id, i) => (
-                        <span key={id}>
-                          {i > 0 && ', '}
-                          <strong>I.{id}</strong>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            )}
-          </div>
-          {/* /proof-body */}
-
+            renderEntity={renderEntity}
+            renderEntitySubtle={renderEntitySubtle}
+            onHighlight={handleChatHighlight}
+            onCitationPointerEnter={handleCitationPointerEnter}
+            onCitationPointerLeave={handleCitationPointerLeave}
+            onCitationPointerDown={handleCitationPointerDown}
+            factStoreRef={factStoreRef}
+            isMobile={isMobile}
+          />
           {/* Docked chat — desktop: below proof steps in the right column */}
           {!isMobile && (
             <DockedEuclidChat

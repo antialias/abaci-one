@@ -16,6 +16,7 @@ import type { EuclidEntityRef } from '../chat/parseGeometricEntities'
 import type { ConstructionEventBus } from '../voice/ConstructionEventBus'
 import { describeAction, describeGivenElement } from './describeAction'
 import { LedgerEntry } from './LedgerEntry'
+import { SECTION_LABEL_STYLE, EMPTY_STATE_STYLE } from '../proof/styles'
 
 interface ProofLedgerProps {
   constructionState: ConstructionState
@@ -24,6 +25,7 @@ interface ProofLedgerProps {
   eventBus: ConstructionEventBus
   pointLabels: string[]
   renderEntity: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
+  onRevertToAction?: (actionIndex: number) => void
   isMobile: boolean
 }
 
@@ -34,6 +36,7 @@ export function ProofLedger({
   eventBus,
   pointLabels,
   renderEntity,
+  onRevertToAction,
   isMobile,
 }: ProofLedgerProps) {
   const [editedDescriptions, setEditedDescriptions] = useState<Map<number, string>>(new Map())
@@ -153,18 +156,7 @@ export function ProofLedger({
           borderBottom: '1px solid rgba(203, 213, 225, 0.5)',
         }}
       >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#94a3b8',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          Construction Log
-        </span>
+        <span style={SECTION_LABEL_STYLE}>Construction Log</span>
       </div>
 
       {/* Scrollable entries */}
@@ -178,19 +170,7 @@ export function ProofLedger({
           padding: isMobile ? '8px 16px 12px' : '8px 20px 12px',
         }}
       >
-        {!hasEntries && (
-          <p
-            style={{
-              fontSize: 13,
-              fontFamily: 'Georgia, serif',
-              fontStyle: 'italic',
-              color: '#94a3b8',
-              margin: '8px 0',
-            }}
-          >
-            Use the tools to begin constructing.
-          </p>
-        )}
+        {!hasEntries && <p style={EMPTY_STATE_STYLE}>Use the tools to begin constructing.</p>}
 
         {/* Given elements */}
         {givenEntries.map((entry, i) => (
@@ -206,6 +186,7 @@ export function ProofLedger({
             onCancelEdit={() => {}}
             renderEntity={renderEntity}
             isGiven
+            isMobile={isMobile}
           />
         ))}
 
@@ -224,6 +205,7 @@ export function ProofLedger({
           <LedgerEntry
             key={`action-${i}`}
             index={i}
+            stepNumber={i + 1}
             citation={entry.citation}
             markedDescription={entry.markedDescription}
             isEditing={editingIndex === i}
@@ -231,7 +213,9 @@ export function ProofLedger({
             onStartEdit={() => handleStartEdit(i)}
             onCommitEdit={(text) => handleCommitEdit(i, text)}
             onCancelEdit={handleCancelEdit}
+            onRevert={onRevertToAction ? () => onRevertToAction(i) : undefined}
             renderEntity={renderEntity}
+            isMobile={isMobile}
           />
         ))}
       </div>
