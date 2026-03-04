@@ -587,65 +587,136 @@ interface EuclidCanvasProps {
   isAdmin?: boolean
 }
 
-// ── Heckler incoming call overlay ──
+// ── Unified heckler call overlay (watching → ringing → connecting → active) ──
 
-function HecklerIncomingOverlay({
-  stage,
+type HecklerPhase = 'watching' | 'ringing' | 'connecting' | 'active'
+
+function HecklerCallOverlay({
+  phase,
   profileImage,
+  lgProfileImage,
   characterName,
-  matchDescription: _matchDescription,
+  isSpeaking,
+  isThinking,
+  timeRemaining,
   onAnswer,
   onDismiss,
+  onHangUp,
 }: {
-  stage: HecklerStage
+  phase: HecklerPhase
   profileImage: string
+  lgProfileImage: string
   characterName: string
-  matchDescription: string | null
+  isSpeaking: boolean
+  isThinking: boolean
+  timeRemaining: number | null
   onAnswer: () => void
   onDismiss: () => void
+  onHangUp: () => void
 }) {
-  const isRinging = stage === 'ringing'
-  // Ring tone is now played by useVoiceCall's playRingTone() during pre-dial
+  const inCall = phase === 'connecting' || phase === 'active'
+
+  // ── Position: bottom-center for watching/ringing, bottom-left for in-call ──
+  const positionStyle: React.CSSProperties = inCall
+    ? { bottom: 24, left: 24, transform: 'none' }
+    : { bottom: 80, left: '50%', transform: 'translateX(-50%)' }
+
+  // ── Layout: horizontal bar for watching/ringing, vertical card for in-call ──
+  const layoutStyle: React.CSSProperties = inCall
+    ? {
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        padding: '16px 20px',
+        minWidth: 140,
+        backdropFilter: 'blur(12px)',
+      }
+    : {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: phase === 'ringing' ? '12px 20px' : '8px 16px',
+        minWidth: undefined,
+        backdropFilter: undefined,
+      }
+
+  const glowColor = isSpeaking
+    ? 'rgba(168, 85, 247, 0.7)'
+    : isThinking
+      ? 'rgba(168, 85, 247, 0.35)'
+      : 'transparent'
+  const glowShadow = isSpeaking
+    ? `0 0 0 3px ${glowColor}, 0 0 20px ${glowColor}`
+    : isThinking
+      ? `0 0 0 2px ${glowColor}, 0 0 12px ${glowColor}`
+      : '0 4px 16px rgba(0,0,0,0.3)'
+
+  // Avatar size: 72px in-call, 40px ringing, 32px watching
+  const avatarSize = inCall ? 72 : phase === 'ringing' ? 40 : 32
 
   return (
     <div
-      data-element="heckler-incoming"
+      data-element="heckler-call-overlay"
+      data-phase={phase}
       style={{
         position: 'absolute',
-        bottom: 80,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        ...positionStyle,
         display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: isRinging ? '12px 20px' : '8px 16px',
+        ...layoutStyle,
         borderRadius: 16,
-        background: isRinging ? 'rgba(15, 23, 42, 0.92)' : 'rgba(15, 23, 42, 0.6)',
+        background: phase === 'watching' ? 'rgba(15, 23, 42, 0.6)' : 'rgba(15, 23, 42, 0.92)',
         color: '#f8fafc',
         fontSize: 13,
         fontFamily: 'system-ui, sans-serif',
-        boxShadow: isRinging
+        boxShadow: phase === 'ringing'
           ? '0 8px 32px rgba(0,0,0,0.4), 0 0 0 2px rgba(78, 121, 167, 0.4)'
-          : '0 4px 16px rgba(0,0,0,0.2)',
+          : '0 8px 32px rgba(0,0,0,0.35)',
         zIndex: 20,
-        transition: 'all 0.3s ease',
-        opacity: stage === 'watching' ? 0.7 : 1,
-        animation: isRinging ? 'heckler-ring 1s ease-in-out infinite' : undefined,
-        pointerEvents: isRinging ? 'auto' : 'none',
+        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: phase === 'watching' ? 0.7 : 1,
+        animation: phase === 'ringing' ? 'heckler-ring 1s ease-in-out infinite' : undefined,
+        pointerEvents: phase === 'watching' ? 'none' : 'auto',
       }}
+      onPointerDown={inCall ? (e) => e.stopPropagation() : undefined}
     >
-      <img
-        src={profileImage}
-        alt={characterName}
+      {/* Avatar */}
+      <div
         style={{
-          width: isRinging ? 40 : 32,
-          height: isRinging ? 40 : 32,
+          width: avatarSize,
+          height: avatarSize,
           borderRadius: '50%',
-          objectFit: 'cover',
-          transition: 'all 0.3s ease',
+          overflow: 'hidden',
+          flexShrink: 0,
+          boxShadow: inCall ? glowShadow : undefined,
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          animation:
+            inCall && isSpeaking
+              ? 'hecklerSpeakingPulse 1.5s ease-in-out infinite'
+              : inCall && isThinking
+                ? 'hecklerSpeakingPulse 2.5s ease-in-out infinite'
+                : undefined,
         }}
-      />
-      {isRinging ? (
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={inCall ? lgProfileImage : profileImage}
+          alt={characterName}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
+      </div>
+
+      {/* ── Watching phase ── */}
+      {phase === 'watching' && (
+        <span style={{ fontSize: 12, opacity: 0.8 }}>{characterName} is watching...</span>
+      )}
+
+      {/* ── Ringing phase ── */}
+      {phase === 'ringing' && (
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <span style={{ fontWeight: 600, fontSize: 14 }}>{characterName} is calling...</span>
@@ -686,160 +757,117 @@ function HecklerIncomingOverlay({
             </button>
           </div>
         </>
-      ) : (
-        <span style={{ fontSize: 12, opacity: 0.8 }}>{characterName} is watching...</span>
       )}
-      {/* Keyframe animation for the ring effect */}
-      {isRinging && (
-        <style>{`
-          @keyframes heckler-ring {
-            0%, 100% { transform: translateX(-50%) scale(1); }
-            10% { transform: translateX(-50%) scale(1.02) rotate(-1deg); }
-            20% { transform: translateX(-50%) scale(1.02) rotate(1deg); }
-            30% { transform: translateX(-50%) scale(1.02) rotate(-1deg); }
-            40% { transform: translateX(-50%) scale(1); }
-          }
-        `}</style>
-      )}
-    </div>
-  )
-}
 
-// ── Heckler active call presence ──
-
-function HecklerCallPresence({
-  profileImage,
-  characterName,
-  isSpeaking,
-  isThinking,
-  timeRemaining,
-  onHangUp,
-}: {
-  profileImage: string
-  characterName: string
-  isSpeaking: boolean
-  isThinking: boolean
-  timeRemaining: number | null
-  onHangUp: () => void
-}) {
-  const glowColor = isSpeaking
-    ? 'rgba(168, 85, 247, 0.7)'
-    : isThinking
-      ? 'rgba(168, 85, 247, 0.35)'
-      : 'transparent'
-  const glowShadow = isSpeaking
-    ? `0 0 0 3px ${glowColor}, 0 0 20px ${glowColor}`
-    : isThinking
-      ? `0 0 0 2px ${glowColor}, 0 0 12px ${glowColor}`
-      : '0 4px 16px rgba(0,0,0,0.3)'
-
-  return (
-    <div
-      data-element="heckler-call-presence"
-      style={{
-        position: 'absolute',
-        bottom: 24,
-        left: 24,
-        zIndex: 18,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 10,
-        padding: '16px 20px',
-        borderRadius: 16,
-        background: 'rgba(15, 23, 42, 0.88)',
-        backdropFilter: 'blur(12px)',
-        color: '#f8fafc',
-        fontFamily: 'system-ui, sans-serif',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
-        animation: 'hecklerPresenceFadeIn 0.3s ease-out',
-        minWidth: 140,
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      {/* Avatar */}
-      <div
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: '50%',
-          overflow: 'hidden',
-          flexShrink: 0,
-          boxShadow: glowShadow,
-          transition: 'box-shadow 0.3s ease',
-          animation: isSpeaking
-            ? 'hecklerSpeakingPulse 1.5s ease-in-out infinite'
-            : isThinking
-              ? 'hecklerSpeakingPulse 2.5s ease-in-out infinite'
-              : undefined,
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={profileImage}
-          alt={characterName}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      </div>
-
-      {/* Name + waveform + timer row */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        {isThinking ? (
-          <span style={{ opacity: 0.7, fontSize: 12 }}>
-            Consulting scrolls<AnimatedDots />
-          </span>
-        ) : (
-          <>
+      {/* ── Connecting phase (stalling TTS) ── */}
+      {phase === 'connecting' && (
+        <>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
             <span>{characterName}</span>
             <MiniWaveform isDark active={isSpeaking} />
-            {timeRemaining != null && (
-              <span style={{ opacity: 0.6, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
-                {formatTime(timeRemaining)}
-              </span>
-            )}
-          </>
-        )}
-      </div>
+          </div>
+          <span style={{ opacity: 0.6, fontSize: 12 }}>
+            Connecting<AnimatedDots />
+          </span>
+          <button
+            data-action="end-heckler-call"
+            onClick={onHangUp}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              border: 'none',
+              borderRadius: 20,
+              padding: '8px 0',
+              background: 'rgba(239, 68, 68, 0.85)',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 1)'
+            }}
+            onMouseLeave={(e) => {
+              ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.85)'
+            }}
+          >
+            End Call
+          </button>
+        </>
+      )}
 
-      {/* End Call button */}
-      <button
-        data-action="end-heckler-call"
-        onClick={onHangUp}
-        onPointerDown={(e) => e.stopPropagation()}
-        style={{
-          width: '100%',
-          border: 'none',
-          borderRadius: 20,
-          padding: '8px 0',
-          background: 'rgba(239, 68, 68, 0.85)',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-          transition: 'background 0.15s',
-        }}
-        onMouseEnter={(e) => {
-          ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 1)'
-        }}
-        onMouseLeave={(e) => {
-          ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.85)'
-        }}
-      >
-        End Call
-      </button>
+      {/* ── Active phase ── */}
+      {phase === 'active' && (
+        <>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            {isThinking ? (
+              <span style={{ opacity: 0.7, fontSize: 12 }}>
+                Consulting scrolls<AnimatedDots />
+              </span>
+            ) : (
+              <>
+                <span>{characterName}</span>
+                <MiniWaveform isDark active={isSpeaking} />
+                {timeRemaining != null && (
+                  <span style={{ opacity: 0.6, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatTime(timeRemaining)}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          <button
+            data-action="end-heckler-call"
+            onClick={onHangUp}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              border: 'none',
+              borderRadius: 20,
+              padding: '8px 0',
+              background: 'rgba(239, 68, 68, 0.85)',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 1)'
+            }}
+            onMouseLeave={(e) => {
+              ;(e.target as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.85)'
+            }}
+          >
+            End Call
+          </button>
+        </>
+      )}
 
       <style>{`
-        @keyframes hecklerPresenceFadeIn {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes heckler-ring {
+          0%, 100% { transform: translateX(-50%) scale(1); }
+          10% { transform: translateX(-50%) scale(1.02) rotate(-1deg); }
+          20% { transform: translateX(-50%) scale(1.02) rotate(1deg); }
+          30% { transform: translateX(-50%) scale(1.02) rotate(-1deg); }
+          40% { transform: translateX(-50%) scale(1); }
         }
         @keyframes hecklerSpeakingPulse {
           0%, 100% { box-shadow: ${glowShadow}; }
@@ -5230,22 +5258,21 @@ function EuclidCanvasInner({
           />
         )}
 
-        {/* ── Heckler incoming call overlay (playground mode) ── */}
-        {playgroundMode && (heckler.stage === 'watching' || heckler.stage === 'ringing') && (
-          <HecklerIncomingOverlay
-            stage={heckler.stage}
+        {/* ── Heckler call overlay (watching → ringing → connecting → active) ── */}
+        {playgroundMode &&
+          (heckler.stage !== 'idle' || euclidCallVisible) && (
+          <HecklerCallOverlay
+            phase={
+              euclidCallVisible
+                ? 'active'
+                : heckler.stage === 'answered'
+                  ? 'connecting'
+                  : heckler.stage === 'ringing'
+                    ? 'ringing'
+                    : 'watching'
+            }
             profileImage={smProfileImage}
-            characterName={teacherConfig.definition.displayName}
-            matchDescription={heckler.matchDescription}
-            onAnswer={handleHecklerAnswer}
-            onDismiss={handleHecklerDismiss}
-          />
-        )}
-
-        {/* ── Heckler active call presence (playground mode) ── */}
-        {playgroundMode && euclidCallVisible && (
-          <HecklerCallPresence
-            profileImage={lgProfileImage}
+            lgProfileImage={lgProfileImage}
             characterName={
               teacherConfig.definition.nativeDisplayName ??
               teacherConfig.definition.displayName
@@ -5253,6 +5280,8 @@ function EuclidCanvasInner({
             isSpeaking={euclidVoice.isSpeaking}
             isThinking={euclidVoice.isThinking}
             timeRemaining={euclidVoice.timeRemaining}
+            onAnswer={handleHecklerAnswer}
+            onDismiss={handleHecklerDismiss}
             onHangUp={euclidVoice.hangUp}
           />
         )}
