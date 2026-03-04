@@ -5,7 +5,9 @@ import type { SlotResult } from '@/db/schema/session-plans'
 import {
   type AutoPauseStats,
   calculateAutoPauseInfo,
-  calculateProgressiveThresholds,
+  calculateComplexityScaledThresholds,
+  calculateNormalizedResponseTimeStats,
+  getComplexityCost,
   type PauseInfo,
   type ProgressiveThresholds,
 } from '../autoPauseCalculator'
@@ -435,7 +437,14 @@ export function showWrongAnswerSuggestion(
 
 export interface UseProgressiveAssistanceInputs {
   /** Current attempt (null when loading) */
-  attempt: { startTime: number; accumulatedPauseMs: number; problem: { terms: number[] } } | null
+  attempt: {
+    startTime: number
+    accumulatedPauseMs: number
+    problem: {
+      terms: number[]
+      generationTrace?: { totalComplexityCost?: number }
+    }
+  } | null
   /** Historical results for threshold calculation */
   results: SlotResult[]
   /** Number of terms in current problem */
@@ -449,6 +458,8 @@ export interface UseProgressiveAssistanceInputs {
 export interface UseProgressiveAssistanceReturn {
   machineState: AssistanceMachineState
   showWrongAnswerSuggestion: boolean
+  /** True when complexity cost data is missing from the current problem */
+  complexityCostMissing: boolean
   onDigitTyped: () => void
   onWrongAnswer: () => void
   onHelpEntered: () => void
@@ -470,9 +481,16 @@ export function useProgressiveAssistance(
     []
   )
 
+  // Derive complexity cost of the current problem
+  const currentProblemCost = useMemo(
+    () => (attempt ? getComplexityCost(attempt.problem) : null),
+    [attempt?.problem?.generationTrace?.totalComplexityCost] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const complexityCostMissing = attempt !== null && currentProblemCost === null
+
   // Calculate initial thresholds
   const initialThresholds = useMemo(
-    () => calculateProgressiveThresholds(results, timing),
+    () => calculateComplexityScaledThresholds(results, timing, currentProblemCost),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [] // Only on mount — thresholds update via UPDATE_THRESHOLDS event
   )
@@ -486,15 +504,19 @@ export function useProgressiveAssistance(
     ),
   })
 
-  // Update thresholds when results change
+  // Update thresholds when results change or current problem cost changes
   const prevResultsLengthRef = useRef(results.length)
+  const prevCostRef = useRef(currentProblemCost)
   useEffect(() => {
-    if (results.length !== prevResultsLengthRef.current) {
+    const resultsChanged = results.length !== prevResultsLengthRef.current
+    const costChanged = currentProblemCost !== prevCostRef.current
+    if (resultsChanged || costChanged) {
       prevResultsLengthRef.current = results.length
-      const newThresholds = calculateProgressiveThresholds(results, timing)
+      prevCostRef.current = currentProblemCost
+      const newThresholds = calculateComplexityScaledThresholds(results, timing, currentProblemCost)
       dispatch({ type: 'UPDATE_THRESHOLDS', thresholds: newThresholds })
     }
-  }, [results, timing])
+  }, [results, timing, currentProblemCost])
 
   // Refs for stable callbacks that need current values
   const onAutoPauseRef = useRef(onAutoPause)
@@ -527,7 +549,15 @@ export function useProgressiveAssistance(
         targetMs = thresholds.autoPauseMs
         timerEventFactory = () => {
           const { stats } = calculateAutoPauseInfo(results)
-          return { type: 'TIMER_AUTO_PAUSE', autoPauseStats: stats }
+          // Enrich stats with complexity info
+          const normStats = calculateNormalizedResponseTimeStats(results)
+          const enrichedStats: AutoPauseStats = {
+            ...stats,
+            meanPerUnitMs: normStats.count >= 1 ? normStats.meanPerUnit : undefined,
+            currentProblemCost: currentProblemCost ?? undefined,
+            complexityCostMissing,
+          }
+          return { type: 'TIMER_AUTO_PAUSE', autoPauseStats: enrichedStats }
         }
         break
       }
@@ -565,6 +595,8 @@ export function useProgressiveAssistance(
     isPaused,
     attempt,
     results,
+    currentProblemCost,
+    complexityCostMissing,
   ])
 
   // Move-on grace timer
@@ -634,6 +666,7 @@ export function useProgressiveAssistance(
   return {
     machineState: machine,
     showWrongAnswerSuggestion: showWrongAnswerSuggestionValue,
+    complexityCostMissing,
     onDigitTyped,
     onWrongAnswer,
     onHelpEntered,

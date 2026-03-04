@@ -6,7 +6,11 @@
 import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
 import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import { buildCompletionContext, EUCLID_HECKLER_THINKING_METAPHORS, EUCLID_HECKLER_STALL_LINES } from '../euclidCharacter'
+import {
+  buildCompletionContext,
+  EUCLID_HECKLER_THINKING_METAPHORS,
+  EUCLID_HECKLER_STALL_LINES,
+} from '../euclidCharacter'
 import { createGreetingMode } from '../voice/modes/greetingMode'
 import { createConversingMode } from '../voice/modes/conversingMode'
 import { createThinkingMode } from '../voice/modes/thinkingMode'

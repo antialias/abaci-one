@@ -4,15 +4,12 @@ import { useRef, useEffect, useCallback, useState } from 'react'
 import type {
   EuclidViewportState,
   ConstructionState,
-  CompassPhase,
-  StraightedgePhase,
   MacroPhase,
   ActiveTool,
   IntersectionCandidate,
   ExpectedAction,
   GhostLayer,
   SerializedAction,
-  ExtendPhase,
 } from '../types'
 import { BYRNE_CYCLE } from '../types'
 import type { SerializedElement, SerializedEqualityFact } from '../types'
@@ -24,6 +21,7 @@ import { renderEqualityMarks } from '../render/renderEqualityMarks'
 import { renderGhostGeometry } from '../render/renderGhostGeometry'
 import { useEuclidTouch } from '../interaction/useEuclidTouch'
 import { useToolInteraction } from '../interaction/useToolInteraction'
+import { useToolPhaseManager } from '../interaction/useToolPhaseManager'
 import { createFactStore } from '../engine/factStore'
 import type { FactStore } from '../engine/factStore'
 import { deriveDef15Facts } from '../engine/factDerivation'
@@ -498,18 +496,21 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
     nextLabelIndex: 0,
     nextColorIndex: 0,
   })
-  const compassPhaseRef = useRef<CompassPhase>({ tag: 'idle' })
-  const straightedgePhaseRef = useRef<StraightedgePhase>({ tag: 'idle' })
+  const toolPhases = useToolPhaseManager('compass')
+  const {
+    compassPhaseRef,
+    straightedgePhaseRef,
+    extendPhaseRef,
+    macroPhaseRef,
+    snappedPointIdRef,
+    activeToolRef,
+    pointerCapturedRef,
+    needsDrawRef,
+  } = toolPhases
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null)
-  const snappedPointIdRef = useRef<string | null>(null)
   const candidatesRef = useRef<IntersectionCandidate[]>([])
-  const pointerCapturedRef = useRef(false)
-  const activeToolRef = useRef<ActiveTool>('compass')
   const expectedActionRef = useRef<ExpectedAction | null>(null)
-  const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
-  const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
-  const extendPhaseRef = useRef<ExtendPhase>({ tag: 'idle' })
   const extendPreviewRef = useRef<{ x: number; y: number } | null>(null)
   const factStoreRef = useRef<FactStore>(createFactStore())
   const panZoomDisabledRef = useRef(false) // pan/zoom enabled by default in editor
@@ -548,8 +549,7 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
   useEffect(() => {
     if (editor.mode === 'given-setup') {
       // Auto-select point tool in given-setup mode
-      setActiveTool('point')
-      activeToolRef.current = 'point'
+      toolPhases.selectTool('point')
     }
     needsDrawRef.current = true
   }, [editor.mode])
@@ -578,38 +578,28 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
 
       // Map citation to tool
       if (citation === 'Post.1') {
-        setActiveTool('straightedge')
-        activeToolRef.current = 'straightedge'
+        toolPhases.selectTool('straightedge')
         expectedActionRef.current = null
       } else if (citation === 'Post.2') {
-        setActiveTool('straightedge')
-        activeToolRef.current = 'straightedge'
+        toolPhases.selectTool('straightedge')
         extendPhaseRef.current = { tag: 'idle' }
         extendPreviewRef.current = null
         expectedActionRef.current = null
       } else if (citation === 'Post.3') {
-        setActiveTool('compass')
-        activeToolRef.current = 'compass'
+        toolPhases.selectTool('compass')
         expectedActionRef.current = null
       } else if (citation.startsWith('I.')) {
         const propId = parseInt(citation.slice(2), 10)
         if (MACRO_REGISTRY[propId]) {
-          setActiveTool('macro')
-          activeToolRef.current = 'macro'
+          toolPhases.selectTool('macro')
           expectedActionRef.current = null
-          const macroDef = MACRO_REGISTRY[propId]
-          macroPhaseRef.current = {
-            tag: 'selecting',
-            propId,
-            inputs: macroDef.inputs,
-            selectedPointIds: [],
-          }
+          toolPhases.enterMacroSelecting(propId, MACRO_REGISTRY[propId].inputs)
         }
       }
       // Def.*, C.N.*, Given → fact-only, no tool change needed
-      requestDraw()
+      toolPhases.requestDraw()
     },
-    [editor, requestDraw]
+    [editor, toolPhases]
   )
 
   // ── Commit handlers (editor versions) ──
@@ -805,11 +795,9 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
     [editor, requestDraw]
   )
 
-  // ── Macro phase change sync ──
-
-  const handleMacroPhaseChange = useCallback((phase: MacroPhase) => {
-    setMacroPhase(phase)
-  }, [])
+  // Wire callback slots for the editor
+  toolPhases.onMacroPhaseSync = setMacroPhase
+  toolPhases.onActiveToolSync = setActiveTool
 
   // ── Export handlers ──
 
@@ -839,25 +827,17 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
     canvasRef,
     viewportRef,
     constructionRef,
-    compassPhaseRef,
-    straightedgePhaseRef,
     pointerWorldRef,
-    snappedPointIdRef,
     candidatesRef,
-    pointerCapturedRef,
-    activeToolRef,
-    needsDrawRef,
+    toolPhases,
     onCommitCircle: handleCommitCircle,
     onCommitSegment: handleCommitSegment,
     onMarkIntersection: handleMarkIntersection,
     expectedActionRef,
-    macroPhaseRef,
     onCommitMacro: handleCommitMacro,
     onPlaceFreePoint: handlePlaceFreePoint,
-    onMacroPhaseChange: handleMacroPhaseChange,
     requiresCitationRef: citationRequiredRef,
     onToolBlocked: handleToolBlocked,
-    extendPhaseRef,
     extendPreviewRef,
     onCommitExtend: useCallback(
       (baseId: string, throughId: string, projX: number, projY: number) => {
@@ -1161,23 +1141,22 @@ export function EuclidEditor({ propositionId }: EuclidEditorProps) {
   // ── Tool change handler ──
   const handleToolChange = useCallback(
     (tool: ActiveTool) => {
-      setActiveTool(tool)
-      activeToolRef.current = tool
-      // Reset phases on tool change
+      toolPhases.selectTool(tool)
+      // Reset construction-tool phases on tool change
       compassPhaseRef.current = { tag: 'idle' }
       straightedgePhaseRef.current = { tag: 'idle' }
       extendPhaseRef.current = { tag: 'idle' }
       extendPreviewRef.current = null
       if (tool !== 'macro') {
-        macroPhaseRef.current = { tag: 'idle' }
+        toolPhases.setMacroPhase({ tag: 'idle' })
       }
+      toolPhases.requestDraw()
       // Clear custom cursor when switching away from move
       if (tool !== 'move' && canvasRef.current) {
         canvasRef.current.style.cursor = ''
       }
-      requestDraw()
     },
-    [requestDraw]
+    [toolPhases, compassPhaseRef, straightedgePhaseRef, extendPhaseRef]
   )
 
   return (

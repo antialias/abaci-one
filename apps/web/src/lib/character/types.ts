@@ -60,7 +60,7 @@ export interface ChatMessage {
  */
 /** Voice call state projected into the chat panel. */
 export interface ChatCallState {
-  state: 'idle' | 'ringing' | 'active' | 'ending' | 'error'
+  state: 'idle' | 'ringing' | 'preconnected' | 'active' | 'ending' | 'error'
   timeRemaining: number | null
   isSpeaking: boolean
   isThinking: boolean

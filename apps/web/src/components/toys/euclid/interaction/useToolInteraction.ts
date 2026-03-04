@@ -2,15 +2,12 @@ import { useEffect, useCallback } from 'react'
 import type {
   ConstructionState,
   EuclidViewportState,
-  CompassPhase,
-  StraightedgePhase,
   ExtendPhase,
-  MacroPhase,
-  ActiveTool,
   IntersectionCandidate,
   ConstructionElement,
   ExpectedAction,
 } from '../types'
+import type { ToolPhaseManager } from './useToolPhaseManager'
 import { getPoint } from '../engine/constructionState'
 import { MACRO_REGISTRY, wouldViolateDistinctness } from '../engine/macros'
 import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
@@ -23,24 +20,16 @@ interface UseToolInteractionOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   viewportRef: React.MutableRefObject<EuclidViewportState>
   constructionRef: React.MutableRefObject<ConstructionState>
-  compassPhaseRef: React.MutableRefObject<CompassPhase>
-  straightedgePhaseRef: React.MutableRefObject<StraightedgePhase>
   pointerWorldRef: React.MutableRefObject<{ x: number; y: number } | null>
-  snappedPointIdRef: React.MutableRefObject<string | null>
   candidatesRef: React.MutableRefObject<IntersectionCandidate[]>
-  pointerCapturedRef: React.MutableRefObject<boolean>
-  activeToolRef: React.MutableRefObject<ActiveTool>
-  needsDrawRef: React.MutableRefObject<boolean>
+  toolPhases: ToolPhaseManager
   onCommitCircle: (centerId: string, radiusPointId: string) => void
   onCommitSegment: (fromId: string, toId: string) => void
   onMarkIntersection: (candidate: IntersectionCandidate) => void
   /** In guided mode, the current step's expected action. Used to constrain
    *  which points the compass/straightedge snaps to during drag. */
   expectedActionRef: React.MutableRefObject<ExpectedAction | null>
-  macroPhaseRef: React.MutableRefObject<MacroPhase>
   onCommitMacro: (propId: number, inputPointIds: string[]) => void
-  /** Called whenever macroPhaseRef.current changes, so React state can stay in sync. */
-  onMacroPhaseChange?: (phase: MacroPhase) => void
   /** Called when the 'point' tool places a free point at a world coordinate. */
   onPlaceFreePoint?: (worldX: number, worldY: number) => void
   /** When true, all tool gestures are disabled (e.g. during given-setup mode in editor) */
@@ -50,14 +39,10 @@ interface UseToolInteractionOptions {
   requiresCitationRef?: React.MutableRefObject<boolean>
   /** Called when a tool gesture is blocked because requiresCitationRef is true. */
   onToolBlocked?: () => void
-  /** Extend tool phase ref — caller creates, hook modifies on pointer events. */
-  extendPhaseRef?: React.MutableRefObject<ExtendPhase>
   /** Extend tool preview position — updated on pointermove in 'extending' phase. */
   extendPreviewRef?: React.MutableRefObject<{ x: number; y: number } | null>
   /** Called when the extend tool commits (3rd click). */
   onCommitExtend?: (baseId: string, throughId: string, projX: number, projY: number) => void
-  /** Called on discrete tool phase transitions (compass idle→center-set, etc.) */
-  onToolStateChange?: () => void
 }
 
 function normalizeAngle(angle: number): number {
@@ -163,29 +148,20 @@ export function useToolInteraction({
   canvasRef,
   viewportRef,
   constructionRef,
-  compassPhaseRef,
-  straightedgePhaseRef,
   pointerWorldRef,
-  snappedPointIdRef,
   candidatesRef,
-  pointerCapturedRef,
-  activeToolRef,
-  needsDrawRef,
+  toolPhases,
   onCommitCircle,
   onCommitSegment,
   onMarkIntersection,
   expectedActionRef,
-  macroPhaseRef,
   onCommitMacro,
-  onMacroPhaseChange,
   onPlaceFreePoint,
   disabledRef,
   requiresCitationRef,
   onToolBlocked,
-  extendPhaseRef,
   extendPreviewRef,
   onCommitExtend,
-  onToolStateChange,
 }: UseToolInteractionOptions) {
   const getCanvasRect = useCallback(() => {
     return canvasRef.current?.getBoundingClientRect()
@@ -194,6 +170,18 @@ export function useToolInteraction({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    // Destructure refs from manager for direct use in hot path
+    const {
+      compassPhaseRef,
+      straightedgePhaseRef,
+      extendPhaseRef,
+      macroPhaseRef,
+      snappedPointIdRef,
+      activeToolRef,
+      pointerCapturedRef,
+      needsDrawRef,
+    } = toolPhases
 
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
@@ -304,7 +292,7 @@ export function useToolInteraction({
           e.stopPropagation()
           pointerCapturedRef.current = true
           compassPhaseRef.current = { tag: 'center-set', centerId: hitPt.id }
-          onToolStateChange?.()
+          toolPhases.notifyPhaseChange()
           requestDraw()
           return
         }
@@ -316,7 +304,7 @@ export function useToolInteraction({
           e.stopPropagation()
           pointerCapturedRef.current = true
           straightedgePhaseRef.current = { tag: 'from-set', fromId: hitPt.id }
-          onToolStateChange?.()
+          toolPhases.notifyPhaseChange()
           requestDraw()
           return
         }
@@ -362,17 +350,13 @@ export function useToolInteraction({
           const newSelected = [...macro.selectedPointIds, hitPt.id]
           if (newSelected.length >= macro.inputs.length) {
             // All inputs collected — commit
-            const idlePhase: MacroPhase = { tag: 'idle' }
-            macroPhaseRef.current = idlePhase
-            onMacroPhaseChange?.(idlePhase)
+            toolPhases.setMacroPhase({ tag: 'idle' })
             pointerCapturedRef.current = false
             onCommitMacro(macro.propId, newSelected)
-            onToolStateChange?.()
+            toolPhases.notifyPhaseChange()
           } else {
-            const nextPhase: MacroPhase = { ...macro, selectedPointIds: newSelected }
-            macroPhaseRef.current = nextPhase
-            onMacroPhaseChange?.(nextPhase)
-            onToolStateChange?.()
+            toolPhases.setMacroPhase({ ...macro, selectedPointIds: newSelected })
+            toolPhases.notifyPhaseChange()
           }
           requestDraw()
           return
@@ -428,7 +412,7 @@ export function useToolInteraction({
               radius,
               enterTime: performance.now(),
             }
-            onToolStateChange?.()
+            toolPhases.notifyPhaseChange()
           }
         }
         requestDraw()
@@ -463,7 +447,7 @@ export function useToolInteraction({
                 radius: Math.sqrt(dx * dx + dy * dy),
                 enterTime: performance.now(),
               }
-              onToolStateChange?.()
+              toolPhases.notifyPhaseChange()
             }
           }
           // Still on a point — don't start sweeping yet
@@ -476,7 +460,7 @@ export function useToolInteraction({
         const dwellTime = performance.now() - compass.enterTime
         if (dwellTime < 150) {
           compassPhaseRef.current = { tag: 'center-set', centerId: compass.centerId }
-          onToolStateChange?.()
+          toolPhases.notifyPhaseChange()
           requestDraw()
           return
         }
@@ -499,7 +483,7 @@ export function useToolInteraction({
           // Capture pointer so sweep continues even when cursor leaves canvas
           // (e.g. moves over proof-steps panel or outside the viewport)
           canvas!.setPointerCapture(e.pointerId)
-          onToolStateChange?.()
+          toolPhases.notifyPhaseChange()
         }
         requestDraw()
         return
@@ -530,7 +514,7 @@ export function useToolInteraction({
             onCommitCircle(compass.centerId, compass.radiusPointId)
             compassPhaseRef.current = { tag: 'idle' }
             pointerCapturedRef.current = false
-            onToolStateChange?.()
+            toolPhases.notifyPhaseChange()
           }
         }
         requestDraw()
@@ -567,11 +551,11 @@ export function useToolInteraction({
           const prevSnapped = snappedPointIdRef.current
           snappedPointIdRef.current = edgeHit?.id ?? null
           if (snappedPointIdRef.current !== prevSnapped) {
-            onToolStateChange?.()
+            toolPhases.notifyPhaseChange()
           }
 
           // ── Extend detection (Post.2): drag along existing segment past its endpoint ──
-          if (extendPhaseRef && extendPreviewRef) {
+          if (extendPreviewRef) {
             const ext = detectExtendMode(
               fromId,
               world,
@@ -592,7 +576,7 @@ export function useToolInteraction({
                   baseId: ext.baseId,
                   throughId: ext.throughId,
                 }
-                onToolStateChange?.()
+                toolPhases.notifyPhaseChange()
               }
               extendPreviewRef.current = { x: ext.projX, y: ext.projY }
               // Clear snap — we're in extend mode, not targeting a point
@@ -616,7 +600,7 @@ export function useToolInteraction({
                       // Cursor pulled back — exit extend mode
                       extendPhaseRef.current = { tag: 'idle' }
                       extendPreviewRef.current = null
-                      onToolStateChange?.()
+                      toolPhases.notifyPhaseChange()
                     } else {
                       // Still close to or past through-point — stay in extend, update preview
                       const t = Math.max(0, projOnRay - throughDist)
@@ -662,7 +646,7 @@ export function useToolInteraction({
         }
         compassPhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
-        onToolStateChange?.()
+        toolPhases.notifyPhaseChange()
         requestDraw()
         return
       }
@@ -670,7 +654,7 @@ export function useToolInteraction({
       // ── Straightedge: commit segment OR extend ──
       if (straightedge.tag === 'from-set') {
         // Check extend mode first — if extending, commit the extension
-        if (extendPhaseRef?.current.tag === 'extending' && extendPreviewRef) {
+        if (extendPhaseRef.current.tag === 'extending' && extendPreviewRef) {
           const preview = extendPreviewRef.current
           if (preview) {
             onCommitExtend?.(
@@ -684,7 +668,7 @@ export function useToolInteraction({
           extendPreviewRef.current = null
           straightedgePhaseRef.current = { tag: 'idle' }
           pointerCapturedRef.current = false
-          onToolStateChange?.()
+          toolPhases.notifyPhaseChange()
           requestDraw()
           return
         }
@@ -719,11 +703,11 @@ export function useToolInteraction({
           }
         }
         // Clear extend state in case it was partially set
-        if (extendPhaseRef) extendPhaseRef.current = { tag: 'idle' }
+        extendPhaseRef.current = { tag: 'idle' }
         if (extendPreviewRef) extendPreviewRef.current = null
         straightedgePhaseRef.current = { tag: 'idle' }
         pointerCapturedRef.current = false
-        onToolStateChange?.()
+        toolPhases.notifyPhaseChange()
         requestDraw()
         return
       }
@@ -743,17 +727,11 @@ export function useToolInteraction({
       } catch {
         /* not captured */
       }
-      compassPhaseRef.current = { tag: 'idle' }
-      straightedgePhaseRef.current = { tag: 'idle' }
-      if (extendPhaseRef) extendPhaseRef.current = { tag: 'idle' }
+      toolPhases.resetAll()
       if (extendPreviewRef) extendPreviewRef.current = null
-      const idlePhase: MacroPhase = { tag: 'idle' }
-      macroPhaseRef.current = idlePhase
-      onMacroPhaseChange?.(idlePhase)
-      pointerCapturedRef.current = false
       pointerWorldRef.current = null
       snappedPointIdRef.current = null
-      onToolStateChange?.()
+      toolPhases.notifyPhaseChange()
       requestDraw()
     }
 
@@ -773,27 +751,20 @@ export function useToolInteraction({
     canvasRef,
     viewportRef,
     constructionRef,
-    compassPhaseRef,
-    straightedgePhaseRef,
     pointerWorldRef,
-    snappedPointIdRef,
     candidatesRef,
-    pointerCapturedRef,
-    activeToolRef,
-    needsDrawRef,
+    toolPhases,
     onCommitCircle,
     onCommitSegment,
     onMarkIntersection,
     expectedActionRef,
-    macroPhaseRef,
     onCommitMacro,
-    onMacroPhaseChange,
     onPlaceFreePoint,
     getCanvasRect,
+    disabledRef,
+    requiresCitationRef,
     onToolBlocked,
-    extendPhaseRef,
     extendPreviewRef,
     onCommitExtend,
-    onToolStateChange,
   ])
 }

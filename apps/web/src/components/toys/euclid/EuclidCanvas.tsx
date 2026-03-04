@@ -4,9 +4,6 @@ import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import type {
   EuclidViewportState,
   ConstructionState,
-  CompassPhase,
-  StraightedgePhase,
-  ExtendPhase,
   MacroPhase,
   ActiveTool,
   IntersectionCandidate,
@@ -43,6 +40,7 @@ import { renderTutorialHint } from './render/renderTutorialHint'
 import { renderEqualityMarks } from './render/renderEqualityMarks'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
 import { useToolInteraction } from './interaction/useToolInteraction'
+import { useToolPhaseManager } from './interaction/useToolPhaseManager'
 import { useDragGivenPoints } from './interaction/useDragGivenPoints'
 import type { PostCompletionAction, ReplayResult } from './engine/replayConstruction'
 import { replayConstruction } from './engine/replayConstruction'
@@ -602,52 +600,7 @@ function HecklerIncomingOverlay({
   onDismiss: () => void
 }) {
   const isRinging = stage === 'ringing'
-
-  // Play a repeating ring tone when in ringing state
-  useEffect(() => {
-    if (!isRinging) return
-
-    let stopped = false
-    const ctx = new AudioContext()
-    const master = ctx.createGain()
-    master.connect(ctx.destination)
-
-    function playRing() {
-      if (stopped) return
-      const osc = ctx.createOscillator()
-      const g = ctx.createGain()
-      osc.connect(g)
-      g.connect(master)
-      osc.frequency.value = 440
-      osc.type = 'sine'
-      g.gain.setValueAtTime(0.15, ctx.currentTime)
-      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.3)
-
-      const osc2 = ctx.createOscillator()
-      const g2 = ctx.createGain()
-      osc2.connect(g2)
-      g2.connect(master)
-      osc2.frequency.value = 554
-      osc2.type = 'sine'
-      g2.gain.setValueAtTime(0, ctx.currentTime + 0.35)
-      g2.gain.setValueAtTime(0.15, ctx.currentTime + 0.35)
-      g2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65)
-      osc2.start(ctx.currentTime + 0.35)
-      osc2.stop(ctx.currentTime + 0.65)
-    }
-
-    playRing()
-    const interval = setInterval(playRing, 2500)
-
-    return () => {
-      stopped = true
-      clearInterval(interval)
-      master.disconnect()
-      ctx.close().catch(() => {})
-    }
-  }, [isRinging])
+  // Ring tone is now played by useVoiceCall's playRingTone() during pre-dial
 
   return (
     <div
@@ -846,20 +799,23 @@ function EuclidCanvasInner({
   // Core refs (performance-critical, not React state)
   const viewportRef = useRef<EuclidViewportState>(computeInitialViewport(proposition.givenElements))
   const constructionRef = useRef<ConstructionState>(initializeGiven(proposition.givenElements))
-  const compassPhaseRef = useRef<CompassPhase>({ tag: 'idle' })
-  const straightedgePhaseRef = useRef<StraightedgePhase>({ tag: 'idle' })
-  const pointerWorldRef = useRef<{ x: number; y: number } | null>(null)
-  const snappedPointIdRef = useRef<string | null>(null)
-  const candidatesRef = useRef<IntersectionCandidate[]>([])
-  const pointerCapturedRef = useRef(false)
-  const activeToolRef = useRef<ActiveTool>(
+  const toolPhases = useToolPhaseManager(
     steps[0]?.expected.type === 'observation' ? 'move' : (steps[0]?.tool ?? 'compass')
   )
+  const {
+    compassPhaseRef,
+    straightedgePhaseRef,
+    extendPhaseRef,
+    macroPhaseRef,
+    snappedPointIdRef,
+    activeToolRef,
+    pointerCapturedRef,
+    needsDrawRef,
+  } = toolPhases
+  const pointerWorldRef = useRef<{ x: number; y: number } | null>(null)
+  const candidatesRef = useRef<IntersectionCandidate[]>([])
   const expectedActionRef = useRef<ExpectedAction | null>(steps[0]?.expected ?? null)
-  const needsDrawRef = useRef(true)
   const rafRef = useRef<number>(0)
-  const macroPhaseRef = useRef<MacroPhase>({ tag: 'idle' })
-  const extendPhaseRef = useRef<ExtendPhase>({ tag: 'idle' })
   const extendPreviewRef = useRef<{ x: number; y: number } | null>(null)
   const [macroPhase, setMacroPhase] = useState<MacroPhase>({ tag: 'idle' })
   const macroAnimationRef = useRef<MacroAnimation | null>(null)
@@ -897,6 +853,11 @@ function EuclidCanvasInner({
   } | null>(null)
   const correctionActiveRef = useRef(false)
   const wrongMoveCounterRef = useRef(0)
+  // Forward ref for notifier — populated after useConstructionNotifier returns.
+  // Used by updateToolPreview (defined earlier than the notifier hook).
+  const notifierForwardRef = useRef<{ notifyToolState: () => void }>({
+    notifyToolState: () => {},
+  })
 
   // React state for UI
   const [activeTool, setActiveTool] = useState<ActiveTool>(
@@ -1000,12 +961,10 @@ function EuclidCanvasInner({
     return expected.type === 'macro' ? expected.propId : null
   }, [currentStep, steps])
 
-  const handleMacroPhaseChange = useCallback((phase: MacroPhase) => {
-    setMacroPhase(phase)
-  }, [])
-
-  /** Recompute the ledger tool preview from current ref state (playground mode only). */
+  /** Recompute the ledger tool preview from current ref state (playground mode only).
+   *  Also notifies voice of tool state changes (consolidates two callbacks). */
   const updateToolPreview = useCallback(() => {
+    notifierForwardRef.current.notifyToolState()
     if (!playgroundMode) return
     setToolPreview(
       describeToolPhase(
@@ -1021,41 +980,30 @@ function EuclidCanvasInner({
     )
   }, [playgroundMode])
 
+  // Wire callback slots on the tool phase manager
+  toolPhases.onMacroPhaseSync = setMacroPhase
+  toolPhases.onActiveToolSync = setActiveTool
+  toolPhases.onPhaseChange = updateToolPreview
+
   const handleMacroToolClick = useCallback(() => {
-    setActiveTool('macro')
-    activeToolRef.current = 'macro'
+    toolPhases.selectTool('macro')
     // If there's only one macro available, skip the picker and go straight to selecting
     if (availableMacros.length === 1) {
       const { propId, def } = availableMacros[0]
-      const phase: MacroPhase = {
-        tag: 'selecting',
-        propId,
-        inputs: def.inputs,
-        selectedPointIds: [],
-      }
-      macroPhaseRef.current = phase
-      setMacroPhase(phase)
-      updateToolPreview()
+      toolPhases.enterMacroSelecting(propId, def.inputs)
     } else {
-      const choosingPhase: MacroPhase = { tag: 'choosing' }
-      macroPhaseRef.current = choosingPhase
-      setMacroPhase(choosingPhase)
+      toolPhases.enterMacroChoosing()
     }
-  }, [availableMacros, updateToolPreview])
+  }, [availableMacros, toolPhases])
 
-  const handleMacroPropositionSelect = useCallback((propId: number) => {
-    const macroDef = MACRO_REGISTRY[propId]
-    if (!macroDef) return
-    const phase: MacroPhase = {
-      tag: 'selecting',
-      propId,
-      inputs: macroDef.inputs,
-      selectedPointIds: [],
-    }
-    macroPhaseRef.current = phase
-    setMacroPhase(phase)
-    updateToolPreview()
-  }, [updateToolPreview])
+  const handleMacroPropositionSelect = useCallback(
+    (propId: number) => {
+      const macroDef = MACRO_REGISTRY[propId]
+      if (!macroDef) return
+      toolPhases.enterMacroSelecting(propId, macroDef.inputs)
+    },
+    [toolPhases]
+  )
 
   // ── Completion result derived from proof ──
   const completionResult = useMemo(() => {
@@ -1278,6 +1226,9 @@ function EuclidCanvasInner({
     setTrailingEvent: euclidChat.setTrailingEvent,
     eventBus: eventBusRef.current,
   })
+
+  // Wire the forward ref so updateToolPreview (defined before this hook) can call notifyToolState
+  notifierForwardRef.current = notifierRef.current
 
   // ── Heckler trigger — watches construction in playground for proposition patterns ──
   const pendingActivateRef = useRef(false)
@@ -1757,8 +1708,7 @@ function EuclidCanvasInner({
     // Observation steps need no tool — stay on move
     if (stepDef.expected.type === 'observation') {
       if (activeTool !== 'move') {
-        setActiveTool('move')
-        activeToolRef.current = 'move'
+        toolPhases.selectTool('move')
       }
       return
     }
@@ -1771,20 +1721,12 @@ function EuclidCanvasInner({
     if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
       const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
       if (macroDef) {
-        const phase: MacroPhase = {
-          tag: 'selecting',
-          propId: stepDef.expected.propId,
-          inputs: macroDef.inputs,
-          selectedPointIds: [],
-        }
-        macroPhaseRef.current = phase
-        setMacroPhase(phase)
+        toolPhases.enterMacroSelecting(stepDef.expected.propId, macroDef.inputs)
       }
     }
 
     if (stepDef.tool !== activeTool) {
-      setActiveTool(stepDef.tool)
-      activeToolRef.current = stepDef.tool
+      toolPhases.selectTool(stepDef.tool)
 
       const toolLabels: Record<string, string> = {
         compass: 'Compass',
@@ -1868,10 +1810,7 @@ function EuclidCanvasInner({
       macroRevealRef.current = null
 
       // Reset tool phases so no in-flight gesture survives the revert
-      compassPhaseRef.current = { tag: 'idle' }
-      straightedgePhaseRef.current = { tag: 'idle' }
-      macroPhaseRef.current = { tag: 'idle' }
-      setMacroPhase({ tag: 'idle' })
+      toolPhases.resetAll()
 
       // Lock all tool interactions for the duration of the correction narration
       correctionActiveRef.current = true
@@ -1887,14 +1826,7 @@ function EuclidCanvasInner({
         if (stepDef?.tool === 'macro' && stepDef.expected.type === 'macro') {
           const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
           if (macroDef) {
-            const phase: MacroPhase = {
-              tag: 'selecting',
-              propId: stepDef.expected.propId,
-              inputs: macroDef.inputs,
-              selectedPointIds: [],
-            }
-            macroPhaseRef.current = phase
-            setMacroPhase(phase)
+            toolPhases.enterMacroSelecting(stepDef.expected.propId, macroDef.inputs)
           }
         }
       }
@@ -1910,7 +1842,7 @@ function EuclidCanvasInner({
 
       requestDraw()
     },
-    [steps, requestDraw, setProofFacts, setMacroPhase]
+    [steps, requestDraw, setProofFacts, toolPhases]
   )
 
   // ── Step validation (uses ref to avoid stale closures) ──
@@ -2352,19 +2284,9 @@ function EuclidCanvasInner({
         macroAnimationRef.current = createMacroAnimation(result)
         if (availableMacros.length === 1) {
           const { propId: mpId, def: mDef } = availableMacros[0]
-          const nextPhase: MacroPhase = {
-            tag: 'selecting',
-            propId: mpId,
-            inputs: mDef.inputs,
-            selectedPointIds: [],
-          }
-          macroPhaseRef.current = nextPhase
-          setMacroPhase(nextPhase)
-          updateToolPreview()
+          toolPhases.enterMacroSelecting(mpId, mDef.inputs)
         } else {
-          const choosingPhase: MacroPhase = { tag: 'choosing' }
-          macroPhaseRef.current = choosingPhase
-          setMacroPhase(choosingPhase)
+          toolPhases.enterMacroChoosing()
         }
         requestDraw()
         musicRef.current?.notifyChange()
@@ -2624,16 +2546,11 @@ function EuclidCanvasInner({
     eventBusRef.current.emit({ action: 'reset', shouldPrompt: false, reset: true })
     ghostLayersRef.current = []
     proofFactsRef.current = []
-    compassPhaseRef.current = { tag: 'idle' }
-    straightedgePhaseRef.current = { tag: 'idle' }
-    const idlePhase: MacroPhase = { tag: 'idle' }
-    macroPhaseRef.current = idlePhase
-    setMacroPhase(idlePhase)
+    toolPhases.resetAll()
     setSaveState('idle')
     setSavedId(null)
     setLinkCopied(false)
-    needsDrawRef.current = true
-  }, [proposition.givenElements])
+  }, [proposition.givenElements, toolPhases])
 
   /** Revert the playground to the state just after a given action index.
    *  Truncates postCompletionActions and replays the full construction. */
@@ -2659,20 +2576,14 @@ function EuclidCanvasInner({
       factStoreRef.current = result.factStore
 
       // Reset tool phases to idle
-      compassPhaseRef.current = { tag: 'idle' }
-      straightedgePhaseRef.current = { tag: 'idle' }
-      const idlePhase: MacroPhase = { tag: 'idle' }
-      macroPhaseRef.current = idlePhase
-      setMacroPhase(idlePhase)
+      toolPhases.resetAll()
       macroAnimationRef.current = null
       macroRevealRef.current = null
 
       // Notify ledger to re-derive entries
       eventBusRef.current.emit({ action: 'revert', shouldPrompt: false, reset: true })
-
-      needsDrawRef.current = true
     },
-    [proposition]
+    [proposition, toolPhases]
   )
 
   const handleSave = useCallback(async () => {
@@ -2764,14 +2675,10 @@ function EuclidCanvasInner({
       if (!snapshot) return
 
       // 1. Reset all tool phases to idle, clear animations
-      compassPhaseRef.current = { tag: 'idle' }
-      straightedgePhaseRef.current = { tag: 'idle' }
-      macroPhaseRef.current = { tag: 'idle' }
-      setMacroPhase({ tag: 'idle' })
+      toolPhases.resetAll()
       macroAnimationRef.current = null
       macroRevealRef.current = null
       superpositionFlashRef.current = null
-      pointerCapturedRef.current = false
       postCompletionActionsRef.current = []
 
       // 2. Restore construction, candidates, proofFacts, ghostLayers from snapshot
@@ -2811,21 +2718,13 @@ function EuclidCanvasInner({
         const stepDef = steps[targetStep]
         expectedActionRef.current = stepDef.expected
         if (stepDef.tool !== null) {
-          setActiveTool(stepDef.tool)
-          activeToolRef.current = stepDef.tool
+          toolPhases.selectTool(stepDef.tool)
 
           // In guided mode, auto-select the required proposition on rewind
           if (stepDef.tool === 'macro' && stepDef.expected.type === 'macro') {
             const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
             if (macroDef) {
-              const phase: MacroPhase = {
-                tag: 'selecting',
-                propId: stepDef.expected.propId,
-                inputs: macroDef.inputs,
-                selectedPointIds: [],
-              }
-              macroPhaseRef.current = phase
-              setMacroPhase(phase)
+              toolPhases.enterMacroSelecting(stepDef.expected.propId, macroDef.inputs)
             }
           }
         }
@@ -2835,7 +2734,7 @@ function EuclidCanvasInner({
 
       requestDraw()
     },
-    [steps, requestDraw]
+    [steps, requestDraw, toolPhases]
   )
 
   // ── Auto-complete: execute each step on 250ms interval ──
@@ -2955,30 +2854,18 @@ function EuclidCanvasInner({
     canvasRef,
     viewportRef,
     constructionRef,
-    compassPhaseRef,
-    straightedgePhaseRef,
     pointerWorldRef,
-    snappedPointIdRef,
     candidatesRef,
-    pointerCapturedRef,
-    activeToolRef,
-    needsDrawRef,
+    toolPhases,
     onCommitCircle: handleCommitCircle,
     onCommitSegment: handleCommitSegment,
     onMarkIntersection: handleMarkIntersection,
     expectedActionRef,
-    macroPhaseRef,
     onCommitMacro: handleCommitMacro,
-    onMacroPhaseChange: handleMacroPhaseChange,
     onPlaceFreePoint: handlePlaceFreePoint,
     disabledRef: correctionActiveRef,
-    extendPhaseRef,
     extendPreviewRef,
     onCommitExtend: handleCommitExtend,
-    onToolStateChange: useCallback(() => {
-      notifierRef.current.notifyToolState()
-      updateToolPreview()
-    }, [updateToolPreview]),
   })
 
   // ── Hook up drag interaction for post-completion play ──

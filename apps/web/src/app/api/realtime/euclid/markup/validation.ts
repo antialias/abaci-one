@@ -1,5 +1,4 @@
-export const MARKER_RE =
-  /\{(seg|tri|ang|pt|def|post|cn|prop):[A-Za-z0-9]+(?:\|[^}]*)?\}/g
+export const MARKER_RE = /\{(seg|tri|ang|pt|def|post|cn|prop):[A-Za-z0-9]+(?:\|[^}]*)?\}/g
 
 /** Tokenize text into lowercase words (letters/digits/apostrophes). */
 export function words(text: string): string[] {
@@ -36,10 +35,7 @@ export function wordOverlapRatio(original: string, stripped: string): number {
  * Strict validation: remaining text (markers stripped) must be a subsequence of
  * the original, and at least 50% of the original length. Use for user-written text.
  */
-export function validateMarkupStrict(
-  original: string,
-  marked: string
-): boolean {
+export function validateMarkupStrict(original: string, marked: string): boolean {
   let remaining = marked.replace(MARKER_RE, '')
 
   // Remaining text should be a significant portion of the original

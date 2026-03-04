@@ -18,11 +18,7 @@
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
-import {
-  MARKER_RE,
-  validateMarkupStrict,
-  wordOverlapRatio,
-} from './validation'
+import { MARKER_RE, validateMarkupStrict, wordOverlapRatio } from './validation'
 
 /** Minimum word overlap ratio for non-strict (sanity check) mode. */
 const SANITY_OVERLAP_THRESHOLD = 0.6

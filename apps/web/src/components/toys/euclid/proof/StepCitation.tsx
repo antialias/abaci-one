@@ -69,7 +69,8 @@ export function StepCitation({
   // Determine href: explicit prop takes precedence, then auto-detect
   const foundationHref = getFoundationHref(citationKey)
   const isProposition = /^I\./.test(citationKey)
-  const autoHref = foundationHref ?? (isProposition ? `/toys/euclid/${citationKey.replace('I.', '')}` : null)
+  const autoHref =
+    foundationHref ?? (isProposition ? `/toys/euclid/${citationKey.replace('I.', '')}` : null)
   const href = hrefProp !== undefined ? hrefProp : autoHref
   const isLink = href != null
 

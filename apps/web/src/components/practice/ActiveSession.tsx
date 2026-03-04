@@ -603,7 +603,10 @@ export function ActiveSession({
       ? {
           startTime: attempt.startTime,
           accumulatedPauseMs: attempt.accumulatedPauseMs,
-          problem: { terms: attempt.problem.terms },
+          problem: {
+            terms: attempt.problem.terms,
+            generationTrace: attempt.problem.generationTrace,
+          },
         }
       : null,
     results: plan.results,
@@ -2370,6 +2373,35 @@ export function ActiveSession({
 
       {/* Assistance debug panel - shows state machine state when visual debug mode is on */}
       <AssistanceDebugPanel machineState={assistance.machineState} />
+
+      {/* Warning when complexity cost data is missing — visible in dev, console.warn in prod */}
+      {assistance.complexityCostMissing &&
+        (process.env.NODE_ENV === 'production' ? (
+          (() => {
+            console.warn(
+              '[autopause] complexityCostMissing: current problem has no generationTrace.totalComplexityCost — using flat 5-min timeout'
+            )
+            return null
+          })()
+        ) : (
+          <div
+            data-element="complexity-cost-warning"
+            className={css({
+              position: 'fixed',
+              bottom: '4px',
+              left: '4px',
+              padding: '4px 8px',
+              backgroundColor: 'rgba(255, 165, 0, 0.9)',
+              color: 'black',
+              fontSize: '11px',
+              borderRadius: '4px',
+              zIndex: 9999,
+              pointerEvents: 'none',
+            })}
+          >
+            Missing complexityCost — flat 5min timeout
+          </div>
+        ))}
 
       {/* Session Paused Modal - rendered here as single source of truth */}
       <SessionPausedModal

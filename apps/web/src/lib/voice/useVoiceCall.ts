@@ -341,6 +341,9 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
   const activateSession = useCallback(
     (priorAssistantText?: string) => {
       if (stateRef.current !== 'preconnected') return
+      // Stop ring tone
+      ringRef.current?.stop()
+      ringRef.current = null
       // Unmute mic
       const ctx = audioCtxRef.current
       if (micGainRef.current && ctx) {
@@ -435,18 +438,16 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       return
     }
 
-    // 2. Ring tone (skipped when deferring greeting — heckler has its own ring UI)
+    // 2. Ring tone — plays for both normal and deferred calls
     setState('ringing')
     const ringStartedAt = Date.now()
     const deferring = configRef.current.deferGreeting
-    if (!deferring) {
-      try {
-        const audioCtx = new AudioContext()
-        audioCtxRef.current = audioCtx
-        ringRef.current = playRingTone(audioCtx)
-      } catch {
-        // Ring tone is cosmetic
-      }
+    try {
+      const audioCtx = new AudioContext()
+      audioCtxRef.current = audioCtx
+      ringRef.current = playRingTone(audioCtx)
+    } catch {
+      // Ring tone is cosmetic
     }
 
     // 3. Fetch session token
@@ -849,13 +850,11 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       if (deferring) {
         // Deferred greeting: SDP done but data channel not yet open.
         // Stay in 'ringing' — session.created handler will transition to 'preconnected'
-        // once the data channel is ready.
+        // once the data channel is ready. Ring tone keeps playing until activateSession().
         if (stateRef.current !== 'ringing') {
           cleanup()
           return
         }
-        ringRef.current?.stop()
-        ringRef.current = null
         console.log('[voice] SDP complete (deferred greeting), waiting for session.created')
         // Timer and mic activation deferred to activateSession()
       } else {

@@ -3,7 +3,38 @@ import {
   generateSingleProblem,
   type GeneratedProblem as GenProblem,
 } from '../../utils/problemGenerator'
+import {
+  getBaseComplexity,
+  ROTATION_MULTIPLIERS,
+  type SkillCostCalculator,
+} from '../../utils/skillComplexity'
 import type { RealisticProblem } from './types'
+
+/**
+ * Lightweight cost calculator for seed data.
+ * Treats all skills as "in rotation" (multiplier = 3).
+ * This ensures totalComplexityCost is populated in generation traces.
+ */
+const seedCostCalculator: SkillCostCalculator = {
+  calculateSkillCost(skillId: string): number {
+    return getBaseComplexity(skillId) * ROTATION_MULTIPLIERS.inRotation
+  },
+  calculateTermCost(skillIds: string[]): number {
+    return skillIds.reduce((total, id) => total + this.calculateSkillCost(id), 0)
+  },
+  getIsPracticing(): boolean {
+    return true
+  },
+  getMultiplier(): number {
+    return ROTATION_MULTIPLIERS.inRotation
+  },
+  getBktResult(): undefined {
+    return undefined
+  },
+  getMode() {
+    return 'adaptive' as const
+  },
+}
 
 /**
  * Maps a skill ID to the category and key for SkillSet modification
@@ -144,6 +175,7 @@ export function generateRealisticProblems(
       },
       allowedSkills,
       targetSkills: targetSkillSet,
+      costCalculator: seedCostCalculator,
       attempts: 20,
     })
 

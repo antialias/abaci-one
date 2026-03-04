@@ -43,21 +43,26 @@ export const ROTATION_MULTIPLIERS = {
  * This is constant regardless of student mastery.
  *
  * Scale:
- * - 0 = Trivial (basic bead movements, no mental calculation)
- * - 1 = Single complement (one mental substitution: +4 = +5-1)
- * - 2 = Cross-column (must track carry/borrow across place values)
- * - 3 = Multi-column cascading (must track propagation across 2+ columns)
+ * - 0.5 = Basic (direct bead movements — low cognitive load but each term
+ *         still requires attention, and more terms = more time)
+ * - 1   = Single complement (one mental substitution: +4 = +5-1)
+ * - 2   = Cross-column (must track carry/borrow across place values)
+ * - 3   = Multi-column cascading (must track propagation across 2+ columns)
+ *
+ * The non-zero base for basic skills ensures totalComplexityCost scales
+ * with term count even for simple problems (a 7-term direct-addition problem
+ * is meaningfully harder than a 2-term one).
  */
 export const BASE_SKILL_COMPLEXITY: Record<string, number> = {
   // -------------------------------------------------------------------------
-  // Base 0: Trivial operations - just moving beads, no mental math
+  // Base 0.5: Basic operations - low effort per term but still takes time
   // -------------------------------------------------------------------------
-  'basic.directAddition': 0,
-  'basic.directSubtraction': 0,
-  'basic.heavenBead': 0,
-  'basic.heavenBeadSubtraction': 0,
-  'basic.simpleCombinations': 0,
-  'basic.simpleCombinationsSub': 0,
+  'basic.directAddition': 0.5,
+  'basic.directSubtraction': 0.5,
+  'basic.heavenBead': 0.5,
+  'basic.heavenBeadSubtraction': 0.5,
+  'basic.simpleCombinations': 0.5,
+  'basic.simpleCombinationsSub': 0.5,
 
   // -------------------------------------------------------------------------
   // Base 1: Five complements - single mental substitution
