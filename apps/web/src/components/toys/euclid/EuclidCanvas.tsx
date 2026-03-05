@@ -102,14 +102,14 @@ import { CitationPopover } from './foundations/CitationPopover'
 import { MacroToolPanel } from './MacroToolPanel'
 import { renderMacroPreview } from './render/renderMacroPreview'
 import { MACRO_PREVIEW_REGISTRY } from './engine/macroPreview'
-import { useGeometryVoice } from './voice/useGeometryVoice'
+import { useGeometryVoice } from './agent/useGeometryVoice'
 import { GeometryTeacherProvider, useGeometryTeacher } from './GeometryTeacherContext'
 import { getTeacherConfig } from './characters/registry'
-import { useConstructionNotifier } from './voice/useConstructionNotifier'
-import { ConstructionEventBus } from './voice/ConstructionEventBus'
-import { useHecklerTrigger, type HecklerStage } from './voice/useHecklerTrigger'
+import { useConstructionNotifier } from './agent/useConstructionNotifier'
+import { ConstructionEventBus } from './agent/ConstructionEventBus'
+import { useHecklerTrigger, type HecklerStage } from './agent/useHecklerTrigger'
 import { DEFAULT_STALL_LINES } from '@/lib/voice/stallLines'
-import type { AttitudeId } from './voice/attitudes/types'
+import type { AttitudeId } from './agent/attitudes/types'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ChatCallState } from '@/lib/character/types'
@@ -1341,10 +1341,11 @@ function EuclidCanvasInner({
   // Current attitude from config — useGeometryTeacher is safe to call multiple times
   const teacherConfig = useGeometryTeacher()
   const currentAttitudeId = teacherConfig.attitudeId as
-    | import('./voice/attitudes/types').AttitudeId
+    | import('./agent/attitudes/types').AttitudeId
     | undefined
+  const isAuthorMode = isAdmin && currentAttitudeId === 'author'
   /** Playground with author attitude active — show full chat/voice UI instead of heckler overlay */
-  const isAuthorPlayground = playgroundMode && isAdmin && currentAttitudeId === 'author'
+  const isAuthorPlayground = playgroundMode && isAuthorMode
 
   // ── Text chat (must come before voice so transcript callbacks can reference addMessage) ──
   const euclidChat = useEuclidChat({
@@ -1493,7 +1494,7 @@ function EuclidCanvasInner({
   // Track that the current dial is a heckler pre-dial (to suppress call UI)
   const hecklerPreDialRef = useRef(false)
 
-  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode)
+  const heckler = useHecklerTrigger(constructionRef, !!playgroundMode && !isAuthorMode)
 
   /** Try to activate — only fires when BOTH session is ready AND stall TTS is done. */
   const tryActivateRef = useRef(() => {})
