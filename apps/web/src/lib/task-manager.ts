@@ -77,6 +77,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   'blog-image-generate': 5 * 60 * 1000, // 5 minutes (few blog hero images)
   'image-generate': 15 * 60 * 1000, // 15 minutes (22 images, external API)
   'phi-explore-generate': 30 * 60 * 1000, // 30 minutes (up to 27 images in pipeline mode)
+  'page-spot-generate': 5 * 60 * 1000, // 5 minutes (single image generation)
   demo: 2 * 60 * 1000, // 2 minutes
   'demo-refine': 10 * 60 * 1000, // 10 minutes (Claude Code can be slow)
   'session-plan': 2 * 60 * 1000, // 2 minutes

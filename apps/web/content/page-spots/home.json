@@ -1,0 +1,14 @@
+{
+  "hero": {
+    "type": "component",
+    "componentId": "start-practice-modal"
+  },
+  "feature-1": {
+    "type": "component",
+    "componentId": "practice-showcase"
+  },
+  "cta": {
+    "type": "component",
+    "componentId": "ten-frames-demo"
+  }
+}

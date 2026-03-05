@@ -442,6 +442,37 @@ export type BlogImageGenerateEvent =
     }
 
 // ============================================================================
+// Page Spot Image Generate domain events
+// ============================================================================
+
+export type PageSpotImageGenerateEvent =
+  | {
+      type: 'spot_started'
+      pageId: string
+      spotId: string
+      model: string
+      provider: string
+    }
+  | {
+      type: 'spot_complete'
+      pageId: string
+      spotId: string
+      filePath: string
+      sizeBytes: number
+    }
+  | {
+      type: 'spot_error'
+      pageId: string
+      spotId: string
+      error: string
+    }
+  | {
+      type: 'spot_skipped'
+      pageId: string
+      spotId: string
+    }
+
+// ============================================================================
 // Profile Image Generate domain events
 // ============================================================================
 
@@ -565,6 +596,7 @@ export interface TaskEventMap {
   'session-plan': SessionPlanEvent
   'session-song': SessionSongEvent
   'profile-image-generate': ProfileImageGenerateEvent
+  'page-spot-generate': PageSpotImageGenerateEvent
 }
 
 /**

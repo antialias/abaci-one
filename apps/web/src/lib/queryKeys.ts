@@ -182,6 +182,13 @@ export const sessionSongKeys = {
   forPlan: (planId: string) => [...sessionSongKeys.all, 'plan', planId] as const,
 }
 
+// Page spots query keys (admin content spot management)
+export const pageSpotKeys = {
+  all: ['page-spots'] as const,
+  status: () => [...pageSpotKeys.all, 'status'] as const,
+  html: (pageId: string, spotId: string) => [...pageSpotKeys.all, 'html', pageId, spotId] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

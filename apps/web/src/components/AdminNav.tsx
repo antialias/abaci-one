@@ -52,6 +52,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Preview images',
   },
   {
+    href: '/admin/page-spots',
+    label: 'Spots',
+    description: 'Page content spots',
+  },
+  {
     href: '/admin/audio',
     label: 'Audio',
     description: 'TTS clips',
