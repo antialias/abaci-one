@@ -1026,12 +1026,20 @@ function EuclidCanvasInner({
   const ghostBoundsEnabledRef = useRef(false)
   const macroPreviewAutoFitRef = useRef(true)
   const macroRevealRef = useRef<MacroCeremonyState | null>(null)
+  const relocatePointAnimRef = useRef<{
+    actionIndex: number
+    fromX: number; fromY: number
+    toX: number; toY: number
+    startTime: number
+    durationMs: number
+    untrackedElements: ConstructionElement[]
+  } | null>(null)
   const ceremonyDebugRef = useRef<{
     speedMultiplier: number
     paused: boolean
   }>({ speedMultiplier: 1, paused: false })
   const propositionRef = useRef(proposition)
-  propositionRef.current = proposition
+  // Updated after dynamicPropositionRef is defined (line ~1063)
   const musicRef = useRef<UseEuclidMusicReturn | null>(null)
   const correctionRef = useRef<{
     active: boolean
@@ -1061,6 +1069,8 @@ function EuclidCanvasInner({
   givenSetupActiveRef.current = givenSetup.isActive
   // Ref to hold a dynamic proposition created from custom givens
   const dynamicPropositionRef = useRef<import('./types').PropositionDef | null>(null)
+  // Use dynamic proposition (from given setup) when available, else static
+  propositionRef.current = dynamicPropositionRef.current ?? proposition
   const [propositionIdInput, setPropositionIdInput] = useState(0)
 
   // React state for UI
@@ -2964,7 +2974,8 @@ function EuclidCanvasInner({
     setCreationTitle('')
     setSaveState('idle')
     setShareState('idle')
-  }, [proposition.givenElements, toolPhases])
+    onAttitudeChange?.('teacher')
+  }, [proposition.givenElements, toolPhases, onAttitudeChange])
 
   /** Activate given-setup mode (admin only). */
   const handleActivateGivenSetup = useCallback(
@@ -2985,8 +2996,9 @@ function EuclidCanvasInner({
       ghostLayersRef.current = []
       proofFactsRef.current = []
       setProofFacts([])
+      onAttitudeChange?.('author')
     },
-    [givenSetup, toolPhases, activeToolRef]
+    [givenSetup, toolPhases, activeToolRef, onAttitudeChange]
   )
 
   /** Cancel given-setup, revert to normal playground. */
@@ -3035,14 +3047,15 @@ function EuclidCanvasInner({
    *  Truncates postCompletionActions and replays the full construction. */
   const handleRevertToAction = useCallback(
     (actionIndex: number) => {
+      const prop = propositionRef.current
       // Truncate actions: keep [0..actionIndex] (the clicked step stays)
       postCompletionActionsRef.current = postCompletionActionsRef.current.slice(0, actionIndex + 1)
 
       // Replay the entire construction with the truncated action list
       const result = replayConstruction(
-        proposition.givenElements,
-        proposition.steps,
-        proposition,
+        prop.givenElements,
+        prop.steps,
+        prop,
         postCompletionActionsRef.current
       )
 
@@ -3062,7 +3075,157 @@ function EuclidCanvasInner({
       // Notify ledger to re-derive entries
       eventBusRef.current.emit({ action: 'revert', shouldPrompt: false, reset: true })
     },
-    [proposition, toolPhases]
+    [toolPhases]
+  )
+
+  /** Relocate a free point to new coordinates with trial-before-commit.
+   *  If the replay reveals broken dependent constructions, returns error info
+   *  WITHOUT committing. */
+  const handleRelocatePoint = useCallback(
+    (label: string, x: number, y: number, force?: boolean) => {
+      const prop = propositionRef.current
+      const actions = postCompletionActionsRef.current
+
+      console.log('[relocate_point] label=%s, target=(%s,%s)', label, x, y)
+      console.log('[relocate_point] postCompletionActions:', JSON.stringify(actions, null, 2))
+      console.log('[relocate_point] current elements:', constructionRef.current.elements.map(e => ({ id: e.id, kind: e.kind, ...('label' in e ? { label: e.label } : {}), ...('origin' in e ? { origin: e.origin } : {}) })))
+      console.log('[relocate_point] prop.givenElements:', prop.givenElements.map(e => ({ id: e.id, kind: e.kind, ...('label' in e ? { label: e.label } : {}) })))
+      console.log('[relocate_point] prop.steps count:', prop.steps.length)
+
+      // Find the free-point action by label
+      const actionIndex = actions.findIndex(
+        (a) => a.type === 'free-point' && a.label === label
+      )
+      if (actionIndex === -1) {
+        console.log('[relocate_point] free-point action NOT found for label=%s', label)
+        // Distinguish "not found at all" vs "exists but not free"
+        const pt = constructionRef.current.elements.find(
+          (e): e is ConstructionPoint => e.kind === 'point' && e.label === label
+        )
+        if (pt) {
+          console.log('[relocate_point] point exists but origin=%s', pt.origin)
+          return {
+            success: false,
+            error: `Point ${label} exists but is not a free point (origin: ${pt.origin}). Only free points can be relocated.`,
+          }
+        }
+        return { success: false, error: `Point "${label}" not found in the construction.` }
+      }
+
+      console.log('[relocate_point] found free-point action at index %d', actionIndex)
+
+      // Create modified action list with updated coordinates
+      const modifiedActions = actions.map((a, i) =>
+        i === actionIndex && a.type === 'free-point' ? { ...a, x, y } : a
+      )
+
+      // Control replay — same actions, unmodified (baseline for comparison)
+      const controlResult = replayConstruction(
+        prop.givenElements,
+        prop.steps,
+        prop,
+        actions
+      )
+
+      // Trial replay — modified coordinates, no state mutation yet
+      const trialResult = replayConstruction(
+        prop.givenElements,
+        prop.steps,
+        prop,
+        modifiedActions
+      )
+
+      console.log('[relocate_point] control result elements:', controlResult.state.elements.map(e => ({ id: e.id, kind: e.kind, ...('label' in e ? { label: e.label } : {}) })))
+      console.log('[relocate_point] trial result elements:', trialResult.state.elements.map(e => ({ id: e.id, kind: e.kind, ...('label' in e ? { label: e.label } : {}) })))
+      console.log('[relocate_point] control stepsCompleted:', controlResult.stepsCompleted)
+      console.log('[relocate_point] trial stepsCompleted:', trialResult.stepsCompleted)
+
+      // Compare trial vs control — elements present in control but missing in trial are broken
+      const controlIds = new Set(controlResult.state.elements.map((e) => e.id))
+      const trialIds = new Set(trialResult.state.elements.map((e) => e.id))
+      const missingIds = [...controlIds].filter((id) => !trialIds.has(id))
+
+      console.log('[relocate_point] controlIds:', [...controlIds])
+      console.log('[relocate_point] trialIds:', [...trialIds])
+      console.log('[relocate_point] missingIds:', missingIds)
+
+      // Check if trial completes fewer proposition steps than the control
+      const brokenStepCount =
+        trialResult.stepsCompleted < controlResult.stepsCompleted
+          ? controlResult.stepsCompleted - trialResult.stepsCompleted
+          : 0
+
+      console.log('[relocate_point] controlSteps=%d, trialSteps=%d, brokenStepCount=%d', controlResult.stepsCompleted, trialResult.stepsCompleted, brokenStepCount)
+
+      if (missingIds.length > 0 || brokenStepCount > 0) {
+        // Build broken elements info from the control replay (canonical source)
+        const brokenElements = missingIds.map((id) => {
+          const el = controlResult.state.elements.find((e) => e.id === id)
+          return {
+            id,
+            label: el && 'label' in el ? (el.label as string) : undefined,
+            kind: el?.kind ?? 'unknown',
+          }
+        })
+
+        if (!force) {
+          console.log('[relocate_point] BROKEN — returning error. brokenElements:', brokenElements)
+          return {
+            success: false,
+            error: `Moving ${label} to (${x}, ${y}) would break ${missingIds.length} element(s)${brokenStepCount > 0 ? ` and ${brokenStepCount} proposition step(s)` : ''}. No changes were made. Call again with force=true to proceed anyway.`,
+            brokenElements,
+            brokenStepCount,
+          }
+        }
+
+        console.log('[relocate_point] FORCE — committing despite breakage. Removed:', brokenElements)
+      }
+
+      console.log('[relocate_point] trial passed — committing with animation')
+
+      // Capture "from" coordinates — use interpolated position if animation is already running
+      const oldAction = actions[actionIndex]
+      let fromX: number, fromY: number
+      const ongoingAnim = relocatePointAnimRef.current
+      if (ongoingAnim && ongoingAnim.actionIndex === actionIndex) {
+        // Mid-animation: lerp from current visual position for smooth chaining
+        const rawT = Math.min(1, (performance.now() - ongoingAnim.startTime) / ongoingAnim.durationMs)
+        const easedT = 1 - (1 - rawT) * (1 - rawT)
+        fromX = ongoingAnim.fromX + (ongoingAnim.toX - ongoingAnim.fromX) * easedT
+        fromY = ongoingAnim.fromY + (ongoingAnim.toY - ongoingAnim.fromY) * easedT
+      } else {
+        fromX = oldAction.type === 'free-point' ? oldAction.x : x
+        fromY = oldAction.type === 'free-point' ? oldAction.y : y
+      }
+
+      // Commit final actions (target state) — animation loop will interpolate toward this
+      postCompletionActionsRef.current = modifiedActions
+
+      // Capture untracked elements before animation overwrites constructionRef
+      const trialIdSet = new Set(trialResult.state.elements.map((e) => e.id))
+      const untrackedElements = constructionRef.current.elements.filter(
+        (e) => !trialIdSet.has(e.id)
+      )
+
+      // Start animation — RAF loop will replay construction each frame with interpolated coords
+      relocatePointAnimRef.current = {
+        actionIndex,
+        fromX, fromY,
+        toX: x, toY: y,
+        startTime: performance.now(),
+        durationMs: 400,
+        untrackedElements,
+      }
+
+      // Reset tool phases to idle
+      toolPhases.resetAll()
+      macroAnimationRef.current = null
+      macroRevealRef.current = null
+      needsDrawRef.current = true
+
+      return { success: true }
+    },
+    [toolPhases]
   )
 
   // ── Assign author tool callback refs (now that handlers are defined) ──
@@ -3072,6 +3235,7 @@ function EuclidCanvasInner({
   authorRefs.handleMarkIntersection.current = handleMarkIntersection
   authorRefs.handleCommitMacro.current = handleCommitMacro
   authorRefs.handleRevertToAction.current = handleRevertToAction
+  authorRefs.handleRelocatePoint.current = handleRelocatePoint
   authorRefs.requestDraw.current = requestDraw
 
   /** Capture a thumbnail from the main canvas. */
@@ -3963,6 +4127,45 @@ function EuclidCanvasInner({
         // When paused, keep drawing so ghost opacity lerps and the canvas stays live
         if (cdbg.paused) {
           needsDrawRef.current = true
+        }
+      }
+
+      // ── Tick relocate-point animation ──
+      const relocAnim = relocatePointAnimRef.current
+      if (relocAnim) {
+        const now = performance.now()
+        const rawT = Math.min(1, (now - relocAnim.startTime) / relocAnim.durationMs)
+        const easedT = 1 - (1 - rawT) * (1 - rawT) // ease-out quadratic
+
+        // Build interpolated actions
+        const interpX = relocAnim.fromX + (relocAnim.toX - relocAnim.fromX) * easedT
+        const interpY = relocAnim.fromY + (relocAnim.toY - relocAnim.fromY) * easedT
+        const interpActions = postCompletionActionsRef.current.map((a, i) =>
+          i === relocAnim.actionIndex && a.type === 'free-point'
+            ? { ...a, x: interpX, y: interpY }
+            : a
+        )
+
+        // Full replay with interpolated coordinates (same pattern as drag/wiggle)
+        const prop = propositionRef.current
+        const result = replayConstruction(prop.givenElements, prop.steps, prop, interpActions)
+        constructionRef.current = {
+          ...result.state,
+          elements: [...result.state.elements, ...relocAnim.untrackedElements],
+          nextLabelIndex: Math.max(result.state.nextLabelIndex, constructionRef.current.nextLabelIndex),
+          nextColorIndex: Math.max(result.state.nextColorIndex, constructionRef.current.nextColorIndex),
+        }
+        candidatesRef.current = result.candidates
+        ghostLayersRef.current = result.ghostLayers
+        factStoreRef.current = result.factStore
+        needsDrawRef.current = true
+
+        if (rawT >= 1) {
+          // Animation complete — finalize state and notify ledger
+          proofFactsRef.current = result.proofFacts
+          setProofFacts(result.proofFacts)
+          eventBusRef.current.emit({ action: 'revert', shouldPrompt: false, reset: true })
+          relocatePointAnimRef.current = null
         }
       }
 
@@ -5163,7 +5366,7 @@ function EuclidCanvasInner({
         )}
 
         {/* Admin-only export buttons */}
-        {playgroundMode && isAdmin && !givenSetup.isActive && (
+        {isAuthorPlayground && !givenSetup.isActive && (
           <div
             data-element="admin-export-bar"
             style={{
@@ -5274,31 +5477,6 @@ function EuclidCanvasInner({
                 Edit Givens
               </button>
             )}
-            <span style={{ color: '#d1d5db' }}>|</span>
-            <span style={{ color: '#9ca3af' }}>Mode:</span>
-            {(['teacher', 'author'] as const).map((aid) => (
-              <button
-                key={aid}
-                onClick={() => {
-                  onAttitudeChange?.(aid)
-                }}
-                style={{
-                  background: currentAttitudeId === aid ? '#4E79A7' : 'none',
-                  border: currentAttitudeId === aid ? '1px solid #4E79A7' : '1px solid #d1d5db',
-                  color: currentAttitudeId === aid ? '#fff' : '#6b7280',
-                  cursor: 'pointer',
-                  fontSize: 10,
-                  fontWeight: 500,
-                  fontFamily: 'system-ui, sans-serif',
-                  padding: '1px 6px',
-                  borderRadius: 3,
-                  textTransform: 'capitalize',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {aid}
-              </button>
-            ))}
           </div>
         )}
 
