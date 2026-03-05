@@ -65,10 +65,13 @@ export function validateMarkupStrict(
   // marker expansion doesn't reproduce, while catching cases where the marker
   // replaced unrelated text (e.g., "point" → {pt:A} expands to "A", and "A"
   // is not a subsequence continuation after "damn ").
+  // Case-insensitive: users may type "db" but markers canonicalize to "DB".
+  const expandedLower = expanded.toLowerCase()
+  const originalLower = normalizedOriginal.toLowerCase()
   let oi = 0
-  for (const ch of expanded) {
-    while (oi < normalizedOriginal.length && normalizedOriginal[oi] !== ch) oi++
-    if (oi >= normalizedOriginal.length) return false
+  for (const ch of expandedLower) {
+    while (oi < originalLower.length && originalLower[oi] !== ch) oi++
+    if (oi >= originalLower.length) return false
     oi++
   }
   return true

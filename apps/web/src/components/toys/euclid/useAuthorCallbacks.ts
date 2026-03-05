@@ -40,6 +40,19 @@ export interface UseAuthorCallbacksReturn {
     handleMarkIntersection: MutRef<(candidate: IntersectionCandidate) => void>
     handleCommitMacro: MutRef<(propId: number, inputPointIds: string[]) => void>
     handleRevertToAction: MutRef<(actionIndex: number) => void>
+    handleRelocatePoint: MutRef<
+      (
+        label: string,
+        x: number,
+        y: number,
+        force?: boolean
+      ) => {
+        success: boolean
+        error?: string
+        brokenElements?: Array<{ id: string; label?: string; kind: string }>
+        brokenStepCount?: number
+      }
+    >
     requestDraw: MutRef<() => void>
   }
 }
@@ -64,6 +77,19 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
   const handleMarkIntersectionRef = useRef<(candidate: IntersectionCandidate) => void>(() => {})
   const handleCommitMacroRef = useRef<(propId: number, inputPointIds: string[]) => void>(() => {})
   const handleRevertToActionRef = useRef<(actionIndex: number) => void>(() => {})
+  const handleRelocatePointRef = useRef<
+    (
+      label: string,
+      x: number,
+      y: number,
+      force?: boolean
+    ) => {
+      success: boolean
+      error?: string
+      brokenElements?: Array<{ id: string; label?: string; kind: string }>
+      brokenStepCount?: number
+    }
+  >(() => ({ success: false, error: 'Not initialized' }))
   const requestDrawRef = useRef<() => void>(() => {})
 
   const resolvePointLabel = useCallback(
@@ -128,8 +154,10 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
         if (len < 0.001) return { success: false, error: 'Points are too close' }
         const dirX = dx / len
         const dirY = dy / len
-        const projX = throughPt.x + dirX * distance
-        const projY = throughPt.y + dirY * distance
+        // Default to extending by the segment's own length (doubling it)
+        const ext = distance ?? len
+        const projX = throughPt.x + dirX * ext
+        const projY = throughPt.y + dirY * ext
         handleCommitExtendRef.current(baseId, throughId, projX, projY)
         return { success: true }
       },
@@ -289,6 +317,9 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
         }
         return { success: true, factCount: newFacts.length }
       },
+      relocatePoint: async (label, x, y, force) => {
+        return handleRelocatePointRef.current(label, x, y, force)
+      },
       undoLast: async () => {
         const actions = postCompletionActionsRef.current
         if (actions.length === 0) return { success: false, error: 'Nothing to undo' }
@@ -331,6 +362,7 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
       handleMarkIntersection: handleMarkIntersectionRef,
       handleCommitMacro: handleCommitMacroRef,
       handleRevertToAction: handleRevertToActionRef,
+      handleRelocatePoint: handleRelocatePointRef,
       requestDraw: requestDrawRef,
     }),
     []

@@ -269,6 +269,7 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
           'declare_angle_equality',
           'undo_last',
           'place_point',
+          'relocate_point',
         ]
         if (authorTools.includes(name)) {
           // Dispatch asynchronously — voice framework supports asyncResult
@@ -281,6 +282,14 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
                 args.label ? String(args.label) : undefined
               )
               break
+            case 'relocate_point':
+              resultPromise = cb.relocatePoint(
+                String(args.label),
+                Number(args.x),
+                Number(args.y),
+                args.force === true
+              )
+              break
             case 'postulate_1':
               resultPromise = cb.commitSegment(String(args.from_label), String(args.to_label))
               break
@@ -288,7 +297,7 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
               resultPromise = cb.commitExtend(
                 String(args.base_label),
                 String(args.through_label),
-                Number(args.distance) || 1
+                args.distance != null ? Number(args.distance) : undefined
               )
               break
             case 'postulate_3':

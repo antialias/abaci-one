@@ -102,6 +102,41 @@ export const TOOL_PLACE_POINT: RealtimeTool = {
   },
 }
 
+export const TOOL_RELOCATE_POINT: RealtimeTool = {
+  type: 'function',
+  name: 'relocate_point',
+  description:
+    'Move an existing free point to new coordinates. Only works for free (user-placed) points — ' +
+    'given, intersection, and extension points are derived and cannot be independently relocated. ' +
+    'Performs a trial replay of the entire construction before committing. If moving the point ' +
+    'would break dependent constructions (e.g. an intersection that no longer exists), returns ' +
+    'an error with the list of broken elements and does NOT commit the change.',
+  parameters: {
+    type: 'object',
+    properties: {
+      label: {
+        type: 'string',
+        description: 'Label of the free point to move (e.g. "A").',
+      },
+      x: {
+        type: 'number',
+        description: 'New X coordinate in construction units.',
+      },
+      y: {
+        type: 'number',
+        description: 'New Y coordinate in construction units.',
+      },
+      force: {
+        type: 'boolean',
+        description:
+          'If true, commit the relocation even if it breaks dependent elements (they will be removed). ' +
+          'Use only after the admin has been warned about breakage and explicitly confirms.',
+      },
+    },
+    required: ['label', 'x', 'y'],
+  },
+}
+
 export const TOOL_POSTULATE_1: RealtimeTool = {
   type: 'function',
   name: 'postulate_1',
@@ -129,8 +164,10 @@ export const TOOL_POSTULATE_2: RealtimeTool = {
   name: 'postulate_2',
   description:
     'Postulate 2: "To produce a finite straight line continuously in a straight line." ' +
-    'Extends a segment through one endpoint to a new point. Requires a base point, ' +
-    'a through point (the endpoint to extend past), and the distance to extend.',
+    'Extends a segment through one endpoint to a new point. Requires a base point ' +
+    'and a through point (the endpoint to extend past). Distance is optional — if ' +
+    'omitted, the segment is extended by its own length (i.e. doubled). Only specify ' +
+    'distance when the user explicitly requests a specific extension length.',
   parameters: {
     type: 'object',
     properties: {
@@ -144,10 +181,12 @@ export const TOOL_POSTULATE_2: RealtimeTool = {
       },
       distance: {
         type: 'number',
-        description: 'How far to extend past the through point (in construction units).',
+        description:
+          'How far to extend past the through point (in construction units). ' +
+          'Optional — defaults to the length of the existing segment.',
       },
     },
-    required: ['base_label', 'through_label', 'distance'],
+    required: ['base_label', 'through_label'],
   },
 }
 
@@ -340,6 +379,7 @@ export const TOOL_UNDO_LAST: RealtimeTool = {
 /** All author-mode construction + fact store tools. */
 export const AUTHOR_TOOLS: RealtimeTool[] = [
   TOOL_PLACE_POINT,
+  TOOL_RELOCATE_POINT,
   TOOL_POSTULATE_1,
   TOOL_POSTULATE_2,
   TOOL_POSTULATE_3,

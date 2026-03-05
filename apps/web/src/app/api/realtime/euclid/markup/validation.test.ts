@@ -74,6 +74,12 @@ describe('validateMarkupStrict', () => {
     const marked = 'draw {seg:AB} please'
     expect(validateMarkupStrict(original, marked, expandMarkers)).toBe(false)
   })
+
+  it('accepts when model capitalizes lowercase segment labels (db → DB)', () => {
+    const original = 'Make a circle centered at D with radius db'
+    const marked = 'Make a circle centered at {pt:D} with radius {seg:DB}'
+    expect(validateMarkupStrict(original, marked, expandMarkers)).toBe(true)
+  })
 })
 
 describe('wordOverlapRatio', () => {

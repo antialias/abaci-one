@@ -226,7 +226,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
           return cb.commitExtend(
             String(args.base_label),
             String(args.through_label),
-            Number(args.distance) || 1
+            args.distance != null ? Number(args.distance) : undefined
           )
         case 'postulate_3':
           return cb.commitCircle(String(args.center_label), String(args.radius_point_label))
@@ -266,6 +266,13 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
             args.citation_detail ? String(args.citation_detail) : undefined,
             String(args.statement),
             String(args.justification)
+          )
+        case 'relocate_point':
+          return cb.relocatePoint(
+            String(args.label),
+            Number(args.x),
+            Number(args.y),
+            args.force === true
           )
         case 'undo_last':
           return cb.undoLast()

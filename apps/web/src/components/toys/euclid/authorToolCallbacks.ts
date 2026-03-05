@@ -10,7 +10,7 @@ export interface AuthorToolCallbacks {
   placePoint: (x: number, y: number, label?: string) => Promise<unknown>
   commitSegment: (fromLabel: string, toLabel: string) => Promise<unknown>
   commitCircle: (centerLabel: string, radiusPointLabel: string) => Promise<unknown>
-  commitExtend: (baseLabel: string, throughLabel: string, distance: number) => Promise<unknown>
+  commitExtend: (baseLabel: string, throughLabel: string, distance?: number) => Promise<unknown>
   markIntersection: (ofA: string, ofB: string, which?: string) => Promise<unknown>
   commitMacro: (propId: number, inputLabels: string[]) => Promise<unknown>
   addFact: (
@@ -35,6 +35,7 @@ export interface AuthorToolCallbacks {
     statement: string,
     justification: string
   ) => Promise<unknown>
+  relocatePoint: (label: string, x: number, y: number, force?: boolean) => Promise<unknown>
   undoLast: () => Promise<unknown>
   highlight: (entityType: string, labels: string) => Promise<unknown>
 }
