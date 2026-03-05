@@ -92,6 +92,12 @@ vi.mock('@/hooks/useSessionPlan', () => ({
     error: null,
     reset: vi.fn(),
   }),
+  useAbandonSession: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    error: null,
+    reset: vi.fn(),
+  }),
   ActiveSessionExistsClientError: class extends Error {
     existingPlan = null
   },

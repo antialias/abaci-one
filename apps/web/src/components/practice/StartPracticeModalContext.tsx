@@ -26,6 +26,7 @@ import {
   NoSkillsEnabledClientError,
   SessionLimitReachedError,
   sessionPlanKeys,
+  useAbandonSession,
   useApproveSessionPlan,
   useGenerateSessionPlan,
   useStartSessionPlan,
@@ -241,6 +242,8 @@ interface StartPracticeModalProviderProps {
   secondsPerTerm?: number
   avgSecondsPerProblem?: number
   existingPlan?: SessionPlan | null
+  /** When true, abandon existing session before generating a new one */
+  startFresh?: boolean
   onStarted?: () => void
   /** Initial expanded state for settings panel (for Storybook) */
   initialExpanded?: boolean
@@ -263,6 +266,7 @@ export function StartPracticeModalProvider({
   secondsPerTerm: secondsPerTermProp,
   avgSecondsPerProblem,
   existingPlan = null,
+  startFresh = false,
   onStarted,
   initialExpanded = false,
   practiceApprovedGamesOverride,
@@ -640,6 +644,7 @@ export function StartPracticeModalProvider({
   const generatePlan = useGenerateSessionPlan()
   const approvePlan = useApproveSessionPlan()
   const startPlan = useStartSessionPlan()
+  const abandonSession = useAbandonSession()
 
   // Track whether we're in the start flow (waiting for generation → approve → start)
   const [isStartFlow, setIsStartFlow] = useState(false)
@@ -720,12 +725,59 @@ export function StartPracticeModalProvider({
     }
   }, [isStartFlow, generatePlan.taskError])
 
+  const generatePlanParams = useCallback(() => {
+    const comfortAdj = COMFORT_ADJUSTMENTS[problemLengthPreference]
+    return {
+      playerId: studentId,
+      durationMinutes,
+      comfortAdjustment: comfortAdj !== 0 ? comfortAdj : undefined,
+      enabledParts,
+      partTimeWeights,
+      purposeTimeWeights,
+      shufflePurposes,
+      problemGenerationMode: 'adaptive-bkt' as const,
+      sessionMode,
+      gameBreakSettings: {
+        enabled: gameBreakEnabled,
+        maxDurationMinutes: gameBreakMinutes,
+        selectionMode: gameBreakSelectionMode,
+        selectedGame: gameBreakEnabled ? gameBreakSelectedGame : null,
+        gameConfig:
+          gameBreakEnabled &&
+          gameBreakSelectedGame &&
+          gameBreakSelectedGame !== 'random' &&
+          Object.keys(resolvedGameConfig).length > 0
+            ? ({
+                [gameBreakSelectedGame]: resolvedGameConfig,
+              } as PracticeBreakGameConfig)
+            : undefined,
+        enabledGames: playerEnabledGames.map((g) => g.manifest.name),
+        skipSetupPhase: true,
+      },
+    }
+  }, [
+    studentId,
+    durationMinutes,
+    problemLengthPreference,
+    enabledParts,
+    partTimeWeights,
+    purposeTimeWeights,
+    shufflePurposes,
+    sessionMode,
+    gameBreakEnabled,
+    gameBreakMinutes,
+    gameBreakSelectionMode,
+    gameBreakSelectedGame,
+    resolvedGameConfig,
+    playerEnabledGames,
+  ])
+
   const handleStart = useCallback(async () => {
     resetMutations()
 
     try {
-      if (existingPlan && existingPlan.targetDurationMinutes === durationMinutes) {
-        // Reuse existing plan — go straight to approve → start
+      // When not starting fresh, reuse existing plan if duration matches
+      if (!startFresh && existingPlan && existingPlan.targetDurationMinutes === durationMinutes) {
         setIsStartFlow(true)
         await approvePlan.mutateAsync({ playerId: studentId, planId: existingPlan.id })
         await startPlan.mutateAsync({ playerId: studentId, planId: existingPlan.id })
@@ -735,49 +787,32 @@ export function StartPracticeModalProvider({
         return
       }
 
+      // If starting fresh, abandon the existing session first
+      if (startFresh && existingPlan) {
+        await abandonSession.mutateAsync({ playerId: studentId, planId: existingPlan.id })
+      }
+
       try {
-        const comfortAdj = COMFORT_ADJUSTMENTS[problemLengthPreference]
         setIsStartFlow(true)
-        // This starts the background task and returns immediately with a taskId.
-        // The effect above will continue with approve → start when the plan arrives.
-        await generatePlan.mutateAsync({
-          playerId: studentId,
-          durationMinutes,
-          comfortAdjustment: comfortAdj !== 0 ? comfortAdj : undefined,
-          enabledParts,
-          partTimeWeights,
-          purposeTimeWeights,
-          shufflePurposes,
-          problemGenerationMode: 'adaptive-bkt',
-          sessionMode,
-          gameBreakSettings: {
-            enabled: gameBreakEnabled,
-            maxDurationMinutes: gameBreakMinutes,
-            selectionMode: gameBreakSelectionMode,
-            selectedGame: gameBreakEnabled ? gameBreakSelectedGame : null,
-            gameConfig:
-              gameBreakEnabled &&
-              gameBreakSelectedGame &&
-              gameBreakSelectedGame !== 'random' &&
-              Object.keys(resolvedGameConfig).length > 0
-                ? ({
-                    [gameBreakSelectedGame]: resolvedGameConfig,
-                  } as PracticeBreakGameConfig)
-                : undefined,
-            enabledGames: playerEnabledGames.map((g) => g.manifest.name),
-            skipSetupPhase: true,
-          },
-        })
+        await generatePlan.mutateAsync(generatePlanParams())
         // Don't set isStartFlow to false — the effect will handle the rest
       } catch (err) {
         if (err instanceof ActiveSessionExistsClientError) {
-          const plan = err.existingPlan
-          queryClient.setQueryData(sessionPlanKeys.active(studentId), plan)
-          await approvePlan.mutateAsync({ playerId: studentId, planId: plan.id })
-          await startPlan.mutateAsync({ playerId: studentId, planId: plan.id })
-          onStarted?.()
-          router.push(`/practice/${studentId}`, { scroll: false })
-          setIsStartFlow(false)
+          if (startFresh) {
+            // Abandon and retry — shouldn't normally happen since we abandoned above,
+            // but handles race conditions
+            const plan = err.existingPlan
+            await abandonSession.mutateAsync({ playerId: studentId, planId: plan.id })
+            await generatePlan.mutateAsync(generatePlanParams())
+          } else {
+            const plan = err.existingPlan
+            queryClient.setQueryData(sessionPlanKeys.active(studentId), plan)
+            await approvePlan.mutateAsync({ playerId: studentId, planId: plan.id })
+            await startPlan.mutateAsync({ playerId: studentId, planId: plan.id })
+            onStarted?.()
+            router.push(`/practice/${studentId}`, { scroll: false })
+            setIsStartFlow(false)
+          }
         } else {
           setIsStartFlow(false)
           throw err
@@ -790,22 +825,13 @@ export function StartPracticeModalProvider({
   }, [
     studentId,
     durationMinutes,
-    problemLengthPreference,
-    enabledParts,
-    partTimeWeights,
-    purposeTimeWeights,
-    shufflePurposes,
+    startFresh,
     existingPlan,
-    sessionMode,
-    gameBreakEnabled,
-    gameBreakMinutes,
-    gameBreakSelectionMode,
-    gameBreakSelectedGame,
-    resolvedGameConfig,
-    playerEnabledGames,
+    generatePlanParams,
     generatePlan,
     approvePlan,
     startPlan,
+    abandonSession,
     queryClient,
     router,
     onStarted,

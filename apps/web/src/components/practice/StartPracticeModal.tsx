@@ -52,6 +52,8 @@ interface StartPracticeModalProps {
   /** @deprecated Use secondsPerTerm instead */
   avgSecondsPerProblem?: number
   existingPlan?: SessionPlan | null
+  /** When true, abandon the existing session and generate a new one */
+  startFresh?: boolean
   problemHistory?: ProblemResultWithContext[]
   onClose: () => void
   onStarted?: () => void
@@ -72,6 +74,7 @@ export function StartPracticeModal({
   secondsPerTerm,
   avgSecondsPerProblem,
   existingPlan,
+  startFresh,
   onClose,
   onStarted,
   open = true,
@@ -139,7 +142,8 @@ export function StartPracticeModal({
       comfortByMode={comfortByMode}
       secondsPerTerm={secondsPerTerm}
       avgSecondsPerProblem={avgSecondsPerProblem}
-      existingPlan={existingPlan}
+      existingPlan={startFresh ? null : existingPlan}
+      startFresh={startFresh}
       onStarted={onStarted}
       initialExpanded={initialExpanded}
       practiceApprovedGamesOverride={practiceApprovedGamesOverride}

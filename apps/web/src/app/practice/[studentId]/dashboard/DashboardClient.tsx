@@ -3449,6 +3449,7 @@ export function DashboardClient({
 
   // Modal states
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
+  const [startFresh, setStartFresh] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
 
   // Auto-open start practice modal if startPractice query param is set
@@ -3564,7 +3565,14 @@ export function DashboardClient({
   })()
 
   // Handlers
-  const handleStartPractice = useCallback(() => setShowStartPracticeModal(true), [])
+  const handleStartPractice = useCallback(() => {
+    setStartFresh(false)
+    setShowStartPracticeModal(true)
+  }, [])
+  const handleStartFresh = useCallback(() => {
+    setStartFresh(true)
+    setShowStartPracticeModal(true)
+  }, [])
 
   const deferMutation = useDeferProgression(studentId)
   const handleDeferProgression = useCallback(() => {
@@ -3605,7 +3613,7 @@ export function DashboardClient({
         onAction={handleStartPractice}
         onDefer={handleDeferProgression}
         onResume={handleResumeSession}
-        onStartFresh={handleStartPractice}
+        onStartFresh={handleStartFresh}
       />
       {/* Single ProjectingBanner renders at provider level */}
       <ProjectingBanner />
@@ -3720,6 +3728,7 @@ export function DashboardClient({
               comfortByMode={comfortByMode}
               avgSecondsPerProblem={avgSecondsPerProblem}
               existingPlan={activeSession}
+              startFresh={startFresh}
               problemHistory={problemHistory}
               onClose={() => setShowStartPracticeModal(false)}
               onStarted={() => setShowStartPracticeModal(false)}
