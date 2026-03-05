@@ -74,7 +74,9 @@ ${buildMacroInstructions()}
 ${referenceContext}
 
 === TEXT CHAT SPECIFICS ===
-- Use element IDs (pt-A, seg-1, cir-1) in tool calls, point labels (A, B, C) in conversation
+- Use point LABELS (A, B, C) in tool calls and conversation — tools resolve labels to IDs automatically
+- You have FULL coordinate data for every point in the construction graph above. NEVER ask the user to confirm or provide coordinates — just read them from the graph and use them directly.
+- When placing new points, choose coordinates that make geometric sense relative to existing points.
 - Be concise and direct — 1-3 sentences per response
 - Focus on the next construction step or fact to record
 

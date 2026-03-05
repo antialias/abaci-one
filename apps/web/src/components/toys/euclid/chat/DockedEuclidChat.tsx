@@ -736,6 +736,21 @@ function DesktopDockedChat({
                     />
                     {msg.content}
                   </div>
+                  {msg.imageDataUrl && (
+                    <img
+                      src={msg.imageDataUrl}
+                      alt="Construction screenshot"
+                      data-element="event-screenshot"
+                      style={{
+                        width: 120,
+                        height: 90,
+                        objectFit: 'cover',
+                        borderRadius: 6,
+                        border: '1px solid rgba(203, 213, 225, 0.6)',
+                        opacity: 0.85,
+                      }}
+                    />
+                  )}
                 </div>
               </React.Fragment>
             )
