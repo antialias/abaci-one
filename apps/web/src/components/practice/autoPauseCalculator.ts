@@ -201,7 +201,7 @@ export function calculateProgressiveThresholds(
   return {
     encouragementMs: clamp(mean, timing.minEncouragementMs, timing.maxEncouragementMs),
     helpOfferMs: clamp(mean + stdDev, timing.minHelpOfferMs, timing.maxHelpOfferMs),
-    autoPauseMs: clamp(mean + 2 * stdDev, MIN_PAUSE_THRESHOLD_MS, MAX_PAUSE_THRESHOLD_MS),
+    autoPauseMs: clamp(mean + 2 * stdDev, timing.minAutoPauseMs, timing.maxAutoPauseMs),
   }
 }
 
@@ -326,8 +326,8 @@ export function calculateComplexityScaledThresholds(
     ),
     autoPauseMs: clamp(
       (meanPerUnit + 2 * stdDevPerUnit) * currentProblemCost,
-      MIN_PAUSE_THRESHOLD_MS,
-      MAX_PAUSE_THRESHOLD_MS
+      timing.minAutoPauseMs,
+      timing.maxAutoPauseMs
     ),
   }
 }

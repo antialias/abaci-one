@@ -61,6 +61,10 @@ export const PROGRESSIVE_ASSISTANCE_TIMING = {
     minHelpOfferMs: 15_000,
     /** Max clamp for help offer threshold (ms) */
     maxHelpOfferMs: 90_000,
+    /** Min clamp for auto-pause threshold (ms) */
+    minAutoPauseMs: 30_000,
+    /** Max clamp for auto-pause threshold (ms) */
+    maxAutoPauseMs: 300_000,
     /** Number of wrong answers before suggesting help */
     wrongAnswerThreshold: 3,
     /** Grace period after all terms helped before moveOn becomes available (ms) */
@@ -73,6 +77,8 @@ export const PROGRESSIVE_ASSISTANCE_TIMING = {
     maxEncouragementMs: 10_000,
     minHelpOfferMs: 4_000,
     maxHelpOfferMs: 15_000,
+    minAutoPauseMs: 8_000,
+    maxAutoPauseMs: 30_000,
     wrongAnswerThreshold: 2,
     moveOnGraceMs: 3_000,
   },
@@ -85,6 +91,8 @@ export interface ProgressiveAssistanceTimingConfig {
   readonly maxEncouragementMs: number
   readonly minHelpOfferMs: number
   readonly maxHelpOfferMs: number
+  readonly minAutoPauseMs: number
+  readonly maxAutoPauseMs: number
   readonly wrongAnswerThreshold: number
   readonly moveOnGraceMs: number
 }

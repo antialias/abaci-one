@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { shouldUseDebugTiming } from '@/constants/helpTiming'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { css } from '../../../styled-system/css'
 import { DebugMermaidDiagram } from '../flowchart/DebugMermaidDiagram'
@@ -49,6 +50,21 @@ function formatElapsed(ms: number): string {
 export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps) {
   const { isVisualDebugEnabled } = useVisualDebugSafe()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [debugTiming, setDebugTiming] = useState(shouldUseDebugTiming)
+
+  const toggleDebugTiming = useCallback(() => {
+    const next = !debugTiming
+    setDebugTiming(next)
+    try {
+      if (next) {
+        localStorage.setItem('helpDebugTiming', 'true')
+      } else {
+        localStorage.removeItem('helpDebugTiming')
+      }
+    } catch { /* ignore */ }
+    // Reload so timing config takes effect
+    window.location.reload()
+  }, [debugTiming])
 
   if (!isVisualDebugEnabled) return null
 
@@ -179,6 +195,27 @@ export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps
                 />
               </tbody>
             </table>
+
+            {/* Debug timing toggle */}
+            <label
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                marginTop: '0.375rem',
+                cursor: 'pointer',
+                fontSize: '0.625rem',
+                color: 'gray.400',
+              })}
+            >
+              <input
+                type="checkbox"
+                checked={debugTiming}
+                onChange={toggleDebugTiming}
+                className={css({ cursor: 'pointer' })}
+              />
+              Fast timing (reloads)
+            </label>
 
             {/* Threshold progress bar */}
             <div

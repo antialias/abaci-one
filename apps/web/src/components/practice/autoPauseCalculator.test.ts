@@ -26,6 +26,8 @@ const PRODUCTION_TIMING: ProgressiveAssistanceTimingConfig = {
   maxEncouragementMs: 45_000,
   minHelpOfferMs: 15_000,
   maxHelpOfferMs: 90_000,
+  minAutoPauseMs: 30_000,
+  maxAutoPauseMs: 300_000,
   wrongAnswerThreshold: 3,
   moveOnGraceMs: 12_000,
 }

@@ -17,6 +17,8 @@ import type {
 
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
+import { calculateComplexityScaledThresholds, getComplexityCost } from './autoPauseCalculator'
+import { getProgressiveAssistanceTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
 import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
 import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
@@ -136,6 +138,8 @@ function getSubmitAdvanceIntent(destination: SubmitAdvanceDestination): SubmitAd
 
 interface ActiveSessionProps {
   plan: SessionPlan
+  /** Historical results from prior completed sessions for threshold calculation */
+  historicalResults?: SlotResult[]
   /** Student info for display in pause modal */
   student: StudentInfo
   /** Called when a problem is answered */
@@ -356,6 +360,7 @@ function LinearProblem({
  */
 export function ActiveSession({
   plan,
+  historicalResults,
   student,
   onAnswer,
   onEndEarly,
@@ -598,6 +603,14 @@ export function ActiveSession({
     [pause, onPause]
   )
 
+  // Combine historical results from prior sessions with current session results.
+  // Historical data provides the baseline for threshold calculation from session start;
+  // current session results refine it as the student answers more problems.
+  const thresholdResults = useMemo(
+    () => [...(historicalResults ?? []), ...plan.results],
+    [historicalResults, plan.results]
+  )
+
   const assistance = useProgressiveAssistance({
     attempt: attempt
       ? {
@@ -609,11 +622,39 @@ export function ActiveSession({
           },
         }
       : null,
-    results: plan.results,
+    results: thresholdResults,
     problemTermsCount: attempt?.problem?.terms?.length ?? 0,
     isPaused,
     onAutoPause: handleAutoPause,
   })
+
+  // Debug: log complexity costs and thresholds for all problems on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (localStorage.getItem('helpDebugTiming') !== 'true') return
+    } catch { return }
+
+    const timing = getProgressiveAssistanceTiming(shouldUseDebugTiming())
+    const rows = plan.parts.flatMap((part, pi) =>
+      part.slots.map((slot, si) => {
+        const cost = getComplexityCost(slot.problem ?? null)
+        const t = calculateComplexityScaledThresholds(thresholdResults, timing, cost)
+        return {
+          part: pi + 1,
+          slot: si + 1,
+          terms: slot.problem?.terms?.join(', ') ?? '?',
+          cost: cost ?? '(none)',
+          encourage: `${(t.encouragementMs / 1000).toFixed(1)}s`,
+          helpOffer: `${(t.helpOfferMs / 1000).toFixed(1)}s`,
+          autoPause: `${(t.autoPauseMs / 1000).toFixed(1)}s`,
+        }
+      })
+    )
+    console.log(`[autopause] Complexity thresholds (${historicalResults?.length ?? 0} historical + ${plan.results.length} session results):`)
+    console.table(rows)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historicalResults])
 
   // Sync assistance machine with interaction phase transitions
   const prevPhaseRef = useRef(phase.phase)

@@ -64,7 +64,7 @@ import {
   useRecordRedoResult,
   useRecordSlotResult,
 } from '@/hooks/useSessionPlan'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSaveGameResult } from '@/hooks/useGameResults'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { useSessionSongTrigger } from '@/hooks/useSessionSongTrigger'
@@ -165,6 +165,19 @@ export function PracticeClient({
   // Each mutation writes back to this cache on success.
   // Do not prioritize mutation-local `data`, which can become stale and mask newer flow updates.
   const currentPlan = fetchedPlan ?? initialSession
+
+  // Fetch historical results from prior completed sessions for threshold calculation.
+  // This enables complexity-scaled auto-pause thresholds from session start.
+  const { data: historicalResults } = useQuery({
+    queryKey: ['problem-history', studentId],
+    queryFn: async () => {
+      const res = await fetch(`/api/curriculum/${studentId}/problem-history`)
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.history ?? []) as SlotResult[]
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes — historical data doesn't change during a session
+  })
   const logGameBreakTrace = useCallback(
     (event: string, details: Record<string, unknown> = {}) => {
       if (!gameBreakTraceEnabled) return
@@ -956,6 +969,7 @@ export function PracticeClient({
           ) : (
             <ActiveSession
               plan={currentPlan}
+              historicalResults={historicalResults}
               student={{
                 id: player.id,
                 name: player.name,
