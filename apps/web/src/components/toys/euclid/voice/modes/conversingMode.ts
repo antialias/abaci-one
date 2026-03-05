@@ -69,13 +69,13 @@ ${referenceContext}
 
 ${attitude.chatTools ? buildMacroInstructions() : ''}
 
-${isAuthor ? character.personality.domainConstraints ?? '' : character.personality.character}
+${isAuthor ? (character.personality.domainConstraints ?? '') : character.personality.character}
 
 ${attitudePersonality.style}
 
 ${attitudePersonality.dontDo}
 
-${isAuthor ? '' : character.personality.pointLabeling ?? ''}
+${isAuthor ? '' : (character.personality.pointLabeling ?? '')}
 
 ${conv.highlightInstructions}
 
@@ -88,7 +88,7 @@ Points are labeled with single capital letters (A, B, C, D, E, F, G, etc.).
 When speaking point names aloud, pronounce them as the letter name — "A" (ay), "B" (bee), "C" (see), "D" (dee), "E" (ee), "F" (eff), "G" (jee).
 For segments like "AB", say "A B" (two separate letters). For "AF", say "A F" (ay eff). Never run letters together into a word.
 
-${isAuthor ? '' : attitudePersonality.hiddenDepth ?? ''}
+${isAuthor ? '' : (attitudePersonality.hiddenDepth ?? '')}
 
 ${conv.responseGuidelines}
 `

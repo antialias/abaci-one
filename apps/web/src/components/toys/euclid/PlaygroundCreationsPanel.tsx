@@ -229,7 +229,9 @@ export function PlaygroundCreationsPanel({ onClose, onLoad, currentId, playerId 
                             borderRadius: 4,
                             fontSize: 9,
                             fontWeight: 600,
-                            background: c.isPublic ? 'rgba(78,121,167,0.12)' : 'rgba(107,114,128,0.12)',
+                            background: c.isPublic
+                              ? 'rgba(78,121,167,0.12)'
+                              : 'rgba(107,114,128,0.12)',
                             color: c.isPublic ? '#4E79A7' : '#6b7280',
                           }}
                         >
@@ -291,11 +293,7 @@ export function PlaygroundCreationsPanel({ onClose, onLoad, currentId, playerId 
                 }
 
                 return (
-                  <a
-                    key={c.id}
-                    href={`/toys/euclid/creations/${c.id}`}
-                    style={cardStyle}
-                  >
+                  <a key={c.id} href={`/toys/euclid/creations/${c.id}`} style={cardStyle}>
                     {cardContent}
                   </a>
                 )

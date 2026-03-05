@@ -130,7 +130,13 @@ export function playgroundToProofJSON(
   state: ConstructionState,
   options: PlaygroundToProofOptions = {}
 ): ProofJSON {
-  const { id = 0, title = 'Playground Construction', kind = 'construction', givenFacts, givenAngleFacts } = options
+  const {
+    id = 0,
+    title = 'Playground Construction',
+    kind = 'construction',
+    givenFacts,
+    givenAngleFacts,
+  } = options
 
   // Convert given elements to serialized format
   const serializedGiven: SerializedElement[] = givenElements

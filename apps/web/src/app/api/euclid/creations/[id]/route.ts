@@ -63,10 +63,7 @@ export const PATCH = withAuth(async (request: NextRequest, { params: paramsPromi
     if (title !== undefined) updates.title = title
     if (isPublic !== undefined) updates.isPublic = isPublic
 
-    await db
-      .update(schema.euclidCreations)
-      .set(updates)
-      .where(eq(schema.euclidCreations.id, id))
+    await db.update(schema.euclidCreations).set(updates).where(eq(schema.euclidCreations.id, id))
 
     return NextResponse.json({ ok: true })
   } catch (err) {

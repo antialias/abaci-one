@@ -87,10 +87,7 @@ export function GivenSetupPanel({
   const [eqLeft, setEqLeft] = useState('')
   const [eqRight, setEqRight] = useState('')
 
-  const points = useMemo(
-    () => givenElements.filter((el) => el.kind === 'point'),
-    [givenElements]
-  )
+  const points = useMemo(() => givenElements.filter((el) => el.kind === 'point'), [givenElements])
   const segments = useMemo(
     () => givenElements.filter((el) => el.kind === 'segment'),
     [givenElements]
@@ -144,8 +141,8 @@ export function GivenSetupPanel({
       <div style={{ ...sectionStyle, background: 'rgba(78,121,167,0.06)' }}>
         <div style={{ fontWeight: 600, marginBottom: 4 }}>Given Setup Mode</div>
         <div style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.4 }}>
-          Use <strong>Point</strong> tool to place given points.{' '}
-          <strong>Straightedge</strong> to add segments between them.
+          Use <strong>Point</strong> tool to place given points. <strong>Straightedge</strong> to
+          add segments between them.
         </div>
       </div>
 
@@ -227,7 +224,8 @@ export function GivenSetupPanel({
             return (
               <div key={seg.id} style={listItemStyle}>
                 <span style={{ fontWeight: 600 }}>
-                  {fromPt?.label ?? '?'}{toPt?.label ?? '?'}
+                  {fromPt?.label ?? '?'}
+                  {toPt?.label ?? '?'}
                 </span>
                 <span style={{ flex: 1 }} />
                 <button
@@ -311,8 +309,7 @@ export function GivenSetupPanel({
                 ...buttonBase,
                 padding: '4px 10px',
                 fontSize: 12,
-                background:
-                  eqLeft && eqRight && eqLeft !== eqRight ? BYRNE.blue : '#e5e7eb',
+                background: eqLeft && eqRight && eqLeft !== eqRight ? BYRNE.blue : '#e5e7eb',
                 color: eqLeft && eqRight && eqLeft !== eqRight ? '#fff' : '#9ca3af',
               }}
             >

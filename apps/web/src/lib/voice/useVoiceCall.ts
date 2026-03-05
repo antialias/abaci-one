@@ -659,7 +659,11 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
             fetch('/api/realtime/voice-error', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: errCode, message: msg.error?.message, source: 'data-channel-error' }),
+              body: JSON.stringify({
+                code: errCode,
+                message: msg.error?.message,
+                source: 'data-channel-error',
+              }),
             }).catch(() => {})
             const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
             const isRateLimit = /rate_limit/i.test(errCode)
@@ -706,7 +710,11 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
               fetch('/api/realtime/voice-error', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: errCode, message: failError.message, source: 'response-done-failed' }),
+                body: JSON.stringify({
+                  code: errCode,
+                  message: failError.message,
+                  source: 'response-done-failed',
+                }),
               }).catch(() => {})
               const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
               const isRateLimit = /rate_limit/i.test(errCode)

@@ -95,7 +95,10 @@ export interface GivenSetupState {
   givenElements: SerializedElement[]
   givenFacts: SerializedEqualityFact[]
 
-  activate: (existingElements?: SerializedElement[], existingFacts?: SerializedEqualityFact[]) => void
+  activate: (
+    existingElements?: SerializedElement[],
+    existingFacts?: SerializedEqualityFact[]
+  ) => void
   reset: () => void
 
   addPoint: (x: number, y: number) => string
@@ -265,9 +268,7 @@ export function useGivenSetup({
       const snappedY = Math.round(y * 2) / 2
 
       setGivenElements((prev) => {
-        const updated = prev.map((el) =>
-          el.id === id ? { ...el, x: snappedX, y: snappedY } : el
-        )
+        const updated = prev.map((el) => (el.id === id ? { ...el, x: snappedX, y: snappedY } : el))
         const enforced = enforceEqualityConstraints(updated, givenFactsRef.current)
         syncToConstruction(enforced)
         return enforced
@@ -276,63 +277,72 @@ export function useGivenSetup({
     [syncToConstruction]
   )
 
-  const renamePointFn = useCallback(
-    (id: string, newLabel: string) => {
-      const newId = `pt-${newLabel}`
+  const renamePointFn = useCallback((id: string, newLabel: string) => {
+    const newId = `pt-${newLabel}`
 
-      setGivenElements((prev) =>
-        prev.map((el) => {
-          // Rename the point itself
-          if (el.id === id && el.kind === 'point') {
-            return { ...el, id: newId, label: newLabel }
-          }
-          // Update segment references
-          if (el.kind === 'segment') {
-            let changed = false
-            let fromId = el.fromId!
-            let toId = el.toId!
-            if (fromId === id) {
-              fromId = newId
-              changed = true
-            }
-            if (toId === id) {
-              toId = newId
-              changed = true
-            }
-            if (changed) {
-              const segId = `seg-${fromId.replace('pt-', '')}-${toId.replace('pt-', '')}`
-              return { ...el, id: segId, fromId, toId }
-            }
-          }
-          return el
-        })
-      )
-
-      // Update facts that reference the old ID
-      setGivenFacts((prev) =>
-        prev.map((fact) => {
-          const left = { ...fact.left }
-          const right = { ...fact.right }
+    setGivenElements((prev) =>
+      prev.map((el) => {
+        // Rename the point itself
+        if (el.id === id && el.kind === 'point') {
+          return { ...el, id: newId, label: newLabel }
+        }
+        // Update segment references
+        if (el.kind === 'segment') {
           let changed = false
-          if (left.a === id) { left.a = newId; changed = true }
-          if (left.b === id) { left.b = newId; changed = true }
-          if (right.a === id) { right.a = newId; changed = true }
-          if (right.b === id) { right.b = newId; changed = true }
-          if (!changed) return fact
-          const lbl = (ptId: string) => ptId.replace('pt-', '')
-          const statement = `${lbl(left.a)}${lbl(left.b)} = ${lbl(right.a)}${lbl(right.b)}`
-          return { left, right, statement }
-        })
-      )
+          let fromId = el.fromId!
+          let toId = el.toId!
+          if (fromId === id) {
+            fromId = newId
+            changed = true
+          }
+          if (toId === id) {
+            toId = newId
+            changed = true
+          }
+          if (changed) {
+            const segId = `seg-${fromId.replace('pt-', '')}-${toId.replace('pt-', '')}`
+            return { ...el, id: segId, fromId, toId }
+          }
+        }
+        return el
+      })
+    )
 
-      // Keep nextLabelRef in sync
-      const charIdx = LABELS.indexOf(newLabel)
-      if (charIdx >= 0 && charIdx >= nextLabelRef.current) {
-        nextLabelRef.current = charIdx + 1
-      }
-    },
-    []
-  )
+    // Update facts that reference the old ID
+    setGivenFacts((prev) =>
+      prev.map((fact) => {
+        const left = { ...fact.left }
+        const right = { ...fact.right }
+        let changed = false
+        if (left.a === id) {
+          left.a = newId
+          changed = true
+        }
+        if (left.b === id) {
+          left.b = newId
+          changed = true
+        }
+        if (right.a === id) {
+          right.a = newId
+          changed = true
+        }
+        if (right.b === id) {
+          right.b = newId
+          changed = true
+        }
+        if (!changed) return fact
+        const lbl = (ptId: string) => ptId.replace('pt-', '')
+        const statement = `${lbl(left.a)}${lbl(left.b)} = ${lbl(right.a)}${lbl(right.b)}`
+        return { left, right, statement }
+      })
+    )
+
+    // Keep nextLabelRef in sync
+    const charIdx = LABELS.indexOf(newLabel)
+    if (charIdx >= 0 && charIdx >= nextLabelRef.current) {
+      nextLabelRef.current = charIdx + 1
+    }
+  }, [])
 
   const deleteElementFn = useCallback(
     (elementId: string) => {
@@ -457,9 +467,7 @@ export function useGivenSetup({
     factStoreRef.current = factStore
 
     // All given points are draggable
-    const draggablePointIds = elements
-      .filter((el) => el.kind === 'point')
-      .map((el) => el.id!)
+    const draggablePointIds = elements.filter((el) => el.kind === 'point').map((el) => el.id!)
 
     setIsActive(false)
     needsDrawRef.current = true
