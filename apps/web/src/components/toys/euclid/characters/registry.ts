@@ -7,7 +7,7 @@
  */
 
 import type { GeometryVoiceConfig, GeometryTeacherConfig } from '../GeometryTeacherConfig'
-import type { AttitudeId } from '../voice/attitudes/types'
+import type { AttitudeId } from '../agent/attitudes/types'
 import { euclidConfig, getEuclidConfig } from './euclidConfig'
 import { pappusConfig } from './pappusConfig'
 

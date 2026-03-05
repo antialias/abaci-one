@@ -10,7 +10,7 @@ import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import {
   PROPOSITION_SUMMARIES,
   buildReferenceContext,
-} from '@/components/toys/euclid/voice/euclidReferenceContext'
+} from '@/components/toys/euclid/agent/euclidReferenceContext'
 import { EUCLID_CHARACTER_DEF } from '@/components/toys/euclid/euclidCharacterDef'
 import { buildCompletionContext as buildEuclidCompletionContext } from '@/components/toys/euclid/euclidCharacter'
 import { buildMacroInstructions } from '@/components/toys/euclid/engine/macroInstructions'

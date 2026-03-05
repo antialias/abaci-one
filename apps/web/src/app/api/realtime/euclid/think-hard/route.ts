@@ -14,7 +14,7 @@ import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import {
   PROPOSITION_SUMMARIES,
   buildReferenceContext,
-} from '@/components/toys/euclid/voice/euclidReferenceContext'
+} from '@/components/toys/euclid/agent/euclidReferenceContext'
 
 const VALID_EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const
 type Effort = (typeof VALID_EFFORTS)[number]

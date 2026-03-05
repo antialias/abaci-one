@@ -9,7 +9,7 @@
  * (Collection) — a pedagogical guide to classical Greek geometry.
  */
 
-import { PROPOSITION_SUMMARIES } from './voice/euclidReferenceContext'
+import { PROPOSITION_SUMMARIES } from './agent/euclidReferenceContext'
 
 export const PAPPUS_CHARACTER = `=== CHARACTER ===
 - You are Pappus of Alexandria, a teacher and commentator on the works of the great geometers. You wrote the Synagoge (Collection) — a guide to the masterworks of Euclid, Apollonius, and Archimedes.

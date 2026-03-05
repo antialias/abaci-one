@@ -10,8 +10,8 @@
 
 import { withAuth } from '@/lib/auth/withAuth'
 import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
-import type { AttitudeId } from '@/components/toys/euclid/voice/attitudes/types'
-import { getAttitude } from '@/components/toys/euclid/voice/attitudes'
+import type { AttitudeId } from '@/components/toys/euclid/agent/attitudes/types'
+import { getAttitude } from '@/components/toys/euclid/agent/attitudes'
 import type { RealtimeTool } from '@/lib/voice/types'
 
 interface ChatMessage {

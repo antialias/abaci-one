@@ -9,10 +9,10 @@
 
 import type { CharacterDefinition, EntityMarkerConfig } from '@/lib/character/types'
 import type { VoiceMode } from '@/lib/voice/types'
-import type { GeometryModeContext } from './voice/types'
+import type { GeometryModeContext } from './agent/types'
 import type { EuclidEntityRef } from './chat/parseGeometricEntities'
 import type { ChatSystemPromptContext } from './chat/buildChatSystemPrompt'
-import type { AttitudeId } from './voice/attitudes/types'
+import type { AttitudeId } from './agent/attitudes/types'
 
 export interface GeometryVoiceConfig {
   /** Static character identity (personality blocks, profile image, chat UI strings) */

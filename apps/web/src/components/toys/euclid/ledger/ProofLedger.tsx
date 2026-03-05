@@ -12,18 +12,22 @@ import type React from 'react'
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import type { ConstructionState, ConstructionElement } from '../types'
 import type { PostCompletionAction } from '../engine/replayConstruction'
+import type { ProofFact } from '../engine/facts'
 import type { EuclidEntityRef } from '../chat/parseGeometricEntities'
-import type { ConstructionEventBus } from '../voice/ConstructionEventBus'
+import type { ConstructionEventBus } from '../agent/ConstructionEventBus'
 import type { LedgerEntryDescriptor } from './describeAction'
 import { describeAction, describeGivenElement } from './describeAction'
 import { LedgerEntry } from './LedgerEntry'
 import { LedgerPreviewEntry } from './LedgerPreviewEntry'
-import { SECTION_LABEL_STYLE, EMPTY_STATE_STYLE } from '../proof/styles'
+import { FactRow } from '../proof/FactRow'
+import { citationDefFromFact } from '../engine/citations'
+import { SECTION_LABEL_STYLE, EMPTY_STATE_STYLE, getProofFontSizes } from '../proof/styles'
 
 interface ProofLedgerProps {
   constructionState: ConstructionState
   actions: PostCompletionAction[]
   givenElements: ConstructionElement[]
+  proofFacts: ProofFact[]
   eventBus: ConstructionEventBus
   pointLabels: string[]
   renderEntity: (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
@@ -39,6 +43,7 @@ export function ProofLedger({
   constructionState,
   actions,
   givenElements,
+  proofFacts,
   eventBus,
   pointLabels,
   renderEntity,
@@ -249,6 +254,43 @@ export function ProofLedger({
             isMobile={isMobile}
           />
         ))}
+
+        {/* Proof facts (declared equalities) */}
+        {proofFacts.length > 0 && (
+          <>
+            <div
+              style={{
+                borderTop: '1px solid rgba(203, 213, 225, 0.3)',
+                margin: '6px 0',
+              }}
+            />
+            <div style={{ ...SECTION_LABEL_STYLE, marginBottom: 4 }}>Proof Facts</div>
+            {proofFacts.map((fact) => {
+              const citDef = citationDefFromFact(fact.citation)
+              const explanation = fact.justification.replace(/^(Def\.15|C\.N\.\d|I\.\d+):\s*/, '')
+              return (
+                <FactRow
+                  key={fact.id}
+                  fact={fact}
+                  citation={
+                    citDef
+                      ? {
+                          def: citDef,
+                          label: citDef.label,
+                          showText: false,
+                          onPointerEnter: onCitationPointerEnter,
+                          onPointerLeave: onCitationPointerLeave,
+                          onPointerDown: onCitationPointerDown,
+                        }
+                      : undefined
+                  }
+                  explanation={explanation}
+                  fontSize={getProofFontSizes(isMobile).stepText}
+                />
+              )
+            })}
+          </>
+        )}
 
         {/* In-progress tool preview */}
         {toolPreview && (

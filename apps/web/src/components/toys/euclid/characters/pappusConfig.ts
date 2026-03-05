@@ -7,11 +7,11 @@ import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
 import { PAPPUS_CHARACTER_DEF } from '../pappusCharacterDef'
 import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
 import { buildPappusCompletionContext } from '../pappusCharacter'
-import { createGreetingMode } from '../voice/modes/greetingMode'
-import { createConversingMode } from '../voice/modes/conversingMode'
-import { createThinkingMode } from '../voice/modes/thinkingMode'
+import { createGreetingMode } from '../agent/modes/greetingMode'
+import { createConversingMode } from '../agent/modes/conversingMode'
+import { createThinkingMode } from '../agent/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
-import { teacherAttitude } from '../voice/attitudes/teacher'
+import { teacherAttitude } from '../agent/attitudes/teacher'
 
 export const pappusConfig: GeometryVoiceConfig = {
   definition: PAPPUS_CHARACTER_DEF,

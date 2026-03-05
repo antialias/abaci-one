@@ -13,10 +13,10 @@ import {
   PAPPUS_HIDDEN_DEPTH,
 } from '@/components/toys/euclid/pappusCharacter'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
-import { PROPOSITION_SUMMARIES } from '@/components/toys/euclid/voice/euclidReferenceContext'
-import { TOOL_HANG_UP, TOOL_HIGHLIGHT, TOOL_THINK_HARD } from '@/components/toys/euclid/voice/tools'
+import { PROPOSITION_SUMMARIES } from '@/components/toys/euclid/agent/euclidReferenceContext'
+import { TOOL_HANG_UP, TOOL_HIGHLIGHT, TOOL_THINK_HARD } from '@/components/toys/euclid/agent/tools'
 import { pappusConfig } from '@/components/toys/euclid/characters/pappusConfig'
-import type { GeometryModeContext } from '@/components/toys/euclid/voice/types'
+import type { GeometryModeContext } from '@/components/toys/euclid/agent/types'
 import { splitPromptByKnownBlocks, type KnownBlock, type PromptBreakdown } from '../promptBreakdown'
 import {
   getVariantSuffix,
@@ -247,9 +247,9 @@ export const pappusProvider: CharacterDataProvider = {
           promptBreakdown: buildVoiceModeBreakdown(
             'greeting',
             greetingPrompt,
-            'src/components/toys/euclid/voice/modes/greetingMode.ts'
+            'src/components/toys/euclid/agent/modes/greetingMode.ts'
           ),
-          sourceFile: 'src/components/toys/euclid/voice/modes/greetingMode.ts',
+          sourceFile: 'src/components/toys/euclid/agent/modes/greetingMode.ts',
         },
         conversing: {
           id: 'conversing',
@@ -261,9 +261,9 @@ export const pappusProvider: CharacterDataProvider = {
           promptBreakdown: buildVoiceModeBreakdown(
             'conversing',
             conversingPrompt,
-            'src/components/toys/euclid/voice/modes/conversingMode.ts'
+            'src/components/toys/euclid/agent/modes/conversingMode.ts'
           ),
-          sourceFile: 'src/components/toys/euclid/voice/modes/conversingMode.ts',
+          sourceFile: 'src/components/toys/euclid/agent/modes/conversingMode.ts',
         },
         thinking: {
           id: 'thinking',
@@ -275,9 +275,9 @@ export const pappusProvider: CharacterDataProvider = {
           promptBreakdown: buildVoiceModeBreakdown(
             'thinking',
             thinkingPrompt,
-            'src/components/toys/euclid/voice/modes/thinkingMode.ts'
+            'src/components/toys/euclid/agent/modes/thinkingMode.ts'
           ),
-          sourceFile: 'src/components/toys/euclid/voice/modes/thinkingMode.ts',
+          sourceFile: 'src/components/toys/euclid/agent/modes/thinkingMode.ts',
         },
         chat: {
           id: 'chat',

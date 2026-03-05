@@ -20,13 +20,13 @@ import type {
 } from './types'
 import type { ProofFact } from './engine/facts'
 import type { CallState } from '@/lib/voice/types'
-import type { ConstructionNotifier, NotifierLogEntry } from './voice/useConstructionNotifier'
+import type { ConstructionNotifier, NotifierLogEntry } from './agent/useConstructionNotifier'
 import {
   serializeConstructionGraph,
   serializeProofFacts,
   serializeToolState,
   type ToolStateInfo,
-} from './voice/serializeProofState'
+} from './agent/serializeProofState'
 
 interface EuclidContextDebugPanelProps {
   constructionRef: React.RefObject<ConstructionState>

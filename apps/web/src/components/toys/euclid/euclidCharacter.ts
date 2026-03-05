@@ -7,7 +7,7 @@
  * live in their respective consumers.
  */
 
-import { PROPOSITION_SUMMARIES } from './voice/euclidReferenceContext'
+import { PROPOSITION_SUMMARIES } from './agent/euclidReferenceContext'
 
 /**
  * Domain constraints — the axiomatic framework and instrument rules.

@@ -11,10 +11,10 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { createRealtimeSession } from '@/lib/voice/createRealtimeSession'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import { PLAYGROUND_PROP } from '@/components/toys/euclid/propositions/playground'
-import { TOOL_HANG_UP } from '@/components/toys/euclid/voice/tools'
-import type { GeometryModeContext } from '@/components/toys/euclid/voice/types'
+import { TOOL_HANG_UP } from '@/components/toys/euclid/agent/tools'
+import type { GeometryModeContext } from '@/components/toys/euclid/agent/types'
 import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
-import type { AttitudeId } from '@/components/toys/euclid/voice/attitudes/types'
+import type { AttitudeId } from '@/components/toys/euclid/agent/attitudes/types'
 
 export const POST = withAuth(async (request) => {
   try {

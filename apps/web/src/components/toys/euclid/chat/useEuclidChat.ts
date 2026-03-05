@@ -31,9 +31,9 @@ import {
   serializeProofFacts,
   serializeToolState,
   type ToolStateInfo,
-} from '../voice/serializeProofState'
-import { getAttitude } from '../voice/attitudes'
-import type { AttitudeId } from '../voice/attitudes/types'
+} from '../agent/serializeProofState'
+import { getAttitude } from '../agent/attitudes'
+import type { AttitudeId } from '../agent/attitudes/types'
 
 // Re-export ChatMessage from the generic types for backward compatibility
 export type { ChatMessage } from '@/lib/character/types'

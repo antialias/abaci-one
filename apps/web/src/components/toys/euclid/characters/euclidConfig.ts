@@ -11,14 +11,14 @@ import {
   EUCLID_HECKLER_THINKING_METAPHORS,
   EUCLID_HECKLER_STALL_LINES,
 } from '../euclidCharacter'
-import { createGreetingMode } from '../voice/modes/greetingMode'
-import { createConversingMode } from '../voice/modes/conversingMode'
-import { createThinkingMode } from '../voice/modes/thinkingMode'
+import { createGreetingMode } from '../agent/modes/greetingMode'
+import { createConversingMode } from '../agent/modes/conversingMode'
+import { createThinkingMode } from '../agent/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
-import { teacherAttitude } from '../voice/attitudes/teacher'
-import { hecklerAttitude } from '../voice/attitudes/heckler'
-import { authorAttitude } from '../voice/attitudes/author'
-import type { AttitudeId } from '../voice/attitudes/types'
+import { teacherAttitude } from '../agent/attitudes/teacher'
+import { hecklerAttitude } from '../agent/attitudes/heckler'
+import { authorAttitude } from '../agent/attitudes/author'
+import type { AttitudeId } from '../agent/attitudes/types'
 
 /** Shared voice config for Euclid (same endpoints, timing, entity markers). */
 function buildEuclidVoiceBlock() {

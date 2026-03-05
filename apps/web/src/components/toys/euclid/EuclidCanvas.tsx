@@ -1336,6 +1336,7 @@ function EuclidCanvasInner({
     factStoreRef,
     proofFactsRef,
     setProofFacts,
+    needsDrawRef,
   })
 
   // Current attitude from config — useGeometryTeacher is safe to call multiple times
@@ -4729,8 +4730,8 @@ function EuclidCanvasInner({
             )
           }
 
-          // Render angle arcs (for theorems with given angles)
-          if (proposition.givenAngles) {
+          // Render angle arcs (static from proposition + dynamic from fact store)
+          if (proposition.givenAngles || factStoreRef.current.angleFacts.length > 0) {
             renderAngleArcs(
               ctx,
               drawState,
@@ -4738,7 +4739,8 @@ function EuclidCanvasInner({
               cssWidth,
               cssHeight,
               proposition.givenAngles,
-              proposition.equalAngles
+              proposition.equalAngles,
+              factStoreRef.current
             )
           }
 
