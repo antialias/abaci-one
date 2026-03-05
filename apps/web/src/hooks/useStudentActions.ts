@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
+  useDirectEnrollStudent,
   useEnrolledClassrooms,
   useEnterClassroom,
   useLeaveClassroom,
@@ -28,6 +29,7 @@ export interface StudentActionHandlers {
   enterSpecificClassroom: (classroomId: string) => Promise<void>
   leaveClassroom: () => Promise<void>
   promptToEnter: () => Promise<void>
+  addToMyClassroom: () => Promise<void>
   toggleArchive: () => Promise<void>
   openShareAccess: () => void
   openEnrollModal: () => void
@@ -103,6 +105,11 @@ export function useStudentActions(
   const updatePlayer = useUpdatePlayer()
   const enterClassroom = useEnterClassroom()
   const leaveClassroom = useLeaveClassroom()
+  const directEnroll = useDirectEnrollStudent()
+
+  const isEnrolledInMyClassroom = classroom
+    ? enrolledClassrooms.some((c) => c.id === classroom.id)
+    : false
 
   // Entry prompt mutation (teacher action)
   const createEntryPrompt = useMutation({
@@ -128,8 +135,9 @@ export function useStudentActions(
     const context = { isTeacher, classroomId: classroom?.id }
     return getAvailableActions(student, context, {
       hasEnrolledClassrooms: enrolledClassrooms.length > 0,
+      isEnrolledInMyClassroom,
     })
-  }, [student, isTeacher, classroom?.id, enrolledClassrooms.length])
+  }, [student, isTeacher, classroom?.id, enrolledClassrooms.length, isEnrolledInMyClassroom])
 
   // ========== Action handlers ==========
   const handleStartPractice = useCallback(() => {
@@ -187,6 +195,15 @@ export function useStudentActions(
     }
   }, [classroom?.id, createEntryPrompt, student.id])
 
+  const handleAddToMyClassroom = useCallback(async () => {
+    if (classroom?.id) {
+      await directEnroll.mutateAsync({
+        classroomId: classroom.id,
+        playerId: student.id,
+      })
+    }
+  }, [classroom?.id, directEnroll, student.id])
+
   // ========== Memoized result ==========
   const handlers: StudentActionHandlers = useMemo(
     () => ({
@@ -196,6 +213,7 @@ export function useStudentActions(
       enterSpecificClassroom: handleEnterSpecificClassroom,
       leaveClassroom: handleLeaveClassroom,
       promptToEnter: handlePromptToEnter,
+      addToMyClassroom: handleAddToMyClassroom,
       toggleArchive: handleToggleArchive,
       openShareAccess: () => setShowShareAccess(true),
       openEnrollModal: () => setShowEnrollModal(true),
@@ -207,6 +225,7 @@ export function useStudentActions(
       handleEnterSpecificClassroom,
       handleLeaveClassroom,
       handlePromptToEnter,
+      handleAddToMyClassroom,
       handleToggleArchive,
     ]
   )
@@ -231,7 +250,8 @@ export function useStudentActions(
     updatePlayer.isPending ||
     enterClassroom.isPending ||
     leaveClassroom.isPending ||
-    createEntryPrompt.isPending
+    createEntryPrompt.isPending ||
+    directEnroll.isPending
 
   // ========== Classroom data ==========
   const classrooms: ClassroomData = useMemo(

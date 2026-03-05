@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { AppNavBar } from '@/components/AppNavBar'
+import { StudentActionMenu, type StudentActionData } from '@/components/practice/StudentActionMenu'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
 import { useMyFlowcharts } from '@/hooks/useTeacherFlowcharts'
@@ -110,6 +111,7 @@ export default function MyStuffPage() {
                   href={`/my-stuff/player/${player.id}`}
                   data-action="view-player-stuff"
                   className={vstack({
+                    position: 'relative',
                     gap: '8px',
                     p: '20px 16px',
                     bg: 'white',
@@ -125,6 +127,20 @@ export default function MyStuffPage() {
                     },
                   })}
                 >
+                  <StudentActionMenu
+                    variant="card"
+                    student={{
+                      id: player.id,
+                      name: player.name,
+                      isArchived: player.isArchived,
+                      relationship: {
+                        isMyChild: true,
+                        isEnrolled: false,
+                        isPresent: false,
+                        enrollmentStatus: null,
+                      },
+                    } satisfies StudentActionData}
+                  />
                   <span className={css({ fontSize: '36px', lineHeight: '1' })}>
                     {player.emoji ?? '🧒'}
                   </span>

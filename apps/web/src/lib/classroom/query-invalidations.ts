@@ -129,6 +129,10 @@ export function invalidateForEvent(
           queryKey: playerKeys.enrolledClassrooms(playerId),
         })
       }
+      // Player list embeds enrolledClassrooms — must refetch for counts to update
+      queryClient.invalidateQueries({
+        queryKey: playerKeys.listWithSkillData(),
+      })
       // Parent's pending approvals list updates
       queryClient.invalidateQueries({
         queryKey: classroomKeys.pendingParentApprovals(),
@@ -154,6 +158,10 @@ export function invalidateForEvent(
           queryKey: playerKeys.presence(playerId),
         })
       }
+      // Player list embeds enrolledClassrooms — must refetch for counts to update
+      queryClient.invalidateQueries({
+        queryKey: playerKeys.listWithSkillData(),
+      })
       break
 
     case 'studentEntered':
@@ -163,6 +171,12 @@ export function invalidateForEvent(
           queryKey: classroomKeys.presence(classroomId),
         })
       }
+      // Student/parent sees updated presence
+      if (playerId) {
+        queryClient.invalidateQueries({
+          queryKey: playerKeys.presence(playerId),
+        })
+      }
       break
 
     case 'studentLeft':
@@ -170,6 +184,12 @@ export function invalidateForEvent(
       if (classroomId) {
         queryClient.invalidateQueries({
           queryKey: classroomKeys.presence(classroomId),
+        })
+      }
+      // Student/parent sees updated presence
+      if (playerId) {
+        queryClient.invalidateQueries({
+          queryKey: playerKeys.presence(playerId),
         })
       }
       break
@@ -252,6 +272,7 @@ export function getInvalidationKeys(
       if (playerId) {
         keys.push(playerKeys.enrolledClassrooms(playerId))
       }
+      keys.push(playerKeys.listWithSkillData())
       keys.push(classroomKeys.pendingParentApprovals())
       break
 
@@ -264,17 +285,24 @@ export function getInvalidationKeys(
         keys.push(playerKeys.enrolledClassrooms(playerId))
         keys.push(playerKeys.presence(playerId))
       }
+      keys.push(playerKeys.listWithSkillData())
       break
 
     case 'studentEntered':
       if (classroomId) {
         keys.push(classroomKeys.presence(classroomId))
       }
+      if (playerId) {
+        keys.push(playerKeys.presence(playerId))
+      }
       break
 
     case 'studentLeft':
       if (classroomId) {
         keys.push(classroomKeys.presence(classroomId))
+      }
+      if (playerId) {
+        keys.push(playerKeys.presence(playerId))
       }
       break
 

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Classroom, EnrollmentRequest, Player, User } from '@/db/schema'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import { api } from '@/lib/queryClient'
 import { classroomKeys, playerKeys } from '@/lib/queryKeys'
 
@@ -342,17 +343,7 @@ export function useCreateEnrollmentRequest() {
   return useMutation({
     mutationFn: createEnrollmentRequest,
     onSuccess: (_, { classroomId }) => {
-      // Invalidate teacher's pending requests queries
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingRequests(classroomId),
-      })
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.awaitingParentApproval(classroomId),
-      })
-      // Invalidate parent's own pending approvals list so they see their new request
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingParentApprovals(),
-      })
+      invalidateForEvent(queryClient, 'requestCreated', { classroomId })
     },
   })
 }
@@ -366,15 +357,13 @@ export function useApproveEnrollmentRequest() {
   return useMutation({
     mutationFn: approveRequest,
     onSuccess: (result, { classroomId }) => {
-      // Invalidate pending requests
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingRequests(classroomId),
-      })
-      // If fully approved, also invalidate enrollments
       if (result.fullyApproved) {
-        queryClient.invalidateQueries({
-          queryKey: classroomKeys.enrollments(classroomId),
+        invalidateForEvent(queryClient, 'enrollmentCompleted', {
+          classroomId,
+          playerId: result.request.playerId,
         })
+      } else {
+        invalidateForEvent(queryClient, 'requestApproved', { classroomId })
       }
     },
   })
@@ -389,10 +378,7 @@ export function useDenyEnrollmentRequest() {
   return useMutation({
     mutationFn: denyRequest,
     onSuccess: (_, { classroomId }) => {
-      // Invalidate pending requests
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingRequests(classroomId),
-      })
+      invalidateForEvent(queryClient, 'requestDenied', { classroomId })
     },
   })
 }
@@ -405,11 +391,8 @@ export function useUnenrollStudent() {
 
   return useMutation({
     mutationFn: unenrollStudent,
-    onSuccess: (_, { classroomId }) => {
-      // Invalidate enrollments
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.enrollments(classroomId),
-      })
+    onSuccess: (_, { classroomId, playerId }) => {
+      invalidateForEvent(queryClient, 'studentUnenrolled', { classroomId, playerId })
     },
   })
 }
@@ -426,11 +409,8 @@ export function useDirectEnrollStudent() {
 
   return useMutation({
     mutationFn: directEnrollStudent,
-    onSuccess: (_, { classroomId }) => {
-      // Invalidate enrollments so the student appears in the list
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.enrollments(classroomId),
-      })
+    onSuccess: (_, { classroomId, playerId }) => {
+      invalidateForEvent(queryClient, 'enrollmentCompleted', { classroomId, playerId })
     },
   })
 }
@@ -507,15 +487,14 @@ export function useApproveEnrollmentRequestAsParent() {
   return useMutation({
     mutationFn: approveRequestAsParent,
     onSuccess: (result) => {
-      // Invalidate pending parent approvals
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingParentApprovals(),
-      })
-      // If fully approved, classroom enrollments will be updated too
-      // (but we don't know the classroomId from this response, so broader invalidation)
       if (result.enrolled) {
-        queryClient.invalidateQueries({
-          queryKey: ['classrooms'],
+        invalidateForEvent(queryClient, 'enrollmentCompleted', {
+          classroomId: result.request.classroomId,
+          playerId: result.request.playerId,
+        })
+      } else {
+        invalidateForEvent(queryClient, 'requestApproved', {
+          classroomId: result.request.classroomId,
         })
       }
     },
@@ -530,10 +509,9 @@ export function useDenyEnrollmentRequestAsParent() {
 
   return useMutation({
     mutationFn: denyRequestAsParent,
-    onSuccess: () => {
-      // Invalidate pending parent approvals
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.pendingParentApprovals(),
+    onSuccess: (request) => {
+      invalidateForEvent(queryClient, 'requestDenied', {
+        classroomId: request.classroomId,
       })
     },
   })
@@ -617,14 +595,7 @@ export function useEnterClassroom() {
     mutationFn: enterClassroom,
     onSuccess: (result, { classroomId, playerId }) => {
       if (result.success) {
-        // Invalidate teacher's view of classroom presence
-        queryClient.invalidateQueries({
-          queryKey: classroomKeys.presence(classroomId),
-        })
-        // Invalidate student's view of their own presence
-        queryClient.invalidateQueries({
-          queryKey: playerKeys.presence(playerId),
-        })
+        invalidateForEvent(queryClient, 'studentEntered', { classroomId, playerId })
       }
     },
   })
@@ -639,14 +610,7 @@ export function useLeaveClassroom() {
   return useMutation({
     mutationFn: leaveClassroom,
     onSuccess: (_, { classroomId, playerId }) => {
-      // Invalidate teacher's view of classroom presence
-      queryClient.invalidateQueries({
-        queryKey: classroomKeys.presence(classroomId),
-      })
-      // Invalidate student's view of their own presence
-      queryClient.invalidateQueries({
-        queryKey: playerKeys.presence(playerId),
-      })
+      invalidateForEvent(queryClient, 'studentLeft', { classroomId, playerId })
     },
   })
 }

@@ -38,6 +38,7 @@ export interface AvailableActions {
   promptToEnter: boolean
 
   // Enrollment actions
+  addToMyClassroom: boolean
   enrollInClassroom: boolean
   unenrollStudent: boolean
 
@@ -55,11 +56,12 @@ export function getAvailableActions(
   context: StudentActionContext,
   options: {
     hasEnrolledClassrooms?: boolean
+    isEnrolledInMyClassroom?: boolean
   } = {}
 ): AvailableActions {
   const { relationship, activity, isArchived } = student
   const { isTeacher } = context
-  const { hasEnrolledClassrooms = relationship?.isEnrolled } = options
+  const { hasEnrolledClassrooms = relationship?.isEnrolled, isEnrolledInMyClassroom } = options
 
   const isPracticing = activity?.status === 'practicing'
   const hasSessionId = !!activity?.sessionId
@@ -79,6 +81,7 @@ export function getAvailableActions(
       leaveClassroom: false,
       removeFromClassroom: false,
       promptToEnter: false,
+      addToMyClassroom: false,
       enrollInClassroom: false,
       unenrollStudent: false,
       shareAccess: false,
@@ -100,6 +103,8 @@ export function getAvailableActions(
     promptToEnter: isTeacher && isEnrolled && !isPresent,
 
     // Enrollment actions
+    // Parent-teachers can directly add their own children to their classroom
+    addToMyClassroom: isMyChild && isTeacher && !isEnrolledInMyClassroom,
     // Parents can enroll their children (even if they're also teachers)
     enrollInClassroom: isMyChild && !isEnrolled,
     unenrollStudent: isTeacher && isEnrolled,
@@ -121,6 +126,7 @@ export const ACTION_DEFINITIONS = {
   leaveClassroom: { icon: '🚪', label: 'Leave Classroom' },
   removeFromClassroom: { icon: '🚪', label: 'Remove from Classroom' },
   promptToEnter: { icon: '📣', label: 'Prompt to Enter' },
+  addToMyClassroom: { icon: '🏫', label: 'Add to My Class' },
   enrollInClassroom: { icon: '➕', label: 'Enroll in Classroom' },
   unenrollStudent: {
     icon: '📋',

@@ -2,7 +2,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/queryClient'
-import { playerKeys, classroomKeys } from '@/lib/queryKeys'
+import { playerKeys } from '@/lib/queryKeys'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import { stakeholdersKeys } from '@/hooks/useStudentStakeholders'
 
 // =============================================================================
@@ -69,8 +70,9 @@ export function useUnenrollFromClassroom() {
   return useMutation({
     mutationFn: unenrollFromClassroom,
     onSuccess: (_, { classroomId, playerId }) => {
+      invalidateForEvent(queryClient, 'studentUnenrolled', { classroomId, playerId })
+      // Also invalidate stakeholders view and broad player cache
       queryClient.invalidateQueries({ queryKey: stakeholdersKeys.player(playerId) })
-      queryClient.invalidateQueries({ queryKey: classroomKeys.enrollments(classroomId) })
       queryClient.invalidateQueries({ queryKey: playerKeys.all })
     },
   })

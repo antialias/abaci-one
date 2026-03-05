@@ -51,6 +51,7 @@ export function StudentActionMenu({
     actions.enterClassroom ||
     actions.leaveClassroom ||
     actions.removeFromClassroom ||
+    actions.addToMyClassroom ||
     actions.enrollInClassroom ||
     actions.unenrollStudent ||
     actions.shareAccess ||
@@ -66,7 +67,7 @@ export function StudentActionMenu({
           <button
             type="button"
             data-action="open-menu"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
             className={css({
               // Card variant: absolute positioned overlay on cards
               ...(variant === 'card' && {
@@ -211,6 +212,18 @@ export function StudentActionMenu({
                   </DropdownMenu.Sub>
                 )}
 
+                {/* Direct add to teacher's own classroom */}
+                {actions.addToMyClassroom && (
+                  <DropdownMenu.Item
+                    className={menuItemStyles(isDark)}
+                    onSelect={handlers.addToMyClassroom}
+                    data-action="add-to-my-classroom"
+                  >
+                    <span>{ACTION_DEFINITIONS.addToMyClassroom.icon}</span>
+                    <span>{ACTION_DEFINITIONS.addToMyClassroom.label}</span>
+                  </DropdownMenu.Item>
+                )}
+
                 {/* Always show enroll option */}
                 <DropdownMenu.Item
                   className={menuItemStyles(isDark)}
@@ -226,15 +239,29 @@ export function StudentActionMenu({
             {/* Show enroll option even if no enrollments yet */}
             {classrooms.enrolled.length === 0 &&
               !classrooms.current &&
-              actions.enrollInClassroom && (
-                <DropdownMenu.Item
-                  className={menuItemStyles(isDark)}
-                  onSelect={handlers.openEnrollModal}
-                  data-action="enroll-in-classroom"
-                >
-                  <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
-                  <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
-                </DropdownMenu.Item>
+              (actions.enrollInClassroom || actions.addToMyClassroom) && (
+                <>
+                  {actions.addToMyClassroom && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.addToMyClassroom}
+                      data-action="add-to-my-classroom"
+                    >
+                      <span>{ACTION_DEFINITIONS.addToMyClassroom.icon}</span>
+                      <span>{ACTION_DEFINITIONS.addToMyClassroom.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+                  {actions.enrollInClassroom && (
+                    <DropdownMenu.Item
+                      className={menuItemStyles(isDark)}
+                      onSelect={handlers.openEnrollModal}
+                      data-action="enroll-in-classroom"
+                    >
+                      <span>{ACTION_DEFINITIONS.enrollInClassroom.icon}</span>
+                      <span>{ACTION_DEFINITIONS.enrollInClassroom.label}</span>
+                    </DropdownMenu.Item>
+                  )}
+                </>
               )}
 
             <DropdownMenu.Separator className={separatorStyles(isDark)} />
