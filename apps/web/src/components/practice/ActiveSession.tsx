@@ -628,8 +628,10 @@ export function ActiveSession({
     onAutoPause: handleAutoPause,
   })
 
-  // Debug: log complexity costs and thresholds for all problems on mount
+  // Debug: log complexity costs and thresholds for all problems
+  // Skips the initial render before historical data loads to avoid a misleading defaults-only table.
   useEffect(() => {
+    if (!historicalResults) return // still loading — skip
     if (typeof window === 'undefined') return
     try {
       if (localStorage.getItem('helpDebugTiming') !== 'true') return
@@ -651,7 +653,7 @@ export function ActiveSession({
         }
       })
     )
-    console.log(`[autopause] Complexity thresholds (${historicalResults?.length ?? 0} historical + ${plan.results.length} session results):`)
+    console.log(`[autopause] Complexity thresholds (${historicalResults.length} historical + ${plan.results.length} session results):`)
     console.table(rows)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historicalResults])

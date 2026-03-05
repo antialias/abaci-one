@@ -26,7 +26,7 @@ const PRODUCTION_TIMING: ProgressiveAssistanceTimingConfig = {
   maxEncouragementMs: 45_000,
   minHelpOfferMs: 15_000,
   maxHelpOfferMs: 90_000,
-  minAutoPauseMs: 30_000,
+  minAutoPauseMs: 15_000,
   maxAutoPauseMs: 300_000,
   wrongAnswerThreshold: 3,
   moveOnGraceMs: 12_000,
@@ -451,10 +451,10 @@ describe('autoPauseCalculator', () => {
       expect(highCost.encouragementMs).toBe(10000)
 
       // autoPause = (mean + 2σ)*cost = 1000*cost (σ=0)
-      // Low: 2000 → clamped to 30s
-      expect(lowCost.autoPauseMs).toBe(MIN_PAUSE_THRESHOLD_MS)
-      // High: 10000 → clamped to 30s
-      expect(highCost.autoPauseMs).toBe(MIN_PAUSE_THRESHOLD_MS)
+      // Low: 2000 → clamped to minAutoPauseMs (15s)
+      expect(lowCost.autoPauseMs).toBe(timing.minAutoPauseMs)
+      // High: 10000 → clamped to minAutoPauseMs (15s)
+      expect(highCost.autoPauseMs).toBe(timing.minAutoPauseMs)
     })
 
     it('harder problems get longer thresholds', () => {
@@ -481,20 +481,20 @@ describe('autoPauseCalculator', () => {
       expect(easy.helpOfferMs).toBeLessThanOrEqual(hard.helpOfferMs)
     })
 
-    it('clamps auto-pause to 30s minimum and 5min maximum', () => {
+    it('clamps auto-pause to timing minimum and maximum', () => {
       // Very fast rate: 100ms/cost
       const fastResults = Array(5)
         .fill(null)
         .map((_, i) => mockResultWithCost(100 * (i + 1), i + 1))
       const fastThresholds = calculateComplexityScaledThresholds(fastResults, timing, 1)
-      expect(fastThresholds.autoPauseMs).toBe(MIN_PAUSE_THRESHOLD_MS)
+      expect(fastThresholds.autoPauseMs).toBe(timing.minAutoPauseMs)
 
       // Very slow rate: 50000ms/cost
       const slowResults = Array(5)
         .fill(null)
         .map((_, i) => mockResultWithCost(50000 * (i + 1), i + 1))
       const slowThresholds = calculateComplexityScaledThresholds(slowResults, timing, 20)
-      expect(slowThresholds.autoPauseMs).toBe(MAX_PAUSE_THRESHOLD_MS)
+      expect(slowThresholds.autoPauseMs).toBe(timing.maxAutoPauseMs)
     })
   })
 })

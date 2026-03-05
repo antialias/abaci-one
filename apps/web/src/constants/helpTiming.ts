@@ -62,7 +62,7 @@ export const PROGRESSIVE_ASSISTANCE_TIMING = {
     /** Max clamp for help offer threshold (ms) */
     maxHelpOfferMs: 90_000,
     /** Min clamp for auto-pause threshold (ms) */
-    minAutoPauseMs: 30_000,
+    minAutoPauseMs: 15_000,
     /** Max clamp for auto-pause threshold (ms) */
     maxAutoPauseMs: 300_000,
     /** Number of wrong answers before suggesting help */
