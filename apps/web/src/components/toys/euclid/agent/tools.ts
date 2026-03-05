@@ -165,9 +165,10 @@ export const TOOL_POSTULATE_2: RealtimeTool = {
   description:
     'Postulate 2: "To produce a finite straight line continuously in a straight line." ' +
     'Extends a segment through one endpoint to a new point. Requires a base point ' +
-    'and a through point (the endpoint to extend past). Distance is optional — if ' +
-    'omitted, the segment is extended by its own length (i.e. doubled). Only specify ' +
-    'distance when the user explicitly requests a specific extension length.',
+    'and a through point (the endpoint to extend past). DO NOT pass the distance ' +
+    'parameter unless the user explicitly requests a specific extension length — ' +
+    'when omitted, the segment is extended by its own length (i.e. doubled), which ' +
+    'is almost always what you want.',
   parameters: {
     type: 'object',
     properties: {
@@ -183,7 +184,8 @@ export const TOOL_POSTULATE_2: RealtimeTool = {
         type: 'number',
         description:
           'How far to extend past the through point (in construction units). ' +
-          'Optional — defaults to the length of the existing segment.',
+          'DO NOT pass this parameter unless the user specifies an explicit length. ' +
+          'Must be positive. When omitted, defaults to the segment\'s own length.',
       },
     },
     required: ['base_label', 'through_label'],

@@ -25,7 +25,10 @@ export interface UseAuthorCallbacksOptions {
   currentStepRef: MutRef<number>
   factStoreRef: MutRef<FactStore>
   proofFactsRef: MutRef<ProofFact[]>
+  /** Author-declared facts only — survives construction replay */
+  authorProofFactsRef: MutRef<ProofFact[]>
   setProofFacts: (facts: ProofFact[]) => void
+  needsDrawRef: MutRef<boolean>
 }
 
 export interface UseAuthorCallbacksReturn {
@@ -65,7 +68,9 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
     currentStepRef,
     factStoreRef,
     proofFactsRef,
+    authorProofFactsRef,
     setProofFacts,
+    needsDrawRef,
   } = opts
 
   // Forward-reference refs — consumers assign these after handlers are defined
@@ -155,6 +160,9 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
         const dirX = dx / len
         const dirY = dy / len
         // Default to extending by the segment's own length (doubling it)
+        if (distance != null && distance < 0.001) {
+          return { success: false, error: 'Distance must be positive. Omit the distance parameter to extend by the segment\'s own length.' }
+        }
         const ext = distance ?? len
         const projX = throughPt.x + dirX * ext
         const projY = throughPt.y + dirY * ext
@@ -251,8 +259,10 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
           step
         )
         if (newFacts.length > 0) {
+          authorProofFactsRef.current = [...authorProofFactsRef.current, ...newFacts]
           proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
           setProofFacts(proofFactsRef.current)
+          needsDrawRef.current = true
         }
         return { success: true, factCount: newFacts.length }
       },
@@ -312,8 +322,10 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
           step
         )
         if (newFacts.length > 0) {
+          authorProofFactsRef.current = [...authorProofFactsRef.current, ...newFacts]
           proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
           setProofFacts(proofFactsRef.current)
+          needsDrawRef.current = true
         }
         return { success: true, factCount: newFacts.length }
       },

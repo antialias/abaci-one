@@ -8,6 +8,8 @@ import type {
   ActiveTool,
 } from '../types'
 import type { FactStore } from '../engine/factStore'
+import { mergeProofFacts } from '../engine/factStore'
+import type { ProofFact } from '../engine/facts'
 import type { IntersectionCandidate } from '../types'
 import type { PostCompletionAction, ReplayResult } from '../engine/replayConstruction'
 import { getAllPoints, getPoint } from '../engine/constructionState'
@@ -23,6 +25,7 @@ interface UseDragGivenPointsOptions {
   propositionRef: React.MutableRefObject<PropositionDef>
   constructionRef: React.MutableRefObject<ConstructionState>
   factStoreRef: React.MutableRefObject<FactStore>
+  proofFactsRef: React.MutableRefObject<ProofFact[]>
   viewportRef: React.MutableRefObject<EuclidViewportState>
   isCompleteRef: React.MutableRefObject<boolean>
   activeToolRef: React.MutableRefObject<ActiveTool>
@@ -53,6 +56,7 @@ export function useDragGivenPoints({
   propositionRef,
   constructionRef,
   factStoreRef,
+  proofFactsRef,
   viewportRef,
   isCompleteRef,
   activeToolRef,
@@ -256,6 +260,7 @@ export function useDragGivenPoints({
         const result = replayConstruction(givenElements, prop.steps, prop, actions)
         constructionRef.current = result.state
         factStoreRef.current = result.factStore
+        mergeProofFacts(factStoreRef.current, proofFactsRef.current)
         candidatesRef.current = result.candidates
         onReplayResult(result)
         needsDrawRef.current = true

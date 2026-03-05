@@ -247,6 +247,38 @@ export function rebuildFactStore(facts: ProofFact[]): FactStore {
   return store
 }
 
+/**
+ * Merge proof facts into an existing fact store (idempotent).
+ * Facts already connected in the union-find are silently skipped.
+ * Use after a replayConstruction to restore author-declared facts
+ * that the replay doesn't know about.
+ */
+export function mergeProofFacts(store: FactStore, proofFacts: ProofFact[]): void {
+  for (const fact of proofFacts) {
+    if (isAngleFact(fact)) {
+      addAngleFact(
+        store,
+        fact.left,
+        fact.right,
+        fact.citation,
+        fact.statement,
+        fact.justification,
+        fact.atStep
+      )
+    } else {
+      addFact(
+        store,
+        fact.left,
+        fact.right,
+        fact.citation,
+        fact.statement,
+        fact.justification,
+        fact.atStep
+      )
+    }
+  }
+}
+
 /** All distances known-equal to this one */
 export function getEqualDistances(store: FactStore, dp: DistancePair): DistancePair[] {
   const uf = getUf(store)

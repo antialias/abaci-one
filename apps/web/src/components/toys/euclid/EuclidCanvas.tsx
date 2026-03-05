@@ -63,6 +63,7 @@ import {
   addAngleFact,
   queryEquality,
   rebuildFactStore,
+  mergeProofFacts,
 } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { ProofFact } from './engine/facts'
@@ -1090,6 +1091,8 @@ function EuclidCanvasInner({
   const [ceremonyLabel, setCeremonyLabel] = useState<string | null>(null)
   const [proofFacts, setProofFacts] = useState<ProofFact[]>([])
   const proofFactsRef = useRef<ProofFact[]>([])
+  /** Author-declared proof facts (from voice/chat tools). Survives replay. */
+  const authorProofFactsRef = useRef<ProofFact[]>([])
   const snapshotStackRef = useRef<ProofSnapshot[]>([
     captureSnapshot(constructionRef.current, candidatesRef.current, [], []),
   ])
@@ -1335,6 +1338,7 @@ function EuclidCanvasInner({
     currentStepRef,
     factStoreRef,
     proofFactsRef,
+    authorProofFactsRef,
     setProofFacts,
     needsDrawRef,
   })
@@ -1917,6 +1921,7 @@ function EuclidCanvasInner({
         candidatesRef.current = result.candidates
         ghostLayersRef.current = result.ghostLayers
         factStoreRef.current = result.factStore
+        mergeProofFacts(factStoreRef.current, proofFactsRef.current)
       }
 
       function frame(now: number) {
@@ -2970,6 +2975,7 @@ function EuclidCanvasInner({
     eventBusRef.current.emit({ action: 'reset', shouldPrompt: false, reset: true })
     ghostLayersRef.current = []
     proofFactsRef.current = []
+    authorProofFactsRef.current = []
     toolPhases.resetAll()
     setCreationId(null)
     setCreationIsPublic(false)
@@ -2997,6 +3003,7 @@ function EuclidCanvasInner({
       setShareState('idle')
       ghostLayersRef.current = []
       proofFactsRef.current = []
+      authorProofFactsRef.current = []
       setProofFacts([])
       onAttitudeChange?.('author')
     },
@@ -3704,48 +3711,9 @@ function EuclidCanvasInner({
           }
         }
       } else if (expected.type === 'extend') {
-        // Auto-complete extend steps: compute position and commit
-        const basePt = getPoint(constructionRef.current, expected.baseId)
-        const throughPt = getPoint(constructionRef.current, expected.throughId)
-        if (basePt && throughPt) {
-          const dx = throughPt.x - basePt.x
-          const dy = throughPt.y - basePt.y
-          const len = Math.sqrt(dx * dx + dy * dy)
-          if (len > 0.001) {
-            const dirX = dx / len
-            const dirY = dy / len
-            const newX = throughPt.x + dirX * expected.distance
-            const newY = throughPt.y + dirY * expected.distance
-            const ptResult = addPoint(
-              constructionRef.current,
-              newX,
-              newY,
-              'intersection',
-              expected.label
-            )
-            constructionRef.current = ptResult.state
-            const segResult = addSegment(
-              constructionRef.current,
-              expected.throughId,
-              ptResult.point.id
-            )
-            constructionRef.current = segResult.state
-            const ptCands = findNewIntersections(
-              constructionRef.current,
-              ptResult.point,
-              candidatesRef.current,
-              extendSegments
-            )
-            const segCands = findNewIntersections(
-              constructionRef.current,
-              segResult.segment,
-              [...candidatesRef.current, ...ptCands],
-              extendSegments
-            )
-            candidatesRef.current = [...candidatesRef.current, ...ptCands, ...segCands]
-            checkStep(ptResult.point)
-          }
-        }
+        // Delegate to handleCommitExtend which handles guided extend steps
+        // (projX/projY are ignored in guided mode — it uses expected.distance)
+        handleCommitExtend(expected.baseId, expected.throughId, 0, 0)
       } else if (expected.type === 'macro') {
         handleCommitMacro(expected.propId, expected.inputPointIds)
       }
@@ -3757,6 +3725,7 @@ function EuclidCanvasInner({
     steps,
     handleCommitCircle,
     handleCommitSegment,
+    handleCommitExtend,
     handleMarkIntersection,
     handleCommitMacro,
   ])
@@ -3824,8 +3793,17 @@ function EuclidCanvasInner({
 
   const handleDragReplay = useCallback(
     (result: ReplayResult) => {
-      proofFactsRef.current = result.proofFacts
-      setProofFacts(result.proofFacts)
+      // Combine replay-derived facts with author-declared facts that survive replay
+      const combined =
+        authorProofFactsRef.current.length > 0
+          ? [...result.proofFacts, ...authorProofFactsRef.current]
+          : result.proofFacts
+      proofFactsRef.current = combined
+      setProofFacts(combined)
+      // Re-merge author facts into the (already-rebuilt) fact store so queries work
+      if (authorProofFactsRef.current.length > 0) {
+        mergeProofFacts(factStoreRef.current, authorProofFactsRef.current)
+      }
       ghostLayersRef.current = result.ghostLayers
       musicRef.current?.notifyChange()
 
@@ -3937,6 +3915,7 @@ function EuclidCanvasInner({
     propositionRef,
     constructionRef,
     factStoreRef,
+    proofFactsRef,
     viewportRef,
     isCompleteRef,
     activeToolRef,
@@ -4160,12 +4139,13 @@ function EuclidCanvasInner({
         candidatesRef.current = result.candidates
         ghostLayersRef.current = result.ghostLayers
         factStoreRef.current = result.factStore
+        mergeProofFacts(factStoreRef.current, proofFactsRef.current)
         needsDrawRef.current = true
 
         if (rawT >= 1) {
           // Animation complete — finalize state and notify ledger
-          proofFactsRef.current = result.proofFacts
-          setProofFacts(result.proofFacts)
+          // Don't overwrite proofFactsRef — it already has author-declared facts
+          // that the replay doesn't know about.
           eventBusRef.current.emit({ action: 'revert', shouldPrompt: false, reset: true })
           relocatePointAnimRef.current = null
         }
@@ -6013,6 +5993,7 @@ function EuclidCanvasInner({
                   ? dynamicPropositionRef.current.givenElements
                   : proposition.givenElements
               }
+              proofFacts={proofFacts}
               eventBus={eventBusRef.current}
               pointLabels={getAllPoints(constructionRef.current).map((p) => p.label)}
               renderEntity={renderEntity}
