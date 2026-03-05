@@ -16,6 +16,7 @@ import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
 import { useGeometryTeacher } from '../GeometryTeacherContext'
 import { CallStatusChip } from '@/lib/character/CallStatusChip'
 import { useCharacterProfileImage } from '@/lib/character/useCharacterProfileImage'
+import { useChatInputFocus } from '@/lib/character/useChatInputFocus'
 
 export interface DockedEuclidChatProps {
   messages: ChatMessage[]
@@ -138,11 +139,14 @@ export function DockedEuclidChat({
     }
   }, [messages])
 
+  const { markFocusBeforeSend, preventFocusLoss } = useChatInputFocus(inputRef, isStreaming)
+
   const handleSend = useCallback(() => {
-    if (!input.trim() || isStreaming) return
+    if (!input.trim()) return
+    markFocusBeforeSend()
     onSend(input.trim())
     setInput('')
-  }, [input, isStreaming, onSend])
+  }, [input, onSend, markFocusBeforeSend])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -198,6 +202,7 @@ export function DockedEuclidChat({
           audioEnabled={audioEnabled}
           smProfileImage={smProfileImage}
           defaultProfileImage={defaultProfileImage}
+          preventFocusLoss={preventFocusLoss}
         />
       )
     }
@@ -221,6 +226,7 @@ export function DockedEuclidChat({
         audioEnabled={audioEnabled}
         onColdStart={onColdStart}
         smProfileImage={smProfileImage}
+        preventFocusLoss={preventFocusLoss}
       />
     )
   }
@@ -248,6 +254,7 @@ export function DockedEuclidChat({
       onUndock={onUndock}
       smProfileImage={smProfileImage}
       defaultProfileImage={defaultProfileImage}
+      preventFocusLoss={preventFocusLoss}
     />
   )
 }
@@ -289,6 +296,8 @@ interface DesktopDockedChatProps {
   smProfileImage: string
   /** Theme-aware default-size profile image URL */
   defaultProfileImage: string
+  /** Prevent send button from stealing input focus */
+  preventFocusLoss: (e: React.MouseEvent) => void
 }
 
 function DesktopDockedChat({
@@ -318,6 +327,7 @@ function DesktopDockedChat({
   audioEnabled,
   smProfileImage,
   defaultProfileImage,
+  preventFocusLoss,
 }: DesktopDockedChatProps) {
   const { definition: characterDef, entityMarkers } = useGeometryTeacher()
   return (
@@ -970,7 +980,6 @@ function DesktopDockedChat({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
-          disabled={isStreaming}
           style={{
             flex: 1,
             border: '1px solid rgba(203, 213, 225, 0.6)',
@@ -986,11 +995,12 @@ function DesktopDockedChat({
         <button
           data-action="send-docked-chat"
           onClick={onSend}
-          disabled={!input.trim() || isStreaming}
+          onMouseDown={preventFocusLoss}
+          disabled={!input.trim()}
           title="Send"
           style={{
             border: 'none',
-            background: input.trim() && !isStreaming ? ACCENT : '#cbd5e1',
+            background: input.trim() ? ACCENT : '#cbd5e1',
             color: 'white',
             borderRadius: 6,
             width: 28,
@@ -998,7 +1008,7 @@ function DesktopDockedChat({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
+            cursor: input.trim() ? 'pointer' : 'default',
             flexShrink: 0,
             transition: 'background 0.15s ease',
           }}
@@ -1044,6 +1054,8 @@ interface MobileChatStripProps {
   onColdStart?: () => void
   /** Theme-aware small profile image URL */
   smProfileImage: string
+  /** Prevent send button from stealing input focus */
+  preventFocusLoss: (e: React.MouseEvent) => void
 }
 
 function MobileChatStrip({
@@ -1065,6 +1077,7 @@ function MobileChatStrip({
   audioEnabled,
   onColdStart,
   smProfileImage,
+  preventFocusLoss,
 }: MobileChatStripProps) {
   const { definition: characterDef, entityMarkers } = useGeometryTeacher()
   const isCallActive = callState?.state === 'ringing' || callState?.state === 'active'
@@ -1072,7 +1085,6 @@ function MobileChatStrip({
 
   const handleMobileSend = useCallback(() => {
     if (!input.trim()) return
-    setInputFocused(false)
     onSend()
   }, [input, onSend])
 
@@ -1353,7 +1365,6 @@ function MobileChatStrip({
             onKeyDown={handleMobileKeyDown}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
-            disabled={isStreaming}
             style={{
               flex: inputFocused ? 1 : undefined,
               width: inputFocused ? undefined : 90,
@@ -1372,11 +1383,12 @@ function MobileChatStrip({
           <button
             data-action="send-docked-chat"
             onClick={handleMobileSend}
-            disabled={!input.trim() || isStreaming}
+            onMouseDown={preventFocusLoss}
+            disabled={!input.trim()}
             title="Send"
             style={{
               border: 'none',
-              background: input.trim() && !isStreaming ? ACCENT : '#cbd5e1',
+              background: input.trim() ? ACCENT : '#cbd5e1',
               color: 'white',
               borderRadius: 6,
               width: 28,
@@ -1384,7 +1396,7 @@ function MobileChatStrip({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
+              cursor: input.trim() ? 'pointer' : 'default',
               flexShrink: 0,
               transition: 'background 0.15s ease',
             }}

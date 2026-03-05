@@ -300,7 +300,12 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
         )
 
         // Execute each tool call and collect results
-        const toolResults: Array<{ callId: string; name: string; arguments: Record<string, unknown>; result: unknown }> = []
+        const toolResults: Array<{
+          callId: string
+          name: string
+          arguments: Record<string, unknown>
+          result: unknown
+        }> = []
         for (const tc of pendingToolCalls) {
           // Add tool action message to chat
           const actionDesc = describeToolAction(tc.name, tc.arguments)
@@ -327,7 +332,13 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
 
         // Build continuation messages: include both the tool calls and their results.
         // The Responses API requires a function_call item for each function_call_output.
-        const toolMessages: Array<{ role: string; content: string; toolCallId?: string; toolCallName?: string; toolCallArgs?: string }> = []
+        const toolMessages: Array<{
+          role: string
+          content: string
+          toolCallId?: string
+          toolCallName?: string
+          toolCallArgs?: string
+        }> = []
         for (const tr of toolResults) {
           // The function_call item (assistant called a tool)
           toolMessages.push({
@@ -373,7 +384,7 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
 
   const sendMessage = useCallback(
     (text: string) => {
-      if (!text.trim() || isStreaming) return
+      if (!text.trim()) return
 
       if (abortRef.current) {
         abortRef.current.abort()
@@ -422,13 +433,16 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
             await handleToolContinuation(toolCalls, apiMessages, abortController, screenshot)
           }
         } finally {
-          setIsStreaming(false)
+          // Only clear streaming if we're still the active request
+          // (a newer sendMessage may have replaced us via abort)
+          if (abortRef.current === abortController) {
+            setIsStreaming(false)
+          }
         }
       }
       run()
     },
     [
-      isStreaming,
       messages,
       chatEndpoint,
       buildRequestBody,
@@ -495,7 +509,9 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
           await handleToolContinuation(toolCalls, apiMessages, abortController, screenshot)
         }
       } finally {
-        setIsStreaming(false)
+        if (abortRef.current === abortController) {
+          setIsStreaming(false)
+        }
       }
     }
     run()

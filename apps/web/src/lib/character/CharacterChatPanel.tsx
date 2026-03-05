@@ -12,6 +12,7 @@ import type { CharacterDefinition, ChatMessage, ChatCallState, EntityMarkerConfi
 import { MarkedText } from './MarkedText'
 import { CallStatusChip } from './CallStatusChip'
 import { useCharacterProfileImage } from './useCharacterProfileImage'
+import { useChatInputFocus } from './useChatInputFocus'
 
 export interface DebugCompactionProps {
   /** Current compaction coverage (messages 0..coversUpTo are summarized) */
@@ -102,11 +103,14 @@ export function CharacterChatPanel<TEntityRef>({
     inputRef.current?.focus()
   }, [])
 
+  const { markFocusBeforeSend, preventFocusLoss } = useChatInputFocus(inputRef, isStreaming)
+
   const handleSend = useCallback(() => {
-    if (!input.trim() || isStreaming) return
+    if (!input.trim()) return
+    markFocusBeforeSend()
     onSend(input.trim())
     setInput('')
-  }, [input, isStreaming, onSend])
+  }, [input, onSend, markFocusBeforeSend])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -684,7 +688,6 @@ export function CharacterChatPanel<TEntityRef>({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={isStreaming}
           style={{
             flex: 1,
             border: '1px solid rgba(203, 213, 225, 0.6)',
@@ -700,11 +703,12 @@ export function CharacterChatPanel<TEntityRef>({
         <button
           data-action="send-chat"
           onClick={handleSend}
-          disabled={!input.trim() || isStreaming}
+          onMouseDown={preventFocusLoss}
+          disabled={!input.trim()}
           title="Send"
           style={{
             border: 'none',
-            background: input.trim() && !isStreaming ? '#4E79A7' : '#cbd5e1',
+            background: input.trim() ? '#4E79A7' : '#cbd5e1',
             color: 'white',
             borderRadius: 8,
             width: 32,
@@ -712,7 +716,7 @@ export function CharacterChatPanel<TEntityRef>({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: input.trim() && !isStreaming ? 'pointer' : 'default',
+            cursor: input.trim() ? 'pointer' : 'default',
             flexShrink: 0,
             transition: 'background 0.15s ease',
           }}
