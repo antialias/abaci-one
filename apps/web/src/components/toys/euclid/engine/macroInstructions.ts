@@ -87,9 +87,15 @@ export function buildMacroInstructions(): string {
 
   const docs = propIds.map((id) => buildRecipeDoc(RECIPE_REGISTRY[id])).join('\n\n')
 
-  return `=== AVAILABLE PROPOSITION MACROS (for apply_proposition tool) ===
-Use these when you need to invoke a previously proven proposition as a single operation.
-Pass point LABELS (not IDs) as a comma-separated string.
+  return `=== AVAILABLE PROPOSITION MACROS ===
+These propositions have been proven and can be applied as single operations.
+
+IMPORTANT — INPUT ORDER MATTERS:
+- Reversing input order produces a DIFFERENT result. Intersection points are chosen
+  relative to the direction from the first input to the second ("chirality").
+- Example: apply_proposition(1, "A,B") builds a triangle on one side of AB.
+  apply_proposition(1, "B,A") builds the triangle on the OTHER side.
+- The same proposition CAN be applied multiple times with different inputs.
 
 ${docs}`
 }

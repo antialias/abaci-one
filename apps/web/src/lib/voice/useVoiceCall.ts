@@ -655,6 +655,12 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
               return
             }
             console.error('[voice] server error:', JSON.stringify(msg.error))
+            // Report to server so quota/billing errors are visible in server logs
+            fetch('/api/realtime/voice-error', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: errCode, message: msg.error?.message, source: 'data-channel-error' }),
+            }).catch(() => {})
             const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
             const isRateLimit = /rate_limit/i.test(errCode)
             // Set stateRef BEFORE cleanup so dc.onclose doesn't trigger hangUp
@@ -696,6 +702,12 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
             if (respStatus === 'failed' && failError?.code) {
               const errCode = failError.code || failError.type || 'unknown'
               console.error('[voice] response.done FAILED: %s — %s', errCode, failError.message)
+              // Report to server so quota/billing errors are visible in server logs
+              fetch('/api/realtime/voice-error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: errCode, message: failError.message, source: 'response-done-failed' }),
+              }).catch(() => {})
               const isQuota = /insufficient_quota|quota_exceeded|billing/i.test(errCode)
               const isRateLimit = /rate_limit/i.test(errCode)
               // Set stateRef BEFORE cleanup so dc.onclose doesn't trigger hangUp

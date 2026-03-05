@@ -53,37 +53,31 @@ export function buildChatSystemPrompt(
     completionContext = buildCompletionContext(propId)
   }
 
-  // Author mode: functional prompt without character personality
+  // Author mode: dynamic state + domain constraints + formatting.
+  // Behavioral instructions come from the attitude's chatDirective (appended by the API route).
   if (isAuthor) {
-    return `You are a geometric reasoning assistant collaborating with an admin to author a Euclidean proposition.
-
-=== CURRENT PROPOSITION ===
+    return `=== CURRENT PROPOSITION ===
 ${propDesc}
 ${ctx.isComplete ? completionContext : `Current step: ${typeof ctx.currentStep === 'number' ? ctx.currentStep + 1 : 'unknown'}`}
 ${ctx.playgroundMode ? 'This is a free-form playground construction.' : ''}
 
-=== CONSTRUCTION GRAPH (with element IDs for tool calls) ===
+=== CONSTRUCTION GRAPH ===
 ${typeof ctx.constructionGraph === 'string' ? ctx.constructionGraph : 'Empty construction'}
 
-=== PROVEN FACTS (current fact store) ===
+=== PROVEN FACTS ===
 ${typeof ctx.proofFacts === 'string' ? ctx.proofFacts : 'No facts proven yet.'}
 
 ${buildMacroInstructions()}
 
+${character.personality.domainConstraints ?? ''}
+
 === REFERENCE MATERIAL ===
 ${referenceContext}
 
-=== TEXT CHAT SPECIFICS ===
-- Use point LABELS (A, B, C) in tool calls and conversation — tools resolve labels to IDs automatically
-- You have FULL coordinate data for every point in the construction graph above. NEVER ask the user to confirm or provide coordinates — just read them from the graph and use them directly.
-- When placing new points, choose coordinates that make geometric sense relative to existing points.
-- Be concise and direct — 1-3 sentences per response
-- Focus on the next construction step or fact to record
-
 === FORMATTING RULES ===
-- Write in PLAIN TEXT only. No markdown, no LaTeX.
-- Use {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} markers for geometric entities
-- Use {def:N}, {post:N}, {cn:N}, {prop:N} markers for citations
+- No markdown, no LaTeX. Use only plain text and the entity markers below.
+- {seg:AB}, {tri:ABC}, {ang:ABC}, {pt:A} — geometric entities (rendered interactively in the UI)
+- {def:N}, {post:N}, {cn:N}, {prop:N} — citations (rendered as popovers in the UI)
 
 ${character.personality.pointLabeling ?? ''}`
   }
@@ -114,6 +108,7 @@ ${typeof ctx.proofFacts === 'string' ? ctx.proofFacts : 'No facts proven yet.'}
 
 === REFERENCE MATERIAL ===
 ${referenceContext}
+
 
 ${character.personality.character}
 

@@ -19,6 +19,9 @@ export interface CharacterDefinition {
   personality: {
     /** Core identity — WHO they are (shared across all attitudes) */
     character: string
+    /** Domain constraints — axiomatic framework, tools of geometry, etc.
+     *  Used in author mode instead of the full character personality. */
+    domainConstraints?: string
     /** Domain-specific point/label naming conventions (shared) */
     pointLabeling?: string
     /** Attitude-specific personality blocks */

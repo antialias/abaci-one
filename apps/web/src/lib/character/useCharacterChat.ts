@@ -300,7 +300,7 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
         )
 
         // Execute each tool call and collect results
-        const toolResults: Array<{ callId: string; name: string; result: unknown }> = []
+        const toolResults: Array<{ callId: string; name: string; arguments: Record<string, unknown>; result: unknown }> = []
         for (const tc of pendingToolCalls) {
           // Add tool action message to chat
           const actionDesc = describeToolAction(tc.name, tc.arguments)
@@ -322,20 +322,29 @@ export function useCharacterChat(options: UseCharacterChatOptions): UseCharacter
               result = { success: false, error: String(err) }
             }
           }
-          toolResults.push({ callId: tc.callId, name: tc.name, result })
+          toolResults.push({ callId: tc.callId, name: tc.name, arguments: tc.arguments, result })
         }
 
-        // Build continuation messages: append tool results
-        const continuationMessages = [
-          ...apiMessages,
-          // The tool call items are implicit in the Responses API (the model already emitted them)
-          // We just need to send function_call_output items
-          ...toolResults.map((tr) => ({
-            role: 'tool' as const,
+        // Build continuation messages: include both the tool calls and their results.
+        // The Responses API requires a function_call item for each function_call_output.
+        const toolMessages: Array<{ role: string; content: string; toolCallId?: string; toolCallName?: string; toolCallArgs?: string }> = []
+        for (const tr of toolResults) {
+          // The function_call item (assistant called a tool)
+          toolMessages.push({
+            role: 'assistant_tool_call',
+            content: '',
+            toolCallId: tr.callId,
+            toolCallName: tr.name,
+            toolCallArgs: JSON.stringify(tr.arguments),
+          })
+          // The function_call_output item (tool result)
+          toolMessages.push({
+            role: 'tool',
             content: JSON.stringify(tr.result),
             toolCallId: tr.callId,
-          })),
-        ]
+          })
+        }
+        const continuationMessages = [...apiMessages, ...toolMessages]
 
         // Create a new assistant message for the continuation response
         const continuationMsgId = generateId()

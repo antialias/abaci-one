@@ -1607,6 +1607,19 @@ function EuclidCanvasInner({
     }
   }, [heckler.stage, euclidVoice, onAttitudeChange, stopAudio])
 
+  // Reset heckler overlay when the voice call ends (state → idle) while stage is 'answered'
+  useEffect(() => {
+    if (heckler.stage === 'answered' && euclidVoice.state === 'idle') {
+      console.log('[heckler-reset] call ended, resetting stage to idle')
+      heckler.dismiss()
+      hecklerPreDialRef.current = false
+      pendingActivateRef.current = false
+      stallTextRef.current = null
+      stallDoneRef.current = true
+      onAttitudeChange?.('teacher')
+    }
+  }, [heckler, euclidVoice.state, onAttitudeChange])
+
   // Dismiss: clean up pre-connection and revert to teacher
   const handleHecklerDismiss = useCallback(() => {
     console.log('[heckler-dismiss] voiceState=%s', euclidVoice.state)

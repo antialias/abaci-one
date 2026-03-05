@@ -51,7 +51,11 @@ export function createConversingMode(
       const referenceContext = buildReferenceContext(ctx.propositionId)
       const attitudePersonality = getAttitudePersonality(character, attitude.id)
 
-      return `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. ${conv.roleIntro}
+      // Author mode: skip character personality but keep domain constraints
+      // (tools of geometry, axiom framework). It's a tool, not a character.
+      const isAuthor = attitude.id === 'author'
+
+      return `${isAuthor ? '' : `You are ${character.displayName}${character.nativeDisplayName ? ` (${character.nativeDisplayName})` : ''}. `}${conv.roleIntro}
 
 === CURRENT PROPOSITION ===
 ${propDesc}
@@ -65,13 +69,13 @@ ${referenceContext}
 
 ${attitude.chatTools ? buildMacroInstructions() : ''}
 
-${character.personality.character}
+${isAuthor ? character.personality.domainConstraints ?? '' : character.personality.character}
 
 ${attitudePersonality.style}
 
 ${attitudePersonality.dontDo}
 
-${character.personality.pointLabeling ?? ''}
+${isAuthor ? '' : character.personality.pointLabeling ?? ''}
 
 ${conv.highlightInstructions}
 
@@ -84,7 +88,7 @@ Points are labeled with single capital letters (A, B, C, D, E, F, G, etc.).
 When speaking point names aloud, pronounce them as the letter name — "A" (ay), "B" (bee), "C" (see), "D" (dee), "E" (ee), "F" (eff), "G" (jee).
 For segments like "AB", say "A B" (two separate letters). For "AF", say "A F" (ay eff). Never run letters together into a word.
 
-${attitudePersonality.hiddenDepth ?? ''}
+${isAuthor ? '' : attitudePersonality.hiddenDepth ?? ''}
 
 ${conv.responseGuidelines}
 `

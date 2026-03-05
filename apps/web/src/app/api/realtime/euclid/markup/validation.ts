@@ -32,26 +32,41 @@ export function wordOverlapRatio(original: string, stripped: string): number {
 }
 
 /**
- * Strict validation: remaining text (markers stripped) must be a subsequence of
- * the original, and at least 50% of the original length. Use for user-written text.
+ * Strict validation: markers expanded to display text must be a subsequence of
+ * the original. This catches cases where a marker replaces non-matching text
+ * (e.g., {pt:A} eating the word "point").
+ *
+ * Uses stripEntityMarkers from the shared marker system to expand markers to
+ * their canonical display text, then verifies the result is a subsequence of
+ * the original.
+ *
+ * Use for user-written text where we must preserve every word exactly.
  */
-export function validateMarkupStrict(original: string, marked: string): boolean {
-  let remaining = marked.replace(MARKER_RE, '')
+export function validateMarkupStrict(
+  original: string,
+  marked: string,
+  expandMarkers: (text: string) => string
+): boolean {
+  let expanded = expandMarkers(marked)
 
-  // Remaining text should be a significant portion of the original
-  if (remaining.length < original.length * 0.5) return false
+  // Expanded text should be a significant portion of the original
+  if (expanded.length < original.length * 0.5) return false
 
   // Strip trailing punctuation the model may have added (models love adding periods)
-  remaining = remaining.replace(/[.!?]+$/, '')
+  expanded = expanded.replace(/[.!?]+$/, '')
 
-  // Collapse runs of whitespace so stripped markers don't leave double spaces that
-  // break the subsequence check against the original's single spaces.
-  remaining = remaining.replace(/ {2,}/g, ' ').trim()
+  // Collapse runs of whitespace so marker expansion doesn't break the subsequence
+  // check against the original's single spaces.
+  expanded = expanded.replace(/ {2,}/g, ' ').trim()
   const normalizedOriginal = original.replace(/ {2,}/g, ' ').trim()
 
-  // The remaining characters should be a subsequence of the original
+  // The expanded text should be a subsequence of the original.
+  // This allows the original to have extra chars (like △ before ABD) that the
+  // marker expansion doesn't reproduce, while catching cases where the marker
+  // replaced unrelated text (e.g., "point" → {pt:A} expands to "A", and "A"
+  // is not a subsequence continuation after "damn ").
   let oi = 0
-  for (const ch of remaining) {
+  for (const ch of expanded) {
     while (oi < normalizedOriginal.length && normalizedOriginal[oi] !== ch) oi++
     if (oi >= normalizedOriginal.length) return false
     oi++

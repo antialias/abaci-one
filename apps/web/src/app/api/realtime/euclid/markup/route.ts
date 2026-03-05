@@ -18,7 +18,11 @@
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
+import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
+import { EUCLID_ENTITY_MARKERS } from '@/components/toys/euclid/euclidEntityMarkers'
 import { MARKER_RE, validateMarkupStrict, wordOverlapRatio } from './validation'
+
+const expandMarkers = (text: string) => stripEntityMarkers(text, EUCLID_ENTITY_MARKERS)
 
 /** Minimum word overlap ratio for non-strict (sanity check) mode. */
 const SANITY_OVERLAP_THRESHOLD = 0.6
@@ -169,7 +173,7 @@ CRITICAL RULES — read carefully:
 
     if (strict) {
       // Strict: remaining text must be a character-level subsequence of the original
-      if (!validateMarkupStrict(text, markedText)) {
+      if (!validateMarkupStrict(text, markedText, expandMarkers)) {
         console.warn(
           '[euclid-markup] Strict validation failed — model rewrote surrounding text. Returning original.'
         )

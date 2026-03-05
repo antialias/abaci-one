@@ -15,9 +15,11 @@ import { getAttitude } from '@/components/toys/euclid/voice/attitudes'
 import type { RealtimeTool } from '@/lib/voice/types'
 
 interface ChatMessage {
-  role: 'user' | 'assistant' | 'tool'
+  role: 'user' | 'assistant' | 'assistant_tool_call' | 'tool'
   content: string
   toolCallId?: string
+  toolCallName?: string
+  toolCallArgs?: string
 }
 
 /** Convert our RealtimeTool format to OpenAI Responses API function tool format. */
@@ -129,6 +131,14 @@ export const POST = withAuth(async (request) => {
         { type: 'input_text', text: msg.content },
       ]
       input.push({ role: 'user', content: contentParts })
+    } else if (msg.role === 'assistant_tool_call' && msg.toolCallId) {
+      // Tool call the model made — must precede the function_call_output
+      input.push({
+        type: 'function_call',
+        call_id: msg.toolCallId,
+        name: msg.toolCallName,
+        arguments: msg.toolCallArgs ?? '{}',
+      })
     } else if (msg.role === 'tool' && msg.toolCallId) {
       // Tool result — follows the function_call_output format for Responses API
       input.push({

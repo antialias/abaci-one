@@ -1,5 +1,6 @@
 import {
   EUCLID_CHARACTER,
+  EUCLID_DOMAIN_CONSTRAINTS,
   EUCLID_TEACHING_STYLE,
   EUCLID_WHAT_NOT_TO_DO,
   EUCLID_DIAGRAM_QUESTION,
@@ -17,6 +18,7 @@ export const EUCLID_CHARACTER_DEF: CharacterDefinition = {
   profileImage: '/images/euclid-profile.png',
   personality: {
     character: EUCLID_CHARACTER,
+    domainConstraints: EUCLID_DOMAIN_CONSTRAINTS,
     pointLabeling: EUCLID_POINT_LABELING,
     attitudes: {
       teacher: {
