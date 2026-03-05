@@ -41,6 +41,7 @@ export type { ChatMessage } from '@/lib/character/types'
 // Re-export AuthorToolCallbacks from shared location
 import type { AuthorToolCallbacks } from '../authorToolCallbacks'
 export type { AuthorToolCallbacks } from '../authorToolCallbacks'
+import { dispatchAuthorTool } from '../agent/dispatchAuthorTool'
 
 export interface UseEuclidChatOptions {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
@@ -212,75 +213,7 @@ export function useEuclidChat(options: UseEuclidChatOptions): UseEuclidChatRetur
     return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
       const cb = authorCallbacksRef.current
       if (!cb) return { success: false, error: 'No author callbacks available' }
-
-      switch (name) {
-        case 'place_point':
-          return cb.placePoint(
-            Number(args.x),
-            Number(args.y),
-            args.label ? String(args.label) : undefined
-          )
-        case 'postulate_1':
-          return cb.commitSegment(String(args.from_label), String(args.to_label))
-        case 'postulate_2':
-          return cb.commitExtend(
-            String(args.base_label),
-            String(args.through_label),
-            args.distance != null ? Number(args.distance) : undefined
-          )
-        case 'postulate_3':
-          return cb.commitCircle(String(args.center_label), String(args.radius_point_label))
-        case 'mark_intersection':
-          return cb.markIntersection(
-            String(args.of_a),
-            String(args.of_b),
-            args.which ? String(args.which) : undefined
-          )
-        case 'apply_proposition':
-          return cb.commitMacro(
-            Number(args.prop_id),
-            String(args.input_labels)
-              .split(',')
-              .map((s) => s.trim())
-          )
-        case 'declare_equality':
-          return cb.addFact(
-            String(args.left_a),
-            String(args.left_b),
-            String(args.right_a),
-            String(args.right_b),
-            String(args.citation_type),
-            args.citation_detail ? String(args.citation_detail) : undefined,
-            String(args.statement),
-            String(args.justification)
-          )
-        case 'declare_angle_equality':
-          return cb.addAngleFact(
-            String(args.left_vertex),
-            String(args.left_ray1),
-            String(args.left_ray2),
-            String(args.right_vertex),
-            String(args.right_ray1),
-            String(args.right_ray2),
-            String(args.citation_type),
-            args.citation_detail ? String(args.citation_detail) : undefined,
-            String(args.statement),
-            String(args.justification)
-          )
-        case 'relocate_point':
-          return cb.relocatePoint(
-            String(args.label),
-            Number(args.x),
-            Number(args.y),
-            args.force === true
-          )
-        case 'undo_last':
-          return cb.undoLast()
-        case 'highlight':
-          return cb.highlight(String(args.entity_type), String(args.labels))
-        default:
-          return { success: false, error: `Unknown tool: ${name}` }
-      }
+      return dispatchAuthorTool(name, args, cb)
     }
   }, [chatTools])
 

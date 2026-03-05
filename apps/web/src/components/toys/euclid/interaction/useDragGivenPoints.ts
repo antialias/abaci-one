@@ -33,6 +33,8 @@ interface UseDragGivenPointsOptions {
   pointerCapturedRef: React.MutableRefObject<boolean>
   candidatesRef: React.MutableRefObject<IntersectionCandidate[]>
   postCompletionActionsRef: React.MutableRefObject<PostCompletionAction[]>
+  /** Per-step data (e.g. user-chosen extend distances) for replay */
+  stepDataRef?: React.MutableRefObject<Map<number, Record<string, unknown>>>
   /** When true, drag interactions are suppressed (e.g. during correction animations) */
   interactionLockedRef?: React.MutableRefObject<boolean>
   /** Called when construction state is replaced during drag */
@@ -64,6 +66,7 @@ export function useDragGivenPoints({
   pointerCapturedRef,
   candidatesRef,
   postCompletionActionsRef,
+  stepDataRef,
   interactionLockedRef,
   onReplayResult,
   onDragStart,
@@ -257,7 +260,13 @@ export function useDragGivenPoints({
         }
 
         // Replay the full construction + any post-completion user actions
-        const result = replayConstruction(givenElements, prop.steps, prop, actions)
+        const result = replayConstruction(
+          givenElements,
+          prop.steps,
+          prop,
+          actions,
+          stepDataRef?.current
+        )
         constructionRef.current = result.state
         factStoreRef.current = result.factStore
         mergeProofFacts(factStoreRef.current, proofFactsRef.current)

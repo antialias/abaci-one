@@ -70,7 +70,8 @@ export function replayConstruction(
   givenElements: ConstructionElement[],
   steps: PropositionStep[],
   propDef: PropositionDef,
-  extraActions?: PostCompletionAction[]
+  extraActions?: PostCompletionAction[],
+  stepData?: Map<number, Record<string, unknown>>
 ): ReplayResult {
   let state = initializeGiven(givenElements)
   const factStore = createFactStore()
@@ -108,10 +109,12 @@ export function replayConstruction(
   }
 
   // Execute each proposition step
+  // For adaptive propositions, resolved overrides may replace expected actions
+  const resolvedExpected = new Map<number, import('../types').ExpectedAction>()
   let stepsCompleted = 0
   for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
     const step = steps[stepIdx]
-    const expected = step.expected
+    const expected = resolvedExpected.get(stepIdx) ?? step.expected
 
     let stepSucceeded = false
 
@@ -232,8 +235,11 @@ export function replayConstruction(
         if (len > 0.001) {
           const dirX = dx / len
           const dirY = dy / len
-          const newX = throughPt.x + dirX * expected.distance
-          const newY = throughPt.y + dirY * expected.distance
+          // Resolve distance: explicit > stepData > segment length default
+          const dist =
+            expected.distance ?? (stepData?.get(stepIdx)?.distance as number | undefined) ?? len
+          const newX = throughPt.x + dirX * dist
+          const newY = throughPt.y + dirY * dist
 
           // Create the new point
           const ptResult = addPoint(state, newX, newY, 'intersection', expected.label)
@@ -278,7 +284,16 @@ export function replayConstruction(
       }
     }
 
-    if (stepSucceeded) stepsCompleted = stepIdx + 1
+    if (stepSucceeded) {
+      stepsCompleted = stepIdx + 1
+      // Resolve next step's expected action for adaptive propositions
+      if (propDef.resolveStep && stepIdx + 1 < steps.length) {
+        const override = propDef.resolveStep(stepIdx + 1, state, stepData ?? new Map())
+        if (override?.expected) {
+          resolvedExpected.set(stepIdx + 1, override.expected)
+        }
+      }
+    }
   }
 
   // Run conclusion function

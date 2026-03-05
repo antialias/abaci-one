@@ -3,12 +3,14 @@ import type {
   ConstructionElement,
   ConstructionState,
   TutorialSubStep,
+  ExpectedAction,
 } from '../types'
 import { BYRNE } from '../types'
 import type { FactStore } from '../engine/factStore'
 import type { ProofFact } from '../engine/facts'
 import { distancePair, angleMeasure } from '../engine/facts'
 import { addFact, addAngleFact } from '../engine/factStore'
+import { getPoint } from '../engine/constructionState'
 
 function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tap = isTouch ? 'Tap' : 'Click'
@@ -100,128 +102,154 @@ function getProp5Tutorial(isTouch: boolean): TutorialSubStep[][] {
   ]
 }
 
+/** Helper: Euclidean distance between two points */
+function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
 /**
- * Derive I.5 conclusion: full 7-fact derivation chain
+ * Derive I.5 conclusion: full 7-fact derivation chain (role-based).
+ *
+ * The proof is symmetric. Whether AE ≥ AF or AF > AE, the structure is identical —
+ * only the point roles swap. We define:
+ *   extShort / extLong  — the shorter/longer extension endpoint (F or E)
+ *   baseShort / baseLong — the base vertex below the shorter/longer extension (B or C)
  *
  * Construction gives us:
- *   AF = AG  (I.3: cut off from AE a part equal to AF)
+ *   A-extShort = AG  (I.3: cut off from A-extLong a part equal to A-extShort)
  *   AB = AC  (given)
  *
  * Derivation:
- *   1. BF = CG           [C.N.3: AF − AB = AG − AC]
- *   2. FC = GB           [I.4: △AFC ≅ △AGB]
- *   3. ∠ACF = ∠ABG       [I.4: △AFC ≅ △AGB — vertex angles]
- *   4. ∠AFC = ∠AGB       [I.4: △AFC ≅ △AGB — vertex angles]
- *   5. ∠FBC = ∠GCB       [I.4: △BFC ≅ △CGB — under-base angles]
- *   6. ∠BCF = ∠CBG       [I.4: △BFC ≅ △CGB — remaining angles]
- *   7. ∠ABC = ∠ACB       [C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF]
+ *   1. baseShort-extShort = baseLong-G  [C.N.3]
+ *   2. extShort-baseLong = G-baseShort  [I.4: △A-extShort-baseLong ≅ △A-G-baseShort]
+ *   3. ∠A-baseLong-extShort = ∠A-baseShort-G  [I.4 — vertex angles]
+ *   4. ∠A-extShort-baseLong = ∠A-G-baseShort  [I.4 — vertex angles]
+ *   5. ∠extShort-baseShort-baseLong = ∠G-baseLong-baseShort  [I.4 under-base]
+ *   6. ∠baseShort-baseLong-extShort = ∠baseLong-baseShort-G  [I.4 remaining]
+ *   7. ∠ABC = ∠ACB  [C.N.3]
  */
 function deriveProp5Conclusion(
   store: FactStore,
-  _state: ConstructionState,
+  state: ConstructionState,
   atStep: number
 ): ProofFact[] {
   const allNewFacts: ProofFact[] = []
 
-  const dpBF = distancePair('pt-B', 'pt-F')
-  const dpCG = distancePair('pt-C', 'pt-G')
-  const dpAF = distancePair('pt-A', 'pt-F')
-  const dpAB = distancePair('pt-A', 'pt-B')
+  const ptA = getPoint(state, 'pt-A')
+  const ptF = getPoint(state, 'pt-F')
+  const ptE = getPoint(state, 'pt-E')
+  if (!ptA || !ptF || !ptE) return allNewFacts
 
-  // 1. C.N.3 — BF = CG
-  //    AF = AG (I.3), AB = AC (given)
-  //    AF − AB = AG − AC → BF = CG
+  const ae = dist(ptA, ptE)
+  const af = dist(ptA, ptF)
+  const aeGreater = ae >= af
+
+  // Role assignment based on which extension is longer
+  const extShort = aeGreater ? 'pt-F' : 'pt-E' // shorter extension endpoint
+  const extLong = aeGreater ? 'pt-E' : 'pt-F' // longer extension endpoint (G sits on this ray)
+  const baseShort = aeGreater ? 'pt-B' : 'pt-C' // base vertex below shorter ext
+  const baseLong = aeGreater ? 'pt-C' : 'pt-B' // base vertex below longer ext
+
+  // Label helpers
+  const lbl = (id: string) => id.replace('pt-', '')
+
+  const dpBaseShortExtShort = distancePair(baseShort, extShort)
+  const dpBaseLongG = distancePair(baseLong, 'pt-G')
+  const dpAExtShort = distancePair('pt-A', extShort)
+  const dpABaseShort = distancePair('pt-A', baseShort)
+
+  // 1. C.N.3 — baseShort-extShort = baseLong-G
   allNewFacts.push(
     ...addFact(
       store,
-      dpBF,
-      dpCG,
-      { type: 'cn3', whole: dpAF, part: dpAB },
-      'BF = CG',
-      'C.N.3: AF − AB = AG − AC (since AF = AG, AB = AC)',
+      dpBaseShortExtShort,
+      dpBaseLongG,
+      { type: 'cn3', whole: dpAExtShort, part: dpABaseShort },
+      `${lbl(baseShort)}${lbl(extShort)} = ${lbl(baseLong)}G`,
+      `C.N.3: A${lbl(extShort)} − A${lbl(baseShort)} = AG − A${lbl(baseLong)} (since A${lbl(extShort)} = AG, A${lbl(baseShort)} = A${lbl(baseLong)})`,
       atStep
     )
   )
 
-  // 2. I.4 (SAS) — FC = GB
-  //    △AFC ≅ △AGB: AF = AG, AC = AB, ∠FAC = ∠GAB (common angle at A)
-  const dpFC = distancePair('pt-F', 'pt-C')
-  const dpGB = distancePair('pt-G', 'pt-B')
+  // 2. I.4 (SAS) — extShort-baseLong = G-baseShort
+  const dpExtShortBaseLong = distancePair(extShort, baseLong)
+  const dpGBaseShort = distancePair('pt-G', baseShort)
 
   allNewFacts.push(
     ...addFact(
       store,
-      dpFC,
-      dpGB,
+      dpExtShortBaseLong,
+      dpGBaseShort,
       { type: 'prop', propId: 4 },
-      'FC = GB',
-      'I.4: △AFC ≅ △AGB (AF = AG, AC = AB, ∠FAC = ∠GAB)',
+      `${lbl(extShort)}${lbl(baseLong)} = G${lbl(baseShort)}`,
+      `I.4: △A${lbl(extShort)}${lbl(baseLong)} ≅ △AG${lbl(baseShort)} (A${lbl(extShort)} = AG, A${lbl(baseLong)} = A${lbl(baseShort)}, ∠${lbl(extShort)}A${lbl(baseLong)} = ∠GA${lbl(baseShort)})`,
       atStep
     )
   )
 
-  // 3. ∠ACF = ∠ABG (I.4: vertex angles at C and B in △AFC ≅ △AGB)
-  const angACF = angleMeasure('pt-C', 'pt-A', 'pt-F')
-  const angABG = angleMeasure('pt-B', 'pt-A', 'pt-G')
+  // 3. ∠A-baseLong-extShort = ∠A-baseShort-G (I.4 vertex angles)
+  const angABaseLongExtShort = angleMeasure(baseLong, 'pt-A', extShort)
+  const angABaseShortG = angleMeasure(baseShort, 'pt-A', 'pt-G')
   allNewFacts.push(
     ...addAngleFact(
       store,
-      angACF,
-      angABG,
+      angABaseLongExtShort,
+      angABaseShortG,
       { type: 'prop', propId: 4 },
-      '∠ACF = ∠ABG',
-      'I.4: △AFC ≅ △AGB — remaining angles',
+      `∠A${lbl(baseLong)}${lbl(extShort)} = ∠A${lbl(baseShort)}G`,
+      `I.4: △A${lbl(extShort)}${lbl(baseLong)} ≅ △AG${lbl(baseShort)} — remaining angles`,
       atStep
     )
   )
 
-  // 4. ∠AFC = ∠AGB (I.4: vertex angles at F and G in △AFC ≅ △AGB)
-  const angAFC = angleMeasure('pt-F', 'pt-A', 'pt-C')
-  const angAGB = angleMeasure('pt-G', 'pt-A', 'pt-B')
+  // 4. ∠A-extShort-baseLong = ∠A-G-baseShort (I.4 vertex angles)
+  const angAExtShortBaseLong = angleMeasure(extShort, 'pt-A', baseLong)
+  const angAGBaseShort = angleMeasure('pt-G', 'pt-A', baseShort)
   allNewFacts.push(
     ...addAngleFact(
       store,
-      angAFC,
-      angAGB,
+      angAExtShortBaseLong,
+      angAGBaseShort,
       { type: 'prop', propId: 4 },
-      '∠AFC = ∠AGB',
-      'I.4: △AFC ≅ △AGB — remaining angles',
+      `∠A${lbl(extShort)}${lbl(baseLong)} = ∠AG${lbl(baseShort)}`,
+      `I.4: △A${lbl(extShort)}${lbl(baseLong)} ≅ △AG${lbl(baseShort)} — remaining angles`,
       atStep
     )
   )
 
-  // 5. ∠FBC = ∠GCB (I.4: △BFC ≅ △CGB — under-base angles)
-  //    BF = CG (fact 1), FC = GB (fact 2), ∠BFC = ∠CGB (supp. of equal ∠AFC, ∠AGB)
-  const angFBC = angleMeasure('pt-B', 'pt-F', 'pt-C')
-  const angGCB = angleMeasure('pt-C', 'pt-G', 'pt-B')
+  // 5. ∠extShort-baseShort-baseLong = ∠G-baseLong-baseShort (I.4 under-base)
+  const angExtShortBaseShortBaseLong = angleMeasure(baseShort, extShort, baseLong)
+  const angGBaseLongBaseShort = angleMeasure(baseLong, 'pt-G', baseShort)
   allNewFacts.push(
     ...addAngleFact(
       store,
-      angFBC,
-      angGCB,
+      angExtShortBaseShortBaseLong,
+      angGBaseLongBaseShort,
       { type: 'prop', propId: 4 },
-      '∠FBC = ∠GCB',
-      'I.4: △BFC ≅ △CGB — angles under the base',
+      `∠${lbl(extShort)}${lbl(baseShort)}${lbl(baseLong)} = ∠G${lbl(baseLong)}${lbl(baseShort)}`,
+      `I.4: △${lbl(baseShort)}${lbl(extShort)}${lbl(baseLong)} ≅ △${lbl(baseLong)}G${lbl(baseShort)} — angles under the base`,
       atStep
     )
   )
 
-  // 6. ∠BCF = ∠CBG (I.4: △BFC ≅ △CGB — remaining angles)
-  const angBCF = angleMeasure('pt-C', 'pt-B', 'pt-F')
-  const angCBG = angleMeasure('pt-B', 'pt-C', 'pt-G')
+  // 6. ∠baseShort-baseLong-extShort = ∠baseLong-baseShort-G (I.4 remaining)
+  const angBaseShortBaseLongExtShort = angleMeasure(baseLong, baseShort, extShort)
+  const angBaseLongBaseShortG = angleMeasure(baseShort, baseLong, 'pt-G')
   allNewFacts.push(
     ...addAngleFact(
       store,
-      angBCF,
-      angCBG,
+      angBaseShortBaseLongExtShort,
+      angBaseLongBaseShortG,
       { type: 'prop', propId: 4 },
-      '∠BCF = ∠CBG',
-      'I.4: △BFC ≅ △CGB — remaining angles',
+      `∠${lbl(baseShort)}${lbl(baseLong)}${lbl(extShort)} = ∠${lbl(baseLong)}${lbl(baseShort)}G`,
+      `I.4: △${lbl(baseShort)}${lbl(extShort)}${lbl(baseLong)} ≅ △${lbl(baseLong)}G${lbl(baseShort)} — remaining angles`,
       atStep
     )
   )
 
-  // 7. ∠ABC = ∠ACB (C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF)
+  // 7. ∠ABC = ∠ACB (C.N.3: ∠A-baseShort-G − ∠baseLong-baseShort-G = ∠A-baseLong-extShort − ∠baseShort-baseLong-extShort)
   const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
   const angACB = angleMeasure('pt-C', 'pt-A', 'pt-B')
   allNewFacts.push(
@@ -229,9 +257,9 @@ function deriveProp5Conclusion(
       store,
       angABC,
       angACB,
-      { type: 'cn3-angle', whole: angABG, part: angCBG },
+      { type: 'cn3-angle', whole: angABaseShortG, part: angBaseLongBaseShortG },
       '∠ABC = ∠ACB',
-      'C.N.3: ∠ABG − ∠CBG = ∠ACF − ∠BCF',
+      `C.N.3: ∠A${lbl(baseShort)}G − ∠${lbl(baseLong)}${lbl(baseShort)}G = ∠A${lbl(baseLong)}${lbl(extShort)} − ∠${lbl(baseShort)}${lbl(baseLong)}${lbl(extShort)}`,
       atStep
     )
   )
@@ -267,14 +295,6 @@ function deriveProp5Conclusion(
 const DEFAULT_A = { x: 0, y: 2 }
 const DEFAULT_B = { x: -2, y: -1 }
 const DEFAULT_C = { x: 2, y: -1 }
-
-// ── Extend distances ──
-// F is placed beyond B on ray AB; E is placed beyond C on ray AC.
-// I.3 cuts off AG from AE equal to AF.
-// Constraint: AE > AF so I.3 can cut from the greater.
-// BF = 1.5 (shorter), CE = 2.5 (longer) → AF = AB + 1.5 < AC + 2.5 = AE
-const EXTEND_BF = 1.5
-const EXTEND_CE = 2.5
 
 // ── Rotation angle from vector AB to vector AC ──
 // Rot(ROTATION_ANGLE) * (B − A) = (C − A), preserving |AC| = |AB|
@@ -349,25 +369,11 @@ export const PROP_5: PropositionDef = {
     },
   ],
   givenAngles: [
-    // Base angles (blue) — visible from start
+    // Base angles (blue) — always the same regardless of extend direction
     { spec: { vertex: 'pt-B', ray1End: 'pt-A', ray2End: 'pt-C' }, color: BYRNE.blue },
     { spec: { vertex: 'pt-C', ray1End: 'pt-A', ray2End: 'pt-B' }, color: BYRNE.blue },
-    // Angles under the base (red) — appear when F and G exist
-    { spec: { vertex: 'pt-B', ray1End: 'pt-F', ray2End: 'pt-C' }, color: BYRNE.red },
-    { spec: { vertex: 'pt-C', ray1End: 'pt-G', ray2End: 'pt-B' }, color: BYRNE.red },
   ],
-  equalAngles: [
-    // Base angles: ∠ABC = ∠ACB (1 tick)
-    [
-      { vertex: 'pt-B', ray1End: 'pt-A', ray2End: 'pt-C' },
-      { vertex: 'pt-C', ray1End: 'pt-A', ray2End: 'pt-B' },
-    ],
-    // Under-base angles: ∠FBC = ∠GCB (2 ticks)
-    [
-      { vertex: 'pt-B', ray1End: 'pt-F', ray2End: 'pt-C' },
-      { vertex: 'pt-C', ray1End: 'pt-G', ray2End: 'pt-B' },
-    ],
-  ],
+  // Sub-base and derived angles come from deriveProp5Conclusion → fact store → dynamic arcs
   theoremConclusion: '∠ABC = ∠ACB\n∠FBC = ∠GCB',
   draggablePointIds: ['pt-A', 'pt-B'],
   computeGivenElements: computeProp5GivenElements,
@@ -425,35 +431,33 @@ export const PROP_5: PropositionDef = {
     },
   ] as ConstructionElement[],
   steps: [
-    // 0. Extend AB beyond B to F
+    // 0. Extend AB beyond B to F (free — user controls distance)
     {
       instruction: 'Produce {seg:AB} beyond {pt:B} to {pt:F}',
       expected: {
         type: 'extend',
         baseId: 'pt-A',
         throughId: 'pt-B',
-        distance: EXTEND_BF,
         label: 'F',
       },
       highlightIds: ['pt-A', 'pt-B'],
       tool: 'straightedge',
       citation: 'Post.2',
     },
-    // 1. Extend AC beyond C to E
+    // 1. Extend AC beyond C to E (free — user controls distance)
     {
       instruction: 'Produce {seg:AC} beyond {pt:C} to {pt:E}',
       expected: {
         type: 'extend',
         baseId: 'pt-A',
         throughId: 'pt-C',
-        distance: EXTEND_CE,
         label: 'E',
       },
       highlightIds: ['pt-A', 'pt-C'],
       tool: 'straightedge',
       citation: 'Post.2',
     },
-    // 2. Cut off AG from AE equal to AF (I.3)
+    // 2. Cut off AG from greater equal to lesser (I.3) — resolved dynamically
     {
       instruction: 'Cut off from {seg:AE} a part equal to {seg:AF} ({prop:3|I.3})',
       expected: {
@@ -466,7 +470,7 @@ export const PROP_5: PropositionDef = {
       tool: 'macro',
       citation: 'I.3',
     },
-    // 3. Join F to C
+    // 3. Join lesser endpoint to opposite base — resolved dynamically
     {
       instruction: 'Join {pt:F} to {pt:C}',
       expected: { type: 'straightedge', fromId: 'pt-F', toId: 'pt-C' },
@@ -474,7 +478,7 @@ export const PROP_5: PropositionDef = {
       tool: 'straightedge',
       citation: 'Post.1',
     },
-    // 4. Join G to B
+    // 4. Join G to the other base — resolved dynamically
     {
       instruction: 'Join {pt:G} to {pt:B}',
       expected: { type: 'straightedge', fromId: 'pt-G', toId: 'pt-B' },
@@ -484,12 +488,172 @@ export const PROP_5: PropositionDef = {
     },
   ],
   resultSegments: [
+    // Static fallback (AE ≥ AF case). computeResultSegments overrides at runtime.
     { fromId: 'pt-F', toId: 'pt-C' },
     { fromId: 'pt-G', toId: 'pt-B' },
-    // CG is not a construction segment (G sits on ray AE with no segment to C),
-    // but the derivation proves BF = CG. Include it so tick marks render.
     { fromId: 'pt-C', toId: 'pt-G' },
   ],
+  computeResultSegments(state: ConstructionState) {
+    const ptA = getPoint(state, 'pt-A')
+    const ptF = getPoint(state, 'pt-F')
+    const ptE = getPoint(state, 'pt-E')
+    if (!ptA || !ptF || !ptE) {
+      return [
+        { fromId: 'pt-F', toId: 'pt-C' },
+        { fromId: 'pt-G', toId: 'pt-B' },
+        { fromId: 'pt-C', toId: 'pt-G' },
+      ]
+    }
+    const ae = dist(ptA, ptE)
+    const af = dist(ptA, ptF)
+    const aeGreater = ae >= af
+    // Cross-joins + the segment from the base vertex below extLong to G
+    const extShort = aeGreater ? 'pt-F' : 'pt-E'
+    const baseLong = aeGreater ? 'pt-C' : 'pt-B'
+    const baseShort = aeGreater ? 'pt-B' : 'pt-C'
+    return [
+      { fromId: extShort, toId: baseLong }, // cross-join 1
+      { fromId: 'pt-G', toId: baseShort }, // cross-join 2
+      { fromId: baseLong, toId: 'pt-G' }, // baseLong-G distance
+    ]
+  },
+  resolveStep(
+    stepIndex: number,
+    state: ConstructionState,
+    _stepData: Map<number, Record<string, unknown>>
+  ) {
+    if (stepIndex < 2) return null
+    const ptA = getPoint(state, 'pt-A')
+    const ptF = getPoint(state, 'pt-F')
+    const ptE = getPoint(state, 'pt-E')
+    if (!ptA || !ptF || !ptE) return null
+
+    const af = dist(ptA, ptF)
+    const ae = dist(ptA, ptE)
+    const aeGreater = ae >= af
+
+    if (stepIndex === 2) {
+      // I.3: cut from greater equal to lesser
+      const [greater, lesser] = aeGreater ? ['pt-E', 'pt-F'] : ['pt-F', 'pt-E']
+      const [gLabel, lLabel] = aeGreater ? ['E', 'F'] : ['F', 'E']
+      return {
+        expected: {
+          type: 'macro',
+          propId: 3,
+          inputPointIds: ['pt-A', greater, 'pt-A', lesser],
+          outputLabels: { result: 'G' },
+        } as ExpectedAction,
+        instruction: `Cut off from {seg:A${gLabel}} a part equal to {seg:A${lLabel}} ({prop:3|I.3})`,
+        highlightIds: ['pt-A', greater, lesser],
+      }
+    }
+    if (stepIndex === 3) {
+      // Join lesser endpoint to opposite base
+      const [lesserEnd, crossBase] = aeGreater ? ['pt-F', 'pt-C'] : ['pt-E', 'pt-B']
+      const lbl = lesserEnd.replace('pt-', '')
+      const bLbl = crossBase.replace('pt-', '')
+      return {
+        expected: { type: 'straightedge', fromId: lesserEnd, toId: crossBase } as ExpectedAction,
+        instruction: `Join {pt:${lbl}} to {pt:${bLbl}}`,
+        highlightIds: [lesserEnd, crossBase],
+      }
+    }
+    if (stepIndex === 4) {
+      // Join G to the other base
+      const otherBase = aeGreater ? 'pt-B' : 'pt-C'
+      const bLbl = otherBase.replace('pt-', '')
+      return {
+        expected: { type: 'straightedge', fromId: 'pt-G', toId: otherBase } as ExpectedAction,
+        instruction: `Join {pt:G} to {pt:${bLbl}}`,
+        highlightIds: ['pt-G', otherBase],
+      }
+    }
+    return null
+  },
+  resolveTutorialStep(stepIndex: number, state: ConstructionState, isTouch: boolean) {
+    if (stepIndex < 2) return null
+    const ptA = getPoint(state, 'pt-A')
+    const ptF = getPoint(state, 'pt-F')
+    const ptE = getPoint(state, 'pt-E')
+    if (!ptA || !ptF || !ptE) return null
+
+    const af = dist(ptA, ptF)
+    const ae = dist(ptA, ptE)
+    const aeGreater = ae >= af
+
+    const tap = isTouch ? 'Tap' : 'Click'
+    const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
+
+    // Role-resolved point IDs and labels
+    const greaterEnd = aeGreater ? 'pt-E' : 'pt-F'
+    const lesserEnd = aeGreater ? 'pt-F' : 'pt-E'
+    const greaterLabel = greaterEnd.replace('pt-', '')
+    const lesserLabel = lesserEnd.replace('pt-', '')
+    const crossBase = aeGreater ? 'pt-C' : 'pt-B'
+    const otherBase = aeGreater ? 'pt-B' : 'pt-C'
+    const crossBaseLabel = crossBase.replace('pt-', '')
+    const otherBaseLabel = otherBase.replace('pt-', '')
+
+    if (stepIndex === 2) {
+      // I.3: cut from greater equal to lesser
+      return [
+        {
+          instruction: `${tap} point {pt:A}`,
+          speech: `Now we use Proposition I.3 to cut off from A${greaterLabel} a part equal to A${lesserLabel}. Select point A — the start of the greater line.`,
+          hint: { type: 'point' as const, pointId: 'pt-A' },
+          advanceOn: { kind: 'macro-select' as const, index: 0 },
+        },
+        {
+          instruction: `${tap} point {pt:${greaterLabel}}`,
+          speech: `Select point ${greaterLabel} — the end of the greater line A${greaterLabel}.`,
+          hint: { type: 'point' as const, pointId: greaterEnd },
+          advanceOn: { kind: 'macro-select' as const, index: 1 },
+        },
+        {
+          instruction: `${tap} point {pt:A}`,
+          speech: `Now select the segment to copy. ${tap} A — the start of A${lesserLabel}.`,
+          hint: { type: 'point' as const, pointId: 'pt-A' },
+          advanceOn: { kind: 'macro-select' as const, index: 2 },
+        },
+        {
+          instruction: `${tap} point {pt:${lesserLabel}}`,
+          speech: `${tap} ${lesserLabel} to finish. Proposition I.3 places point G on A${greaterLabel} where AG equals A${lesserLabel} — cutting off from the greater a part equal to the less.`,
+          hint: { type: 'point' as const, pointId: lesserEnd },
+          advanceOn: null,
+        },
+      ]
+    }
+
+    if (stepIndex === 3) {
+      // Join lesser endpoint to opposite base
+      return [
+        {
+          instruction: `${tapHold} point {pt:${lesserLabel}}`,
+          speech: isTouch
+            ? `Now join ${lesserLabel} to ${crossBaseLabel}. Press and hold on ${lesserLabel} and drag to ${crossBaseLabel}.`
+            : `Now join ${lesserLabel} to ${crossBaseLabel}. Click and hold on ${lesserLabel} and drag to ${crossBaseLabel}.`,
+          hint: { type: 'point' as const, pointId: lesserEnd },
+          advanceOn: null,
+        },
+      ]
+    }
+
+    if (stepIndex === 4) {
+      // Join G to the other base
+      return [
+        {
+          instruction: `${tapHold} point {pt:G}`,
+          speech: isTouch
+            ? `Almost done! Join G to ${otherBaseLabel} — this gives us two cross-triangles to compare. Press and hold on G.`
+            : `Almost done! Join G to ${otherBaseLabel} — this gives us two cross-triangles to compare. Click and hold on G.`,
+          hint: { type: 'point' as const, pointId: 'pt-G' },
+          advanceOn: null,
+        },
+      ]
+    }
+
+    return null
+  },
   getTutorial: getProp5Tutorial,
   explorationNarration: {
     introSpeech:

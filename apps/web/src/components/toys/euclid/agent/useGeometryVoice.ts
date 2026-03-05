@@ -38,6 +38,7 @@ import type { GeometryModeContext } from './types'
 import { serializeFullProofState } from './serializeProofState'
 import { useGeometryTeacher } from '../GeometryTeacherContext'
 import type { AuthorToolCallbacks } from '../authorToolCallbacks'
+import { dispatchAuthorTool, AUTHOR_TOOL_NAMES } from './dispatchAuthorTool'
 
 interface UseGeometryVoiceOptions {
   /** Canvas ref for screenshot capture */
@@ -258,108 +259,12 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
 
       // ── Author-mode construction + fact store tools ──
       const cb = authorCallbacksRef.current
-      if (cb) {
-        const authorTools = [
-          'postulate_1',
-          'postulate_2',
-          'postulate_3',
-          'mark_intersection',
-          'apply_proposition',
-          'declare_equality',
-          'declare_angle_equality',
-          'undo_last',
-          'place_point',
-          'relocate_point',
-        ]
-        if (authorTools.includes(name)) {
-          // Dispatch asynchronously — voice framework supports asyncResult
-          let resultPromise: Promise<unknown>
-          switch (name) {
-            case 'place_point':
-              resultPromise = cb.placePoint(
-                Number(args.x),
-                Number(args.y),
-                args.label ? String(args.label) : undefined
-              )
-              break
-            case 'relocate_point':
-              resultPromise = cb.relocatePoint(
-                String(args.label),
-                Number(args.x),
-                Number(args.y),
-                args.force === true
-              )
-              break
-            case 'postulate_1':
-              resultPromise = cb.commitSegment(String(args.from_label), String(args.to_label))
-              break
-            case 'postulate_2':
-              resultPromise = cb.commitExtend(
-                String(args.base_label),
-                String(args.through_label),
-                args.distance != null ? Number(args.distance) : undefined
-              )
-              break
-            case 'postulate_3':
-              resultPromise = cb.commitCircle(
-                String(args.center_label),
-                String(args.radius_point_label)
-              )
-              break
-            case 'mark_intersection':
-              resultPromise = cb.markIntersection(
-                String(args.of_a),
-                String(args.of_b),
-                args.which ? String(args.which) : undefined
-              )
-              break
-            case 'apply_proposition':
-              resultPromise = cb.commitMacro(
-                Number(args.prop_id),
-                String(args.input_labels)
-                  .split(',')
-                  .map((s: string) => s.trim())
-              )
-              break
-            case 'declare_equality':
-              resultPromise = cb.addFact(
-                String(args.left_a),
-                String(args.left_b),
-                String(args.right_a),
-                String(args.right_b),
-                String(args.citation_type),
-                args.citation_detail ? String(args.citation_detail) : undefined,
-                String(args.statement),
-                String(args.justification)
-              )
-              break
-            case 'declare_angle_equality':
-              resultPromise = cb.addAngleFact(
-                String(args.left_vertex),
-                String(args.left_ray1),
-                String(args.left_ray2),
-                String(args.right_vertex),
-                String(args.right_ray1),
-                String(args.right_ray2),
-                String(args.citation_type),
-                args.citation_detail ? String(args.citation_detail) : undefined,
-                String(args.statement),
-                String(args.justification)
-              )
-              break
-            case 'undo_last':
-              resultPromise = cb.undoLast()
-              break
-            default:
-              resultPromise = Promise.resolve({ success: false, error: `Unknown tool: ${name}` })
-          }
-
-          // Execute synchronously-ish: return a placeholder, the voice framework sends it
-          // We can't use asyncResult here since these aren't mode-transitions.
-          // Instead, fire and forget — the construction mutation happens immediately.
-          resultPromise.catch((err) => console.error('[voice-tool] author tool error:', err))
-          return { output: { success: true, tool: name }, promptResponse: true }
-        }
+      if (cb && (AUTHOR_TOOL_NAMES as readonly string[]).includes(name)) {
+        // Fire and forget — the construction mutation happens immediately.
+        dispatchAuthorTool(name, args, cb).catch((err) =>
+          console.error('[voice-tool] author tool error:', err)
+        )
+        return { output: { success: true, tool: name }, promptResponse: true }
       }
 
       return null

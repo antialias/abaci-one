@@ -183,7 +183,7 @@ export type ExpectedAction =
       label?: string
     }
   | { type: 'straightedge'; fromId: string; toId: string }
-  | { type: 'extend'; baseId: string; throughId: string; distance: number; label: string }
+  | { type: 'extend'; baseId: string; throughId: string; distance?: number; label: string }
   | {
       type: 'macro'
       propId: number
@@ -274,6 +274,25 @@ export interface PropositionDef {
   /** Derive conclusion facts when the proposition completes. Mutates the
    *  fact store in place and returns newly derived facts. */
   deriveConclusion?: (store: FactStore, state: ConstructionState, atStep: number) => ProofFact[]
+  /** Dynamic step resolution for adaptive constructions (e.g. Prop 5 free extends).
+   *  Called when a step becomes current. Returns overrides for the step's expected action,
+   *  instruction, and highlightIds. Null = no override. */
+  resolveStep?: (
+    stepIndex: number,
+    state: ConstructionState,
+    stepData: Map<number, Record<string, unknown>>
+  ) => { expected?: ExpectedAction; instruction?: string; highlightIds?: string[] } | null
+  /** Compute result segment IDs dynamically from the construction state.
+   *  When present, overrides the static `resultSegments` array. */
+  computeResultSegments?: (state: ConstructionState) => Array<{ fromId: string; toId: string }>
+  /** Dynamic tutorial sub-step resolution for adaptive constructions.
+   *  Called when a step becomes current. Returns replacement tutorial sub-steps
+   *  for that step index, or null for no override. */
+  resolveTutorialStep?: (
+    stepIndex: number,
+    state: ConstructionState,
+    isTouch: boolean
+  ) => TutorialSubStep[] | null
 }
 
 export interface EuclidNarrationOptions {

@@ -185,7 +185,7 @@ export const TOOL_POSTULATE_2: RealtimeTool = {
         description:
           'How far to extend past the through point (in construction units). ' +
           'DO NOT pass this parameter unless the user specifies an explicit length. ' +
-          'Must be positive. When omitted, defaults to the segment\'s own length.',
+          "Must be positive. When omitted, defaults to the segment's own length.",
       },
     },
     required: ['base_label', 'through_label'],

@@ -161,7 +161,11 @@ export function useAuthorCallbacks(opts: UseAuthorCallbacksOptions): UseAuthorCa
         const dirY = dy / len
         // Default to extending by the segment's own length (doubling it)
         if (distance != null && distance < 0.001) {
-          return { success: false, error: 'Distance must be positive. Omit the distance parameter to extend by the segment\'s own length.' }
+          return {
+            success: false,
+            error:
+              "Distance must be positive. Omit the distance parameter to extend by the segment's own length.",
+          }
         }
         const ext = distance ?? len
         const projX = throughPt.x + dirX * ext
