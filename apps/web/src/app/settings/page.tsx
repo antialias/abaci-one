@@ -32,7 +32,11 @@ import { useUserId } from '@/hooks/useUserId'
 import { useFamilyCoverage, useTier } from '@/hooks/useTier'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { billingKeys, notificationSubscriptionKeys } from '@/lib/queryKeys'
+import {
+  billingKeys,
+  notificationPreferenceKeys,
+  notificationSubscriptionKeys,
+} from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 
@@ -1380,8 +1384,36 @@ function HouseholdCard({
 }
 
 // ============================================
-// Notifications Tab - Manage Notification Subscriptions
+// Notifications Tab - Channel Preferences & Subscriptions
 // ============================================
+
+const NOTIFICATION_TYPES = [
+  {
+    id: 'session-started' as const,
+    label: 'Practice sessions',
+    description: 'When a kid starts practicing',
+  },
+  {
+    id: 'postcard-ready' as const,
+    label: 'Number line postcards',
+    description: 'When a postcard is ready to view',
+  },
+]
+
+interface NotifSettings {
+  inAppEnabled: boolean
+  pushEnabled: boolean
+  emailEnabled: boolean
+  notificationEmail: string | null
+  typeOverrides: Record<string, { inApp?: boolean; push?: boolean; email?: boolean }> | null
+}
+
+interface PushDevice {
+  id: string
+  deviceLabel: string | null
+  createdAt: string
+  lastUsedAt: string | null
+}
 
 interface UserSubscription {
   id: string
@@ -1391,10 +1423,94 @@ interface UserSubscription {
   playerEmoji: string
 }
 
+function ChannelToggle({
+  label,
+  icon,
+  checked,
+  onChange,
+  isDark,
+  disabled,
+}: {
+  label: string
+  icon: React.ReactNode
+  checked: boolean
+  onChange: (v: boolean) => void
+  isDark: boolean
+  disabled?: boolean
+}) {
+  return (
+    <label
+      data-element="channel-toggle"
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        padding: '0.5rem 0',
+      })}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        className={css({ accentColor: 'purple.600', width: '1rem', height: '1rem' })}
+      />
+      <span className={css({ color: isDark ? 'gray.400' : 'gray.500', flexShrink: 0 })}>
+        {icon}
+      </span>
+      <span className={css({ fontSize: '0.875rem', color: isDark ? 'gray.200' : 'gray.700' })}>
+        {label}
+      </span>
+    </label>
+  )
+}
+
 function NotificationsTab({ isDark }: { isDark: boolean }) {
   const queryClient = useQueryClient()
+  const [pushRegistering, setPushRegistering] = useState(false)
 
-  const { data, isLoading } = useQuery({
+  // User notification preferences
+  const { data: prefsData, isLoading: prefsLoading } = useQuery({
+    queryKey: notificationPreferenceKeys.settings(),
+    queryFn: async () => {
+      const res = await api('settings/notification-preferences')
+      if (!res.ok) throw new Error('Failed to fetch notification preferences')
+      return res.json() as Promise<{ settings: NotifSettings; pushDevices: PushDevice[] }>
+    },
+  })
+
+  const updatePrefsMutation = useMutation({
+    mutationFn: async (updates: Partial<NotifSettings>) => {
+      const res = await api('settings/notification-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) throw new Error('Failed to update notification preferences')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationPreferenceKeys.settings() })
+    },
+  })
+
+  const removePushMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api(`settings/notification-preferences/push-subscriptions?id=${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to remove push device')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationPreferenceKeys.settings() })
+    },
+  })
+
+  // Practice subscriptions
+  const { data: subsData, isLoading: subsLoading } = useQuery({
     queryKey: notificationSubscriptionKeys.mine(),
     queryFn: async (): Promise<UserSubscription[]> => {
       const res = await api('notifications/subscriptions')
@@ -1413,33 +1529,414 @@ function NotificationsTab({ isDark }: { isDark: boolean }) {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: notificationSubscriptionKeys.mine(),
-      })
+      queryClient.invalidateQueries({ queryKey: notificationSubscriptionKeys.mine() })
     },
   })
 
-  const subscriptions = data ?? []
+  const settings = prefsData?.settings
+  const pushDevices = prefsData?.pushDevices ?? []
+  const subscriptions = subsData ?? []
+  const pushSupported = typeof window !== 'undefined' && 'PushManager' in window
+
+  const handleToggleDefault = (
+    channel: 'inAppEnabled' | 'pushEnabled' | 'emailEnabled',
+    value: boolean
+  ) => {
+    updatePrefsMutation.mutate({ [channel]: value })
+  }
+
+  const handleToggleTypeOverride = (
+    typeId: string,
+    channel: 'inApp' | 'push' | 'email',
+    value: boolean | undefined
+  ) => {
+    const current = settings?.typeOverrides ?? {}
+    const typeOverride = { ...(current[typeId] ?? {}) }
+
+    if (value === undefined) {
+      delete typeOverride[channel]
+    } else {
+      typeOverride[channel] = value
+    }
+
+    const updated = { ...current }
+    if (Object.keys(typeOverride).length === 0) {
+      delete updated[typeId]
+    } else {
+      updated[typeId] = typeOverride
+    }
+
+    updatePrefsMutation.mutate({
+      typeOverrides: Object.keys(updated).length > 0 ? updated : null,
+    })
+  }
+
+  const handleRegisterPush = async () => {
+    setPushRegistering(true)
+    try {
+      const { registerServiceWorker, subscribeToPush, pushSubscriptionToJson } = await import(
+        '@/lib/notifications/register-sw'
+      )
+
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        alert('Push notification permission was denied.')
+        return
+      }
+
+      const registration = await registerServiceWorker()
+      if (!registration) {
+        alert('Service worker registration failed.')
+        return
+      }
+
+      const vapidRes = await api('notifications/vapid-public-key')
+      const { vapidPublicKey } = await vapidRes.json()
+      if (!vapidPublicKey) {
+        alert('Push notifications are not configured on this server.')
+        return
+      }
+
+      const pushSub = await subscribeToPush(registration, vapidPublicKey)
+      const json = pushSubscriptionToJson(pushSub)
+
+      await api('settings/notification-preferences/push-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: json.endpoint,
+          keys: json.keys,
+          deviceLabel: detectDeviceLabel(),
+        }),
+      })
+
+      // Also enable push if not already
+      if (!settings?.pushEnabled) {
+        updatePrefsMutation.mutate({ pushEnabled: true })
+      }
+
+      queryClient.invalidateQueries({ queryKey: notificationPreferenceKeys.settings() })
+    } catch (err) {
+      console.error('[notifications] Push registration failed:', err)
+      alert('Push registration failed. Check console for details.')
+    } finally {
+      setPushRegistering(false)
+    }
+  }
+
+  const resolveEffective = (typeId: string, channel: 'inApp' | 'push' | 'email'): boolean => {
+    const override = settings?.typeOverrides?.[typeId]?.[channel]
+    if (override !== undefined) return override
+    if (!settings) return channel === 'inApp'
+    switch (channel) {
+      case 'inApp':
+        return settings.inAppEnabled
+      case 'push':
+        return settings.pushEnabled
+      case 'email':
+        return settings.emailEnabled
+    }
+  }
+
+  const getOverrideState = (
+    typeId: string,
+    channel: 'inApp' | 'push' | 'email'
+  ): 'default' | 'on' | 'off' => {
+    const override = settings?.typeOverrides?.[typeId]?.[channel]
+    if (override === undefined) return 'default'
+    return override ? 'on' : 'off'
+  }
 
   return (
-    <div data-section="notifications-tab">
+    <div
+      data-section="notifications-tab"
+      className={css({ display: 'flex', flexDirection: 'column', gap: '1rem' })}
+    >
+      {/* Default channel preferences */}
       <SectionCard isDark={isDark}>
-        <SectionHeader icon={<Bell size={18} />} title="Practice Notifications" isDark={isDark} />
+        <SectionHeader icon={<Bell size={18} />} title="Default Channels" isDark={isDark} />
 
-        {isLoading ? (
+        {prefsLoading ? (
           <div className={css({ padding: '1.5rem 0' })}>
-            <p className={css({ color: isDark ? 'gray.500' : 'gray.500' })}>Loading...</p>
+            <p className={css({ color: 'gray.500' })}>Loading...</p>
+          </div>
+        ) : (
+          <div className={css({ padding: '0.5rem 0 1rem' })}>
+            <p
+              className={css({
+                fontSize: '0.8125rem',
+                color: isDark ? 'gray.400' : 'gray.500',
+                marginBottom: '0.75rem',
+              })}
+            >
+              How you want to be notified by default. You can override per notification type below.
+            </p>
+
+            <ChannelToggle
+              label="In-app toasts"
+              icon={<Bell size={14} />}
+              checked={settings?.inAppEnabled ?? true}
+              onChange={(v) => handleToggleDefault('inAppEnabled', v)}
+              isDark={isDark}
+            />
+            <ChannelToggle
+              label="Browser push notifications"
+              icon={<Smartphone size={14} />}
+              checked={settings?.pushEnabled ?? false}
+              onChange={(v) => handleToggleDefault('pushEnabled', v)}
+              isDark={isDark}
+              disabled={!pushSupported}
+            />
+            <ChannelToggle
+              label="Email"
+              icon={<Mail size={14} />}
+              checked={settings?.emailEnabled ?? false}
+              onChange={(v) => handleToggleDefault('emailEnabled', v)}
+              isDark={isDark}
+            />
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Push devices */}
+      {(settings?.pushEnabled || pushDevices.length > 0) && (
+        <SectionCard isDark={isDark}>
+          <SectionHeader icon={<Smartphone size={18} />} title="Push Devices" isDark={isDark} />
+          <div className={css({ padding: '0.75rem 0 1rem' })}>
+            {pushDevices.length === 0 ? (
+              <p
+                className={css({
+                  fontSize: '0.875rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
+                No push devices registered. Enable push on this browser below.
+              </p>
+            ) : (
+              <div>
+                {pushDevices.map((device) => (
+                  <div
+                    key={device.id}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.5rem 0',
+                      borderBottom: '1px solid',
+                      borderColor: isDark ? 'gray.700' : 'gray.200',
+                      _last: { borderBottom: 'none' },
+                    })}
+                  >
+                    <div>
+                      <span
+                        className={css({
+                          fontSize: '0.875rem',
+                          color: isDark ? 'gray.200' : 'gray.700',
+                        })}
+                      >
+                        {device.deviceLabel || 'Unknown device'}
+                      </span>
+                      <span
+                        className={css({
+                          display: 'block',
+                          fontSize: '0.75rem',
+                          color: isDark ? 'gray.500' : 'gray.400',
+                        })}
+                      >
+                        Added {new Date(device.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePushMutation.mutate(device.id)}
+                      disabled={removePushMutation.isPending}
+                      className={css({
+                        fontSize: '0.75rem',
+                        color: isDark ? 'red.400' : 'red.600',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                      })}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {pushSupported && (
+              <button
+                type="button"
+                onClick={handleRegisterPush}
+                disabled={pushRegistering}
+                className={css({
+                  marginTop: '0.75rem',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: isDark ? 'purple.400/50' : 'purple.200',
+                  backgroundColor: isDark ? 'purple.900/30' : 'purple.50',
+                  color: isDark ? 'purple.300' : 'purple.700',
+                  fontSize: '0.8125rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  _hover: { backgroundColor: isDark ? 'purple.900/50' : 'purple.100' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                {pushRegistering ? 'Registering...' : 'Enable push on this browser'}
+              </button>
+            )}
+
+            {!pushSupported && (
+              <p
+                className={css({
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.500' : 'gray.400',
+                  fontStyle: 'italic',
+                  marginTop: '0.5rem',
+                })}
+              >
+                Push notifications are not supported in this browser.
+              </p>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Per-type overrides */}
+      <SectionCard isDark={isDark}>
+        <SectionHeader
+          icon={<SettingsIcon size={18} />}
+          title="Per-Type Overrides"
+          isDark={isDark}
+        />
+        <div className={css({ padding: '0.5rem 0 1rem' })}>
+          <p
+            className={css({
+              fontSize: '0.8125rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+              marginBottom: '0.75rem',
+            })}
+          >
+            Override defaults for specific notification types. &ldquo;Default&rdquo; means use the
+            setting above.
+          </p>
+
+          {NOTIFICATION_TYPES.map((type) => (
+            <div
+              key={type.id}
+              className={css({
+                padding: '0.75rem 0',
+                borderBottom: '1px solid',
+                borderColor: isDark ? 'gray.700' : 'gray.200',
+                _last: { borderBottom: 'none' },
+              })}
+            >
+              <div
+                className={css({
+                  fontWeight: '500',
+                  fontSize: '0.875rem',
+                  color: isDark ? 'white' : 'gray.800',
+                })}
+              >
+                {type.label}
+              </div>
+              <div
+                className={css({
+                  fontSize: '0.8125rem',
+                  color: isDark ? 'gray.400' : 'gray.500',
+                  marginBottom: '0.5rem',
+                })}
+              >
+                {type.description}
+              </div>
+              <div className={css({ display: 'flex', gap: '1rem', flexWrap: 'wrap' })}>
+                {(['inApp', 'push', 'email'] as const).map((channel) => {
+                  const state = getOverrideState(type.id, channel)
+                  const effective = resolveEffective(type.id, channel)
+                  const channelLabels = { inApp: 'In-app', push: 'Push', email: 'Email' }
+
+                  return (
+                    <button
+                      type="button"
+                      key={channel}
+                      onClick={() => {
+                        // Cycle: default → on → off → default
+                        if (state === 'default') handleToggleTypeOverride(type.id, channel, true)
+                        else if (state === 'on') handleToggleTypeOverride(type.id, channel, false)
+                        else handleToggleTypeOverride(type.id, channel, undefined)
+                      }}
+                      className={css({
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        padding: '0.25rem 0.625rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '500',
+                        border: '1px solid',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        ...(state === 'default'
+                          ? {
+                              borderColor: isDark ? 'gray.600' : 'gray.300',
+                              backgroundColor: 'transparent',
+                              color: isDark ? 'gray.400' : 'gray.500',
+                            }
+                          : state === 'on'
+                            ? {
+                                borderColor: isDark ? 'green.500/50' : 'green.300',
+                                backgroundColor: isDark ? 'green.900/30' : 'green.50',
+                                color: isDark ? 'green.300' : 'green.700',
+                              }
+                            : {
+                                borderColor: isDark ? 'red.500/50' : 'red.300',
+                                backgroundColor: isDark ? 'red.900/30' : 'red.50',
+                                color: isDark ? 'red.300' : 'red.700',
+                                textDecoration: 'line-through',
+                              }),
+                      })}
+                      title={
+                        state === 'default'
+                          ? `${channelLabels[channel]}: using default (${effective ? 'on' : 'off'})`
+                          : state === 'on'
+                            ? `${channelLabels[channel]}: always on (click to turn off)`
+                            : `${channelLabels[channel]}: always off (click to reset to default)`
+                      }
+                    >
+                      {channelLabels[channel]}
+                      {state === 'default' && (
+                        <span className={css({ opacity: 0.6 })}>
+                          (default{effective ? ': on' : ': off'})
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      {/* Practice subscriptions */}
+      <SectionCard isDark={isDark}>
+        <SectionHeader icon={<Users size={18} />} title="Practice Subscriptions" isDark={isDark} />
+
+        {subsLoading ? (
+          <div className={css({ padding: '1.5rem 0' })}>
+            <p className={css({ color: 'gray.500' })}>Loading...</p>
           </div>
         ) : subscriptions.length === 0 ? (
           <div className={css({ padding: '1.5rem 0' })}>
-            <p
-              className={css({
-                color: isDark ? 'gray.400' : 'gray.600',
-                fontStyle: 'italic',
-              })}
-            >
-              No notification subscriptions. You can subscribe from any student&apos;s observation
-              page.
+            <p className={css({ color: isDark ? 'gray.400' : 'gray.600', fontStyle: 'italic' })}>
+              No practice subscriptions. Subscribe from a student&apos;s observation page to get
+              notified when they start practicing.
             </p>
           </div>
         ) : (
@@ -1471,84 +1968,17 @@ function NotificationsTab({ isDark }: { isDark: boolean }) {
                   <span className={css({ fontSize: '1.5rem', flexShrink: 0 })}>
                     {sub.playerEmoji}
                   </span>
-                  <div className={css({ minWidth: 0 })}>
-                    <div
-                      className={css({
-                        fontWeight: '500',
-                        color: isDark ? 'white' : 'gray.800',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      })}
-                    >
-                      {sub.playerName}
-                    </div>
-                    <div
-                      className={css({
-                        display: 'flex',
-                        gap: '0.5rem',
-                        marginTop: '0.25rem',
-                      })}
-                    >
-                      {sub.channels.webPush && (
-                        <span
-                          data-element="channel-badge"
-                          title="Push notifications"
-                          className={css({
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            backgroundColor: isDark ? 'blue.900/50' : 'blue.50',
-                            color: isDark ? 'blue.300' : 'blue.700',
-                          })}
-                        >
-                          <Smartphone size={12} />
-                          Push
-                        </span>
-                      )}
-                      {sub.channels.email && (
-                        <span
-                          data-element="channel-badge"
-                          title="Email notifications"
-                          className={css({
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            backgroundColor: isDark ? 'green.900/50' : 'green.50',
-                            color: isDark ? 'green.300' : 'green.700',
-                          })}
-                        >
-                          <Mail size={12} />
-                          Email
-                        </span>
-                      )}
-                      {sub.channels.inApp && (
-                        <span
-                          data-element="channel-badge"
-                          title="In-app notifications"
-                          className={css({
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            backgroundColor: isDark ? 'purple.900/50' : 'purple.50',
-                            color: isDark ? 'purple.300' : 'purple.700',
-                          })}
-                        >
-                          <Bell size={12} />
-                          In-app
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  <span
+                    className={css({
+                      fontWeight: '500',
+                      color: isDark ? 'white' : 'gray.800',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    })}
+                  >
+                    {sub.playerName}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -1565,13 +1995,8 @@ function NotificationsTab({ isDark }: { isDark: boolean }) {
                     fontSize: '0.8125rem',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    _hover: {
-                      backgroundColor: isDark ? 'red.900/30' : 'red.50',
-                    },
-                    _disabled: {
-                      opacity: 0.6,
-                      cursor: 'not-allowed',
-                    },
+                    _hover: { backgroundColor: isDark ? 'red.900/30' : 'red.50' },
+                    _disabled: { opacity: 0.6, cursor: 'not-allowed' },
                   })}
                 >
                   {unsubscribeMutation.isPending ? 'Removing...' : 'Unsubscribe'}
@@ -1583,6 +2008,15 @@ function NotificationsTab({ isDark }: { isDark: boolean }) {
       </SectionCard>
     </div>
   )
+}
+
+function detectDeviceLabel(): string {
+  const ua = navigator.userAgent
+  if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome'
+  if (ua.includes('Edg')) return 'Edge'
+  if (ua.includes('Firefox')) return 'Firefox'
+  if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari'
+  return 'Browser'
 }
 
 // ============================================

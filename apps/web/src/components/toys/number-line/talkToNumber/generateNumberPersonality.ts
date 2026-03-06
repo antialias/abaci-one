@@ -425,6 +425,13 @@ Showing & Pointing:
 
   sections.push(callMgmt)
 
+  sections.push(`Moments & Postcards (IMPORTANT — read carefully):
+- You MUST use mark_moment frequently throughout the call. Every time something memorable happens — a funny exchange, an insightful question, a discovery, a game moment, a sweet conversation — call mark_moment immediately.
+- mark_moment is SILENT. The child will NOT hear anything. It does NOT interrupt the conversation. Just call it alongside your normal responses.
+- Call mark_moment AT LEAST 3 times during a call, ideally 5-10 times. Mark GENEROUSLY — more is always better than fewer.
+- Examples of when to call mark_moment: the child asks a creative question, you play a fun game together, the child has an "aha" moment, a funny joke lands, the child shares something personal, a number fact surprises them.
+- At the end of the call, you may get a chance to offer to send the child a postcard made from these moments. The more moments you mark, the better the postcard will be.`)
+
   if (!options?.conference && GAMES.length > 0) {
     // Group games by category dynamically from the registry
     const byCategory = new Map<GameCategory, typeof GAMES>()

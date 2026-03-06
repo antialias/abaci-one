@@ -1,4 +1,7 @@
 import webpush from 'web-push'
+import { eq } from 'drizzle-orm'
+import { db } from '@/db'
+import { userPushSubscriptions } from '@/db/schema'
 import type { WebPushSubscriptionJson } from '@/db/schema'
 
 let configured = false
@@ -27,7 +30,7 @@ export interface WebPushResult {
 }
 
 /**
- * Send a web push notification to a subscription endpoint.
+ * Send a web push notification to a single subscription endpoint.
  *
  * Catches 410 Gone and 404 (endpoint expired/invalid) and returns
  * a failure result instead of throwing — the caller can use
@@ -63,6 +66,53 @@ export async function sendWebPush(
 
     throw err
   }
+}
+
+/**
+ * Send a web push notification to ALL registered push endpoints for a user.
+ *
+ * Looks up endpoints from user_push_subscriptions table.
+ * Removes expired endpoints (410/404) automatically.
+ * Returns count of total endpoints and successful sends.
+ */
+export async function sendWebPushToUser(
+  userId: string,
+  payload: object
+): Promise<{ total: number; sent: number }> {
+  const subs = await db
+    .select()
+    .from(userPushSubscriptions)
+    .where(eq(userPushSubscriptions.userId, userId))
+
+  if (subs.length === 0) return { total: 0, sent: 0 }
+
+  let sent = 0
+  for (const sub of subs) {
+    const pushSub: WebPushSubscriptionJson = {
+      endpoint: sub.endpoint,
+      keys: sub.keys,
+    }
+    try {
+      const result = await sendWebPush(pushSub, payload)
+      if (result.success) {
+        sent++
+        // Update lastUsedAt
+        db.update(userPushSubscriptions)
+          .set({ lastUsedAt: new Date() })
+          .where(eq(userPushSubscriptions.id, sub.id))
+          .catch(() => {})
+      } else if (result.statusCode === 410 || result.statusCode === 404) {
+        // Endpoint gone — remove it
+        db.delete(userPushSubscriptions)
+          .where(eq(userPushSubscriptions.id, sub.id))
+          .catch((err) => console.error('[web-push] Failed to remove expired endpoint:', err))
+      }
+    } catch (err) {
+      console.error('[web-push] Error sending to endpoint:', err)
+    }
+  }
+
+  return { total: subs.length, sent }
 }
 
 /**

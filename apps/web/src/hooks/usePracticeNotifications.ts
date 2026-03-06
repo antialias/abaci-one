@@ -5,16 +5,13 @@ import { useRouter } from 'next/navigation'
 import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
 import { useToast } from '@/components/common/ToastContext'
-import type { PracticeNotificationEvent } from '@/lib/classroom/socket-events'
+import type { GenericNotificationEvent } from '@/lib/classroom/socket-events'
 
 /**
- * Hook that listens for practice-notification events on the user's
- * Socket.IO channel and shows an in-app toast with a "Watch" action.
+ * Hook that listens for notification events on the user's Socket.IO channel
+ * and shows in-app toasts.
  *
- * Should be mounted once in a layout that wraps authenticated parent pages.
- * Relies on the parent already being joined to `user:${userId}` via
- * useParentSocket — this hook piggybacks on that connection or creates
- * its own if needed.
+ * Should be mounted once in a layout that wraps authenticated pages.
  *
  * @param userId - The authenticated user's ID (null/undefined to disable)
  */
@@ -33,18 +30,20 @@ export function usePracticeNotifications(userId: string | undefined): void {
       socket.emit('join-user-channel', { userId })
     })
 
-    socket.on('practice-notification', (data: PracticeNotificationEvent) => {
-      console.log('[PracticeNotifications] %s started practicing', data.playerName)
+    socket.on('notification', (data: GenericNotificationEvent) => {
+      console.log('[Notifications] %s: %s', data.type, data.title)
 
       showToast({
         type: 'info',
-        title: `${data.playerEmoji} ${data.playerName} started practicing!`,
-        description: 'Tap to watch live',
+        title: data.title,
+        description: data.body,
         duration: 10000,
-        action: {
-          label: 'Watch',
-          onClick: () => router.push(data.observeUrl),
-        },
+        action: data.url
+          ? {
+              label: 'View',
+              onClick: () => router.push(data.url),
+            }
+          : undefined,
       })
     })
 

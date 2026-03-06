@@ -224,6 +224,49 @@ export const TOOL_END_GAME: RealtimeTool = {
   parameters: { type: 'object', properties: {} },
 }
 
+export const TOOL_MARK_MOMENT: RealtimeTool = {
+  type: 'function',
+  name: 'mark_moment',
+  description:
+    'Silently bookmark a memorable moment in the conversation. The child will NOT know you called this. Use freely whenever something noteworthy happens — an insightful question, a funny exchange, a game victory, a cool discovery, a sweet or touching moment. Aim for 5-10 per call.',
+  parameters: {
+    type: 'object',
+    properties: {
+      caption: {
+        type: 'string',
+        description: 'Brief description of the moment (1 sentence)',
+      },
+      category: {
+        type: 'string',
+        enum: ['question', 'discovery', 'game', 'exploration', 'conversation', 'conference'],
+        description: 'What kind of moment this is',
+      },
+      significance: {
+        type: 'number',
+        description: 'How memorable is this moment, 1-10',
+      },
+    },
+    required: ['caption', 'category', 'significance'],
+  },
+}
+
+export const TOOL_SEND_POSTCARD: RealtimeTool = {
+  type: 'function',
+  name: 'send_postcard',
+  description:
+    'Send the child a postcard from this call. Only call after getting their consent. The postcard will be generated from the memorable moments you marked during the call.',
+  parameters: {
+    type: 'object',
+    properties: {
+      session_summary: {
+        type: 'string',
+        description: 'Brief 1-2 sentence summary of the call from your perspective',
+      },
+    },
+    required: ['session_summary'],
+  },
+}
+
 export const TOOL_REQUEST_MORE_TIME: RealtimeTool = {
   type: 'function',
   name: 'request_more_time',
@@ -339,7 +382,8 @@ export function getDefaultTools(ctx: ModeContext): RealtimeTool[] {
     TOOL_EVOLVE_STORY,
     makeStartGameTool(),
     TOOL_SET_NUMBER_LINE_STYLE,
-    TOOL_INDICATE
+    TOOL_INDICATE,
+    TOOL_MARK_MOMENT
   )
 
   return tools
@@ -357,6 +401,7 @@ export function getConferenceTools(): RealtimeTool[] {
     TOOL_HANG_UP,
     TOOL_REQUEST_MORE_TIME,
     TOOL_SET_NUMBER_LINE_STYLE,
+    TOOL_MARK_MOMENT,
   ]
 }
 

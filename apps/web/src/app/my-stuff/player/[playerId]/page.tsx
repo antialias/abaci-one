@@ -1,21 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { use } from 'react'
 import { AppNavBar } from '@/components/AppNavBar'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
+import { usePostcards } from '@/hooks/usePostcards'
 import { css } from '../../../../../styled-system/css'
 import { vstack, hstack } from '../../../../../styled-system/patterns'
 
 interface Props {
-  params: Promise<{ playerId: string }>
+  params: { playerId: string }
 }
 
 export default function PlayerStuffPage({ params }: Props) {
-  const { playerId } = use(params)
+  const { playerId } = params
   const { data: players = [] } = useUserPlayers()
   const { data: creations = [], isLoading } = useEuclidCreations('mine', playerId)
+  const { data: postcards = [], isLoading: postcardsLoading } = usePostcards(playerId)
 
   const player = players.find((p) => p.id === playerId)
   const emoji = player?.emoji ?? '🧒'
@@ -83,9 +84,149 @@ export default function PlayerStuffPage({ params }: Props) {
             >
               {name}&apos;s Stuff
             </h1>
-            <span className={css({ fontSize: '13px', color: 'gray.500' })}>Euclid creations</span>
+            <span className={css({ fontSize: '13px', color: 'gray.500' })}>
+              Creations & postcards
+            </span>
           </div>
         </div>
+
+        {/* ── Number Line Postcards ── */}
+        {(postcards.length > 0 || postcardsLoading) && (
+          <section data-section="postcards">
+            <h2
+              className={css({
+                fontSize: '18px',
+                fontWeight: '700',
+                color: 'gray.800',
+                mb: '12px',
+              })}
+            >
+              Memories from the Number Line
+            </h2>
+
+            {postcardsLoading ? (
+              <p className={css({ color: 'gray.400', fontSize: '14px' })}>Loading…</p>
+            ) : (
+              <div
+                className={css({
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                  gap: '12px',
+                })}
+              >
+                {postcards
+                  .filter((p) => p.status === 'ready')
+                  .map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/my-stuff/postcards/${p.id}`}
+                      className={css({
+                        display: 'block',
+                        textDecoration: 'none',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: '1px solid token(colors.gray.200)',
+                        bg: 'white',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                        transition: 'box-shadow 0.15s, transform 0.15s',
+                        _hover: {
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          transform: 'translateY(-2px)',
+                        },
+                        position: 'relative',
+                      })}
+                    >
+                      {!p.isRead && (
+                        <span
+                          className={css({
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            w: '10px',
+                            h: '10px',
+                            borderRadius: '50%',
+                            bg: 'blue.500',
+                            border: '2px solid white',
+                          })}
+                        />
+                      )}
+                      {p.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.thumbnailUrl}
+                          alt={`Postcard from ${p.callerNumber}`}
+                          style={{
+                            width: '100%',
+                            aspectRatio: '4/3',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: '100%',
+                            aspectRatio: '4/3',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #E0F2FE, #FDE68A)',
+                            fontSize: 32,
+                          }}
+                        >
+                          {Number.isInteger(p.callerNumber)
+                            ? p.callerNumber
+                            : p.callerNumber.toPrecision(4)}
+                        </div>
+                      )}
+                      <div className={css({ p: '8px 10px' })}>
+                        <span
+                          className={css({
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: 'gray.700',
+                          })}
+                        >
+                          From #
+                          {Number.isInteger(p.callerNumber)
+                            ? p.callerNumber
+                            : p.callerNumber.toPrecision(4)}
+                        </span>
+                        <span
+                          className={css({
+                            display: 'block',
+                            fontSize: '11px',
+                            color: 'gray.400',
+                            mt: '2px',
+                          })}
+                        >
+                          {new Date(p.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                {postcards.some((p) => p.status === 'generating' || p.status === 'pending') && (
+                  <div
+                    className={css({
+                      borderRadius: '12px',
+                      border: '1px dashed token(colors.gray.300)',
+                      bg: 'gray.50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      aspectRatio: '4/3',
+                      color: 'gray.400',
+                      fontSize: '13px',
+                      fontStyle: 'italic',
+                    })}
+                  >
+                    Creating postcard…
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── Euclid Creations ── */}
         <section data-section="euclid-creations">

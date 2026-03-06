@@ -128,6 +128,8 @@ export const POST = withAuth(async (request) => {
       currentInstructions: null,
       sessionActivity: { gamesPlayed: [], explorationsLaunched: [] },
       extensionAvailable: true,
+      momentCount: 0,
+      postcardSent: false,
     }
     const instructions = answeringMode.getInstructions(answeringCtx)
     const tools = getAnsweringTools()

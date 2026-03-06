@@ -109,6 +109,10 @@ p, guest, /api/demo/*, *
 p, guest, /api/gameplay/*, *
 p, guest, /api/notifications/*, *
 
+# Postcards — authenticated users only (keepsakes from voice calls)
+p, user, /api/postcards, *
+p, user, /api/postcards/*, *
+
 # Guest classroom access (student-side participation only)
 # Guests can view a classroom and participate, but cannot create or manage classrooms
 p, guest, /api/classrooms/:id, GET

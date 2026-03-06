@@ -6,8 +6,38 @@ import { StudentActionMenu, type StudentActionData } from '@/components/practice
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
 import { useMyFlowcharts } from '@/hooks/useTeacherFlowcharts'
+import { usePostcards, useUnreadPostcardCount } from '@/hooks/usePostcards'
 import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
+
+function UnreadPostcardBadge({ playerId }: { playerId: string }) {
+  const { data: count } = useUnreadPostcardCount(playerId)
+  if (!count || count === 0) return null
+  return (
+    <span
+      className={css({
+        position: 'absolute',
+        top: '-4px',
+        right: '-4px',
+        minW: '20px',
+        h: '20px',
+        borderRadius: '10px',
+        bg: 'blue.500',
+        color: 'white',
+        fontSize: '11px',
+        fontWeight: '700',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: '5px',
+        border: '2px solid token(colors.gray.50)',
+        zIndex: 1,
+      })}
+    >
+      {count}
+    </span>
+  )
+}
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -29,6 +59,8 @@ export default function MyStuffPage() {
   const { data: creations = [], isLoading: creationsLoading } = useEuclidCreations('mine', null)
   const { data: flowcharts = [], isLoading: flowchartsLoading } = useMyFlowcharts()
   const visibleFlowcharts = flowcharts.filter((f) => f.status !== 'archived')
+
+  const { data: allPostcards = [], isLoading: postcardsLoading } = usePostcards()
 
   const visiblePlayers = players.filter((p) => !p.isArchived)
 
@@ -127,6 +159,7 @@ export default function MyStuffPage() {
                     },
                   })}
                 >
+                  <UnreadPostcardBadge playerId={player.id} />
                   <StudentActionMenu
                     variant="card"
                     student={
@@ -180,6 +213,134 @@ export default function MyStuffPage() {
             </div>
           )}
         </section>
+
+        {/* ── Number Line Postcards ── */}
+        {(allPostcards.length > 0 || postcardsLoading) && (
+          <section data-section="postcards">
+            <SectionHeader>Memories from the Number Line</SectionHeader>
+            {postcardsLoading ? (
+              <p className={css({ color: 'gray.400', fontSize: '14px' })}>Loading…</p>
+            ) : (
+              <div
+                className={css({
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                  gap: '12px',
+                })}
+              >
+                {allPostcards
+                  .filter((p) => p.status === 'ready')
+                  .map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/my-stuff/postcards/${p.id}`}
+                      className={css({
+                        display: 'block',
+                        textDecoration: 'none',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: '1px solid token(colors.gray.200)',
+                        bg: 'white',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                        transition: 'box-shadow 0.15s, transform 0.15s',
+                        _hover: {
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          transform: 'translateY(-2px)',
+                        },
+                        position: 'relative',
+                      })}
+                    >
+                      {!p.isRead && (
+                        <span
+                          className={css({
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            w: '10px',
+                            h: '10px',
+                            borderRadius: '50%',
+                            bg: 'blue.500',
+                            border: '2px solid white',
+                          })}
+                        />
+                      )}
+                      {p.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.thumbnailUrl}
+                          alt={`Postcard from ${p.callerNumber}`}
+                          style={{
+                            width: '100%',
+                            aspectRatio: '4/3',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: '100%',
+                            aspectRatio: '4/3',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #E0F2FE, #FDE68A)',
+                            fontSize: 32,
+                          }}
+                        >
+                          {Number.isInteger(p.callerNumber)
+                            ? p.callerNumber
+                            : p.callerNumber.toPrecision(4)}
+                        </div>
+                      )}
+                      <div className={css({ p: '8px 10px' })}>
+                        <span
+                          className={css({
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: 'gray.700',
+                          })}
+                        >
+                          From #
+                          {Number.isInteger(p.callerNumber)
+                            ? p.callerNumber
+                            : p.callerNumber.toPrecision(4)}
+                        </span>
+                        <span
+                          className={css({
+                            display: 'block',
+                            fontSize: '11px',
+                            color: 'gray.400',
+                            mt: '2px',
+                          })}
+                        >
+                          {new Date(p.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                {allPostcards.some((p) => p.status === 'generating' || p.status === 'pending') && (
+                  <div
+                    className={css({
+                      borderRadius: '12px',
+                      border: '1px dashed token(colors.gray.300)',
+                      bg: 'gray.50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      aspectRatio: '4/3',
+                      color: 'gray.400',
+                      fontSize: '13px',
+                      fontStyle: 'italic',
+                    })}
+                  >
+                    Creating postcard…
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── My Euclid Creations (user-level) ── */}
         <section data-section="euclid-creations">

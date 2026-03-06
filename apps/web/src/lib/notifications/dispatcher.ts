@@ -2,10 +2,19 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import {
   appSettings,
+  users,
   type NotificationChannelsConfig,
   practiceNotificationSubscriptions,
+  userNotificationSettings,
 } from '@/db/schema'
-import type { NotificationChannel, SessionStartedPayload, NotifyResult } from './types'
+import type {
+  NotificationChannel,
+  NotificationEvent,
+  DeliveryTarget,
+  NotifyResult,
+  SessionStartedPayload,
+} from './types'
+import type { NotificationType, ChannelOverrides } from '@/db/schema/user-notification-settings'
 import { getActiveSubscriptionsForPlayer, markSubscriptionExpired } from './subscription-manager'
 import { createSessionShare } from '@/lib/session-share'
 
@@ -71,19 +80,131 @@ function isChannelEnabled(config: NotificationChannelsConfig, channelName: strin
   return entry?.enabled === true
 }
 
+// ---------------------------------------------------------------------------
+// Resolve delivery target for a user
+// ---------------------------------------------------------------------------
+
 /**
- * Notify all active subscribers for a player that a session has started.
+ * Resolve a user's notification channel preferences for a given event type.
  *
- * Flow:
- * 1. Read global config — bail if notifications disabled
- * 2. Get active subscriptions for the player
- * 3. For each subscription: throttle check, then fan out to registered channels
- * 4. Mark expired subscriptions, update lastNotifiedAt on success
+ * Precedence: per-type override > user default > system default
+ *   System defaults: inApp=true, push=false, email=false
+ */
+async function resolveDeliveryTarget(
+  userId: string,
+  eventType: NotificationType
+): Promise<DeliveryTarget> {
+  // Load user settings (or null if none exist — use system defaults)
+  const [settings] = await db
+    .select()
+    .from(userNotificationSettings)
+    .where(eq(userNotificationSettings.userId, userId))
+    .limit(1)
+
+  // System defaults for users without explicit settings
+  const defaults = {
+    inApp: true,
+    push: false,
+    email: false,
+  }
+
+  const userDefaults = settings
+    ? {
+        inApp: settings.inAppEnabled,
+        push: settings.pushEnabled,
+        email: settings.emailEnabled,
+      }
+    : defaults
+
+  // Apply per-type overrides (sparse — only set keys override)
+  const overrides: ChannelOverrides | undefined = settings?.typeOverrides?.[eventType]
+  const resolved = {
+    inApp: overrides?.inApp ?? userDefaults.inApp,
+    push: overrides?.push ?? userDefaults.push,
+    email: overrides?.email ?? userDefaults.email,
+  }
+
+  // Resolve email address
+  let email: string | null = settings?.notificationEmail ?? null
+  if (!email) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+    email = user?.email ?? null
+  }
+
+  return { userId, email, channels: resolved }
+}
+
+// ---------------------------------------------------------------------------
+// notifyUser — direct user notification (postcards, system alerts, etc)
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify a specific user about an event.
+ *
+ * Uses the user's notification preferences (defaults + per-type overrides)
+ * to determine which channels to deliver through.
+ *
+ * This is the primary entry point for non-subscription-based notifications.
+ */
+export async function notifyUser(userId: string, event: NotificationEvent): Promise<NotifyResult> {
+  const result: NotifyResult = {
+    targetCount: 1,
+    attempted: 0,
+    succeeded: 0,
+    errors: [],
+  }
+
+  // 1. Check global config
+  const config = await getGlobalChannelConfig()
+  if (!config) return result
+
+  // 2. Resolve this user's delivery preferences for this event type
+  const target = await resolveDeliveryTarget(userId, event.type)
+
+  // 3. Deliver through each enabled channel
+  for (const channel of channels) {
+    if (!isChannelEnabled(config, channel.name)) continue
+    if (!channel.canDeliver(target)) continue
+
+    result.attempted++
+    try {
+      const delivery = await channel.deliver(target, event)
+      if (delivery.success) {
+        result.succeeded++
+      } else {
+        if (delivery.error) result.errors.push(delivery.error)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      result.errors.push(`${channel.name}: ${message}`)
+    }
+  }
+
+  return result
+}
+
+// ---------------------------------------------------------------------------
+// notifySubscribers — subscription-based (practice sessions, etc)
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify all active subscribers for a player about an event.
+ *
+ * This is the subscription-based entry point used by practice session
+ * notifications. It looks up who subscribed to a player, resolves each
+ * subscriber's delivery preferences, and fans out through channels.
+ *
+ * For each subscriber, channel resolution follows user preferences
+ * (if the subscriber has a userId and user_notification_settings).
+ * Anonymous subscribers fall back to subscription-level channel config.
  */
 export async function notifySubscribers(event: SessionStartedPayload): Promise<NotifyResult> {
   const result: NotifyResult = {
-    subscriptionCount: 0,
-    throttled: 0,
+    targetCount: 0,
     attempted: 0,
     succeeded: 0,
     errors: [],
@@ -95,25 +216,24 @@ export async function notifySubscribers(event: SessionStartedPayload): Promise<N
 
   // 2. Get active subscriptions
   const subscriptions = await getActiveSubscriptionsForPlayer(event.playerId)
-  result.subscriptionCount = subscriptions.length
+  result.targetCount = subscriptions.length
 
   if (subscriptions.length === 0) return result
 
   // 3. Process each subscription
   const now = Date.now()
-  // Lazily created share token for anonymous subscribers (created once, reused)
   let anonymousShareToken: string | null = null
+
+  const wrappedEvent: NotificationEvent = { type: 'session-started', data: event }
 
   for (const sub of subscriptions) {
     // Throttle check
     if (sub.lastNotifiedAt && now - sub.lastNotifiedAt.getTime() < THROTTLE_MS) {
-      result.throttled++
       continue
     }
 
-    // For anonymous subscribers (no userId), generate a share link URL
-    // so they can actually access the observation page
-    let subEvent = event
+    // For anonymous subscribers, generate a share link URL
+    let subEvent = wrappedEvent
     if (!sub.userId) {
       if (!anonymousShareToken) {
         try {
@@ -124,25 +244,44 @@ export async function notifySubscribers(event: SessionStartedPayload): Promise<N
         }
       }
       if (anonymousShareToken) {
-        const baseUrl =
+        const base =
           process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
-        subEvent = { ...event, observeUrl: `${baseUrl}/observe/${anonymousShareToken}` }
+        subEvent = {
+          type: 'session-started',
+          data: { ...event, observeUrl: `${base}/observe/${anonymousShareToken}` },
+        }
+      }
+    }
+
+    // Resolve delivery target
+    let target: DeliveryTarget
+    if (sub.userId) {
+      // Authenticated subscriber — use their user-level preferences
+      target = await resolveDeliveryTarget(sub.userId, 'session-started')
+    } else {
+      // Anonymous subscriber — use subscription-level channel config
+      target = {
+        userId: '',
+        email: sub.email,
+        channels: {
+          inApp: sub.channels.inApp ?? false,
+          push: sub.channels.webPush ?? false,
+          email: sub.channels.email ?? false,
+        },
+        subscriptionPushEndpoint: sub.pushSubscription ?? undefined,
       }
     }
 
     let deliveredAny = false
 
     for (const channel of channels) {
-      // Skip if channel not enabled globally
       if (!isChannelEnabled(config, channel.name)) continue
-
-      // Skip if subscription can't use this channel
-      if (!channel.canDeliver(sub)) continue
+      if (!channel.canDeliver(target)) continue
 
       result.attempted++
 
       try {
-        const delivery = await channel.deliver(sub, subEvent)
+        const delivery = await channel.deliver(target, subEvent)
 
         if (delivery.success) {
           result.succeeded++

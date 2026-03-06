@@ -1,41 +1,17 @@
-import { eq } from 'drizzle-orm'
-import { db } from '@/db'
-import { users } from '@/db/schema'
-import type { PracticeNotificationSubscription } from '@/db/schema'
-import type { NotificationChannel, SessionStartedPayload, DeliveryResult } from '../types'
+import type {
+  NotificationChannel,
+  DeliveryTarget,
+  NotificationEvent,
+  DeliveryResult,
+} from '../types'
+import { formatNotificationContent } from '../types'
 import { sendEmail } from '../email'
 import { escapeHtml, baseUrl } from '../email-utils'
 
 /**
- * Resolve the email address for a subscription.
- *
- * Uses the explicit email on the subscription if present,
- * otherwise falls back to the authenticated user's account email.
+ * Build an HTML email for any notification event.
  */
-async function resolveEmail(sub: PracticeNotificationSubscription): Promise<string | null> {
-  if (sub.email) return sub.email
-
-  if (sub.userId) {
-    const [user] = await db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.id, sub.userId))
-      .limit(1)
-    return user?.email ?? null
-  }
-
-  return null
-}
-
-/**
- * Build the HTML email body for a practice-started notification.
- */
-function buildEmailHtml(
-  playerName: string,
-  playerEmoji: string,
-  observeUrl: string,
-  unsubscribeUrl: string
-): string {
+function buildEmailHtml(title: string, body: string, ctaLabel: string, ctaUrl: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -46,24 +22,23 @@ function buildEmailHtml(
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
           <tr>
             <td style="padding:32px 24px;text-align:center;">
-              <div style="font-size:48px;line-height:1;margin-bottom:16px;">${playerEmoji}</div>
               <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">
-                ${escapeHtml(playerName)} started practicing!
+                ${escapeHtml(title)}
               </h1>
               <p style="margin:0 0 24px;font-size:16px;color:#71717a;">
-                Tap the button below to watch live.
+                ${escapeHtml(body)}
               </p>
-              <a href="${escapeHtml(observeUrl)}"
+              <a href="${escapeHtml(ctaUrl)}"
                  style="display:inline-block;padding:14px 32px;background-color:#2563eb;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">
-                Watch Now
+                ${escapeHtml(ctaLabel)}
               </a>
             </td>
           </tr>
           <tr>
             <td style="padding:16px 24px;text-align:center;border-top:1px solid #e4e4e7;">
-              <a href="${escapeHtml(unsubscribeUrl)}"
+              <a href="${escapeHtml(baseUrl())}/settings?tab=notifications"
                  style="font-size:13px;color:#a1a1aa;text-decoration:underline;">
-                Unsubscribe from these notifications
+                Manage notification settings
               </a>
             </td>
           </tr>
@@ -75,47 +50,41 @@ function buildEmailHtml(
 </html>`
 }
 
+/** Map event type to email CTA label */
+function ctaLabel(event: NotificationEvent): string {
+  switch (event.type) {
+    case 'session-started':
+      return 'Watch Now'
+    case 'postcard-ready':
+      return 'View Postcard'
+  }
+}
+
 /**
  * Email notification channel implementation.
  *
- * Sends an HTML email via the shared Nodemailer transport
- * when a student starts a practice session.
+ * Sends an HTML email via the shared Nodemailer transport.
+ * Works with any notification event type.
  */
 export const emailChannel: NotificationChannel = {
   name: 'email',
 
-  canDeliver(sub: PracticeNotificationSubscription): boolean {
-    // We can attempt delivery if the email channel is enabled and there's
-    // either an explicit email or a userId to look up. The actual email
-    // resolution happens in deliver() since it's async.
-    return sub.channels.email === true && (sub.email != null || sub.userId != null)
+  canDeliver(target: DeliveryTarget): boolean {
+    return target.channels.email && target.email != null
   },
 
-  async deliver(
-    sub: PracticeNotificationSubscription,
-    event: SessionStartedPayload
-  ): Promise<DeliveryResult> {
-    const email = await resolveEmail(sub)
-    if (!email) {
-      return {
-        success: false,
-        error: 'No email address available for subscription',
-      }
+  async deliver(target: DeliveryTarget, event: NotificationEvent): Promise<DeliveryResult> {
+    if (!target.email) {
+      return { success: false, error: 'No email address available' }
     }
 
-    const unsubscribeUrl = `${baseUrl()}/api/notifications/subscriptions/${sub.id}/unsubscribe`
-
-    const html = buildEmailHtml(
-      event.playerName,
-      event.playerEmoji,
-      event.observeUrl,
-      unsubscribeUrl
-    )
+    const content = formatNotificationContent(event)
+    const html = buildEmailHtml(content.title, content.body, ctaLabel(event), content.url)
 
     try {
       await sendEmail({
-        to: email,
-        subject: `${event.playerName} started practicing!`,
+        to: target.email,
+        subject: content.title,
         html,
       })
       return { success: true }

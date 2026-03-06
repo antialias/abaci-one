@@ -131,6 +131,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     ffmpeg \
     sqlite3 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy typst binary from typst-builder stage
@@ -157,6 +158,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/dist ./apps/web/dist
 
 # Copy database migrations
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizzle
+
+# Copy bundled fonts for server-side canvas rendering
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/src/lib/fonts ./apps/web/src/lib/fonts
 
 # Copy PRODUCTION node_modules only (no dev dependencies)
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules

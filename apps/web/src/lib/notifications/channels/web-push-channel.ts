@@ -1,48 +1,64 @@
-import type { NotificationChannel, SessionStartedPayload, DeliveryResult } from '../types'
-import type { PracticeNotificationSubscription } from '@/db/schema'
-import { sendWebPush } from '../web-push'
+import type {
+  NotificationChannel,
+  DeliveryTarget,
+  NotificationEvent,
+  DeliveryResult,
+} from '../types'
+import { formatNotificationContent } from '../types'
+import { sendWebPush, sendWebPushToUser } from '../web-push'
 
 /**
  * Web Push notification channel implementation.
  *
- * Sends browser push notifications via the Web Push protocol (VAPID).
- * Requires a valid pushSubscription on the subscription record.
+ * For authenticated users: looks up all registered push endpoints from
+ * user_push_subscriptions and sends to each.
+ *
+ * For legacy/anonymous subscribers: uses the push subscription stored
+ * directly on the delivery target (from the practice subscription record).
  */
 export const webPushChannel: NotificationChannel = {
   name: 'webPush',
 
-  canDeliver(sub: PracticeNotificationSubscription): boolean {
-    return sub.channels.webPush === true && sub.pushSubscription != null
+  canDeliver(target: DeliveryTarget): boolean {
+    return target.channels.push && (!!target.userId || !!target.subscriptionPushEndpoint)
   },
 
-  async deliver(
-    sub: PracticeNotificationSubscription,
-    event: SessionStartedPayload
-  ): Promise<DeliveryResult> {
-    if (!sub.pushSubscription) {
-      return { success: false, error: 'No push subscription on record' }
-    }
+  async deliver(target: DeliveryTarget, event: NotificationEvent): Promise<DeliveryResult> {
+    const content = formatNotificationContent(event)
 
     const payload = {
-      title: `${event.playerName} started practicing!`,
-      body: 'Tap to watch live',
-      icon: '/icon-192x192.png',
-      data: { url: event.observeUrl },
+      title: content.title,
+      body: content.body,
+      icon: content.icon,
+      data: { url: content.url },
     }
 
+    // Legacy path: use the push subscription from the subscription record
+    if (target.subscriptionPushEndpoint) {
+      try {
+        const result = await sendWebPush(target.subscriptionPushEndpoint, payload)
+        if (result.success) return { success: true }
+        return {
+          success: false,
+          error: `Push endpoint returned ${result.statusCode}`,
+          shouldDisable: true,
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        return { success: false, error: `webPush: ${message}` }
+      }
+    }
+
+    // User-level path: send to all registered push endpoints
     try {
-      const result = await sendWebPush(sub.pushSubscription, payload)
-
-      if (result.success) {
-        return { success: true }
+      const result = await sendWebPushToUser(target.userId, payload)
+      if (result.sent === 0 && result.total === 0) {
+        return { success: false, error: 'No push subscriptions registered for user' }
       }
-
-      // 410 or 404 — endpoint is gone, mark for disabling
-      return {
-        success: false,
-        error: `Push endpoint returned ${result.statusCode}`,
-        shouldDisable: true,
+      if (result.sent === 0) {
+        return { success: false, error: `All ${result.total} push endpoints failed` }
       }
+      return { success: true }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       return { success: false, error: `webPush: ${message}` }

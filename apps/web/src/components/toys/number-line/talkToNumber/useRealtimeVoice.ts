@@ -29,6 +29,22 @@ import type { ChildProfile } from './childProfile'
 import { EXPLORATION_IDS, CONSTANT_IDS } from './explorationRegistry'
 import { GAME_MAP } from './gameRegistry'
 import { resolveMode, type ModeId, type ModeContext, type SessionActivity } from './sessionModes'
+import { getTraitSummary } from './generateNumberPersonality'
+import type {
+  MomentSnapshot,
+  PostcardManifest,
+  RankedMoment,
+} from '@/db/schema/number-line-postcards'
+
+/** A moment bookmarked silently by the agent during the call. */
+export interface MarkedMoment {
+  caption: string
+  category: 'question' | 'discovery' | 'game' | 'exploration' | 'conversation' | 'conference'
+  significance: number
+  snapshot: MomentSnapshot
+  transcriptExcerpt: string
+  timestampMs: number
+}
 
 export type CallState = BaseCallState | 'transferring'
 
@@ -160,6 +176,8 @@ interface UseRealtimeVoiceOptions {
   onSetLabelStyle?: (scale: number, minOpacity: number) => void
   isExplorationActiveRef?: React.RefObject<boolean>
   onPlayerIdentified?: (playerId: string) => void
+  /** Returns the current number line viewport snapshot for moment capture. */
+  getViewportSnapshot?: () => { center: number; pixelsPerUnit: number }
 }
 
 interface DialOptions {
@@ -213,6 +231,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onSetLabelStyleRef.current = options?.onSetLabelStyle
   const onPlayerIdentifiedRef = useRef(options?.onPlayerIdentified)
   onPlayerIdentifiedRef.current = options?.onPlayerIdentified
+  const getViewportSnapshotRef = useRef(options?.getViewportSnapshot)
+  getViewportSnapshotRef.current = options?.getViewportSnapshot
   const isExplorationActiveRef = options?.isExplorationActiveRef
 
   // ── Domain-specific state ──
@@ -229,6 +249,9 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const activeGameIdRef = useRef<string | null>(null)
   const gameStateRef = useRef<unknown>(null)
   const sessionActivityRef = useRef<SessionActivity>({ gamesPlayed: [], explorationsLaunched: [] })
+  const markedMomentsRef = useRef<MarkedMoment[]>([])
+  const postcardSentRef = useRef(false)
+  const callStartTimeRef = useRef(0)
   const narrationPlayingRef = useRef(false)
   const lastResumeTimestampRef = useRef(0)
   const pendingExplorationRef = useRef<
@@ -252,6 +275,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const goodbyeRequestedRef = useRef(false)
   const childHasSpokenRef = useRef(false)
   const familiarizingResponseCountRef = useRef(0)
+  const momentNudgeSentRef = useRef(false)
+  const defaultModeResponseCountRef = useRef(0)
 
   // Domain-specific call state (extends base CallState with 'transferring')
   const [domainState, setDomainState] = useState<'transferring' | null>(null)
@@ -288,6 +313,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       currentInstructions: null,
       sessionActivity: sessionActivityRef.current,
       extensionAvailable: !extensionUsedRef.current,
+      momentCount: markedMomentsRef.current.length,
+      postcardSent: postcardSentRef.current,
     }),
     []
   )
@@ -714,6 +741,98 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
       }
 
+      // mark_moment — silently bookmark a memorable moment
+      if (name === 'mark_moment') {
+        console.log('[postcard] mark_moment called:', args)
+        const caption = String(args.caption ?? '')
+        const category = String(args.category ?? 'conversation') as MarkedMoment['category']
+        const significance = typeof args.significance === 'number' ? args.significance : 5
+
+        // Capture viewport snapshot
+        const viewport = getViewportSnapshotRef.current?.() ?? { center: 0, pixelsPerUnit: 50 }
+
+        // Capture recent transcript excerpt (last 4 lines)
+        const recentTranscripts = transcriptsRef.current.slice(-4)
+        const transcriptExcerpt = recentTranscripts
+          .map((t) => `${t.role === 'child' ? 'Child' : 'Number'}: "${t.text}"`)
+          .join('\n')
+
+        const moment: MarkedMoment = {
+          caption,
+          category,
+          significance,
+          snapshot: {
+            viewport,
+            activeGameId: activeGameIdRef.current,
+            conferenceNumbers:
+              conferenceNumbersRef.current.length > 1
+                ? [...conferenceNumbersRef.current]
+                : undefined,
+            timestamp: Date.now() - callStartTimeRef.current,
+          },
+          transcriptExcerpt,
+          timestampMs: Date.now() - callStartTimeRef.current,
+        }
+
+        markedMomentsRef.current.push(moment)
+        return { output: { success: true }, promptResponse: false }
+      }
+
+      // send_postcard — assemble manifest and POST to API
+      if (name === 'send_postcard') {
+        console.log(
+          '[postcard] send_postcard called:',
+          args,
+          'moments:',
+          markedMomentsRef.current.length
+        )
+        const sessionSummary = String(args.session_summary ?? '')
+        const moments = markedMomentsRef.current
+        if (moments.length === 0) {
+          return {
+            output: { success: false, error: 'No moments have been marked.' },
+          }
+        }
+
+        // Rank by significance, take top 4
+        const ranked: RankedMoment[] = [...moments]
+          .sort((a, b) => b.significance - a.significance)
+          .slice(0, 4)
+          .map((m, i) => ({
+            rank: i + 1,
+            caption: m.caption,
+            category: m.category,
+            snapshot: m.snapshot,
+            transcriptExcerpt: m.transcriptExcerpt,
+          }))
+
+        const child = childProfileRef.current
+        const manifest: PostcardManifest = {
+          callerNumber: calledNumberRef.current,
+          callerPersonality: getTraitSummary(calledNumberRef.current),
+          childName: child?.name ?? 'Friend',
+          childEmoji: child?.emoji ?? '',
+          moments: ranked,
+          sessionSummary,
+        }
+
+        postcardSentRef.current = true
+
+        // Fire and forget — POST to API (userId resolved server-side via session)
+        const playerId = activePlayerIdRef.current
+        fetch('/api/postcards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId, manifest }),
+        }).catch((err) => {
+          console.warn('[postcard] POST failed:', err)
+        })
+
+        return {
+          output: { sent: true, message: 'Postcard is on its way!' },
+        }
+      }
+
       return null // unhandled
     },
     [setPendingSpeaker]
@@ -722,13 +841,16 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const onResponseDone = useCallback((_ctx: ModeContext, currentModeId: string): string | null => {
     if (currentModeId === 'answering' && childHasSpokenRef.current) {
       if (childProfileRef.current) {
+        console.log('[postcard] transitioning answering → default (has profile)')
         return 'default'
       }
+      console.log('[postcard] transitioning answering → familiarizing')
       return 'familiarizing'
     }
     if (currentModeId === 'familiarizing') {
       familiarizingResponseCountRef.current++
       if (familiarizingResponseCountRef.current >= 4) {
+        console.log('[postcard] transitioning familiarizing → default')
         return 'default'
       }
     }
@@ -886,7 +1008,23 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
         // Phase 3 handled by the framework (force hangup)
       },
-      onResponseDoneRaw: (dc, msg, _currentModeId) => {
+      onResponseDoneRaw: (dc, msg, currentModeId) => {
+        // Nudge the model to use mark_moment after a few exchanges in default mode
+        if (currentModeId === 'default' && !momentNudgeSentRef.current) {
+          defaultModeResponseCountRef.current++
+          if (defaultModeResponseCountRef.current >= 3 && markedMomentsRef.current.length === 0) {
+            momentNudgeSentRef.current = true
+            sendSystemMessageHelper(
+              dc,
+              '[System: REMINDER — You have not called mark_moment yet. You MUST call mark_moment to bookmark memorable moments during the conversation. Call it now for the most recent noteworthy exchange, and continue calling it throughout the call. The child will not hear or see this tool call.]'
+            )
+            console.log(
+              '[postcard] sent mark_moment nudge after %d responses with 0 moments',
+              defaultModeResponseCountRef.current
+            )
+          }
+        }
+
         const pending = pendingExplorationRef.current
         if (!pending) return
         pendingExplorationRef.current = null
@@ -1024,8 +1162,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       goodbyeRequestedRef.current = false
       childHasSpokenRef.current = false
       familiarizingResponseCountRef.current = 0
+      momentNudgeSentRef.current = false
+      defaultModeResponseCountRef.current = 0
       scenarioRef.current = null
       transcriptsRef.current = []
+      markedMomentsRef.current = []
+      postcardSentRef.current = false
+      callStartTimeRef.current = Date.now()
       setTransferTarget(null)
       setDomainState(null)
 

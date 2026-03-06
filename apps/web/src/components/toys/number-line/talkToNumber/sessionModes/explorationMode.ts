@@ -6,7 +6,7 @@
  */
 
 import type { AgentMode } from './types'
-import { getExplorationTools } from './tools'
+import { getExplorationTools, TOOL_MARK_MOMENT } from './tools'
 
 export const explorationMode: AgentMode = {
   id: 'exploration',
@@ -30,5 +30,5 @@ export const explorationMode: AgentMode = {
     ].join('\n')
   },
 
-  getTools: () => getExplorationTools(),
+  getTools: () => [...getExplorationTools(), TOOL_MARK_MOMENT],
 }

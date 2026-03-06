@@ -135,6 +135,7 @@ export type TaskType =
   | 'session-song'
   | 'profile-image-generate'
   | 'page-spot-generate'
+  | 'postcard-generate'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**
  * Event types are defined per task type in `src/lib/tasks/events.ts`.

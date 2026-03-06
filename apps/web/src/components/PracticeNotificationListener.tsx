@@ -4,9 +4,9 @@ import { useSession } from 'next-auth/react'
 import { usePracticeNotifications } from '@/hooks/usePracticeNotifications'
 
 /**
- * Invisible component that listens for practice-notification Socket.IO
- * events and shows in-app toast notifications.
- * Mounted in ClientProviders so it's active on every page.
+ * Invisible component that listens for Socket.IO notification events
+ * and shows in-app toasts. Mounted in ClientProviders so it's active
+ * on every page for authenticated users.
  */
 export function PracticeNotificationListener() {
   const { data: session } = useSession()

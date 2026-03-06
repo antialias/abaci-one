@@ -168,6 +168,12 @@ export const featureFlagKeys = {
   detail: (key: string) => [...featureFlagKeys.all, 'detail', key] as const,
 }
 
+// User notification preference query keys
+export const notificationPreferenceKeys = {
+  all: ['notification-preferences'] as const,
+  settings: () => [...notificationPreferenceKeys.all, 'settings'] as const,
+}
+
 // Notification subscription query keys
 export const notificationSubscriptionKeys = {
   all: ['notification-subscriptions'] as const,
@@ -187,6 +193,14 @@ export const pageSpotKeys = {
   all: ['page-spots'] as const,
   status: () => [...pageSpotKeys.all, 'status'] as const,
   html: (pageId: string, spotId: string) => [...pageSpotKeys.all, 'html', pageId, spotId] as const,
+}
+
+// Number line postcard query keys
+export const postcardKeys = {
+  all: ['postcards'] as const,
+  list: (playerId?: string) => [...postcardKeys.all, 'list', playerId ?? 'all'] as const,
+  detail: (id: string) => [...postcardKeys.all, 'detail', id] as const,
+  unreadCount: (playerId?: string) => [...postcardKeys.all, 'unread', playerId ?? 'all'] as const,
 }
 
 // Attachment query keys (for practice photos and worksheet parsing)

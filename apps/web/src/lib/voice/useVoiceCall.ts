@@ -766,6 +766,8 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
             // Bad JSON — proceed with empty args
           }
 
+          console.log('[voice] tool call:', msg.name, args)
+
           const ctx = configRef.current.buildContext()
           const result = configRef.current.onToolCall(msg.name, args, ctx)
 

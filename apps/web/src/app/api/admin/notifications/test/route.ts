@@ -68,12 +68,19 @@ export const POST = withAuth(
               { status: 503 }
             )
           }
-          io.to(`user:${userId}`).emit('practice-notification', {
-            sessionId: 'test',
-            playerId: 'test',
-            playerName: 'Test Student',
-            playerEmoji: '🧪',
-            observeUrl: '/',
+          io.to(`user:${userId}`).emit('notification', {
+            type: 'session-started',
+            title: '🧪 Test Student started practicing!',
+            body: 'Tap to watch live',
+            icon: '/icon-192x192.png',
+            url: '/',
+            data: {
+              sessionId: 'test',
+              playerId: 'test',
+              playerName: 'Test Student',
+              playerEmoji: '🧪',
+              observeUrl: '/',
+            },
           })
           return NextResponse.json({ success: true })
         }

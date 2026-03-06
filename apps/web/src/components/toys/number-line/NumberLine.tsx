@@ -447,6 +447,10 @@ export function NumberLine({
     onSetLabelStyle: handleVoiceSetLabelStyle,
     isExplorationActiveRef,
     onPlayerIdentified,
+    getViewportSnapshot: () => ({
+      center: stateRef.current.center,
+      pixelsPerUnit: stateRef.current.pixelsPerUnit,
+    }),
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
   const voiceStateRef = useRef<CallState>('idle')

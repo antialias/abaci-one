@@ -380,19 +380,21 @@ export interface SkillTutorialControlEvent {
 }
 
 // ============================================================================
-// Practice Notification Events (sent to user:${userId} channel)
+// Notification Events (sent to user:${userId} channel)
 // ============================================================================
 
 /**
- * Sent when a student starts a practice session, to notify subscribed parents.
- * Delivered via the in-app (Socket.IO) notification channel.
+ * Generic notification event emitted by the unified notification system.
+ * The `type` field determines the notification kind; `data` contains
+ * type-specific payload.
  */
-export interface PracticeNotificationEvent {
-  sessionId: string
-  playerId: string
-  playerName: string
-  playerEmoji: string
-  observeUrl: string
+export interface GenericNotificationEvent {
+  type: string
+  title: string
+  body: string
+  icon: string
+  url: string
+  data: unknown
 }
 
 // ============================================================================
@@ -443,8 +445,8 @@ export interface ClassroomServerToClientEvents {
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
   'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 
-  // Practice notification events (user channel - for parent in-app notifications)
-  'practice-notification': (data: PracticeNotificationEvent) => void
+  // Notification events (user channel - unified notification system)
+  notification: (data: GenericNotificationEvent) => void
 }
 
 /**

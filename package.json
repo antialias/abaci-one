@@ -61,6 +61,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.96",
     "opencv-react": "^0.0.6"
   }
 }

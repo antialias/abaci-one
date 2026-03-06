@@ -48,6 +48,10 @@ export interface ModeContext {
   sessionActivity: SessionActivity
   /** Whether the agent can request more time (false after first extension). */
   extensionAvailable: boolean
+  /** Number of moments marked so far this call. */
+  momentCount: number
+  /** Whether a postcard has already been sent this call. */
+  postcardSent: boolean
 }
 
 /** A session mode definition — controls instructions + tools for a phase of the call. */

@@ -597,7 +597,33 @@ export interface TaskEventMap {
   'session-song': SessionSongEvent
   'profile-image-generate': ProfileImageGenerateEvent
   'page-spot-generate': PageSpotImageGenerateEvent
+  'postcard-generate': PostcardGenerateEvent
 }
+
+// ── Postcard generation events ──
+
+export type PostcardGenerateEvent =
+  | {
+      type: 'postcard_rendering'
+      postcardId: string
+    }
+  | {
+      type: 'postcard_generating_image'
+      postcardId: string
+      provider: string
+      model: string
+    }
+  | {
+      type: 'postcard_complete'
+      postcardId: string
+      imageUrl: string
+      thumbnailUrl: string
+    }
+  | {
+      type: 'postcard_error'
+      postcardId: string
+      error: string
+    }
 
 /**
  * Get the domain event type for a given task type.

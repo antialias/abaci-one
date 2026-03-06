@@ -16,30 +16,17 @@ function parseOpenAIError(status: number, body: string): string {
   return `OpenAI API error ${status}: ${truncated}`
 }
 
-type OpenAISizeString = '256x256' | '512x512' | '1024x1024' | '1024x1792' | '1792x1024'
+/** GPT Image models use different sizes than DALL-E. */
+type GptImageSizeString = '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
 
-/** Pick the closest OpenAI-supported size string for a given pixel size. */
-function mapSizeToOpenAI(size?: ImageOptions['size']): OpenAISizeString {
-  if (!size) return '1024x1024'
+/** Pick the closest GPT Image size string for a given pixel size. */
+function mapSizeToGptImage(size?: ImageOptions['size']): GptImageSizeString {
+  if (!size) return 'auto'
 
-  const presets: Array<{ label: OpenAISizeString; w: number; h: number }> = [
-    { label: '256x256', w: 256, h: 256 },
-    { label: '512x512', w: 512, h: 512 },
-    { label: '1024x1024', w: 1024, h: 1024 },
-    { label: '1024x1792', w: 1024, h: 1792 },
-    { label: '1792x1024', w: 1792, h: 1024 },
-  ]
-
-  let closest = presets[0]
-  let bestDist = Infinity
-  for (const p of presets) {
-    const dist = Math.abs(p.w - size.width) + Math.abs(p.h - size.height)
-    if (dist < bestDist) {
-      bestDist = dist
-      closest = p
-    }
-  }
-  return closest.label
+  const ratio = size.width / size.height
+  if (ratio > 1.2) return '1536x1024' // landscape
+  if (ratio < 0.8) return '1024x1536' // portrait
+  return '1024x1024' // square-ish
 }
 
 export const openaiProvider: ImageProvider = {
@@ -63,7 +50,7 @@ export const openaiProvider: ImageProvider = {
       )
     }
 
-    const sizeStr = mapSizeToOpenAI(options?.size)
+    const sizeStr = mapSizeToGptImage(options?.size)
 
     if (referenceImage) {
       // Use the edits endpoint for image-to-image generation
@@ -71,8 +58,6 @@ export const openaiProvider: ImageProvider = {
       formData.append('model', model)
       formData.append('prompt', prompt)
       formData.append('size', sizeStr)
-      formData.append('n', '1')
-      formData.append('response_format', 'b64_json')
       formData.append(
         'image',
         new Blob([new Uint8Array(referenceImage)], { type: 'image/png' }),
@@ -107,7 +92,6 @@ export const openaiProvider: ImageProvider = {
         model,
         prompt,
         size: sizeStr,
-        n: 1,
       }),
     })
 

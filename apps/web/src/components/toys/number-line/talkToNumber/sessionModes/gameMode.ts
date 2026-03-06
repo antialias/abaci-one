@@ -14,6 +14,7 @@ import {
   TOOL_END_GAME,
   TOOL_HANG_UP,
   TOOL_REQUEST_MORE_TIME,
+  TOOL_MARK_MOMENT,
 } from './tools'
 
 export const gameMode: AgentMode = {
@@ -66,10 +67,18 @@ export const gameMode: AgentMode = {
         TOOL_INDICATE,
         TOOL_END_GAME,
         TOOL_HANG_UP,
+        TOOL_MARK_MOMENT,
       ]
     }
 
     // Legacy game: restricted tool set
-    return [TOOL_INDICATE, TOOL_LOOK_AT, TOOL_END_GAME, TOOL_HANG_UP, TOOL_REQUEST_MORE_TIME]
+    return [
+      TOOL_INDICATE,
+      TOOL_LOOK_AT,
+      TOOL_END_GAME,
+      TOOL_HANG_UP,
+      TOOL_REQUEST_MORE_TIME,
+      TOOL_MARK_MOMENT,
+    ]
   },
 }
