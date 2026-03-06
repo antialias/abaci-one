@@ -61,7 +61,9 @@ export function AssistanceDebugPanel({ machineState }: AssistanceDebugPanelProps
       } else {
         localStorage.removeItem('helpDebugTiming')
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     // Reload so timing config takes effect
     window.location.reload()
   }, [debugTiming])
