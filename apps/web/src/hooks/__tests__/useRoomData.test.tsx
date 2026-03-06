@@ -7,6 +7,7 @@ import {
   useJoinRoom,
   useLeaveRoom,
   useRoomData,
+  useSetRoomGame,
 } from '../useRoomData'
 
 // Mock the useUserId hook
@@ -386,6 +387,77 @@ describe('useRoomData hooks', () => {
         expect(error).toBeDefined()
         expect(error.message).toContain('Not in room')
       })
+    })
+  })
+
+  describe('useSetRoomGame', () => {
+    test('optimistically updates cache with gameConfig when provided', async () => {
+      // Seed the cache with an existing room
+      queryClient.setQueryData(['rooms', 'current'], {
+        id: 'room-123',
+        name: 'Test Room',
+        code: 'ABC123',
+        gameName: null,
+        gameConfig: null,
+        accessMode: 'open',
+        members: [],
+        memberPlayers: {},
+      })
+
+      // Mock the PATCH call to succeed
+      global.fetch = vi.fn().mockResolvedValue({ ok: true })
+
+      const { result } = renderHook(() => useSetRoomGame(), { wrapper })
+
+      result.current.mutate({
+        roomId: 'room-123',
+        gameName: 'constant-explorer',
+        gameConfig: { 'constant-explorer': { constantId: 'pi' } },
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      // Verify cache includes both gameName AND gameConfig
+      const cachedData = queryClient.getQueryData(['rooms', 'current']) as any
+      expect(cachedData.gameName).toBe('constant-explorer')
+      expect(cachedData.gameConfig).toEqual({
+        'constant-explorer': { constantId: 'pi' },
+      })
+    })
+
+    test('does not overwrite gameConfig when not provided in mutation', async () => {
+      // Seed the cache with an existing room that already has gameConfig
+      queryClient.setQueryData(['rooms', 'current'], {
+        id: 'room-123',
+        name: 'Test Room',
+        code: 'ABC123',
+        gameName: 'matching',
+        gameConfig: { matching: { difficulty: 5 } },
+        accessMode: 'open',
+        members: [],
+        memberPlayers: {},
+      })
+
+      global.fetch = vi.fn().mockResolvedValue({ ok: true })
+
+      const { result } = renderHook(() => useSetRoomGame(), { wrapper })
+
+      // Set game WITHOUT providing gameConfig
+      result.current.mutate({
+        roomId: 'room-123',
+        gameName: 'matching',
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+
+      // Verify existing gameConfig is preserved
+      const cachedData = queryClient.getQueryData(['rooms', 'current']) as any
+      expect(cachedData.gameName).toBe('matching')
+      expect(cachedData.gameConfig).toEqual({ matching: { difficulty: 5 } })
     })
   })
 

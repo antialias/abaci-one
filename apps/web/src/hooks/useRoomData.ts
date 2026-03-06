@@ -676,12 +676,13 @@ export function useSetRoomGame() {
   return useMutation({
     mutationFn: setRoomGameApi,
     onSuccess: (_, variables) => {
-      // Update the cache with the new game
+      // Update the cache with the new game (include gameConfig if provided)
       queryClient.setQueryData<RoomData | null>(roomKeys.current(), (prev) => {
         if (!prev) return null
         return {
           ...prev,
           gameName: variables.gameName,
+          ...(variables.gameConfig !== undefined ? { gameConfig: variables.gameConfig } : {}),
         }
       })
       // Refetch to get the full updated room data

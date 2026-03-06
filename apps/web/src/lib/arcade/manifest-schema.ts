@@ -77,6 +77,7 @@ export const ScoreboardCategorySchema = z.enum([
   'speed',
   'strategy',
   'geography',
+  'discovery',
 ])
 
 /**

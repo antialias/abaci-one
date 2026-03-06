@@ -41,6 +41,26 @@ const manifest: GameManifest = {
       medium: { constantId: 'random' },
       hard: { constantId: 'random' },
     },
+    fieldConfig: {
+      constantId: {
+        label: 'Constant',
+        type: 'select',
+        options: [
+          { value: 'random', label: 'Random' },
+          { value: 'balance', label: 'Balance (least watched)' },
+          { value: 'pi', label: '\u03C0 Pi' },
+          { value: 'e', label: "e Euler's Number" },
+          { value: 'phi', label: '\u03C6 Golden Ratio' },
+          { value: 'sqrt2', label: '\u221A2 Square Root of 2' },
+          { value: 'sqrt3', label: '\u221A3 Square Root of 3' },
+          { value: 'tau', label: '\u03C4 Tau' },
+          { value: 'gamma', label: '\u03B3 Euler-Mascheroni' },
+          { value: 'ln2', label: 'ln2 Natural Log of 2' },
+          { value: 'ramanujan', label: '1/\u03C0 Ramanujan' },
+          { value: 'feigenbaum', label: '\u03B4 Feigenbaum' },
+        ],
+      },
+    },
   },
 }
 

@@ -135,7 +135,13 @@ export interface PlayerResult {
 /**
  * Scoreboard category for cross-game comparison
  */
-export type ScoreboardCategory = 'puzzle' | 'memory' | 'speed' | 'strategy' | 'geography'
+export type ScoreboardCategory =
+  | 'puzzle'
+  | 'memory'
+  | 'speed'
+  | 'strategy'
+  | 'geography'
+  | 'discovery'
 
 /**
  * Game mode type
