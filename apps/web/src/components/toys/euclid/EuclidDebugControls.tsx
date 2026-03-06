@@ -1,11 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { MacroCeremonyState, GhostLayer } from './types'
 import { ToyDebugPanel, DebugSlider, DebugCheckbox } from '../ToyDebugPanel'
-import {
-  getFriction,
-  setFriction,
-  getFrictionRange,
-} from './render/renderToolOverlay'
+import { getFriction, setFriction, getFrictionRange } from './render/renderToolOverlay'
 import {
   getGhostFalloff,
   setGhostFalloff,

@@ -37,11 +37,7 @@ export function renderFrame(
   const curExpected =
     curStep < ctx.stepsRef.current.length ? ctx.stepsRef.current[curStep].expected : null
   let candFilter: { ofA: string; ofB: string; beyondId?: string } | null = null
-  if (
-    curExpected?.type === 'intersection' &&
-    curExpected.ofA != null &&
-    curExpected.ofB != null
-  ) {
+  if (curExpected?.type === 'intersection' && curExpected.ofA != null && curExpected.ofB != null) {
     const resolvedA = resolveSelector(curExpected.ofA, ctx.constructionRef.current)
     const resolvedB = resolveSelector(curExpected.ofB, ctx.constructionRef.current)
     if (resolvedA && resolvedB) {
@@ -74,13 +70,9 @@ export function renderFrame(
   let drawState = ctx.constructionRef.current
   if (ctx.correctionRef.current?.active) {
     const correction = ctx.correctionRef.current
-    const t = Math.min(
-      1,
-      (performance.now() - correction.startTime) / correction.duration
-    )
+    const t = Math.min(1, (performance.now() - correction.startTime) / correction.duration)
     const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
-    const angle =
-      correction.fromAngle + (correction.toAngle - correction.fromAngle) * ease
+    const angle = correction.fromAngle + (correction.toAngle - correction.fromAngle) * ease
     const state = ctx.constructionRef.current
     const updatedElements = state.elements.map((el) => {
       if (el.kind === 'point') {
@@ -114,10 +106,7 @@ export function renderFrame(
     complete
       ? ctx.playgroundModeRef.current
         ? getAllPoints(drawState)
-            .filter(
-              (pt) =>
-                pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend'
-            )
+            .filter((pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend')
             .map((pt) => pt.id)
         : prop.draggablePointIds
       : undefined,
@@ -255,11 +244,7 @@ export function renderFrame(
   }
 
   // ── 9. Drag invitation text post-completion ──
-  if (
-    complete &&
-    ctx.completionTimeRef.current > 0 &&
-    prop.draggablePointIds
-  ) {
+  if (complete && ctx.completionTimeRef.current > 0 && prop.draggablePointIds) {
     const stillShowing = renderDragInvitation(
       drawCtx,
       cssWidth,
@@ -298,8 +283,7 @@ export function renderFrame(
   }
 
   // ── 12. Tool overlay (geometric previews + physical tool body) ──
-  const nextColor =
-    BYRNE_CYCLE[ctx.constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
+  const nextColor = BYRNE_CYCLE[ctx.constructionRef.current.nextColorIndex % BYRNE_CYCLE.length]
   renderToolOverlay(
     drawCtx,
     ctx.activeToolRef.current,

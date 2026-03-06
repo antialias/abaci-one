@@ -74,14 +74,7 @@ export function computeAutoFit(
     const cumulativeSweep = compassPhase.cumulativeSweep as number
     const centerPoint = getPoint(ctx.constructionRef.current, centerId)
     if (centerPoint && radius > 0) {
-      expandBoundsForArc(
-        bounds,
-        centerPoint.x,
-        centerPoint.y,
-        radius,
-        startAngle,
-        cumulativeSweep
-      )
+      expandBoundsForArc(bounds, centerPoint.x, centerPoint.y, radius, startAngle, cumulativeSweep)
     }
   }
 
@@ -92,10 +85,7 @@ export function computeAutoFit(
   const includeGhostBounds = inCeremony || ctx.ghostBoundsEnabledRef.current
   if (includeGhostBounds) {
     const ceremonyLayerKeys = inCeremony
-      ? new Set([
-          ...cer!.sequence.map((e) => e.layerKey),
-          ...cer!.preRevealedLayers.keys(),
-        ])
+      ? new Set([...cer!.sequence.map((e) => e.layerKey), ...cer!.preRevealedLayers.keys()])
       : null
     for (const layer of ctx.ghostLayersRef.current) {
       const key = `${layer.atStep}:${layer.depth}`
@@ -103,8 +93,7 @@ export function computeAutoFit(
       // With G toggle + hover: include only the hovered step's layers
       // With G toggle (no hover): include all ghost layers
       if (ceremonyLayerKeys && !ceremonyLayerKeys.has(key)) continue
-      if (!ceremonyLayerKeys && hoveredStep != null && layer.atStep !== hoveredStep)
-        continue
+      if (!ceremonyLayerKeys && hoveredStep != null && layer.atStep !== hoveredStep) continue
       for (const el of layer.elements) {
         if (el.kind === 'circle') {
           expandBounds(bounds, el.cx, el.cy, el.r)
@@ -161,8 +150,7 @@ export function computeAutoFit(
   const fitArea = availableW * availableH
   const boundsArea = width * height
   // Suppress zoom-in when ghost/macro-preview bounds are included
-  const shouldZoomIn =
-    !includeGhostBounds && !includeMacroPreview && boundsArea <= fitArea * 0.25
+  const shouldZoomIn = !includeGhostBounds && !includeMacroPreview && boundsArea <= fitArea * 0.25
   const desiredPpu = Math.min(availableW / width, availableH / height)
   const maxPpu = getAutoFitMaxPpu(ctx.isTouchRef.current)
   const targetPpu = shouldZoomIn
@@ -221,10 +209,7 @@ export function computeAutoFit(
       : isSweeping
         ? AUTO_FIT_SWEEP_PPU_DELTA
         : AUTO_FIT_MAX_PPU_DELTA
-    const deltaPpu = Math.max(
-      -ppuDeltaCap,
-      Math.min(ppuDeltaCap, nextPpu - v.pixelsPerUnit)
-    )
+    const deltaPpu = Math.max(-ppuDeltaCap, Math.min(ppuDeltaCap, nextPpu - v.pixelsPerUnit))
     // During sweep: only zoom out (negative delta), never in
     if (!isSweeping || deltaPpu <= 0) {
       effectivePpu = v.pixelsPerUnit + deltaPpu
@@ -244,10 +229,8 @@ export function computeAutoFit(
       ? getPoint(ctx.constructionRef.current, anchorCenterId)
       : null
     if (centerPoint) {
-      const anchorScreenX =
-        (centerPoint.x - v.center.x) * v.pixelsPerUnit + cssWidth / 2
-      const anchorScreenY =
-        (v.center.y - centerPoint.y) * v.pixelsPerUnit + cssHeight / 2
+      const anchorScreenX = (centerPoint.x - v.center.x) * v.pixelsPerUnit + cssWidth / 2
+      const anchorScreenY = (v.center.y - centerPoint.y) * v.pixelsPerUnit + cssHeight / 2
       targetCenterX = centerPoint.x - (anchorScreenX - cssWidth / 2) / effectivePpu
       targetCenterY = centerPoint.y + (anchorScreenY - cssHeight / 2) / effectivePpu
     }
@@ -284,10 +267,7 @@ export function computeAutoFit(
   if (compassPhase.tag === 'sweeping') {
     const radius = compassPhase.radius as number
     if (radius > 0) {
-      const sweepCenter = getPoint(
-        ctx.constructionRef.current,
-        compassPhase.centerId as string
-      )
+      const sweepCenter = getPoint(ctx.constructionRef.current, compassPhase.centerId as string)
       if (sweepCenter) {
         const startAngle = compassPhase.startAngle as number
         const cumulativeSweep = compassPhase.cumulativeSweep as number

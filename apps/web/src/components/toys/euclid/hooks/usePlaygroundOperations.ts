@@ -18,10 +18,7 @@ import type { MacroCeremonyState } from '../types'
 import type { ToolPhaseManager } from '../interaction/useToolPhaseManager'
 import type { ActiveTool } from '../types'
 import type { AttitudeId } from '../agent/attitudes/types'
-import {
-  initializeGiven,
-  getAllPoints,
-} from '../engine/constructionState'
+import { initializeGiven, getAllPoints } from '../engine/constructionState'
 import { replayConstruction } from '../engine/replayConstruction'
 import { playgroundToProofJSON } from '../editor/playgroundToProofJSON'
 import { exportPropositionDef, generateClaudePrompt } from '../editor/exportPropositionDef'
@@ -220,10 +217,7 @@ export function usePlaygroundOperations(
   ])
 
   const handleActivateGivenSetup = useCallback(
-    (
-      existingElements?: SerializedElement[],
-      existingFacts?: SerializedEqualityFact[]
-    ) => {
+    (existingElements?: SerializedElement[], existingFacts?: SerializedEqualityFact[]) => {
       givenSetup.activate(existingElements, existingFacts)
       dynamicPropositionRef.current = null
       toolPhases.resetAll()
@@ -328,10 +322,7 @@ export function usePlaygroundOperations(
     (actionIndex: number) => {
       const prop = propositionRef.current
       // Truncate actions: keep [0..actionIndex] (the clicked step stays)
-      postCompletionActionsRef.current = postCompletionActionsRef.current.slice(
-        0,
-        actionIndex + 1
-      )
+      postCompletionActionsRef.current = postCompletionActionsRef.current.slice(0, actionIndex + 1)
 
       // Replay the entire construction with the truncated action list
       const result = replayConstruction(
@@ -383,10 +374,7 @@ export function usePlaygroundOperations(
       const actions = postCompletionActionsRef.current
 
       console.log('[relocate_point] label=%s, target=(%s,%s)', label, x, y)
-      console.log(
-        '[relocate_point] postCompletionActions:',
-        JSON.stringify(actions, null, 2)
-      )
+      console.log('[relocate_point] postCompletionActions:', JSON.stringify(actions, null, 2))
       console.log(
         '[relocate_point] current elements:',
         constructionRef.current.elements.map((e) => ({
@@ -407,24 +395,15 @@ export function usePlaygroundOperations(
       console.log('[relocate_point] prop.steps count:', prop.steps.length)
 
       // Find the free-point action by label
-      const actionIndex = actions.findIndex(
-        (a) => a.type === 'free-point' && a.label === label
-      )
+      const actionIndex = actions.findIndex((a) => a.type === 'free-point' && a.label === label)
       if (actionIndex === -1) {
-        console.log(
-          '[relocate_point] free-point action NOT found for label=%s',
-          label
-        )
+        console.log('[relocate_point] free-point action NOT found for label=%s', label)
         // Distinguish "not found at all" vs "exists but not free"
         const pt = constructionRef.current.elements.find(
-          (e): e is ConstructionPoint =>
-            e.kind === 'point' && e.label === label
+          (e): e is ConstructionPoint => e.kind === 'point' && e.label === label
         )
         if (pt) {
-          console.log(
-            '[relocate_point] point exists but origin=%s',
-            pt.origin
-          )
+          console.log('[relocate_point] point exists but origin=%s', pt.origin)
           return {
             success: false,
             error: `Point ${label} exists but is not a free point (origin: ${pt.origin}). Only free points can be relocated.`,
@@ -436,10 +415,7 @@ export function usePlaygroundOperations(
         }
       }
 
-      console.log(
-        '[relocate_point] found free-point action at index %d',
-        actionIndex
-      )
+      console.log('[relocate_point] found free-point action at index %d', actionIndex)
 
       // Create modified action list with updated coordinates
       const modifiedActions = actions.map((a, i) =>
@@ -480,14 +456,8 @@ export function usePlaygroundOperations(
           ...('label' in e ? { label: e.label } : {}),
         }))
       )
-      console.log(
-        '[relocate_point] control stepsCompleted:',
-        controlResult.stepsCompleted
-      )
-      console.log(
-        '[relocate_point] trial stepsCompleted:',
-        trialResult.stepsCompleted
-      )
+      console.log('[relocate_point] control stepsCompleted:', controlResult.stepsCompleted)
+      console.log('[relocate_point] trial stepsCompleted:', trialResult.stepsCompleted)
 
       // Compare trial vs control — elements present in control but missing in trial are broken
       const controlIds = new Set(controlResult.state.elements.map((e) => e.id))
@@ -517,17 +487,13 @@ export function usePlaygroundOperations(
           const el = controlResult.state.elements.find((e) => e.id === id)
           return {
             id,
-            label:
-              el && 'label' in el ? (el.label as string) : undefined,
+            label: el && 'label' in el ? (el.label as string) : undefined,
             kind: el?.kind ?? 'unknown',
           }
         })
 
         if (!force) {
-          console.log(
-            '[relocate_point] BROKEN — returning error. brokenElements:',
-            brokenElements
-          )
+          console.log('[relocate_point] BROKEN — returning error. brokenElements:', brokenElements)
           return {
             success: false,
             error: `Moving ${label} to (${x}, ${y}) would break ${missingIds.length} element(s)${brokenStepCount > 0 ? ` and ${brokenStepCount} proposition step(s)` : ''}. No changes were made. Call again with force=true to proceed anyway.`,
@@ -555,12 +521,8 @@ export function usePlaygroundOperations(
           (performance.now() - ongoingAnim.startTime) / ongoingAnim.durationMs
         )
         const easedT = 1 - (1 - rawT) * (1 - rawT)
-        fromX =
-          ongoingAnim.fromX +
-          (ongoingAnim.toX - ongoingAnim.fromX) * easedT
-        fromY =
-          ongoingAnim.fromY +
-          (ongoingAnim.toY - ongoingAnim.fromY) * easedT
+        fromX = ongoingAnim.fromX + (ongoingAnim.toX - ongoingAnim.fromX) * easedT
+        fromY = ongoingAnim.fromY + (ongoingAnim.toY - ongoingAnim.fromY) * easedT
       } else {
         fromX = oldAction.type === 'free-point' ? oldAction.x : x
         fromY = oldAction.type === 'free-point' ? oldAction.y : y
@@ -570,13 +532,10 @@ export function usePlaygroundOperations(
       postCompletionActionsRef.current = modifiedActions
 
       // Capture untracked elements before animation overwrites constructionRef
-      const trialIdSet = new Set(
-        trialResult.state.elements.map((e) => e.id)
+      const trialIdSet = new Set(trialResult.state.elements.map((e) => e.id))
+      const untrackedElements = constructionRef.current.elements.filter(
+        (e) => !trialIdSet.has(e.id)
       )
-      const untrackedElements =
-        constructionRef.current.elements.filter(
-          (e) => !trialIdSet.has(e.id)
-        )
 
       // Start animation — RAF loop will replay construction each frame with interpolated coords
       relocatePointAnimRef.current = {
@@ -650,8 +609,7 @@ export function usePlaygroundOperations(
               fromId: el.kind === 'segment' ? el.fromId : undefined,
               toId: el.kind === 'segment' ? el.toId : undefined,
               centerId: el.kind === 'circle' ? el.centerId : undefined,
-              radiusPointId:
-                el.kind === 'circle' ? el.radiusPointId : undefined,
+              radiusPointId: el.kind === 'circle' ? el.radiusPointId : undefined,
               color: el.color,
               origin: el.origin,
             }))
@@ -660,12 +618,7 @@ export function usePlaygroundOperations(
       }
     }
     return data
-  }, [
-    constructionRef,
-    postCompletionActionsRef,
-    dynamicPropositionRef,
-    givenSetup.givenElements,
-  ])
+  }, [constructionRef, postCompletionActionsRef, dynamicPropositionRef, givenSetup.givenElements])
 
   const handleSave = useCallback(async () => {
     if (saveState === 'saving') return
@@ -714,14 +667,7 @@ export function usePlaygroundOperations(
     } catch {
       setSaveState('idle')
     }
-  }, [
-    saveState,
-    creationId,
-    creationTitle,
-    captureThumbnail,
-    collectCreationData,
-    playerId,
-  ])
+  }, [saveState, creationId, creationTitle, captureThumbnail, collectCreationData, playerId])
 
   const handleShare = useCallback(async () => {
     if (!creationId || shareState === 'sharing') return
@@ -771,47 +717,43 @@ export function usePlaygroundOperations(
         }
 
         // Check if this is a custom-givens creation
-        if (
-          creation.data.givenElements &&
-          creation.data.givenElements.length > 0
-        ) {
+        if (creation.data.givenElements && creation.data.givenElements.length > 0) {
           // Restore as a given-setup construction (already completed)
           const customGivens = creation.data.givenElements
           const customFacts = creation.data.givenFacts ?? []
 
           // Convert serialized → construction elements
-          const constructionElements: ConstructionElement[] =
-            customGivens.map((el) => {
-              if (el.kind === 'point') {
-                return {
-                  kind: 'point' as const,
-                  id: el.id!,
-                  x: el.x!,
-                  y: el.y!,
-                  label: el.label!,
-                  color: el.color,
-                  origin: 'given' as const,
-                }
-              }
-              if (el.kind === 'segment') {
-                return {
-                  kind: 'segment' as const,
-                  id: el.id!,
-                  fromId: el.fromId!,
-                  toId: el.toId!,
-                  color: el.color,
-                  origin: 'given' as const,
-                }
-              }
+          const constructionElements: ConstructionElement[] = customGivens.map((el) => {
+            if (el.kind === 'point') {
               return {
-                kind: 'circle' as const,
+                kind: 'point' as const,
                 id: el.id!,
-                centerId: el.centerId!,
-                radiusPointId: el.radiusPointId!,
+                x: el.x!,
+                y: el.y!,
+                label: el.label!,
                 color: el.color,
-                origin: 'compass' as const,
+                origin: 'given' as const,
               }
-            })
+            }
+            if (el.kind === 'segment') {
+              return {
+                kind: 'segment' as const,
+                id: el.id!,
+                fromId: el.fromId!,
+                toId: el.toId!,
+                color: el.color,
+                origin: 'given' as const,
+              }
+            }
+            return {
+              kind: 'circle' as const,
+              id: el.id!,
+              centerId: el.centerId!,
+              radiusPointId: el.radiusPointId!,
+              color: el.color,
+              origin: 'compass' as const,
+            }
+          })
 
           const draggablePointIds = customGivens
             .filter((el) => el.kind === 'point')
@@ -831,12 +773,7 @@ export function usePlaygroundOperations(
           const actions = creation.data.actions ?? []
           postCompletionActionsRef.current = actions
           const dynProp = dynamicPropositionRef.current
-          const result = replayConstruction(
-            constructionElements,
-            dynProp.steps,
-            dynProp,
-            actions
-          )
+          const result = replayConstruction(constructionElements, dynProp.steps, dynProp, actions)
 
           constructionRef.current = result.state
           candidatesRef.current = result.candidates
@@ -853,9 +790,7 @@ export function usePlaygroundOperations(
           if (creation.data.givenPoints?.length > 0) {
             givenElements = givenElements.map((el) => {
               if (el.kind === 'point') {
-                const saved = creation.data.givenPoints.find(
-                  (gp) => gp.id === el.id
-                )
+                const saved = creation.data.givenPoints.find((gp) => gp.id === el.id)
                 if (saved) return { ...el, x: saved.x, y: saved.y }
               }
               return el
@@ -866,12 +801,7 @@ export function usePlaygroundOperations(
           // Replay actions
           const actions = creation.data.actions ?? []
           postCompletionActionsRef.current = actions
-          const result = replayConstruction(
-            givenElements,
-            proposition.steps,
-            proposition,
-            actions
-          )
+          const result = replayConstruction(givenElements, proposition.steps, proposition, actions)
 
           constructionRef.current = result.state
           candidatesRef.current = result.candidates
@@ -924,9 +854,7 @@ export function usePlaygroundOperations(
 
   const handleExportTypeScript = useCallback(async () => {
     const dynProp = dynamicPropositionRef.current
-    const givenEls = dynProp
-      ? dynProp.givenElements
-      : proposition.givenElements
+    const givenEls = dynProp ? dynProp.givenElements : proposition.givenElements
     const proofJSON = playgroundToProofJSON(
       givenEls,
       postCompletionActionsRef.current,
@@ -952,9 +880,7 @@ export function usePlaygroundOperations(
 
   const handleExportClaudePrompt = useCallback(async () => {
     const dynProp = dynamicPropositionRef.current
-    const givenEls = dynProp
-      ? dynProp.givenElements
-      : proposition.givenElements
+    const givenEls = dynProp ? dynProp.givenElements : proposition.givenElements
     const proofJSON = playgroundToProofJSON(
       givenEls,
       postCompletionActionsRef.current,

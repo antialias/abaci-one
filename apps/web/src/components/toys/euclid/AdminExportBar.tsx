@@ -95,9 +95,7 @@ export function AdminExportBar({
             // Warn if there are actions that will be lost
             if (
               postCompletionActionsRef.current.length > 0 &&
-              !window.confirm(
-                'Editing givens will discard your construction actions. Continue?'
-              )
+              !window.confirm('Editing givens will discard your construction actions. Continue?')
             ) {
               return
             }

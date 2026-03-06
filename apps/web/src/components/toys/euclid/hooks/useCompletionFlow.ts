@@ -72,11 +72,7 @@ export function useCompletionFlow({
           }
         }
       }
-      if (
-        !playgroundMode &&
-        proposition.draggablePointIds &&
-        !rafCtx.correctionActiveRef.current
-      ) {
+      if (!playgroundMode && proposition.draggablePointIds && !rafCtx.correctionActiveRef.current) {
         rafCtx.setActiveTool('move')
         rafCtx.activeToolRef.current = 'move'
       }

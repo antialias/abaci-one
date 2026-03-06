@@ -4,7 +4,11 @@ import { EuclidChatPanel } from './chat/EuclidChatPanel'
 import type { EuclidEntityRef } from './chat/parseGeometricEntities'
 import type { UseEuclidChatReturn } from './chat/useEuclidChat'
 
-type RenderEntityFn = (entity: EuclidEntityRef, displayText: string, index: number) => React.ReactNode
+type RenderEntityFn = (
+  entity: EuclidEntityRef,
+  displayText: string,
+  index: number
+) => React.ReactNode
 
 interface EuclidAssemblyQuadProps {
   quadOffset: { x: number; y: number }
@@ -267,8 +271,8 @@ export function EuclidAssemblyQuad({
                 Εὐκλείδης
               </div>
               <div style={{ marginBottom: 6 }}>
-                &ldquo;I am here if you need guidance. You may call upon me by voice, or write
-                to me if you prefer. I can also narrate your progress as you work.&rdquo;
+                &ldquo;I am here if you need guidance. You may call upon me by voice, or write to me
+                if you prefer. I can also narrate your progress as you work.&rdquo;
               </div>
               <div
                 style={{
@@ -281,8 +285,7 @@ export function EuclidAssemblyQuad({
                 }}
               >
                 <span>
-                  <strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me
-                  directly
+                  <strong style={{ color: '#4E79A7' }}>📞 Call</strong> — speak with me directly
                 </span>
                 <span>
                   <strong style={{ color: '#4E79A7' }}>💬 Chat</strong> — write to me
@@ -420,9 +423,7 @@ export function EuclidAssemblyQuad({
           onMouseEnter={(e) => {
             if (euclidVoice.state === 'idle')
               e.currentTarget.style.background =
-                chatMode !== 'closed'
-                  ? 'rgba(78, 121, 167, 0.16)'
-                  : 'rgba(78, 121, 167, 0.08)'
+                chatMode !== 'closed' ? 'rgba(78, 121, 167, 0.16)' : 'rgba(78, 121, 167, 0.08)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background =

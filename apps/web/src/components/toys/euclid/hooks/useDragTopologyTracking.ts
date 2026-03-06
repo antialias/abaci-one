@@ -1,10 +1,5 @@
 import { useRef, useCallback } from 'react'
-import type {
-  ConstructionState,
-  ConstructionElement,
-  GhostLayer,
-  PropositionDef,
-} from '../types'
+import type { ConstructionState, ConstructionElement, GhostLayer, PropositionDef } from '../types'
 import type { ProofFact } from '../engine/facts'
 import type { ReplayResult } from '../engine/replayConstruction'
 import { deriveCompletionResult } from '../engine/snapshots'

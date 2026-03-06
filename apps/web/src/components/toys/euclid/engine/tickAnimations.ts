@@ -51,8 +51,7 @@ export function tickAnimations(ctx: RAFContext): boolean {
             for (const idx of group) {
               const el = layer.elements[idx]
               if (!el) continue
-              const baseDurationMs =
-                el.kind === 'circle' ? 700 : el.kind === 'segment' ? 400 : 0
+              const baseDurationMs = el.kind === 'circle' ? 700 : el.kind === 'segment' ? 400 : 0
               ceremony.elementAnims.set(`${revealedEntry.layerKey}:${idx}`, {
                 startMs: now,
                 durationMs: baseDurationMs / speed,
@@ -103,9 +102,7 @@ export function tickAnimations(ctx: RAFContext): boolean {
     const interpX = relocAnim.fromX + (relocAnim.toX - relocAnim.fromX) * easedT
     const interpY = relocAnim.fromY + (relocAnim.toY - relocAnim.fromY) * easedT
     const interpActions = ctx.postCompletionActionsRef.current.map((a, i) =>
-      i === relocAnim.actionIndex && a.type === 'free-point'
-        ? { ...a, x: interpX, y: interpY }
-        : a
+      i === relocAnim.actionIndex && a.type === 'free-point' ? { ...a, x: interpX, y: interpY } : a
     )
 
     // Full replay with interpolated coordinates (same pattern as drag/wiggle)
@@ -148,10 +145,7 @@ export function tickAnimations(ctx: RAFContext): boolean {
   // ── Tick correction animation ──
   const correction = ctx.correctionRef.current
   if (correction?.active) {
-    const t = Math.min(
-      1,
-      (performance.now() - correction.startTime) / correction.duration
-    )
+    const t = Math.min(1, (performance.now() - correction.startTime) / correction.duration)
     if (t >= 1) {
       // Finalize: apply rotation via replay for geometric consistency
       ctx.correctionRef.current = null

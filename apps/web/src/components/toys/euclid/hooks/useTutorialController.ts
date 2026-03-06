@@ -60,12 +60,8 @@ export interface UseTutorialControllerOptions {
   // Refs owned by the composition root but read/written by the controller
   currentStepRef: MutableRefObject<number>
   snapshotStackRef: MutableRefObject<ProofSnapshot[]>
-  resolvedStepOverridesRef: MutableRefObject<
-    Map<number, Partial<PropositionStep>>
-  >
-  resolvedTutorialRef: MutableRefObject<
-    Map<number, import('../types').TutorialSubStep[]>
-  >
+  resolvedStepOverridesRef: MutableRefObject<Map<number, Partial<PropositionStep>>>
+  resolvedTutorialRef: MutableRefObject<Map<number, import('../types').TutorialSubStep[]>>
   stepDataRef: MutableRefObject<Map<number, Record<string, unknown>>>
 
   // Mutable refs the controller reads/writes
@@ -92,9 +88,7 @@ export interface UseTutorialControllerOptions {
   // Audio
   audioEnabledRef: MutableRefObject<boolean>
   currentSpeechRef: MutableRefObject<string>
-  speakStepCorrectionRef: MutableRefObject<
-    (opts: { say: { en: string } }) => Promise<void>
-  >
+  speakStepCorrectionRef: MutableRefObject<(opts: { say: { en: string } }) => Promise<void>>
 
   // Proposition (for resolveStep, resolveTutorialStep)
   proposition: import('../types').PropositionDef
@@ -113,9 +107,7 @@ export interface UseTutorialControllerOptions {
   requestDraw: () => void
 }
 
-export function useTutorialController(
-  opts: UseTutorialControllerOptions
-): TutorialController {
+export function useTutorialController(opts: UseTutorialControllerOptions): TutorialController {
   const {
     steps,
     extendSegments,
@@ -184,15 +176,10 @@ export function useTutorialController(
       // Lock all tool interactions for the duration of the correction narration
       correctionActiveRef.current = true
 
-      const phrase =
-        WRONG_MOVE_PHRASES[
-          wrongMoveCounterRef.current++ % WRONG_MOVE_PHRASES.length
-        ]
+      const phrase = WRONG_MOVE_PHRASES[wrongMoveCounterRef.current++ % WRONG_MOVE_PHRASES.length]
       const stepOverrides = resolvedStepOverridesRef.current.get(step)
       const instruction =
-        currentSpeechRef.current ||
-        stepOverrides?.instruction ||
-        stepsRef.current[step].instruction
+        currentSpeechRef.current || stepOverrides?.instruction || stepsRef.current[step].instruction
 
       const unlock = () => {
         correctionActiveRef.current = false
@@ -202,10 +189,7 @@ export function useTutorialController(
         if (stepDef?.tool === 'macro' && stepDef.expected.type === 'macro') {
           const macroDef = MACRO_REGISTRY[stepDef.expected.propId]
           if (macroDef) {
-            toolPhases.enterMacroSelecting(
-              stepDef.expected.propId,
-              macroDef.inputs
-            )
+            toolPhases.enterMacroSelecting(stepDef.expected.propId, macroDef.inputs)
           }
         }
       }
@@ -213,9 +197,7 @@ export function useTutorialController(
       if (audioEnabledRef.current) {
         speakStepCorrectionRef
           .current({ say: { en: phrase } })
-          .then(() =>
-            speakStepCorrectionRef.current({ say: { en: instruction } })
-          )
+          .then(() => speakStepCorrectionRef.current({ say: { en: instruction } }))
           .finally(unlock)
       } else {
         setTimeout(unlock, 1200)
@@ -243,10 +225,7 @@ export function useTutorialController(
   )
 
   const checkStep = useCallback(
-    (
-      element: ConstructionElement,
-      candidate?: IntersectionCandidate
-    ): 'advanced' | 'corrected' => {
+    (element: ConstructionElement, candidate?: IntersectionCandidate): 'advanced' | 'corrected' => {
       const step = currentStepRef.current
       if (step >= stepsRef.current.length) return 'advanced'
 
@@ -254,12 +233,7 @@ export function useTutorialController(
       // Use resolved override if available (for adaptive steps like Prop 5)
       const overrides = resolvedStepOverridesRef.current.get(step)
       const effectiveExpected = overrides?.expected ?? stepDef.expected
-      const valid = validateStep(
-        effectiveExpected,
-        constructionRef.current,
-        element,
-        candidate
-      )
+      const valid = validateStep(effectiveExpected, constructionRef.current, element, candidate)
       console.log(
         '[checkStep] step=%d valid=%s expected=%o element=%o',
         step,
@@ -387,10 +361,7 @@ export function useTutorialController(
       factStoreRef.current = rebuildFactStore(snapshot.proofFacts)
 
       // 4. Truncate snapshot stack to [0..targetStep]
-      snapshotStackRef.current = snapshotStackRef.current.slice(
-        0,
-        targetStep + 1
-      )
+      snapshotStackRef.current = snapshotStackRef.current.slice(0, targetStep + 1)
 
       // 5. Set currentStep, reset completedSteps from targetStep onward
       currentStepRef.current = targetStep
@@ -432,10 +403,7 @@ export function useTutorialController(
             stepDataRef.current
           )
           if (override) {
-            resolvedStepOverridesRef.current.set(
-              targetStep,
-              override as Partial<PropositionStep>
-            )
+            resolvedStepOverridesRef.current.set(targetStep, override as Partial<PropositionStep>)
           }
         }
       }

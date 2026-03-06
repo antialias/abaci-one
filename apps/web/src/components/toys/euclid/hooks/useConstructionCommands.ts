@@ -17,12 +17,7 @@ import type { MacroAnimation } from '../engine/macroExecution'
 import type { EuclidViewportState } from '../types'
 import type { ToolPhaseManager } from '../interaction/useToolPhaseManager'
 import type { UseEuclidMusicReturn } from '../audio/useEuclidMusic'
-import {
-  addPoint,
-  addCircle,
-  addSegment,
-  getPoint,
-} from '../engine/constructionState'
+import { addPoint, addCircle, addSegment, getPoint } from '../engine/constructionState'
 import { findNewIntersections, isCandidateBeyondPoint } from '../engine/intersections'
 import { deriveDef15Facts } from '../engine/factDerivation'
 import { resolveSelector } from '../engine/selectors'
@@ -35,12 +30,7 @@ import { PROP_REGISTRY } from '../propositions/registry'
 export interface ConstructionCommandsReturn {
   handleCommitCircle: (centerId: string, radiusPointId: string) => void
   handleCommitSegment: (fromId: string, toId: string) => void
-  handleCommitExtend: (
-    baseId: string,
-    throughId: string,
-    projX: number,
-    projY: number
-  ) => void
+  handleCommitExtend: (baseId: string, throughId: string, projX: number, projY: number) => void
   handleMarkIntersection: (candidate: IntersectionCandidate) => void
   handleCommitMacro: (propId: number, inputPointIds: string[]) => void
   handlePlaceFreePoint: (worldX: number, worldY: number) => void
@@ -51,12 +41,8 @@ export interface UseConstructionCommandsOptions {
   steps: PropositionStep[]
   extendSegments: boolean
   currentStepRef: MutableRefObject<number>
-  resolvedStepOverridesRef: MutableRefObject<
-    Map<number, Partial<PropositionStep>>
-  >
-  snapshotStackRef: MutableRefObject<
-    import('../engine/snapshots').ProofSnapshot[]
-  >
+  resolvedStepOverridesRef: MutableRefObject<Map<number, Partial<PropositionStep>>>
+  snapshotStackRef: MutableRefObject<import('../engine/snapshots').ProofSnapshot[]>
   stepDataRef: MutableRefObject<Map<number, Record<string, unknown>>>
 
   // Construction state refs
@@ -94,17 +80,12 @@ export interface UseConstructionCommandsOptions {
 
   // Audio
   audioEnabledRef: MutableRefObject<boolean>
-  speakStepCorrectionRef: MutableRefObject<
-    (opts: { say: { en: string } }) => Promise<void>
-  >
+  speakStepCorrectionRef: MutableRefObject<(opts: { say: { en: string } }) => Promise<void>>
   musicRef: MutableRefObject<UseEuclidMusicReturn | null>
 
   // Notifier
   notifierRef: MutableRefObject<{
-    notifyConstruction: (opts: {
-      action: string
-      shouldPrompt: boolean
-    }) => void
+    notifyConstruction: (opts: { action: string; shouldPrompt: boolean }) => void
   }>
 
   // Tutorial callbacks
@@ -213,12 +194,9 @@ export function useConstructionCommands(
         })
       }
 
-      const cLabel =
-        getPoint(result.state, centerId)?.label ??
-        centerId.replace(/^pt-/, '')
+      const cLabel = getPoint(result.state, centerId)?.label ?? centerId.replace(/^pt-/, '')
       const rLabel =
-        getPoint(result.state, radiusPointId)?.label ??
-        radiusPointId.replace(/^pt-/, '')
+        getPoint(result.state, radiusPointId)?.label ?? radiusPointId.replace(/^pt-/, '')
       notifierRef.current.notifyConstruction({
         action: `Drew circle centered at ${cLabel} through ${rLabel}`,
         shouldPrompt: true,
@@ -304,10 +282,8 @@ export function useConstructionCommands(
         })
       }
 
-      const fLabel =
-        getPoint(result.state, fromId)?.label ?? fromId.replace(/^pt-/, '')
-      const tLabel =
-        getPoint(result.state, toId)?.label ?? toId.replace(/^pt-/, '')
+      const fLabel = getPoint(result.state, fromId)?.label ?? fromId.replace(/^pt-/, '')
+      const tLabel = getPoint(result.state, toId)?.label ?? toId.replace(/^pt-/, '')
       notifierRef.current.notifyConstruction({
         action: `Drew segment from ${fLabel} to ${tLabel}`,
         shouldPrompt: true,
@@ -339,7 +315,7 @@ export function useConstructionCommands(
       const effectiveExpected =
         step < stepsRef.current.length
           ? (resolvedStepOverridesRef.current.get(step)?.expected ??
-              stepsRef.current[step].expected)
+            stepsRef.current[step].expected)
           : null
       const isGuidedExtend = effectiveExpected?.type === 'extend'
 
@@ -395,20 +371,10 @@ export function useConstructionCommands(
 
       // Free-form extends get 'extend' origin (draggable); guided keeps 'intersection'
       const ptOrigin = isGuidedExtend ? 'intersection' : 'extend'
-      const ptResult = addPoint(
-        constructionRef.current,
-        newX,
-        newY,
-        ptOrigin,
-        label
-      )
+      const ptResult = addPoint(constructionRef.current, newX, newY, ptOrigin, label)
       constructionRef.current = ptResult.state
 
-      const segResult = addSegment(
-        constructionRef.current,
-        throughId,
-        ptResult.point.id
-      )
+      const segResult = addSegment(constructionRef.current, throughId, ptResult.point.id)
       constructionRef.current = segResult.state
 
       const ptCands = findNewIntersections(
@@ -423,11 +389,7 @@ export function useConstructionCommands(
         [...candidatesRef.current, ...ptCands],
         extendSegments
       )
-      candidatesRef.current = [
-        ...candidatesRef.current,
-        ...ptCands,
-        ...segCands,
-      ]
+      candidatesRef.current = [...candidatesRef.current, ...ptCands, ...segCands]
 
       if (isGuidedExtend) {
         checkStep(ptResult.point)
@@ -445,8 +407,7 @@ export function useConstructionCommands(
       })
 
       const throughLabel =
-        getPoint(constructionRef.current, throughId)?.label ??
-        throughId.replace(/^pt-/, '')
+        getPoint(constructionRef.current, throughId)?.label ?? throughId.replace(/^pt-/, '')
       const newLabel = ptResult.point.label
       notifierRef.current.notifyConstruction({
         action: `Extended line through ${throughLabel} to new point ${newLabel}`,
@@ -500,23 +461,14 @@ export function useConstructionCommands(
         if (expected.type === 'intersection') {
           explicitLabel = expected.label
           if (expected.ofA != null && expected.ofB != null) {
-            const resolvedA = resolveSelector(
-              expected.ofA,
-              constructionRef.current
-            )
-            const resolvedB = resolveSelector(
-              expected.ofB,
-              constructionRef.current
-            )
+            const resolvedA = resolveSelector(expected.ofA, constructionRef.current)
+            const resolvedB = resolveSelector(expected.ofB, constructionRef.current)
             if (!resolvedA || !resolvedB) return
             const matches =
               (candidate.ofA === resolvedA && candidate.ofB === resolvedB) ||
               (candidate.ofA === resolvedB && candidate.ofB === resolvedA)
             if (!matches) {
-              if (
-                !correctionActiveRef.current &&
-                audioEnabledRef.current
-              ) {
+              if (!correctionActiveRef.current && audioEnabledRef.current) {
                 speakStepCorrectionRef.current({
                   say: {
                     en: "That's not the intersection we need. Try a different one.",
@@ -553,11 +505,7 @@ export function useConstructionCommands(
       constructionRef.current = result.state
 
       candidatesRef.current = candidatesRef.current.filter(
-        (c) =>
-          !(
-            Math.abs(c.x - candidate.x) < 0.001 &&
-            Math.abs(c.y - candidate.y) < 0.001
-          )
+        (c) => !(Math.abs(c.x - candidate.x) < 0.001 && Math.abs(c.y - candidate.y) < 0.001)
       )
 
       // Derive Def.15 facts for intersection points on circles
@@ -636,9 +584,7 @@ export function useConstructionCommands(
         expected.inputPointIds.length === inputPointIds.length &&
         expected.inputPointIds.every((id, i) => id === inputPointIds[i])
       const outputLabels =
-        isGuidedStep && expected?.type === 'macro'
-          ? expected.outputLabels
-          : undefined
+        isGuidedStep && expected?.type === 'macro' ? expected.outputLabels : undefined
 
       console.log(
         '[commit-macro] propId=%d inputs=%o step=%d expected=%o isGuidedStep=%s expectedInputs=%o',
@@ -664,10 +610,7 @@ export function useConstructionCommands(
       constructionRef.current = result.state
       candidatesRef.current = result.candidates
       if (result.newFacts.length > 0) {
-        proofFactsRef.current = [
-          ...proofFactsRef.current,
-          ...result.newFacts,
-        ]
+        proofFactsRef.current = [...proofFactsRef.current, ...result.newFacts]
         setProofFacts(proofFactsRef.current)
       }
 
@@ -678,10 +621,8 @@ export function useConstructionCommands(
           .map((id) => getPoint(constructionRef.current, id))
           .filter(Boolean) as { x: number; y: number }[]
         if (inputPts.length > 0) {
-          const cx =
-            inputPts.reduce((s, p) => s + p.x, 0) / inputPts.length
-          const cy =
-            inputPts.reduce((s, p) => s + p.y, 0) / inputPts.length
+          const cx = inputPts.reduce((s, p) => s + p.x, 0) / inputPts.length
+          const cy = inputPts.reduce((s, p) => s + p.y, 0) / inputPts.length
           pushCitationFlash({
             type: 'point',
             citation: citationKey,
@@ -718,10 +659,7 @@ export function useConstructionCommands(
           ...gl,
           atStep: step,
         }))
-        ghostLayersRef.current = [
-          ...ghostLayersRef.current,
-          ...macroGhosts,
-        ]
+        ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
         macroAnimationRef.current = createMacroAnimation(result)
         if (availableMacros.length === 1) {
           const { propId: mpId, def: mDef } = availableMacros[0]
@@ -740,10 +678,7 @@ export function useConstructionCommands(
         atStep: step,
       }))
       if (macroGhosts.length > 0) {
-        ghostLayersRef.current = [
-          ...ghostLayersRef.current,
-          ...macroGhosts,
-        ]
+        ghostLayersRef.current = [...ghostLayersRef.current, ...macroGhosts]
       }
 
       // Capture snapshot before advancing
@@ -758,9 +693,7 @@ export function useConstructionCommands(
       ]
 
       // Check if any ghost layers have revealGroups (ceremony needed)
-      const hasCeremony = macroGhosts.some(
-        (gl) => gl.revealGroups && gl.revealGroups.length > 0
-      )
+      const hasCeremony = macroGhosts.some((gl) => gl.revealGroups && gl.revealGroups.length > 0)
 
       // Build the step-advance closure.
       const stepToAdvance = step
@@ -799,9 +732,7 @@ export function useConstructionCommands(
 
       if (hasCeremony) {
         // Animation durations by element type
-        const elemAnimDurationMs = (
-          el: GhostLayer['elements'][number]
-        ): number => {
+        const elemAnimDurationMs = (el: GhostLayer['elements'][number]): number => {
           if (el.kind === 'circle') return 700
           if (el.kind === 'segment') return 400
           return 0
@@ -833,26 +764,18 @@ export function useConstructionCommands(
           const key = `${layer.atStep}:${layer.depth}`
           const groupCount = layer.revealGroups?.length ?? 1
           for (let g = 0; g < groupCount; g++) {
-            const msDelay =
-              sequence.length === 0 ? 400 : lastGroupMaxDurationMs + 200
+            const msDelay = sequence.length === 0 ? 400 : lastGroupMaxDurationMs + 200
             sequence.push({ layerKey: key, groupIndex: g + 1, msDelay })
             const group = layer.revealGroups?.[g]
             lastGroupMaxDurationMs = group
-              ? Math.max(
-                  0,
-                  ...group.map((idx) =>
-                    elemAnimDurationMs(layer.elements[idx])
-                  )
-                )
+              ? Math.max(0, ...group.map((idx) => elemAnimDurationMs(layer.elements[idx])))
               : 400
           }
         }
         const depth1Layer = macroGhosts.find((gl) => gl.depth === 1)
         const narrationText = depth1Layer?.keyNarration ?? ''
         const propTitle = PROP_REGISTRY[propId]?.title ?? ''
-        setCeremonyLabel(
-          `Applying I.${propId}${propTitle ? ` · ${propTitle}` : ''}`
-        )
+        setCeremonyLabel(`Applying I.${propId}${propTitle ? ` · ${propTitle}` : ''}`)
 
         macroRevealRef.current = {
           sequence,
@@ -865,9 +788,7 @@ export function useConstructionCommands(
           advanceStep: doAdvanceStep,
           preRevealedLayers,
           elementAnims: new Map(),
-          hiddenElementIds: new Set(
-            result.addedElements.map((e) => e.id)
-          ),
+          hiddenElementIds: new Set(result.addedElements.map((e) => e.id)),
         }
       } else {
         // No ceremony — advance step and start animation immediately

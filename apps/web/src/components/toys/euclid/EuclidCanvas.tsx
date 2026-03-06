@@ -15,10 +15,7 @@ import type {
   MacroCeremonyState,
 } from './types'
 import { needsExtendedSegments } from './types'
-import {
-  initializeGiven,
-  getAllPoints,
-} from './engine/constructionState'
+import { initializeGiven, getAllPoints } from './engine/constructionState'
 import { getFriction } from './render/renderToolOverlay'
 import type { StraightedgeDrawAnim } from './render/renderToolOverlay'
 import { useEuclidTouch } from './interaction/useEuclidTouch'
@@ -39,20 +36,13 @@ import { useTTS } from '@/hooks/useTTS'
 import { useEuclidAudioHelp } from './hooks/useEuclidAudioHelp'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useCharacterProfileImage } from '@/lib/character/useCharacterProfileImage'
-import {
-  createFactStore,
-  addFact,
-  addAngleFact,
-} from './engine/factStore'
+import { createFactStore, addFact, addAngleFact } from './engine/factStore'
 import type { FactStore } from './engine/factStore'
 import type { ProofFact } from './engine/facts'
 import { distancePair, angleMeasure } from './engine/facts'
 import { MACRO_REGISTRY } from './engine/macros'
 import type { MacroAnimation } from './engine/macroExecution'
-import {
-  getGhostFalloff,
-  getGhostBaseOpacity,
-} from './render/renderGhostGeometry'
+import { getGhostFalloff, getGhostBaseOpacity } from './render/renderGhostGeometry'
 import type { SuperpositionFlash } from './render/renderSuperpositionFlash'
 import type { CitationFlash, CitationFlashInit } from './render/renderCitationFlash'
 import { KeyboardShortcutsOverlay } from '../shared/KeyboardShortcutsOverlay'
@@ -377,11 +367,7 @@ function EuclidCanvasInner({
     return steps.map((step, idx) => {
       // Try live resolveStep first (synchronous, uses current construction state)
       if (proposition.resolveStep && idx >= 2 && idx <= currentStep) {
-        const resolved = proposition.resolveStep(
-          idx,
-          constructionRef.current,
-          stepDataRef.current
-        )
+        const resolved = proposition.resolveStep(idx, constructionRef.current, stepDataRef.current)
         if (resolved?.instruction) {
           return { ...step, instruction: resolved.instruction }
         }
@@ -552,11 +538,7 @@ function EuclidCanvasInner({
   // useEffect runs post-render, but we need the resolved speech available during render)
   const resolvedTutorial = useMemo(() => {
     if (proposition.resolveTutorialStep && currentStep >= 2) {
-      const result = proposition.resolveTutorialStep(
-        currentStep,
-        constructionRef.current,
-        isTouch
-      )
+      const result = proposition.resolveTutorialStep(currentStep, constructionRef.current, isTouch)
       if (result) {
         // Also populate the ref so the RAF loop (tickTutorialAdvancement) can access it
         resolvedTutorialRef.current.set(currentStep, result)
@@ -565,7 +547,8 @@ function EuclidCanvasInner({
     }
     return resolvedTutorialRef.current.get(currentStep) ?? null
   }, [proposition, currentStep, isTouch])
-  const currentSubStepDef = resolvedTutorial?.[tutorialSubStep] ?? tutorialSubSteps[currentStep]?.[tutorialSubStep]
+  const currentSubStepDef =
+    resolvedTutorial?.[tutorialSubStep] ?? tutorialSubSteps[currentStep]?.[tutorialSubStep]
   const currentInstruction = currentSubStepDef?.instruction ?? ''
   const currentSpeech = currentSubStepDef?.speech ?? ''
   const currentHint: TutorialHint = currentSubStepDef?.hint ?? { type: 'none' }
@@ -947,27 +930,30 @@ function EuclidCanvasInner({
   } = tutorial
 
   // Wrap rewind with tool syncing (composition root concern)
-  const handleRewindToStep = useCallback((targetStep: number) => {
-    tutorialRewindToStep(targetStep)
-    // Sync tool/expected action refs for the new current step
-    if (targetStep < steps.length) {
-      const stepDef = steps[targetStep]
-      const overrides = resolvedStepOverridesRef.current.get(targetStep)
-      const effectiveExpected = overrides?.expected ?? stepDef.expected
-      expectedActionRef.current = effectiveExpected
-      if (stepDef.tool !== null) {
-        toolPhases.selectTool(stepDef.tool)
-        if (stepDef.tool === 'macro' && effectiveExpected.type === 'macro') {
-          const macroDef = MACRO_REGISTRY[effectiveExpected.propId]
-          if (macroDef) {
-            toolPhases.enterMacroSelecting(effectiveExpected.propId, macroDef.inputs)
+  const handleRewindToStep = useCallback(
+    (targetStep: number) => {
+      tutorialRewindToStep(targetStep)
+      // Sync tool/expected action refs for the new current step
+      if (targetStep < steps.length) {
+        const stepDef = steps[targetStep]
+        const overrides = resolvedStepOverridesRef.current.get(targetStep)
+        const effectiveExpected = overrides?.expected ?? stepDef.expected
+        expectedActionRef.current = effectiveExpected
+        if (stepDef.tool !== null) {
+          toolPhases.selectTool(stepDef.tool)
+          if (stepDef.tool === 'macro' && effectiveExpected.type === 'macro') {
+            const macroDef = MACRO_REGISTRY[effectiveExpected.propId]
+            if (macroDef) {
+              toolPhases.enterMacroSelecting(effectiveExpected.propId, macroDef.inputs)
+            }
           }
         }
+      } else {
+        expectedActionRef.current = null
       }
-    } else {
-      expectedActionRef.current = null
-    }
-  }, [tutorialRewindToStep, steps, resolvedStepOverridesRef, toolPhases])
+    },
+    [tutorialRewindToStep, steps, resolvedStepOverridesRef, toolPhases]
+  )
 
   // ── Citation flash helper ──
 
@@ -1208,7 +1194,6 @@ function EuclidCanvasInner({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [togglePanZoom])
 
-
   // ── Playground operations (save/load/share, given-setup, revert, relocate, export) ──
   const playground = usePlaygroundOperations({
     proposition,
@@ -1222,7 +1207,9 @@ function EuclidCanvasInner({
     isCompleteRef,
     postCompletionActionsRef,
     stepDataRef,
-    resolvedStepOverridesRef: resolvedStepOverridesRef as React.MutableRefObject<Map<number, unknown>>,
+    resolvedStepOverridesRef: resolvedStepOverridesRef as React.MutableRefObject<
+      Map<number, unknown>
+    >,
     resolvedTutorialRef: resolvedTutorialRef as React.MutableRefObject<Map<number, unknown>>,
     macroAnimationRef,
     macroRevealRef,
@@ -1278,9 +1265,6 @@ function EuclidCanvasInner({
   } = useQuadDrag({ containerRef })
   const dockedInputRef = useRef<HTMLInputElement | null>(null)
 
-
-
-
   // ── Assign author tool callback refs (now that handlers are defined) ──
   authorRefs.handleCommitCircle.current = handleCommitCircle
   authorRefs.handleCommitSegment.current = handleCommitSegment
@@ -1290,7 +1274,6 @@ function EuclidCanvasInner({
   authorRefs.handleRevertToAction.current = handleRevertToAction
   authorRefs.handleRelocatePoint.current = handleRelocatePoint
   authorRefs.requestDraw.current = requestDraw
-
 
   // ── Auto-complete ──
   const { autoCompleting, setAutoCompleting } = useAutoComplete({
@@ -1401,72 +1384,75 @@ function EuclidCanvasInner({
   }, [requestDraw])
 
   // ── Build RAF context (stable ref bundle for extracted helpers) ──
-  const rafCtx: RAFContext = useMemo(() => ({
-    canvasRef,
-    needsDrawRef,
-    viewportRef,
-    constructionRef,
-    candidatesRef,
-    factStoreRef,
-    proofFactsRef,
-    ghostLayersRef,
-    currentStepRef,
-    stepsRef,
-    stepDataRef,
-    tutorialSubStepRef,
-    tutorialSubStepsRef,
-    resolvedTutorialRef,
-    prevCompassTagRef,
-    prevStraightedgeTagRef,
-    prevExtendTagRef,
-    compassPhaseRef: compassPhaseRef as RAFContext['compassPhaseRef'],
-    straightedgePhaseRef: straightedgePhaseRef as RAFContext['straightedgePhaseRef'],
-    extendPhaseRef: extendPhaseRef as RAFContext['extendPhaseRef'],
-    macroPhaseRef,
-    activeToolRef,
-    pointerWorldRef,
-    pointerCapturedRef,
-    snappedPointIdRef,
-    panZoomDisabledRef,
-    macroAnimationRef,
-    macroRevealRef: macroRevealRef as RAFContext['macroRevealRef'],
-    ceremonyDebugRef,
-    relocatePointAnimRef: relocatePointAnimRef as RAFContext['relocatePointAnimRef'],
-    correctionRef: correctionRef as RAFContext['correctionRef'],
-    correctionActiveRef,
-    straightedgeDrawAnimRef,
-    superpositionFlashRef,
-    citationFlashesRef,
-    completionTimeRef,
-    chatHighlightRef,
-    extendPreviewRef,
-    wiggleCancelRef,
-    lastSweepRef,
-    lastSweepTimeRef,
-    lastSweepCenterRef,
-    macroPreviewAutoFitRef,
-    ghostBoundsEnabledRef,
-    hoveredMacroStepRef,
-    toolDockRef,
-    ghostOpacitiesRef,
-    currentHintRef,
-    propositionRef,
-    isCompleteRef,
-    postCompletionActionsRef,
-    isMobileRef,
-    isTouchRef,
-    playgroundModeRef,
-    effectiveResultSegmentsRef,
-    sayMacroRevealRef,
-    eventBusRef,
-    euclidVoiceHighlightRef: euclidVoice.voiceHighlightRef,
-    rafRef,
-    setTutorialSubStep,
-    setIsCorrectionActive,
-    setActiveTool,
-    setProofFacts,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [])
+  const rafCtx: RAFContext = useMemo(
+    () => ({
+      canvasRef,
+      needsDrawRef,
+      viewportRef,
+      constructionRef,
+      candidatesRef,
+      factStoreRef,
+      proofFactsRef,
+      ghostLayersRef,
+      currentStepRef,
+      stepsRef,
+      stepDataRef,
+      tutorialSubStepRef,
+      tutorialSubStepsRef,
+      resolvedTutorialRef,
+      prevCompassTagRef,
+      prevStraightedgeTagRef,
+      prevExtendTagRef,
+      compassPhaseRef: compassPhaseRef as RAFContext['compassPhaseRef'],
+      straightedgePhaseRef: straightedgePhaseRef as RAFContext['straightedgePhaseRef'],
+      extendPhaseRef: extendPhaseRef as RAFContext['extendPhaseRef'],
+      macroPhaseRef,
+      activeToolRef,
+      pointerWorldRef,
+      pointerCapturedRef,
+      snappedPointIdRef,
+      panZoomDisabledRef,
+      macroAnimationRef,
+      macroRevealRef: macroRevealRef as RAFContext['macroRevealRef'],
+      ceremonyDebugRef,
+      relocatePointAnimRef: relocatePointAnimRef as RAFContext['relocatePointAnimRef'],
+      correctionRef: correctionRef as RAFContext['correctionRef'],
+      correctionActiveRef,
+      straightedgeDrawAnimRef,
+      superpositionFlashRef,
+      citationFlashesRef,
+      completionTimeRef,
+      chatHighlightRef,
+      extendPreviewRef,
+      wiggleCancelRef,
+      lastSweepRef,
+      lastSweepTimeRef,
+      lastSweepCenterRef,
+      macroPreviewAutoFitRef,
+      ghostBoundsEnabledRef,
+      hoveredMacroStepRef,
+      toolDockRef,
+      ghostOpacitiesRef,
+      currentHintRef,
+      propositionRef,
+      isCompleteRef,
+      postCompletionActionsRef,
+      isMobileRef,
+      isTouchRef,
+      playgroundModeRef,
+      effectiveResultSegmentsRef,
+      sayMacroRevealRef,
+      eventBusRef,
+      euclidVoiceHighlightRef: euclidVoice.voiceHighlightRef,
+      rafRef,
+      setTutorialSubStep,
+      setIsCorrectionActive,
+      setActiveTool,
+      setProofFacts,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }),
+    []
+  )
 
   // ── Completion lifecycle (onComplete, Prop 1 correction, wiggle) ──
   const { startWiggle } = useCompletionFlow({

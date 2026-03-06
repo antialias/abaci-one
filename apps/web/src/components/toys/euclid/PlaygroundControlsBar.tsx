@@ -171,8 +171,7 @@ export function PlaygroundControlsBar({
             padding: '7px 13px',
             borderRadius: 8,
             border: '1px solid rgba(203,213,225,0.9)',
-            background:
-              saveState === 'saved' ? 'rgba(16,185,129,0.9)' : 'rgba(255,255,255,0.9)',
+            background: saveState === 'saved' ? 'rgba(16,185,129,0.9)' : 'rgba(255,255,255,0.9)',
             color: saveState === 'saved' ? '#fff' : '#374151',
             fontSize: 13,
             fontWeight: 600,
@@ -184,9 +183,7 @@ export function PlaygroundControlsBar({
             backdropFilter: 'blur(8px)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             opacity:
-              postCompletionActionsRef.current.length === 0 && saveState !== 'saved'
-                ? 0.5
-                : 1,
+              postCompletionActionsRef.current.length === 0 && saveState !== 'saved' ? 0.5 : 1,
             transition: 'background 0.2s, color 0.2s, opacity 0.2s',
           }}
         >
