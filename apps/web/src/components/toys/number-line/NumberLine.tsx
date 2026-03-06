@@ -11,62 +11,33 @@ import type {
 } from './types'
 import { DEFAULT_TICK_THRESHOLDS } from './types'
 import { renderNumberLine } from './renderNumberLine'
-import type { RenderTarget, RenderIndicator } from './renderNumberLine'
 import { useNumberLineTouch } from './useNumberLineTouch'
-import { ToyDebugPanel, DebugSlider } from '../ToyDebugPanel'
-import { computeProximity } from './findTheNumber/computeProximity'
-import type { ProximityZone, ProximityResult } from './findTheNumber/computeProximity'
-import type { FindTheNumberGameState } from './findTheNumber/FindTheNumberBar'
-import { useFindTheNumberAudio } from './findTheNumber/useFindTheNumberAudio'
+import { NumberLineDebugPanel } from './NumberLineDebugPanel'
+import { VoiceDebugPanels } from './VoiceDebugPanels'
+import { DemoRecommendations } from './DemoRecommendations'
+import { KeyboardShortcutsOverlay } from './KeyboardShortcutsOverlay'
+import { useDemoKeyboardShortcuts } from './useDemoKeyboardShortcuts'
+import { DemoScrubberControls } from './DemoScrubberControls'
+import { useFindTheNumberGame } from './useFindTheNumberGame'
+import { createHandleExploreConstant } from './createHandleExploreConstant'
 import { MATH_CONSTANTS } from './constants/constantsData'
 import { computeAllConstantVisibilities } from './constants/computeConstantVisibility'
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
-import { useConstantDemo, DYNAMIC_DEMO_VIEWPORTS } from './constants/demos/useConstantDemo'
+import { useConstantDemo } from './constants/demos/useConstantDemo'
 import {
   CONSTANT_IDS,
-  EXPLORATION_DISPLAY,
-  EXPLORATION_RECOMMENDATIONS,
   DEMO_RECOMMENDATIONS,
 } from './talkToNumber/explorationRegistry'
 import { GAME_MAP } from './talkToNumber/gameRegistry'
 import {
   renderGoldenRatioOverlay,
-  NUM_LEVELS,
-  setStepTimingDecay,
-  getStepTimingDecay,
-  arcCountAtProgress,
-  convergenceGapAtProgress,
   computeSweepTransform,
 } from './constants/demos/goldenRatioDemo'
-import { renderPiOverlay } from './constants/demos/piDemo'
-import { renderTauOverlay } from './constants/demos/tauDemo'
-import { renderEOverlay } from './constants/demos/eDemo'
-import { renderGammaOverlay } from './constants/demos/gammaDemo'
-import { renderSqrt2Overlay } from './constants/demos/sqrt2Demo'
-import { renderSqrt3Overlay } from './constants/demos/sqrt3Demo'
-import { renderLn2Overlay } from './constants/demos/ln2Demo'
-import { renderRamanujanOverlay } from './constants/demos/ramanujanDemo'
-import { renderFeigenbaumOverlay } from './constants/demos/feigenbaumDemo'
+import { DEMO_OVERLAY_RENDERERS } from './constants/demos/demoOverlayRegistry'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
-import type { DemoNarrationConfig } from './constants/demos/useConstantDemoNarration'
-import { E_DEMO_SEGMENTS, E_DEMO_TONE } from './constants/demos/eDemoNarration'
-import { PI_DEMO_SEGMENTS, PI_DEMO_TONE } from './constants/demos/piDemoNarration'
-import { TAU_DEMO_SEGMENTS, TAU_DEMO_TONE } from './constants/demos/tauDemoNarration'
-import { PHI_DEMO_SEGMENTS, PHI_DEMO_TONE } from './constants/demos/phiDemoNarration'
-import { GAMMA_DEMO_SEGMENTS, GAMMA_DEMO_TONE } from './constants/demos/gammaDemoNarration'
-import { SQRT2_DEMO_SEGMENTS, SQRT2_DEMO_TONE } from './constants/demos/sqrt2DemoNarration'
-import { SQRT3_DEMO_SEGMENTS, SQRT3_DEMO_TONE } from './constants/demos/sqrt3DemoNarration'
-import { LN2_DEMO_SEGMENTS, LN2_DEMO_TONE } from './constants/demos/ln2DemoNarration'
-import {
-  RAMANUJAN_DEMO_SEGMENTS,
-  RAMANUJAN_DEMO_TONE,
-} from './constants/demos/ramanujanDemoNarration'
-import {
-  FEIGENBAUM_DEMO_SEGMENTS,
-  FEIGENBAUM_DEMO_TONE,
-} from './constants/demos/feigenbaumDemoNarration'
+import { NARRATION_CONFIGS } from './constants/demos/narrationConfigs'
 import { usePhiExploreImage } from './constants/demos/usePhiExploreImage'
 import { renderPhiExploreImage } from './constants/demos/renderPhiExploreImage'
 import { usePhiCenteringMode } from './constants/demos/usePhiCenteringMode'
@@ -80,26 +51,24 @@ import {
 } from './primes/specialPrimes'
 import { computeInterestingPrimes } from './primes/interestingness'
 import type { InterestingPrime } from './primes/interestingness'
-import { usePrimeTour, getSieveSpeed, setSieveSpeed } from './primes/usePrimeTour'
-import { PRIME_TOUR_STOPS } from './primes/primeTourStops'
+import { usePrimeTour } from './primes/usePrimeTour'
 import { renderTourSpotlight } from './primes/renderTourSpotlight'
-import {
-  renderSieveOverlay,
-  computeSieveTickTransforms,
-  SWEEP_MAX_N,
-  getSieveTrackingRange,
-  setSieveTrackingRange,
-  getSieveFollowHops,
-  setSieveFollowHops,
-} from './primes/renderSieveOverlay'
-import type { SieveTickTransform } from './primes/renderSieveOverlay'
+import { renderSieveOverlay } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 import { useRealtimeVoice } from './talkToNumber/useRealtimeVoice'
 import type { CallState } from './talkToNumber/useRealtimeVoice'
 import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCallOverlay'
-import { lerpViewport } from './viewportAnimation'
-import type { Viewport } from './viewportAnimation'
+import { useZoomWash } from './useZoomWash'
+import { syncDemoScrubberDOM } from './syncDemoScrubberDOM'
+import {
+  computeTourHighlights,
+  computeSieveState,
+  computeIndicatorFade,
+  computeEffectiveHovered,
+} from './drawComputations'
+import { useViewportFly } from './useViewportFly'
+import { syncVoiceNarration } from './syncVoiceNarration'
 import {
   renderLcmHopperOverlay,
   setActiveCombo,
@@ -112,39 +81,11 @@ import {
   GUESS_END,
 } from './lcmHopper/renderLcmHopperOverlay'
 import { LcmHopperOverlay } from './lcmHopper/LcmHopperOverlay'
-import {
-  pickCombo,
-  buildPartyCombo,
-  emojiForStride,
-  wouldExceedLcmLimit,
-  lcm,
-} from './lcmHopper/lcmComboGenerator'
-import type { PartyState } from './primes/PrimeTooltip'
-import { buildLcmHopperNarration } from './lcmHopper/lcmHopperNarration'
+import { useLcmHopperParty } from './lcmHopper/useLcmHopperParty'
+import { HoppingPartyBar } from './lcmHopper/HoppingPartyBar'
 import { evaluateGuess } from './lcmHopper/lcmHopperState'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import { DemoRefinePanel } from './DemoRefinePanel'
-
-// Playback speed steps (YouTube-style)
-const SPEED_STEPS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const
-
-// Logarithmic scrubber mapping — compresses early (tiny) levels on the left,
-// gives more precision to later (dramatic) levels on the right.
-let scrubberLogBase = 7
-let scrubberLogDenom = Math.log(Math.max(1.01, scrubberLogBase))
-function progressToScrubber(p: number): number {
-  if (scrubberLogBase <= 1.01) return p // linear fallback
-  return (scrubberLogBase ** p - 1) / (scrubberLogBase - 1)
-}
-function scrubberToProgress(s: number): number {
-  if (scrubberLogBase <= 1.01) return s // linear fallback
-  return Math.log(1 + s * (scrubberLogBase - 1)) / scrubberLogDenom
-}
-function setScrubberLogBase(base: number): void {
-  scrubberLogBase = Math.max(1, base)
-  scrubberLogDenom = Math.log(Math.max(1.01, scrubberLogBase))
-}
 
 // ── URL param persistence for demo playback state ────────────────────
 let lastUrlUpdateMs = 0
@@ -168,24 +109,6 @@ function updateDemoUrlParams(constantId: string | null, progress: number) {
   }
 }
 
-// DEMO_DISPLAY alias — imported from registry as EXPLORATION_DISPLAY
-const DEMO_DISPLAY = EXPLORATION_DISPLAY
-
-// Narration configs for all constant demos (must be module-level for ref stability)
-const NARRATION_CONFIGS: Record<string, DemoNarrationConfig> = {
-  e: { segments: E_DEMO_SEGMENTS, tone: E_DEMO_TONE },
-  pi: { segments: PI_DEMO_SEGMENTS, tone: PI_DEMO_TONE },
-  tau: { segments: TAU_DEMO_SEGMENTS, tone: TAU_DEMO_TONE },
-  phi: { segments: PHI_DEMO_SEGMENTS, tone: PHI_DEMO_TONE },
-  gamma: { segments: GAMMA_DEMO_SEGMENTS, tone: GAMMA_DEMO_TONE },
-  sqrt2: { segments: SQRT2_DEMO_SEGMENTS, tone: SQRT2_DEMO_TONE },
-  sqrt3: { segments: SQRT3_DEMO_SEGMENTS, tone: SQRT3_DEMO_TONE },
-  ln2: { segments: LN2_DEMO_SEGMENTS, tone: LN2_DEMO_TONE },
-  ramanujan: { segments: RAMANUJAN_DEMO_SEGMENTS, tone: RAMANUJAN_DEMO_TONE },
-  feigenbaum: { segments: FEIGENBAUM_DEMO_SEGMENTS, tone: FEIGENBAUM_DEMO_TONE },
-}
-
-// EXPLORATION_RECOMMENDATIONS imported from registry
 
 const INITIAL_STATE: NumberLineState = {
   center: 0,
@@ -193,21 +116,6 @@ const INITIAL_STATE: NumberLineState = {
 }
 
 /** Determine decimal precision of a target number (for hint phrasing). */
-function getTargetPrecisionForHint(target: number): number {
-  if (Number.isInteger(target)) return 0
-  const str = target.toString()
-  const dot = str.indexOf('.')
-  if (dot === -1) return 0
-  return Math.min(str.slice(dot + 1).length, 6)
-}
-
-/** Format a number for approximate display in voice hints. */
-function formatApprox(n: number): string {
-  if (Math.abs(n) >= 100) return String(Math.round(n))
-  if (Math.abs(n) >= 10) return String(Math.round(n * 10) / 10)
-  return String(Math.round(n * 100) / 100)
-}
-
 interface NumberLineProps {
   playerId?: string
   onPlayerIdentified?: (playerId: string) => void
@@ -231,45 +139,27 @@ export function NumberLine({
   const centeringRef = useRef(centering)
   centeringRef.current = centering
 
-  // Debug controls for tick thresholds
-  const [anchorMax, setAnchorMax] = useState(DEFAULT_TICK_THRESHOLDS.anchorMax)
-  const [mediumMax, setMediumMax] = useState(DEFAULT_TICK_THRESHOLDS.mediumMax)
-
-  // Debug controls for golden ratio demo tuning
-  const [debugDecay, setDebugDecay] = useState(getStepTimingDecay)
-  const [debugLogBase, setDebugLogBase] = useState(scrubberLogBase)
-
-  // Debug controls for sieve tuning
-  const [debugTrackingRange, setDebugTrackingRange] = useState(getSieveTrackingRange)
-  const [debugFollowHops, setDebugFollowHops] = useState(getSieveFollowHops)
-  const [debugSieveSpeed, setDebugSieveSpeed] = useState(getSieveSpeed)
-  // Readout: arc counts at scrubber 50% and 75% — recomputed when params change
-  const arcReadout = useMemo(() => {
-    const p50 = scrubberToProgress(0.5)
-    const p75 = scrubberToProgress(0.75)
-    return { at50: arcCountAtProgress(p50), at75: arcCountAtProgress(p75) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debugDecay, debugLogBase])
-  const thresholdsRef = useRef<TickThresholds>({ anchorMax, mediumMax })
-  thresholdsRef.current = { anchorMax, mediumMax }
+  // Tick thresholds — owned by NumberLineDebugPanel, synced via ref
+  const thresholdsRef = useRef<TickThresholds>({ ...DEFAULT_TICK_THRESHOLDS })
 
   // Track CSS dimensions for rendering
   const cssWidthRef = useRef(0)
   const cssHeightRef = useRef(0)
 
-  // Zoom velocity for background color wash effect
-  // Raw values track the instantaneous state; display values are slew-rate-limited
-  // so the visible wash can't change faster than a fixed rate per ms.
-  const zoomVelocityRef = useRef(0)
-  const zoomHueRef = useRef(0)
-  const displayVelocityRef = useRef(0)
-  const displayHueRef = useRef(0)
-  const lastDisplayTimeRef = useRef(0)
-  // Focal point as fraction of canvas width (0-1)
-  const zoomFocalXRef = useRef(0.5)
-  const decayRafRef = useRef<number>(0)
-  // Direct DOM ref for the wrapper — updated outside React for 60fps bg color
-  const wrapperRef = useRef<HTMLDivElement>(null)
+  // Forward ref to break circular dependency: hooks need draw(), but draw() is defined later
+  const drawFnRef = useRef<() => void>(() => {})
+
+  // Zoom velocity + background color wash (extracted hook)
+  const {
+    displayVelocityRef,
+    displayHueRef,
+    zoomFocalXRef,
+    decayRafRef,
+    wrapperRef,
+    pageRef,
+    handleZoomVelocity,
+    updateDisplayValues,
+  } = useZoomWash({ resolvedTheme, drawRef: drawFnRef })
 
   // Persistent collision fade state for smooth label show/hide transitions
   const collisionFadeMapRef = useRef<CollisionFadeMap>(new Map())
@@ -298,8 +188,6 @@ export function NumberLine({
   const constantMarkersRef = useRef<HTMLDivElement>(null)
 
   // --- Constant demo state ---
-  // Use a ref to break the circular dependency: demo needs draw(), but draw() is defined later
-  const drawFnRef = useRef<() => void>(() => {})
   const demoRedraw = useCallback(() => drawFnRef.current(), [])
   const {
     demoState: demoStateRef,
@@ -321,7 +209,6 @@ export function NumberLine({
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
   const scrubberFillRef = useRef<HTMLDivElement>(null)
   const scrubberThumbRef = useRef<HTMLDivElement>(null)
-  const scrubberThumbVisualRef = useRef<HTMLDivElement>(null)
   const scrubberGapRef = useRef<HTMLDivElement>(null)
   const playPauseBtnRef = useRef<HTMLButtonElement>(null)
   const timeDisplayRef = useRef<HTMLDivElement>(null)
@@ -345,7 +232,6 @@ export function NumberLine({
   })
   const [refineRange, setRefineRange] = useState<{ start: number; end: number } | null>(null)
   const refineStartRef = useRef<number | null>(null)
-  const refineTrackRef = useRef<HTMLDivElement>(null)
   const [refineTaskActive, setRefineTaskActive] = useState(() => {
     if (!isDev) return false
     try {
@@ -370,96 +256,6 @@ export function NumberLine({
     forcedHoverValue,
   } = usePrimeTour(stateRef, cssWidthRef, cssHeightRef, demoRedraw)
 
-  // --- LCM Hopper state (driven by the constant demo framework) ---
-  const lcmRoundRef = useRef(0)
-  const startLcmHopperDemo = useCallback(() => {
-    const combo = pickCombo(lcmRoundRef.current)
-    lcmRoundRef.current++
-    setActiveCombo(combo)
-    clearGuess()
-    // Register viewport for this combo's LCM
-    DYNAMIC_DEMO_VIEWPORTS.set('lcm_hopper', (cssWidth) => {
-      const padding = Math.max(2, combo.lcm * 0.1)
-      const range = combo.lcm + padding * 2
-      const center = combo.lcm / 2
-      const pixelsPerUnit = cssWidth / range
-      return { center, pixelsPerUnit }
-    })
-    // Inject narration config for this combo
-    NARRATION_CONFIGS['lcm_hopper'] = buildLcmHopperNarration(combo)
-    narration.reset()
-    startDemo('lcm_hopper')
-  }, [narration, startDemo])
-
-  // --- Hopping Party invitation state ---
-  const [partyInvitees, setPartyInvitees] = useState<number[]>([])
-  const partyInviteesRef = useRef<number[]>([])
-  partyInviteesRef.current = partyInvitees
-
-  const handleToggleInvite = useCallback((value: number) => {
-    setPartyInvitees((prev) => {
-      if (prev.includes(value)) {
-        return prev.filter((v) => v !== value)
-      }
-      if (prev.length >= 3) return prev
-      if (wouldExceedLcmLimit(prev, value)) return prev
-      return [...prev, value]
-    })
-    // Dismiss tooltip after action
-    setTappedIntValue(null)
-    setHoveredValue(null)
-    tooltipHoveredRef.current = false
-  }, [])
-
-  const startHoppingParty = useCallback(() => {
-    if (partyInviteesRef.current.length < 2) return
-    const combo = buildPartyCombo(partyInviteesRef.current)
-    setActiveCombo(combo)
-    clearGuess()
-    DYNAMIC_DEMO_VIEWPORTS.set('lcm_hopper', (cssWidth) => {
-      const padding = Math.max(2, combo.lcm * 0.1)
-      const range = combo.lcm + padding * 2
-      const center = combo.lcm / 2
-      const pixelsPerUnit = cssWidth / range
-      return { center, pixelsPerUnit }
-    })
-    NARRATION_CONFIGS['lcm_hopper'] = buildLcmHopperNarration(combo)
-    narration.reset()
-    startDemo('lcm_hopper')
-  }, [narration, startDemo])
-
-  const handleDismissPartyDemo = useCallback(() => {
-    cancelDemo()
-    setPartyInvitees([])
-  }, [cancelDemo])
-
-  /** Compute party state for a given integer value (for tooltip). */
-  const getPartyState = useCallback(
-    (value: number): PartyState | undefined => {
-      if (value < 2) return undefined
-      const demoPhase = demoStateRef.current.phase
-      if (demoPhase !== 'idle') return undefined
-      const invited = partyInvitees.includes(value)
-      const emoji = emojiForStride(value)
-      if (invited) {
-        return { invited: true, canInvite: true, emoji }
-      }
-      if (partyInvitees.length >= 3) {
-        return { invited: false, canInvite: false, rejectReason: 'Party full (max 3)', emoji }
-      }
-      if (partyInvitees.length > 0 && wouldExceedLcmLimit(partyInvitees, value)) {
-        return {
-          invited: false,
-          canInvite: false,
-          rejectReason: 'LCM would be too large',
-          emoji,
-        }
-      }
-      return { invited: false, canInvite: true, emoji }
-    },
-    [partyInvitees, demoStateRef]
-  )
-
   // --- Primes (Sieve of Eratosthenes) state ---
   const [primesEnabled, setPrimesEnabled] = useState(true)
   const primesEnabledRef = useRef(true)
@@ -479,6 +275,28 @@ export function NumberLine({
   const renderedPrimePositionsRef = useRef<{ value: number; screenX: number; note?: string }[]>([])
   // Current interesting primes for the visible range
   const interestingPrimesRef = useRef<InterestingPrime[]>([])
+
+  // --- LCM Hopper / Hopping Party ---
+  const dismissTooltip = useCallback(() => {
+    setTappedIntValue(null)
+    setHoveredValue(null)
+    tooltipHoveredRef.current = false
+  }, [])
+  const {
+    partyInvitees,
+    setPartyInvitees,
+    startLcmHopperDemo,
+    handleToggleInvite,
+    startHoppingParty,
+    handleDismissPartyDemo,
+    getPartyState,
+  } = useLcmHopperParty({
+    demoStateRef,
+    narration,
+    startDemo,
+    cancelDemo,
+    onDismissTooltip: dismissTooltip,
+  })
 
   // --- Talk to a Number state ---
   const [callingNumber, setCallingNumber] = useState<number | null>(null)
@@ -693,97 +511,29 @@ export function NumberLine({
   // --- Game session state (generic, across all games) ---
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
 
-  // --- Find the Number game state ---
-  const [gameState, setGameState] = useState<FindTheNumberGameState>('idle')
-  const targetRef = useRef<{ value: number; emoji: string } | null>(null)
-  const gameStateRef = useRef<FindTheNumberGameState>('idle')
-  gameStateRef.current = gameState
-  // Audio zone state — zone triggers React effects for transition detection
-  const [audioZone, setAudioZone] = useState<ProximityZone | null>(null)
-  const prevGameZoneRef = useRef<ProximityZone | null>(null)
-  // Live proximity data for the audio hook (updated every frame in draw())
-  const proximityRef = useRef<ProximityResult | null>(null)
-  // Ref to hold the current render target (computed in draw, used by renderNumberLine)
-  const renderTargetRef = useRef<RenderTarget | undefined>(undefined)
-  // Indicator state: temporary highlights triggered by the voice agent's `indicate` tool
-  const indicatorRef = useRef<{
-    numbers: number[]
-    range?: { from: number; to: number }
-    startMs: number
-    holdMs: number
-  } | null>(null)
-  // Label style overrides: controlled by voice agent via set_number_line_style tool
-  const labelScaleRef = useRef(1)
-  const labelMinOpacityRef = useRef(0)
-  // Track whether the current find-the-number game was started by the voice model
-  // (to avoid sending redundant system messages back to the model, and to hide the target in the UI)
-  const [gameStartedByModel, setGameStartedByModel] = useState(false)
-  const gameStartedByModelRef = useRef(false)
-  // Animation frame for game loop (continuous redraws while game is active)
-  const gameRafRef = useRef<number>(0)
-
-  // Set a CSS custom property on the page-level container so the wash extends
-  // seamlessly beyond the canvas (e.g. into iPhone safe areas).
-  const pageRef = useRef<HTMLElement | null>(null)
-
-  // Find the page container on mount (walks up to [data-component="number-line-page"])
-  useEffect(() => {
-    const wrapper = wrapperRef.current
-    if (!wrapper) return
-    pageRef.current = wrapper.closest('[data-component="number-line-page"]') as HTMLElement | null
-  }, [])
-
-  // Exponential moving average low-pass filter for display values.
-  // TAU controls the time constant: 63% of a step change reached in TAU ms.
-  // Crucially, oscillating inputs (rapid zoom direction changes) naturally
-  // average toward zero, suppressing the flash.
-  const WASH_TAU = 150 // ms
-  const updateDisplayValues = useCallback(() => {
-    const now = performance.now()
-    const dt = Math.min(now - (lastDisplayTimeRef.current || now), 50)
-    lastDisplayTimeRef.current = now
-    if (dt <= 0) return
-
-    const alpha = 1 - Math.exp(-dt / WASH_TAU)
-    displayVelocityRef.current += (zoomVelocityRef.current - displayVelocityRef.current) * alpha
-    displayHueRef.current += (zoomHueRef.current - displayHueRef.current) * alpha
-  }, [])
-
-  const updateWrapperBg = useCallback(
-    (velocity: number, hue: number) => {
-      const page = pageRef.current
-      if (!page) return
-      if (Math.abs(velocity) < 0.001) {
-        page.style.backgroundColor = ''
-        return
-      }
-      const isDark = resolvedTheme === 'dark'
-      // Blend the wash color with the page's base background
-      const baseR = isDark ? 17 : 249 // #111827 / #f9fafb
-      const baseG = isDark ? 24 : 250
-      const baseB = isDark ? 39 : 251
-      const edgeIntensity = Math.min(Math.abs(velocity) * 1.5, 0.18)
-      const lum = isDark ? 30 : 70
-      // Compute the wash color in RGB for proper blending with the base
-      // Convert HSL → approximate RGB for the wash overlay
-      const sat = 0.8
-      const l = lum / 100
-      const a = sat * Math.min(l, 1 - l)
-      const f = (n: number) => {
-        const k = (n + hue / 30) % 12
-        return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
-      }
-      const wR = f(0) * 255
-      const wG = f(8) * 255
-      const wB = f(4) * 255
-      // Alpha-blend wash over base
-      const r = Math.round(baseR * (1 - edgeIntensity) + wR * edgeIntensity)
-      const g = Math.round(baseG * (1 - edgeIntensity) + wG * edgeIntensity)
-      const b = Math.round(baseB * (1 - edgeIntensity) + wB * edgeIntensity)
-      page.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
-    },
-    [resolvedTheme]
-  )
+  // --- Find the Number game ---
+  const drawRef = useRef<() => void>(() => {})
+  const {
+    gameState,
+    renderTargetRef,
+    proximityRef,
+    handleGameStart,
+    handleGameGiveUp,
+    computeGameProximity,
+    gameStartedByModel,
+    labelScaleRef,
+    labelMinOpacityRef,
+    gameRafRef,
+  } = useFindTheNumberGame({
+    stateRef,
+    cssWidthRef,
+    drawRef,
+    voiceState,
+    sendSystemMessage,
+    setActiveGameId,
+    startFindNumberFnRef,
+    stopFindNumberFnRef,
+  })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -796,35 +546,7 @@ export function NumberLine({
     const cssHeight = cssHeightRef.current
 
     // Compute proximity for Find the Number game
-    const target = targetRef.current
-    let renderTarget: RenderTarget | undefined
-    if (target && gameStateRef.current === 'active') {
-      const prox = computeProximity(target.value, stateRef.current, cssWidth)
-      renderTarget = { value: target.value, emoji: target.emoji, opacity: prox.opacity }
-
-      // Update live proximity ref every frame for audio hints
-      proximityRef.current = prox
-
-      // Update audio zone state when zone changes (triggers React effects)
-      if (prox.zone !== prevGameZoneRef.current) {
-        prevGameZoneRef.current = prox.zone
-        setAudioZone(prox.zone)
-      }
-
-      // Detect found
-      if (prox.zone === 'found') {
-        setGameState('found')
-      }
-    } else if (target && gameStateRef.current === 'found') {
-      // Keep emoji visible at full opacity in found state
-      const prox = computeProximity(target.value, stateRef.current, cssWidth)
-      renderTarget = {
-        value: target.value,
-        emoji: target.emoji,
-        opacity: Math.max(prox.opacity, 0.9),
-      }
-    }
-    renderTargetRef.current = renderTarget
+    computeGameProximity()
 
     // Compute constant visibilities
     let renderConstants: RenderConstant[] | undefined
@@ -910,155 +632,53 @@ export function NumberLine({
     isExplorationActiveRef.current =
       demoStateRef.current.phase !== 'idle' && demoStateRef.current.phase !== 'fading'
 
-    // Feed narration segment updates to voice agent during active call.
-    // Uses the sequencer's actual segment index (not revealProgress) to gate
-    // cues — prevents premature firing when animation finishes a segment
-    // before the voice agent does.
-    if (voiceStateRef.current === 'active') {
+    // Feed narration segment updates to voice agent during active call
+    {
       const ds = demoStateRef.current
-      if (ds.phase !== 'idle' && ds.constantId) {
-        const cfg = NARRATION_CONFIGS[ds.constantId]
-        if (cfg) {
-          // Use the narration sequencer's real segment index
-          const segIdx = narration.isNarrating.current ? narration.segmentIndexRef.current : -1
-          // Send context-only cue when the sequencer advances to a new segment
-          // (the pre-recorded TTS narrator is speaking — agent should NOT talk over it)
-          if (segIdx >= 0 && segIdx !== voiceExplorationSegmentRef.current) {
-            voiceExplorationSegmentRef.current = segIdx
-            const seg = cfg.segments[segIdx]
-            sendSystemMessage(
-              `[Narration playing — DO NOT speak this. The narrator is saying: "${seg.ttsText}"]`,
-              false // don't prompt a response
-            )
-          }
-          // Notify when exploration completes
-          if (
-            ds.revealProgress >= 1 &&
-            voiceExplorationSegmentRef.current !== cfg.segments.length
-          ) {
-            voiceExplorationSegmentRef.current = cfg.segments.length
-            // Clear narration mute BEFORE sending the completion message.
-            // Without this, the agent's response gets cancelled and the child
-            // has to speak first. Also unmutes the agent audio output.
-            setNarrationPlaying(false)
-            const display = DEMO_DISPLAY[ds.constantId]
-            const recs = EXPLORATION_RECOMMENDATIONS[ds.constantId] ?? []
-            const recText =
-              recs.length > 0
-                ? ` If the child seems into it, casually suggest one of these: ${recs
-                    .map((r) => {
-                      const d = DEMO_DISPLAY[r.id]
-                      return `${d?.name ?? r.id} (${r.reason})`
-                    })
-                    .join(
-                      '; '
-                    )}. Don't list them all — just pick whichever feels most natural for the conversation and mention it casually.`
-                : ''
-            sendSystemMessage(
-              `[The ${display?.name ?? ds.constantId} exploration finished. Ask the child what they thought — ` +
-                `brief check-in, then move on.${recText}]`,
-              true
-            )
-          }
-        }
-      }
+      syncVoiceNarration(
+        {
+          voiceState: voiceStateRef.current,
+          demoPhase: ds.phase,
+          constantId: ds.constantId,
+          revealProgress: ds.revealProgress,
+          isNarrating: !!narration.isNarrating.current,
+          segmentIndex: narration.segmentIndexRef.current,
+          lastReportedSegment: voiceExplorationSegmentRef.current,
+        },
+        {
+          sendSystemMessage,
+          setNarrationPlaying,
+          updateLastReportedSegment: (idx) => {
+            voiceExplorationSegmentRef.current = idx
+          },
+        },
+        ds.constantId ? NARRATION_CONFIGS[ds.constantId] : undefined
+      )
     }
 
     // Tick the prime tour state machine (updates viewport during flights)
     tickTour()
 
     // Effective hovered value: tour forced hover overrides user hover
-    // Read directly from tourStateRef to avoid stale closure
-    const tourForced = (() => {
-      const ts = tourStateRef.current
-      if (ts.phase === 'idle' || ts.phase === 'fading' || ts.stopIndex === null) return null
-      return PRIME_TOUR_STOPS[ts.stopIndex]?.hoverValue ?? null
-    })()
-    const effectiveHovered = tourForced ?? hoveredValueRef.current
+    const effectiveHovered = computeEffectiveHovered(tourStateRef.current, hoveredValueRef.current)
 
     // Compute tour spotlight highlight set (phase-aware)
     const tourTs = tourStateRef.current
-    const tourStop = tourTs.stopIndex !== null ? PRIME_TOUR_STOPS[tourTs.stopIndex] : null
-    const dimAmount = tourStop?.dimOthers ?? 0
-
-    let highlightSet: Set<number> | undefined
-    let highlightedArcSet: Set<string> | undefined
-
-    if (tourStop?.highlightPhases && tourStop.highlightPhases.length > 0) {
-      // Phase-based: accumulate values/arcs based on dwell elapsed time
-      const dwellElapsed =
-        tourTs.phase === 'dwelling'
-          ? performance.now() - tourTs.dwellStartMs
-          : tourTs.phase === 'fading'
-            ? Infinity // show all during fade-out
-            : -1 // flying/idle: no phases yet
-
-      const values: number[] = []
-      const arcPairs: [number, number][] = []
-      for (const phase of tourStop.highlightPhases) {
-        if (phase.delayMs <= dwellElapsed) {
-          values.push(...phase.values)
-          if (phase.arcs) arcPairs.push(...phase.arcs)
-        }
-      }
-      highlightSet = values.length > 0 ? new Set(values) : undefined
-      if (arcPairs.length > 0) {
-        highlightedArcSet = new Set(arcPairs.map(([a, b]) => (a < b ? `${a}-${b}` : `${b}-${a}`)))
-      }
-    } else if (tourStop?.highlightValues?.length) {
-      // Legacy: all values at once, no arc filtering
-      highlightSet = new Set(tourStop.highlightValues)
-    }
+    const { highlightSet, highlightedArcSet, dimAmount } = computeTourHighlights(tourTs)
 
     // Compute sieve tick transforms during ancient-trick tour stop
-    let sieveTransforms: Map<number, SieveTickTransform> | undefined
-    let sieveUniformity = 0
-    if (tourTs.phase !== 'idle' && tourStop?.id === 'ancient-trick') {
-      const sieveDwellElapsed =
-        tourTs.phase === 'dwelling'
-          ? tourTs.virtualDwellMs
-          : tourTs.phase === 'fading'
-            ? Infinity
-            : 0
-      const viewportRight =
-        stateRef.current.center + cssWidth / (2 * stateRef.current.pixelsPerUnit)
-      // Use max of SWEEP_MAX_N and viewport edge so composites beyond 120 are also hidden
-      const sieveMaxN = Math.max(SWEEP_MAX_N, Math.ceil(viewportRight) + 5)
-      sieveTransforms = computeSieveTickTransforms(
-        sieveMaxN,
-        sieveDwellElapsed,
-        cssHeight,
-        viewportRight
-      )
-      // Smoothly ramp tick uniformity over first 2s (ease-out quad)
-      const rawT = Math.min(1, sieveDwellElapsed / 2000)
-      sieveUniformity = rawT * (2 - rawT)
-    }
+    const { sieveTransforms, sieveUniformity, sieveDwellElapsed } = computeSieveState(
+      tourTs,
+      stateRef.current,
+      cssWidth,
+      cssHeight
+    )
 
-    // Compute indicator fade lifecycle: 200ms fade-in, hold (configurable), 1s fade-out
-    let renderIndicator: RenderIndicator | undefined
-    const ind = indicatorRef.current
-    if (ind) {
-      const elapsed = performance.now() - ind.startMs
-      const FADE_IN = 200
-      const HOLD = ind.holdMs
-      const FADE_OUT = 1000
-      const total = FADE_IN + HOLD + FADE_OUT
-      let alpha: number
-      if (elapsed < FADE_IN) {
-        alpha = elapsed / FADE_IN
-      } else if (elapsed < FADE_IN + HOLD) {
-        alpha = 1
-      } else if (elapsed < total) {
-        alpha = 1 - (elapsed - FADE_IN - HOLD) / FADE_OUT
-      } else {
-        alpha = 0
-        indicatorRef.current = null
-      }
-      if (alpha > 0) {
-        renderIndicator = { numbers: ind.numbers, range: ind.range, alpha }
-      }
-    }
+    // Compute indicator fade lifecycle
+    const { renderIndicator, expired: indicatorExpired } = computeIndicatorFade(
+      indicatorRef.current
+    )
+    if (indicatorExpired) indicatorRef.current = null
 
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0) // reset any existing transform
@@ -1073,7 +693,7 @@ export function NumberLine({
       displayVelocityRef.current,
       displayHueRef.current,
       zoomFocalXRef.current,
-      renderTarget,
+      renderTargetRef.current,
       collisionFadeMapRef.current,
       renderConstants,
       primeInfos,
@@ -1144,114 +764,24 @@ export function NumberLine({
         ds.opacity
       )
     }
-    if (ds.phase !== 'idle' && ds.constantId === 'pi') {
-      renderPiOverlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'tau') {
-      renderTauOverlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'e') {
-      renderEOverlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'gamma') {
-      renderGammaOverlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'sqrt2') {
-      renderSqrt2Overlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'sqrt3') {
-      renderSqrt3Overlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'ln2') {
-      renderLn2Overlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'ramanujan') {
-      renderRamanujanOverlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
-    }
-    if (ds.phase !== 'idle' && ds.constantId === 'feigenbaum') {
-      renderFeigenbaumOverlay(
-        ctx,
-        stateRef.current,
-        cssWidth,
-        cssHeight,
-        resolvedTheme === 'dark',
-        ds.revealProgress,
-        ds.opacity
-      )
+    // Render standard demo overlays (pi, tau, e, gamma, sqrt2, sqrt3, ln2, ramanujan, feigenbaum)
+    if (ds.phase !== 'idle' && ds.constantId) {
+      const renderer = DEMO_OVERLAY_RENDERERS[ds.constantId]
+      if (renderer) {
+        renderer(
+          ctx,
+          stateRef.current,
+          cssWidth,
+          cssHeight,
+          resolvedTheme === 'dark',
+          ds.revealProgress,
+          ds.opacity
+        )
+      }
     }
 
     // Render sieve animation during ancient-trick tour stop
-    if (tourTs.phase !== 'idle' && tourStop?.id === 'ancient-trick') {
-      const sieveDwellElapsed =
-        tourTs.phase === 'dwelling'
-          ? tourTs.virtualDwellMs
-          : tourTs.phase === 'fading'
-            ? Infinity
-            : 0
+    if (sieveTransforms) {
       renderSieveOverlay(
         ctx,
         stateRef.current,
@@ -1293,144 +823,26 @@ export function NumberLine({
     ctx.restore()
 
     // --- Sync demo scrubber DOM ---
-    const isActive = ds.phase !== 'idle'
-    const scrubberPct = progressToScrubber(ds.revealProgress) * 100
-    if (scrubberTrackRef.current) {
-      scrubberTrackRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
-      scrubberTrackRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
-      // ARIA: update slider value
-      scrubberTrackRef.current.setAttribute(
-        'aria-valuenow',
-        String(Math.round(ds.revealProgress * 100))
-      )
-      scrubberTrackRef.current.setAttribute(
-        'aria-valuetext',
-        `${Math.round(ds.revealProgress * 100)}% convergence progress`
-      )
-    }
-    if (scrubberFillRef.current) {
-      scrubberFillRef.current.style.width = `${scrubberPct}%`
-    }
-    if (scrubberThumbRef.current) {
-      scrubberThumbRef.current.style.left = `${scrubberPct}%`
-    }
-    // Convergence gap indicator (phi only)
-    if (scrubberGapRef.current) {
-      if (ds.constantId === 'phi') {
-        const gap = convergenceGapAtProgress(ds.revealProgress)
-        const maxWidth = 60
-        scrubberGapRef.current.style.width = `${gap * maxWidth}px`
-        scrubberGapRef.current.style.left = `calc(${scrubberPct}% - ${(gap * maxWidth) / 2}px)`
-        // Color: warm (red/amber) when large gap, cool (green) when converged
-        const r = Math.round(220 * gap + 34 * (1 - gap))
-        const g = Math.round(80 * gap + 197 * (1 - gap))
-        const b = Math.round(40 * gap + 94 * (1 - gap))
-        scrubberGapRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
-        scrubberGapRef.current.style.opacity = isActive && ds.opacity > 0.1 ? '1' : '0'
-      } else {
-        scrubberGapRef.current.style.opacity = '0'
-      }
-    }
-    // Sync play/pause button DOM
-    if (playPauseBtnRef.current) {
-      playPauseBtnRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
-      playPauseBtnRef.current.style.pointerEvents = isActive && ds.opacity > 0.1 ? 'auto' : 'none'
-      // Swap SVG path based on narrating state / completion
-      const svgPath = playPauseBtnRef.current.querySelector('path')
-      if (svgPath) {
-        const isFinished = ds.revealProgress >= 1 && !narration.isNarrating.current
-        svgPath.setAttribute(
-          'd',
-          isFinished
-            ? 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z' // replay icon
-            : narration.isNarrating.current
-              ? 'M6 4h4v16H6zm8 0h4v16h-4z' // pause icon
-              : 'M8 5v14l11-7z' // play icon
-        )
-      }
-    }
-    // Sync time display DOM
-    if (timeDisplayRef.current) {
-      timeDisplayRef.current.style.opacity = isActive ? String(ds.opacity) : '0'
-      const cfg = ds.constantId ? NARRATION_CONFIGS[ds.constantId] : null
-      if (cfg && cfg.segments.length > 0) {
-        // Compute elapsed and total designed time from revealProgress
-        let elapsedMs = 0
-        let totalMs = 0
-        for (const seg of cfg.segments) {
-          const segSpan = seg.endProgress - seg.startProgress
-          totalMs += seg.animationDurationMs
-          if (ds.revealProgress >= seg.endProgress) {
-            elapsedMs += seg.animationDurationMs
-          } else if (ds.revealProgress > seg.startProgress) {
-            const frac = segSpan > 0 ? (ds.revealProgress - seg.startProgress) / segSpan : 0
-            elapsedMs += frac * seg.animationDurationMs
-          }
-        }
-        const fmtTime = (ms: number) => {
-          const s = Math.round(ms / 1000)
-          const m = Math.floor(s / 60)
-          const sec = s % 60
-          return `${m}:${String(sec).padStart(2, '0')}`
-        }
-        timeDisplayRef.current.textContent = `${fmtTime(elapsedMs)} / ${fmtTime(totalMs)}`
-      } else {
-        timeDisplayRef.current.textContent = ''
-      }
-    }
-    // Sync segment tick marks (rebuild only when constantId changes)
-    if (segmentTicksRef.current) {
-      const cid = ds.constantId
-      if (cid !== lastTickConstantIdRef.current) {
-        lastTickConstantIdRef.current = cid
-        const cfg = cid ? NARRATION_CONFIGS[cid] : null
-        if (cfg && cfg.segments.length > 0) {
-          const boundaries = new Set<number>()
-          for (const seg of cfg.segments) {
-            if (seg.startProgress > 0.001 && seg.startProgress < 0.999)
-              boundaries.add(seg.startProgress)
-            if (seg.endProgress > 0.001 && seg.endProgress < 0.999) boundaries.add(seg.endProgress)
-          }
-          const isDark = resolvedTheme === 'dark'
-          const tickColor = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'
-          let html = ''
-          for (const bp of boundaries) {
-            const pct = progressToScrubber(bp) * 100
-            html += `<div data-element="segment-tick" style="position:absolute;left:${pct.toFixed(3)}%;top:50%;width:1.5px;height:12px;transform:translateX(-50%) translateY(-50%);background:${tickColor};border-radius:0.75px;pointer-events:none"></div>`
-          }
-          segmentTicksRef.current.innerHTML = html
-        } else {
-          segmentTicksRef.current.innerHTML = ''
-        }
-      }
-    }
-    // Sync floating segment label (visible while scrubbing or hovering)
-    if (segmentLabelRef.current) {
-      // Determine which progress value to use for label lookup:
-      // dragging takes priority, then hover, otherwise hidden
-      const labelProgress = isDraggingScrubberRef.current
-        ? ds.revealProgress
-        : scrubberHoverProgressRef.current
-      if (labelProgress !== null && isActive && ds.constantId) {
-        const cfg = NARRATION_CONFIGS[ds.constantId]
-        const seg =
-          cfg?.segments.find(
-            (s) => labelProgress >= s.startProgress && labelProgress < s.endProgress
-          ) ?? cfg?.segments[cfg.segments.length - 1] // fallback to last if at 1.0
-        if (seg?.scrubberLabel) {
-          const midProgress = (seg.startProgress + seg.endProgress) / 2
-          const midPct = progressToScrubber(midProgress) * 100
-          segmentLabelRef.current.style.opacity = '1'
-          segmentLabelRef.current.style.left = `${midPct}%`
-          segmentLabelRef.current.textContent = seg.scrubberLabel
-        } else {
-          segmentLabelRef.current.style.opacity = '0'
-        }
-      } else {
-        segmentLabelRef.current.style.opacity = '0'
-      }
-    }
+    syncDemoScrubberDOM(
+      {
+        scrubberTrackRef,
+        scrubberFillRef,
+        scrubberThumbRef,
+        scrubberGapRef,
+        playPauseBtnRef,
+        timeDisplayRef,
+        segmentTicksRef,
+        segmentLabelRef,
+        lastTickConstantIdRef,
+        isDraggingScrubberRef,
+        scrubberHoverProgressRef,
+      },
+      ds,
+      !!narration.isNarrating.current,
+      resolvedTheme
+    )
     // Sync React state for conditional rendering (batch with rAF)
+    const isActive = ds.phase !== 'idle'
     if (isActive && !demoActive) setDemoActive(true)
     else if (!isActive && demoActive) setDemoActive(false)
 
@@ -1477,8 +889,9 @@ export function NumberLine({
     }
   }, [resolvedTheme])
 
-  // Keep the demo's redraw ref pointing at the latest draw function
+  // Keep draw refs pointing at the latest draw function
   drawFnRef.current = draw
+  drawRef.current = draw
 
   const scheduleRedraw = useCallback(() => {
     if (rafRef.current) return
@@ -1499,212 +912,6 @@ export function NumberLine({
     centering.theme,
     scheduleRedraw,
   ])
-
-  // Decay loop for zoom velocity — keeps redrawing until the wash fades out
-  const startDecay = useCallback(() => {
-    if (decayRafRef.current) return
-    const tick = () => {
-      // Decay raw velocity
-      zoomVelocityRef.current *= 0.88
-
-      // Lerp raw hue toward direction target
-      if (Math.abs(zoomVelocityRef.current) > 0.01) {
-        const targetHue = zoomVelocityRef.current > 0 ? 220 : 25
-        zoomHueRef.current += (targetHue - zoomHueRef.current) * 0.08
-      }
-
-      // Rate-limit display values and sync wrapper background
-      updateDisplayValues()
-      updateWrapperBg(displayVelocityRef.current, displayHueRef.current)
-
-      // Keep looping until both raw and display values have settled
-      if (
-        Math.abs(zoomVelocityRef.current) < 0.001 &&
-        Math.abs(displayVelocityRef.current) < 0.001
-      ) {
-        zoomVelocityRef.current = 0
-        displayVelocityRef.current = 0
-        decayRafRef.current = 0
-        draw()
-        return
-      }
-      draw()
-      decayRafRef.current = requestAnimationFrame(tick)
-    }
-    decayRafRef.current = requestAnimationFrame(tick)
-  }, [draw, updateWrapperBg, updateDisplayValues])
-
-  const handleZoomVelocity = useCallback(
-    (velocity: number, focalX: number) => {
-      // Accumulate raw velocity
-      zoomVelocityRef.current = zoomVelocityRef.current * 0.6 + velocity * 8
-
-      // Smoothly move focal point toward the new zoom point
-      zoomFocalXRef.current += (focalX - zoomFocalXRef.current) * 0.3
-
-      // Nudge raw hue toward direction
-      const targetHue = zoomVelocityRef.current > 0 ? 220 : 25
-      zoomHueRef.current += (targetHue - zoomHueRef.current) * 0.15
-
-      startDecay()
-    },
-    [startDecay]
-  )
-
-  // --- Find the Number game loop ---
-  // Continuous redraw while game is active (for glow pulsing and proximity updates)
-  useEffect(() => {
-    if (gameState !== 'active') {
-      if (gameRafRef.current) {
-        cancelAnimationFrame(gameRafRef.current)
-        gameRafRef.current = 0
-      }
-      return
-    }
-    const tick = () => {
-      draw()
-      gameRafRef.current = requestAnimationFrame(tick)
-    }
-    gameRafRef.current = requestAnimationFrame(tick)
-    return () => {
-      if (gameRafRef.current) {
-        cancelAnimationFrame(gameRafRef.current)
-        gameRafRef.current = 0
-      }
-    }
-  }, [gameState, draw])
-
-  const handleGameStart = useCallback(
-    (target: number, emoji: string) => {
-      targetRef.current = { value: target, emoji }
-      prevGameZoneRef.current = null
-      proximityRef.current = null
-      setAudioZone(null)
-      setGameState('active')
-      setActiveGameId('find_number')
-      draw()
-    },
-    [draw]
-  )
-
-  const handleGameGiveUp = useCallback(() => {
-    targetRef.current = null
-    prevGameZoneRef.current = null
-    proximityRef.current = null
-    renderTargetRef.current = undefined
-    setAudioZone(null)
-    setGameState('idle')
-    setActiveGameId(null)
-    draw()
-  }, [draw])
-
-  // Wire forward refs for voice-model-initiated find-the-number games
-  const GAME_EMOJIS = ['⭐', '🚀', '💎', '🦄', '🌈', '🎯', '🔥', '🌸', '🐙', '🍕', '🎪', '🪐']
-  startFindNumberFnRef.current = (target: number) => {
-    const emoji = GAME_EMOJIS[Math.floor(Math.random() * GAME_EMOJIS.length)]
-    gameStartedByModelRef.current = true
-    setGameStartedByModel(true)
-    handleGameStart(target, emoji)
-  }
-  stopFindNumberFnRef.current = () => {
-    gameStartedByModelRef.current = false
-    setGameStartedByModel(false)
-    handleGameGiveUp()
-  }
-
-  // Push game lifecycle events to the voice model when the child starts/stops a game during a call
-  const prevGameStateForVoiceRef = useRef<FindTheNumberGameState>('idle')
-  useEffect(() => {
-    const prev = prevGameStateForVoiceRef.current
-    prevGameStateForVoiceRef.current = gameState
-    if (voiceState !== 'active') return
-    // Child started a game during a call (not model-initiated)
-    if (gameState === 'active' && prev !== 'active' && !gameStartedByModelRef.current) {
-      const target = targetRef.current?.value
-      if (target !== undefined) {
-        sendSystemMessage(
-          `[Game update: The child started a find-the-number game! Target: ${target}. Give verbal hints about the number's neighborhood and properties. Say "higher numbers"/"lower numbers" for direction — NEVER "left"/"right". Instead of "zoom in", hint at precision: "it has a decimal", "between 3 and 4". You will receive proximity updates.]`
-        )
-      }
-    }
-    // Child gave up or game ended
-    if (gameState === 'idle' && prev !== 'idle' && !gameStartedByModelRef.current) {
-      sendSystemMessage('[Game update: The child ended the find-the-number game.]')
-    }
-    // Reset model flag when game ends regardless of who started it
-    if (gameState === 'idle') {
-      gameStartedByModelRef.current = false
-      setGameStartedByModel(false)
-    }
-  }, [gameState, voiceState, sendSystemMessage])
-
-  // Push proximity zone updates to the voice model during active calls
-  const prevAudioZoneForVoiceRef = useRef<ProximityZone | null>(null)
-  useEffect(() => {
-    const prev = prevAudioZoneForVoiceRef.current
-    prevAudioZoneForVoiceRef.current = audioZone
-    if (voiceState !== 'active' || audioZone === null) return
-    if (audioZone === prev) return
-    const target = targetRef.current?.value
-    if (target === undefined) return
-    if (audioZone === 'found') {
-      sendSystemMessage('[Game update: The child found the number! Celebrate with them!]', true)
-    } else {
-      const prox = proximityRef.current
-      const { center, pixelsPerUnit } = stateRef.current
-      const halfRange = cssWidthRef.current / (2 * pixelsPerUnit)
-      const viewLeft = center - halfRange
-      const viewRight = center + halfRange
-
-      // Direction hint: use lower/higher numbers, not left/right
-      const dir = prox?.targetDirection
-      const dirHint =
-        dir === 'left'
-          ? "The target is at a LOWER number than what's on screen — the child needs to move toward smaller numbers (scroll left)."
-          : dir === 'right'
-            ? "The target is at a HIGHER number than what's on screen — the child needs to move toward bigger numbers (scroll right)."
-            : 'The target is somewhere on screen right now.'
-
-      // Distance hint: how far off-center the child is
-      const dist = Math.abs(target - center)
-      const distHint =
-        dist > 100
-          ? `About ${Math.round(dist)} away from where the child is looking.`
-          : dist > 10
-            ? `Roughly ${Math.round(dist)} units away.`
-            : dist > 1
-              ? `Only about ${Math.round(dist * 10) / 10} away — getting close!`
-              : `Very close — less than 1 unit away!`
-
-      // Precision hint: instead of "zoom in", explain what the child needs
-      let precisionHint = ''
-      if (prox?.needsMoreZoom) {
-        const precision = getTargetPrecisionForHint(target)
-        if (precision >= 2) {
-          precisionHint =
-            ' The target has hundredths-level precision — the child needs to zoom in enough to see individual hundredths (like 3.14 vs 3.15).'
-        } else if (precision === 1) {
-          precisionHint =
-            ' The target has a decimal digit — the child needs to zoom in enough to see tenths (like 2.3 vs 2.4).'
-        } else {
-          precisionHint = ' The child needs to zoom in a bit more to spot the exact number.'
-        }
-      }
-
-      // Viewport context: what range is currently visible
-      const viewHint = `The child is currently looking at numbers from about ${formatApprox(viewLeft)} to ${formatApprox(viewRight)}.`
-
-      sendSystemMessage(
-        `[Game update: zone=${audioZone}. ${viewHint} ${dirHint} ${distHint}${precisionHint}\n` +
-          `IMPORTANT: Say "lower numbers" or "higher numbers" when giving direction hints, NOT "left" or "right" — children often confuse screen directions. ` +
-          `Instead of telling the child to "zoom in", give them useful hints about the number's neighborhood — for example, "it's between 30 and 40" or "think about multiples of 5". ` +
-          `Let their curiosity guide them!]`
-      )
-    }
-  }, [audioZone, voiceState, sendSystemMessage, stateRef, cssWidthRef])
-
-  // Audio feedback for the game (muted during active voice calls — model gives verbal hints)
-  useFindTheNumberAudio(audioZone, proximityRef, voiceState === 'active')
 
   // --- Hover handler for prime tooltips (primes only) ---
   const handleHover = useCallback(
@@ -2004,172 +1211,22 @@ export function NumberLine({
     draw()
   }, [draw])
 
-  // Redraw when debug thresholds change
-  useEffect(() => {
-    draw()
-  }, [anchorMax, mediumMax, draw])
-
-  // Animate viewport to fit all conference call participants
-  const callFlyRef = useRef<{ src: Viewport; tgt: Viewport; startMs: number; raf: number } | null>(
-    null
-  )
-  useEffect(() => {
-    if (conferenceNumbers.length === 0 || voiceState !== 'active') {
-      // Cancel any in-progress fly animation
-      if (callFlyRef.current) {
-        cancelAnimationFrame(callFlyRef.current.raf)
-        callFlyRef.current = null
-      }
-      return
-    }
-
-    const cssWidth = cssWidthRef.current
-    if (cssWidth <= 0) return
-
-    // Compute target viewport that fits all numbers with padding
-    const lo = Math.min(...conferenceNumbers)
-    const hi = Math.max(...conferenceNumbers)
-    const span = hi - lo
-    const center = (lo + hi) / 2
-
-    let targetPpu: number
-    if (span === 0) {
-      // Single number — zoom to show ~10 units of context
-      targetPpu = cssWidth / 10
-    } else {
-      // Fit the range with 30% padding on each side
-      targetPpu = (cssWidth * 0.4) / span
-    }
-    // Don't zoom in more than current level if we already fit
-    const currentPpu = stateRef.current.pixelsPerUnit
-    const screenLo = (center - lo) * currentPpu
-    const screenHi = (hi - center) * currentPpu
-    const alreadyFits =
-      screenLo < cssWidth * 0.4 &&
-      screenHi < cssWidth * 0.4 &&
-      Math.abs(stateRef.current.center - center) * currentPpu < cssWidth * 0.3
-    if (alreadyFits && conferenceNumbers.length <= 1) {
-      draw()
-      return
-    }
-
-    // Clamp: don't zoom out excessively, don't zoom in past current level
-    targetPpu = Math.min(targetPpu, Math.max(currentPpu, cssWidth / 10))
-
-    const src: Viewport = {
-      center: stateRef.current.center,
-      pixelsPerUnit: stateRef.current.pixelsPerUnit,
-    }
-    const tgt: Viewport = { center, pixelsPerUnit: targetPpu }
-    const startMs = performance.now()
-    const durationMs = 800
-
-    // Cancel previous animation
-    if (callFlyRef.current) cancelAnimationFrame(callFlyRef.current.raf)
-
-    const fly = (callFlyRef.current = { src, tgt, startMs, raf: 0 })
-
-    const tick = () => {
-      const elapsed = performance.now() - fly.startMs
-      const t = lerpViewport(fly.src, fly.tgt, elapsed, durationMs, stateRef.current)
-      draw()
-      if (t < 1) {
-        fly.raf = requestAnimationFrame(tick)
-      } else {
-        callFlyRef.current = null
-      }
-    }
-    fly.raf = requestAnimationFrame(tick)
-
-    return () => {
-      if (callFlyRef.current) {
-        cancelAnimationFrame(callFlyRef.current.raf)
-        callFlyRef.current = null
-      }
-    }
-  }, [conferenceNumbers, voiceState, draw])
-
-  // Assign look_at implementation now that callFlyRef and stateRef are in scope
-  lookAtFnRef.current = (center: number, range: number) => {
-    const cssWidth = cssWidthRef.current
-    if (cssWidth <= 0) return
-
-    const targetPpu = cssWidth / Math.max(range, 0.01)
-
-    const src: Viewport = {
-      center: stateRef.current.center,
-      pixelsPerUnit: stateRef.current.pixelsPerUnit,
-    }
-    const tgt: Viewport = { center, pixelsPerUnit: targetPpu }
-    const startMs = performance.now()
-    const durationMs = 800
-
-    if (callFlyRef.current) cancelAnimationFrame(callFlyRef.current.raf)
-
-    const fly = (callFlyRef.current = { src, tgt, startMs, raf: 0 })
-    const tick = () => {
-      const elapsed = performance.now() - fly.startMs
-      const t = lerpViewport(fly.src, fly.tgt, elapsed, durationMs, stateRef.current)
-      draw()
-      if (t < 1) {
-        fly.raf = requestAnimationFrame(tick)
-      } else {
-        callFlyRef.current = null
-      }
-    }
-    fly.raf = requestAnimationFrame(tick)
-  }
-
-  // Assign indicate implementation — replaces any active indicator and drives redraws.
-  // Auto-zooms to ensure indicated content is visible with 10% margin on each side.
-  indicateFnRef.current = (
-    numbers: number[],
-    range?: { from: number; to: number },
-    durationSeconds?: number,
-    persistent?: boolean
-  ) => {
-    const holdMs = persistent
-      ? Infinity
-      : durationSeconds != null
-        ? Math.max(1, Math.min(30, durationSeconds)) * 1000
-        : 4000
-
-    // Compute bounding extent of all indicated content
-    const allValues = [...numbers]
-    if (range) {
-      allValues.push(range.from, range.to)
-    }
-    if (allValues.length > 0) {
-      const minVal = Math.min(...allValues)
-      const maxVal = Math.max(...allValues)
-      const cssWidth = cssWidthRef.current
-      const ppu = stateRef.current.pixelsPerUnit
-      const viewCenter = stateRef.current.center
-      const halfView = cssWidth / (2 * ppu)
-      const viewMin = viewCenter - halfView
-      const viewMax = viewCenter + halfView
-
-      // If any indicated content falls outside the current viewport, zoom to fit with margin.
-      // Suppressed during games that control the viewport (e.g. guess_my_number) so the
-      // child sees the indicate band shrinking within a fixed frame.
-      if (!suppressIndicateZoomRef.current && (minVal < viewMin || maxVal > viewMax)) {
-        const span = maxVal - minVal
-        const center = (minVal + maxVal) / 2
-        // Add 10% margin on each side (total span / 0.8 gives 10% per side)
-        const rangeWithMargin = Math.max(span / 0.8, 0.01)
-        lookAtFnRef.current(center, rangeWithMargin)
-      }
-    }
-
-    indicatorRef.current = { numbers, range, startMs: performance.now(), holdMs }
-    // Drive redraws for the indicator's lifecycle
-    const tick = () => {
-      if (!indicatorRef.current) return
-      draw()
-      requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-  }
+  // Viewport fly animations (conference calls, look_at, indicate)
+  const {
+    lookAt: viewportLookAt,
+    indicate: viewportIndicate,
+    indicatorRef,
+  } = useViewportFly({
+    stateRef,
+    cssWidthRef,
+    draw,
+    conferenceNumbers,
+    voiceState,
+    suppressIndicateZoomRef,
+  })
+  // Wire up forward refs so voice agent callbacks use the hook's implementations
+  lookAtFnRef.current = viewportLookAt
+  indicateFnRef.current = viewportIndicate
 
   // Find tapped constant data for info card
   const tappedConstant = useMemo(
@@ -2204,81 +1261,30 @@ export function NumberLine({
     [dial, getVisibleRecommendations, playerId, availablePlayerSummaries]
   )
 
+  // Track which narration segment was last reported to the voice agent
+  const voiceExplorationSegmentRef = useRef(-1)
+  // Ref for speed reset — assigned after keyboard hook provides setDisplaySpeed/setShowSpeedBadge
+  const speedResetRef = useRef(() => {})
+
   const handleExploreConstant = useCallback(
-    (explorationId: string) => {
-      console.log('[NumberLine] handleExploreConstant — exploration:', explorationId)
-      audioManager.stop()
-
-      // Route tour explorations to the prime tour handler
-      if (!CONSTANT_IDS.has(explorationId)) {
-        const onCall = voiceStateRef.current === 'active'
-        if (onCall) {
-          // Queue the tour to launch after the call ends — the agent will
-          // explain the tour, say goodbye, and hang up on its own.
-          console.log('[NumberLine] queuing tour for after hangup:', explorationId)
-          pendingTourRef.current = explorationId
-        } else {
-          // Not on a call — start the tour immediately
-          cancelDemo()
-          setTappedConstantId(null)
-          setTappedIntValue(null)
-          setHoveredValue(null)
-          tooltipHoveredRef.current = false
-          startTour()
-        }
-        return
-      }
-
-      // Constant exploration path
-      exitTour()
-      narration.reset()
-      // Reset speed UI to match (narration.reset() resets the ref + audio rate)
-      setDisplaySpeed(1)
-      setShowSpeedBadge(false)
-
-      const onCall = voiceStateRef.current === 'active'
-      console.log(
-        '[exploration] handleExploreConstant — onCall:',
-        onCall,
-        'explorationId:',
-        explorationId
-      )
-
-      if (onCall) {
-        // Start paused at progress 0 — narrator introduces first, then calls resume
-        console.log('[exploration] starting PAUSED (restoreDemo + markTriggered)')
-        restoreDemo(explorationId, 0)
-        narration.markTriggered(explorationId) // suppress narration auto-start
-      } else {
-        startDemo(explorationId)
-      }
-
-      // If on a voice call, send companion instructions for the exploration
-      if (onCall) {
-        const cfg = NARRATION_CONFIGS[explorationId]
-        const display = DEMO_DISPLAY[explorationId]
-        if (cfg && display) {
-          const visualDesc = display.visualDesc
-            ? `\n\nWHAT THE ANIMATION SHOWS (for YOUR reference only — do NOT describe this to the child): ${display.visualDesc}`
-            : ''
-
-          // Companion rules are in the start_exploration tool output (not here)
-          // so the model won't treat them as a "user message" to recite.
-          // This message provides constant-specific context only.
-          console.log('[exploration] sending intro system message + response.create')
-          sendSystemMessage(
-            `An animated exploration of ${display.symbol} (${display.name}) is ready to play.` +
-              `${visualDesc}\n\n` +
-              `Give the child a brief intro — why this constant is special to you personally. Match the child's energy level. ` +
-              `Do NOT describe or preview what the animation will show. The visuals should be a surprise. ` +
-              `Something like "Oh, I've been wanting to show you this!" or "This is one of my favorite things about living near ${display.symbol}." ` +
-              `Keep it to 1-2 sentences, then call resume_exploration.`,
-            true // prompt a response so the agent introduces the constant
-          )
-        }
-        voiceExplorationSegmentRef.current = -1
-      }
-    },
+    createHandleExploreConstant({
+      audioManager,
+      voiceStateRef,
+      pendingTourRef,
+      voiceExplorationSegmentRef,
+      narration,
+      cancelDemo,
+      exitTour,
+      startTour,
+      startDemo,
+      restoreDemo,
+      sendSystemMessage,
+      onSpeedReset: () => speedResetRef.current(),
+      setTappedConstantId,
+      setTappedIntValue,
+      setHoveredValue,
+      tooltipHoveredRef,
+    }),
     [
       audioManager,
       startDemo,
@@ -2319,56 +1325,6 @@ export function NumberLine({
     // Update the voice agent's segment tracker so the segment cue re-fires on resume
     voiceExplorationSegmentRef.current = segmentIndex - 1
   }
-
-  // Track which narration segment was last reported to the voice agent
-  const voiceExplorationSegmentRef = useRef(-1)
-
-  // --- Debug tuning handlers for golden ratio demo ---
-  const handleDecayChange = useCallback(
-    (v: number) => {
-      setDebugDecay(v)
-      setStepTimingDecay(v)
-      scheduleRedraw()
-    },
-    [scheduleRedraw]
-  )
-
-  const handleLogBaseChange = useCallback(
-    (v: number) => {
-      setDebugLogBase(v)
-      setScrubberLogBase(v)
-      scheduleRedraw()
-    },
-    [scheduleRedraw]
-  )
-
-  // --- Debug tuning handlers for sieve animation ---
-  const handleTrackingRangeChange = useCallback(
-    (v: number) => {
-      setDebugTrackingRange(v)
-      setSieveTrackingRange(v)
-      scheduleRedraw()
-    },
-    [scheduleRedraw]
-  )
-
-  const handleFollowHopsChange = useCallback(
-    (v: number) => {
-      setDebugFollowHops(v)
-      setSieveFollowHops(v)
-      scheduleRedraw()
-    },
-    [scheduleRedraw]
-  )
-
-  const handleSieveSpeedChange = useCallback(
-    (v: number) => {
-      setDebugSieveSpeed(v)
-      setSieveSpeed(v)
-      scheduleRedraw()
-    },
-    [scheduleRedraw]
-  )
 
   // --- Phi centering drag/scroll handlers ---
   const centeringDragRef = useRef<{
@@ -2448,209 +1404,6 @@ export function NumberLine({
 
   // --- Scrubber pointer handlers ---
   /** Snap progress to a segment boundary if within 20px on screen. */
-  const snapToSegmentBoundary = useCallback(
-    (rawProgress: number, clientX: number): number => {
-      const track = scrubberTrackRef.current
-      const cid = demoStateRef.current.constantId
-      if (!track || !cid) return rawProgress
-      const cfg = NARRATION_CONFIGS[cid]
-      if (!cfg) return rawProgress
-
-      const rect = track.getBoundingClientRect()
-      const boundaries: number[] = []
-      for (const seg of cfg.segments) {
-        boundaries.push(seg.startProgress, seg.endProgress)
-      }
-      // Deduplicate
-      const unique = [...new Set(boundaries)]
-
-      let bestProgress = rawProgress
-      let bestDist = 20 // 20px snap threshold
-      for (const bp of unique) {
-        const screenX = rect.left + progressToScrubber(bp) * rect.width
-        const dist = Math.abs(clientX - screenX)
-        if (dist < bestDist) {
-          bestDist = dist
-          bestProgress = bp
-        }
-      }
-      return bestProgress
-    },
-    [demoStateRef]
-  )
-
-  const scrubberProgressFromPointer = useCallback(
-    (clientX: number, snap = false) => {
-      const track = scrubberTrackRef.current
-      if (!track) return 0
-      const rect = track.getBoundingClientRect()
-      const linearPos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      const progress = scrubberToProgress(linearPos)
-      return snap ? snapToSegmentBoundary(progress, clientX) : progress
-    },
-    [snapToSegmentBoundary]
-  )
-
-  const handleScrubberPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      setRestoredFromUrl(false)
-      narration.stop() // stop TTS narration when user scrubs
-      isDraggingScrubberRef.current = true
-      const progress = scrubberProgressFromPointer(e.clientX, true)
-      setRevealProgress(progress)
-      // Capture on the track element for reliable drag tracking
-      scrubberTrackRef.current?.setPointerCapture(e.pointerId)
-      // Active-state feedback: scale up + glow
-      if (scrubberThumbVisualRef.current) {
-        scrubberThumbVisualRef.current.style.transform = 'scale(1.4)'
-        const cid = demoStateRef.current.constantId
-        const glowColor =
-          cid === 'pi'
-            ? 'rgba(96, 165, 250, 0.6)'
-            : cid === 'tau'
-              ? 'rgba(45, 212, 191, 0.6)'
-              : 'rgba(168, 85, 247, 0.6)'
-        scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
-      }
-    },
-    [scrubberProgressFromPointer, setRevealProgress, narration]
-  )
-
-  const handleScrubberPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (isDraggingScrubberRef.current) {
-        e.preventDefault()
-        const progress = scrubberProgressFromPointer(e.clientX, true)
-        setRevealProgress(progress)
-      } else {
-        // Track hover position for segment label display
-        scrubberHoverProgressRef.current = scrubberProgressFromPointer(e.clientX)
-      }
-    },
-    [scrubberProgressFromPointer, setRevealProgress]
-  )
-
-  const handleScrubberPointerLeave = useCallback(() => {
-    scrubberHoverProgressRef.current = null
-  }, [])
-
-  const handleScrubberPointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDraggingScrubberRef.current) return
-      isDraggingScrubberRef.current = false
-      scrubberTrackRef.current?.releasePointerCapture(e.pointerId)
-      // Reset active-state feedback
-      if (scrubberThumbVisualRef.current) {
-        scrubberThumbVisualRef.current.style.transform = 'scale(1)'
-        scrubberThumbVisualRef.current.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)'
-      }
-      // Resume narration from the scrubbed position
-      const ds = demoStateRef.current
-      if (ds.constantId && ds.revealProgress < 1) {
-        narration.resume(ds.constantId)
-      }
-    },
-    [demoStateRef, narration]
-  )
-
-  // --- Refine range track handlers (separate track above scrubber) ---
-  const refineProgressFromPointer = useCallback(
-    (clientX: number) => {
-      // Use scrubberTrackRef for coordinate math so both tracks share the same scale
-      const track = scrubberTrackRef.current
-      if (!track) return 0
-      const rect = track.getBoundingClientRect()
-      const linearPos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      const progress = scrubberToProgress(linearPos)
-      return snapToSegmentBoundary(progress, clientX)
-    },
-    [snapToSegmentBoundary]
-  )
-
-  const handleRefineTrackPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (refineTaskActive) return
-      e.preventDefault()
-      e.stopPropagation()
-      const progress = refineProgressFromPointer(e.clientX)
-      refineStartRef.current = progress
-      setRefineRange({ start: progress, end: progress })
-      refineTrackRef.current?.setPointerCapture(e.pointerId)
-    },
-    [refineProgressFromPointer, refineTaskActive]
-  )
-
-  const handleRefineTrackPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (refineStartRef.current === null || refineTaskActive) return
-      e.preventDefault()
-      const progress = refineProgressFromPointer(e.clientX)
-      const start = refineStartRef.current
-      setRefineRange({
-        start: Math.min(start, progress),
-        end: Math.max(start, progress),
-      })
-    },
-    [refineProgressFromPointer, refineTaskActive]
-  )
-
-  const handleRefineTrackPointerUp = useCallback((e: React.PointerEvent) => {
-    refineStartRef.current = null
-    refineTrackRef.current?.releasePointerCapture(e.pointerId)
-  }, [])
-
-  const handleScrubberKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const ds = demoStateRef.current
-      if (ds.phase === 'idle') return
-
-      // Space/Enter: toggle play/pause
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault()
-        if (narration.isNarrating.current) {
-          narration.stop()
-        } else if (ds.constantId && ds.revealProgress < 1) {
-          narration.resume(ds.constantId)
-        }
-        return
-      }
-
-      const wasPlaying = narration.isNarrating.current
-      narration.stop()
-      let progress = ds.revealProgress
-      switch (e.key) {
-        case 'ArrowRight':
-        case 'ArrowUp':
-          e.preventDefault()
-          progress = Math.min(1, progress + 0.02)
-          break
-        case 'ArrowLeft':
-        case 'ArrowDown':
-          e.preventDefault()
-          progress = Math.max(0, progress - 0.02)
-          break
-        case 'Home':
-          e.preventDefault()
-          progress = 0
-          break
-        case 'End':
-          e.preventDefault()
-          progress = 1
-          break
-        default:
-          return
-      }
-      setRevealProgress(progress)
-      if (wasPlaying && ds.constantId && progress < 1) {
-        requestAnimationFrame(() => narration.resume(ds.constantId!))
-      }
-    },
-    [demoStateRef, setRevealProgress, narration]
-  )
-
   const handlePlayPauseClick = useCallback(() => {
     setRestoredFromUrl(false)
     const ds = demoStateRef.current
@@ -2660,245 +1413,40 @@ export function NumberLine({
     } else if (ds.constantId && ds.revealProgress >= 1) {
       // Replay from the beginning
       narration.reset()
-      setDisplaySpeed(1)
-      setShowSpeedBadge(false)
+      speedResetRef.current()
       startDemo(ds.constantId)
     } else if (ds.constantId && ds.revealProgress < 1) {
       narration.resume(ds.constantId)
     }
   }, [demoStateRef, narration, startDemo])
 
-  // --- Keyboard shortcuts help overlay ---
-  const [showShortcuts, setShowShortcuts] = useState(false)
-
-  // --- Playback speed display (synced from narration ref) ---
-  const [displaySpeed, setDisplaySpeed] = useState(1)
-  const speedFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [showSpeedBadge, setShowSpeedBadge] = useState(false)
-
-  // Global keyboard controls when a demo is active (YouTube-style)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Escape: close shortcuts, or exit refine mode
-      if (e.key === 'Escape') {
-        if (refineMode) {
-          // Don't exit refine mode while a task is running — the panel handles its own cancel
-          if (refineTaskActive) return
-          setRefineMode(false)
-          setRefineRange(null)
-          refineStartRef.current = null
-          return
-        }
-        setShowShortcuts(false)
-        return
-      }
-
-      const ds = demoStateRef.current
-      if (ds.phase === 'idle') return
-      // Don't hijack keys when an input/textarea/select is focused
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-
-      // 'r' toggles refine mode (dev-only: requires NODE_ENV=development + visual debug)
-      // Don't toggle off while a task is running
-      if ((e.key === 'r' || e.key === 'R') && isDevelopment && isVisualDebugEnabled) {
-        if (refineTaskActive) return
-        setRefineMode((prev) => {
-          if (!prev) {
-            // Entering refine mode: pause narration
-            narration.stop()
-            return true
-          } else {
-            // Exiting: clear range
-            setRefineRange(null)
-            refineStartRef.current = null
-            return false
-          }
-        })
-        return
-      }
-
-      // ? toggles shortcuts overlay
-      if (e.key === '?') {
-        setShowShortcuts((prev) => !prev)
-        return
-      }
-
-      // < / > adjust playback speed (animation + audio)
-      if (e.key === '<' || e.key === '>') {
-        e.preventDefault()
-        const current = narration.playbackSpeedRef.current
-        const idx = SPEED_STEPS.findIndex((s) => s >= current)
-        const newIdx =
-          e.key === '>'
-            ? Math.min(SPEED_STEPS.length - 1, (idx === -1 ? SPEED_STEPS.length - 1 : idx) + 1)
-            : Math.max(0, (idx === -1 ? 0 : idx) - 1)
-        const newSpeed = SPEED_STEPS[newIdx]
-        narration.playbackSpeedRef.current = newSpeed
-        // Sync audio playback rate (with pitch preservation)
-        audioManager.configure({ playbackRate: newSpeed })
-        setDisplaySpeed(newSpeed)
-        // Flash the speed badge
-        setShowSpeedBadge(true)
-        if (speedFadeTimerRef.current) clearTimeout(speedFadeTimerRef.current)
-        speedFadeTimerRef.current = setTimeout(() => setShowSpeedBadge(false), 1500)
-        return
-      }
-
-      // Close shortcuts overlay on any playback key
-      setShowShortcuts(false)
-
-      if (e.key === ' ') {
-        e.preventDefault()
-        handlePlayPauseClick()
-        return
-      }
-
-      let delta = 0
-      switch (e.key) {
-        case 'ArrowRight':
-          delta = e.shiftKey ? 0.02 : 0.05
-          break
-        case 'ArrowLeft':
-          delta = e.shiftKey ? -0.02 : -0.05
-          break
-        case 'l':
-        case 'L':
-          delta = 0.1
-          break
-        case 'j':
-        case 'J':
-          delta = -0.1
-          break
-        case 'Home':
-          delta = -Infinity
-          break
-        case 'End':
-          delta = Infinity
-          break
-        default:
-          return
-      }
-
-      e.preventDefault()
-      const wasPlaying = narration.isNarrating.current
-      narration.stop()
-      const target =
-        delta === -Infinity
-          ? 0
-          : delta === Infinity
-            ? 1
-            : Math.max(0, Math.min(1, ds.revealProgress + delta))
-      setRevealProgress(target)
-      // Resume narration from the new position if it was playing before the scrub
-      if (wasPlaying && ds.constantId && target < 1) {
-        // Let setRevealProgress commit before resuming so the sequencer
-        // picks up the correct progress value
-        requestAnimationFrame(() => narration.resume(ds.constantId!))
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [
+  // --- Keyboard shortcuts + speed display (extracted hook) ---
+  const {
+    showShortcuts,
+    setShowShortcuts,
+    displaySpeed,
+    setDisplaySpeed,
+    showSpeedBadge,
+    setShowSpeedBadge,
+    speedFadeTimerRef,
+  } = useDemoKeyboardShortcuts({
     demoStateRef,
-    handlePlayPauseClick,
     narration,
     setRevealProgress,
+    handlePlayPauseClick,
     audioManager,
     refineMode,
+    refineTaskActive,
+    setRefineMode,
+    setRefineRange,
+    refineStartRef,
     isVisualDebugEnabled,
     isDevelopment,
-  ])
-
-  const handleResumeFromUrl = useCallback(() => {
-    setRestoredFromUrl(false)
-    const ds = demoStateRef.current
-    if (ds.constantId && ds.revealProgress < 1) {
-      narration.resume(ds.constantId)
-    }
-  }, [demoStateRef, narration])
-
-  // --- Share button ---
-  const [shareFeedback, setShareFeedback] = useState(false)
-  const [shareAtCurrentTime, setShareAtCurrentTime] = useState(false)
-  const handleShare = useCallback(async () => {
-    const ds = demoStateRef.current
-    const url = new URL(window.location.href)
-    if (ds.constantId && ds.phase !== 'idle') {
-      url.searchParams.set('demo', ds.constantId)
-      if (shareAtCurrentTime && ds.revealProgress > 0) {
-        url.searchParams.set('p', ds.revealProgress.toFixed(3))
-      } else {
-        url.searchParams.delete('p')
-      }
-    }
-    const shareUrl = url.href
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ url: shareUrl })
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      await navigator.clipboard.writeText(shareUrl)
-      setShareFeedback(true)
-      setTimeout(() => setShareFeedback(false), 2000)
-    }
-  }, [demoStateRef, shareAtCurrentTime])
-
-  const handleScrubberFocus = useCallback(() => {
-    if (scrubberTrackRef.current) {
-      scrubberTrackRef.current.style.outline = '2px solid rgba(168, 85, 247, 0.7)'
-      scrubberTrackRef.current.style.outlineOffset = '2px'
-    }
-  }, [])
-
-  const handleScrubberBlur = useCallback(() => {
-    if (scrubberTrackRef.current) {
-      scrubberTrackRef.current.style.outline = 'none'
-    }
-  }, [])
-
-  // Colors for scrubber (adapts to active demo)
-  const activeDemoId = demoStateRef.current.constantId
-  const scrubberTrackColor =
-    activeDemoId === 'pi'
-      ? resolvedTheme === 'dark'
-        ? 'rgba(96, 165, 250, 0.3)'
-        : 'rgba(37, 99, 235, 0.3)'
-      : activeDemoId === 'tau'
-        ? resolvedTheme === 'dark'
-          ? 'rgba(45, 212, 191, 0.3)'
-          : 'rgba(13, 148, 136, 0.3)'
-        : resolvedTheme === 'dark'
-          ? 'rgba(245, 158, 11, 0.3)'
-          : 'rgba(109, 40, 217, 0.3)'
-  const scrubberFillColor =
-    activeDemoId === 'pi'
-      ? resolvedTheme === 'dark'
-        ? '#60a5fa'
-        : '#2563eb'
-      : activeDemoId === 'tau'
-        ? resolvedTheme === 'dark'
-          ? '#2dd4bf'
-          : '#0d9488'
-        : resolvedTheme === 'dark'
-          ? '#fbbf24'
-          : '#a855f7'
-
-  // Compute segments overlapping the refine range
-  const refineSelectedSegments = useMemo(() => {
-    if (!refineMode || !refineRange || refineRange.end <= refineRange.start) return []
-    const cid = demoStateRef.current.constantId
-    if (!cid) return []
-    const cfg = NARRATION_CONFIGS[cid]
-    if (!cfg) return []
-    return cfg.segments
-      .map((seg, i) => ({ ...seg, index: i }))
-      .filter((seg) => seg.startProgress < refineRange.end && seg.endProgress > refineRange.start)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refineMode, refineRange])
+  })
+  speedResetRef.current = () => {
+    setDisplaySpeed(1)
+    setShowSpeedBadge(false)
+  }
 
   return (
     <div
@@ -3040,662 +1588,57 @@ export function NumberLine({
         {partyInvitees.length > 0 &&
           demoStateRef.current.phase === 'idle' &&
           tourStateRef.current.phase === 'idle' && (
-            <div
-              data-component="party-bar"
-              style={{
-                position: 'absolute',
-                bottom: 16,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 14px',
-                borderRadius: 12,
-                background:
-                  resolvedTheme === 'dark' ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.92)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
-                zIndex: 10,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {partyInvitees.map((stride) => (
-                <button
-                  key={stride}
-                  data-action="remove-invitee"
-                  onClick={() => handleToggleInvite(stride)}
-                  title={`Remove ${stride}`}
-                  style={{
-                    background: 'none',
-                    border: `2px solid ${resolvedTheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`,
-                    borderRadius: 8,
-                    padding: '2px 6px',
-                    cursor: 'pointer',
-                    fontSize: 14,
-                    color: resolvedTheme === 'dark' ? '#f3f4f6' : '#1f2937',
-                  }}
-                >
-                  {emojiForStride(stride)} {stride}
-                </button>
-              ))}
-              <span
-                data-element="lcm-preview"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: resolvedTheme === 'dark' ? '#a5b4fc' : '#4f46e5',
-                  marginLeft: 4,
-                }}
-              >
-                LCM = {lcm(partyInvitees)}
-              </span>
-              {partyInvitees.length >= 2 && (
-                <button
-                  data-action="start-party"
-                  onClick={startHoppingParty}
-                  style={{
-                    background: resolvedTheme === 'dark' ? '#4f46e5' : '#6366f1',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '4px 12px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginLeft: 4,
-                  }}
-                >
-                  Start Party!
-                </button>
-              )}
-              <button
-                data-action="clear-party"
-                onClick={() => setPartyInvitees([])}
-                title="Clear all"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
-                  padding: '0 2px',
-                  marginLeft: 2,
-                }}
-              >
-                ✕
-              </button>
-            </div>
+            <HoppingPartyBar
+              partyInvitees={partyInvitees}
+              isDark={resolvedTheme === 'dark'}
+              onToggleInvite={handleToggleInvite}
+              onStartParty={startHoppingParty}
+              onClearParty={() => setPartyInvitees([])}
+            />
           )}
-        {demoActive && restoredFromUrl && (
-          <button
-            data-action="demo-resume-from-url"
-            onClick={handleResumeFromUrl}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              minHeight: 56,
-              minWidth: 56,
-              padding: '14px 32px',
-              fontSize: 16,
-              fontWeight: 600,
-              fontFamily: 'system-ui, sans-serif',
-              color: '#fff',
-              backgroundColor: scrubberFillColor,
-              border: 'none',
-              borderRadius: 28,
-              cursor: 'pointer',
-              boxShadow: `0 4px 20px ${scrubberFillColor}66`,
-              zIndex: 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              transition: 'transform 0.15s, box-shadow 0.15s',
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            Resume
-          </button>
-        )}
-        {demoActive && (
-          <div
-            data-element="demo-share-group"
-            style={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              zIndex: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              gap: 4,
-            }}
-          >
-            <button
-              data-action="demo-share"
-              aria-label={
-                shareAtCurrentTime ? 'Share demo at current time' : 'Share demo from start'
-              }
-              onClick={handleShare}
-              style={{
-                minHeight: 44,
-                minWidth: 44,
-                padding: '10px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                fontFamily: 'system-ui, sans-serif',
-                color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.55)',
-                backgroundColor:
-                  resolvedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                border: `1px solid ${resolvedTheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
-                borderRadius: 10,
-                cursor: 'pointer',
-                backdropFilter: 'blur(4px)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                transition: 'opacity 0.15s',
-              }}
-            >
-              {shareFeedback ? (
-                <>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                    <polyline points="16 6 12 2 8 6" />
-                    <line x1="12" y1="2" x2="12" y2="15" />
-                  </svg>
-                  Share
-                </>
-              )}
-            </button>
-            {demoStateRef.current.revealProgress > 0 && (
-              <label
-                data-element="demo-share-timestamp-toggle"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontSize: 11,
-                  fontFamily: 'system-ui, sans-serif',
-                  color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
-                  cursor: 'pointer',
-                  padding: '2px 4px',
-                  userSelect: 'none',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={shareAtCurrentTime}
-                  onChange={(e) => setShareAtCurrentTime(e.target.checked)}
-                  style={{ margin: 0, accentColor: scrubberFillColor }}
-                />
-                at current time
-              </label>
-            )}
-          </div>
-        )}
         {demoActive &&
           demoStateRef.current.revealProgress >= 1 &&
           demoStateRef.current.constantId && (
-            <div
-              data-element="demo-recommendations"
-              style={{
-                position: 'absolute',
-                bottom: 'max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px))',
-                left: 0,
-                right: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 10,
-                pointerEvents: 'none',
-              }}
-            >
-              <div
-                data-element="demo-recommendations-label"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  fontFamily: 'system-ui, sans-serif',
-                  color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.35)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                Explore next
-              </div>
-              <div
-                data-element="demo-recommendations-cards"
-                style={{
-                  display: 'flex',
-                  gap: 10,
-                  pointerEvents: 'auto',
-                  width: '100%',
-                  padding: '0 12px',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {(DEMO_RECOMMENDATIONS[demoStateRef.current.constantId] ?? []).map((id) => {
-                  const d = DEMO_DISPLAY[id]
-                  if (!d) return null
-                  const mc = MATH_CONSTANTS.find((c) => c.id === id)
-                  const isDark = resolvedTheme === 'dark'
-                  const themeSuffix = isDark ? '-dark' : '-light'
-                  const imgSrc = mc?.metaphorImage?.replace('.png', `${themeSuffix}.png`)
-                  return (
-                    <button
-                      key={id}
-                      data-action={`explore-${id}`}
-                      onClick={() => handleExploreConstant(id)}
-                      style={{
-                        position: 'relative',
-                        flex: 1,
-                        height: 140,
-                        padding: 0,
-                        border: 'none',
-                        borderRadius: 14,
-                        cursor: 'pointer',
-                        overflow: 'hidden',
-                        background: isDark ? '#1a1a2e' : '#e8e8f0',
-                      }}
-                    >
-                      {imgSrc ? (
-                        <img
-                          src={imgSrc}
-                          alt=""
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block',
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 48,
-                            opacity: 0.3,
-                            fontFamily: 'system-ui, sans-serif',
-                          }}
-                        >
-                          {d.symbol}
-                        </div>
-                      )}
-                      {/* Gradient scrim for text legibility */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          height: '70%',
-                          background:
-                            'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 50%, transparent 100%)',
-                          pointerEvents: 'none',
-                        }}
-                      />
-                      {/* Text overlay */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          padding: '10px 12px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          gap: 2,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 22,
-                            fontWeight: 700,
-                            fontFamily: 'system-ui, sans-serif',
-                            color: '#fff',
-                            lineHeight: 1,
-                            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-                          }}
-                        >
-                          {d.symbol}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 500,
-                            fontFamily: 'system-ui, sans-serif',
-                            color: 'rgba(255,255,255,0.8)',
-                            textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-                          }}
-                        >
-                          {d.name}
-                        </span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            <DemoRecommendations
+              constantId={demoStateRef.current.constantId}
+              isDark={resolvedTheme === 'dark'}
+              onExplore={handleExploreConstant}
+            />
           )}
         {demoActive && (
-          <>
-            <button
-              ref={playPauseBtnRef}
-              data-action="demo-play-pause"
-              aria-label="Play or pause demo"
-              onClick={handlePlayPauseClick}
-              style={{
-                position: 'absolute',
-                bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-                left: 16,
-                width: 44,
-                height: 44,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-                opacity: 0,
-                pointerEvents: 'none',
-                transition: 'opacity 0.15s',
-                zIndex: 1,
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill={scrubberFillColor}>
-                <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
-              </svg>
-            </button>
-            <div
-              ref={timeDisplayRef}
-              data-element="demo-time-display"
-              aria-live="off"
-              style={{
-                position: 'absolute',
-                bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-                right: 12,
-                height: 48,
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: 11,
-                fontVariantNumeric: 'tabular-nums',
-                fontFamily: 'system-ui, sans-serif',
-                color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
-                pointerEvents: 'none',
-                opacity: 0,
-                transition: 'opacity 0.15s',
-                whiteSpace: 'nowrap',
-                letterSpacing: '0.02em',
-              }}
-            />
-            {/* Refine range selection track — separate from scrubber, same scale */}
-            {refineMode && (
-              <div
-                ref={refineTrackRef}
-                data-element="demo-refine-track"
-                onPointerDown={handleRefineTrackPointerDown}
-                onPointerMove={handleRefineTrackPointerMove}
-                onPointerUp={handleRefineTrackPointerUp}
-                onPointerCancel={handleRefineTrackPointerUp}
-                style={{
-                  position: 'absolute',
-                  bottom: `calc(max(16px, env(safe-area-inset-bottom, 0px)) + 48px + 4px)`,
-                  left: 68,
-                  right: 80,
-                  height: 24,
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: refineTaskActive ? 'default' : 'crosshair',
-                  touchAction: 'none',
-                  zIndex: 1,
-                }}
-              >
-                {/* Track background */}
-                <div
-                  data-element="demo-refine-track-bg"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor:
-                      resolvedTheme === 'dark'
-                        ? 'rgba(96, 165, 250, 0.15)'
-                        : 'rgba(96, 165, 250, 0.12)',
-                    border: `1px solid ${
-                      resolvedTheme === 'dark'
-                        ? 'rgba(96, 165, 250, 0.25)'
-                        : 'rgba(96, 165, 250, 0.2)'
-                    }`,
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {/* Selected range highlight */}
-                {refineRange && refineRange.end > refineRange.start && (
-                  <div
-                    data-element="demo-refine-range"
-                    style={{
-                      position: 'absolute',
-                      left: `${progressToScrubber(refineRange.start) * 100}%`,
-                      width: `${(progressToScrubber(refineRange.end) - progressToScrubber(refineRange.start)) * 100}%`,
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: 'rgba(96, 165, 250, 0.6)',
-                      border: '1px solid rgba(96, 165, 250, 0.9)',
-                      boxSizing: 'border-box',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                )}
-                {/* Label */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: -75,
-                    width: 70,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    fontFamily: 'system-ui, sans-serif',
-                    color: 'rgba(96, 165, 250, 0.8)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    textAlign: 'right',
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                  }}
-                >
-                  {refineRange && refineRange.end > refineRange.start
-                    ? `${Math.round(refineRange.start * 100)}–${Math.round(refineRange.end * 100)}%`
-                    : 'drag range'}
-                </div>
-              </div>
-            )}
-            <div
-              ref={scrubberTrackRef}
-              data-element="demo-scrubber"
-              role="slider"
-              aria-label={
-                demoStateRef.current.constantId === 'pi'
-                  ? 'Pi unrolling progress'
-                  : demoStateRef.current.constantId === 'tau'
-                    ? 'Tau unrolling progress'
-                    : 'Golden ratio convergence progress'
-              }
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={0}
-              tabIndex={0}
-              onPointerDown={handleScrubberPointerDown}
-              onPointerMove={handleScrubberPointerMove}
-              onPointerUp={handleScrubberPointerUp}
-              onPointerCancel={handleScrubberPointerUp}
-              onPointerLeave={handleScrubberPointerLeave}
-              onKeyDown={handleScrubberKeyDown}
-              onFocus={handleScrubberFocus}
-              onBlur={handleScrubberBlur}
-              style={{
-                position: 'absolute',
-                bottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-                left: 68,
-                right: 80,
-                height: 48,
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-                touchAction: 'none',
-                opacity: 0,
-                pointerEvents: 'none',
-                transition: 'opacity 0.15s',
-                outline: 'none',
-              }}
-            >
-              {/* Track background */}
-              <div
-                data-element="demo-scrubber-track-bg"
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: scrubberTrackColor,
-                }}
-              />
-              {/* (refine range moved to separate track above) */}
-              {/* Segment boundary tick marks */}
-              <div
-                ref={segmentTicksRef}
-                data-element="demo-scrubber-segment-ticks"
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  height: '100%',
-                  pointerEvents: 'none',
-                }}
-              />
-              {/* Floating segment label (visible during scrubbing) */}
-              <div
-                ref={segmentLabelRef}
-                data-element="demo-scrubber-segment-label"
-                style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  marginBottom: 6,
-                  transform: 'translateX(-50%)',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  fontFamily: 'system-ui, sans-serif',
-                  color: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)',
-                  whiteSpace: 'nowrap',
-                  pointerEvents: 'none',
-                  opacity: 0,
-                  transition: 'opacity 0.12s',
-                  textShadow:
-                    resolvedTheme === 'dark'
-                      ? '0 1px 4px rgba(0,0,0,0.8)'
-                      : '0 1px 3px rgba(255,255,255,0.9)',
-                }}
-              />
-              {/* Filled portion */}
-              <div
-                ref={scrubberFillRef}
-                data-element="demo-scrubber-fill"
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: scrubberFillColor,
-                  width: '0%',
-                }}
-              />
-              {/* Convergence gap indicator — colored bar above scrubber */}
-              <div
-                ref={scrubberGapRef}
-                data-element="demo-scrubber-gap"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  height: 4,
-                  borderRadius: 2,
-                  opacity: 0,
-                  transition: 'width 0.1s, background-color 0.15s, opacity 0.15s',
-                  pointerEvents: 'none',
-                }}
-              />
-              {/* Thumb: 44x44 invisible touch target wrapping a visible circle */}
-              <div
-                ref={scrubberThumbRef}
-                data-element="demo-scrubber-thumb"
-                style={{
-                  position: 'absolute',
-                  left: '0%',
-                  width: 44,
-                  height: 44,
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <div
-                  ref={scrubberThumbVisualRef}
-                  data-element="demo-scrubber-thumb-visual"
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    backgroundColor: scrubberFillColor,
-                    border: '3px solid white',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                    transition: 'transform 0.15s, box-shadow 0.15s',
-                    pointerEvents: 'none',
-                  }}
-                />
-              </div>
-            </div>
-          </>
+          <DemoScrubberControls
+            demoStateRef={demoStateRef}
+            narration={narration}
+            setRevealProgress={setRevealProgress}
+            startDemo={startDemo}
+            resolvedTheme={resolvedTheme}
+            restoredFromUrl={restoredFromUrl}
+            setRestoredFromUrl={setRestoredFromUrl}
+            isDevelopment={isDev}
+            onCaptureScreenshot={captureScreenshot}
+            scrubberTrackRef={scrubberTrackRef}
+            scrubberFillRef={scrubberFillRef}
+            scrubberThumbRef={scrubberThumbRef}
+            scrubberGapRef={scrubberGapRef}
+            playPauseBtnRef={playPauseBtnRef}
+            timeDisplayRef={timeDisplayRef}
+            segmentTicksRef={segmentTicksRef}
+            segmentLabelRef={segmentLabelRef}
+            isDraggingScrubberRef={isDraggingScrubberRef}
+            scrubberHoverProgressRef={scrubberHoverProgressRef}
+            refineMode={refineMode}
+            refineRange={refineRange}
+            setRefineRange={setRefineRange}
+            refineStartRef={refineStartRef}
+            refineTaskActive={refineTaskActive}
+            setRefineTaskActive={setRefineTaskActive}
+            setRefineMode={setRefineMode}
+            displaySpeed={displaySpeed}
+            setDisplaySpeed={setDisplaySpeed}
+            showSpeedBadge={showSpeedBadge}
+            setShowSpeedBadge={setShowSpeedBadge}
+            handlePlayPauseClick={handlePlayPauseClick}
+          />
         )}
         {(() => {
           const tooltipValue = forcedHoverValue ?? hoveredValue
@@ -3791,516 +1734,25 @@ export function NumberLine({
           />
         )}
         {!refineMode && (
-          <ToyDebugPanel title="Number Line">
-            <DebugSlider
-              label="Anchor max"
-              value={anchorMax}
-              min={1}
-              max={20}
-              step={1}
-              onChange={setAnchorMax}
-            />
-            <DebugSlider
-              label="Medium max"
-              value={mediumMax}
-              min={5}
-              max={50}
-              step={1}
-              onChange={setMediumMax}
-            />
-            <label
-              data-element="constants-toggle"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
-            >
-              <input
-                type="checkbox"
-                checked={constantsEnabled}
-                onChange={(e) => setConstantsEnabled(e.target.checked)}
-              />
-              Math Constants
-            </label>
-            <label
-              data-element="primes-toggle"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
-            >
-              <input
-                type="checkbox"
-                checked={primesEnabled}
-                onChange={(e) => {
-                  setPrimesEnabled(e.target.checked)
-                  scheduleRedraw()
-                }}
-              />
-              Primes (Sieve)
-            </label>
-            <div
-              data-element="phi-tuning-section"
-              style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 2 }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  opacity: 0.5,
-                  marginBottom: 6,
-                }}
-              >
-                φ Scrubber Tuning
-              </div>
-              <DebugSlider
-                label="Step decay"
-                value={debugDecay}
-                min={0.8}
-                max={0.99}
-                step={0.005}
-                onChange={handleDecayChange}
-                formatValue={(v) => v.toFixed(3)}
-              />
-              <DebugSlider
-                label="Scrubber log base"
-                value={debugLogBase}
-                min={1}
-                max={32}
-                step={0.5}
-                onChange={handleLogBaseChange}
-                formatValue={(v) => v.toFixed(1)}
-              />
-              <div
-                style={{
-                  fontSize: 10,
-                  opacity: 0.6,
-                  fontVariantNumeric: 'tabular-nums',
-                  marginTop: 2,
-                }}
-              >
-                50% → {arcReadout.at50} arcs · 75% → {arcReadout.at75} arcs · total {NUM_LEVELS}
-              </div>
-            </div>
-            <div
-              data-element="phi-centering-section"
-              style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 2 }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  opacity: 0.5,
-                  marginBottom: 6,
-                }}
-              >
-                Phi Image Centering
-              </div>
-              <label
-                data-element="centering-toggle"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
-              >
-                <input
-                  type="checkbox"
-                  checked={centering.enabled}
-                  onChange={(e) => centering.setEnabled(e.target.checked)}
-                />
-                Enable Centering
-              </label>
-              {centering.enabled && (
-                <>
-                  <div
-                    data-element="centering-subject"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    <span style={{ opacity: 0.7, minWidth: 50 }}>Subject:</span>
-                    <button
-                      data-action="centering-prev-subject"
-                      onClick={centering.prevSubject}
-                      style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        border: 'none',
-                        color: 'inherit',
-                        borderRadius: 4,
-                        padding: '2px 6px',
-                        cursor: 'pointer',
-                        fontSize: 12,
-                      }}
-                    >
-                      ◀
-                    </button>
-                    <span
-                      style={{ flex: 1, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {centering.subjectId}
-                    </span>
-                    <button
-                      data-action="centering-next-subject"
-                      onClick={centering.nextSubject}
-                      style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        border: 'none',
-                        color: 'inherit',
-                        borderRadius: 4,
-                        padding: '2px 6px',
-                        cursor: 'pointer',
-                        fontSize: 12,
-                      }}
-                    >
-                      ▶
-                    </button>
-                  </div>
-                  <div
-                    data-element="centering-theme"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      fontSize: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    <span style={{ opacity: 0.7, minWidth: 50 }}>Theme:</span>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <input
-                        type="radio"
-                        name="centering-theme"
-                        checked={centering.theme === 'light'}
-                        onChange={() => centering.setTheme('light')}
-                      />
-                      light
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <input
-                        type="radio"
-                        name="centering-theme"
-                        checked={centering.theme === 'dark'}
-                        onChange={() => centering.setTheme('dark')}
-                      />
-                      dark
-                    </label>
-                  </div>
-                  <DebugSlider
-                    label="Scale"
-                    value={centering.alignment.scale}
-                    min={0.1}
-                    max={3}
-                    step={0.01}
-                    onChange={(v) => centering.updateAlignment({ scale: v })}
-                    formatValue={(v) => v.toFixed(3)}
-                  />
-                  <DebugSlider
-                    label="Rotation"
-                    value={centering.alignment.rotation}
-                    min={-720}
-                    max={720}
-                    step={0.5}
-                    onChange={(v) => centering.updateAlignment({ rotation: v })}
-                    formatValue={(v) => `${v.toFixed(1)}°`}
-                  />
-                  <DebugSlider
-                    label="Offset X"
-                    value={centering.alignment.offsetX}
-                    min={-1}
-                    max={1}
-                    step={0.001}
-                    onChange={(v) => centering.updateAlignment({ offsetX: v })}
-                    formatValue={(v) => v.toFixed(3)}
-                  />
-                  <DebugSlider
-                    label="Offset Y"
-                    value={centering.alignment.offsetY}
-                    min={-1}
-                    max={1}
-                    step={0.001}
-                    onChange={(v) => centering.updateAlignment({ offsetY: v })}
-                    formatValue={(v) => v.toFixed(3)}
-                  />
-                  <div
-                    data-element="centering-actions"
-                    style={{ display: 'flex', gap: 6, marginTop: 4 }}
-                  >
-                    <button
-                      data-action="centering-reset"
-                      onClick={centering.resetAlignment}
-                      style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        border: 'none',
-                        color: 'inherit',
-                        borderRadius: 4,
-                        padding: '4px 10px',
-                        cursor: 'pointer',
-                        fontSize: 11,
-                      }}
-                    >
-                      Reset
-                    </button>
-                    <span
-                      style={{ fontSize: 10, opacity: 0.6, display: 'flex', alignItems: 'center' }}
-                    >
-                      {centering.saving ? 'Saving...' : centering.dirty ? 'Unsaved' : 'Saved'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4 }}>
-                    Drag=move · Shift+drag=rotate · Scroll=scale
-                  </div>
-                </>
-              )}
-            </div>
-            <div
-              data-element="sieve-tuning-section"
-              style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 2 }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  opacity: 0.5,
-                  marginBottom: 6,
-                }}
-              >
-                Sieve Tuning
-              </div>
-              <DebugSlider
-                label="Tracking range"
-                value={debugTrackingRange}
-                min={5}
-                max={60}
-                step={1}
-                onChange={handleTrackingRangeChange}
-                formatValue={(v) => `${v} ints`}
-              />
-              <DebugSlider
-                label="Follow hops"
-                value={debugFollowHops}
-                min={1}
-                max={40}
-                step={1}
-                onChange={handleFollowHopsChange}
-              />
-              <DebugSlider
-                label="Speed"
-                value={debugSieveSpeed}
-                min={0.25}
-                max={4}
-                step={0.25}
-                onChange={handleSieveSpeedChange}
-                formatValue={(v) => `${v}x`}
-              />
-            </div>
-          </ToyDebugPanel>
+          <NumberLineDebugPanel
+            thresholdsRef={thresholdsRef}
+            scheduleRedraw={scheduleRedraw}
+            constantsEnabled={constantsEnabled}
+            setConstantsEnabled={setConstantsEnabled}
+            primesEnabled={primesEnabled}
+            setPrimesEnabled={setPrimesEnabled}
+            centering={centering}
+            resolvedTheme={resolvedTheme}
+          />
         )}
-        {!refineMode && isVisualDebugEnabled && voiceState !== 'idle' && modeDebug && (
-          <div
-            data-component="voice-mode-debug"
-            style={{
-              position: 'fixed',
-              top: 'calc(var(--app-nav-height, 56px) + 16px)',
-              left: 16,
-              zIndex: 9999,
-              background: 'rgba(17,24,39,0.93)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: 8,
-              padding: '12px 16px',
-              color: 'rgba(243,244,246,1)',
-              fontSize: 12,
-              width: 280,
-              maxHeight: 'calc(100dvh - var(--app-nav-height, 56px) - 48px)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              pointerEvents: 'auto',
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                opacity: 0.6,
-                marginBottom: 8,
-                flexShrink: 0,
-              }}
-            >
-              Voice State Machine
-            </div>
-
-            {/* Current state — prominent pill */}
-            <div
-              data-element="current-mode"
-              style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}
-            >
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '2px 10px',
-                  borderRadius: 12,
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: '#fff',
-                  background:
-                    (
-                      {
-                        answering: '#3b82f6',
-                        familiarizing: '#8b5cf6',
-                        default: '#22c55e',
-                        conference: '#06b6d4',
-                        exploration: '#f59e0b',
-                        game: '#ef4444',
-                        winding_down: '#f97316',
-                        hanging_up: '#6b7280',
-                      } as Record<string, string>
-                    )[modeDebug.current] ?? '#6b7280',
-                }}
-              >
-                {modeDebug.current}
-              </span>
-              {modeDebug.previous && (
-                <span style={{ opacity: 0.5, fontSize: 11 }}>
-                  {'<-'} {modeDebug.previous}
-                </span>
-              )}
-            </div>
-
-            {/* Active game ID */}
-            {activeGameId && (
-              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>
-                Game: {activeGameId}
-              </div>
-            )}
-
-            {/* Transition log — scrollable, newest on top */}
-            <div
-              data-element="transition-log"
-              style={{
-                overflowY: 'auto',
-                flex: 1,
-                minHeight: 0,
-                maxHeight: 200,
-                borderTop: '1px solid rgba(255,255,255,0.1)',
-                paddingTop: 6,
-                marginTop: 2,
-              }}
-            >
-              {[...modeDebug.transitions].reverse().map((t, i) => {
-                const age = Date.now() - t.timestamp
-                const ageStr =
-                  age < 60_000 ? `${Math.round(age / 1000)}s` : `${Math.round(age / 60_000)}m`
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      gap: 6,
-                      fontSize: 10,
-                      lineHeight: '18px',
-                      opacity: i === 0 ? 1 : 0.6,
-                    }}
-                  >
-                    <span
-                      style={{ color: '#9ca3af', minWidth: 24, textAlign: 'right', flexShrink: 0 }}
-                    >
-                      {ageStr}
-                    </span>
-                    <span style={{ flexShrink: 0 }}>
-                      {t.from} {'>'} {t.to}
-                    </span>
-                    <span
-                      style={{
-                        color: '#6b7280',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {t.action}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Active tools list */}
-            {modeDebug.transitions.length > 0 && (
-              <div
-                data-element="active-tools"
-                style={{
-                  fontSize: 10,
-                  color: '#6b7280',
-                  marginTop: 6,
-                  borderTop: '1px solid rgba(255,255,255,0.1)',
-                  paddingTop: 6,
-                  wordBreak: 'break-word',
-                }}
-              >
-                Tools: {modeDebug.transitions[modeDebug.transitions.length - 1].tools.join(', ')}
-              </div>
-            )}
-          </div>
-        )}
-        {!refineMode && isVisualDebugEnabled && currentInstructions && (
-          <div
-            data-component="voice-context-debug"
-            style={{
-              position: 'fixed',
-              bottom: 16,
-              right: 16,
-              zIndex: 9999,
-              background: 'rgba(17,24,39,0.93)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: 8,
-              padding: '12px 16px',
-              color: 'rgba(243,244,246,1)',
-              fontSize: 12,
-              width: 'min(520px, calc(100vw - 320px))',
-              maxHeight: 'calc(100dvh - var(--app-nav-height, 56px) - 48px)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              pointerEvents: 'auto',
-            }}
-          >
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                opacity: 0.6,
-                marginBottom: 8,
-                flexShrink: 0,
-              }}
-            >
-              Voice Agent Context ({Math.round(currentInstructions.length / 1000)}k chars)
-            </div>
-            <pre
-              data-element="voice-context-text"
-              style={{
-                margin: 0,
-                padding: 8,
-                background: 'rgba(0,0,0,0.3)',
-                borderRadius: 6,
-                fontSize: 10,
-                lineHeight: 1.4,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                overflowY: 'auto',
-                flex: 1,
-                minHeight: 0,
-                color: 'rgba(209, 213, 219, 0.9)',
-                fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-              }}
-            >
-              {currentInstructions}
-            </pre>
-          </div>
+        {!refineMode && isVisualDebugEnabled && (
+          <VoiceDebugPanels
+            voiceState={voiceState}
+            modeDebug={modeDebug}
+            activeGameId={activeGameId}
+            currentInstructions={currentInstructions}
+            isDark={resolvedTheme === 'dark'}
+          />
         )}
         {(() => {
           const fv = forcedHoverValue ?? hoveredValue
@@ -4349,199 +1801,15 @@ export function NumberLine({
           )
         })()}
 
-        {/* Playback speed badge — flashes on change */}
-        {showSpeedBadge && demoStateRef.current.phase !== 'idle' && (
-          <div
-            data-element="speed-badge"
-            style={{
-              position: 'absolute',
-              top: 16,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 190,
-              backgroundColor: 'rgba(0,0,0,0.75)',
-              color: '#fff',
-              borderRadius: 8,
-              padding: '6px 16px',
-              fontFamily: 'system-ui, sans-serif',
-              fontSize: 15,
-              fontWeight: 600,
-              pointerEvents: 'none',
-              transition: 'opacity 0.3s',
-            }}
-          >
-            {displaySpeed}x
-          </div>
-        )}
-
         {/* Keyboard shortcuts overlay */}
-        {showShortcuts &&
-          demoStateRef.current.phase !== 'idle' &&
-          (() => {
-            const dark = resolvedTheme === 'dark'
-            return (
-              <div
-                data-element="keyboard-shortcuts-overlay"
-                onClick={() => setShowShortcuts(false)}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  zIndex: 200,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.6)',
-                  backdropFilter: 'blur(4px)',
-                }}
-              >
-                <div
-                  data-element="keyboard-shortcuts-card"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    backgroundColor: dark ? '#1e293b' : '#ffffff',
-                    color: dark ? '#e2e8f0' : '#1e293b',
-                    borderRadius: 12,
-                    padding: '20px 28px',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                    maxWidth: 360,
-                    width: '90%',
-                    fontFamily: 'system-ui, sans-serif',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 16,
-                    }}
-                  >
-                    <span style={{ fontWeight: 700, fontSize: 16 }}>Keyboard Shortcuts</span>
-                    <button
-                      data-action="close-shortcuts"
-                      onClick={() => setShowShortcuts(false)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: dark ? '#94a3b8' : '#64748b',
-                        fontSize: 20,
-                        lineHeight: 1,
-                        padding: '2px 6px',
-                      }}
-                    >
-                      &times;
-                    </button>
-                  </div>
-                  {(
-                    [
-                      ['Space', 'Play / pause'],
-                      ['\u2190 / \u2192', 'Scrub \u00b15%'],
-                      ['Shift + \u2190 / \u2192', 'Fine scrub \u00b12%'],
-                      ['J / L', 'Scrub \u00b110%'],
-                      ['< / >', 'Playback speed'],
-                      ['Home / End', 'Jump to start / end'],
-                      ...(isVisualDebugEnabled ? [['R', 'Refine mode'] as const] : []),
-                      ['?', 'Toggle this help'],
-                      ['Esc', 'Close'],
-                    ] as const
-                  ).map(([key, desc]) => (
-                    <div
-                      key={key}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '5px 0',
-                      }}
-                    >
-                      <kbd
-                        style={{
-                          backgroundColor: dark ? '#334155' : '#f1f5f9',
-                          color: dark ? '#e2e8f0' : '#334155',
-                          borderRadius: 4,
-                          padding: '2px 8px',
-                          fontSize: 12,
-                          fontFamily: 'system-ui, sans-serif',
-                          fontWeight: 600,
-                          border: `1px solid ${dark ? '#475569' : '#cbd5e1'}`,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {key}
-                      </kbd>
-                      <span
-                        style={{
-                          fontSize: 13,
-                          color: dark ? '#94a3b8' : '#64748b',
-                          marginLeft: 12,
-                        }}
-                      >
-                        {desc}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
-
-        {/* REFINE MODE badge (dev-only) */}
-        {isDev && refineMode && demoActive && (
-          <div
-            data-element="refine-mode-badge"
-            style={{
-              position: 'absolute',
-              top: 10,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 190,
-              padding: '4px 14px',
-              borderRadius: 6,
-              backgroundColor: 'rgba(96, 165, 250, 0.2)',
-              border: '1px solid rgba(96, 165, 250, 0.5)',
-              color: resolvedTheme === 'dark' ? '#93c5fd' : '#2563eb',
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: 'system-ui, sans-serif',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              pointerEvents: 'none',
-              userSelect: 'none',
-            }}
-          >
-            Refine Mode
-          </div>
+        {showShortcuts && demoStateRef.current.phase !== 'idle' && (
+          <KeyboardShortcutsOverlay
+            isDark={resolvedTheme === 'dark'}
+            showRefineMode={isVisualDebugEnabled}
+            onClose={() => setShowShortcuts(false)}
+          />
         )}
 
-        {/* Demo Refine Panel (dev-only — never renders in production) */}
-        {isDev &&
-          refineMode &&
-          demoStateRef.current.constantId &&
-          (refineTaskActive || (refineRange && refineRange.end > refineRange.start)) && (
-            <DemoRefinePanel
-              constantId={demoStateRef.current.constantId}
-              startProgress={refineRange?.start ?? 0}
-              endProgress={refineRange?.end ?? 1}
-              segments={refineSelectedSegments}
-              isDark={resolvedTheme === 'dark'}
-              onCaptureScreenshot={captureScreenshot}
-              onClose={() => {
-                setRefineMode(false)
-                setRefineRange(null)
-                refineStartRef.current = null
-                setRefineTaskActive(false)
-                try {
-                  sessionStorage.removeItem('refine-active-task')
-                } catch {}
-              }}
-              onComplete={() => {
-                window.location.reload()
-              }}
-              onTaskStart={() => setRefineTaskActive(true)}
-              onTaskEnd={() => setRefineTaskActive(false)}
-            />
-          )}
       </div>
     </div>
   )
