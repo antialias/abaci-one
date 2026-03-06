@@ -635,7 +635,9 @@ export function ActiveSession({
     if (typeof window === 'undefined') return
     try {
       if (localStorage.getItem('helpDebugTiming') !== 'true') return
-    } catch { return }
+    } catch {
+      return
+    }
 
     const timing = getProgressiveAssistanceTiming(shouldUseDebugTiming())
     const rows = plan.parts.flatMap((part, pi) =>
@@ -653,7 +655,9 @@ export function ActiveSession({
         }
       })
     )
-    console.log(`[autopause] Complexity thresholds (${historicalResults.length} historical + ${plan.results.length} session results):`)
+    console.log(
+      `[autopause] Complexity thresholds (${historicalResults.length} historical + ${plan.results.length} session results):`
+    )
     console.table(rows)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historicalResults])
