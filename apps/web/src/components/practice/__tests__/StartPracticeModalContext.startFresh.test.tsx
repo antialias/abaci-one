@@ -114,10 +114,9 @@ const existingPlan = {
   targetDurationMinutes: 10,
 } as SessionPlan
 
-function createWrapper(overrides: {
-  existingPlan?: SessionPlan | null
-  startFresh?: boolean
-} = {}) {
+function createWrapper(
+  overrides: { existingPlan?: SessionPlan | null; startFresh?: boolean } = {}
+) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <StartPracticeModalProvider

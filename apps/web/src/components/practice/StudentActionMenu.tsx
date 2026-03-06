@@ -67,7 +67,10 @@ export function StudentActionMenu({
           <button
             type="button"
             data-action="open-menu"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
             className={css({
               // Card variant: absolute positioned overlay on cards
               ...(variant === 'card' && {

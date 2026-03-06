@@ -46,21 +46,19 @@ function keysAsStrings(keys: readonly (readonly string[])[]): string[][] {
 
 describe('query-invalidations', () => {
   describe('enrollment events invalidate BOTH sides', () => {
-    it.each(ENROLLMENT_EVENTS)(
-      '%s invalidates classroomKeys.enrollments when classroomId provided',
-      (event) => {
-        const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
-        expect(keys).toContainEqual([...classroomKeys.enrollments(C)])
-      }
-    )
+    it.each(
+      ENROLLMENT_EVENTS
+    )('%s invalidates classroomKeys.enrollments when classroomId provided', (event) => {
+      const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
+      expect(keys).toContainEqual([...classroomKeys.enrollments(C)])
+    })
 
-    it.each(ENROLLMENT_EVENTS)(
-      '%s invalidates playerKeys.enrolledClassrooms when playerId provided',
-      (event) => {
-        const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
-        expect(keys).toContainEqual([...playerKeys.enrolledClassrooms(P)])
-      }
-    )
+    it.each(
+      ENROLLMENT_EVENTS
+    )('%s invalidates playerKeys.enrolledClassrooms when playerId provided', (event) => {
+      const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
+      expect(keys).toContainEqual([...playerKeys.enrolledClassrooms(P)])
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -68,21 +66,19 @@ describe('query-invalidations', () => {
   // ---------------------------------------------------------------------------
 
   describe('presence events invalidate BOTH sides', () => {
-    it.each(PRESENCE_EVENTS)(
-      '%s invalidates classroomKeys.presence when classroomId provided',
-      (event) => {
-        const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
-        expect(keys).toContainEqual([...classroomKeys.presence(C)])
-      }
-    )
+    it.each(
+      PRESENCE_EVENTS
+    )('%s invalidates classroomKeys.presence when classroomId provided', (event) => {
+      const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
+      expect(keys).toContainEqual([...classroomKeys.presence(C)])
+    })
 
-    it.each(PRESENCE_EVENTS)(
-      '%s invalidates playerKeys.presence when playerId provided',
-      (event) => {
-        const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
-        expect(keys).toContainEqual([...playerKeys.presence(P)])
-      }
-    )
+    it.each(
+      PRESENCE_EVENTS
+    )('%s invalidates playerKeys.presence when playerId provided', (event) => {
+      const keys = keysAsStrings(getInvalidationKeys(event, { classroomId: C, playerId: P }))
+      expect(keys).toContainEqual([...playerKeys.presence(P)])
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -174,9 +170,7 @@ describe('query-invalidations', () => {
     })
 
     it('entryPromptAccepted invalidates pending prompts AND classroom presence', () => {
-      const keys = keysAsStrings(
-        getInvalidationKeys('entryPromptAccepted', { classroomId: C })
-      )
+      const keys = keysAsStrings(getInvalidationKeys('entryPromptAccepted', { classroomId: C }))
       expect(keys).toContainEqual([...entryPromptKeys.pending()])
       expect(keys).toContainEqual([...classroomKeys.presence(C)])
     })
@@ -198,9 +192,7 @@ describe('query-invalidations', () => {
     })
 
     it('enrollmentCompleted without playerId still invalidates classroom side and player list', () => {
-      const keys = keysAsStrings(
-        getInvalidationKeys('enrollmentCompleted', { classroomId: C })
-      )
+      const keys = keysAsStrings(getInvalidationKeys('enrollmentCompleted', { classroomId: C }))
       expect(keys).toContainEqual([...classroomKeys.enrollments(C)])
       // Per-player key should NOT be present since no playerId
       const perPlayerKeys = keys.filter(
@@ -226,29 +218,28 @@ describe('query-invalidations', () => {
   // ---------------------------------------------------------------------------
 
   describe('invalidateForEvent stays in sync with getInvalidationKeys', () => {
-    it.each(ALL_EVENTS)(
-      '%s: invalidateForEvent calls invalidateQueries with exactly the keys from getInvalidationKeys',
-      (event) => {
-        const params = { classroomId: C, playerId: P }
-        const expectedKeys = getInvalidationKeys(event, params)
+    it.each(
+      ALL_EVENTS
+    )('%s: invalidateForEvent calls invalidateQueries with exactly the keys from getInvalidationKeys', (event) => {
+      const params = { classroomId: C, playerId: P }
+      const expectedKeys = getInvalidationKeys(event, params)
 
-        const queryClient = new QueryClient()
-        const spy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+      const queryClient = new QueryClient()
+      const spy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
-        invalidateForEvent(queryClient, event, params)
+      invalidateForEvent(queryClient, event, params)
 
-        const calledKeys = spy.mock.calls.map((call) => {
-          const opts = call[0] as { queryKey: readonly string[] }
-          return [...opts.queryKey]
-        })
+      const calledKeys = spy.mock.calls.map((call) => {
+        const opts = call[0] as { queryKey: readonly string[] }
+        return [...opts.queryKey]
+      })
 
-        expect(calledKeys).toHaveLength(expectedKeys.length)
-        for (const key of expectedKeys) {
-          expect(calledKeys).toContainEqual([...key])
-        }
-
-        spy.mockRestore()
+      expect(calledKeys).toHaveLength(expectedKeys.length)
+      for (const key of expectedKeys) {
+        expect(calledKeys).toContainEqual([...key])
       }
-    )
+
+      spy.mockRestore()
+    })
   })
 })

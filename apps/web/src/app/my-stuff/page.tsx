@@ -129,17 +129,19 @@ export default function MyStuffPage() {
                 >
                   <StudentActionMenu
                     variant="card"
-                    student={{
-                      id: player.id,
-                      name: player.name,
-                      isArchived: player.isArchived,
-                      relationship: {
-                        isMyChild: true,
-                        isEnrolled: false,
-                        isPresent: false,
-                        enrollmentStatus: null,
-                      },
-                    } satisfies StudentActionData}
+                    student={
+                      {
+                        id: player.id,
+                        name: player.name,
+                        isArchived: player.isArchived,
+                        relationship: {
+                          isMyChild: true,
+                          isEnrolled: false,
+                          isPresent: false,
+                          enrollmentStatus: null,
+                        },
+                      } satisfies StudentActionData
+                    }
                   />
                   <span className={css({ fontSize: '36px', lineHeight: '1' })}>
                     {player.emoji ?? '🧒'}
