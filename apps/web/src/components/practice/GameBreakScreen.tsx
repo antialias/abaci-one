@@ -9,6 +9,7 @@ import type { GameBreakSelectionMode, PracticeBreakGameConfig } from '@/db/schem
 import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { css } from '../../../styled-system/css'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { PracticeGameModeProvider } from './PracticeGameModeProvider'
 import { useGameBreakAudio } from './hooks/useGameBreakAudio'
 
@@ -73,6 +74,15 @@ export function GameBreakScreen({
 
   // Speak game break cues on phase transitions
   useGameBreakAudio({ phase, isVisible })
+
+  // Hide the floating abacus button while a game is playing
+  const { setIsHidden: setAbacusHidden } = useMyAbacus()
+  useEffect(() => {
+    if (phase === 'playing') {
+      setAbacusHidden(true)
+      return () => setAbacusHidden(false)
+    }
+  }, [phase, setAbacusHidden])
 
   const maxDurationMs = maxDurationMinutes * 60 * 1000
 
