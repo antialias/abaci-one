@@ -14,6 +14,7 @@ export const PRACTICE_APPROVED_GAMES = [
   'music-matching', // Sight-reading practice, solo-friendly
   'know-your-world', // Geography quiz, single-player cooperative
   'type-racer-jr', // Typing game, single-player
+  'constant-explorer', // Narrated math constant explorations (calm break)
 ] as const
 
 export type PracticeApprovedGameName = (typeof PRACTICE_APPROVED_GAMES)[number]

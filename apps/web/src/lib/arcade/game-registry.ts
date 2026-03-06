@@ -115,12 +115,14 @@ import { musicMatchingGame } from '@/arcade-games/music-matching'
 import { knowYourWorldGame } from '@/arcade-games/know-your-world'
 import { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import { typeRacerJrGame } from '@/arcade-games/type-racer-jr'
+import { constantExplorerGame } from '@/arcade-games/constant-explorer'
 
 registerGame(matchingGame)
 registerGame(musicMatchingGame)
 registerGame(knowYourWorldGame)
 registerGame(memoryQuizGame)
 registerGame(typeRacerJrGame)
+registerGame(constantExplorerGame)
 
 // All other games are loaded on demand — only pages that need the full
 // registry (arcade, home, games list) call ensureAllGamesRegistered().

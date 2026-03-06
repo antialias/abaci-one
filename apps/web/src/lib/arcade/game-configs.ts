@@ -15,6 +15,7 @@ import type { KnowYourWorldConfig } from '@/arcade-games/know-your-world/types'
 import type { ComplementRaceGameConfig } from '@/arcade-games/complement-race/types'
 import type { MusicConfig } from '@/arcade-games/music-matching/types'
 import type { TypeRacerJrConfig } from '@/arcade-games/type-racer-jr/types'
+import type { ConstantExplorerConfig } from '@/arcade-games/constant-explorer/types'
 
 // Re-export all config types
 export type { MemoryQuizConfig as MemoryQuizGameConfig } from '@/arcade-games/memory-quiz/types'
@@ -26,6 +27,7 @@ export type { KnowYourWorldConfig } from '@/arcade-games/know-your-world/types'
 export type { ComplementRaceGameConfig } from '@/arcade-games/complement-race/types'
 export type { MusicConfig as MusicMatchingConfig } from '@/arcade-games/music-matching/types'
 export type { TypeRacerJrConfig } from '@/arcade-games/type-racer-jr/types'
+export type { ConstantExplorerConfig } from '@/arcade-games/constant-explorer/types'
 
 // ============================================================================
 // Combined Types
@@ -44,6 +46,7 @@ export type GameConfigByName = {
   'complement-race': ComplementRaceGameConfig
   'music-matching': MusicConfig
   'type-racer-jr': TypeRacerJrConfig
+  'constant-explorer': ConstantExplorerConfig
 }
 
 /**
@@ -147,4 +150,7 @@ export const DEFAULT_CONFIGS: Record<string, GameConfigByName[keyof GameConfigBy
     keyboardLayout: 'qwerty',
     showVirtualKeyboard: false,
   } satisfies TypeRacerJrConfig,
+  'constant-explorer': {
+    constantId: 'random',
+  } satisfies ConstantExplorerConfig,
 }

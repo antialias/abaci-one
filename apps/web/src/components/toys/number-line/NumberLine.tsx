@@ -25,15 +25,9 @@ import { computeAllConstantVisibilities } from './constants/computeConstantVisib
 import { updateConstantMarkerDOM } from './constants/updateConstantMarkerDOM'
 import { ConstantInfoCard } from './constants/ConstantInfoCard'
 import { useConstantDemo } from './constants/demos/useConstantDemo'
-import {
-  CONSTANT_IDS,
-  DEMO_RECOMMENDATIONS,
-} from './talkToNumber/explorationRegistry'
+import { CONSTANT_IDS, DEMO_RECOMMENDATIONS } from './talkToNumber/explorationRegistry'
 import { GAME_MAP } from './talkToNumber/gameRegistry'
-import {
-  renderGoldenRatioOverlay,
-  computeSweepTransform,
-} from './constants/demos/goldenRatioDemo'
+import { renderGoldenRatioOverlay, computeSweepTransform } from './constants/demos/goldenRatioDemo'
 import { DEMO_OVERLAY_RENDERERS } from './constants/demos/demoOverlayRegistry'
 import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
 import { useConstantDemoNarration } from './constants/demos/useConstantDemoNarration'
@@ -109,24 +103,35 @@ function updateDemoUrlParams(constantId: string | null, progress: number) {
   }
 }
 
-
 const INITIAL_STATE: NumberLineState = {
   center: 0,
   pixelsPerUnit: 100,
 }
 
 /** Determine decimal precision of a target number (for hint phrasing). */
+export type NumberLineMode = 'standalone' | 'exploration-break'
+
 interface NumberLineProps {
   playerId?: string
   onPlayerIdentified?: (playerId: string) => void
   onCallStateChange?: (state: CallState) => void
+  /** When 'exploration-break', suppresses voice/game/debug UI and auto-plays a demo */
+  mode?: NumberLineMode
+  /** Constant ID to auto-play on mount (e.g. 'pi', 'phi'). Only used in exploration-break mode. */
+  autoPlayDemo?: string
+  /** Fires when the auto-played demo's narration completes (revealProgress >= 1) */
+  onDemoComplete?: (constantId: string) => void
 }
 
 export function NumberLine({
   playerId,
   onPlayerIdentified,
   onCallStateChange,
+  mode = 'standalone',
+  autoPlayDemo,
+  onDemoComplete,
 }: NumberLineProps = {}) {
+  const isBreakMode = mode === 'exploration-break'
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const stateRef = useRef<NumberLineState>({ ...INITIAL_STATE })
   const rafRef = useRef<number>(0)
@@ -204,6 +209,8 @@ export function NumberLine({
   // --- Demo URL restore (runs once on first resize) ---
   const hasRestoredRef = useRef(false)
   const [restoredFromUrl, setRestoredFromUrl] = useState(false)
+  // Track whether onDemoComplete has been fired (fire once per demo)
+  const demoCompleteFireRef = useRef(false)
 
   // --- Demo scrubber state ---
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
@@ -616,10 +623,30 @@ export function NumberLine({
       }
     }
 
+    // Fire onDemoComplete when narration finishes (once per demo)
+    {
+      const ds = demoStateRef.current
+      if (
+        onDemoComplete &&
+        !demoCompleteFireRef.current &&
+        ds.phase === 'presenting' &&
+        ds.revealProgress >= 1 &&
+        ds.constantId
+      ) {
+        demoCompleteFireRef.current = true
+        onDemoComplete(ds.constantId)
+      }
+      // Reset the flag when demo returns to idle (so next demo can fire again)
+      if (ds.phase === 'idle') {
+        demoCompleteFireRef.current = false
+      }
+    }
+
     // Write demo state to URL params (debounced).
     // Skip until restore has been attempted — otherwise the first draw()
     // (which runs before restore) clears the params while demo is still idle.
-    if (hasRestoredRef.current) {
+    // Also skip in break mode — no URL persistence for embedded explorations.
+    if (hasRestoredRef.current && !isBreakMode) {
       const ds = demoStateRef.current
       if (ds.phase !== 'idle' && ds.constantId) {
         updateDemoUrlParams(ds.constantId, ds.revealProgress)
@@ -1165,15 +1192,20 @@ export function NumberLine({
       // Restore demo from URL params on first resize (canvas dimensions now set)
       if (!hasRestoredRef.current) {
         hasRestoredRef.current = true
-        const params = new URLSearchParams(window.location.search)
-        const demoId = params.get('demo')
-        const progressStr = params.get('p')
-        if (demoId && CONSTANT_IDS.has(demoId)) {
-          const progress = progressStr !== null ? parseFloat(progressStr) : 0
-          if (!isNaN(progress)) {
-            restoreDemo(demoId, progress)
-            narration.markTriggered(demoId)
-            setRestoredFromUrl(true)
+        if (isBreakMode && autoPlayDemo) {
+          // In exploration-break mode, auto-start the specified demo
+          startDemo(autoPlayDemo)
+        } else {
+          const params = new URLSearchParams(window.location.search)
+          const demoId = params.get('demo')
+          const progressStr = params.get('p')
+          if (demoId && CONSTANT_IDS.has(demoId)) {
+            const progress = progressStr !== null ? parseFloat(progressStr) : 0
+            if (!isNaN(progress)) {
+              restoreDemo(demoId, progress)
+              narration.markTriggered(demoId)
+              setRestoredFromUrl(true)
+            }
           }
         }
       }
@@ -1466,7 +1498,7 @@ export function NumberLine({
             touchAction: 'none',
           }}
         />
-        {centering.enabled && (
+        {!isBreakMode && centering.enabled && (
           <div
             data-element="centering-overlay"
             onMouseDown={handleCenteringMouseDown}
@@ -1482,18 +1514,20 @@ export function NumberLine({
             }}
           />
         )}
-        <div
-          ref={constantMarkersRef}
-          data-element="constant-markers"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            overflow: 'hidden',
-          }}
-        />
+        {!isBreakMode && (
+          <div
+            ref={constantMarkersRef}
+            data-element="constant-markers"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              overflow: 'hidden',
+            }}
+          />
+        )}
         {/* Prime Tour button removed — tour is now offered contextually via PrimeTooltip */}
-        {tappedConstant && (
+        {!isBreakMode && tappedConstant && (
           <ConstantInfoCard
             constant={tappedConstant}
             screenX={tappedScreenX}
@@ -1506,7 +1540,8 @@ export function NumberLine({
             onCallNumber={handleCallNumber}
           />
         )}
-        {activeGameId &&
+        {!isBreakMode &&
+          activeGameId &&
           voiceState === 'active' &&
           (() => {
             const game = GAME_MAP.get(activeGameId)
@@ -1545,7 +1580,7 @@ export function NumberLine({
               </div>
             )
           })()}
-        {callingNumber !== null && voiceState !== 'idle' && (
+        {!isBreakMode && callingNumber !== null && voiceState !== 'idle' && (
           <PhoneCallOverlay
             number={callingNumber}
             state={voiceState}
@@ -1573,7 +1608,8 @@ export function NumberLine({
           />
         )}
         {/* LCM Hopper overlay (guess prompt + celebration card) */}
-        {demoStateRef.current.constantId === 'lcm_hopper' &&
+        {!isBreakMode &&
+          demoStateRef.current.constantId === 'lcm_hopper' &&
           demoStateRef.current.phase !== 'idle' && (
             <LcmHopperOverlay
               progress={demoStateRef.current.revealProgress}
@@ -1585,7 +1621,8 @@ export function NumberLine({
             />
           )}
         {/* Hopping Party bar — shown when invitees selected and demo idle */}
-        {partyInvitees.length > 0 &&
+        {!isBreakMode &&
+          partyInvitees.length > 0 &&
           demoStateRef.current.phase === 'idle' &&
           tourStateRef.current.phase === 'idle' && (
             <HoppingPartyBar
@@ -1596,7 +1633,8 @@ export function NumberLine({
               onClearParty={() => setPartyInvitees([])}
             />
           )}
-        {demoActive &&
+        {!isBreakMode &&
+          demoActive &&
           demoStateRef.current.revealProgress >= 1 &&
           demoStateRef.current.constantId && (
             <DemoRecommendations
@@ -1640,46 +1678,48 @@ export function NumberLine({
             handlePlayPauseClick={handlePlayPauseClick}
           />
         )}
-        {(() => {
-          const tooltipValue = forcedHoverValue ?? hoveredValue
-          if (tooltipValue === null || !primesEnabled) return null
-          const spf = tooltipValue >= 2 ? smallestPrimeFactor(tooltipValue) : 0
-          const isPrime = tooltipValue >= 2 && spf === tooltipValue
-          const ip = interestingPrimesRef.current.find((p) => p.value === tooltipValue)
-          const tourAvailable = tourStateRef.current.phase === 'idle' && !demoActive
-          const hoverPartyState = getPartyState(tooltipValue)
-          return (
-            <PrimeTooltip
-              value={tooltipValue}
-              primeInfo={{
-                value: tooltipValue,
-                smallestPrimeFactor: spf,
-                isPrime,
-                classification: tooltipValue === 1 ? 'one' : isPrime ? 'prime' : 'composite',
-              }}
-              screenX={numberToScreenX(
-                tooltipValue,
-                stateRef.current.center,
-                stateRef.current.pixelsPerUnit,
-                cssWidthRef.current
-              )}
-              tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
-              containerWidth={cssWidthRef.current}
-              isDark={resolvedTheme === 'dark'}
-              landmarkNote={ip?.note}
-              onStartTour={tourAvailable ? handleStartTour : undefined}
-              partyState={hoverPartyState}
-              onToggleInvite={hoverPartyState ? handleToggleInvite : undefined}
-              onMouseEnter={() => {
-                tooltipHoveredRef.current = true
-              }}
-              onMouseLeave={() => {
-                tooltipHoveredRef.current = false
-              }}
-            />
-          )
-        })()}
-        {hoveredValue === null &&
+        {!isBreakMode &&
+          (() => {
+            const tooltipValue = forcedHoverValue ?? hoveredValue
+            if (tooltipValue === null || !primesEnabled) return null
+            const spf = tooltipValue >= 2 ? smallestPrimeFactor(tooltipValue) : 0
+            const isPrime = tooltipValue >= 2 && spf === tooltipValue
+            const ip = interestingPrimesRef.current.find((p) => p.value === tooltipValue)
+            const tourAvailable = tourStateRef.current.phase === 'idle' && !demoActive
+            const hoverPartyState = getPartyState(tooltipValue)
+            return (
+              <PrimeTooltip
+                value={tooltipValue}
+                primeInfo={{
+                  value: tooltipValue,
+                  smallestPrimeFactor: spf,
+                  isPrime,
+                  classification: tooltipValue === 1 ? 'one' : isPrime ? 'prime' : 'composite',
+                }}
+                screenX={numberToScreenX(
+                  tooltipValue,
+                  stateRef.current.center,
+                  stateRef.current.pixelsPerUnit,
+                  cssWidthRef.current
+                )}
+                tooltipY={cssHeightRef.current / 2 + Math.min(40, cssHeightRef.current * 0.3) + 30}
+                containerWidth={cssWidthRef.current}
+                isDark={resolvedTheme === 'dark'}
+                landmarkNote={ip?.note}
+                onStartTour={tourAvailable ? handleStartTour : undefined}
+                partyState={hoverPartyState}
+                onToggleInvite={hoverPartyState ? handleToggleInvite : undefined}
+                onMouseEnter={() => {
+                  tooltipHoveredRef.current = true
+                }}
+                onMouseLeave={() => {
+                  tooltipHoveredRef.current = false
+                }}
+              />
+            )
+          })()}
+        {!isBreakMode &&
+          hoveredValue === null &&
           forcedHoverValue === null &&
           tappedIntValue !== null &&
           primesEnabled &&
@@ -1722,7 +1762,7 @@ export function NumberLine({
             )
           })()}
         {/* Prime Tour overlay card */}
-        {tourCurrentStop !== null && tourStopIndex !== null && (
+        {!isBreakMode && tourCurrentStop !== null && tourStopIndex !== null && (
           <PrimeTourOverlay
             stop={tourCurrentStop}
             stopIndex={tourStopIndex}
@@ -1733,7 +1773,7 @@ export function NumberLine({
             onClose={exitTour}
           />
         )}
-        {!refineMode && (
+        {!isBreakMode && !refineMode && (
           <NumberLineDebugPanel
             thresholdsRef={thresholdsRef}
             scheduleRedraw={scheduleRedraw}
@@ -1745,7 +1785,7 @@ export function NumberLine({
             resolvedTheme={resolvedTheme}
           />
         )}
-        {!refineMode && isVisualDebugEnabled && (
+        {!isBreakMode && !refineMode && isVisualDebugEnabled && (
           <VoiceDebugPanels
             voiceState={voiceState}
             modeDebug={modeDebug}
@@ -1754,62 +1794,62 @@ export function NumberLine({
             isDark={resolvedTheme === 'dark'}
           />
         )}
-        {(() => {
-          const fv = forcedHoverValue ?? hoveredValue
-          if (fv === null || !primesEnabled || fv < 2) return null
-          const spf = smallestPrimeFactor(fv)
-          if (spf !== fv) return null // not prime
-          const labels = getSpecialPrimeLabels(fv)
-          if (labels.length === 0) return null
-          const isDark = resolvedTheme === 'dark'
-          // Deduplicate types (a prime can have e.g. two twin pairs but one footnote)
-          const seenTypes = new Set<string>()
-          const uniqueLabels = labels.filter((l) => {
-            if (seenTypes.has(l.type)) return false
-            seenTypes.add(l.type)
-            return true
-          })
-          return (
-            <div
-              data-element="prime-footnotes"
-              style={{
-                position: 'absolute',
-                bottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
-                left: 12,
-                right: 12,
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '4px 14px',
-                pointerEvents: 'none',
-              }}
-            >
-              {uniqueLabels.map((label) => (
-                <span
-                  key={label.type}
-                  data-element="prime-footnote"
-                  style={{
-                    fontSize: 10,
-                    lineHeight: 1.4,
-                    color: LABEL_COLORS[label.type][isDark ? 'dark' : 'light'],
-                    opacity: 0.85,
-                  }}
-                >
-                  {PRIME_TYPE_DESCRIPTIONS[label.type]}
-                </span>
-              ))}
-            </div>
-          )
-        })()}
+        {!isBreakMode &&
+          (() => {
+            const fv = forcedHoverValue ?? hoveredValue
+            if (fv === null || !primesEnabled || fv < 2) return null
+            const spf = smallestPrimeFactor(fv)
+            if (spf !== fv) return null // not prime
+            const labels = getSpecialPrimeLabels(fv)
+            if (labels.length === 0) return null
+            const isDark = resolvedTheme === 'dark'
+            // Deduplicate types (a prime can have e.g. two twin pairs but one footnote)
+            const seenTypes = new Set<string>()
+            const uniqueLabels = labels.filter((l) => {
+              if (seenTypes.has(l.type)) return false
+              seenTypes.add(l.type)
+              return true
+            })
+            return (
+              <div
+                data-element="prime-footnotes"
+                style={{
+                  position: 'absolute',
+                  bottom: 'max(8px, env(safe-area-inset-bottom, 0px))',
+                  left: 12,
+                  right: 12,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '4px 14px',
+                  pointerEvents: 'none',
+                }}
+              >
+                {uniqueLabels.map((label) => (
+                  <span
+                    key={label.type}
+                    data-element="prime-footnote"
+                    style={{
+                      fontSize: 10,
+                      lineHeight: 1.4,
+                      color: LABEL_COLORS[label.type][isDark ? 'dark' : 'light'],
+                      opacity: 0.85,
+                    }}
+                  >
+                    {PRIME_TYPE_DESCRIPTIONS[label.type]}
+                  </span>
+                ))}
+              </div>
+            )
+          })()}
 
         {/* Keyboard shortcuts overlay */}
-        {showShortcuts && demoStateRef.current.phase !== 'idle' && (
+        {!isBreakMode && showShortcuts && demoStateRef.current.phase !== 'idle' && (
           <KeyboardShortcutsOverlay
             isDark={resolvedTheme === 'dark'}
             showRefineMode={isVisualDebugEnabled}
             onClose={() => setShowShortcuts(false)}
           />
         )}
-
       </div>
     </div>
   )

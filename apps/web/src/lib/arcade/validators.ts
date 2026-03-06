@@ -35,6 +35,8 @@ const validatorLoaders = {
     (await import('@/arcade-games/music-matching/Validator')).musicMatchingValidator,
   'type-racer-jr': async () =>
     (await import('@/arcade-games/type-racer-jr/Validator')).typeRacerJrValidator,
+  'constant-explorer': async () =>
+    (await import('@/arcade-games/constant-explorer/Validator')).constantExplorerValidator,
   // Add new games here - GameName type will auto-update
 } as const
 
