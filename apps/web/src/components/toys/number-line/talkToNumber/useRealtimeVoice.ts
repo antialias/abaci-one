@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useRef, useState, useMemo } from 'react'
+import { createId } from '@paralleldrive/cuid2'
 import { useVoiceCall } from '@/lib/voice/useVoiceCall'
 import type {
   VoiceSessionConfig,
@@ -259,6 +260,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   const sessionActivityRef = useRef<SessionActivity>({ gamesPlayed: [], explorationsLaunched: [] })
   const markedMomentsRef = useRef<MarkedMoment[]>([])
   const postcardSentRef = useRef(false)
+  const sessionIdRef = useRef<string>(createId())
+  const sharedHistoryRef = useRef<import('@/lib/number-line/shared-history').SharedHistory | null>(
+    null
+  )
   const callStartTimeRef = useRef(0)
   const narrationPlayingRef = useRef(false)
   const lastResumeTimestampRef = useRef(0)
@@ -323,9 +328,22 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       extensionAvailable: !extensionUsedRef.current,
       momentCount: markedMomentsRef.current.length,
       postcardSent: postcardSentRef.current,
+      sharedHistory: sharedHistoryRef.current,
     }),
     []
   )
+
+  // ── Session end helper (triggers moment cull) ──
+  const sessionEndedRef = useRef(false)
+  const endVoiceSession = useCallback(() => {
+    if (sessionEndedRef.current) return
+    sessionEndedRef.current = true
+    fetch('/api/number-line/sessions/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: sessionIdRef.current }),
+    }).catch((err) => console.warn('[moments] session end failed:', err))
+  }, [])
 
   // ── Tool call handler ──
   // Returns ToolCallResult for each tool, or null for unhandled.
@@ -363,6 +381,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
             enterMode: 'farewell',
           }
         }
+        endVoiceSession()
         return { output: { success: true }, isHangUp: true }
       }
 
@@ -444,6 +463,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         // Tour explorations — auto-hang-up
         if (!CONSTANT_IDS.has(constantId)) {
           onStartExplorationRef.current?.(constantId)
+          endVoiceSession()
           return { output: { success: true }, isHangUp: true }
         }
 
@@ -807,6 +827,28 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
 
         markedMomentsRef.current.push(moment)
+
+        // Persist moment server-side (fire-and-forget for relationship history)
+        const playerId = activePlayerIdRef.current
+        if (playerId) {
+          fetch('/api/number-line/moments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              playerId,
+              callerNumber: calledNumberRef.current,
+              sessionId: sessionIdRef.current,
+              moment: {
+                caption,
+                category,
+                significance,
+                snapshot: moment.snapshot,
+                transcriptExcerpt,
+              },
+            }),
+          }).catch((err) => console.warn('[moments] persist failed:', err))
+        }
+
         return { output: { success: true }, promptResponse: false }
       }
 
@@ -856,7 +898,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         fetch('/api/postcards', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerId, manifest }),
+          body: JSON.stringify({ playerId, sessionId: sessionIdRef.current, manifest }),
         }).catch((err) => {
           console.warn('[postcard] POST failed:', err)
         })
@@ -869,7 +911,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
       return null // unhandled
     },
-    [setPendingSpeaker]
+    [setPendingSpeaker, endVoiceSession]
   )
 
   const onResponseDone = useCallback((_ctx: ModeContext, currentModeId: string): string | null => {
@@ -1181,6 +1223,54 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   // Wire up the extendTimer ref
   extendTimerRef.current = voiceCall.extendTimer
 
+  /**
+   * Fetch shared history for this player-number pair and store it in the ref.
+   *
+   * If prior sessions have pending background culls (e.g. from dirty disconnects),
+   * schedules a 15-second delayed re-fetch. If the re-fetch surfaces new moments,
+   * injects them as a system message so the number "remembers" mid-conversation
+   * without delaying the initial call connection.
+   */
+  const fetchSharedHistory = useCallback(
+    (playerId: string, callerNumber: number) => {
+      const url = `/api/number-line/shared-history?playerId=${encodeURIComponent(playerId)}&callerNumber=${callerNumber}`
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.history) return
+          sharedHistoryRef.current = data.history
+
+          if (!data.history.pendingCulls) return
+          // Delayed re-fetch: background culls may finish within ~15s
+          setTimeout(() => {
+            fetch(url)
+              .then((r) => r.json())
+              .then((fresh) => {
+                if (!fresh.history) return
+                const prevCount = data.history.moments?.length ?? 0
+                if (fresh.history.moments.length <= prevCount) return
+
+                sharedHistoryRef.current = fresh.history
+                const lines = (
+                  fresh.history.moments as Array<{ caption: string; recencyLabel: string }>
+                )
+                  .map(
+                    (m: { caption: string; recencyLabel: string }) =>
+                      `- ${m.caption} (${m.recencyLabel})`
+                  )
+                  .join('\n')
+                voiceCall.sendSystemMessage(
+                  `[System update — you just remembered some things about this child from past calls:\n${lines}\nWeave these in naturally if relevant. Don't announce that you "just remembered" — act like you always knew.]`
+                )
+              })
+              .catch(() => {})
+          }, 15_000)
+        })
+        .catch((err) => console.warn('[moments] shared history fetch failed:', err))
+    },
+    [voiceCall]
+  )
+
   // ── Domain-specific dial that accepts number + options ──
   const dial = useCallback(
     (number: number, dialOptions?: DialOptions) => {
@@ -1206,9 +1296,20 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       transcriptsRef.current = []
       markedMomentsRef.current = []
       postcardSentRef.current = false
+      sessionIdRef.current = createId()
+      sessionEndedRef.current = false
+      sharedHistoryRef.current = null
       callStartTimeRef.current = Date.now()
       setTransferTarget(null)
       setDomainState(null)
+
+      // Load shared history — non-blocking, fills in ref before default mode starts.
+      // If prior sessions have pending culls (dirty disconnects being processed),
+      // schedules a delayed re-fetch and injects late-arriving memories mid-call.
+      const playerId = dialOptions?.playerId ?? activePlayerIdRef.current
+      if (playerId) {
+        fetchSharedHistory(playerId, number)
+      }
 
       voiceCall.dial()
     },

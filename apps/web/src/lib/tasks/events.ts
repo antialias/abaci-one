@@ -598,6 +598,10 @@ export interface TaskEventMap {
   'profile-image-generate': ProfileImageGenerateEvent
   'page-spot-generate': PageSpotImageGenerateEvent
   'postcard-generate': PostcardGenerateEvent
+  'postcard-image-generate': PostcardImageGenerateEvent
+  'postcard-review': PostcardReviewEvent
+  'postcard-thumbnail-generate': PostcardThumbnailGenerateEvent
+  'moment-cull': MomentCullEvent
 }
 
 // ── Postcard generation events ──
@@ -614,6 +618,18 @@ export type PostcardGenerateEvent =
       model: string
     }
   | {
+      type: 'postcard_reviewing'
+      postcardId: string
+      attempt: number
+    }
+  | {
+      type: 'postcard_review_result'
+      postcardId: string
+      attempt: number
+      pass: boolean
+      issues: string[]
+    }
+  | {
       type: 'postcard_complete'
       postcardId: string
       imageUrl: string
@@ -624,6 +640,99 @@ export type PostcardGenerateEvent =
       postcardId: string
       error: string
     }
+
+// ── Postcard image generation subtask events ──
+
+export type PostcardImageGenerateEvent =
+  | {
+      type: 'image_generating'
+      postcardId: string
+      provider: string
+      model: string
+      attempt: number
+    }
+  | {
+      type: 'image_generated'
+      postcardId: string
+      imagePath: string
+      sizeBytes: number
+    }
+  | {
+      type: 'image_error'
+      postcardId: string
+      error: string
+    }
+
+// ── Postcard review subtask events ──
+
+export type PostcardReviewEvent =
+  | {
+      type: 'review_analyzing'
+      postcardId: string
+      criteriaCount: number
+    }
+  | {
+      type: 'review_criterion_result'
+      postcardId: string
+      criterionId: string
+      pass: boolean
+      issues: string[]
+    }
+  | {
+      type: 'review_complete'
+      postcardId: string
+      pass: boolean
+      issueCount: number
+    }
+  | { type: 'reasoning'; text: string; isDelta: boolean }
+  | { type: 'output_delta'; text: string }
+  | { type: 'reasoning_snapshot'; text: string }
+  | { type: 'output_snapshot'; text: string }
+
+// ── Postcard thumbnail generation subtask events ──
+
+export type PostcardThumbnailGenerateEvent =
+  | {
+      type: 'thumbnail_generating'
+      postcardId: string
+      provider: string
+      model: string
+    }
+  | {
+      type: 'thumbnail_generated'
+      postcardId: string
+      thumbnailUrl: string
+      sizeBytes: number
+    }
+  | {
+      type: 'thumbnail_error'
+      postcardId: string
+      error: string
+    }
+
+// ── Moment cull events ──
+
+export type MomentCullEvent =
+  | {
+      type: 'cull_started'
+      sessionId: string
+      momentCount: number
+    }
+  | {
+      type: 'cull_complete'
+      sessionId: string
+      keptCount: number
+      droppedCount: number
+    }
+  | {
+      type: 'cull_error'
+      sessionId: string
+      error: string
+    }
+  | { type: 'reasoning'; text: string; isDelta: boolean }
+  | { type: 'output_delta'; text: string }
+  | { type: 'reasoning_snapshot'; text: string }
+  | { type: 'output_snapshot'; text: string }
 
 /**
  * Get the domain event type for a given task type.

@@ -1,6 +1,6 @@
 {
-  "id": "78f3108ace0a49d5b43d6eea78c06c31",
-  "prevId": "8d9ffab528e14af4a78c27864d72c291",
+  "id": "2c2fbf5b-b7e5-4a92-82e4-bbfd43b61d5a",
+  "prevId": "224cfd12-84fd-4aec-8c7e-0b271d3294b2",
   "version": "6",
   "dialect": "sqlite",
   "tables": {
@@ -1291,11 +1291,11 @@
         "user_notification_settings_user_id_users_id_fk": {
           "name": "user_notification_settings_user_id_users_id_fk",
           "tableFrom": "user_notification_settings",
-          "tableTo": "users",
           "columnsFrom": ["user_id"],
+          "tableTo": "users",
           "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -1371,11 +1371,11 @@
         "user_push_subscriptions_user_id_users_id_fk": {
           "name": "user_push_subscriptions_user_id_users_id_fk",
           "tableFrom": "user_push_subscriptions",
-          "tableTo": "users",
           "columnsFrom": ["user_id"],
+          "tableTo": "users",
           "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},

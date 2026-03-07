@@ -130,6 +130,7 @@ export const POST = withAuth(async (request) => {
       extensionAvailable: true,
       momentCount: 0,
       postcardSent: false,
+      sharedHistory: null,
     }
     const instructions = answeringMode.getInstructions(answeringCtx)
     const tools = getAnsweringTools()

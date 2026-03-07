@@ -56,12 +56,16 @@ export const backgroundTasks = sqliteTable(
 
     /** Last heartbeat timestamp - updated periodically while task is running */
     lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }),
+
+    /** Optional parent task ID for orchestrated subtasks */
+    parentTaskId: text('parent_task_id'),
   },
   (table) => ({
     statusIdx: index('background_tasks_status_idx').on(table.status),
     typeIdx: index('background_tasks_type_idx').on(table.type),
     userIdx: index('background_tasks_user_idx').on(table.userId),
     createdAtIdx: index('background_tasks_created_at_idx').on(table.createdAt),
+    parentTaskIdx: index('background_tasks_parent_task_idx').on(table.parentTaskId),
   })
 )
 
@@ -98,8 +102,14 @@ export const backgroundTaskEvents = sqliteTable(
 )
 
 // Relations
-export const backgroundTasksRelations = relations(backgroundTasks, ({ many }) => ({
+export const backgroundTasksRelations = relations(backgroundTasks, ({ one, many }) => ({
   events: many(backgroundTaskEvents),
+  parentTask: one(backgroundTasks, {
+    fields: [backgroundTasks.parentTaskId],
+    references: [backgroundTasks.id],
+    relationName: 'parentChild',
+  }),
+  childTasks: many(backgroundTasks, { relationName: 'parentChild' }),
 }))
 
 export const backgroundTaskEventsRelations = relations(backgroundTaskEvents, ({ one }) => ({
@@ -136,6 +146,10 @@ export type TaskType =
   | 'profile-image-generate'
   | 'page-spot-generate'
   | 'postcard-generate'
+  | 'postcard-image-generate'
+  | 'postcard-review'
+  | 'postcard-thumbnail-generate'
+  | 'moment-cull'
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 /**
  * Event types are defined per task type in `src/lib/tasks/events.ts`.

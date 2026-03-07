@@ -11,6 +11,7 @@
 import type { RealtimeTool, VoiceMode } from '@/lib/voice/types'
 import type { GeneratedScenario } from '../generateScenario'
 import type { ChildProfile } from '../childProfile'
+import type { SharedHistory } from '@/lib/number-line/shared-history'
 
 export type { RealtimeTool } from '@/lib/voice/types'
 
@@ -53,6 +54,8 @@ export interface ModeContext {
   momentCount: number
   /** Whether a postcard has already been sent this call. */
   postcardSent: boolean
+  /** Shared relationship history with this number from previous calls. */
+  sharedHistory: SharedHistory | null
 }
 
 /** A session mode definition — controls instructions + tools for a phase of the call. */

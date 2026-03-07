@@ -12,8 +12,9 @@ export const POST = withAuth(async (request: NextRequest) => {
   try {
     const userId = await getUserId()
     const body = await request.json()
-    const { playerId, manifest } = body as {
+    const { playerId, sessionId, manifest } = body as {
       playerId?: string
+      sessionId?: string
       manifest: PostcardManifest
     }
 
@@ -27,6 +28,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         userId,
         playerId: playerId ?? null,
         callerNumber: manifest.callerNumber,
+        sessionId: sessionId ?? null,
         manifest,
         status: 'pending',
       })

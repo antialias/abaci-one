@@ -2,6 +2,7 @@ import { smallestPrimeFactor, factorize } from '../primes/sieve'
 import { MATH_CONSTANTS } from '../constants/constantsData'
 import type { GeneratedScenario } from './generateScenario'
 import type { ChildProfile } from './childProfile'
+import type { SharedHistory } from '@/lib/number-line/shared-history'
 
 // --- Sequence checks ---
 
@@ -557,6 +558,54 @@ function buildCallOpeningBlock(
   return parts.join('\n\n')
 }
 
+function buildSharedHistoryBlock(history: SharedHistory): string {
+  const lines: string[] = []
+
+  lines.push('## SHARED HISTORY WITH THIS CHILD')
+  lines.push('')
+
+  if (history.totalCalls > 1) {
+    lines.push(
+      `You've talked to this child before — about ${history.totalCalls} times. Here are things you vaguely remember from past conversations:`
+    )
+  } else {
+    lines.push(`You talked to this child once before. Here's what you vaguely remember:`)
+  }
+  lines.push('')
+
+  for (const m of history.moments) {
+    lines.push(`- ${m.caption} (${m.recencyLabel})`)
+  }
+
+  if (history.sessionSummaries.length > 0) {
+    lines.push('')
+    lines.push('Your general impression from past calls:')
+    for (const summary of history.sessionSummaries) {
+      lines.push(`- ${summary}`)
+    }
+  }
+
+  lines.push('')
+  lines.push('IMPORTANT TONE GUIDELINES FOR USING THESE MEMORIES:')
+  lines.push('- These are things you "vaguely remember", NOT a database you are reading from.')
+  lines.push(
+    '- Reference at most 1-2 memories naturally per call. Do NOT recap the entire history.'
+  )
+  lines.push(
+    '- Say "remember when we..." or "didn\'t we once..." — NOT "on your previous call you said..."'
+  )
+  lines.push('- Be vague about time: "last time", "a while ago", not exact dates or call numbers.')
+  lines.push(
+    '- Let the child lead recall: "We\'ve played games before, right?" invites them to remember.'
+  )
+  lines.push("- If the child doesn't remember something, just move on warmly. Don't insist.")
+  lines.push(
+    "- NEVER reference the child's mistakes or struggles — only fun, interesting, or positive moments."
+  )
+
+  return lines.join('\n')
+}
+
 function buildMissionBlock(
   explorationHint: ExplorationHint,
   sessionActivity?: SessionActivity
@@ -660,7 +709,8 @@ export function generateNumberPersonality(
   childProfile?: ChildProfile,
   profileFailed?: boolean,
   availablePlayers?: Array<{ id: string; name: string; emoji: string }>,
-  sessionActivity?: SessionActivity
+  sessionActivity?: SessionActivity,
+  sharedHistory?: SharedHistory | null
 ): string {
   const traits: string[] = []
   const abs = Math.abs(n)
@@ -786,6 +836,7 @@ export function generateNumberPersonality(
   const sections = [
     buildIdentityBlock(displayN, traits, n, step),
     buildCallOpeningBlock(activity, scenario, childProfile, profileFailed, availablePlayers),
+    sharedHistory ? buildSharedHistoryBlock(sharedHistory) : '',
     buildMissionBlock(explorationHint, sessionActivity),
     buildConversationPacingBlock(),
     buildAttunement(),

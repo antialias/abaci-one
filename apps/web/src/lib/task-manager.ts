@@ -82,6 +82,11 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   'demo-refine': 10 * 60 * 1000, // 10 minutes (Claude Code can be slow)
   'session-plan': 2 * 60 * 1000, // 2 minutes
   'session-song': 5 * 60 * 1000, // 5 minutes (LLM prompt + Suno submission)
+  'postcard-generate': 15 * 60 * 1000, // 15 minutes (orchestrator: up to 3 generate+review cycles + thumbnail)
+  'postcard-image-generate': 3 * 60 * 1000, // 3 minutes (single image generation)
+  'postcard-review': 2 * 60 * 1000, // 2 minutes (LLM vision review)
+  'postcard-thumbnail-generate': 3 * 60 * 1000, // 3 minutes (single thumbnail generation)
+  'moment-cull': 1 * 60 * 1000, // 1 minute (LLM classification of session moments)
 }
 
 const DEFAULT_TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -733,4 +738,59 @@ export async function getUserTasks(userId: string, limit = 20): Promise<TaskStat
     completedAt: task.completedAt,
     userId: task.userId,
   }))
+}
+
+/**
+ * Poll a task until it reaches a terminal state (completed, failed, or cancelled).
+ *
+ * @param taskId - The task ID to wait for
+ * @param timeout - Maximum time to wait in ms (default 5 minutes)
+ * @returns The final TaskState when completed
+ * @throws If the task is not found, fails, is cancelled, or times out
+ */
+export async function awaitTask<TOutput = unknown>(
+  taskId: string,
+  timeout = 5 * 60 * 1000
+): Promise<TaskState<TOutput>> {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    const state = await getTaskState(taskId)
+    if (!state) throw new Error(`Task ${taskId} not found`)
+    if (state.status === 'completed') return state as TaskState<TOutput>
+    if (state.status === 'failed') throw new Error(`Task ${taskId} failed: ${state.error}`)
+    if (state.status === 'cancelled') throw new Error(`Task ${taskId} was cancelled`)
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  throw new Error(`Task ${taskId} timed out after ${timeout}ms`)
+}
+
+/**
+ * Create a child task linked to a parent task.
+ * Thin wrapper around `createTask` that sets the `parentTaskId` relationship.
+ *
+ * @param parentTaskId - The parent task ID
+ * @param type - The type of task
+ * @param input - Input data for the task
+ * @param handler - Async function that performs the work
+ * @param userId - Optional user ID to associate with task
+ * @returns The child task ID
+ */
+export async function createChildTask<
+  TInput,
+  TOutput,
+  TEvent extends TaskEventBase = TaskEventBase,
+>(
+  parentTaskId: string,
+  type: TaskType,
+  input: TInput,
+  handler: (handle: TaskHandle<TOutput, TEvent>, input: TInput) => Promise<void>,
+  userId?: string
+): Promise<string> {
+  const childId = await createTask(type, input, handler, userId)
+  // Set parent relationship
+  await db
+    .update(schema.backgroundTasks)
+    .set({ parentTaskId })
+    .where(eq(schema.backgroundTasks.id, childId))
+  return childId
 }
