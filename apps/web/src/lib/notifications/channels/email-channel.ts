@@ -117,7 +117,7 @@ export const emailChannel: NotificationChannel = {
       title: content.title,
       body: content.body,
       ctaLabel: ctaLabel(event),
-      ctaUrl: content.url,
+      ctaUrl: content.url.startsWith('http') ? content.url : `${baseUrl()}${content.url}`,
       imageUrl,
     })
 
