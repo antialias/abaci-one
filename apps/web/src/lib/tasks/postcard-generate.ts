@@ -244,6 +244,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
             data: {
               postcardId,
               callerNumber: manifest.callerNumber,
+              imageUrl,
               thumbnailUrl,
               postcardUrl: `/my-stuff/postcards/${postcardId}`,
             },

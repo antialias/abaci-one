@@ -6,7 +6,7 @@
  */
 
 import type { AgentMode } from './types'
-import { TOOL_HANG_UP, TOOL_SEND_POSTCARD } from './tools'
+import { TOOL_HANG_UP } from './tools'
 
 export const hangingUpMode: AgentMode = {
   id: 'hanging_up',
@@ -23,11 +23,5 @@ export const hangingUpMode: AgentMode = {
     ].join('\n')
   },
 
-  getTools: (ctx) => {
-    const tools = [TOOL_HANG_UP]
-    if (ctx.momentCount > 0 && !ctx.postcardSent) {
-      tools.push(TOOL_SEND_POSTCARD)
-    }
-    return tools
-  },
+  getTools: () => [TOOL_HANG_UP],
 }

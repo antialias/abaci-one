@@ -23,6 +23,7 @@ export type ModeId =
   | 'exploration'
   | 'game'
   | 'winding_down'
+  | 'farewell'
   | 'hanging_up'
 
 /** Tracks what the child has done this session (across all calls). */

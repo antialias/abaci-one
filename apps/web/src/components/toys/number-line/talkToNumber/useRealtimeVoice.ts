@@ -352,9 +352,26 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         }
       }
 
-      // hang_up
+      // hang_up — route through farewell mode if there are unsent moments
       if (name === 'hang_up') {
+        if (markedMomentsRef.current.length > 0 && !postcardSentRef.current) {
+          return {
+            output: {
+              success: true,
+              message: 'Before you go, you have a chance to send the child a postcard.',
+            },
+            enterMode: 'farewell',
+          }
+        }
         return { output: { success: true }, isHangUp: true }
+      }
+
+      // skip_postcard — child declined or call wasn't postcard-worthy
+      if (name === 'skip_postcard') {
+        return {
+          output: { success: true },
+          enterMode: 'hanging_up',
+        }
       }
 
       // transfer_call
@@ -845,6 +862,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
 
         return {
           output: { sent: true, message: 'Postcard is on its way!' },
+          enterMode: 'hanging_up',
         }
       }
 
@@ -905,6 +923,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
       'exploration',
       'game',
       'winding_down',
+      'farewell',
       'hanging_up',
     ]
     const map: Record<
@@ -1013,10 +1032,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           dc.send(JSON.stringify({ type: 'response.create' }))
         } else if (!goodbyeRequestedRef.current) {
           goodbyeRequestedRef.current = true
+          // Route through farewell if there are moments and no postcard sent
+          const ctx = buildModeContext()
+          const nextMode = ctx.momentCount > 0 && !ctx.postcardSent ? 'farewell' : 'hanging_up'
           dc.send(
             JSON.stringify({
               type: 'session.update',
-              session: resolveMode('hanging_up', buildModeContext()),
+              session: resolveMode(nextMode, ctx),
             })
           )
           dc.send(JSON.stringify({ type: 'response.create' }))

@@ -15,6 +15,7 @@ export interface SessionStartedPayload {
 export interface PostcardReadyPayload {
   postcardId: string
   callerNumber: number
+  imageUrl: string | null
   thumbnailUrl: string | null
   postcardUrl: string
 }

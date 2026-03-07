@@ -9,7 +9,7 @@
  */
 
 import type { AgentMode } from './types'
-import { TOOL_HANG_UP, TOOL_REQUEST_MORE_TIME, TOOL_SEND_POSTCARD } from './tools'
+import { TOOL_HANG_UP, TOOL_REQUEST_MORE_TIME } from './tools'
 
 export const windingDownMode: AgentMode = {
   id: 'winding_down',
@@ -56,25 +56,6 @@ export const windingDownMode: AgentMode = {
     lines.push(`- Make your decision quickly — don't deliberate out loud.`)
     lines.push(`- Do NOT start new topics, games, or activities.`)
 
-    // Postcard opportunity
-    if (ctx.momentCount > 0 && !ctx.postcardSent) {
-      lines.push('')
-      lines.push('**Postcard — IMPORTANT, you MUST do this:**')
-      lines.push(
-        "Before saying goodbye, ask the child if they'd like you to send them a postcard to remember the call."
-      )
-      lines.push(
-        'Keep it casual and in-character: "Hey, we had such a fun time — want me to send you a little postcard to remember it?"'
-      )
-      lines.push(
-        'If they say yes (or anything affirmative), you MUST call the send_postcard tool with a session_summary. Do NOT just say you will send it — you must actually call the tool.'
-      )
-      lines.push("If they say no, that's fine — just proceed to goodbye.")
-      lines.push(
-        'Do NOT describe what the postcard will look like or make promises about its content.'
-      )
-    }
-
     return lines.join('\n')
   },
 
@@ -82,9 +63,6 @@ export const windingDownMode: AgentMode = {
     const tools = [TOOL_HANG_UP]
     if (ctx.extensionAvailable) {
       tools.unshift(TOOL_REQUEST_MORE_TIME)
-    }
-    if (ctx.momentCount > 0 && !ctx.postcardSent) {
-      tools.push(TOOL_SEND_POSTCARD)
     }
     return tools
   },

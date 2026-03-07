@@ -1,0 +1,2 @@
+INSERT OR IGNORE INTO `feature_flags` (`key`, `enabled`, `description`, `created_at`, `updated_at`)
+VALUES ('postcard.full-image-in-email', 0, 'Include the full postcard image in the notification email instead of just the thumbnail', strftime('%s', 'now'), strftime('%s', 'now'));

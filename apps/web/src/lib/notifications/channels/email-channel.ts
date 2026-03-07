@@ -8,10 +8,30 @@ import { formatNotificationContent } from '../types'
 import { sendEmail } from '../email'
 import { escapeHtml, baseUrl } from '../email-utils'
 
+interface EmailHtmlOptions {
+  title: string
+  body: string
+  ctaLabel: string
+  ctaUrl: string
+  /** Optional image to display above the body text */
+  imageUrl?: string
+}
+
 /**
  * Build an HTML email for any notification event.
  */
-function buildEmailHtml(title: string, body: string, ctaLabel: string, ctaUrl: string): string {
+function buildEmailHtml({ title, body, ctaLabel, ctaUrl, imageUrl }: EmailHtmlOptions): string {
+  const imageBlock = imageUrl
+    ? `<tr>
+            <td style="padding:0;">
+              <a href="${escapeHtml(ctaUrl)}">
+                <img src="${escapeHtml(imageUrl)}" alt="Postcard" width="480"
+                     style="display:block;width:100%;height:auto;border-radius:12px 12px 0 0;" />
+              </a>
+            </td>
+          </tr>`
+    : ''
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -20,6 +40,7 @@ function buildEmailHtml(title: string, body: string, ctaLabel: string, ctaUrl: s
     <tr>
       <td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+          ${imageBlock}
           <tr>
             <td style="padding:32px 24px;text-align:center;">
               <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">
@@ -79,7 +100,26 @@ export const emailChannel: NotificationChannel = {
     }
 
     const content = formatNotificationContent(event)
-    const html = buildEmailHtml(content.title, content.body, ctaLabel(event), content.url)
+
+    // For postcard emails, optionally embed the image
+    let imageUrl: string | undefined
+    if (event.type === 'postcard-ready') {
+      const { isEnabled } = await import('@/lib/feature-flags')
+      const useFullImage = await isEnabled('postcard.full-image-in-email')
+      const rawUrl = useFullImage ? event.data.imageUrl : event.data.thumbnailUrl
+      if (rawUrl) {
+        // Ensure absolute URL for email clients
+        imageUrl = rawUrl.startsWith('http') ? rawUrl : `${baseUrl()}${rawUrl}`
+      }
+    }
+
+    const html = buildEmailHtml({
+      title: content.title,
+      body: content.body,
+      ctaLabel: ctaLabel(event),
+      ctaUrl: content.url,
+      imageUrl,
+    })
 
     try {
       await sendEmail({
