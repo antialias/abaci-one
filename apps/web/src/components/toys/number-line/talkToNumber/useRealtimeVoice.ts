@@ -176,8 +176,16 @@ interface UseRealtimeVoiceOptions {
   onSetLabelStyle?: (scale: number, minOpacity: number) => void
   isExplorationActiveRef?: React.RefObject<boolean>
   onPlayerIdentified?: (playerId: string) => void
-  /** Returns the current number line viewport snapshot for moment capture. */
-  getViewportSnapshot?: () => { center: number; pixelsPerUnit: number }
+  /** Returns the current number line scene snapshot for moment capture. */
+  getSceneSnapshot?: () => SceneSnapshot
+}
+
+export interface SceneSnapshot {
+  viewport: { center: number; pixelsPerUnit: number }
+  indicator?: { numbers: number[]; range?: { from: number; to: number } }
+  gameTarget?: { value: number; emoji: string }
+  activeExplorationId?: string | null
+  demoProgress?: number
 }
 
 interface DialOptions {
@@ -231,8 +239,8 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
   onSetLabelStyleRef.current = options?.onSetLabelStyle
   const onPlayerIdentifiedRef = useRef(options?.onPlayerIdentified)
   onPlayerIdentifiedRef.current = options?.onPlayerIdentified
-  const getViewportSnapshotRef = useRef(options?.getViewportSnapshot)
-  getViewportSnapshotRef.current = options?.getViewportSnapshot
+  const getSceneSnapshotRef = useRef(options?.getSceneSnapshot)
+  getSceneSnapshotRef.current = options?.getSceneSnapshot
   const isExplorationActiveRef = options?.isExplorationActiveRef
 
   // ── Domain-specific state ──
@@ -748,8 +756,10 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         const category = String(args.category ?? 'conversation') as MarkedMoment['category']
         const significance = typeof args.significance === 'number' ? args.significance : 5
 
-        // Capture viewport snapshot
-        const viewport = getViewportSnapshotRef.current?.() ?? { center: 0, pixelsPerUnit: 50 }
+        // Capture full scene snapshot (viewport + indicator + game target + exploration)
+        const scene = getSceneSnapshotRef.current?.() ?? {
+          viewport: { center: 0, pixelsPerUnit: 50 },
+        }
 
         // Capture recent transcript excerpt (last 4 lines)
         const recentTranscripts = transcriptsRef.current.slice(-4)
@@ -762,8 +772,13 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           category,
           significance,
           snapshot: {
-            viewport,
+            viewport: scene.viewport,
+            highlights: scene.indicator?.numbers,
+            indicatorRange: scene.indicator?.range,
             activeGameId: activeGameIdRef.current,
+            activeExplorationId: scene.activeExplorationId,
+            demoProgress: scene.demoProgress,
+            gameTarget: scene.gameTarget,
             conferenceNumbers:
               conferenceNumbersRef.current.length > 1
                 ? [...conferenceNumbersRef.current]

@@ -9,14 +9,46 @@ import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import path from 'node:path'
 import fs from 'node:fs'
 
-// Register Inter Variable font — try multiple paths for dev vs production
+// Register Inter Variable font — try multiple paths for dev vs production.
+// Also register under system font aliases so that renderNumberLine()'s
+// hardcoded "-apple-system, BlinkMacSystemFont, ..." font stack resolves
+// to Inter instead of producing garbled glyphs.
 const candidates = [
   path.join(process.cwd(), 'src', 'lib', 'fonts', 'Inter-Variable.ttf'),
   path.join(process.cwd(), 'apps', 'web', 'src', 'lib', 'fonts', 'Inter-Variable.ttf'),
 ]
+const FONT_ALIASES = [
+  'Inter',
+  '-apple-system',
+  'BlinkMacSystemFont',
+  'Segoe UI',
+  'Roboto',
+  'sans-serif',
+]
 for (const fontPath of candidates) {
   if (fs.existsSync(fontPath)) {
-    GlobalFonts.registerFromPath(fontPath, 'Inter')
+    for (const alias of FONT_ALIASES) {
+      GlobalFonts.registerFromPath(fontPath, alias)
+    }
+    break
+  }
+}
+
+// Register an emoji font so that emoji characters (🎯, 🌟, etc.) render
+// instead of showing NOGLYPH boxes. Try platform-specific paths.
+const emojiFontCandidates = [
+  // macOS
+  '/System/Library/Fonts/Apple Color Emoji.ttc',
+  // Linux (common locations)
+  '/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf',
+  '/usr/share/fonts/noto-emoji/NotoColorEmoji.ttf',
+  // Bundled fallback
+  path.join(process.cwd(), 'src', 'lib', 'fonts', 'NotoColorEmoji.ttf'),
+  path.join(process.cwd(), 'apps', 'web', 'src', 'lib', 'fonts', 'NotoColorEmoji.ttf'),
+]
+for (const emojiPath of emojiFontCandidates) {
+  if (fs.existsSync(emojiPath)) {
+    GlobalFonts.registerFromPath(emojiPath, 'Emoji')
     break
   }
 }

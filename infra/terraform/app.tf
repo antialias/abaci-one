@@ -19,6 +19,7 @@ resource "kubernetes_secret" "app_env" {
     EMAIL_SERVER                    = var.email_server
     EMAIL_FROM                      = var.email_from
     LLM_OPENAI_API_KEY              = var.openai_api_key
+    GEMINI_API_KEY                  = var.gemini_api_key
     COVERAGE_API_TOKEN              = var.coverage_api_token
     STRIPE_SECRET_KEY               = var.stripe_secret_key
     STRIPE_FAMILY_MONTHLY_PRICE_ID  = local.stripe_enabled ? stripe_price.family_monthly[0].id : ""

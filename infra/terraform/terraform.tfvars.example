@@ -4,8 +4,9 @@
 letsencrypt_email = "your-email@example.com"
 auth_secret       = "generate-with-openssl-rand-base64-32"
 
-# Optional - AI features (flowchart generation, etc.)
+# Optional - AI features (flowchart generation, image generation, etc.)
 # openai_api_key    = "sk-..."
+# gemini_api_key    = "AI..."
 
 # Optional - Stripe billing (product, prices, and webhook are auto-created by Terraform)
 # stripe_secret_key = "sk_live_..."

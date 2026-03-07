@@ -11,6 +11,8 @@ export interface MomentSnapshot {
   activeExplorationId?: string | null
   conferenceNumbers?: number[]
   timestamp: number // ms since call start
+  gameTarget?: { value: number; emoji: string } // Find-the-Number target
+  demoProgress?: number // 0-1 revealProgress when exploration active
 }
 
 export interface RankedMoment {

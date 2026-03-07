@@ -60,35 +60,57 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
       handle.emit({ type: 'postcard_rendering', postcardId })
       handle.setProgress(10, 'Preparing number line scene')
 
-      // 3. Try to render the number line scene as a reference image
+      // 3. Try to render the number line scene(s) as a reference image
       let referenceImage: Buffer | undefined
       try {
         // Dynamic import to avoid loading @napi-rs/canvas in client bundles
         const { createServerCanvas } = await import('../server-canvas')
-        const { renderNumberLine } = await import('@/components/toys/number-line/renderNumberLine')
+        const { renderMomentScene } = await import(
+          '@/components/toys/number-line/renderMomentScene'
+        )
 
-        const bestMoment = manifest.moments[0]
-        if (bestMoment) {
+        const momentCount = Math.min(manifest.moments.length, 4)
+
+        if (momentCount === 1) {
+          // Single moment — render full-size
           const width = 800
           const height = 600
           const canvas = createServerCanvas(width, height)
           const ctx = canvas.getContext('2d')
-
-          const state = {
-            center: bestMoment.snapshot.viewport.center,
-            pixelsPerUnit: bestMoment.snapshot.viewport.pixelsPerUnit,
-          }
-
-          // Render the number line scene at the moment's viewport
-          renderNumberLine(
+          renderMomentScene(
             ctx as unknown as CanvasRenderingContext2D,
-            state,
+            manifest.moments[0].snapshot,
             width,
-            height,
-            false // isDark
+            height
           )
-
           referenceImage = canvas.toBuffer('image/png')
+        } else if (momentCount > 1) {
+          // Multiple moments — render as a 2x2 tiled grid
+          const tileW = 400
+          const tileH = 300
+          const canvas = createServerCanvas(800, 600)
+          const ctx = canvas.getContext('2d')
+          for (let i = 0; i < momentCount; i++) {
+            const tileCanvas = createServerCanvas(tileW, tileH)
+            const tileCtx = tileCanvas.getContext('2d')
+            renderMomentScene(
+              tileCtx as unknown as CanvasRenderingContext2D,
+              manifest.moments[i].snapshot,
+              tileW,
+              tileH
+            )
+            const col = i % 2
+            const row = Math.floor(i / 2)
+            ;(ctx as unknown as CanvasRenderingContext2D).drawImage(
+              tileCanvas as unknown as CanvasImageSource,
+              col * tileW,
+              row * tileH
+            )
+          }
+          referenceImage = canvas.toBuffer('image/png')
+        }
+
+        if (referenceImage) {
           handle.setProgress(30, 'Number line scene rendered')
         }
       } catch (err) {
@@ -98,8 +120,13 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
       }
 
       // 4. Generate AI postcard image
-      const provider = getImageProvider('openai') ?? getImageProvider('gemini')
-      if (!provider || !provider.isAvailable()) {
+      // Prefer Gemini (Nano Banana Pro) — it handles reference images natively
+      // as inline content, producing collage-style output that incorporates the
+      // actual screenshots. Fall back to OpenAI if Gemini is unavailable.
+      const gemini = getImageProvider('gemini')
+      const openai = getImageProvider('openai')
+      const provider = gemini?.isAvailable() ? gemini : openai?.isAvailable() ? openai : null
+      if (!provider) {
         await db
           .update(schema.numberLinePostcards)
           .set({ status: 'failed', updatedAt: new Date() })
@@ -113,33 +140,46 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         ? callerNum.toString()
         : callerNum.toPrecision(6)
       const momentDescriptions = manifest.moments
-        .slice(0, 3)
-        .map((m) => m.caption)
-        .join('. ')
+        .slice(0, 4)
+        .map((m, i) => `${i + 1}. "${m.caption}" (${m.category})`)
+        .join('\n')
+
+      const hasScreenshots = !!referenceImage
 
       const prompt = [
-        `Create a whimsical, colorful postcard from the number ${displayNum} on the number line.`,
-        `The number's personality: ${manifest.callerPersonality}.`,
-        `This postcard commemorates a phone call with a child named ${manifest.childName}.`,
-        `Key moments: ${momentDescriptions}.`,
-        `Style: warm, playful, mathematical. Include the number ${displayNum} prominently.`,
-        `Include subtle math elements (number line, tick marks, mathematical symbols).`,
-        `The mood should be friendly and nostalgic, like a postcard from a friend.`,
-        `Do NOT include any text or words on the image.`,
-      ].join(' ')
+        `Create a postcard commemorating a phone call between a child named ${manifest.childName} and the number ${displayNum} on the number line.`,
+        ``,
+        `The number's personality: ${manifest.callerPersonality}`,
+        ``,
+        `Key moments from the call:`,
+        momentDescriptions,
+        ``,
+        `Session summary: ${manifest.sessionSummary}`,
+        ``,
+        hasScreenshots
+          ? `IMPORTANT: The attached image contains actual screenshots from the call showing the number line at key moments. These screenshots should be incorporated into the postcard as "photos" — like snapshots pinned to a scrapbook or corkboard. They are the real visual record of the experience. Frame them, tilt them slightly, add decorative tape or pins, but keep the screenshot content clearly visible and recognizable. The postcard should feel like a collage of memories from the call.`
+          : `Style: warm, playful, mathematical. Include the number ${displayNum} prominently with number line elements.`,
+        ``,
+        `The overall postcard should feel warm, playful, and nostalgic — like a keepsake from a fun mathematical adventure. Include the number ${displayNum} as a character or prominent element.`,
+        `Do NOT include any text, words, or letters on the image.`,
+      ].join('\n')
+
+      // Use Nano Banana Pro for Gemini, first model for OpenAI
+      const modelId =
+        provider.meta.id === 'gemini' ? 'gemini-3-pro-image-preview' : provider.meta.models[0].id
 
       handle.emit({
         type: 'postcard_generating_image',
         postcardId,
         provider: provider.meta.id,
-        model: provider.meta.models[0].id,
+        model: modelId,
       })
       handle.setProgress(50, 'Generating postcard image')
 
       try {
         const result = await generateAndStoreImage({
           provider: provider.meta.id,
-          model: provider.meta.models[0].id,
+          model: modelId,
           prompt,
           imageOptions: { size: { width: 1024, height: 768 } },
           storageTarget: {
@@ -152,18 +192,25 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
 
         handle.setProgress(80, 'Generating thumbnail')
 
-        // Generate a smaller thumbnail
+        // Generate a smaller thumbnail — no reference image needed,
+        // just a simplified version of the postcard concept
+        const thumbnailPrompt = [
+          `Create a simple, iconic thumbnail image for a postcard from the number ${displayNum}.`,
+          `The number's personality: ${manifest.callerPersonality}.`,
+          `Style: warm, colorful, mathematical. Show ${displayNum} as a friendly character.`,
+          `Simple composition suitable for a small thumbnail. No text or words.`,
+        ].join(' ')
+
         const thumbnailResult = await generateAndStoreImage({
           provider: provider.meta.id,
-          model: provider.meta.models[0].id,
-          prompt: prompt + ' Simple, iconic version suitable for a small thumbnail.',
+          model: modelId,
+          prompt: thumbnailPrompt,
           imageOptions: { size: { width: 256, height: 192 } },
           storageTarget: {
             type: 'persistent',
             category: 'postcards',
             filename: `${postcardId}-thumb.png`,
           },
-          referenceImage,
         })
 
         // 5. Update postcard record

@@ -8,6 +8,7 @@ import {
   Eye,
   Gamepad2,
   GraduationCap,
+  Image,
   TestTube,
   Volume2,
   Wifi,
@@ -72,6 +73,17 @@ const DEBUG_SECTIONS: DebugSection[] = [
         title: 'Practice Debug',
         description: 'Create debug sessions with presets (game break test, etc.)',
         icon: <GraduationCap size={20} />,
+      },
+    ],
+  },
+  {
+    title: 'Number Line',
+    links: [
+      {
+        href: '/debug/number-line',
+        title: 'Screenshots & Postcards',
+        description: 'Test server-side rendering and full postcard generation pipeline',
+        icon: <Image size={20} />,
       },
     ],
   },

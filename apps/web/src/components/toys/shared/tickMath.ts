@@ -88,8 +88,13 @@ export function getTickFontSize(prominence: number): number {
 }
 
 export function getTickFontWeight(prominence: number): number {
-  return Math.round(
-    lerpLandmarks(prominence, FONT_WEIGHTS.anchor, FONT_WEIGHTS.medium, FONT_WEIGHTS.fine)
+  // Round to nearest multiple of 100 (standard CSS font-weight).
+  // Non-standard values like 588 cause @napi-rs/canvas to misparse
+  // the font shorthand, interpreting the weight as the font size.
+  return (
+    Math.round(
+      lerpLandmarks(prominence, FONT_WEIGHTS.anchor, FONT_WEIGHTS.medium, FONT_WEIGHTS.fine) / 100
+    ) * 100
   )
 }
 

@@ -629,7 +629,7 @@ export function renderNumberLine(
     }
 
     ctx.globalAlpha = target.opacity
-    ctx.font = `${emojiSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+    ctx.font = `${emojiSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Emoji, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = isDark ? '#fff' : '#000'

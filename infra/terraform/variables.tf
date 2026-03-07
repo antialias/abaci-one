@@ -62,6 +62,13 @@ variable "openai_api_key" {
   default     = ""
 }
 
+variable "gemini_api_key" {
+  description = "Google Gemini API key for image generation (postcards, blog images, etc.)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "nfs_server" {
   description = "NFS server IP address (NAS)"
   type        = string

@@ -51,7 +51,7 @@ import { renderSieveOverlay } from './primes/renderSieveOverlay'
 import { PrimeTourOverlay } from './primes/PrimeTourOverlay'
 import { computeTickMarks, numberToScreenX, screenXToNumber } from './numberLineTicks'
 import { useRealtimeVoice } from './talkToNumber/useRealtimeVoice'
-import type { CallState } from './talkToNumber/useRealtimeVoice'
+import type { CallState, SceneSnapshot } from './talkToNumber/useRealtimeVoice'
 import { PhoneCallOverlay, updateCallBoxPositions } from './talkToNumber/PhoneCallOverlay'
 import { useZoomWash } from './useZoomWash'
 import { syncDemoScrubberDOM } from './syncDemoScrubberDOM'
@@ -211,6 +211,11 @@ export function NumberLine({
   const [restoredFromUrl, setRestoredFromUrl] = useState(false)
   // Track whether onDemoComplete has been fired (fire once per demo)
   const demoCompleteFireRef = useRef(false)
+
+  // Scene snapshot function ref — set after all hooks, read by mark_moment at runtime
+  const sceneSnapshotFnRef = useRef<() => SceneSnapshot>(() => ({
+    viewport: { center: stateRef.current.center, pixelsPerUnit: stateRef.current.pixelsPerUnit },
+  }))
 
   // --- Demo scrubber state ---
   const scrubberTrackRef = useRef<HTMLDivElement>(null)
@@ -447,10 +452,7 @@ export function NumberLine({
     onSetLabelStyle: handleVoiceSetLabelStyle,
     isExplorationActiveRef,
     onPlayerIdentified,
-    getViewportSnapshot: () => ({
-      center: stateRef.current.center,
-      pixelsPerUnit: stateRef.current.pixelsPerUnit,
-    }),
+    getSceneSnapshot: () => sceneSnapshotFnRef.current(),
   })
   const callBoxContainerRef = useRef<HTMLDivElement>(null)
   const voiceStateRef = useRef<CallState>('idle')
@@ -1263,6 +1265,24 @@ export function NumberLine({
   // Wire up forward refs so voice agent callbacks use the hook's implementations
   lookAtFnRef.current = viewportLookAt
   indicateFnRef.current = viewportIndicate
+
+  // Update scene snapshot function now that all refs (indicator, renderTarget, demoState) are available
+  sceneSnapshotFnRef.current = () => ({
+    viewport: {
+      center: stateRef.current.center,
+      pixelsPerUnit: stateRef.current.pixelsPerUnit,
+    },
+    indicator: indicatorRef.current
+      ? { numbers: indicatorRef.current.numbers, range: indicatorRef.current.range }
+      : undefined,
+    gameTarget: renderTargetRef.current
+      ? { value: renderTargetRef.current.value, emoji: renderTargetRef.current.emoji }
+      : undefined,
+    activeExplorationId:
+      demoStateRef.current.phase !== 'idle' ? demoStateRef.current.constantId : null,
+    demoProgress:
+      demoStateRef.current.phase !== 'idle' ? demoStateRef.current.revealProgress : undefined,
+  })
 
   // Find tapped constant data for info card
   const tappedConstant = useMemo(
