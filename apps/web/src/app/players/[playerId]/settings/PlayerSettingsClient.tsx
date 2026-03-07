@@ -12,6 +12,8 @@ import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
 import { usePlayerCurriculumQuery, useSetSkillLevels } from '@/hooks/usePlayerCurriculum'
 import type { PracticeLevel } from '@/db/schema/player-skill-mastery'
 import { formatBirthdayForInput, getAgeFromBirthday, normalizeBirthdayInput } from '@/lib/playerAge'
+import { useFeatureFlag } from '@/hooks/useFeatureFlag'
+import { useEffectiveTier } from '@/hooks/useTier'
 
 const AVAILABLE_COLORS = [
   '#FFB3BA',
@@ -39,6 +41,9 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
   const updatePlayer = useUpdatePlayer()
   const curriculumQuery = usePlayerCurriculumQuery(playerId)
   const setSkillLevels = useSetSkillLevels()
+  const { enabled: songFlagEnabled } = useFeatureFlag('session-song.enabled')
+  const { tier } = useEffectiveTier(playerId)
+  const songEnabled = songFlagEnabled && tier === 'family'
 
   const player = useMemo(() => players.find((p) => p.id === playerId), [players, playerId])
 
@@ -508,6 +513,7 @@ export function PlayerSettingsClient({ playerId }: PlayerSettingsClientProps) {
               onManageSkills={() => {
                 setShowManualSkillModal(true)
               }}
+              songEnabled={songEnabled}
             />
           </section>
 

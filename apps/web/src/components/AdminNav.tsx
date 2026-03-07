@@ -92,6 +92,16 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Channel config',
   },
   {
+    href: '/admin/songs',
+    label: 'Songs',
+    description: 'Session songs',
+  },
+  {
+    href: '/admin/postcards',
+    label: 'Postcards',
+    description: 'Generation pipeline',
+  },
+  {
     href: '/vision-training',
     label: 'Vision',
     description: 'ML training',

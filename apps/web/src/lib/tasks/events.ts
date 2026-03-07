@@ -570,8 +570,8 @@ export type SessionPlanEvent =
 export type SessionSongEvent =
   | { type: 'song_extracting_stats' }
   | { type: 'song_generating_prompt' }
-  | { type: 'song_prompt_ready'; title: string; style: string }
-  | { type: 'song_submitted'; sunoTaskId: string }
+  | { type: 'song_prompt_ready'; title: string }
+  | { type: 'song_generating_music' }
   | { type: 'song_error'; error: string }
 
 // ============================================================================

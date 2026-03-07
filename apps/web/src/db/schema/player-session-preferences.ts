@@ -19,9 +19,36 @@ export interface PlayerSessionPreferencesConfig {
   gameBreakEnabledGames?: string[]
   /** Optional narration level for kid-facing explanations. */
   kidLanguageStyle?: KidLanguageStyle
+  /** Whether celebration songs are enabled for this student. Defaults to true when feature flag is on. */
+  sessionSongEnabled?: boolean
+  /** Preferred genre for celebration songs. 'any' rotates genres. */
+  sessionSongGenre?: SessionSongGenre
 }
 
 export type KidLanguageStyle = 'simple' | 'standard' | 'classical'
+
+export type SessionSongGenre =
+  | 'any'
+  | 'pop'
+  | 'reggae'
+  | 'funk'
+  | 'hip-hop'
+  | 'folk'
+  | 'rock'
+  | 'country'
+  | 'jazz'
+
+export const SESSION_SONG_GENRES: { id: SessionSongGenre; label: string }[] = [
+  { id: 'any', label: 'Any (rotate)' },
+  { id: 'pop', label: 'Pop' },
+  { id: 'reggae', label: 'Reggae' },
+  { id: 'funk', label: 'Funk' },
+  { id: 'hip-hop', label: 'Hip-Hop' },
+  { id: 'folk', label: 'Folk' },
+  { id: 'rock', label: 'Rock' },
+  { id: 'country', label: 'Country' },
+  { id: 'jazz', label: 'Jazz' },
+]
 
 export const DEFAULT_SESSION_PREFERENCES: PlayerSessionPreferencesConfig = {
   durationMinutes: 10,

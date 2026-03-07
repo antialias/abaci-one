@@ -81,7 +81,7 @@ const taskTimeouts: Partial<Record<TaskType, number>> = {
   demo: 2 * 60 * 1000, // 2 minutes
   'demo-refine': 10 * 60 * 1000, // 10 minutes (Claude Code can be slow)
   'session-plan': 2 * 60 * 1000, // 2 minutes
-  'session-song': 5 * 60 * 1000, // 5 minutes (LLM prompt + Suno submission)
+  'session-song': 7 * 60 * 1000, // 7 minutes (LLM prompt + ElevenLabs music generation)
   'postcard-generate': 15 * 60 * 1000, // 15 minutes (orchestrator: up to 3 generate+review cycles + thumbnail)
   'postcard-image-generate': 3 * 60 * 1000, // 3 minutes (single image generation)
   'postcard-review': 2 * 60 * 1000, // 2 minutes (LLM vision review)

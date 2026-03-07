@@ -12,9 +12,9 @@ import { backgroundTasks } from './background-tasks'
 /**
  * Session songs table - stores AI-generated celebration songs for practice sessions.
  *
- * Songs are generated via Suno API with lyrics crafted by LLM based on session
- * performance data. Generation is triggered mid-session so the song is ready
- * when the kid finishes.
+ * Songs are generated via ElevenLabs Music API with lyrics crafted by LLM based
+ * on session performance data. Generation is triggered mid-session so the song
+ * is ready when the kid finishes.
  */
 export const sessionSongs = sqliteTable(
   'session_songs',
@@ -37,15 +37,13 @@ export const sessionSongs = sqliteTable(
      * Song generation status:
      * - pending: record created, awaiting processing
      * - prompt_generating: LLM is generating lyrics/style
-     * - submitted: sent to Suno API, awaiting callback
-     * - streaming: Suno streaming first audio available
-     * - downloading: downloading final MP3 from Suno CDN
+     * - generating: ElevenLabs is generating the music
      * - completed: MP3 saved locally, ready to play
      * - failed: generation failed at some step
      */
     status: text('status').notNull().default('pending'),
 
-    /** Task ID from sunoapi.org */
+    /** @deprecated Previously used for Suno task tracking */
     sunoTaskId: text('suno_task_id'),
 
     /** JSON: session stats fed to LLM for prompt generation */
@@ -54,7 +52,7 @@ export const sessionSongs = sqliteTable(
     /** JSON: { lyrics, style, title } output from LLM */
     llmOutput: text('llm_output', { mode: 'json' }),
 
-    /** Remote Suno CDN URL for the generated audio */
+    /** @deprecated Previously used for Suno CDN URL */
     audioUrl: text('audio_url'),
 
     /** Local file path: data/audio/songs/{id}.mp3 */
@@ -77,7 +75,7 @@ export const sessionSongs = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date()),
 
-    /** When the song was submitted to Suno */
+    /** @deprecated Previously used for Suno submission time */
     submittedAt: integer('submitted_at', { mode: 'timestamp' }),
 
     /** When the song was fully downloaded and ready */
@@ -119,16 +117,23 @@ export type NewSessionSong = typeof sessionSongs.$inferInsert
 export type SessionSongStatus =
   | 'pending'
   | 'prompt_generating'
-  | 'submitted'
-  | 'streaming'
-  | 'downloading'
+  | 'generating'
   | 'completed'
   | 'failed'
 
 export type SessionSongTriggerSource = 'smart_trigger' | 'completion_fallback'
 
 export interface SessionSongLLMOutput {
-  lyrics: string
-  style: string
   title: string
+  plan: {
+    positive_global_styles: string[]
+    negative_global_styles: string[]
+    sections: Array<{
+      section_name: string
+      positive_local_styles: string[]
+      negative_local_styles: string[]
+      duration_ms: number
+      lines: string[]
+    }>
+  }
 }

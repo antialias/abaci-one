@@ -5,19 +5,23 @@
  * 1. Check idempotency (existing song for this session plan)
  * 2. Create session_songs record
  * 3. Extract session stats
- * 4. Generate LLM prompt (lyrics, style, title)
- * 5. Submit to Suno API
- * 6. Complete task — Suno generation continues async via webhook
+ * 4. Generate LLM composition plan (structured lyrics + style)
+ * 5. Generate music via ElevenLabs Music API
+ * 6. Save MP3 locally, mark completed, emit Socket.IO event
  */
 
 import { eq, and } from 'drizzle-orm'
+import { writeFile, mkdir } from 'fs/promises'
+import { join, dirname } from 'path'
 import { db, schema } from '@/db'
 import { createTask } from '../task-manager'
-import { submitSongGeneration } from '../suno/client'
+import { generateMusic } from '../elevenlabs/music-client'
 import { extractSessionStats } from '../session-song/extract-session-stats'
 import { generateSongPrompt } from '../session-song/prompt-generator'
+import { getSocketIO } from '@/lib/socket-io'
 import type { SessionSongEvent } from './events'
 import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
+import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
 
 // ============================================================================
 // Types
@@ -33,6 +37,8 @@ export interface SessionSongOutput {
   songId: string
   status: string
 }
+
+const SONGS_DIR = join(process.cwd(), 'data', 'audio', 'songs')
 
 // ============================================================================
 // Handler
@@ -102,6 +108,29 @@ export async function startSessionSongGeneration(
           throw new Error('Session plan or player not found')
         }
 
+        // Check per-student preference
+        const [prefRow] = await db
+          .select()
+          .from(schema.playerSessionPreferences)
+          .where(eq(schema.playerSessionPreferences.playerId, input.playerId))
+          .limit(1)
+
+        const prefs = prefRow
+          ? (JSON.parse(prefRow.config) as PlayerSessionPreferencesConfig)
+          : null
+        const studentSongEnabled = prefs?.sessionSongEnabled ?? true
+        if (!studentSongEnabled) {
+          // Student has songs disabled — complete silently
+          handle.complete({ songId, status: 'disabled' })
+          await db
+            .update(schema.sessionSongs)
+            .set({ status: 'failed', errorMessage: 'Songs disabled for this student' })
+            .where(eq(schema.sessionSongs.id, songId))
+          return
+        }
+
+        const genrePreference = prefs?.sessionSongGenre ?? 'any'
+
         // Get recent completed sessions for history
         const recentPlans = await db
           .select()
@@ -134,18 +163,17 @@ export async function startSessionSongGeneration(
           })
           .where(eq(schema.sessionSongs.id, songId))
 
-        // Step 2: Generate LLM prompt
+        // Step 2: Generate LLM composition plan
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
 
-        const llmOutput = await generateSongPrompt(stats)
+        const llmOutput = await generateSongPrompt(stats, genrePreference)
 
         handle.emit({
           type: 'song_prompt_ready',
           title: llmOutput.title,
-          style: llmOutput.style,
         })
-        handle.setProgress(60, 'Song lyrics ready!')
+        handle.setProgress(50, 'Song lyrics ready!')
 
         // Update song record with LLM output
         await db
@@ -155,36 +183,50 @@ export async function startSessionSongGeneration(
           })
           .where(eq(schema.sessionSongs.id, songId))
 
-        // Step 3: Submit to Suno
-        handle.setProgress(70, 'Sending to music studio...')
+        // Step 3: Generate music via ElevenLabs
+        handle.emit({ type: 'song_generating_music' })
+        handle.setProgress(60, 'Creating your music...')
 
-        const webhookBaseUrl = process.env.SUNO_WEBHOOK_BASE_URL
-        const callbackUrl = webhookBaseUrl
-          ? `${webhookBaseUrl}/api/webhooks/suno?songId=${songId}`
-          : undefined
+        await db
+          .update(schema.sessionSongs)
+          .set({ status: 'generating' })
+          .where(eq(schema.sessionSongs.id, songId))
 
-        const { taskId: sunoTaskId } = await submitSongGeneration({
-          lyrics: llmOutput.lyrics,
-          style: llmOutput.style,
-          title: llmOutput.title,
-          callbackUrl,
+        const { audioBuffer } = await generateMusic({
+          compositionPlan: llmOutput.plan,
         })
 
-        handle.emit({ type: 'song_submitted', sunoTaskId })
-        handle.setProgress(90, 'Music is being created...')
+        // Step 4: Save MP3 locally
+        handle.setProgress(90, 'Saving your song...')
 
-        // Update song record with Suno task ID
+        const localPath = join(SONGS_DIR, `${songId}.mp3`)
+        await mkdir(dirname(localPath), { recursive: true })
+        await writeFile(localPath, audioBuffer)
+
+        // Step 5: Mark completed
         await db
           .update(schema.sessionSongs)
           .set({
-            sunoTaskId,
-            status: 'submitted',
-            submittedAt: new Date(),
+            status: 'completed',
+            localFilePath: localPath,
+            completedAt: new Date(),
           })
           .where(eq(schema.sessionSongs.id, songId))
 
-        // Task is done — Suno generation continues async via webhook
-        handle.complete({ songId, status: 'submitted' })
+        // Emit Socket.IO event for instant client notification
+        try {
+          const io = await getSocketIO()
+          if (io) {
+            io.emit(`session-song:ready:${input.sessionPlanId}`, {
+              songId,
+              planId: input.sessionPlanId,
+            })
+          }
+        } catch {
+          // Socket.IO not available — client will pick up via polling
+        }
+
+        handle.complete({ songId, status: 'completed' })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error'
 

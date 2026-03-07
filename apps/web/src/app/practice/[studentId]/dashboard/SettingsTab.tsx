@@ -7,8 +7,8 @@ import {
   useSavePlayerSessionPreferences,
 } from '@/hooks/usePlayerSessionPreferences'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
-import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
-import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
+import { DEFAULT_SESSION_PREFERENCES, SESSION_SONG_GENRES } from '@/db/schema/player-session-preferences'
+import type { KidLanguageStyle, SessionSongGenre } from '@/db/schema/player-session-preferences'
 import { KID_LANGUAGE_STYLES, getRecommendedKidLanguageStyle } from '@/lib/kidLanguageStyle'
 import { getAgeFromBirthday } from '@/lib/playerAge'
 
@@ -22,6 +22,8 @@ interface SettingsTabProps {
   studentBirthday?: string | null
   isDark: boolean
   onManageSkills: () => void
+  /** Whether celebration songs are available (feature flag + tier). */
+  songEnabled?: boolean
 }
 
 // ============================================================================
@@ -34,6 +36,7 @@ export function SettingsTab({
   studentBirthday,
   isDark,
   onManageSkills,
+  songEnabled = false,
 }: SettingsTabProps) {
   const { data: preferences, isLoading } = usePlayerSessionPreferences(studentId)
   const saveMutation = useSavePlayerSessionPreferences(studentId)
@@ -74,6 +77,26 @@ export function SettingsTab({
       saveMutation.mutate({
         ...(preferences ?? DEFAULT_SESSION_PREFERENCES),
         kidLanguageStyle: style,
+      })
+    },
+    [preferences, saveMutation]
+  )
+
+  const songEnabledForStudent = preferences?.sessionSongEnabled ?? true
+  const songGenre: SessionSongGenre = preferences?.sessionSongGenre ?? 'any'
+
+  const handleToggleSong = useCallback(() => {
+    saveMutation.mutate({
+      ...(preferences ?? DEFAULT_SESSION_PREFERENCES),
+      sessionSongEnabled: !songEnabledForStudent,
+    })
+  }, [preferences, saveMutation, songEnabledForStudent])
+
+  const handleSelectSongGenre = useCallback(
+    (genre: SessionSongGenre) => {
+      saveMutation.mutate({
+        ...(preferences ?? DEFAULT_SESSION_PREFERENCES),
+        sessionSongGenre: genre,
       })
     },
     [preferences, saveMutation]
@@ -472,6 +495,152 @@ export function SettingsTab({
           })}
         </div>
       </section>
+
+      {/* Celebration Songs */}
+      {songEnabled && (
+        <section
+          data-section="celebration-songs"
+          className={css({
+            marginBottom: '2rem',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '0.75rem',
+            })}
+          >
+            <h3
+              className={css({
+                fontSize: '1.125rem',
+                fontWeight: '700',
+                color: isDark ? 'gray.100' : 'gray.800',
+              })}
+            >
+              Celebration Songs
+            </h3>
+            {/* Enable/Disable toggle */}
+            <button
+              type="button"
+              data-action="toggle-song"
+              data-enabled={songEnabledForStudent}
+              onClick={handleToggleSong}
+              className={css({
+                width: '40px',
+                height: '22px',
+                borderRadius: '11px',
+                position: 'relative',
+                border: 'none',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'background-color 0.15s ease',
+              })}
+              style={{
+                backgroundColor: songEnabledForStudent
+                  ? isDark
+                    ? '#8b5cf6'
+                    : '#7c3aed'
+                  : isDark
+                    ? 'rgba(255,255,255,0.12)'
+                    : 'rgba(0,0,0,0.12)',
+              }}
+            >
+              <div
+                className={css({
+                  position: 'absolute',
+                  top: '2px',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  transition: 'left 0.15s ease',
+                  backgroundColor: 'white',
+                })}
+                style={{
+                  left: songEnabledForStudent ? '20px' : '2px',
+                }}
+              />
+            </button>
+          </div>
+
+          <p
+            className={css({
+              fontSize: '0.8125rem',
+              color: isDark ? 'gray.400' : 'gray.600',
+              marginBottom: '1rem',
+              lineHeight: '1.5',
+            })}
+          >
+            {songEnabledForStudent
+              ? `A personalized song is generated for ${studentName} after each practice session.`
+              : `Celebration songs are turned off for ${studentName}.`}
+          </p>
+
+          {/* Genre Picker (only shown when enabled) */}
+          {songEnabledForStudent && (
+            <div
+              data-element="song-genre-grid"
+              className={css({
+                display: 'grid',
+                gridTemplateColumns: { base: 'repeat(3, 1fr)', sm: 'repeat(5, 1fr)' },
+                gap: '0.5rem',
+              })}
+            >
+              {SESSION_SONG_GENRES.map((genre) => {
+                const isSelected = songGenre === genre.id
+                return (
+                  <button
+                    key={genre.id}
+                    type="button"
+                    data-genre={genre.id}
+                    data-selected={isSelected}
+                    onClick={() => handleSelectSongGenre(genre.id)}
+                    className={css({
+                      padding: '0.6rem 0.5rem',
+                      textAlign: 'center',
+                      borderRadius: '10px',
+                      border: '2px solid',
+                      cursor: 'pointer',
+                      fontSize: '0.8125rem',
+                      fontWeight: '600',
+                      transition: 'all 0.15s ease',
+                      _hover: {
+                        transform: 'translateY(-1px)',
+                      },
+                    })}
+                    style={{
+                      borderColor: isSelected
+                        ? isDark
+                          ? 'rgba(139, 92, 246, 0.5)'
+                          : 'rgba(139, 92, 246, 0.4)'
+                        : isDark
+                          ? 'rgba(255,255,255,0.08)'
+                          : 'rgba(0,0,0,0.08)',
+                      backgroundColor: isSelected
+                        ? isDark
+                          ? 'rgba(139, 92, 246, 0.15)'
+                          : 'rgba(139, 92, 246, 0.08)'
+                        : isDark
+                          ? 'rgba(255,255,255,0.03)'
+                          : 'rgba(0,0,0,0.02)',
+                      color: isSelected
+                        ? isDark
+                          ? '#c4b5fd'
+                          : '#6d28d9'
+                        : isDark
+                          ? '#9ca3af'
+                          : '#6b7280',
+                    }}
+                  >
+                    {genre.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Skills Pane */}
       <section data-section="skills-shortcut">
