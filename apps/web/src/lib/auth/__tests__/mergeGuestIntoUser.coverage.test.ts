@@ -26,6 +26,10 @@ const EXCLUDED_FROM_MERGE: Record<string, string> = {
   // from the guest to the auth user — the auth user already has their own.
   'auth_accounts.user_id':
     'Cleaned up by CASCADE on source user delete; auth user has own OAuth links',
+  'user_notification_settings.user_id':
+    'Guests have no notification settings; auth user keeps their own preferences',
+  'user_push_subscriptions.user_id':
+    'Push subscriptions are device-specific; guest push subs are cleaned up by CASCADE',
 }
 
 /** Extract the SQL table name from a Drizzle table */
