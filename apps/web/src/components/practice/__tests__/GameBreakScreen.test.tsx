@@ -12,6 +12,13 @@ vi.mock('@/contexts/ThemeContext', () => ({
   }),
 }))
 
+// Mock MyAbacusContext
+vi.mock('@/contexts/MyAbacusContext', () => ({
+  useMyAbacus: () => ({
+    setIsHidden: vi.fn(),
+  }),
+}))
+
 // Mock Panda CSS
 vi.mock('../../../../styled-system/css', () => ({
   css: vi.fn(() => 'mocked-css-class'),
