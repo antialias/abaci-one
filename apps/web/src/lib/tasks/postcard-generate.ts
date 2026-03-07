@@ -147,7 +147,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
       const hasScreenshots = !!referenceImage
 
       const prompt = [
-        `Create a postcard commemorating a phone call between a child named ${manifest.childName} and the number ${displayNum} on the number line.`,
+        `Create a postcard commemorating a phone call between a child named ${manifest.childName}${manifest.childAge ? ` (age ${manifest.childAge})` : ''} and the number ${displayNum} on the number line.`,
         ``,
         `The number's personality: ${manifest.callerPersonality}`,
         ``,

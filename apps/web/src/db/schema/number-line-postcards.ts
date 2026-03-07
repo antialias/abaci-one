@@ -27,6 +27,7 @@ export interface PostcardManifest {
   callerNumber: number
   callerPersonality: string // from getTraitSummary(n)
   childName: string
+  childAge?: number
   childEmoji: string
   moments: RankedMoment[]
   sessionSummary: string // brief agent-generated summary

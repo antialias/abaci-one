@@ -843,6 +843,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
           callerNumber: calledNumberRef.current,
           callerPersonality: getTraitSummary(calledNumberRef.current),
           childName: child?.name ?? 'Friend',
+          childAge: child?.age,
           childEmoji: child?.emoji ?? '',
           moments: ranked,
           sessionSummary,
