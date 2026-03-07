@@ -161,7 +161,6 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
           : `Style: warm, playful, mathematical. Include the number ${displayNum} prominently with number line elements.`,
         ``,
         `The overall postcard should feel warm, playful, and nostalgic — like a keepsake from a fun mathematical adventure. Include the number ${displayNum} as a character or prominent element.`,
-        `Do NOT include any text, words, or letters on the image.`,
       ].join('\n')
 
       // Use Nano Banana Pro for Gemini, first model for OpenAI
