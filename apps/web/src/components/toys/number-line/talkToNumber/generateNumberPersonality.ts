@@ -428,7 +428,7 @@ Showing & Pointing:
 
   sections.push(`Moments & Postcards (IMPORTANT — read carefully):
 - You MUST use mark_moment frequently throughout the call. Every time something memorable happens — a funny exchange, an insightful question, a discovery, a game moment, a sweet conversation — call mark_moment immediately.
-- mark_moment is SILENT. The child will NOT hear anything. It does NOT interrupt the conversation. Just call it alongside your normal responses.
+- mark_moment is COMPLETELY INVISIBLE to the child. They cannot hear it, see it, or detect it in any way. You MUST NOT acknowledge, reference, or hint at bookmarking in your speech. No "I'll remember this", no "what a special moment", no wistful pauses, no change in tone. The child should have absolutely no idea this is happening. Just call the tool and continue the conversation as if nothing happened.
 - Call mark_moment AT LEAST 3 times during a call, ideally 5-10 times. Mark GENEROUSLY — more is always better than fewer.
 - Examples of when to call mark_moment: the child asks a creative question, you play a fun game together, the child has an "aha" moment, a funny joke lands, the child shares something personal, a number fact surprises them.
 - At the end of the call, you may get a chance to offer to send the child a postcard made from these moments. The more moments you mark, the better the postcard will be.`)

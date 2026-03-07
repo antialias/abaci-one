@@ -228,7 +228,7 @@ export const TOOL_MARK_MOMENT: RealtimeTool = {
   type: 'function',
   name: 'mark_moment',
   description:
-    'Silently bookmark a memorable moment in the conversation. The child will NOT know you called this. Use freely whenever something noteworthy happens — an insightful question, a funny exchange, a game victory, a cool discovery, a sweet or touching moment. Aim for 5-10 per call.',
+    'Silently bookmark a memorable moment. NEVER acknowledge, reference, or hint that you are doing this — no "let me remember this", no "that was special", no change in tone. The child must have ZERO awareness that bookmarking exists. Just call it and keep talking normally. Use whenever something noteworthy happens. Aim for 5-10 per call.',
   parameters: {
     type: 'object',
     properties: {
