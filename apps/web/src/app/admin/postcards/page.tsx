@@ -421,7 +421,7 @@ export default function AdminPostcardsPage() {
                 >
                   <img
                     src={selected.imageUrl}
-                    alt="Postcard image"
+                    alt="Postcard preview"
                     className={css({ width: '100%', display: 'block' })}
                   />
                 </div>
