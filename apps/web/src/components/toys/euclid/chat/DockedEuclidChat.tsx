@@ -174,60 +174,95 @@ export function DockedEuclidChat({
   if (collapsed) return null
 
   if (isMobile) {
-    if (mobileExpanded) {
-      // Full messages view on mobile — same as desktop but adapted
-      return (
-        <DesktopDockedChat
-          messages={messages}
-          isStreaming={isStreaming}
-          input={input}
-          setInput={setInput}
-          inputRef={setInputRef}
-          onSend={handleSend}
-          onKeyDown={handleKeyDown}
-          onHighlight={onHighlight}
-          renderEntity={renderEntity}
-          messagesContainerRef={messagesContainerRef}
-          handleMessagesScroll={handleMessagesScroll}
-          callState={callState}
-          isCallActive={isCallActive}
-          isRinging={isRinging}
-          isActive={isActive}
-          isCallError={isCallError}
-          debugCompaction={debugCompaction}
-          onCollapse={() => setMobileExpandedAndNotify(false)}
-          onCall={onCall}
-          canCall={canCall}
-          onToggleAudio={onToggleAudio}
-          audioEnabled={audioEnabled}
-          smProfileImage={smProfileImage}
-          defaultProfileImage={defaultProfileImage}
-          preventFocusLoss={preventFocusLoss}
-        />
-      )
-    }
+    // Both views rendered in a grid overlay with animated height + opacity cross-fade
     return (
-      <MobileChatStrip
-        input={input}
-        setInput={setInput}
-        inputRef={setInputRef}
-        onSend={handleSend}
-        onKeyDown={handleKeyDown}
-        isStreaming={isStreaming}
-        lastAssistantMsg={lastAssistantMsg}
-        callState={callState}
-        isRinging={isRinging}
-        isActive={isActive}
-        onExpand={() => setMobileExpandedAndNotify(true)}
-        hasMessages={hasConversation}
-        onCall={onCall}
-        canCall={canCall}
-        onToggleAudio={onToggleAudio}
-        audioEnabled={audioEnabled}
-        onColdStart={onColdStart}
-        smProfileImage={smProfileImage}
-        preventFocusLoss={preventFocusLoss}
-      />
+      <div
+        data-component="mobile-chat-container"
+        style={{
+          height: mobileExpanded ? 'calc(100dvh / 3)' : MOBILE_STRIP_HEIGHT,
+          transition: 'height 0.3s ease',
+          overflow: 'hidden',
+          flexShrink: 0,
+          display: 'grid',
+        }}
+      >
+        {/* Expanded view — always mounted to preserve scroll & state */}
+        <div
+          style={{
+            gridRow: 1,
+            gridColumn: 1,
+            opacity: mobileExpanded ? 1 : 0,
+            transition: 'opacity 0.2s ease',
+            pointerEvents: mobileExpanded ? 'auto' : 'none',
+            visibility: mobileExpanded ? 'visible' : 'hidden',
+            overflow: 'hidden',
+            minHeight: 0,
+          }}
+        >
+          <DesktopDockedChat
+            messages={messages}
+            isStreaming={isStreaming}
+            input={input}
+            setInput={setInput}
+            inputRef={setInputRef}
+            onSend={handleSend}
+            onKeyDown={handleKeyDown}
+            onHighlight={onHighlight}
+            renderEntity={renderEntity}
+            messagesContainerRef={messagesContainerRef}
+            handleMessagesScroll={handleMessagesScroll}
+            callState={callState}
+            isCallActive={isCallActive}
+            isRinging={isRinging}
+            isActive={isActive}
+            isCallError={isCallError}
+            debugCompaction={debugCompaction}
+            height="100%"
+            onCollapse={() => setMobileExpandedAndNotify(false)}
+            onCall={onCall}
+            canCall={canCall}
+            onToggleAudio={onToggleAudio}
+            audioEnabled={audioEnabled}
+            smProfileImage={smProfileImage}
+            defaultProfileImage={defaultProfileImage}
+            preventFocusLoss={preventFocusLoss}
+          />
+        </div>
+        {/* Collapsed strip — cross-fades out when expanded */}
+        <div
+          style={{
+            gridRow: 1,
+            gridColumn: 1,
+            opacity: mobileExpanded ? 0 : 1,
+            transition: 'opacity 0.2s ease',
+            pointerEvents: mobileExpanded ? 'none' : 'auto',
+            visibility: mobileExpanded ? 'hidden' : 'visible',
+            alignSelf: 'start',
+          }}
+        >
+          <MobileChatStrip
+            input={input}
+            setInput={setInput}
+            inputRef={setInputRef}
+            onSend={handleSend}
+            onKeyDown={handleKeyDown}
+            isStreaming={isStreaming}
+            lastAssistantMsg={lastAssistantMsg}
+            callState={callState}
+            isRinging={isRinging}
+            isActive={isActive}
+            onExpand={() => setMobileExpandedAndNotify(true)}
+            hasMessages={hasConversation}
+            onCall={onCall}
+            canCall={canCall}
+            onToggleAudio={onToggleAudio}
+            audioEnabled={audioEnabled}
+            onColdStart={onColdStart}
+            smProfileImage={smProfileImage}
+            preventFocusLoss={preventFocusLoss}
+          />
+        </div>
+      </div>
     )
   }
 
@@ -279,7 +314,7 @@ interface DesktopDockedChatProps {
   isActive: boolean | undefined
   isCallError: boolean | undefined
   debugCompaction?: DebugCompactionProps
-  height?: number
+  height?: number | string
   /** When provided, shows a collapse chevron in the header (used in mobile expanded mode) */
   onCollapse?: () => void
   /** Pop the chat out to the floating quad panel */
