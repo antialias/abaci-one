@@ -39,9 +39,7 @@ export const GET = withAuth(
       .limit(limit)
 
     // Filter in JS (simpler than building dynamic SQL for optional filter)
-    const filtered = statusFilter
-      ? allSongs.filter((s) => s.status === statusFilter)
-      : allSongs
+    const filtered = statusFilter ? allSongs.filter((s) => s.status === statusFilter) : allSongs
 
     // Fetch player names for all songs
     const playerIds = [...new Set(filtered.map((s) => s.playerId))]
@@ -133,7 +131,8 @@ export const GET = withAuth(
       completed: allSongs.filter((s) => s.status === 'completed').length,
       failed: allSongs.filter((s) => s.status === 'failed').length,
       generating: allSongs.filter(
-        (s) => s.status === 'pending' || s.status === 'prompt_generating' || s.status === 'generating'
+        (s) =>
+          s.status === 'pending' || s.status === 'prompt_generating' || s.status === 'generating'
       ).length,
     }
 
@@ -173,7 +172,8 @@ export const POST = withAuth(
     const result = await startSessionSongGeneration({
       sessionPlanId: song.sessionPlanId,
       playerId: song.playerId,
-      triggerSource: (song.triggerSource as 'smart_trigger' | 'completion_fallback') ?? 'completion_fallback',
+      triggerSource:
+        (song.triggerSource as 'smart_trigger' | 'completion_fallback') ?? 'completion_fallback',
     })
 
     return NextResponse.json({

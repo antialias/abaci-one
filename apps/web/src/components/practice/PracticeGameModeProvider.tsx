@@ -66,11 +66,11 @@ export function PracticeGameModeProvider({
     [onGameComplete]
   )
 
-  // Use viewerId as the player ID so it matches the server-side fallback.
-  // The server creates sessions with roomPlayerIds = [userId] (viewerId) when no
-  // DB players exist. Using viewerId here ensures client and server agree on the
-  // player ID from the start, avoiding "player not found" warnings.
-  const playerId = viewerId ?? 'practice-user'
+  // Use the actual student's player ID so that downstream consumers
+  // (e.g. GenericResultsPhase → record-game) send a real player ID that
+  // passes canPerformAction auth checks. The student.id IS in the players
+  // table and is owned by the current user, so auth succeeds.
+  const playerId = student.id
 
   // Create a fake DBPlayer from the practice student
   const dbPlayers: DBPlayer[] = useMemo(

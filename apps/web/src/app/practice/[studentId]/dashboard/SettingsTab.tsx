@@ -1036,9 +1036,7 @@ function SongGenreCombobox({
                       fontWeight: selected ? '700' : '500',
                       transition: 'background 0.1s',
                       _hover: {
-                        backgroundColor: isDark
-                          ? 'rgba(255,255,255,0.05)'
-                          : 'rgba(0,0,0,0.04)',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                       },
                     })}
                     style={{
@@ -1072,34 +1070,33 @@ function SongGenreCombobox({
               })}
 
               {/* Custom genre option */}
-              {filter.trim() &&
-                !filtered.some((g) => g.id === filter.trim().toLowerCase()) && (
-                  <button
-                    type="button"
-                    data-action="add-custom-genre"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => addTag(filter.trim().toLowerCase())}
-                    className={css({
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '0.5rem 0.75rem',
-                      border: 'none',
-                      borderTop: '1px solid',
-                      cursor: 'pointer',
-                      fontSize: '0.8125rem',
-                      fontWeight: '500',
-                      fontStyle: 'italic',
-                    })}
-                    style={{
-                      borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                      backgroundColor: 'transparent',
-                      color: isDark ? '#a78bfa' : '#7c3aed',
-                    }}
-                  >
-                    Add &ldquo;{filter.trim()}&rdquo;
-                  </button>
-                )}
+              {filter.trim() && !filtered.some((g) => g.id === filter.trim().toLowerCase()) && (
+                <button
+                  type="button"
+                  data-action="add-custom-genre"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => addTag(filter.trim().toLowerCase())}
+                  className={css({
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '0.5rem 0.75rem',
+                    border: 'none',
+                    borderTop: '1px solid',
+                    cursor: 'pointer',
+                    fontSize: '0.8125rem',
+                    fontWeight: '500',
+                    fontStyle: 'italic',
+                  })}
+                  style={{
+                    borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                    backgroundColor: 'transparent',
+                    color: isDark ? '#a78bfa' : '#7c3aed',
+                  }}
+                >
+                  Add &ldquo;{filter.trim()}&rdquo;
+                </button>
+              )}
             </div>
           )}
         </>

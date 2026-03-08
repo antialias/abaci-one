@@ -67,7 +67,7 @@ function defaultGetResultsReport<
       const isSinglePlayer = state.activePlayers.length === 1
       const movesForAccuracy = isSinglePlayer ? state.moves : playerScore * 2
       const accuracy =
-        movesForAccuracy > 0 ? Math.round(((playerScore * 2) / movesForAccuracy) * 100) : 0
+        movesForAccuracy > 0 ? Math.round((playerScore / movesForAccuracy) * 100) : 0
 
       return {
         playerId,
@@ -91,7 +91,7 @@ function defaultGetResultsReport<
 
   const overallAccuracy =
     isSinglePlayer && state.moves > 0
-      ? Math.round(((state.matchedPairs * 2) / state.moves) * 100)
+      ? Math.round((state.matchedPairs / state.moves) * 100)
       : (winner?.accuracy ?? 0)
 
   let headline = 'Game Complete!'

@@ -9,11 +9,7 @@ import {
   getStepTimingDecay,
   arcCountAtProgress,
 } from './constants/demos/goldenRatioDemo'
-import {
-  scrubberToProgress,
-  getScrubberLogBase,
-  setScrubberLogBase,
-} from './syncDemoScrubberDOM'
+import { scrubberToProgress, getScrubberLogBase, setScrubberLogBase } from './syncDemoScrubberDOM'
 import {
   getSieveTrackingRange,
   setSieveTrackingRange,
@@ -256,9 +252,7 @@ export function NumberLineDebugPanel({
               >
                 ◀
               </button>
-              <span
-                style={{ flex: 1, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
-              >
+              <span style={{ flex: 1, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
                 {centering.subjectId}
               </span>
               <button
@@ -343,10 +337,7 @@ export function NumberLineDebugPanel({
               onChange={(v: number) => centering.updateAlignment({ offsetY: v })}
               formatValue={(v: number) => v.toFixed(3)}
             />
-            <div
-              data-element="centering-actions"
-              style={{ display: 'flex', gap: 6, marginTop: 4 }}
-            >
+            <div data-element="centering-actions" style={{ display: 'flex', gap: 6, marginTop: 4 }}>
               <button
                 data-action="centering-reset"
                 onClick={centering.resetAlignment}
@@ -362,9 +353,7 @@ export function NumberLineDebugPanel({
               >
                 Reset
               </button>
-              <span
-                style={{ fontSize: 10, opacity: 0.6, display: 'flex', alignItems: 'center' }}
-              >
+              <span style={{ fontSize: 10, opacity: 0.6, display: 'flex', alignItems: 'center' }}>
                 {centering.saving ? 'Saving...' : centering.dirty ? 'Unsaved' : 'Saved'}
               </span>
             </div>

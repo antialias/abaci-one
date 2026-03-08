@@ -91,6 +91,7 @@ import { useCitationPopover } from './hooks/useCitationPopover'
 import { useQuadDrag } from './hooks/useQuadDrag'
 import { useAutoComplete } from './hooks/useAutoComplete'
 import { useDragTopologyTracking } from './hooks/useDragTopologyTracking'
+import { useSuperpositionInteraction } from './interaction/useSuperpositionInteraction'
 import { useChatModeManager } from './hooks/useChatModeManager'
 import { EuclidDebugControls } from './EuclidDebugControls'
 import { ToolDock } from './ToolDock'
@@ -267,6 +268,9 @@ function EuclidCanvasInner({
   playgroundModeRef.current = playgroundMode
   const straightedgeDrawAnimRef = useRef<StraightedgeDrawAnim | null>(null)
   const superpositionFlashRef = useRef<SuperpositionFlash | null>(null)
+  const superpositionPhaseRef = useRef<import('./types').SuperpositionPhase>({ tag: 'idle' })
+  const onSuperpositionSettledRef = useRef<(() => void) | null>(null)
+  const superpositionCascadeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const citationFlashesRef = useRef<CitationFlash[]>([])
   const dragPointIdRef = useRef<string | null>(null)
   const dragLabelRef = useRef<string | null>(null)
@@ -906,6 +910,8 @@ function EuclidCanvasInner({
     ghostOpacitiesRef,
     postCompletionActionsRef,
     correctionActiveRef,
+    superpositionPhaseRef,
+    superpositionCascadeTimersRef,
     toolPhases,
     audioEnabledRef,
     currentSpeechRef,
@@ -1115,6 +1121,95 @@ function EuclidCanvasInner({
       if (activeTool !== 'move') {
         toolPhases.selectTool('move')
       }
+      return
+    }
+
+    // Superposition steps: initiate lifting phase and set up settled callback
+    if (effectiveExpected.type === 'superposition') {
+      superpositionPhaseRef.current = {
+        tag: 'lifting',
+        startTime: performance.now(),
+        srcTriIds: effectiveExpected.src,
+        tgtTriIds: effectiveExpected.tgt,
+        mapping: effectiveExpected.mapping,
+      }
+      // Set up the settled callback for fact cascade + step advancement
+      const establishes = effectiveExpected.establishes
+      onSuperpositionSettledRef.current = () => {
+        // Trigger superposition flash (celebratory coda)
+        if (proposition.superpositionFlash) {
+          superpositionFlashRef.current = {
+            startTime: performance.now(),
+            ...proposition.superpositionFlash,
+          }
+        }
+
+        // Establish facts with 400ms spacing
+        const timerIds: ReturnType<typeof setTimeout>[] = []
+        establishes.cascade.forEach((fact, i) => {
+          const timerId = setTimeout(
+            () => {
+              if (fact.kind === 'segment-equality') {
+                const newFacts = addFact(
+                  factStoreRef.current,
+                  distancePair(fact.params.leftA, fact.params.leftB),
+                  distancePair(fact.params.rightA, fact.params.rightB),
+                  { type: 'cn4' },
+                  fact.statement,
+                  fact.justification,
+                  currentStepRef.current
+                )
+                proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
+              } else {
+                const newFacts = addAngleFact(
+                  factStoreRef.current,
+                  angleMeasure(fact.params.leftVertex, fact.params.leftRay1, fact.params.leftRay2),
+                  angleMeasure(
+                    fact.params.rightVertex,
+                    fact.params.rightRay1,
+                    fact.params.rightRay2
+                  ),
+                  { type: 'cn4' },
+                  fact.statement,
+                  fact.justification,
+                  currentStepRef.current
+                )
+                proofFactsRef.current = [...proofFactsRef.current, ...newFacts]
+              }
+              setProofFacts([...proofFactsRef.current])
+              needsDrawRef.current = true
+
+              // After last fact: capture snapshot and advance step
+              if (i === establishes.cascade.length - 1) {
+                snapshotStackRef.current = [
+                  ...snapshotStackRef.current,
+                  captureSnapshot(
+                    constructionRef.current,
+                    candidatesRef.current,
+                    proofFactsRef.current,
+                    ghostLayersRef.current
+                  ),
+                ]
+                setCompletedSteps((prev) => {
+                  const next = [...prev]
+                  next[currentStepRef.current] = true
+                  return next
+                })
+                const nextStep = currentStepRef.current + 1
+                currentStepRef.current = nextStep
+                if (nextStep >= stepsRef.current.length) {
+                  setIsComplete(true)
+                }
+                setCurrentStep(nextStep)
+              }
+            },
+            (i + 1) * 400
+          )
+          timerIds.push(timerId)
+        })
+        superpositionCascadeTimersRef.current = timerIds
+      }
+      needsDrawRef.current = true
       return
     }
 
@@ -1360,6 +1455,16 @@ function EuclidCanvasInner({
     onDragEnd: dragTopologyEnd,
   })
 
+  // ── Superposition interaction (triangle drag/flip/snap) ──
+  useSuperpositionInteraction({
+    canvasRef,
+    constructionRef,
+    viewportRef,
+    superpositionPhaseRef,
+    needsDrawRef,
+    isMobileRef,
+  })
+
   // ── Construction music ──
   const music = useEuclidMusic({ constructionRef, factStoreRef, isComplete })
   musicRef.current = music
@@ -1425,6 +1530,8 @@ function EuclidCanvasInner({
       chatHighlightRef,
       extendPreviewRef,
       wiggleCancelRef,
+      superpositionPhaseRef,
+      onSuperpositionSettledRef,
       lastSweepRef,
       lastSweepTimeRef,
       lastSweepCenterRef,

@@ -676,11 +676,6 @@ export function VirtualizedSessionList({
 
   const sessionPhotoCounts = attachmentData?.sessionCounts ?? {}
 
-  // Debug logging
-  console.log(
-    `[VirtualizedSessionList] studentId=${studentId}, totalLoaded=${totalLoaded}, hasNextPage=${hasNextPage}, isLoading=${isLoading}, isFetchingNextPage=${isFetchingNextPage}`
-  )
-
   // Virtualizer configuration
   // +1 for active session at top (if any), +1 for loading indicator at bottom (if any)
   const activeSessionOffset = hasActiveSession ? 1 : 0
@@ -700,9 +695,6 @@ export function VirtualizedSessionList({
 
     // Trigger load when within 200px of bottom
     if (scrollRemaining < 200) {
-      console.log(
-        `[VirtualizedSessionList] Near bottom, fetching next page. scrollRemaining=${scrollRemaining}`
-      )
       fetchNextPage()
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage])

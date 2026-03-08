@@ -600,17 +600,11 @@ function SongDetail({
         <DetailSection title="Composition Plan">
           <div className={css({ marginBottom: '8px' })}>
             <Label>Global Styles</Label>
-            <TagList
-              tags={(plan.positive_global_styles as string[]) ?? []}
-              color="#4CAF50"
-            />
+            <TagList tags={(plan.positive_global_styles as string[]) ?? []} color="#4CAF50" />
             {((plan.negative_global_styles as string[]) ?? []).length > 0 && (
               <>
                 <Label>Negative Styles</Label>
-                <TagList
-                  tags={(plan.negative_global_styles as string[]) ?? []}
-                  color="#f44336"
-                />
+                <TagList tags={(plan.negative_global_styles as string[]) ?? []} color="#f44336" />
               </>
             )}
           </div>

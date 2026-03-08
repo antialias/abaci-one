@@ -175,9 +175,7 @@ export function extractSessionStats(
 // Helper — extract game break summary from a GameResult
 // ============================================================================
 
-function extractGameBreak(
-  result?: GameResult | null
-): SongPromptInput['gameBreak'] {
+function extractGameBreak(result?: GameResult | null): SongPromptInput['gameBreak'] {
   if (!result?.fullReport) return undefined
 
   const report = result.fullReport as GameResultsReport

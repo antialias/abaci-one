@@ -20,6 +20,7 @@ import { renderGhostGeometry } from './renderGhostGeometry'
 import { renderProductionSegments } from './renderProductionSegments'
 import { renderAngleArcs } from './renderAngleArcs'
 import { renderSuperpositionFlash } from './renderSuperpositionFlash'
+import { renderSuperpositionInteraction } from './renderSuperpositionInteraction'
 import { renderCitationFlashes } from './renderCitationFlash'
 import { renderMacroPreview } from './renderMacroPreview'
 import { renderChatHighlight } from './renderChatHighlight'
@@ -208,6 +209,23 @@ export function renderFrame(
       prop.equalAngles,
       ctx.factStoreRef.current
     )
+  }
+
+  // ── 6½. Superposition interaction (interactive drag/flip/snap) ──
+  if (ctx.superpositionPhaseRef.current.tag !== 'idle') {
+    if (
+      renderSuperpositionInteraction(
+        drawCtx,
+        ctx.superpositionPhaseRef.current,
+        drawState,
+        ctx.viewportRef.current,
+        cssWidth,
+        cssHeight,
+        performance.now()
+      )
+    ) {
+      ctx.needsDrawRef.current = true
+    }
   }
 
   // ── 7. Superposition flash animation (C.N.4) ──

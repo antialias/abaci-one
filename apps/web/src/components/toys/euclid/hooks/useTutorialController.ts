@@ -8,6 +8,7 @@ import type {
   PropositionStep,
   MacroPhase,
   ActiveTool,
+  SuperpositionPhase,
 } from '../types'
 import type { ProofFact } from '../engine/facts'
 import type { FactStore } from '../engine/factStore'
@@ -82,6 +83,10 @@ export interface UseTutorialControllerOptions {
   postCompletionActionsRef: MutableRefObject<unknown[]>
   correctionActiveRef: MutableRefObject<boolean>
 
+  // Superposition interaction
+  superpositionPhaseRef?: MutableRefObject<SuperpositionPhase>
+  superpositionCascadeTimersRef?: MutableRefObject<ReturnType<typeof setTimeout>[]>
+
   // Tool phase manager
   toolPhases: ToolPhaseManager
 
@@ -130,6 +135,8 @@ export function useTutorialController(opts: UseTutorialControllerOptions): Tutor
     ghostOpacitiesRef,
     postCompletionActionsRef,
     correctionActiveRef,
+    superpositionPhaseRef,
+    superpositionCascadeTimersRef,
     toolPhases,
     audioEnabledRef,
     currentSpeechRef,
@@ -169,6 +176,13 @@ export function useTutorialController(opts: UseTutorialControllerOptions): Tutor
       straightedgeDrawAnimRef.current = null
       macroAnimationRef.current = null
       macroRevealRef.current = null
+
+      // Reset superposition interaction
+      if (superpositionPhaseRef) superpositionPhaseRef.current = { tag: 'idle' }
+      if (superpositionCascadeTimersRef) {
+        for (const t of superpositionCascadeTimersRef.current) clearTimeout(t)
+        superpositionCascadeTimersRef.current = []
+      }
 
       // Reset tool phases so no in-flight gesture survives the revert
       toolPhases.resetAll()
@@ -348,6 +362,13 @@ export function useTutorialController(opts: UseTutorialControllerOptions): Tutor
       superpositionFlashRef.current = null
       citationFlashesRef.current = []
       postCompletionActionsRef.current = []
+
+      // Reset superposition interaction
+      if (superpositionPhaseRef) superpositionPhaseRef.current = { tag: 'idle' }
+      if (superpositionCascadeTimersRef) {
+        for (const t of superpositionCascadeTimersRef.current) clearTimeout(t)
+        superpositionCascadeTimersRef.current = []
+      }
 
       // 2. Restore construction, candidates, proofFacts, ghostLayers from snapshot
       constructionRef.current = snapshot.construction

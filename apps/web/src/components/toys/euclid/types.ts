@@ -13,6 +13,73 @@ export const BYRNE = {
 /** Cycle through Byrne accent colors for new constructions */
 export const BYRNE_CYCLE = [BYRNE.red, BYRNE.blue, BYRNE.yellow] as const
 
+// ── Vec2 (shared 2D vector) ──────────────────────────────────────
+
+export interface Vec2 {
+  x: number
+  y: number
+}
+
+// ── Superposition interaction ────────────────────────────────────
+
+export type SuperpositionPhase =
+  | { tag: 'idle' }
+  | {
+      tag: 'lifting'
+      startTime: number
+      srcTriIds: [string, string, string]
+      tgtTriIds: [string, string, string]
+      mapping: [string, string][]
+    }
+  | {
+      tag: 'dragging'
+      srcTriIds: [string, string, string]
+      tgtTriIds: [string, string, string]
+      mapping: [string, string][]
+      cutoutVertices: [Vec2, Vec2, Vec2]
+      dragAnchor: Vec2
+      initialCentroid: Vec2
+    }
+  | {
+      tag: 'mismatched'
+      cutoutVertices: [Vec2, Vec2, Vec2]
+      srcTriIds: [string, string, string]
+      tgtTriIds: [string, string, string]
+      mapping: [string, string][]
+      settleTime: number
+    }
+  | {
+      tag: 'flipping'
+      startTime: number
+      axisPoint: Vec2
+      axisDir: Vec2
+      preFlipVertices: [Vec2, Vec2, Vec2]
+      postFlipVertices: [Vec2, Vec2, Vec2]
+      srcTriIds: [string, string, string]
+      tgtTriIds: [string, string, string]
+      mapping: [string, string][]
+    }
+  | {
+      tag: 'snapping'
+      startTime: number
+      fromVertices: [Vec2, Vec2, Vec2]
+      toVertices: [Vec2, Vec2, Vec2]
+      srcTriIds: [string, string, string]
+      tgtTriIds: [string, string, string]
+      mapping: [string, string][]
+    }
+  | { tag: 'settled' }
+
+export interface SuperpositionEstablishes {
+  congruence: { statement: string }
+  cascade: Array<{
+    kind: 'segment-equality' | 'angle-equality'
+    params: Record<string, string>
+    statement: string
+    justification: string
+  }>
+}
+
 // ── Viewport ───────────────────────────────────────────────────────
 
 export interface EuclidViewportState {
@@ -140,6 +207,7 @@ export type TutorialHint =
   | { type: 'arrow'; fromId: string; toId: string }
   | { type: 'sweep'; centerId: string; radiusPointId: string }
   | { type: 'candidates'; ofA?: ElementSelector; ofB?: ElementSelector; beyondId?: string }
+  | { type: 'triangle-highlight'; ids: [string, string, string] }
   | { type: 'none' }
 
 /** Trigger that advances the tutorial to the next sub-step. */
@@ -147,6 +215,10 @@ export type AdvanceOn =
   | { kind: 'compass-phase'; phase: 'center-set' | 'radius-set' }
   | { kind: 'macro-select'; index: number }
   | { kind: 'extend-phase'; phase: 'base-set' | 'extending' }
+  | {
+      kind: 'superposition-phase'
+      phase: 'dragging' | 'mismatched' | 'flipping' | 'snapping' | 'settled'
+    }
 
 export interface TutorialSubStep {
   /** Short display text */
@@ -191,6 +263,13 @@ export type ExpectedAction =
       outputLabels?: Record<string, string>
     }
   | { type: 'observation'; id: string }
+  | {
+      type: 'superposition'
+      src: [string, string, string]
+      tgt: [string, string, string]
+      mapping: [string, string][]
+      establishes: SuperpositionEstablishes
+    }
 
 export interface PropositionStep {
   instruction: string

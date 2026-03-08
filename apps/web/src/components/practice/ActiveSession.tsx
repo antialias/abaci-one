@@ -655,10 +655,7 @@ export function ActiveSession({
         }
       })
     )
-    console.log(
-      `[autopause] Complexity thresholds (${historicalResults.length} historical + ${plan.results.length} session results):`
-    )
-    console.table(rows)
+    void rows // thresholds computed for autopause timing
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historicalResults])
 

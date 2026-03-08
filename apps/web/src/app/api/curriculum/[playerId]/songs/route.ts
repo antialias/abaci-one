@@ -22,10 +22,7 @@ export const GET = withAuth(async (_request, { params }) => {
     })
     .from(schema.sessionSongs)
     .where(
-      and(
-        eq(schema.sessionSongs.playerId, playerId),
-        eq(schema.sessionSongs.status, 'completed')
-      )
+      and(eq(schema.sessionSongs.playerId, playerId), eq(schema.sessionSongs.status, 'completed'))
     )
     .orderBy(desc(schema.sessionSongs.createdAt))
     .limit(50)

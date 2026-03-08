@@ -104,7 +104,9 @@ async function resolveDeliveryTarget(
   // System defaults for users without explicit settings.
   // Postcards default to email on — they're async and the user expects delivery.
   // Session-started is real-time, so email is off by default.
-  const typeDefaults: Partial<Record<NotificationType, { inApp: boolean; push: boolean; email: boolean }>> = {
+  const typeDefaults: Partial<
+    Record<NotificationType, { inApp: boolean; push: boolean; email: boolean }>
+  > = {
     'postcard-ready': { inApp: true, push: false, email: true },
   }
   const defaults = typeDefaults[eventType] ?? {

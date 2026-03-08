@@ -27,6 +27,9 @@ export function validateStep(
   // Observation steps are advanced by the Continue button, not canvas interaction
   if (expected.type === 'observation') return false
 
+  // Superposition steps are advanced by the interaction hook, not element validation
+  if (expected.type === 'superposition') return false
+
   if (expected.type === 'compass' && lastElement.kind === 'circle') {
     return (
       lastElement.centerId === expected.centerId &&

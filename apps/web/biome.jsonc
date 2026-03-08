@@ -60,7 +60,7 @@
       "!**/public/games",
       "!**/public/gallery-demo.html",
       "!**/public/test-interactive-with-data-attrs.html",
-      "!**/content/blog/embed-html/**"
+      "!**/content/blog/embed-html"
     ]
   },
   "vcs": {

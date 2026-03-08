@@ -21,6 +21,7 @@ import type {
   PropositionDef,
   PropositionStep,
   MacroCeremonyState,
+  SuperpositionPhase,
 } from '../types'
 import type { MacroAnimation } from './macroExecution'
 import type { FactStore } from './factStore'
@@ -112,6 +113,10 @@ export interface RAFContext {
   chatHighlightRef: MutableRefObject<GeometricEntityRef | null>
   extendPreviewRef: MutableRefObject<{ x: number; y: number } | null>
   wiggleCancelRef: MutableRefObject<(() => void) | null>
+
+  // ── Superposition interaction ──
+  superpositionPhaseRef: MutableRefObject<SuperpositionPhase>
+  onSuperpositionSettledRef: MutableRefObject<(() => void) | null>
 
   // ── Auto-fit viewport refs ──
   lastSweepRef: MutableRefObject<number>

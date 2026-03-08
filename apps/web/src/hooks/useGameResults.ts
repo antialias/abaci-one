@@ -168,7 +168,14 @@ export function useSaveGameResult() {
 
       return response.json()
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      console.info('[saveGameResult] Saved successfully:', {
+        playerId: variables.playerId,
+        sessionType: variables.sessionType,
+        sessionId: variables.sessionId,
+        gameName: variables.report.gameName,
+        responseId: data?.id,
+      })
       // Invalidate player's history
       queryClient.invalidateQueries({
         queryKey: gameResultsKeys.playerHistory(variables.playerId),
@@ -176,6 +183,15 @@ export function useSaveGameResult() {
       // Invalidate any leaderboards they might be on
       queryClient.invalidateQueries({
         queryKey: [...gameResultsKeys.all, 'leaderboard'],
+      })
+    },
+    onError: (error, variables) => {
+      console.error('[saveGameResult] FAILED to save:', {
+        error: error instanceof Error ? error.message : String(error),
+        playerId: variables.playerId,
+        sessionType: variables.sessionType,
+        sessionId: variables.sessionId,
+        gameName: variables.report.gameName,
       })
     },
   })

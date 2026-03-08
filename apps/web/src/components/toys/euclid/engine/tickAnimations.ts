@@ -5,6 +5,7 @@ import { mergeProofFacts } from './factStore'
 import { rotatePoint } from './viewportMath'
 import { getPoint, getAllPoints } from './constructionState'
 import type { ConstructionElement } from '../types'
+import { triangleCentroid } from './superpositionMath'
 
 /**
  * Tick all running animations: macro reveal, ceremony, relocate-point.
@@ -210,6 +211,69 @@ export function tickAnimations(ctx: RAFContext): boolean {
       ctx.setProofFacts(result.proofFacts)
     }
     animating = true
+  }
+
+  // ── Tick superposition interaction ──
+  const sp = ctx.superpositionPhaseRef.current
+  if (sp.tag === 'lifting') {
+    const now = performance.now()
+    if (now - sp.startTime >= 300) {
+      // Transition lifting → dragging
+      const state = ctx.constructionRef.current
+      const srcVerts = sp.srcTriIds.map((id) => {
+        const p = getPoint(state, id)
+        return p ? { x: p.x, y: p.y } : { x: 0, y: 0 }
+      }) as [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }]
+      const centroid = triangleCentroid(srcVerts[0], srcVerts[1], srcVerts[2])
+      ctx.superpositionPhaseRef.current = {
+        tag: 'dragging',
+        srcTriIds: sp.srcTriIds,
+        tgtTriIds: sp.tgtTriIds,
+        mapping: sp.mapping,
+        cutoutVertices: srcVerts,
+        dragAnchor: centroid,
+        initialCentroid: centroid,
+      }
+    }
+    animating = true
+    ctx.needsDrawRef.current = true
+  }
+  if (sp.tag === 'flipping') {
+    const now = performance.now()
+    if (now - sp.startTime >= 800) {
+      // Transition flipping → snapping
+      ctx.superpositionPhaseRef.current = {
+        tag: 'snapping',
+        startTime: now,
+        fromVertices: sp.postFlipVertices,
+        toVertices: sp.postFlipVertices,
+        srcTriIds: sp.srcTriIds,
+        tgtTriIds: sp.tgtTriIds,
+        mapping: sp.mapping,
+      }
+    }
+    animating = true
+    ctx.needsDrawRef.current = true
+  }
+  if (sp.tag === 'snapping') {
+    const now = performance.now()
+    if (now - sp.startTime >= 200) {
+      // Transition snapping → settled
+      ctx.superpositionPhaseRef.current = { tag: 'settled' }
+      // Fire the settled callback (fact cascade + step advancement)
+      ctx.onSuperpositionSettledRef.current?.()
+      ctx.onSuperpositionSettledRef.current = null
+    }
+    animating = true
+    ctx.needsDrawRef.current = true
+  }
+  if (sp.tag === 'settled') {
+    // Transition settled → idle (cleanup)
+    ctx.superpositionPhaseRef.current = { tag: 'idle' }
+  }
+  if (sp.tag === 'dragging' || sp.tag === 'mismatched') {
+    animating = true
+    ctx.needsDrawRef.current = true
   }
 
   return animating

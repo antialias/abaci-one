@@ -45,6 +45,13 @@ export const POST = withAuth(async (request) => {
     const dbUserId = await getUserId()
     const canSave = await canPerformAction(dbUserId, playerId, 'view')
     if (!canSave) {
+      console.warn('[game-results] Auth rejected:', {
+        dbUserId,
+        playerId,
+        gameName: report.gameName,
+        sessionType,
+        sessionId,
+      })
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 

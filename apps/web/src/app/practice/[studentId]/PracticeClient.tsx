@@ -542,12 +542,19 @@ export function PracticeClient({
       // If game finished normally with results, save to scoreboard and show interstitial
       if (reason === 'gameFinished' && results) {
         // Save result to database for scoreboard
-        saveGameResult.mutate({
+        const savePayload = {
           playerId: player.id,
-          sessionType: 'practice-break',
+          sessionType: 'practice-break' as const,
           sessionId: currentPlan.id,
           report: results,
+        }
+        console.info('[handleGameBreakEnd] Saving game result:', {
+          playerId: savePayload.playerId,
+          sessionType: savePayload.sessionType,
+          sessionId: savePayload.sessionId,
+          gameName: results.gameName,
         })
+        saveGameResult.mutate(savePayload)
 
         setGameBreakResults(results)
       } else {

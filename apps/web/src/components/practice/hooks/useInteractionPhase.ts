@@ -678,16 +678,11 @@ export function useInteractionPhase(
       hasMountedRef.current = true
       // Initialize the ref with current key
       prevActiveProblemKeyRef.current = activeProblem?.key ?? null
-      console.log('[useInteractionPhase] Initial mount, key:', activeProblem?.key)
       return
     }
 
     // If no active problem, nothing to do
     if (!activeProblem) {
-      console.log(
-        '[useInteractionPhase] No active problem - cannot load. Current phase:',
-        phase.phase
-      )
       prevActiveProblemKeyRef.current = null
       return
     }
@@ -696,22 +691,9 @@ export function useInteractionPhase(
     const currentKey = activeProblem.key
     const keyChanged = prevKey !== currentKey
 
-    console.log('[useInteractionPhase] Effect running:', {
-      prevKey,
-      currentKey,
-      keyChanged,
-      currentPhase: phase.phase,
-    })
-
     // Case 1: Phase is 'loading' - need to load the problem
     // This happens after incorrect answers or when returning from part transitions
     if (phase.phase === 'loading') {
-      console.log('[useInteractionPhase] Phase is loading - loading problem:', {
-        problemAnswer: activeProblem.problem.answer,
-        slotIndex: activeProblem.slotIndex,
-        partIndex: activeProblem.partIndex,
-        key: activeProblem.key,
-      })
       const newAttempt = createAttemptInput(
         activeProblem.problem,
         activeProblem.slotIndex,
@@ -719,17 +701,11 @@ export function useInteractionPhase(
       )
       setPhase({ phase: 'inputting', attempt: newAttempt })
       prevActiveProblemKeyRef.current = currentKey
-      console.log('[useInteractionPhase] Successfully loaded problem, phase now inputting')
       return
     }
 
     // Case 2: Key changed - handle redo mode or session advancement
     if (keyChanged) {
-      console.log('[useInteractionPhase] Key changed:', {
-        prevKey,
-        currentKey,
-      })
-
       // CRITICAL: Don't interrupt normal progression flow
       // If we're in showingFeedback, submitting, or transitioning, the normal flow
       // (startTransition → completeTransition) handles advancing to the next problem.
@@ -739,14 +715,12 @@ export function useInteractionPhase(
         phase.phase === 'transitioning'
 
       if (isInProgressionFlow) {
-        console.log('[useInteractionPhase] Key changed but in progression flow, deferring')
         // Still update the ref so we track the change
         prevActiveProblemKeyRef.current = currentKey
         return
       }
 
       // Key changed and we're not in progression flow - load the new problem immediately
-      console.log('[useInteractionPhase] Loading new problem from key change')
       const newAttempt = createAttemptInput(
         activeProblem.problem,
         activeProblem.slotIndex,

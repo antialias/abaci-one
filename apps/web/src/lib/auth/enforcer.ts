@@ -84,7 +84,9 @@ p, guest, /api/players, *
 p, guest, /api/players/*, *
 p, guest, /api/family/*, *
 p, guest, /api/curriculum/*, *
+p, guest, /api/game-results, *
 p, guest, /api/game-results/*, *
+p, guest, /api/player-stats, *
 p, guest, /api/player-stats/*, *
 p, guest, /api/settings/*, *
 p, guest, /api/worksheets/*, *

@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
-import { pickCombo, buildPartyCombo, emojiForStride, wouldExceedLcmLimit } from './lcmComboGenerator'
+import {
+  pickCombo,
+  buildPartyCombo,
+  emojiForStride,
+  wouldExceedLcmLimit,
+} from './lcmComboGenerator'
 import { setActiveCombo, clearGuess } from './renderLcmHopperOverlay'
 import { DYNAMIC_DEMO_VIEWPORTS } from '../constants/demos/useConstantDemo'
 import { NARRATION_CONFIGS } from '../constants/demos/narrationConfigs'

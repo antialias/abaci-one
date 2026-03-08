@@ -1,10 +1,7 @@
 import { useCallback, useRef, useState, useMemo } from 'react'
 import type { MutableRefObject } from 'react'
 import { NARRATION_CONFIGS } from './constants/demos/narrationConfigs'
-import {
-  progressToScrubber,
-  scrubberToProgress,
-} from './syncDemoScrubberDOM'
+import { progressToScrubber, scrubberToProgress } from './syncDemoScrubberDOM'
 import { DemoRefinePanel } from './DemoRefinePanel'
 
 interface DemoState {
@@ -187,7 +184,15 @@ export function DemoScrubberControls({
         scrubberThumbVisualRef.current.style.boxShadow = `0 0 12px ${glowColor}`
       }
     },
-    [scrubberProgressFromPointer, setRevealProgress, narration, setRestoredFromUrl, isDraggingScrubberRef, scrubberTrackRef, demoStateRef]
+    [
+      scrubberProgressFromPointer,
+      setRevealProgress,
+      narration,
+      setRestoredFromUrl,
+      isDraggingScrubberRef,
+      scrubberTrackRef,
+      demoStateRef,
+    ]
   )
 
   const handleScrubberPointerMove = useCallback(
@@ -200,7 +205,12 @@ export function DemoScrubberControls({
         scrubberHoverProgressRef.current = scrubberProgressFromPointer(e.clientX)
       }
     },
-    [scrubberProgressFromPointer, setRevealProgress, isDraggingScrubberRef, scrubberHoverProgressRef]
+    [
+      scrubberProgressFromPointer,
+      setRevealProgress,
+      isDraggingScrubberRef,
+      scrubberHoverProgressRef,
+    ]
   )
 
   const handleScrubberPointerLeave = useCallback(() => {
@@ -333,10 +343,13 @@ export function DemoScrubberControls({
     [refineProgressFromPointer, refineTaskActive, refineStartRef, setRefineRange]
   )
 
-  const handleRefineTrackPointerUp = useCallback((e: React.PointerEvent) => {
-    refineStartRef.current = null
-    refineTrackRef.current?.releasePointerCapture(e.pointerId)
-  }, [refineStartRef])
+  const handleRefineTrackPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      refineStartRef.current = null
+      refineTrackRef.current?.releasePointerCapture(e.pointerId)
+    },
+    [refineStartRef]
+  )
 
   // Colors for scrubber (adapts to active demo)
   const activeDemoId = demoStateRef.current.constantId
@@ -431,9 +444,7 @@ export function DemoScrubberControls({
       >
         <button
           data-action="demo-share"
-          aria-label={
-            shareAtCurrentTime ? 'Share demo at current time' : 'Share demo from start'
-          }
+          aria-label={shareAtCurrentTime ? 'Share demo at current time' : 'Share demo from start'}
           onClick={handleShare}
           style={{
             minHeight: 44,
@@ -457,14 +468,32 @@ export function DemoScrubberControls({
         >
           {shareFeedback ? (
             <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               Copied!
             </>
           ) : (
             <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
                 <polyline points="16 6 12 2 8 6" />
                 <line x1="12" y1="2" x2="12" y2="15" />
@@ -579,13 +608,9 @@ export function DemoScrubberControls({
               height: 4,
               borderRadius: 2,
               backgroundColor:
-                resolvedTheme === 'dark'
-                  ? 'rgba(96, 165, 250, 0.15)'
-                  : 'rgba(96, 165, 250, 0.12)',
+                resolvedTheme === 'dark' ? 'rgba(96, 165, 250, 0.15)' : 'rgba(96, 165, 250, 0.12)',
               border: `1px solid ${
-                resolvedTheme === 'dark'
-                  ? 'rgba(96, 165, 250, 0.25)'
-                  : 'rgba(96, 165, 250, 0.2)'
+                resolvedTheme === 'dark' ? 'rgba(96, 165, 250, 0.25)' : 'rgba(96, 165, 250, 0.2)'
               }`,
               boxSizing: 'border-box',
             }}

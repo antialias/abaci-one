@@ -1,14 +1,5 @@
-import type {
-  PropositionDef,
-  ConstructionElement,
-  ConstructionState,
-  TutorialSubStep,
-} from '../types'
+import type { PropositionDef, ConstructionElement, TutorialSubStep } from '../types'
 import { BYRNE } from '../types'
-import type { FactStore } from '../engine/factStore'
-import type { ProofFact } from '../engine/facts'
-import { distancePair, angleMeasure } from '../engine/facts'
-import { addFact, addAngleFact } from '../engine/factStore'
 
 function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
   const tapHold = isTouch ? 'Tap and hold' : 'Click and hold'
@@ -25,66 +16,16 @@ function getProp4Tutorial(isTouch: boolean): TutorialSubStep[][] {
         advanceOn: null,
       },
     ],
+    // ── Step 1: Superposition (drag triangle ABC onto DEF) ──
+    [
+      {
+        instruction: 'Drag triangle ABC onto triangle DEF',
+        speech: 'Now let us see if the triangles coincide. Drag the triangle across to the other.',
+        hint: { type: 'triangle-highlight', ids: ['pt-A', 'pt-B', 'pt-C'] },
+        advanceOn: null,
+      },
+    ],
   ]
-}
-
-/**
- * Derive I.4 conclusion: BC = EF via C.N.4 (superposition),
- * plus ∠ABC = ∠DEF and ∠ACB = ∠DFE via C.N.4
- */
-function deriveProp4Conclusion(
-  store: FactStore,
-  _state: ConstructionState,
-  atStep: number
-): ProofFact[] {
-  const allNewFacts: ProofFact[] = []
-
-  // Distance: BC = EF
-  const dpBC = distancePair('pt-B', 'pt-C')
-  const dpEF = distancePair('pt-E', 'pt-F')
-  allNewFacts.push(
-    ...addFact(
-      store,
-      dpBC,
-      dpEF,
-      { type: 'cn4' },
-      'BC = EF',
-      'C.N.4: Since AB = DE, AC = DF, and ∠BAC = ∠EDF, triangles coincide by superposition',
-      atStep
-    )
-  )
-
-  // Angle: ∠ABC = ∠DEF
-  const angABC = angleMeasure('pt-B', 'pt-A', 'pt-C')
-  const angDEF = angleMeasure('pt-E', 'pt-D', 'pt-F')
-  allNewFacts.push(
-    ...addAngleFact(
-      store,
-      angABC,
-      angDEF,
-      { type: 'cn4' },
-      '∠ABC = ∠DEF',
-      'C.N.4: Remaining angles of congruent triangles coincide',
-      atStep
-    )
-  )
-
-  // Angle: ∠ACB = ∠DFE
-  const angACB = angleMeasure('pt-C', 'pt-A', 'pt-B')
-  const angDFE = angleMeasure('pt-F', 'pt-D', 'pt-E')
-  allNewFacts.push(
-    ...addAngleFact(
-      store,
-      angACB,
-      angDFE,
-      { type: 'cn4' },
-      '∠ACB = ∠DFE',
-      'C.N.4: Remaining angles of congruent triangles coincide',
-      atStep
-    )
-  )
-
-  return allNewFacts
 }
 
 /**
@@ -345,6 +286,59 @@ export const PROP_4: PropositionDef = {
       tool: 'straightedge',
       citation: 'Post.1',
     },
+    {
+      instruction: 'Place triangle {tri:ABC} onto triangle {tri:DEF}',
+      expected: {
+        type: 'superposition',
+        src: ['pt-A', 'pt-B', 'pt-C'],
+        tgt: ['pt-D', 'pt-E', 'pt-F'],
+        mapping: [
+          ['pt-A', 'pt-D'],
+          ['pt-B', 'pt-E'],
+          ['pt-C', 'pt-F'],
+        ],
+        establishes: {
+          congruence: { statement: '△ABC ≅ △DEF' },
+          cascade: [
+            {
+              kind: 'segment-equality',
+              params: { leftA: 'pt-B', leftB: 'pt-C', rightA: 'pt-E', rightB: 'pt-F' },
+              statement: 'BC = EF',
+              justification: 'C.N.4: Triangles coincide by superposition',
+            },
+            {
+              kind: 'angle-equality',
+              params: {
+                leftVertex: 'pt-B',
+                leftRay1: 'pt-A',
+                leftRay2: 'pt-C',
+                rightVertex: 'pt-E',
+                rightRay1: 'pt-D',
+                rightRay2: 'pt-F',
+              },
+              statement: '∠ABC = ∠DEF',
+              justification: 'C.N.4: Remaining angles coincide',
+            },
+            {
+              kind: 'angle-equality',
+              params: {
+                leftVertex: 'pt-C',
+                leftRay1: 'pt-A',
+                leftRay2: 'pt-B',
+                rightVertex: 'pt-F',
+                rightRay1: 'pt-D',
+                rightRay2: 'pt-E',
+              },
+              statement: '∠ACB = ∠DFE',
+              justification: 'C.N.4: Remaining angles coincide',
+            },
+          ],
+        },
+      },
+      highlightIds: ['pt-A', 'pt-B', 'pt-C'],
+      tool: null,
+      citation: 'C.N.4',
+    },
   ],
   getTutorial: getProp4Tutorial,
   explorationNarration: {
@@ -371,5 +365,4 @@ export const PROP_4: PropositionDef = {
       },
     ],
   },
-  deriveConclusion: deriveProp4Conclusion,
 }

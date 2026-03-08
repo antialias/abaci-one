@@ -51,7 +51,10 @@ function resolveShuffleGenres(): string {
   const pool = SESSION_SONG_GENRES.filter((g) => g.id !== 'shuffle' && g.id !== 'any')
   const count = 2 + Math.floor(Math.random() * 2) // 2 or 3
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, count).map((g) => g.id).join(', ')
+  return shuffled
+    .slice(0, count)
+    .map((g) => g.id)
+    .join(', ')
 }
 
 // ============================================================================
@@ -146,8 +149,7 @@ export async function startSessionSongGeneration(
 
         const rawGenre = prefs?.sessionSongGenre ?? 'shuffle'
         // 'shuffle' → pick 2-3 random genres fresh each time for variety
-        const genrePreference =
-          rawGenre === 'shuffle' ? resolveShuffleGenres() : rawGenre
+        const genrePreference = rawGenre === 'shuffle' ? resolveShuffleGenres() : rawGenre
 
         // Get recent completed sessions for history
         const recentPlans = await db

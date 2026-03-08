@@ -103,9 +103,7 @@ export function VoiceDebugPanels({
 
           {/* Active game ID */}
           {activeGameId && (
-            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>
-              Game: {activeGameId}
-            </div>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 6 }}>Game: {activeGameId}</div>
           )}
 
           {/* Transition log — scrollable, newest on top */}

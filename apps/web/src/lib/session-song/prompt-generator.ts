@@ -28,7 +28,9 @@ const songSectionSchema = z.object({
   lines: z
     .array(z.string().max(80))
     .max(6)
-    .describe('Lyrics for this section. Keep sparse — 2-4 short lines per verse, 2-3 for chorus. Max 80 chars per line.'),
+    .describe(
+      'Lyrics for this section. Keep sparse — 2-4 short lines per verse, 2-3 for chorus. Max 80 chars per line.'
+    ),
 })
 
 export const songLLMOutputSchema = z.object({
@@ -43,7 +45,9 @@ export const songLLMOutputSchema = z.object({
     .array(songSectionSchema)
     .min(3)
     .max(5)
-    .describe('Song sections: Verse 1, Chorus, Verse 2, Chorus (optionally Bridge). 3-4 sections ideal.'),
+    .describe(
+      'Song sections: Verse 1, Chorus, Verse 2, Chorus (optionally Bridge). 3-4 sections ideal.'
+    ),
 })
 
 export type SongLLMOutput = z.infer<typeof songLLMOutputSchema>
@@ -121,7 +125,11 @@ function buildUserPrompt(input: SongPromptInput): string {
   let gameBreakNote = ''
   if (input.gameBreak) {
     const gb = input.gameBreak
-    const details = [gb.headline, ...(gb.accuracy != null ? [`${Math.round(gb.accuracy)}% accuracy`] : []), ...gb.highlights]
+    const details = [
+      gb.headline,
+      ...(gb.accuracy != null ? [`${Math.round(gb.accuracy)}% accuracy`] : []),
+      ...gb.highlights,
+    ]
     gameBreakNote = `\nGame break: played ${gb.gameName} — ${details.join(', ')}.`
   }
 
