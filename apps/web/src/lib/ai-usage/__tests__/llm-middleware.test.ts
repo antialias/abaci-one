@@ -34,10 +34,10 @@ describe('LLM middleware', () => {
     it('records usage on complete event and yields all events', async () => {
       const mw = middleware.createUsageRecordingMiddleware(context, 'openai', 'gpt-5')
 
-      async function* fakeStream() {
-        yield { type: 'text' as const, text: 'hello' }
+      async function* fakeStream(): AsyncGenerator<any, void, unknown> {
+        yield { type: 'text', text: 'hello' }
         yield {
-          type: 'complete' as const,
+          type: 'complete',
           usage: { promptTokens: 100, completionTokens: 50 },
           text: 'hello world',
           parsed: null,
@@ -64,9 +64,9 @@ describe('LLM middleware', () => {
     it('does not record on non-complete events', async () => {
       const mw = middleware.createUsageRecordingMiddleware(context)
 
-      async function* fakeStream() {
-        yield { type: 'text' as const, text: 'chunk1' }
-        yield { type: 'text' as const, text: 'chunk2' }
+      async function* fakeStream(): AsyncGenerator<any, void, unknown> {
+        yield { type: 'text', text: 'chunk1' }
+        yield { type: 'text', text: 'chunk2' }
       }
 
       const events: any[] = []

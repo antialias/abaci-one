@@ -5,12 +5,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock the db module before importing record
-const mockValues = vi.fn(() => Promise.resolve())
-const mockInsert = vi.fn(() => ({ values: mockValues }))
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockValues = vi.fn<any>(() => Promise.resolve())
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockInsert = vi.fn<any>(() => ({ values: mockValues }))
 
 vi.mock('@/db', () => ({
   db: {
-    insert: (...args: any[]) => mockInsert(...args),
+    insert: (table: unknown) => mockInsert(table),
   },
 }))
 
@@ -41,8 +43,8 @@ describe('recordAiUsage', () => {
 
     recordAiUsage(record)
 
-    // Allow the microtask to run
-    await new Promise((r) => setTimeout(r, 0))
+    // Allow the dynamic import + insert microtasks to run
+    await new Promise((r) => setTimeout(r, 50))
 
     expect(mockInsert).toHaveBeenCalledTimes(1)
     expect(mockValues).toHaveBeenCalledWith(record)
@@ -79,8 +81,8 @@ describe('recordAiUsage', () => {
       apiType: 'responses',
     })
 
-    // Allow the microtask to run
-    await new Promise((r) => setTimeout(r, 10))
+    // Allow the dynamic import + insert microtasks to run
+    await new Promise((r) => setTimeout(r, 50))
 
     expect(consoleSpy).toHaveBeenCalledWith('[ai-usage] Failed to record usage:', error)
     consoleSpy.mockRestore()
