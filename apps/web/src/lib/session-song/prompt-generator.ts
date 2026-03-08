@@ -44,9 +44,9 @@ export const songLLMOutputSchema = z.object({
   sections: z
     .array(songSectionSchema)
     .min(3)
-    .max(5)
+    .max(6)
     .describe(
-      'Song sections: Verse 1, Chorus, Verse 2, Chorus (optionally Bridge). 3-4 sections ideal.'
+      'Song sections. Without game break: Verse 1, Chorus, Verse 2, Chorus (3-4 sections). With game break interlude: Verse 1, Chorus, Verse 2, Interlude, Chorus (5 sections).'
     ),
 })
 
@@ -83,12 +83,13 @@ RULES:
 - The title should be catchy and relate to the kid's session
 
 STRUCTURE:
-- Ideal structure: Verse 1, Chorus, Verse 2, Chorus. That's 4 sections. A Bridge is optional but rare.
+- Without game break: Verse 1, Chorus, Verse 2, Chorus. That's 4 sections.
+- With game break: Verse 1, Chorus, Verse 2, **Interlude**, Chorus. That's 5 sections. (See GAME BREAK INTERLUDE below.)
 - CRITICAL: Keep lyrics SPARSE. The music generator needs room to breathe.
   - Verses: 2-4 short lines (under 50 characters each)
   - Chorus: 2-3 short lines
   - Think of each line as something a kid could sing along to — short, punchy, memorable
-- Set section durations: verses ~12000-15000ms, choruses ~8000-12000ms, bridge ~8000ms
+- Set section durations: verses ~12000-15000ms, choruses ~8000-12000ms, interlude ~8000-10000ms
 - Total song MUST be at most 60000ms (60 seconds). Aim for 45000-55000ms. Never exceed 60000ms.
 - positive_global_styles should ALWAYS include "children" and "upbeat"
 - negative_global_styles should ALWAYS include "explicit" and "sad"
@@ -99,8 +100,27 @@ STYLE TIPS:
 - Use simple rhyme schemes (AABB or ABAB)
 - Make the chorus catchy and repeatable
 
-GAME BREAK:
-- If a game break is mentioned, weave in a brief, fun reference (a line or two at most). Don't let it overshadow the math practice celebration.
+GAME BREAK INTERLUDE:
+When a game break is mentioned, create a dedicated interlude section between the last verse and the final chorus. This interlude should:
+- Reference what the kid did during the game break (the game they played, how they did)
+- Be styled as a genre-appropriate "break" moment that fits the song's genre. Examples:
+  - Funk/disco → a breakdown or groove section
+  - Pop → a rap break or spoken-word bridge
+  - Hip-hop → a hype interlude or shoutout
+  - Jazz → a scatted or spoken cool-cat aside
+  - Rock → a guitar-solo-style chant
+  - EDM/chiptune → a drop buildup
+  - Country/folk → a storytelling spoken verse
+  - Broadway/musical theater → a dramatic monologue moment
+  - Marching band → a call-and-response cadence
+  - Reggae → a toasting section
+  - Latin (salsa, bossa nova) → a percussion breakdown with spoken flavor
+  These are examples — for ANY genre, find the idiomatic "break" moment and use it.
+- Use the section_name to reflect the genre style (e.g. "Breakdown", "Rap Break", "The Drop", "Cadence Call")
+- Use positive_local_styles to shift the section's feel (e.g. ["spoken word", "rhythmic"] or ["half-time", "breakdown"])
+- Keep it short: 2-4 punchy lines, ~8000-10000ms
+- It should feel like a fun surprise in the middle of the song — a moment where the energy shifts before the final chorus brings it home
+- If no game break is mentioned, do NOT include an interlude — stick to the standard 4-section structure.
 
 GENRE INSTRUCTIONS:
 - If a genre preference is specified, use it as the primary genre for positive_global_styles. The genre may be a standard name or a creative mix — interpret it faithfully.
