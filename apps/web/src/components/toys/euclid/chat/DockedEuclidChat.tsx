@@ -1118,7 +1118,7 @@ function MobileChatStrip({
     >
       {/* Grid overlay: call layout and idle layout cross-fade */}
       <div style={{ display: 'grid', alignItems: 'center', flex: 1, minWidth: 0 }}>
-        {/* Call layout — chip + audio toggle */}
+        {/* Call layout — chip + audio toggle + tap to expand chat */}
         {callState && (
           <div
             style={{
@@ -1130,7 +1130,9 @@ function MobileChatStrip({
               opacity: isCallActive ? 1 : 0,
               transition: 'opacity 0.25s ease',
               pointerEvents: isCallActive ? 'auto' : 'none',
+              cursor: 'pointer',
             }}
+            onClick={onExpand}
           >
             <CallStatusChip
               character={characterDef}
@@ -1141,7 +1143,10 @@ function MobileChatStrip({
             {onToggleAudio && (
               <button
                 data-action="toggle-audio-mobile"
-                onClick={onToggleAudio}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleAudio()
+                }}
                 title={audioEnabled ? 'Mute narration' : 'Enable narration'}
                 tabIndex={isCallActive ? 0 : -1}
                 style={{
@@ -1178,6 +1183,20 @@ function MobileChatStrip({
                 </svg>
               </button>
             )}
+            {/* Expand chevron hint */}
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#94a3b8"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ marginLeft: 'auto', flexShrink: 0 }}
+            >
+              <polyline points="18 15 12 9 6 15" />
+            </svg>
           </div>
         )}
         {/* Idle layout — avatar + preview + action buttons + input + send */}
