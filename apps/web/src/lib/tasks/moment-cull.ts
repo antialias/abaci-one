@@ -13,6 +13,7 @@ import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getTraitSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import type { MomentCullEvent } from './events'
 
 export interface MomentCullInput {
@@ -108,7 +109,11 @@ const handler: Handler = async (handle, config) => {
   const taskLLM = createTaskLLM(
     handle as TaskHandle<MomentCullOutput, MomentCullEvent>,
     config._userId
-      ? { userId: config._userId, feature: 'moment:cull', backgroundTaskId: handle.id }
+      ? createUsageRecordingMiddleware({
+          userId: config._userId,
+          feature: 'moment:cull',
+          backgroundTaskId: handle.id,
+        })
       : undefined
   )
 

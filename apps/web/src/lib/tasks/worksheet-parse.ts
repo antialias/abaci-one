@@ -20,6 +20,7 @@ import {
   streamParseWorksheetImage,
 } from '../worksheet-parsing'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import type { BoundingBox, WorksheetParsingResult } from '../worksheet-parsing/schemas'
 import type { WorksheetParseEvent } from './events'
 
@@ -173,10 +174,14 @@ async function runStreamingParse(
   const promptUsed = buildWorksheetParsingPrompt(options.promptOptions ?? {})
 
   // Create task-aware LLM client (middleware handles reasoning/output streaming & snapshots)
-  const usageCtx = options._userId
-    ? { userId: options._userId, feature: AiFeature.WORKSHEET_PARSE, backgroundTaskId: handle.id }
+  const usageMw = options._userId
+    ? createUsageRecordingMiddleware({
+        userId: options._userId,
+        feature: AiFeature.WORKSHEET_PARSE,
+        backgroundTaskId: handle.id,
+      })
     : undefined
-  const taskLLM = createTaskLLM(handle, usageCtx)
+  const taskLLM = createTaskLLM(handle, usageMw)
   const stream = streamParseWorksheetImage(imageDataUrl, streamOptions, taskLLM)
 
   for await (const event of stream) {

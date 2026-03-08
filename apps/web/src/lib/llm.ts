@@ -6,6 +6,10 @@
  * providers (OpenAI, Anthropic) and provides type-safe LLM calls with
  * Zod schema validation.
  *
+ * IMPORTANT: This module is transitively imported by client components
+ * (via worksheet-parsing). It MUST NOT import any server-only modules
+ * (like @/db, node:http, etc.) — not even via dynamic import().
+ *
  * @example
  * ```typescript
  * import { llm } from '@/lib/llm'
@@ -21,12 +25,9 @@
  */
 
 import { createPersistenceMiddleware, LLMClient } from '@soroban/llm-client'
+import type { StreamMiddleware } from '@soroban/llm-client'
 import type { TaskHandle } from './task-manager'
 import type { TaskEventBase } from './tasks/events'
-import {
-  createUsageRecordingMiddleware,
-  type UsageRecordingContext,
-} from './ai-usage/llm-middleware'
 
 // Re-export LLMClient class for use in other modules
 export { LLMClient }
@@ -53,6 +54,10 @@ export const llm = new LLMClient()
  * - Persists reasoning/output snapshots every 3s (page-reload recovery)
  *
  * @param handle - The task handle for emitting events
+ * @param usageContext - Optional usage recording context. When provided, the
+ *   caller should build a usage recording middleware via
+ *   `createUsageRecordingMiddleware()` from `@/lib/ai-usage/llm-middleware`
+ *   and pass it as `extraMiddleware`.
  * @returns A derived LLM client with persistence middleware
  *
  * @example
@@ -77,8 +82,8 @@ export function createTaskLLM<
     summaryIndex?: number
     outputIndex?: number
   },
->(handle: TaskHandle<TOutput, TEvent>, usageContext?: UsageRecordingContext) {
-  const middlewares = [
+>(handle: TaskHandle<TOutput, TEvent>, extraMiddleware?: StreamMiddleware) {
+  const middlewares: StreamMiddleware[] = [
     createPersistenceMiddleware({
       snapshotIntervalMs: LLM_SNAPSHOT_INTERVAL_MS,
       onReasoning: (text, isDelta, _accumulated) => {
@@ -96,8 +101,8 @@ export function createTaskLLM<
     }),
   ]
 
-  if (usageContext) {
-    middlewares.push(createUsageRecordingMiddleware(usageContext))
+  if (extraMiddleware) {
+    middlewares.push(extraMiddleware)
   }
 
   return llm.with(...middlewares)

@@ -8,6 +8,7 @@ import {
 } from '@/lib/flowchart-workshop/llm-schemas'
 import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
 import { createTaskLLM } from '@/lib/llm'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import { createTask } from '../task-manager'
 import type { FlowchartRefineEvent } from './events'
 
@@ -153,11 +154,14 @@ Please modify the flowchart according to this request. Return the complete updat
         // Middleware automatically:
         // - Emits transient reasoning/output_delta events to Socket.IO
         // - Persists reasoning/output snapshots every 3s for page-reload recovery
-        const taskLLM = createTaskLLM(handle, {
-          userId,
-          feature: 'flowchart:refine',
-          backgroundTaskId: handle.id,
-        })
+        const taskLLM = createTaskLLM(
+          handle,
+          createUsageRecordingMiddleware({
+            userId,
+            feature: 'flowchart:refine',
+            backgroundTaskId: handle.id,
+          })
+        )
 
         const llmStream = taskLLM.stream({
           provider: 'openai',

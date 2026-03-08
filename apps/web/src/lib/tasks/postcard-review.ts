@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { createTask, createChildTask, type TaskHandle } from '../task-manager'
 import { createTaskLLM } from '../llm'
 import { readPersistentImage } from '../image-storage'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import type { PostcardReviewEvent } from './events'
 import type { PostcardManifest } from '@/db/schema/number-line-postcards'
 
@@ -172,7 +173,11 @@ const handler: ReviewHandler = async (handle, config) => {
   const taskLLM = createTaskLLM(
     handle as TaskHandle<PostcardReviewOutput, PostcardReviewEvent>,
     config._userId
-      ? { userId: config._userId, feature: 'postcard:review', backgroundTaskId: handle.id }
+      ? createUsageRecordingMiddleware({
+          userId: config._userId,
+          feature: 'postcard:review',
+          backgroundTaskId: handle.id,
+        })
       : undefined
   )
   const schema = buildReviewSchema(activeCriteria)
