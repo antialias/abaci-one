@@ -44,7 +44,7 @@ function inferErrorType(
  * This will be called by a background job queue in production.
  * For MVP, it's called fire-and-forget after upload.
  */
-export async function processWorksheetAttempt(attemptId: string) {
+export async function processWorksheetAttempt(attemptId: string, userId?: string) {
   try {
     // Update status to processing
     await db
@@ -66,7 +66,7 @@ export async function processWorksheetAttempt(attemptId: string) {
     const imagePath = join(process.cwd(), 'data', attempt.uploadedImageUrl)
 
     // 2. Grade with GPT-5 Vision (single-pass: OCR + grading + analysis)
-    const gradingResult = await gradeWorksheetWithVision(imagePath)
+    const gradingResult = await gradeWorksheetWithVision(imagePath, 2, userId)
 
     // Extract data for database storage
     const gradedProblems = gradingResult.problems

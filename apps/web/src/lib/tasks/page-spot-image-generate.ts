@@ -3,6 +3,8 @@ import { getImageProvider } from '../image-providers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
 import type { PageSpotImageGenerateEvent } from './events'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { AiFeature } from '../ai-usage/features'
 
 export { IMAGE_PROVIDERS } from '../image-providers'
 
@@ -13,6 +15,7 @@ export interface PageSpotImageGenerateInput {
   model: string
   prompt: string
   forceRegenerate?: boolean
+  _userId?: string
 }
 
 export interface PageSpotImageGenerateOutput {
@@ -84,6 +87,14 @@ export async function startPageSpotImageGeneration(
         prompt: config.prompt,
         storageTarget,
       })
+
+      if (config._userId) {
+        recordImageGenUsage(config.provider, config.model, {
+          userId: config._userId,
+          feature: AiFeature.IMAGE_PAGE_SPOT,
+          backgroundTaskId: handle.id,
+        })
+      }
 
       handle.emit({
         type: 'spot_complete',

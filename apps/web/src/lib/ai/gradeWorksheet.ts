@@ -1,5 +1,7 @@
 import { readFile } from 'fs/promises'
 import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
+import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 
 /**
  * Grading result structure returned by GPT-5
@@ -145,7 +147,7 @@ CRITICAL: suggestedStepId MUST be one of: ${validStepIds}`
 /**
  * Call GPT-5 Responses API with vision
  */
-async function callGPT5Vision(imageDataUrl: string, prompt: string): Promise<GradingResult> {
+async function callGPT5Vision(imageDataUrl: string, prompt: string, userId?: string): Promise<GradingResult> {
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -198,6 +200,10 @@ async function callGPT5Vision(imageDataUrl: string, prompt: string): Promise<Gra
     throw new Error(`OpenAI API error: ${apiResponse.error.message}`)
   }
 
+  if (userId) {
+    recordOpenAiResponsesUsage(apiResponse, { userId, feature: AiFeature.WORKSHEET_GRADE })
+  }
+
   // Extract the grading result (already parsed JSON due to schema)
   return apiResponse.output[0].content[0].text as GradingResult
 }
@@ -248,7 +254,8 @@ function validateGradingResult(result: GradingResult): ValidationError | null {
  */
 export async function gradeWorksheetWithVision(
   imagePath: string,
-  maxRetries = 2
+  maxRetries = 2,
+  userId?: string
 ): Promise<GradingResult> {
   // Read and encode image
   const imageBuffer = await readFile(imagePath)
@@ -265,7 +272,7 @@ export async function gradeWorksheetWithVision(
       const prompt = buildGradingPrompt(validationError)
 
       // Call GPT-5
-      const result = await callGPT5Vision(dataUrl, prompt)
+      const result = await callGPT5Vision(dataUrl, prompt, userId)
 
       // Validate result
       const error = validateGradingResult(result)

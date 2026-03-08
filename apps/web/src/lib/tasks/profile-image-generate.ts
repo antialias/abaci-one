@@ -26,6 +26,8 @@ import { generateAndStoreImage } from '../image-generation'
 import { imageExists, readStaticImage } from '../image-storage'
 import { CHARACTER_PROVIDERS } from '../character/characters'
 import type { ProfileImageGenerateEvent } from './events'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { AiFeature } from '../ai-usage/features'
 import {
   getVariantSuffix,
   type ProfileSize,
@@ -48,6 +50,7 @@ export interface ProfileImageGenerateInput {
   state?: ProfileState
   cascade?: boolean
   forceRegenerate?: boolean
+  _userId?: string
 }
 
 export interface ProfileImageGenerateOutput {
@@ -274,6 +277,13 @@ export async function startProfileImageGeneration(
       })
 
       const sizeBytes = result.sizeBytes ?? 0
+      if (config._userId) {
+        recordImageGenUsage(config.provider, config.model, {
+          userId: config._userId,
+          feature: AiFeature.IMAGE_PROFILE,
+          backgroundTaskId: handle.id,
+        })
+      }
 
       handle.emit({
         type: 'image_complete',

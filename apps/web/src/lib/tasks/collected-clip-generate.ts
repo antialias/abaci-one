@@ -6,12 +6,15 @@ import { inArray } from 'drizzle-orm'
 import { createTask } from '../task-manager'
 import type { CollectedClipGenerateEvent } from './events'
 import { resolveCanonicalText } from '../audio/clipHash'
+import { recordTtsUsage } from '../ai-usage/helpers'
+import { AiFeature } from '../ai-usage/features'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
 export interface CollectedClipGenerateInput {
   voice: string
   clipIds: string[]
+  _userId?: string
 }
 
 export interface CollectedClipGenerateOutput {
@@ -194,6 +197,13 @@ export async function startCollectedClipGeneration(
           writeFileSync(join(voiceDir, `${clip.id}.mp3`), Buffer.from(arrayBuffer))
           generated++
           consecutiveErrors = 0
+          if (config._userId) {
+            recordTtsUsage(inputText, 'gpt-4o-mini-tts', {
+              userId: config._userId,
+              feature: AiFeature.TTS_COLLECTED,
+              backgroundTaskId: handle.id,
+            })
+          }
           handle.emit({ type: 'cc_clip_done', clipId: clip.id })
         }
       } catch (err) {

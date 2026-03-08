@@ -12,9 +12,9 @@ import { withAuth } from '@/lib/auth/withAuth'
  * Trigger processing in background without blocking response
  * In production, this would be a proper job queue
  */
-function processAttemptInBackground(attemptId: string) {
+function processAttemptInBackground(attemptId: string, userId?: string) {
   // Fire and forget - don't await
-  processWorksheetAttempt(attemptId).catch((error) => {
+  processWorksheetAttempt(attemptId, userId).catch((error) => {
     console.error(`Background processing failed for ${attemptId}:`, error)
   })
 }
@@ -89,7 +89,7 @@ export const POST = withAuth(async (request) => {
     // For MVP: Process immediately (not truly async)
     // In production, this should be queued to a background job
     // For now, we'll trigger processing but not wait for it
-    processAttemptInBackground(attemptId)
+    processAttemptInBackground(attemptId, userId)
 
     return NextResponse.json({
       attemptId,

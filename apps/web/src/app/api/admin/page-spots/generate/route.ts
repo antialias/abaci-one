@@ -13,7 +13,7 @@ const VALID_PROVIDERS = ['gemini', 'openai'] as const
  * Body: { pageId, spotId, provider?, model?, forceRegenerate? }
  */
 export const POST = withAuth(
-  async (request: NextRequest) => {
+  async (request: NextRequest, { userId }) => {
     try {
       const body = await request.json()
       const { pageId, spotId, provider, model, forceRegenerate } = body
@@ -61,6 +61,7 @@ export const POST = withAuth(
         model: resolvedModel,
         prompt: config.prompt,
         forceRegenerate: !!forceRegenerate,
+        _userId: userId,
       })
 
       return NextResponse.json({ taskId })

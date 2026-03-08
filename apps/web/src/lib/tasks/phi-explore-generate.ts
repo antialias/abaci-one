@@ -8,6 +8,8 @@ import { getImageProvider } from '../image-providers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
 import type { PhiExploreGenerateEvent } from './events'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { AiFeature } from '../ai-usage/features'
 
 export { IMAGE_PROVIDERS } from '../image-providers'
 
@@ -16,6 +18,7 @@ export interface PhiExploreGenerateInput {
   model: string
   targets: Array<{ subjectId: string; theme?: 'light' | 'dark' }>
   forceRegenerate?: boolean
+  _userId?: string
 }
 
 export interface PhiExploreGenerateOutput {
@@ -142,6 +145,13 @@ export async function startPhiExploreGeneration(input: PhiExploreGenerateInput):
 
           generated++
           consecutiveErrors = 0
+          if (config._userId) {
+            recordImageGenUsage(config.provider, config.model, {
+              userId: config._userId,
+              feature: AiFeature.IMAGE_PHI_EXPLORE,
+              backgroundTaskId: handle.id,
+            })
+          }
 
           handle.emit({
             type: 'image_complete',

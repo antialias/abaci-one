@@ -3,6 +3,8 @@ import { getImageProvider } from '../image-providers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
 import type { BlogImageGenerateEvent } from './events'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { AiFeature } from '../ai-usage/features'
 
 export { IMAGE_PROVIDERS } from '../image-providers'
 
@@ -14,6 +16,7 @@ export interface BlogImageGenerateInput {
   targets: Array<{ slug: string; prompt: string }>
   forceRegenerate?: boolean
   aspectRatio?: string
+  _userId?: string
 }
 
 export interface BlogImageGenerateOutput {
@@ -128,6 +131,13 @@ export async function startBlogImageGeneration(input: BlogImageGenerateInput): P
           generated++
           consecutiveErrors = 0
           succeeded = true
+          if (config._userId) {
+            recordImageGenUsage(config.provider, config.model, {
+              userId: config._userId,
+              feature: AiFeature.IMAGE_BLOG,
+              backgroundTaskId: handle.id,
+            })
+          }
 
           handle.emit({
             type: 'image_complete',
@@ -162,6 +172,13 @@ export async function startBlogImageGeneration(input: BlogImageGenerateInput): P
               consecutiveErrors = 0
               succeeded = true
               usedFallback = true
+              if (config._userId) {
+                recordImageGenUsage(config.fallbackProvider!, config.fallbackModel!, {
+                  userId: config._userId,
+                  feature: AiFeature.IMAGE_BLOG,
+                  backgroundTaskId: handle.id,
+                })
+              }
 
               handle.emit({
                 type: 'image_complete',

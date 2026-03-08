@@ -16,7 +16,7 @@ const VALID_THEMES = ['light', 'dark'] as const
  * Response: { taskId: string }
  */
 export const POST = withAuth(
-  async (request) => {
+  async (request, { userId }) => {
     try {
       const body = await request.json()
       const { provider, model, targets, forceRegenerate, theme, pipeline } = body
@@ -82,6 +82,7 @@ export const POST = withAuth(
         model: model.trim(),
         targets: resolvedTargets,
         forceRegenerate: !!forceRegenerate,
+        _userId: userId,
       })
 
       return NextResponse.json({ taskId })

@@ -9,6 +9,8 @@ import { getImageProvider } from '../image-providers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
 import type { ImageGenerateEvent } from './events'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { AiFeature } from '../ai-usage/features'
 
 export { IMAGE_PROVIDERS } from '../image-providers'
 
@@ -17,6 +19,7 @@ export interface ImageGenerateInput {
   model: string
   targets: Array<{ constantId: string; style: 'metaphor' | 'math'; theme?: 'light' | 'dark' }>
   forceRegenerate?: boolean
+  _userId?: string
 }
 
 export interface ImageGenerateOutput {
@@ -146,6 +149,13 @@ export async function startImageGeneration(input: ImageGenerateInput): Promise<s
 
           generated++
           consecutiveErrors = 0
+          if (config._userId) {
+            recordImageGenUsage(config.provider, config.model, {
+              userId: config._userId,
+              feature: AiFeature.IMAGE_CONSTANT,
+              backgroundTaskId: handle.id,
+            })
+          }
 
           handle.emit({
             type: 'image_complete',

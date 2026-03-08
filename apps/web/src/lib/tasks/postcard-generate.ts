@@ -291,6 +291,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
             prompt: thumbnailPrompt,
             providerId: provider.meta.id,
             modelId,
+            _userId: input.userId,
           },
           input.userId,
           parentTaskId

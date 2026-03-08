@@ -29,6 +29,12 @@ export const AiFeature = {
 
   // Image generation
   IMAGE_GENERATE: 'image:generate',
+  IMAGE_CONSTANT: 'image:constant',
+  IMAGE_BLOG: 'image:blog',
+  IMAGE_PROFILE: 'image:profile',
+  IMAGE_PAGE_SPOT: 'image:page-spot',
+  IMAGE_PHI_EXPLORE: 'image:phi-explore',
+  IMAGE_POSTCARD_THUMB: 'image:postcard-thumb',
 
   // Music generation
   MUSIC_GENERATE: 'music:generate',
