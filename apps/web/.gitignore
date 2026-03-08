@@ -77,3 +77,4 @@ scripts/train-column-classifier/.venv/
 __pycache__/
 *.pyc
 e2e/.auth/
+data/generated-images/
