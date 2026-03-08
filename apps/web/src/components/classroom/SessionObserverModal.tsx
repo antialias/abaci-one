@@ -38,6 +38,7 @@ import {
   getAttemptLabel,
 } from '@/lib/utils/attempt-tracking'
 import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
+import { GameBreakSpectatorView } from './GameBreakSpectatorView'
 import { SessionShareButton } from './SessionShareButton'
 
 interface SessionObserverModalProps {
@@ -946,65 +947,74 @@ export function SessionObserverView({
           />
         )}
 
-        {/* Game break overlay - shows when student is on a game break */}
+        {/* Game break view - shows when student is on a game break */}
         {breakState && !transitionState && (
-          <div
-            data-element="game-break-overlay"
-            className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '1rem',
-              padding: '2rem',
-              textAlign: 'center',
-              minHeight: '200px',
-            })}
-          >
-            <span className={css({ fontSize: '3rem' })}>🎮</span>
-            <h3
-              className={css({
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: isDark ? 'gray.100' : 'gray.800',
-              })}
-            >
-              Game Break
-            </h3>
-            <p
-              className={css({
-                fontSize: '1rem',
-                color: isDark ? 'gray.300' : 'gray.600',
-              })}
-            >
-              {breakState.phase === 'selecting'
-                ? `${student.name} is choosing a game...`
-                : breakState.phase === 'playing'
-                  ? `${student.name} is playing ${breakState.gameName}`
-                  : `${student.name} finished playing`}
-            </p>
+          breakState.phase === 'playing' && breakState.gameId ? (
+            // Observer (authenticated or guest): render live game spectator view
+            <GameBreakSpectatorView
+              breakState={breakState}
+              studentName={student.name}
+            />
+          ) : (
+            // Guest observer or non-playing phase: informational overlay
             <div
+              data-element="game-break-overlay"
               className={css({
-                display: 'inline-flex',
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.375rem 0.75rem',
-                borderRadius: '9999px',
-                fontSize: '0.875rem',
-                fontWeight: '500',
+                justifyContent: 'center',
+                gap: '1rem',
+                padding: '2rem',
+                textAlign: 'center',
+                minHeight: '200px',
               })}
-              style={{
-                backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
-                color: isDark ? '#a5b4fc' : '#4f46e5',
-              }}
             >
-              {breakState.phase === 'selecting'
-                ? 'Choosing game'
-                : breakState.phase === 'playing'
-                  ? 'Playing'
-                  : 'Completed'}
+              <span className={css({ fontSize: '3rem' })}>🎮</span>
+              <h3
+                className={css({
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  color: isDark ? 'gray.100' : 'gray.800',
+                })}
+              >
+                Game Break
+              </h3>
+              <p
+                className={css({
+                  fontSize: '1rem',
+                  color: isDark ? 'gray.300' : 'gray.600',
+                })}
+              >
+                {breakState.phase === 'selecting'
+                  ? `${student.name} is choosing a game...`
+                  : breakState.phase === 'playing'
+                    ? `${student.name} is playing ${breakState.gameName}`
+                    : `${student.name} finished playing`}
+              </p>
+              <div
+                className={css({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.375rem 0.75rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                })}
+                style={{
+                  backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
+                  color: isDark ? '#a5b4fc' : '#4f46e5',
+                }}
+              >
+                {breakState.phase === 'selecting'
+                  ? 'Choosing game'
+                  : breakState.phase === 'playing'
+                    ? 'Playing'
+                    : 'Completed'}
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Past problem video playback - shown when clicking a completed problem in progress indicator */}

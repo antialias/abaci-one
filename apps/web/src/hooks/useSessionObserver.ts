@@ -516,9 +516,18 @@ export function useSessionObserver(
     socket.on('game-break-phase', (data: GameBreakPhaseEvent) => {
       if (data.sessionId !== sessionId) return
       console.log('[SessionObserver] Game break phase:', data.phase)
-      setBreakState((prev) =>
-        prev && prev.roomId === data.roomId ? { ...prev, phase: data.phase } : prev
-      )
+      setBreakState((prev) => {
+        if (prev && prev.roomId === data.roomId) {
+          return { ...prev, phase: data.phase }
+        }
+        // Create breakState if it doesn't exist yet (e.g. selecting phase before game-break-started)
+        return {
+          roomId: data.roomId,
+          gameName: '',
+          gameId: '',
+          phase: data.phase,
+        }
+      })
     })
 
     socket.on('game-break-ended', (data: GameBreakEndedEvent) => {

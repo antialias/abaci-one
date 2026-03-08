@@ -125,6 +125,14 @@ export function useSessionBroadcast(
   const isRecordingRef = useRef(false)
   const recordingIdRef = useRef<string | null>(null)
 
+  // Track current game break state so we can re-broadcast on observer-joined
+  const breakStateRef = useRef<{
+    roomId: string
+    gameName: string
+    gameId: string
+    phase: 'selecting' | 'playing' | 'completed'
+  } | null>(null)
+
   // Helper to broadcast current state
   const broadcastState = useCallback(() => {
     const currentState = stateRef.current
@@ -212,6 +220,26 @@ export function useSessionBroadcast(
     socket.on('observer-joined', (data: { observerId: string }) => {
       console.log('[SessionBroadcast] Observer joined:', data.observerId, '- re-broadcasting state')
       broadcastState()
+
+      // Re-broadcast game break state if a break is active
+      const breakState = breakStateRef.current
+      if (breakState && socketRef.current && isConnectedRef.current && sessionId) {
+        console.log('[SessionBroadcast] Re-broadcasting break state to new observer:', breakState)
+        const startedEvent: GameBreakStartedEvent = {
+          sessionId,
+          roomId: breakState.roomId,
+          gameName: breakState.gameName,
+          gameId: breakState.gameId,
+        }
+        socketRef.current.emit('game-break-started', startedEvent)
+
+        const phaseEvent: GameBreakPhaseEvent = {
+          sessionId,
+          roomId: breakState.roomId,
+          phase: breakState.phase,
+        }
+        socketRef.current.emit('game-break-phase', phaseEvent)
+      }
     })
 
     // Listen for abacus control events from teacher
@@ -451,6 +479,7 @@ export function useSessionBroadcast(
       if (!socketRef.current || !isConnectedRef.current || !sessionId) return
 
       const event: GameBreakStartedEvent = { sessionId, roomId, gameName, gameId }
+      breakStateRef.current = { roomId, gameName, gameId, phase: 'selecting' }
       socketRef.current.emit('game-break-started', event)
       console.log('[SessionBroadcast] Emitted game-break-started:', { roomId, gameName, gameId })
     },
@@ -463,6 +492,12 @@ export function useSessionBroadcast(
       if (!socketRef.current || !isConnectedRef.current || !sessionId) return
 
       const event: GameBreakPhaseEvent = { sessionId, roomId, phase }
+      if (breakStateRef.current && breakStateRef.current.roomId === roomId) {
+        breakStateRef.current = { ...breakStateRef.current, phase }
+      } else if (!breakStateRef.current) {
+        // Phase event can arrive before started event (e.g. 'selecting' phase fires first)
+        breakStateRef.current = { roomId, gameName: '', gameId: '', phase }
+      }
       socketRef.current.emit('game-break-phase', event)
       console.log('[SessionBroadcast] Emitted game-break-phase:', { roomId, phase })
     },
@@ -479,6 +514,7 @@ export function useSessionBroadcast(
       if (!socketRef.current || !isConnectedRef.current || !sessionId) return
 
       const event: GameBreakEndedEvent = { sessionId, roomId, reason, summary }
+      breakStateRef.current = null
       socketRef.current.emit('game-break-ended', event)
       console.log('[SessionBroadcast] Emitted game-break-ended:', { roomId, reason })
     },

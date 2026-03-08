@@ -141,6 +141,13 @@ vi.mock('../../debug/ObserverDebugPanel', () => ({
 vi.mock('../SessionShareButton', () => ({
   SessionShareButton: () => null,
 }))
+vi.mock('../GameBreakSpectatorView', () => ({
+  GameBreakSpectatorView: ({ breakState, studentName }: any) => (
+    <div data-element="game-break-spectator" data-game-id={breakState.gameId}>
+      Spectating {studentName}&apos;s {breakState.gameName}
+    </div>
+  ),
+}))
 vi.mock('@/lib/utils/attempt-tracking', () => ({
   getVideoAttemptsForProblem: () => [],
   getAttemptLabel: () => '',
@@ -154,6 +161,9 @@ const defaultSession = {
   startedAt: new Date().toISOString(),
   currentPartIndex: 0,
   currentSlotIndex: 0,
+  totalParts: 3,
+  totalProblems: 15,
+  completedProblems: 0,
 }
 
 const defaultStudent = {
@@ -179,7 +189,7 @@ describe('SessionObserverView game break overlay', () => {
     expect(document.querySelector('[data-element="game-break-overlay"]')).not.toBeInTheDocument()
   })
 
-  it('shows game break overlay when breakState is set', () => {
+  it('shows game break spectator view when breakState is playing (authenticated observer)', () => {
     mockBreakState = {
       roomId: 'room-abc',
       gameName: 'Memory Match',
@@ -195,8 +205,31 @@ describe('SessionObserverView game break overlay', () => {
       />
     )
 
-    const overlay = document.querySelector('[data-element="game-break-overlay"]')
-    expect(overlay).toBeInTheDocument()
+    // Authenticated observer sees spectator view, not the overlay
+    const spectator = document.querySelector('[data-element="game-break-spectator"]')
+    expect(spectator).toBeInTheDocument()
+  })
+
+  it('shows game break spectator view when breakState is playing (guest/share-token observer)', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'playing',
+    }
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+        shareToken="guest-token"
+      />
+    )
+
+    // Guest observer also sees spectator view (guests have userId via identity model)
+    const spectator = document.querySelector('[data-element="game-break-spectator"]')
+    expect(spectator).toBeInTheDocument()
   })
 
   it('shows "choosing a game" text during selecting phase', () => {
@@ -219,7 +252,7 @@ describe('SessionObserverView game break overlay', () => {
     expect(screen.getByText('Choosing game')).toBeInTheDocument()
   })
 
-  it('shows game name during playing phase', () => {
+  it('shows spectator view (not overlay text) during playing phase for guest observer', () => {
     mockBreakState = {
       roomId: 'room-abc',
       gameName: 'Memory Match',
@@ -232,11 +265,16 @@ describe('SessionObserverView game break overlay', () => {
         session={defaultSession}
         student={defaultStudent}
         observerId="observer-1"
+        shareToken="guest-token"
       />
     )
 
-    expect(screen.getByText('Alice is playing Memory Match')).toBeInTheDocument()
-    expect(screen.getByText('Playing')).toBeInTheDocument()
+    // Guest now sees spectator view, not the informational overlay
+    const spectator = document.querySelector('[data-element="game-break-spectator"]')
+    expect(spectator).toBeInTheDocument()
+    // Overlay should NOT be shown
+    const overlay = document.querySelector('[data-element="game-break-overlay"]')
+    expect(overlay).not.toBeInTheDocument()
   })
 
   it('shows "finished playing" during completed phase', () => {
@@ -259,12 +297,12 @@ describe('SessionObserverView game break overlay', () => {
     expect(screen.getByText('Completed')).toBeInTheDocument()
   })
 
-  it('shows "Game Break" heading', () => {
+  it('shows "Game Break" heading during selecting phase', () => {
     mockBreakState = {
       roomId: 'room-abc',
-      gameName: 'Memory Match',
-      gameId: 'matching',
-      phase: 'playing',
+      gameName: '',
+      gameId: '',
+      phase: 'selecting',
     }
 
     render(
@@ -281,9 +319,9 @@ describe('SessionObserverView game break overlay', () => {
   it('hides "waiting for activity" message during game break', () => {
     mockBreakState = {
       roomId: 'room-abc',
-      gameName: 'Memory Match',
-      gameId: 'matching',
-      phase: 'playing',
+      gameName: '',
+      gameId: '',
+      phase: 'selecting',
     }
     mockIsObserving = true
 
