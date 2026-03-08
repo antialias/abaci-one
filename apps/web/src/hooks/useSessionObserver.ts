@@ -6,6 +6,9 @@ import { createSocket } from '@/lib/socket'
 import type { SessionPart, SessionPartType, SlotResult } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
+  GameBreakEndedEvent,
+  GameBreakPhaseEvent,
+  GameBreakStartedEvent,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
@@ -140,6 +143,23 @@ export interface DvrBufferInfo {
   currentProblemNumber: number | null
 }
 
+/**
+ * State of a game break being observed
+ */
+export interface ObservedGameBreakState {
+  /** Arcade room ID */
+  roomId: string
+  /** Display name of the game */
+  gameName: string
+  /** Game registry ID */
+  gameId: string
+  /** Current phase of the game break */
+  phase: 'selecting' | 'playing' | 'completed'
+  /** End reason and summary, if break has ended */
+  endReason?: 'gameFinished' | 'timeout' | 'skipped'
+  endSummary?: { gameName: string; headline?: string }
+}
+
 interface UseSessionObserverResult {
   /** Current observed state (null if not yet received) */
   state: ObservedSessionState | null
@@ -147,6 +167,8 @@ interface UseSessionObserverResult {
   results: ObservedResult[]
   /** Current part transition state (null if not in transition) */
   transitionState: ObservedTransitionState | null
+  /** Current game break state (null if no break in progress) */
+  breakState: ObservedGameBreakState | null
   /** Latest vision frame from student's camera (null if vision not enabled) */
   visionFrame: ObservedVisionFrame | null
   /** Whether connected to the session channel */
@@ -196,6 +218,7 @@ export function useSessionObserver(
   const [results, setResults] = useState<ObservedResult[]>([])
   const [transitionState, setTransitionState] = useState<ObservedTransitionState | null>(null)
   const [visionFrame, setVisionFrame] = useState<ObservedVisionFrame | null>(null)
+  const [breakState, setBreakState] = useState<ObservedGameBreakState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isObserving, setIsObserving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -218,6 +241,7 @@ export function useSessionObserver(
       setState(null)
       setResults([])
       setTransitionState(null)
+      setBreakState(null)
       setVisionFrame(null)
       setDvrBufferInfo(null)
       setIsLive(true)
@@ -477,6 +501,32 @@ export function useSessionObserver(
       }
     )
 
+    // Listen for game break events
+    socket.on('game-break-started', (data: GameBreakStartedEvent) => {
+      if (data.sessionId !== sessionId) return
+      console.log('[SessionObserver] Game break started:', data.gameName)
+      setBreakState({
+        roomId: data.roomId,
+        gameName: data.gameName,
+        gameId: data.gameId,
+        phase: 'selecting',
+      })
+    })
+
+    socket.on('game-break-phase', (data: GameBreakPhaseEvent) => {
+      if (data.sessionId !== sessionId) return
+      console.log('[SessionObserver] Game break phase:', data.phase)
+      setBreakState((prev) =>
+        prev && prev.roomId === data.roomId ? { ...prev, phase: data.phase } : prev
+      )
+    })
+
+    socket.on('game-break-ended', (data: GameBreakEndedEvent) => {
+      if (data.sessionId !== sessionId) return
+      console.log('[SessionObserver] Game break ended:', data.reason)
+      setBreakState(null)
+    })
+
     // Listen for session ended event
     socket.on('session-ended', () => {
       console.log('[SessionObserver] Session ended')
@@ -589,6 +639,7 @@ export function useSessionObserver(
     state,
     results,
     transitionState,
+    breakState,
     visionFrame,
     isConnected,
     isObserving,

@@ -1180,6 +1180,49 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
+    // Session Observation: Broadcast part transition (from student's client)
+    socket.on(
+      'part-transition',
+      (data: {
+        sessionId: string
+        previousPartType: string | null
+        nextPartType: string
+        countdownStartTime: number
+        countdownDurationMs: number
+      }) => {
+        socket.to(`session:${data.sessionId}`).emit('part-transition', data)
+      }
+    )
+
+    // Session Observation: Broadcast part transition complete (from student's client)
+    socket.on('part-transition-complete', (data: { sessionId: string }) => {
+      socket.to(`session:${data.sessionId}`).emit('part-transition-complete', data)
+    })
+
+    // Session Observation: Broadcast game break lifecycle events (from student's client)
+    socket.on(
+      'game-break-started',
+      (data: { sessionId: string; roomId: string; gameName: string; gameId: string }) => {
+        socket.to(`session:${data.sessionId}`).emit('game-break-started', data)
+      }
+    )
+
+    socket.on('game-break-phase', (data: { sessionId: string; roomId: string; phase: string }) => {
+      socket.to(`session:${data.sessionId}`).emit('game-break-phase', data)
+    })
+
+    socket.on(
+      'game-break-ended',
+      (data: {
+        sessionId: string
+        roomId: string
+        reason: string
+        summary?: { gameName: string; headline?: string }
+      }) => {
+        socket.to(`session:${data.sessionId}`).emit('game-break-ended', data)
+      }
+    )
+
     // Session Observation: Broadcast tutorial state (from student's client)
     socket.on(
       'tutorial-state',

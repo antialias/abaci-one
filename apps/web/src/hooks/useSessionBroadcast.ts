@@ -7,6 +7,9 @@ import type { BroadcastState } from '@/components/practice'
 import type { SessionPartType } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
+  GameBreakEndedEvent,
+  GameBreakPhaseEvent,
+  GameBreakStartedEvent,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
@@ -89,6 +92,16 @@ export interface UseSessionBroadcastResult {
       isRetry: boolean
       isManualRedo: boolean
     }
+  ) => void
+  /** Notify observers that a game break has started */
+  sendGameBreakStarted: (roomId: string, gameName: string, gameId: string) => void
+  /** Notify observers of game break phase changes */
+  sendGameBreakPhase: (roomId: string, phase: 'selecting' | 'playing' | 'completed') => void
+  /** Notify observers that a game break has ended */
+  sendGameBreakEnded: (
+    roomId: string,
+    reason: 'gameFinished' | 'timeout' | 'skipped',
+    summary?: { gameName: string; headline?: string }
   ) => void
 }
 
@@ -432,6 +445,46 @@ export function useSessionBroadcast(
     [sessionId, playerId]
   )
 
+  // Notify observers that a game break has started
+  const sendGameBreakStarted = useCallback(
+    (roomId: string, gameName: string, gameId: string) => {
+      if (!socketRef.current || !isConnectedRef.current || !sessionId) return
+
+      const event: GameBreakStartedEvent = { sessionId, roomId, gameName, gameId }
+      socketRef.current.emit('game-break-started', event)
+      console.log('[SessionBroadcast] Emitted game-break-started:', { roomId, gameName, gameId })
+    },
+    [sessionId]
+  )
+
+  // Notify observers of game break phase changes
+  const sendGameBreakPhase = useCallback(
+    (roomId: string, phase: 'selecting' | 'playing' | 'completed') => {
+      if (!socketRef.current || !isConnectedRef.current || !sessionId) return
+
+      const event: GameBreakPhaseEvent = { sessionId, roomId, phase }
+      socketRef.current.emit('game-break-phase', event)
+      console.log('[SessionBroadcast] Emitted game-break-phase:', { roomId, phase })
+    },
+    [sessionId]
+  )
+
+  // Notify observers that a game break has ended
+  const sendGameBreakEnded = useCallback(
+    (
+      roomId: string,
+      reason: 'gameFinished' | 'timeout' | 'skipped',
+      summary?: { gameName: string; headline?: string }
+    ) => {
+      if (!socketRef.current || !isConnectedRef.current || !sessionId) return
+
+      const event: GameBreakEndedEvent = { sessionId, roomId, reason, summary }
+      socketRef.current.emit('game-break-ended', event)
+      console.log('[SessionBroadcast] Emitted game-break-ended:', { roomId, reason })
+    },
+    [sessionId]
+  )
+
   return {
     isConnected: isConnectedRef.current,
     isBroadcasting: isConnectedRef.current && !!state,
@@ -443,5 +496,8 @@ export function useSessionBroadcast(
     startVisionRecording,
     stopVisionRecording,
     sendProblemMarker,
+    sendGameBreakStarted,
+    sendGameBreakPhase,
+    sendGameBreakEnded,
   }
 }

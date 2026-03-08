@@ -398,6 +398,47 @@ export interface GenericNotificationEvent {
 }
 
 // ============================================================================
+// Game Break Observation Events (sent to session:${sessionId} channel)
+// ============================================================================
+
+/**
+ * Sent when a game break starts during a practice session.
+ * Allows observers to see that the student is taking a game break.
+ */
+export interface GameBreakStartedEvent {
+  sessionId: string
+  /** Arcade room ID for the game break */
+  roomId: string
+  /** Display name of the game being played */
+  gameName: string
+  /** Game registry name (e.g. 'matching', 'card-sorting') */
+  gameId: string
+}
+
+/**
+ * Sent when the game break phase changes (selecting → playing → completed).
+ */
+export interface GameBreakPhaseEvent {
+  sessionId: string
+  roomId: string
+  phase: 'selecting' | 'playing' | 'completed'
+}
+
+/**
+ * Sent when the game break ends (game finished, timeout, or skipped).
+ */
+export interface GameBreakEndedEvent {
+  sessionId: string
+  roomId: string
+  reason: 'gameFinished' | 'timeout' | 'skipped'
+  /** Summary of game results, if available */
+  summary?: {
+    gameName: string
+    headline?: string
+  }
+}
+
+// ============================================================================
 // Client-Side Event Map (for typed socket.io client)
 // ============================================================================
 
@@ -445,6 +486,11 @@ export interface ClassroomServerToClientEvents {
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
   'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 
+  // Game break observation events (session channel)
+  'game-break-started': (data: GameBreakStartedEvent) => void
+  'game-break-phase': (data: GameBreakPhaseEvent) => void
+  'game-break-ended': (data: GameBreakEndedEvent) => void
+
   // Notification events (user channel - unified notification system)
   notification: (data: GenericNotificationEvent) => void
 }
@@ -474,6 +520,11 @@ export interface ClassroomClientToServerEvents {
   'session-resume': (data: SessionResumedEvent) => void
   'part-transition': (data: PartTransitionEvent) => void
   'part-transition-complete': (data: PartTransitionCompleteEvent) => void
+
+  // Game break broadcasts (from student client to session channel)
+  'game-break-started': (data: GameBreakStartedEvent) => void
+  'game-break-phase': (data: GameBreakPhaseEvent) => void
+  'game-break-ended': (data: GameBreakEndedEvent) => void
 
   // Skill tutorial broadcasts (from student client to classroom channel)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void

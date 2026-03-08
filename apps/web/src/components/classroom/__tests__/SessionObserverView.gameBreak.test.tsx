@@ -1,0 +1,315 @@
+/**
+ * Unit tests for SessionObserverView game break overlay rendering
+ */
+import React from 'react'
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import type { ObservedGameBreakState } from '@/hooks/useSessionObserver'
+
+// Mock useSessionObserver to return controlled breakState
+let mockBreakState: ObservedGameBreakState | null = null
+let mockIsObserving = true
+let mockIsConnected = true
+
+vi.mock('@/hooks/useSessionObserver', () => ({
+  useSessionObserver: () => ({
+    state: null,
+    results: [],
+    transitionState: null,
+    breakState: mockBreakState,
+    visionFrame: null,
+    isConnected: mockIsConnected,
+    isObserving: mockIsObserving,
+    error: null,
+    stopObserving: vi.fn(),
+    sendControl: vi.fn(),
+    sendPause: vi.fn(),
+    sendResume: vi.fn(),
+    dvrBufferInfo: null,
+    isLive: true,
+    scrubTo: vi.fn(),
+    goLive: vi.fn(),
+  }),
+}))
+
+// Mock ThemeContext
+vi.mock('@/contexts/ThemeContext', () => ({
+  useTheme: () => ({
+    theme: 'light',
+    resolvedTheme: 'light',
+    setTheme: vi.fn(),
+  }),
+}))
+
+// Mock MyAbacusContext
+vi.mock('@/contexts/MyAbacusContext', () => ({
+  useMyAbacus: () => ({
+    requestDock: vi.fn(),
+    dock: null,
+    setDockedValue: vi.fn(),
+    isDockedByUser: false,
+  }),
+}))
+
+// Mock ToastContext
+vi.mock('@/components/common/ToastContext', () => ({
+  useToast: () => ({
+    showSuccess: vi.fn(),
+    showError: vi.fn(),
+  }),
+}))
+
+// Mock Panda CSS
+vi.mock('../../../../styled-system/css', () => ({
+  css: vi.fn(() => 'mocked-css-class'),
+}))
+
+// Mock tanstack/react-query
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+  }),
+}))
+
+// Mock queryClient
+vi.mock('@/lib/queryClient', () => ({
+  api: vi.fn(),
+}))
+
+// Mock Radix UI Dialog to avoid context errors
+vi.mock('@radix-ui/react-dialog', () => ({
+  Root: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Portal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Overlay: React.forwardRef(({ children, ...props }: any, ref: any) => <div ref={ref} {...props}>{children}</div>),
+  Content: React.forwardRef(({ children, ...props }: any, ref: any) => <div ref={ref} {...props}>{children}</div>),
+  Title: React.forwardRef(({ children, ...props }: any, ref: any) => <h2 ref={ref} {...props}>{children}</h2>),
+  Description: React.forwardRef(({ children, ...props }: any, ref: any) => <p ref={ref} {...props}>{children}</p>),
+  Close: React.forwardRef(({ children, ...props }: any, ref: any) => <button ref={ref} {...props}>{children}</button>),
+  Trigger: React.forwardRef(({ children, ...props }: any, ref: any) => <button ref={ref} {...props}>{children}</button>),
+}))
+
+// Mock child components that are heavy to render
+vi.mock('../AbacusDock', () => ({
+  AbacusDock: () => null,
+}))
+vi.mock('../../practice/LiveResultsPanel', () => ({
+  LiveResultsPanel: () => null,
+}))
+vi.mock('../../practice/LiveSessionReportModal', () => ({
+  LiveSessionReportInline: () => null,
+}))
+vi.mock('../../practice/MobileResultsSummary', () => ({
+  MobileResultsSummary: () => null,
+}))
+vi.mock('../../practice/ObserverTransitionView', () => ({
+  ObserverTransitionView: () => null,
+}))
+vi.mock('../../practice/PracticeFeedback', () => ({
+  PracticeFeedback: () => null,
+}))
+vi.mock('../../practice/PurposeBadge', () => ({
+  PurposeBadge: () => null,
+}))
+vi.mock('../../practice/SessionPlanOverview', () => ({
+  SessionPlanOverview: () => null,
+}))
+vi.mock('../../practice/SessionProgressIndicator', () => ({
+  SessionProgressIndicator: () => null,
+}))
+vi.mock('../../practice/VerticalProblem', () => ({
+  VerticalProblem: () => null,
+}))
+vi.mock('../../vision/ObserverVisionFeed', () => ({
+  ObserverVisionFeed: () => null,
+}))
+vi.mock('../../vision/ProblemVideoPlayer', () => ({
+  ProblemVideoPlayer: () => null,
+}))
+vi.mock('../../debug/ObserverDebugPanel', () => ({
+  ObserverDebugPanel: () => null,
+}))
+vi.mock('../SessionShareButton', () => ({
+  SessionShareButton: () => null,
+}))
+vi.mock('@/lib/utils/attempt-tracking', () => ({
+  getVideoAttemptsForProblem: () => [],
+  getAttemptLabel: () => '',
+}))
+
+import { SessionObserverView } from '../SessionObserverModal'
+
+const defaultSession = {
+  sessionId: 'session-123',
+  playerId: 'player-456',
+  startedAt: new Date().toISOString(),
+  currentPartIndex: 0,
+  currentSlotIndex: 0,
+}
+
+const defaultStudent = {
+  name: 'Alice',
+  emoji: '🐱',
+  color: '#FF6B6B',
+}
+
+describe('SessionObserverView game break overlay', () => {
+  it('does not show game break overlay when breakState is null', () => {
+    mockBreakState = null
+    mockIsObserving = true
+    mockIsConnected = true
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(document.querySelector('[data-element="game-break-overlay"]')).not.toBeInTheDocument()
+  })
+
+  it('shows game break overlay when breakState is set', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'playing',
+    }
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    const overlay = document.querySelector('[data-element="game-break-overlay"]')
+    expect(overlay).toBeInTheDocument()
+  })
+
+  it('shows "choosing a game" text during selecting phase', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'selecting',
+    }
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(screen.getByText('Alice is choosing a game...')).toBeInTheDocument()
+    expect(screen.getByText('Choosing game')).toBeInTheDocument()
+  })
+
+  it('shows game name during playing phase', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'playing',
+    }
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(screen.getByText('Alice is playing Memory Match')).toBeInTheDocument()
+    expect(screen.getByText('Playing')).toBeInTheDocument()
+  })
+
+  it('shows "finished playing" during completed phase', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'completed',
+    }
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(screen.getByText('Alice finished playing')).toBeInTheDocument()
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+  })
+
+  it('shows "Game Break" heading', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'playing',
+    }
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(screen.getByText('Game Break')).toBeInTheDocument()
+  })
+
+  it('hides "waiting for activity" message during game break', () => {
+    mockBreakState = {
+      roomId: 'room-abc',
+      gameName: 'Memory Match',
+      gameId: 'matching',
+      phase: 'playing',
+    }
+    mockIsObserving = true
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(screen.queryByText('Waiting for student activity...')).not.toBeInTheDocument()
+  })
+
+  it('shows "waiting for activity" when not in a break and no state', () => {
+    mockBreakState = null
+    mockIsObserving = true
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(screen.getByText('Waiting for student activity...')).toBeInTheDocument()
+  })
+})

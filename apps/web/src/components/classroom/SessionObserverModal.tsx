@@ -181,6 +181,7 @@ export function SessionObserverView({
     state,
     results,
     transitionState,
+    breakState,
     visionFrame,
     isConnected,
     isObserving,
@@ -918,7 +919,7 @@ export function SessionObserverView({
           </div>
         )}
 
-        {isObserving && !state && !transitionState && (
+        {isObserving && !state && !transitionState && !breakState && (
           <div
             className={css({
               textAlign: 'center',
@@ -943,6 +944,67 @@ export function SessionObserverView({
             countdownDurationMs={transitionState.countdownDurationMs}
             student={student}
           />
+        )}
+
+        {/* Game break overlay - shows when student is on a game break */}
+        {breakState && !transitionState && (
+          <div
+            data-element="game-break-overlay"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1rem',
+              padding: '2rem',
+              textAlign: 'center',
+              minHeight: '200px',
+            })}
+          >
+            <span className={css({ fontSize: '3rem' })}>🎮</span>
+            <h3
+              className={css({
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: isDark ? 'gray.100' : 'gray.800',
+              })}
+            >
+              Game Break
+            </h3>
+            <p
+              className={css({
+                fontSize: '1rem',
+                color: isDark ? 'gray.300' : 'gray.600',
+              })}
+            >
+              {breakState.phase === 'selecting'
+                ? `${student.name} is choosing a game...`
+                : breakState.phase === 'playing'
+                  ? `${student.name} is playing ${breakState.gameName}`
+                  : `${student.name} finished playing`}
+            </p>
+            <div
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.375rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+              })}
+              style={{
+                backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
+                color: isDark ? '#a5b4fc' : '#4f46e5',
+              }}
+            >
+              {breakState.phase === 'selecting'
+                ? 'Choosing game'
+                : breakState.phase === 'playing'
+                  ? 'Playing'
+                  : 'Completed'}
+            </div>
+          </div>
         )}
 
         {/* Past problem video playback - shown when clicking a completed problem in progress indicator */}
