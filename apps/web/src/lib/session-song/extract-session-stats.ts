@@ -7,6 +7,8 @@
 
 import type { SessionPlan } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
+import type { GameResult } from '@/db/schema/game-results'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import {
   getSessionPlanAccuracy,
   getTotalProblemCount,
@@ -37,6 +39,13 @@ export interface SongPromptInput {
     recentSessionCount: number
     averageAccuracy: number
     trend: 'improving' | 'steady' | 'declining'
+  }
+  /** Optional game break results from this session */
+  gameBreak?: {
+    gameName: string
+    headline: string
+    accuracy?: number
+    highlights: string[]
   }
 }
 
@@ -81,11 +90,13 @@ interface RecentSessionSummary {
  * @param plan - The current session plan (may be in-progress or completed)
  * @param player - The player profile
  * @param recentSessions - Summary of recent sessions (past week) for trend calculation
+ * @param gameBreakResult - Optional game result from the practice break
  */
 export function extractSessionStats(
   plan: SessionPlan,
   player: Player,
-  recentSessions: RecentSessionSummary[]
+  recentSessions: RecentSessionSummary[],
+  gameBreakResult?: GameResult | null
 ): SongPromptInput {
   const accuracy = getSessionPlanAccuracy(plan)
   const problemsDone = getCompletedProblemCount(plan)
@@ -133,6 +144,9 @@ export function extractSessionStats(
     }
   }
 
+  // Extract game break info if available
+  const gameBreak = extractGameBreak(gameBreakResult)
+
   return {
     player: {
       name: player.name,
@@ -153,5 +167,32 @@ export function extractSessionStats(
       averageAccuracy,
       trend,
     },
+    gameBreak,
+  }
+}
+
+// ============================================================================
+// Helper — extract game break summary from a GameResult
+// ============================================================================
+
+function extractGameBreak(
+  result?: GameResult | null
+): SongPromptInput['gameBreak'] {
+  if (!result?.fullReport) return undefined
+
+  const report = result.fullReport as GameResultsReport
+  const headline = report.headline ?? report.gameDisplayName
+
+  // Pick top 2-3 highlighted custom stats, falling back to any stats
+  const stats = report.customStats ?? []
+  const highlighted = stats.filter((s) => s.highlight)
+  const picks = (highlighted.length >= 2 ? highlighted : stats).slice(0, 3)
+  const highlights = picks.map((s) => `${s.label}: ${s.value}`)
+
+  return {
+    gameName: report.gameDisplayName,
+    headline,
+    accuracy: result.accuracy ?? undefined,
+    highlights,
   }
 }

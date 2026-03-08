@@ -6,8 +6,12 @@
  * Runs during active practice. Fires a song generation request when:
  * - Feature flag is enabled AND tier is 'family'
  * - Haven't already triggered for this session
+ * - Kid is in the LAST practice part (so game break results are already saved)
  * - completionRatio >= 0.6 (enough data for a meaningful prompt)
  * - estimatedRemainingSeconds <= 180 (song should be ready by end)
+ *
+ * We wait for the last part because game breaks happen between parts.
+ * Triggering earlier would race with game break result persistence.
  *
  * Fire-and-forget — no UI impact on the practice screen.
  */
@@ -33,6 +37,12 @@ export function useSessionSongTrigger({
   useEffect(() => {
     if (!songEnabled || !plan || triggeredRef.current) return
     if (plan.status !== 'in_progress') return
+    if (plan.flowState !== 'practicing') return
+
+    // Only trigger in the last part — game breaks happen between parts,
+    // so by the last part all game break results are persisted.
+    const isLastPart = plan.currentPartIndex >= plan.parts.length - 1
+    if (!isLastPart) return
 
     const completed = getCompletedProblemCount(plan)
     const total = getTotalProblemCount(plan)

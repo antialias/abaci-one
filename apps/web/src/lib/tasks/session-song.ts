@@ -170,7 +170,21 @@ export async function startSessionSongGeneration(
           }
         })
 
-        const stats = extractSessionStats(plan as never, player, recentSessions)
+        // Look up game break result for this session (if any).
+        // The smart trigger only fires in the last practice part, so game break
+        // results (which happen between parts) are already persisted by now.
+        const [gameBreakResult] = await db
+          .select()
+          .from(schema.gameResults)
+          .where(
+            and(
+              eq(schema.gameResults.sessionId, input.sessionPlanId),
+              eq(schema.gameResults.sessionType, 'practice-break')
+            )
+          )
+          .limit(1)
+
+        const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult)
 
         // Update song record with prompt input
         await db
