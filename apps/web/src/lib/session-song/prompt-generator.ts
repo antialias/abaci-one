@@ -50,6 +50,13 @@ export type SongLLMOutput = z.infer<typeof songLLMOutputSchema>
 export interface SongCompositionOutput {
   title: string
   plan: CompositionPlan
+  /** LLM metadata for observability */
+  llmMeta: {
+    provider: string
+    model: string
+    usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+    attempts: number
+  }
 }
 
 // ============================================================================
@@ -147,6 +154,12 @@ export async function generateSongPrompt(
       positive_global_styles,
       negative_global_styles,
       sections,
+    },
+    llmMeta: {
+      provider: response.provider,
+      model: response.model,
+      usage: response.usage,
+      attempts: response.attempts,
     },
   }
 }

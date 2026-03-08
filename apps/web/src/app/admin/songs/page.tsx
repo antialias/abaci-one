@@ -421,6 +421,12 @@ function SongDetail({
   const plan = llmOutput?.plan as Record<string, unknown> | null
   const sections = (plan?.sections as Array<Record<string, unknown>>) ?? []
   const promptInput = song.promptInput as Record<string, unknown> | null
+  const llmMeta = llmOutput?.llmMeta as {
+    provider?: string
+    model?: string
+    usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number }
+    attempts?: number
+  } | null
 
   return (
     <div className={css({ padding: '16px' })}>
@@ -555,6 +561,22 @@ function SongDetail({
           ]}
         />
       </DetailSection>
+
+      {/* LLM Info */}
+      {llmMeta && (
+        <DetailSection title="LLM">
+          <InfoTable
+            rows={[
+              ['Provider', llmMeta.provider ?? '-'],
+              ['Model', llmMeta.model ?? '-'],
+              ['Prompt Tokens', String(llmMeta.usage?.promptTokens ?? '-')],
+              ['Completion Tokens', String(llmMeta.usage?.completionTokens ?? '-')],
+              ['Total Tokens', String(llmMeta.usage?.totalTokens ?? '-')],
+              ['Attempts', String(llmMeta.attempts ?? '-')],
+            ]}
+          />
+        </DetailSection>
+      )}
 
       {/* Error */}
       {song.errorMessage && (

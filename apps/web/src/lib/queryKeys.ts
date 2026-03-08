@@ -195,6 +195,12 @@ export const pageSpotKeys = {
   html: (pageId: string, spotId: string) => [...pageSpotKeys.all, 'html', pageId, spotId] as const,
 }
 
+// Session song query keys
+export const songKeys = {
+  all: ['songs'] as const,
+  player: (playerId: string) => [...songKeys.all, 'player', playerId] as const,
+}
+
 // Number line postcard query keys
 export const postcardKeys = {
   all: ['postcards'] as const,

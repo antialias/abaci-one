@@ -17,6 +17,7 @@ import {
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-game-list'
 import { getUserId } from '@/lib/viewer'
+import { subscriptions } from '@/db/schema/subscriptions'
 
 /**
  * Debug presets for quick session creation
@@ -72,6 +73,7 @@ export const POST = withAuth(
       const body = await req.json()
       const preset = (body.preset as PresetName) || 'game-break'
       const setupOnly = body.setupOnly === true
+      const simulateFamilyTier = body.simulateFamilyTier !== false // default true
       const overrideProblemTerms = body.overrideProblemTerms as number[] | undefined
 
       if (!(preset in PRESETS)) {
@@ -105,6 +107,31 @@ export const POST = withAuth(
         parentUserId: userId,
         childPlayerId: player.id,
       })
+
+      // 2c. Ensure the user has a family subscription for debug testing
+      if (simulateFamilyTier) {
+        const existing = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.userId, userId))
+          .limit(1)
+
+        if (existing.length === 0) {
+          await db.insert(subscriptions).values({
+            userId,
+            stripeCustomerId: `cus_debug_${Date.now()}`,
+            stripeSubscriptionId: `sub_debug_${Date.now()}`,
+            plan: 'family',
+            status: 'active',
+            currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          })
+        } else if (existing[0].plan !== 'family' || existing[0].status !== 'active') {
+          await db
+            .update(subscriptions)
+            .set({ plan: 'family', status: 'active' })
+            .where(eq(subscriptions.userId, userId))
+        }
+      }
 
       // 3. Initialize curriculum
       await initializeStudent(player.id)

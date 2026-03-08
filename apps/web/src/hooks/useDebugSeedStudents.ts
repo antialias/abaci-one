@@ -187,6 +187,7 @@ export function useCreateDebugPracticeSession() {
     mutationFn: async (params: {
       preset: string
       setupOnly: boolean
+      simulateFamilyTier?: boolean
     }): Promise<{
       setupOnly?: boolean
       playerId?: string

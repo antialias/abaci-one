@@ -51,6 +51,21 @@ export function SessionSongPlayer({
     }
   }, [triggerFallback, song, playerId, planId])
 
+  // Auto-play when song becomes ready (even if it finishes after page load)
+  const hasAutoPlayed = useRef(false)
+  useEffect(() => {
+    if (isReady && song?.audioPath && !hasAutoPlayed.current) {
+      hasAutoPlayed.current = true
+      // Small delay to ensure the audio element is mounted and loaded
+      const timer = setTimeout(() => {
+        audioRef.current?.play().catch(() => {
+          // Browser may block autoplay — user can tap play manually
+        })
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [isReady, song?.audioPath])
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (!audio) return

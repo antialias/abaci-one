@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { useCallback, useRef, useState } from 'react'
 import { AppNavBar } from '@/components/AppNavBar'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
 import { usePostcards } from '@/hooks/usePostcards'
+import { usePlayerSongs, type PlayerSong } from '@/hooks/usePlayerSongs'
 import { css } from '../../../../../styled-system/css'
 import { vstack, hstack } from '../../../../../styled-system/patterns'
 
@@ -17,6 +19,7 @@ export default function PlayerStuffPage({ params }: Props) {
   const { data: players = [] } = useUserPlayers()
   const { data: creations = [], isLoading } = useEuclidCreations('mine', playerId)
   const { data: postcards = [], isLoading: postcardsLoading } = usePostcards(playerId)
+  const { data: songs = [], isLoading: songsLoading } = usePlayerSongs(playerId)
 
   const player = players.find((p) => p.id === playerId)
   const emoji = player?.emoji ?? '🧒'
@@ -85,7 +88,7 @@ export default function PlayerStuffPage({ params }: Props) {
               {name}&apos;s Stuff
             </h1>
             <span className={css({ fontSize: '13px', color: 'gray.500' })}>
-              Creations & postcards
+              Songs, creations & postcards
             </span>
           </div>
         </div>
@@ -228,6 +231,32 @@ export default function PlayerStuffPage({ params }: Props) {
           </section>
         )}
 
+        {/* ── Celebration Songs ── */}
+        {(songs.length > 0 || songsLoading) && (
+          <section data-section="celebration-songs">
+            <h2
+              className={css({
+                fontSize: '18px',
+                fontWeight: '700',
+                color: 'gray.800',
+                mb: '12px',
+              })}
+            >
+              Celebration Songs
+            </h2>
+
+            {songsLoading ? (
+              <p className={css({ color: 'gray.400', fontSize: '14px' })}>Loading…</p>
+            ) : (
+              <div className={vstack({ gap: '0', alignItems: 'stretch' })}>
+                {songs.map((song) => (
+                  <SongRow key={song.id} song={song} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* ── Euclid Creations ── */}
         <section data-section="euclid-creations">
           <div
@@ -352,6 +381,86 @@ export default function PlayerStuffPage({ params }: Props) {
           )}
         </section>
       </main>
+    </div>
+  )
+}
+
+function SongRow({ song }: { song: PlayerSong }) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  const toggle = useCallback(() => {
+    const el = audioRef.current
+    if (!el) return
+    if (playing) {
+      el.pause()
+    } else {
+      el.play()
+    }
+  }, [playing])
+
+  return (
+    <div
+      data-element="song-row"
+      className={hstack({
+        gap: '12px',
+        p: '12px 16px',
+        bg: 'white',
+        borderRadius: '12px',
+        border: '1px solid token(colors.gray.200)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        mb: '8px',
+        alignItems: 'center',
+      })}
+    >
+      <audio
+        ref={audioRef}
+        src={song.audioPath}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+      />
+      <button
+        type="button"
+        data-action="toggle-play"
+        onClick={toggle}
+        className={css({
+          w: '40px',
+          h: '40px',
+          borderRadius: '50%',
+          bg: 'purple.600',
+          color: 'white',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '18px',
+          flexShrink: 0,
+          transition: 'background 0.15s',
+          _hover: { bg: 'purple.700' },
+        })}
+      >
+        {playing ? '\u23F8' : '\u25B6'}
+      </button>
+      <div className={vstack({ alignItems: 'flex-start', gap: '2px', flex: 1, minW: 0 })}>
+        <span
+          className={css({
+            fontSize: '14px',
+            fontWeight: '600',
+            color: 'gray.800',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxW: '100%',
+          })}
+        >
+          {song.title ?? 'Celebration Song'}
+        </span>
+        <span className={css({ fontSize: '11px', color: 'gray.400' })}>
+          {new Date(song.createdAt).toLocaleDateString()}
+        </span>
+      </div>
     </div>
   )
 }

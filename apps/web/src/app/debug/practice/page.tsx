@@ -354,6 +354,7 @@ export default function DebugPracticePage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [useModal, setUseModal] = useState(true)
+  const [simulateFamilyTier, setSimulateFamilyTier] = useState(true)
   const createSession = useCreateDebugPracticeSession()
 
   // State for modal flow: stores the debug player created by setupOnly API call
@@ -376,7 +377,7 @@ export default function DebugPracticePage() {
     createSession.reset()
 
     createSession.mutate(
-      { preset: preset.id, setupOnly: useModal },
+      { preset: preset.id, setupOnly: useModal, simulateFamilyTier },
       {
         onSuccess: (data) => {
           if (data.setupOnly) {
@@ -527,33 +528,65 @@ export default function DebugPracticePage() {
                       />
                     )}
                   </button>
-                  <label
-                    data-element="use-modal-toggle"
+                  <div
                     className={css({
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.375rem',
-                      padding: '0.5rem 1.25rem',
+                      flexDirection: 'column',
                       borderTop: '1px solid',
                       borderColor: isDark ? 'gray.700/50' : 'gray.100',
-                      fontSize: '0.75rem',
-                      color: isDark ? 'gray.500' : 'gray.400',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      _hover: {
-                        color: isDark ? 'gray.300' : 'gray.600',
-                      },
                     })}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <input
-                      type="checkbox"
-                      checked={useModal}
-                      onChange={(e) => setUseModal(e.target.checked)}
-                      className={css({ cursor: 'pointer' })}
-                    />
-                    Show start practice modal
-                  </label>
+                    <label
+                      data-element="use-modal-toggle"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.375rem',
+                        padding: '0.5rem 1.25rem',
+                        fontSize: '0.75rem',
+                        color: isDark ? 'gray.500' : 'gray.400',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        _hover: {
+                          color: isDark ? 'gray.300' : 'gray.600',
+                        },
+                      })}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={useModal}
+                        onChange={(e) => setUseModal(e.target.checked)}
+                        className={css({ cursor: 'pointer' })}
+                      />
+                      Show start practice modal
+                    </label>
+                    <label
+                      data-element="family-tier-toggle"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.375rem',
+                        padding: '0.5rem 1.25rem',
+                        paddingTop: 0,
+                        fontSize: '0.75rem',
+                        color: isDark ? 'gray.500' : 'gray.400',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        _hover: {
+                          color: isDark ? 'gray.300' : 'gray.600',
+                        },
+                      })}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={simulateFamilyTier}
+                        onChange={(e) => setSimulateFamilyTier(e.target.checked)}
+                        className={css({ cursor: 'pointer' })}
+                      />
+                      Simulate family tier
+                    </label>
+                  </div>
                 </div>
               )
             })}
