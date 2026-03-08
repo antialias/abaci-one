@@ -83,10 +83,78 @@ Each step is a `PropositionStep`:
 **Expected action types:**
 - `compass` — `{ centerId, radiusPointId }`
 - `straightedge` — `{ fromId, toId }`
+- `extend` — `{ baseId, throughId, distance?, label }` — Post.2 produce/extend (see §3a)
 - `intersection` — `{ label?, ofA?, ofB?, beyondId? }` — use `ElementSelector` for ofA/ofB
 - `macro` — `{ propId, inputPointIds, outputLabels? }` — invokes a previously proven proposition
 
 **Tool values:** `'compass'`, `'straightedge'`, `'macro'`, `null` (for tap-to-mark intersections)
+
+### 3a. Extend Steps (Postulate 2: Produce a Line)
+
+Extend steps let the student drag from a base point, through an existing point, and past it to place a new point. This is the Postulate 2 interaction.
+
+**Recipe annotation pattern:**
+
+```typescript
+'produce-E': {
+  instruction: 'From {pt:D}, extend through {pt:B} to meet the circle at {pt:E}',
+  tool: 'straightedge',           // Activates the straightedge tool
+  citation: 'Post.2',
+  highlightIds: ['pt-D', 'pt-B'],
+  expectedOverride: {             // Override the default 'intersection' derived action
+    type: 'extend',
+    baseId: 'pt-D',              // Where the user starts dragging
+    throughId: 'pt-B',           // The existing point they drag through
+    label: 'E',                  // Label for the new point
+  },
+},
+```
+
+**Critical rules for extend steps:**
+
+1. **Free vs constrained extends.** When `distance` is omitted, the user controls how far to extend (e.g., Prop 5's free extends). When `distance` is set, the point snaps to that exact position. If the extend must land at a specific intersection (e.g., Prop 2: line meets circle), you MUST provide the `distance` via `resolveStep`.
+
+2. **Use `resolveStep` + `evaluateRecipe` for constrained distances.** Never hand-compute the intersection geometry. Instead, evaluate the full recipe using the geometry engine and read the authoritative point position from the trace:
+
+   ```typescript
+   resolveStep(stepIndex, state, _stepData) {
+     const ptB = getPoint(state, 'pt-B')
+     // ... get all input points from construction state
+     const trace = evaluateRecipe(RECIPE_PROP_N, [ptB, ptC, ptA], RECIPE_REGISTRY)
+     if (!trace) return null
+     const target = trace.pointMap.get('E')  // The geometry engine's exact intersection
+     const through = getPoint(state, 'pt-B')
+     const dist = Math.sqrt((target.x - through.x) ** 2 + (target.y - through.y) ** 2)
+     return {
+       expected: { type: 'extend', baseId: 'pt-D', throughId: 'pt-B', distance: dist, label: 'E' },
+     }
+   }
+   ```
+
+   This delegates all geometry to the recipe evaluator — the single source of truth for intersection positions.
+
+3. **Tutorial hints must point at the BASE point, not the through point.** The `arrow` hint type draws a pulsing glow ring at its DESTINATION. For an extend gesture (start at D, drag through B), using `{ type: 'arrow', fromId: 'pt-D', toId: 'pt-B' }` puts the glow on B — misleading the user into clicking B first. Use `{ type: 'point', pointId: 'pt-D' }` instead to highlight where to start.
+
+4. **Tutorial sub-steps follow a two-step pattern:**
+
+   ```typescript
+   [
+     {
+       instruction: `Drag from {pt:D} toward {pt:B}`,
+       hint: { type: 'point', pointId: 'pt-D' },  // Glow on the START point
+       advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
+     },
+     {
+       instruction: `Continue past {pt:B} and release to place {pt:E}`,
+       hint: { type: 'none' as const },
+       advanceOn: null,  // Advances when the extend commits
+     },
+   ]
+   ```
+
+5. **Step instructions must name the starting point first.** Don't write "Extend line DB past B" — it's ambiguous about where to start. Write "From {pt:D}, extend through {pt:B}" so the starting point is unambiguous.
+
+6. **Recipe `produce` ops default to `type: 'intersection'` in `deriveSteps`.** The `opToExpectedAction` function converts `produce` ops to `intersection` expected actions (click-to-mark). To use the extend interaction instead, you must set `expectedOverride` in the annotation and `tool: 'straightedge'`.
 
 ## 4. Tutorial Sub-Steps
 

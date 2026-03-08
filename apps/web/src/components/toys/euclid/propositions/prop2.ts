@@ -1,14 +1,19 @@
 import type {
   PropositionDef,
   ConstructionElement,
+  ConstructionState,
   TutorialSubStep,
   EuclidNarrationOptions,
+  ExpectedAction,
 } from '../types'
 import { BYRNE } from '../types'
 import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { deriveSteps } from '../engine/recipe/deriveSteps'
 import { RECIPE_PROP_2, PROP_2_ANNOTATIONS } from '../engine/recipe/definitions/prop2'
+import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
 import { recipeToConclusion } from '../engine/recipe/adapters'
+import { evaluateRecipe } from '../engine/recipe/evaluate'
+import { getPoint } from '../engine/constructionState'
 
 const DEFAULT_LANGUAGE_STYLE: KidLanguageStyle = 'standard'
 
@@ -17,25 +22,25 @@ const PROP_2_STEP_INSTRUCTIONS: Record<KidLanguageStyle, string[]> = {
     'Draw a line from {pt:A} to {pt:B}',
     'Build an equilateral triangle on {seg:AB} ({prop:1|I.1})',
     'Draw a circle with center {pt:B} through {pt:C}',
-    'Mark where the circle crosses line {seg:DB}, past {pt:B}',
+    'From {pt:D}, extend past {pt:B} to meet the circle',
     'Draw a circle with center {pt:D} through {pt:E}',
-    'Mark where the circle crosses line {seg:DA}, past {pt:A}',
+    'From {pt:D}, extend past {pt:A} to meet the circle',
   ],
   standard: [
     'Join point {pt:A} to point {pt:B}',
     'Construct equilateral triangle on {seg:AB} ({prop:1|I.1})',
     'Draw a circle centered at {pt:B} through {pt:C}',
-    'Mark where the circle crosses line {seg:DB}, past {pt:B}',
+    'From {pt:D}, extend through {pt:B} to meet the circle at {pt:E}',
     'Draw a circle centered at {pt:D} through {pt:E}',
-    'Mark where the circle crosses line {seg:DA}, past {pt:A}',
+    'From {pt:D}, extend through {pt:A} to meet the circle at {pt:F}',
   ],
   classical: [
     'Join {pt:A} to {pt:B}',
     'Construct the equilateral triangle on {seg:AB} ({prop:1|I.1})',
     'Describe the circle with center {pt:B} and radius {seg:BC}',
-    'Mark where the circle cuts {seg:DB} produced beyond {pt:B}',
+    'From {pt:D}, produce past {pt:B} to meet the circle at {pt:E}',
     'Describe the circle with center {pt:D} and radius {seg:DE}',
-    'Mark where the circle cuts {seg:DA} produced beyond {pt:A}',
+    'From {pt:D}, produce past {pt:A} to meet the circle at {pt:F}',
   ],
 }
 
@@ -153,24 +158,32 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: null,
       },
     ],
-    // ── Step 3: Mark intersection E (Euclid's G) ──
+    // ── Step 3: Extend DB past B to E (Postulate 2) ──
     [
       {
-        instruction: `${tap} where the circle crosses line {seg:DB}, past {pt:B}`,
+        instruction: `${drag} from {pt:D} toward {pt:B}`,
         speech: byStyle({
           simple:
-            'Extend line DB past B (Postulate 2) and tap where it meets the circle. Call it E. Then BE equals BC.',
+            'Now extend line DB past B using Postulate 2. Drag from D toward B.',
           standard:
-            'Extend line DB past B (Postulate 2) and mark where it meets the circle. Call it E. Because E is on the circle centered at B, BE equals BC.',
+            'Now extend line DB past B using Postulate 2. Drag from point D toward B.',
           classical:
-            'Produce DB beyond B (Postulate 2) and mark its meeting with the circle at E. Since E is on the circle with center B, BE equals BC.',
+            'By Postulate 2, produce DB beyond B. Drag from D toward B.',
         }),
-        hint: {
-          type: 'candidates',
-          ofA: { kind: 'circle', centerId: 'pt-B', radiusPointId: 'pt-C' },
-          ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-B' },
-          beyondId: 'pt-B',
-        },
+        hint: { type: 'point', pointId: 'pt-D' },
+        advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
+      },
+      {
+        instruction: `Continue past {pt:B} and release to place {pt:E}`,
+        speech: byStyle({
+          simple:
+            'Keep going past B and release to place point E where the line meets the circle. Then BE equals BC.',
+          standard:
+            'Continue past B and release to place E where the line meets the circle. Because E is on the circle centered at B, BE equals BC.',
+          classical:
+            'Continue past B and release at E, where it meets the circle. Since E is on the circle with center B, BE equals BC.',
+        }),
+        hint: { type: 'none' as const },
         advanceOn: null,
       },
     ],
@@ -220,24 +233,32 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: null,
       },
     ],
-    // ── Step 5: Mark intersection F (Euclid's L) ──
+    // ── Step 5: Extend DA past A to F (Postulate 2) ──
     [
       {
-        instruction: `${tap} where the big circle crosses line {seg:DA}, past {pt:A}`,
+        instruction: `${drag} from {pt:D} toward {pt:A}`,
         speech: byStyle({
           simple:
-            'Extend line DA past A (Postulate 2) and tap where it meets the circle. Call it F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
+            'Now extend line DA past A. Drag from D toward A.',
           standard:
-            'Extend line DA past A (Postulate 2) and mark where it meets the circle. Call it F. Then DF equals DE. Since DA equals DB, subtract equals from equals to get AF = BE, and because BE = BC, AF = BC.',
+            'Now extend line DA past A using Postulate 2. Drag from point D toward A.',
           classical:
-            'Produce DA beyond A (Postulate 2) and mark its meeting with the circle at F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
+            'By Postulate 2, produce DA beyond A. Drag from D toward A.',
         }),
-        hint: {
-          type: 'candidates',
-          ofA: { kind: 'circle', centerId: 'pt-D', radiusPointId: 'pt-E' },
-          ofB: { kind: 'segment', fromId: 'pt-D', toId: 'pt-A' },
-          beyondId: 'pt-A',
-        },
+        hint: { type: 'point', pointId: 'pt-D' },
+        advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
+      },
+      {
+        instruction: `Continue past {pt:A} and release to place {pt:F}`,
+        speech: byStyle({
+          simple:
+            'Keep going past A and release to place point F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
+          standard:
+            'Continue past A and release to place F where the line meets the circle. DF equals DE, and since DA equals DB, subtract equals from equals to get AF = BE. Because BE = BC, AF = BC.',
+          classical:
+            'Continue past A and release at F. Then DF equals DE. Subtract equals from equals: AF = BE. And since BE = BC, AF = BC.',
+        }),
+        hint: { type: 'none' as const },
         advanceOn: null,
       },
     ],
@@ -394,4 +415,44 @@ export const PROP_2: PropositionDef = {
     },
   },
   deriveConclusion: recipeToConclusion(RECIPE_PROP_2),
+  resolveStep(
+    stepIndex: number,
+    state: ConstructionState,
+    _stepData: Map<number, Record<string, unknown>>
+  ): { expected?: ExpectedAction; instruction?: string; highlightIds?: string[] } | null {
+    if (stepIndex !== 3 && stepIndex !== 5) return null
+
+    // Evaluate the full recipe using the geometry engine to get authoritative positions
+    const ptB = getPoint(state, 'pt-B')
+    const ptC = getPoint(state, 'pt-C')
+    const ptA = getPoint(state, 'pt-A')
+    if (!ptB || !ptC || !ptA) return null
+
+    const trace = evaluateRecipe(RECIPE_PROP_2, [ptB, ptC, ptA], RECIPE_REGISTRY)
+    if (!trace) return null
+
+    // Step 3: extend DB past B → E at circle(B, BC) intersection
+    if (stepIndex === 3) {
+      const ptE = trace.pointMap.get('E')
+      const through = getPoint(state, 'pt-B')
+      if (!ptE || !through) return null
+      const dist = Math.sqrt((ptE.x - through.x) ** 2 + (ptE.y - through.y) ** 2)
+      return {
+        expected: { type: 'extend', baseId: 'pt-D', throughId: 'pt-B', distance: dist, label: 'E' },
+      }
+    }
+
+    // Step 5: extend DA past A → F at circle(D, DE) intersection
+    if (stepIndex === 5) {
+      const ptF = trace.pointMap.get('F')
+      const through = getPoint(state, 'pt-A')
+      if (!ptF || !through) return null
+      const dist = Math.sqrt((ptF.x - through.x) ** 2 + (ptF.y - through.y) ** 2)
+      return {
+        expected: { type: 'extend', baseId: 'pt-D', throughId: 'pt-A', distance: dist, label: 'F' },
+      }
+    }
+
+    return null
+  },
 }

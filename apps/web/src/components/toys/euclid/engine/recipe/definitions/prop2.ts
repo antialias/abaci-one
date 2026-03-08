@@ -142,9 +142,16 @@ export const PROP_2_ANNOTATIONS: OpAnnotations = {
     highlightIds: ['pt-B', 'pt-C'],
   },
   'produce-E': {
-    instruction: 'Mark where the circle crosses line {seg:DB}, past {pt:B}',
-    tool: null,
-    citation: 'Def.15',
+    instruction: 'From {pt:D}, extend through {pt:B} to meet the circle at {pt:E}',
+    tool: 'straightedge',
+    citation: 'Post.2',
+    highlightIds: ['pt-D', 'pt-B'],
+    expectedOverride: {
+      type: 'extend',
+      baseId: 'pt-D',
+      throughId: 'pt-B',
+      label: 'E',
+    },
   },
   'circle-DE': {
     instruction: 'Draw a circle centered at {pt:D} through {pt:E}',
@@ -153,9 +160,16 @@ export const PROP_2_ANNOTATIONS: OpAnnotations = {
     highlightIds: ['pt-D', 'pt-E'],
   },
   'produce-F': {
-    instruction: 'Mark where the circle crosses line {seg:DA}, past {pt:A}',
-    tool: null,
-    citation: 'Def.15',
+    instruction: 'From {pt:D}, extend through {pt:A} to meet the circle at {pt:F}',
+    tool: 'straightedge',
+    citation: 'Post.2',
+    highlightIds: ['pt-D', 'pt-A'],
+    expectedOverride: {
+      type: 'extend',
+      baseId: 'pt-D',
+      throughId: 'pt-A',
+      label: 'F',
+    },
   },
   // 'seg-AF' intentionally has NO annotation — it's an export-only op
 }
