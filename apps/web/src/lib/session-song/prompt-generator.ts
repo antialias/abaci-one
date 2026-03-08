@@ -9,7 +9,6 @@ import { z } from 'zod'
 import { llm } from '@/lib/llm'
 import type { SongPromptInput } from './extract-session-stats'
 import type { CompositionPlan } from '@/lib/elevenlabs/music-client'
-import type { SessionSongGenre } from '@/db/schema/player-session-preferences'
 
 // ============================================================================
 // Output Schema
@@ -91,8 +90,8 @@ STYLE TIPS:
 - Make the chorus catchy and repeatable
 
 GENRE INSTRUCTIONS:
-- If a genre preference is specified, use it as the primary genre for positive_global_styles
-- If the genre is "any" or not specified, rotate through pop, reggae, funk, hip-hop, folk, rock, country, jazz`
+- If a genre preference is specified, use it as the primary genre for positive_global_styles. The genre may be a standard name or a creative mix — interpret it faithfully.
+- If the genre is "any" or not specified, pick a random genre from a wide range: pop, disco, edm, chiptune, funk, hip-hop, reggae, jazz, afrobeat, salsa, bossa nova, bollywood, rock, folk, country, musical theater, marching band, electro swing. Surprise the listener each time.`
 
 // ============================================================================
 // Prompt Builder
@@ -133,12 +132,15 @@ Session details:
  */
 export async function generateSongPrompt(
   input: SongPromptInput,
-  genre: SessionSongGenre = 'any'
+  genre: string = 'any'
 ): Promise<SongCompositionOutput> {
+  const genres = genre === 'any' ? [] : genre.split(',').map((s) => s.trim()).filter(Boolean)
   const genreInstruction =
-    genre !== 'any'
-      ? `\n\nThe parent has requested a ${genre} style song. Use ${genre} as the primary genre.`
-      : ''
+    genres.length > 1
+      ? `\n\nThe parent has requested a genre mix: ${genres.join(' + ')}. Blend these styles together.`
+      : genres.length === 1
+        ? `\n\nThe parent has requested a ${genres[0]} style song. Use ${genres[0]} as the primary genre.`
+        : ''
   const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildUserPrompt(input)}${genreInstruction}`
 
   const response = await llm.call({

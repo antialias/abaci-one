@@ -27,27 +27,37 @@ export interface PlayerSessionPreferencesConfig {
 
 export type KidLanguageStyle = 'simple' | 'standard' | 'classical'
 
-export type SessionSongGenre =
-  | 'any'
-  | 'pop'
-  | 'reggae'
-  | 'funk'
-  | 'hip-hop'
-  | 'folk'
-  | 'rock'
-  | 'country'
-  | 'jazz'
+/**
+ * Song genre preference — any string is valid (custom genres supported).
+ * Preset IDs are convenience values shown in the UI picker.
+ */
+export type SessionSongGenre = string
 
-export const SESSION_SONG_GENRES: { id: SessionSongGenre; label: string }[] = [
+export const SESSION_SONG_GENRES: { id: string; label: string }[] = [
   { id: 'any', label: 'Any (rotate)' },
+  // Pop / Electronic
   { id: 'pop', label: 'Pop' },
-  { id: 'reggae', label: 'Reggae' },
+  { id: 'disco', label: 'Disco' },
+  { id: 'edm', label: 'EDM' },
+  { id: 'chiptune', label: '8-Bit' },
+  // Soul / Groove
   { id: 'funk', label: 'Funk' },
   { id: 'hip-hop', label: 'Hip-Hop' },
-  { id: 'folk', label: 'Folk' },
-  { id: 'rock', label: 'Rock' },
-  { id: 'country', label: 'Country' },
+  { id: 'reggae', label: 'Reggae' },
   { id: 'jazz', label: 'Jazz' },
+  // World / Latin
+  { id: 'afrobeat', label: 'Afrobeat' },
+  { id: 'salsa', label: 'Salsa' },
+  { id: 'bossa-nova', label: 'Bossa Nova' },
+  { id: 'bollywood', label: 'Bollywood' },
+  // Rock / Acoustic
+  { id: 'rock', label: 'Rock' },
+  { id: 'folk', label: 'Folk' },
+  { id: 'country', label: 'Country' },
+  // Fun / Theatrical
+  { id: 'musical-theater', label: 'Broadway' },
+  { id: 'marching-band', label: 'Marching Band' },
+  { id: 'electro-swing', label: 'Electro Swing' },
 ]
 
 export const DEFAULT_SESSION_PREFERENCES: PlayerSessionPreferencesConfig = {

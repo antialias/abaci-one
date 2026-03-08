@@ -1,16 +1,20 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import {
   usePlayerSessionPreferences,
   useSavePlayerSessionPreferences,
 } from '@/hooks/usePlayerSessionPreferences'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
-import { DEFAULT_SESSION_PREFERENCES, SESSION_SONG_GENRES } from '@/db/schema/player-session-preferences'
-import type { KidLanguageStyle, SessionSongGenre } from '@/db/schema/player-session-preferences'
+import {
+  DEFAULT_SESSION_PREFERENCES,
+  SESSION_SONG_GENRES,
+} from '@/db/schema/player-session-preferences'
+import type { KidLanguageStyle } from '@/db/schema/player-session-preferences'
 import { KID_LANGUAGE_STYLES, getRecommendedKidLanguageStyle } from '@/lib/kidLanguageStyle'
 import { getAgeFromBirthday } from '@/lib/playerAge'
+import { InteractiveDice } from '@/components/ui/InteractiveDice'
 
 // ============================================================================
 // Types
@@ -83,7 +87,7 @@ export function SettingsTab({
   )
 
   const songEnabledForStudent = preferences?.sessionSongEnabled ?? true
-  const songGenre: SessionSongGenre = preferences?.sessionSongGenre ?? 'any'
+  const songGenre = preferences?.sessionSongGenre ?? 'any'
 
   const handleToggleSong = useCallback(() => {
     saveMutation.mutate({
@@ -93,7 +97,7 @@ export function SettingsTab({
   }, [preferences, saveMutation, songEnabledForStudent])
 
   const handleSelectSongGenre = useCallback(
-    (genre: SessionSongGenre) => {
+    (genre: string) => {
       saveMutation.mutate({
         ...(preferences ?? DEFAULT_SESSION_PREFERENCES),
         sessionSongGenre: genre,
@@ -579,65 +583,11 @@ export function SettingsTab({
 
           {/* Genre Picker (only shown when enabled) */}
           {songEnabledForStudent && (
-            <div
-              data-element="song-genre-grid"
-              className={css({
-                display: 'grid',
-                gridTemplateColumns: { base: 'repeat(3, 1fr)', sm: 'repeat(5, 1fr)' },
-                gap: '0.5rem',
-              })}
-            >
-              {SESSION_SONG_GENRES.map((genre) => {
-                const isSelected = songGenre === genre.id
-                return (
-                  <button
-                    key={genre.id}
-                    type="button"
-                    data-genre={genre.id}
-                    data-selected={isSelected}
-                    onClick={() => handleSelectSongGenre(genre.id)}
-                    className={css({
-                      padding: '0.6rem 0.5rem',
-                      textAlign: 'center',
-                      borderRadius: '10px',
-                      border: '2px solid',
-                      cursor: 'pointer',
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      transition: 'all 0.15s ease',
-                      _hover: {
-                        transform: 'translateY(-1px)',
-                      },
-                    })}
-                    style={{
-                      borderColor: isSelected
-                        ? isDark
-                          ? 'rgba(139, 92, 246, 0.5)'
-                          : 'rgba(139, 92, 246, 0.4)'
-                        : isDark
-                          ? 'rgba(255,255,255,0.08)'
-                          : 'rgba(0,0,0,0.08)',
-                      backgroundColor: isSelected
-                        ? isDark
-                          ? 'rgba(139, 92, 246, 0.15)'
-                          : 'rgba(139, 92, 246, 0.08)'
-                        : isDark
-                          ? 'rgba(255,255,255,0.03)'
-                          : 'rgba(0,0,0,0.02)',
-                      color: isSelected
-                        ? isDark
-                          ? '#c4b5fd'
-                          : '#6d28d9'
-                        : isDark
-                          ? '#9ca3af'
-                          : '#6b7280',
-                    }}
-                  >
-                    {genre.label}
-                  </button>
-                )
-              })}
-            </div>
+            <SongGenreCombobox
+              value={songGenre}
+              onChange={handleSelectSongGenre}
+              isDark={isDark}
+            />
           )}
         </section>
       )}
@@ -692,6 +642,418 @@ export function SettingsTab({
           <span>Manage Skills</span>
         </button>
       </section>
+    </div>
+  )
+}
+
+// ============================================================================
+// SongGenreCombobox — tag input with dropdown for genre mixing
+// ============================================================================
+
+const GENRE_DISPLAY: Record<string, string> = Object.fromEntries(
+  SESSION_SONG_GENRES.map((g) => [g.id, g.label])
+)
+
+function tagLabel(tag: string): string {
+  return GENRE_DISPLAY[tag] ?? tag
+}
+
+/** Parse comma-separated genre string into array of tags */
+function parseTags(value: string): string[] {
+  if (!value || value === 'any') return []
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/** Join tags back into stored string */
+function joinTags(tags: string[]): string {
+  return tags.length === 0 ? 'any' : tags.join(', ')
+}
+
+/** Pick n random unique items from an array */
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, n)
+}
+
+function SongGenreCombobox({
+  value,
+  onChange,
+  isDark,
+}: {
+  value: string
+  onChange: (genre: string) => void
+  isDark: boolean
+}) {
+  const tags = useMemo(() => parseTags(value), [value])
+  const isAny = tags.length === 0
+
+  const handleRandomize = useCallback(() => {
+    const pool = SESSION_SONG_GENRES.filter((g) => g.id !== 'any')
+    const count = 2 + Math.floor(Math.random() * 2) // 2 or 3
+    const picked = pickRandom(pool, count).map((g) => g.id)
+    onChange(joinTags(picked))
+  }, [onChange])
+
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Exclude "any" from dropdown — it's shown as the empty/default state
+  const presets = useMemo(
+    () => SESSION_SONG_GENRES.filter((g) => g.id !== 'any'),
+    []
+  )
+
+  const filtered = useMemo(() => {
+    if (!filter) return presets
+    const q = filter.toLowerCase()
+    return presets.filter(
+      (g) => g.label.toLowerCase().includes(q) || g.id.includes(q)
+    )
+  }, [filter, presets])
+
+  const toggleTag = useCallback(
+    (tagId: string) => {
+      const has = tags.includes(tagId)
+      const next = has ? tags.filter((t) => t !== tagId) : [...tags, tagId]
+      onChange(joinTags(next))
+      setFilter('')
+    },
+    [tags, onChange]
+  )
+
+  const addTag = useCallback(
+    (tagId: string) => {
+      if (tags.includes(tagId)) return
+      onChange(joinTags([...tags, tagId]))
+      setFilter('')
+    },
+    [tags, onChange]
+  )
+
+  const removeTag = useCallback(
+    (tagId: string) => {
+      onChange(joinTags(tags.filter((t) => t !== tagId)))
+    },
+    [tags, onChange]
+  )
+
+  const handleClearAll = useCallback(() => {
+    onChange('any')
+    setFilter('')
+  }, [onChange])
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilter(e.target.value)
+    setOpen(true)
+  }, [])
+
+  const handleInputFocus = useCallback(() => {
+    setOpen(true)
+  }, [])
+
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const trimmed = filter.trim().toLowerCase()
+        if (filtered.length === 1) {
+          toggleTag(filtered[0].id)
+        } else if (trimmed) {
+          addTag(trimmed)
+        }
+      } else if (e.key === 'Backspace' && !filter && tags.length > 0) {
+        removeTag(tags[tags.length - 1])
+      } else if (e.key === 'Escape') {
+        setOpen(false)
+        setFilter('')
+        inputRef.current?.blur()
+      }
+    },
+    [filter, filtered, tags, toggleTag, addTag, removeTag]
+  )
+
+  const handleBlur = useCallback((e: React.FocusEvent) => {
+    if (containerRef.current?.contains(e.relatedTarget as Node)) return
+    setTimeout(() => {
+      setOpen(false)
+      setFilter('')
+    }, 150)
+  }, [])
+
+  const chipStyle = (isDark: boolean) => ({
+    backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+    color: isDark ? '#c4b5fd' : '#6d28d9',
+    borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.25)',
+  })
+
+  return (
+    <div
+      ref={containerRef}
+      data-element="song-genre-combobox"
+      className={css({ position: 'relative' })}
+      onBlur={handleBlur}
+    >
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+        <label
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '0.8125rem',
+            fontWeight: '600',
+            color: isDark ? 'gray.300' : 'gray.600',
+            flexShrink: 0,
+          })}
+        >
+          Genre
+          <InteractiveDice
+            size={16}
+            title="Randomize genres"
+            onRoll={handleRandomize}
+          />
+        </label>
+
+        {/* Tag input container */}
+        <div
+          data-element="tag-input-wrapper"
+          onClick={() => inputRef.current?.focus()}
+          className={css({
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px',
+            flex: 1,
+            minH: '32px',
+            padding: '3px 6px',
+            borderRadius: '8px',
+            border: '1.5px solid',
+            cursor: 'text',
+            transition: 'border-color 0.15s',
+          })}
+          style={{
+            borderColor: open
+              ? isDark
+                ? '#a78bfa'
+                : '#8b5cf6'
+              : isDark
+                ? 'rgba(255,255,255,0.12)'
+                : 'rgba(0,0,0,0.15)',
+            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'white',
+          }}
+        >
+          {/* Chips */}
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              data-element="genre-chip"
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '2px',
+                padding: '1px 8px',
+                borderRadius: '999px',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                border: '1px solid',
+                whiteSpace: 'nowrap',
+                lineHeight: '1.6',
+              })}
+              style={chipStyle(isDark)}
+            >
+              {tagLabel(tag)}
+              <button
+                type="button"
+                data-action="remove-genre"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeTag(tag)
+                }}
+                className={css({
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  padding: '0 1px',
+                  fontSize: '0.8rem',
+                  lineHeight: 1,
+                  opacity: 0.6,
+                  _hover: { opacity: 1 },
+                })}
+                style={{ color: isDark ? '#c4b5fd' : '#6d28d9' }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+
+          {/* Text input */}
+          <input
+            ref={inputRef}
+            type="text"
+            value={filter}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onKeyDown={handleInputKeyDown}
+            placeholder={isAny ? 'Any (rotate) — type or pick…' : 'Add more…'}
+            maxLength={60}
+            className={css({
+              flex: 1,
+              minW: '80px',
+              border: 'none',
+              outline: 'none',
+              fontSize: '0.8125rem',
+              fontWeight: '500',
+              padding: '2px 4px',
+              background: 'transparent',
+            })}
+            style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+          />
+        </div>
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          data-element="genre-dropdown"
+          className={css({
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '4px',
+            borderRadius: '10px',
+            border: '1px solid',
+            maxH: '240px',
+            overflowY: 'auto',
+            zIndex: 10,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          })}
+          style={{
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            backgroundColor: isDark ? '#1f2937' : 'white',
+          }}
+        >
+          {/* "Any" reset option */}
+          {!isAny && !filter && (
+            <button
+              type="button"
+              data-action="clear-genres"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClearAll}
+              className={css({
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.5rem 0.75rem',
+                border: 'none',
+                borderBottom: '1px solid',
+                cursor: 'pointer',
+                fontSize: '0.8125rem',
+                fontWeight: '500',
+                fontStyle: 'italic',
+              })}
+              style={{
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                backgroundColor: 'transparent',
+                color: isDark ? '#9ca3af' : '#6b7280',
+              }}
+            >
+              Any (rotate) — clear selection
+            </button>
+          )}
+
+          {filtered.map((genre) => {
+            const selected = tags.includes(genre.id)
+            return (
+              <button
+                key={genre.id}
+                type="button"
+                data-genre={genre.id}
+                data-selected={selected}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => toggleTag(genre.id)}
+                className={css({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '0.45rem 0.75rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  fontWeight: selected ? '700' : '500',
+                  transition: 'background 0.1s',
+                  _hover: {
+                    backgroundColor: isDark
+                      ? 'rgba(255,255,255,0.05)'
+                      : 'rgba(0,0,0,0.04)',
+                  },
+                })}
+                style={{
+                  backgroundColor: selected
+                    ? isDark
+                      ? 'rgba(139, 92, 246, 0.12)'
+                      : 'rgba(139, 92, 246, 0.06)'
+                    : 'transparent',
+                  color: selected
+                    ? isDark
+                      ? '#c4b5fd'
+                      : '#6d28d9'
+                    : isDark
+                      ? '#d1d5db'
+                      : '#374151',
+                }}
+              >
+                <span
+                  className={css({
+                    width: '16px',
+                    fontSize: '0.7rem',
+                    textAlign: 'center',
+                    flexShrink: 0,
+                  })}
+                >
+                  {selected ? '✓' : ''}
+                </span>
+                {genre.label}
+              </button>
+            )
+          })}
+
+          {/* Custom genre option */}
+          {filter.trim() && !filtered.some((g) => g.id === filter.trim().toLowerCase()) && (
+            <button
+              type="button"
+              data-action="add-custom-genre"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => addTag(filter.trim().toLowerCase())}
+              className={css({
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.5rem 0.75rem',
+                border: 'none',
+                borderTop: '1px solid',
+                cursor: 'pointer',
+                fontSize: '0.8125rem',
+                fontWeight: '500',
+                fontStyle: 'italic',
+              })}
+              style={{
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                backgroundColor: 'transparent',
+                color: isDark ? '#a78bfa' : '#7c3aed',
+              }}
+            >
+              Add &ldquo;{filter.trim()}&rdquo;
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
