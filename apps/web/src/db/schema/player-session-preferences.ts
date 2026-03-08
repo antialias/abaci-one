@@ -21,7 +21,7 @@ export interface PlayerSessionPreferencesConfig {
   kidLanguageStyle?: KidLanguageStyle
   /** Whether celebration songs are enabled for this student. Defaults to true when feature flag is on. */
   sessionSongEnabled?: boolean
-  /** Preferred genre for celebration songs. 'any' rotates genres. */
+  /** Preferred genre for celebration songs. 'shuffle' picks a fresh 2-3 genre mix each song, 'any' rotates single genres. */
   sessionSongGenre?: SessionSongGenre
 }
 
@@ -34,7 +34,8 @@ export type KidLanguageStyle = 'simple' | 'standard' | 'classical'
 export type SessionSongGenre = string
 
 export const SESSION_SONG_GENRES: { id: string; label: string }[] = [
-  { id: 'any', label: 'Any (rotate)' },
+  { id: 'shuffle', label: 'Surprise Mix' },
+  { id: 'any', label: 'Single Genre (rotate)' },
   // Pop / Electronic
   { id: 'pop', label: 'Pop' },
   { id: 'disco', label: 'Disco' },

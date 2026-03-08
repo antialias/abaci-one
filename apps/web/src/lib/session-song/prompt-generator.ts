@@ -82,7 +82,7 @@ STRUCTURE:
 - Output structured sections: Verse 1, Chorus, Verse 2, Chorus (optionally a Bridge before final Chorus)
 - Each section has its own lyrics as an array of lines (max 200 chars per line, max 30 lines per section)
 - Set section durations: verses ~12000-15000ms, choruses ~10000-12000ms, bridge ~8000-10000ms
-- Total song should be ~50000-60000ms (50-60 seconds)
+- Total song MUST be at most 60000ms (60 seconds). Aim for 45000-55000ms. Never exceed 60000ms.
 - positive_global_styles should ALWAYS include "children" and "upbeat"
 - negative_global_styles should ALWAYS include "explicit" and "sad"
 
@@ -158,6 +158,16 @@ export async function generateSongPrompt(
     : await llm.call(callArgs)
 
   const { title, positive_global_styles, negative_global_styles, sections } = response.data
+
+  // Clamp total duration to 60s — proportionally scale sections if LLM overshoots
+  const MAX_DURATION_MS = 60_000
+  const totalMs = sections.reduce((sum, s) => sum + s.duration_ms, 0)
+  if (totalMs > MAX_DURATION_MS) {
+    const scale = MAX_DURATION_MS / totalMs
+    for (const section of sections) {
+      section.duration_ms = Math.round(section.duration_ms * scale)
+    }
+  }
 
   return {
     title,

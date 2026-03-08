@@ -87,7 +87,7 @@ export function SettingsTab({
   )
 
   const songEnabledForStudent = preferences?.sessionSongEnabled ?? true
-  const songGenre = preferences?.sessionSongGenre ?? 'any'
+  const songGenre = preferences?.sessionSongGenre ?? 'shuffle'
 
   const handleToggleSong = useCallback(() => {
     saveMutation.mutate({
@@ -583,11 +583,7 @@ export function SettingsTab({
 
           {/* Genre Picker (only shown when enabled) */}
           {songEnabledForStudent && (
-            <SongGenreCombobox
-              value={songGenre}
-              onChange={handleSelectSongGenre}
-              isDark={isDark}
-            />
+            <SongGenreCombobox value={songGenre} onChange={handleSelectSongGenre} isDark={isDark} />
           )}
         </section>
       )}
@@ -660,22 +656,30 @@ function tagLabel(tag: string): string {
 
 /** Parse comma-separated genre string into array of tags */
 function parseTags(value: string): string[] {
-  if (!value || value === 'any') return []
+  if (!value || value === 'any' || value === 'shuffle') return []
   return value
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
 }
 
-/** Join tags back into stored string */
+/** Join tags back into stored string. Empty tags → 'shuffle' (default). */
 function joinTags(tags: string[]): string {
-  return tags.length === 0 ? 'any' : tags.join(', ')
+  return tags.length === 0 ? 'shuffle' : tags.join(', ')
 }
 
 /** Pick n random unique items from an array */
 function pickRandom<T>(arr: T[], n: number): T[] {
   const shuffled = [...arr].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, n)
+}
+
+type GenreMode = 'shuffle' | 'any' | 'pick'
+
+function deriveMode(value: string): GenreMode {
+  if (value === 'shuffle') return 'shuffle'
+  if (value === 'any') return 'any'
+  return 'pick'
 }
 
 function SongGenreCombobox({
@@ -688,32 +692,40 @@ function SongGenreCombobox({
   isDark: boolean
 }) {
   const tags = useMemo(() => parseTags(value), [value])
-  const isAny = tags.length === 0
+  const mode = deriveMode(value)
 
   const handleRandomize = useCallback(() => {
-    const pool = SESSION_SONG_GENRES.filter((g) => g.id !== 'any')
+    const pool = SESSION_SONG_GENRES.filter((g) => g.id !== 'any' && g.id !== 'shuffle')
     const count = 2 + Math.floor(Math.random() * 2) // 2 or 3
     const picked = pickRandom(pool, count).map((g) => g.id)
     onChange(joinTags(picked))
   }, [onChange])
+
+  const handleModeChange = useCallback(
+    (newMode: GenreMode) => {
+      if (newMode === 'shuffle') onChange('shuffle')
+      else if (newMode === 'any') onChange('any')
+      // 'pick' — keep current tags or start empty (will show combobox)
+      else if (tags.length === 0) handleRandomize() // seed with a random mix
+    },
+    [onChange, tags, handleRandomize]
+  )
 
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Exclude "any" from dropdown — it's shown as the empty/default state
+  // Exclude meta modes from dropdown
   const presets = useMemo(
-    () => SESSION_SONG_GENRES.filter((g) => g.id !== 'any'),
+    () => SESSION_SONG_GENRES.filter((g) => g.id !== 'any' && g.id !== 'shuffle'),
     []
   )
 
   const filtered = useMemo(() => {
     if (!filter) return presets
     const q = filter.toLowerCase()
-    return presets.filter(
-      (g) => g.label.toLowerCase().includes(q) || g.id.includes(q)
-    )
+    return presets.filter((g) => g.label.toLowerCase().includes(q) || g.id.includes(q))
   }, [filter, presets])
 
   const toggleTag = useCallback(
@@ -743,7 +755,7 @@ function SongGenreCombobox({
   )
 
   const handleClearAll = useCallback(() => {
-    onChange('any')
+    onChange('shuffle')
     setFilter('')
   }, [onChange])
 
@@ -791,6 +803,24 @@ function SongGenreCombobox({
     borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.25)',
   })
 
+  const MODE_OPTIONS: { id: GenreMode; label: string; hint: string }[] = [
+    { id: 'shuffle', label: 'Surprise Mix', hint: 'Fresh genre combo each song' },
+    { id: 'any', label: 'Rotate', hint: 'One genre at a time, rotated' },
+    { id: 'pick', label: 'Pick', hint: 'Choose specific genres' },
+  ]
+
+  const activePillStyle = (dark: boolean) => ({
+    backgroundColor: dark ? '#8b5cf6' : '#7c3aed',
+    color: 'white',
+    borderColor: dark ? '#8b5cf6' : '#7c3aed',
+  })
+
+  const inactivePillStyle = (dark: boolean) => ({
+    backgroundColor: 'transparent',
+    color: dark ? '#d1d5db' : '#374151',
+    borderColor: dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+  })
+
   return (
     <div
       ref={containerRef}
@@ -798,12 +828,17 @@ function SongGenreCombobox({
       className={css({ position: 'relative' })}
       onBlur={handleBlur}
     >
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
-        <label
+      {/* Mode pills */}
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: mode === 'pick' ? '0.5rem' : '0',
+        })}
+      >
+        <span
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
             fontSize: '0.8125rem',
             fontWeight: '600',
             color: isDark ? 'gray.300' : 'gray.600',
@@ -811,248 +846,263 @@ function SongGenreCombobox({
           })}
         >
           Genre
-          <InteractiveDice
-            size={16}
-            title="Randomize genres"
-            onRoll={handleRandomize}
-          />
-        </label>
-
-        {/* Tag input container */}
-        <div
-          data-element="tag-input-wrapper"
-          onClick={() => inputRef.current?.focus()}
-          className={css({
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '4px',
-            flex: 1,
-            minH: '32px',
-            padding: '3px 6px',
-            borderRadius: '8px',
-            border: '1.5px solid',
-            cursor: 'text',
-            transition: 'border-color 0.15s',
-          })}
-          style={{
-            borderColor: open
-              ? isDark
-                ? '#a78bfa'
-                : '#8b5cf6'
-              : isDark
-                ? 'rgba(255,255,255,0.12)'
-                : 'rgba(0,0,0,0.15)',
-            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'white',
-          }}
-        >
-          {/* Chips */}
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              data-element="genre-chip"
+        </span>
+        <div className={css({ display: 'flex', gap: '4px', flexWrap: 'wrap' })}>
+          {MODE_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              data-action={`genre-mode-${opt.id}`}
+              data-active={mode === opt.id}
+              onClick={() => handleModeChange(opt.id)}
+              title={opt.hint}
               className={css({
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '2px',
-                padding: '1px 8px',
+                padding: '2px 10px',
                 borderRadius: '999px',
+                border: '1.5px solid',
                 fontSize: '0.75rem',
                 fontWeight: '600',
-                border: '1px solid',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
                 whiteSpace: 'nowrap',
                 lineHeight: '1.6',
               })}
-              style={chipStyle(isDark)}
+              style={mode === opt.id ? activePillStyle(isDark) : inactivePillStyle(isDark)}
             >
-              {tagLabel(tag)}
-              <button
-                type="button"
-                data-action="remove-genre"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removeTag(tag)
-                }}
-                className={css({
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  padding: '0 1px',
-                  fontSize: '0.8rem',
-                  lineHeight: 1,
-                  opacity: 0.6,
-                  _hover: { opacity: 1 },
-                })}
-                style={{ color: isDark ? '#c4b5fd' : '#6d28d9' }}
-              >
-                ×
-              </button>
-            </span>
+              {opt.label}
+            </button>
           ))}
-
-          {/* Text input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={filter}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onKeyDown={handleInputKeyDown}
-            placeholder={isAny ? 'Any (rotate) — type or pick…' : 'Add more…'}
-            maxLength={60}
-            className={css({
-              flex: 1,
-              minW: '80px',
-              border: 'none',
-              outline: 'none',
-              fontSize: '0.8125rem',
-              fontWeight: '500',
-              padding: '2px 4px',
-              background: 'transparent',
-            })}
-            style={{ color: isDark ? '#e5e7eb' : '#374151' }}
-          />
         </div>
+        {mode === 'pick' && (
+          <InteractiveDice size={16} title="Randomize genres" onRoll={handleRandomize} />
+        )}
       </div>
 
-      {/* Dropdown */}
-      {open && (
-        <div
-          data-element="genre-dropdown"
+      {/* Hint text for non-pick modes */}
+      {mode !== 'pick' && (
+        <p
           className={css({
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
+            fontSize: '0.75rem',
+            color: isDark ? 'gray.500' : 'gray.400',
             marginTop: '4px',
-            borderRadius: '10px',
-            border: '1px solid',
-            maxH: '240px',
-            overflowY: 'auto',
-            zIndex: 10,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
           })}
-          style={{
-            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-            backgroundColor: isDark ? '#1f2937' : 'white',
-          }}
         >
-          {/* "Any" reset option */}
-          {!isAny && !filter && (
-            <button
-              type="button"
-              data-action="clear-genres"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleClearAll}
+          {MODE_OPTIONS.find((o) => o.id === mode)?.hint}
+        </p>
+      )}
+
+      {/* Tag input — only shown in pick mode */}
+      {mode === 'pick' && (
+        <>
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+            <div
+              data-element="tag-input-wrapper"
+              onClick={() => inputRef.current?.focus()}
               className={css({
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '0.5rem 0.75rem',
-                border: 'none',
-                borderBottom: '1px solid',
-                cursor: 'pointer',
-                fontSize: '0.8125rem',
-                fontWeight: '500',
-                fontStyle: 'italic',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '4px',
+                flex: 1,
+                minH: '32px',
+                padding: '3px 6px',
+                borderRadius: '8px',
+                border: '1.5px solid',
+                cursor: 'text',
+                transition: 'border-color 0.15s',
               })}
               style={{
-                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                backgroundColor: 'transparent',
-                color: isDark ? '#9ca3af' : '#6b7280',
+                borderColor: open
+                  ? isDark
+                    ? '#a78bfa'
+                    : '#8b5cf6'
+                  : isDark
+                    ? 'rgba(255,255,255,0.12)'
+                    : 'rgba(0,0,0,0.15)',
+                backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'white',
               }}
             >
-              Any (rotate) — clear selection
-            </button>
-          )}
-
-          {filtered.map((genre) => {
-            const selected = tags.includes(genre.id)
-            return (
-              <button
-                key={genre.id}
-                type="button"
-                data-genre={genre.id}
-                data-selected={selected}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => toggleTag(genre.id)}
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.45rem 0.75rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '0.8125rem',
-                  fontWeight: selected ? '700' : '500',
-                  transition: 'background 0.1s',
-                  _hover: {
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.05)'
-                      : 'rgba(0,0,0,0.04)',
-                  },
-                })}
-                style={{
-                  backgroundColor: selected
-                    ? isDark
-                      ? 'rgba(139, 92, 246, 0.12)'
-                      : 'rgba(139, 92, 246, 0.06)'
-                    : 'transparent',
-                  color: selected
-                    ? isDark
-                      ? '#c4b5fd'
-                      : '#6d28d9'
-                    : isDark
-                      ? '#d1d5db'
-                      : '#374151',
-                }}
-              >
+              {/* Chips */}
+              {tags.map((tag) => (
                 <span
+                  key={tag}
+                  data-element="genre-chip"
                   className={css({
-                    width: '16px',
-                    fontSize: '0.7rem',
-                    textAlign: 'center',
-                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    padding: '1px 8px',
+                    borderRadius: '999px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    border: '1px solid',
+                    whiteSpace: 'nowrap',
+                    lineHeight: '1.6',
                   })}
+                  style={chipStyle(isDark)}
                 >
-                  {selected ? '✓' : ''}
+                  {tagLabel(tag)}
+                  <button
+                    type="button"
+                    data-action="remove-genre"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeTag(tag)
+                    }}
+                    className={css({
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      padding: '0 1px',
+                      fontSize: '0.8rem',
+                      lineHeight: 1,
+                      opacity: 0.6,
+                      _hover: { opacity: 1 },
+                    })}
+                    style={{ color: isDark ? '#c4b5fd' : '#6d28d9' }}
+                  >
+                    ×
+                  </button>
                 </span>
-                {genre.label}
-              </button>
-            )
-          })}
+              ))}
 
-          {/* Custom genre option */}
-          {filter.trim() && !filtered.some((g) => g.id === filter.trim().toLowerCase()) && (
-            <button
-              type="button"
-              data-action="add-custom-genre"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => addTag(filter.trim().toLowerCase())}
+              {/* Text input */}
+              <input
+                ref={inputRef}
+                type="text"
+                value={filter}
+                onChange={handleInputChange}
+                onFocus={handleInputFocus}
+                onKeyDown={handleInputKeyDown}
+                placeholder={tags.length === 0 ? 'Type or pick genres…' : 'Add more…'}
+                maxLength={60}
+                className={css({
+                  flex: 1,
+                  minW: '80px',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '0.8125rem',
+                  fontWeight: '500',
+                  padding: '2px 4px',
+                  background: 'transparent',
+                })}
+                style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+              />
+            </div>
+          </div>
+
+          {/* Dropdown */}
+          {open && (
+            <div
+              data-element="genre-dropdown"
               className={css({
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '0.5rem 0.75rem',
-                border: 'none',
-                borderTop: '1px solid',
-                cursor: 'pointer',
-                fontSize: '0.8125rem',
-                fontWeight: '500',
-                fontStyle: 'italic',
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '4px',
+                borderRadius: '10px',
+                border: '1px solid',
+                maxH: '240px',
+                overflowY: 'auto',
+                zIndex: 10,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
               })}
               style={{
-                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                backgroundColor: 'transparent',
-                color: isDark ? '#a78bfa' : '#7c3aed',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                backgroundColor: isDark ? '#1f2937' : 'white',
               }}
             >
-              Add &ldquo;{filter.trim()}&rdquo;
-            </button>
+              {filtered.map((genre) => {
+                const selected = tags.includes(genre.id)
+                return (
+                  <button
+                    key={genre.id}
+                    type="button"
+                    data-genre={genre.id}
+                    data-selected={selected}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => toggleTag(genre.id)}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.45rem 0.75rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.8125rem',
+                      fontWeight: selected ? '700' : '500',
+                      transition: 'background 0.1s',
+                      _hover: {
+                        backgroundColor: isDark
+                          ? 'rgba(255,255,255,0.05)'
+                          : 'rgba(0,0,0,0.04)',
+                      },
+                    })}
+                    style={{
+                      backgroundColor: selected
+                        ? isDark
+                          ? 'rgba(139, 92, 246, 0.12)'
+                          : 'rgba(139, 92, 246, 0.06)'
+                        : 'transparent',
+                      color: selected
+                        ? isDark
+                          ? '#c4b5fd'
+                          : '#6d28d9'
+                        : isDark
+                          ? '#d1d5db'
+                          : '#374151',
+                    }}
+                  >
+                    <span
+                      className={css({
+                        width: '16px',
+                        fontSize: '0.7rem',
+                        textAlign: 'center',
+                        flexShrink: 0,
+                      })}
+                    >
+                      {selected ? '✓' : ''}
+                    </span>
+                    {genre.label}
+                  </button>
+                )
+              })}
+
+              {/* Custom genre option */}
+              {filter.trim() &&
+                !filtered.some((g) => g.id === filter.trim().toLowerCase()) && (
+                  <button
+                    type="button"
+                    data-action="add-custom-genre"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addTag(filter.trim().toLowerCase())}
+                    className={css({
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.5rem 0.75rem',
+                      border: 'none',
+                      borderTop: '1px solid',
+                      cursor: 'pointer',
+                      fontSize: '0.8125rem',
+                      fontWeight: '500',
+                      fontStyle: 'italic',
+                    })}
+                    style={{
+                      borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                      backgroundColor: 'transparent',
+                      color: isDark ? '#a78bfa' : '#7c3aed',
+                    }}
+                  >
+                    Add &ldquo;{filter.trim()}&rdquo;
+                  </button>
+                )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

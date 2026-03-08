@@ -21,7 +21,10 @@ import { generateSongPrompt } from '../session-song/prompt-generator'
 import { getSocketIO } from '@/lib/socket-io'
 import type { SessionSongEvent } from './events'
 import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
-import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import {
+  type PlayerSessionPreferencesConfig,
+  SESSION_SONG_GENRES,
+} from '@/db/schema/player-session-preferences'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
 
@@ -42,6 +45,14 @@ export interface SessionSongOutput {
 }
 
 const SONGS_DIR = join(process.cwd(), 'data', 'audio', 'songs')
+
+/** Pick 2-3 random genres from the preset list and return as comma-separated string. */
+function resolveShuffleGenres(): string {
+  const pool = SESSION_SONG_GENRES.filter((g) => g.id !== 'shuffle' && g.id !== 'any')
+  const count = 2 + Math.floor(Math.random() * 2) // 2 or 3
+  const shuffled = [...pool].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, count).map((g) => g.id).join(', ')
+}
 
 // ============================================================================
 // Handler
@@ -133,7 +144,10 @@ export async function startSessionSongGeneration(
           return
         }
 
-        const genrePreference = prefs?.sessionSongGenre ?? 'any'
+        const rawGenre = prefs?.sessionSongGenre ?? 'shuffle'
+        // 'shuffle' → pick 2-3 random genres fresh each time for variety
+        const genrePreference =
+          rawGenre === 'shuffle' ? resolveShuffleGenres() : rawGenre
 
         // Get recent completed sessions for history
         const recentPlans = await db
