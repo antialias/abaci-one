@@ -483,7 +483,11 @@ export interface MacroCeremonyState {
  * "produces" (extends) a finite line, requiring circle-line intersection on the extension.
  */
 export function needsExtendedSegments(prop: PropositionDef): boolean {
-  return prop.steps.some((s) => s.expected.type === 'intersection' && s.expected.beyondId != null)
+  return prop.steps.some(
+    (s) =>
+      s.expected.type === 'extend' ||
+      (s.expected.type === 'intersection' && s.expected.beyondId != null)
+  )
 }
 
 // ── Proof Editor JSON types ────────────────────────────────────────

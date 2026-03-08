@@ -62,28 +62,26 @@ describe('Proposition I.2 full construction with selectors', () => {
     candidates = [...candidates, ...findNewIntersections(state, cirBC.circle, candidates, true)]
     expect(validateStep(steps[2].expected, state, cirBC.circle)).toBe(true)
 
-    // ── Step 3: Mark intersection E (circle BC ∩ segment DB, beyond B) ──
-    // Resolve selectors from step definition
+    // ── Step 3: Extend DB past B to E (circle BC ∩ line DB, beyond B) ──
     const step3 = steps[3].expected
-    expect(step3.type).toBe('intersection')
-    if (step3.type !== 'intersection') throw new Error('unreachable')
+    expect(step3.type).toBe('extend')
+    if (step3.type !== 'extend') throw new Error('unreachable')
+    expect(step3.baseId).toBe('pt-D')
+    expect(step3.throughId).toBe('pt-B')
+    expect(step3.label).toBe('E')
 
-    const resolvedOfA = step3.ofA != null ? resolveSelector(step3.ofA, state) : null
-    const resolvedOfB = step3.ofB != null ? resolveSelector(step3.ofB, state) : null
-    expect(resolvedOfA).toBe(cirBC.circle.id)
-    // Segment DB was created by the macro
-    expect(resolvedOfB).toBeTruthy()
-
-    // Find the candidate matching the resolved selectors, beyond B
+    // The extend places a point at the circle-line intersection beyond B
+    // Find the candidate on circle BC ∩ segment DB, beyond B
+    const segDB = state.elements.find(
+      (e) => e.kind === 'segment' && e.fromId === 'pt-D' && e.toId === 'pt-B'
+    )
+    expect(segDB).toBeDefined()
     const step3Candidates = candidates.filter((c) => {
       const matches =
-        (c.ofA === resolvedOfA && c.ofB === resolvedOfB) ||
-        (c.ofA === resolvedOfB && c.ofB === resolvedOfA)
+        (c.ofA === cirBC.circle.id && c.ofB === segDB!.id) ||
+        (c.ofA === segDB!.id && c.ofB === cirBC.circle.id)
       if (!matches) return false
-      if (step3.beyondId) {
-        return isCandidateBeyondPoint(c, step3.beyondId, c.ofA, c.ofB, state)
-      }
-      return true
+      return isCandidateBeyondPoint(c, 'pt-B', c.ofA, c.ofB, state)
     })
     expect(step3Candidates.length).toBeGreaterThanOrEqual(1)
 
@@ -99,33 +97,31 @@ describe('Proposition I.2 full construction with selectors', () => {
       (c) => !(Math.abs(c.x - candE.x) < 0.001 && Math.abs(c.y - candE.y) < 0.001)
     )
 
-    expect(validateStep(steps[3].expected, state, ptE.point, candE)).toBe(true)
-
     // ── Step 4: Circle at D through E ──
     const cirDE = addCircle(state, 'pt-D', 'pt-E')
     state = cirDE.state
     candidates = [...candidates, ...findNewIntersections(state, cirDE.circle, candidates, true)]
     expect(validateStep(steps[4].expected, state, cirDE.circle)).toBe(true)
 
-    // ── Step 5: Mark intersection F (circle DE ∩ segment DA, beyond A) ──
+    // ── Step 5: Extend DA past A to F (circle DE ∩ line DA, beyond A) ──
     const step5 = steps[5].expected
-    expect(step5.type).toBe('intersection')
-    if (step5.type !== 'intersection') throw new Error('unreachable')
+    expect(step5.type).toBe('extend')
+    if (step5.type !== 'extend') throw new Error('unreachable')
+    expect(step5.baseId).toBe('pt-D')
+    expect(step5.throughId).toBe('pt-A')
+    expect(step5.label).toBe('F')
 
-    const resolved5A = step5.ofA != null ? resolveSelector(step5.ofA, state) : null
-    const resolved5B = step5.ofB != null ? resolveSelector(step5.ofB, state) : null
-    expect(resolved5A).toBe(cirDE.circle.id)
-    expect(resolved5B).toBeTruthy()
-
+    // The extend places a point at the circle-line intersection beyond A
+    const segDA = state.elements.find(
+      (e) => e.kind === 'segment' && e.fromId === 'pt-D' && e.toId === 'pt-A'
+    )
+    expect(segDA).toBeDefined()
     const step5Candidates = candidates.filter((c) => {
       const matches =
-        (c.ofA === resolved5A && c.ofB === resolved5B) ||
-        (c.ofA === resolved5B && c.ofB === resolved5A)
+        (c.ofA === cirDE.circle.id && c.ofB === segDA!.id) ||
+        (c.ofA === segDA!.id && c.ofB === cirDE.circle.id)
       if (!matches) return false
-      if (step5.beyondId) {
-        return isCandidateBeyondPoint(c, step5.beyondId, c.ofA, c.ofB, state)
-      }
-      return true
+      return isCandidateBeyondPoint(c, 'pt-A', c.ofA, c.ofB, state)
     })
     expect(step5Candidates.length).toBeGreaterThanOrEqual(1)
 
@@ -140,8 +136,6 @@ describe('Proposition I.2 full construction with selectors', () => {
     candidates = candidates.filter(
       (c) => !(Math.abs(c.x - candF.x) < 0.001 && Math.abs(c.y - candF.y) < 0.001)
     )
-
-    expect(validateStep(steps[5].expected, state, ptF.point, candF)).toBe(true)
 
     // ── Derive conclusion: AF = BC ──
     const conclusionFn = PROP_2.deriveConclusion
@@ -183,6 +177,11 @@ describe('Proposition I.2 full construction with selectors', () => {
     if (step3.type === 'intersection' && step3.ofA != null && step3.ofB != null) {
       expect(resolveSelector(step3.ofA, state)).not.toBeNull()
       expect(resolveSelector(step3.ofB, state)).not.toBeNull()
+    }
+    // extend steps reference points directly, which are already in state
+    if (step3.type === 'extend') {
+      expect(getPoint(state, step3.baseId)).toBeDefined()
+      expect(getPoint(state, step3.throughId)).toBeDefined()
     }
   })
 })

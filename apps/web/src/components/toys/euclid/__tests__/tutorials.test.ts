@@ -14,6 +14,12 @@ function isValidAdvanceOn(value: AdvanceOn | null): boolean {
   if (value.kind === 'macro-select') {
     return typeof value.index === 'number' && value.index >= 0
   }
+  if (value.kind === 'extend-phase') {
+    return value.phase === 'base-set' || value.phase === 'extending'
+  }
+  if (value.kind === 'superposition-phase') {
+    return ['dragging', 'mismatched', 'flipping', 'snapping', 'settled'].includes(value.phase)
+  }
   return false
 }
 
