@@ -7,6 +7,8 @@
 
 import type { ExplorationDescriptor } from './explorationRegistry'
 import type { ChildProfile } from './childProfile'
+import { recordOpenAiChatUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 
 export interface TranscriptEntry {
   role: 'child' | 'number'
@@ -122,7 +124,8 @@ export async function generateScenario(
   neighborsSummary: string,
   availableExplorations: ExplorationDescriptor[],
   recommendedExplorations?: string[],
-  childProfile?: ChildProfile
+  childProfile?: ChildProfile,
+  userId?: string
 ): Promise<GeneratedScenario | null> {
   try {
     const controller = new AbortController()
@@ -163,6 +166,9 @@ Nearby interesting numbers: ${neighborsSummary}`,
     }
 
     const data = await response.json()
+    if (userId) {
+      recordOpenAiChatUsage(data, { userId, feature: AiFeature.NUMBER_LINE_SCENARIO })
+    }
     const content = data.choices?.[0]?.message?.content
     if (!content) return null
 
@@ -194,7 +200,8 @@ export async function evolveScenario(
   number: number,
   currentScenario: GeneratedScenario,
   recentTranscripts: TranscriptEntry[],
-  conferenceNumbers: number[]
+  conferenceNumbers: number[],
+  userId?: string
 ): Promise<ScenarioEvolution | null> {
   try {
     const controller = new AbortController()
@@ -238,6 +245,9 @@ ${recentTranscripts.map((t, i) => `${i + 1}. [${t.role === 'child' ? 'Child' : '
     }
 
     const data = await response.json()
+    if (userId) {
+      recordOpenAiChatUsage(data, { userId, feature: AiFeature.NUMBER_LINE_SCENARIO_EVOLVE })
+    }
     const content = data.choices?.[0]?.message?.content
     if (!content) return null
 

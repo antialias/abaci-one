@@ -139,6 +139,11 @@ export interface VoiceSessionConfig<TContext> {
    * activateSession(). Transitions to 'preconnected' instead of 'active'.
    */
   deferGreeting?: boolean
+  /**
+   * AI usage feature identifier for heartbeat reporting.
+   * Determines which feature the voice session cost is attributed to.
+   */
+  usageFeature?: string
 }
 
 /** Debug info for mode transitions. */

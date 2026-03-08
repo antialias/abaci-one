@@ -14,7 +14,7 @@ import type {
   TranscriptEntry,
 } from '@/components/toys/number-line/talkToNumber/generateScenario'
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   try {
     const body = await request.json()
     const { number, scenario, recentTranscripts, conferenceNumbers } = body as {
@@ -42,7 +42,8 @@ export const POST = withAuth(async (request) => {
       number,
       scenario,
       recentTranscripts ?? [],
-      conferenceNumbers ?? [number]
+      conferenceNumbers ?? [number],
+      userId
     )
 
     return NextResponse.json({ evolution })

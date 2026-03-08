@@ -99,6 +99,77 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
   /** Stall text to inject when session.created fires after activateSession ran early */
   const pendingStallTextRef = useRef<string | null>(null)
 
+  // ── Usage heartbeat tracking ──
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sessionStartTimeRef = useRef<number>(0)
+  const usageMetricsRef = useRef({
+    turnCount: 0,
+    modelCharacters: 0,
+    userCharacters: 0,
+    toolCallCount: 0,
+  })
+
+  const sendHeartbeat = useCallback(
+    (endReason?: 'user' | 'timeout' | 'network' | 'error', final?: boolean) => {
+      if (sessionStartTimeRef.current === 0) return
+      const durationSeconds = (Date.now() - sessionStartTimeRef.current) / 1000
+      const metrics = usageMetricsRef.current
+      const payload = JSON.stringify({
+        durationSeconds,
+        turnCount: metrics.turnCount,
+        modelCharacters: metrics.modelCharacters,
+        userCharacters: metrics.userCharacters,
+        toolCallCount: metrics.toolCallCount,
+        endReason,
+        final: final ?? false,
+        feature: configRef.current.usageFeature,
+      })
+
+      if (final && typeof navigator.sendBeacon === 'function') {
+        navigator.sendBeacon(
+          '/api/realtime/voice-heartbeat',
+          new Blob([payload], { type: 'application/json' })
+        )
+      } else {
+        void fetch('/api/realtime/voice-heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {})
+      }
+    },
+    []
+  )
+
+  const startHeartbeat = useCallback(() => {
+    sessionStartTimeRef.current = Date.now()
+    usageMetricsRef.current = {
+      turnCount: 0,
+      modelCharacters: 0,
+      userCharacters: 0,
+      toolCallCount: 0,
+    }
+    // Send heartbeat every 15 seconds
+    heartbeatIntervalRef.current = setInterval(() => {
+      sendHeartbeat()
+    }, 15_000)
+  }, [sendHeartbeat])
+
+  const stopHeartbeat = useCallback(
+    (endReason?: 'user' | 'timeout' | 'network' | 'error') => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current)
+        heartbeatIntervalRef.current = null
+      }
+      if (sessionStartTimeRef.current > 0) {
+        sendHeartbeat(endReason, true)
+        sessionStartTimeRef.current = 0
+      }
+    },
+    [sendHeartbeat]
+  )
+
   // Suppress error codes from consumer + defaults
   const suppressCodes = useRef(
     new Set([...DEFAULT_SUPPRESS_CODES, ...(config.suppressErrorCodes ?? [])])
@@ -111,6 +182,8 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
 
   // ── Cleanup ──
   const cleanup = useCallback(() => {
+    stopHeartbeat('user')
+
     if (hangUpTimerRef.current) {
       clearTimeout(hangUpTimerRef.current)
       hangUpTimerRef.current = null
@@ -168,7 +241,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       previous: null,
       transitions: [],
     })
-  }, [])
+  }, [stopHeartbeat])
 
   const hangUp = useCallback(() => {
     cleanup()
@@ -380,6 +453,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       // Go fully active + start timer
       console.log('[voice] activateSession → active')
       setState('active')
+      startHeartbeat()
       deadlineRef.current = Date.now() + timer.baseDurationMs
       timerRef.current = setInterval(() => {
         const remaining = Math.max(0, deadlineRef.current - Date.now())
@@ -746,6 +820,8 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
 
           // ── Transcripts ──
           if (msg.type === 'response.audio_transcript.done' && msg.transcript) {
+            usageMetricsRef.current.modelCharacters += (msg.transcript as string).length
+            usageMetricsRef.current.turnCount++
             configRef.current.onModelSpeech?.(msg.transcript)
           }
           if (
@@ -753,11 +829,14 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
             msg.transcript
           ) {
             childHasSpokenRef.current = true
+            usageMetricsRef.current.userCharacters += (msg.transcript as string).length
             configRef.current.onChildSpeech?.(msg.transcript)
           }
 
           // ── Tool calls ──
           if (msg.type !== 'response.function_call_arguments.done') return
+
+          usageMetricsRef.current.toolCallCount++
 
           let args: Record<string, unknown> = {}
           try {
@@ -907,6 +986,7 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
         // Go active
         console.log('[voice] call active')
         setState('active')
+        startHeartbeat()
 
         deadlineRef.current = Date.now() + timer.baseDurationMs
 

@@ -26,7 +26,7 @@ import { assembleChildProfile } from '@/components/toys/number-line/talkToNumber
 import { answeringMode } from '@/components/toys/number-line/talkToNumber/sessionModes/answeringMode'
 import { getAnsweringTools } from '@/components/toys/number-line/talkToNumber/sessionModes/tools'
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   try {
     const body = await request.json()
     const {
@@ -97,7 +97,8 @@ export const POST = withAuth(async (request) => {
         getNeighborsSummary(number),
         AVAILABLE_EXPLORATIONS,
         recommendedExplorations?.length ? recommendedExplorations : undefined,
-        childProfile
+        childProfile,
+        userId
       )
     }
 

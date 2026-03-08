@@ -381,6 +381,7 @@ export function useGeometryVoice(options: UseGeometryVoiceOptions): UseGeometryV
         )
         dc.send(JSON.stringify({ type: 'response.create' }))
       },
+      usageFeature: 'euclid:voice',
     }),
     [
       teacherConfig,

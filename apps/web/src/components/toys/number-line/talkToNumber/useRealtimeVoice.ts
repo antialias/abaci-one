@@ -1203,6 +1203,7 @@ export function useRealtimeVoice(options?: UseRealtimeVoiceOptions): UseRealtime
         'item_truncation_failed',
         'invalid_value',
       ],
+      usageFeature: 'number-line:voice',
     }),
     [
       buildModeContext,

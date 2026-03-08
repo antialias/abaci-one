@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
+import { recordTtsUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 
 /**
  * POST /api/admin/audio/preview
@@ -8,7 +10,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  * Nothing is saved to disk or DB.
  */
 export const POST = withAuth(
-  async (request: NextRequest) => {
+  async (request: NextRequest, { userId }) => {
     const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
       return NextResponse.json({ error: 'LLM_OPENAI_API_KEY is not configured' }, { status: 500 })
@@ -53,6 +55,8 @@ export const POST = withAuth(
       if (!response.body) {
         return NextResponse.json({ error: 'No response body from OpenAI' }, { status: 502 })
       }
+
+      recordTtsUsage(text, 'gpt-4o-mini-tts', { userId, feature: AiFeature.TTS_PREVIEW })
 
       // Stream the mp3 back directly
       return new NextResponse(response.body as ReadableStream, {
