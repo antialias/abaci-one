@@ -6,8 +6,30 @@ import { getUserId } from '@/lib/viewer'
 import { normalizeBirthdayInput } from '@/lib/playerAge'
 
 /**
+ * Check if a user can manage a player (owner or linked parent).
+ */
+async function canManagePlayer(playerId: string, userId: string): Promise<boolean> {
+  // Check direct ownership
+  const player = await db.query.players.findFirst({
+    where: and(eq(schema.players.id, playerId), eq(schema.players.userId, userId)),
+    columns: { id: true },
+  })
+  if (player) return true
+
+  // Check parent-child link
+  const link = await db.query.parentChild.findFirst({
+    where: and(
+      eq(schema.parentChild.childPlayerId, playerId),
+      eq(schema.parentChild.parentUserId, userId)
+    ),
+    columns: { childPlayerId: true },
+  })
+  return !!link
+}
+
+/**
  * PATCH /api/players/[id]
- * Update a player (only if it belongs to the current viewer)
+ * Update a player (owner or linked parent)
  */
 export const PATCH = withAuth(async (request, { params }) => {
   try {
@@ -24,17 +46,13 @@ export const PATCH = withAuth(async (request, { params }) => {
       }
     }
 
-    // Get user record (must exist if player exists)
-    const user = await db.query.users.findFirst({
-      where: eq(schema.users.id, userId),
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    // Check authorization: owner or linked parent
+    const authorized = await canManagePlayer(id, userId)
+    if (!authorized) {
+      return NextResponse.json({ error: 'Player not found or unauthorized' }, { status: 404 })
     }
 
     // Security: Only allow updating specific fields (excludes userId)
-    // Update player (only if it belongs to this user)
     const [updatedPlayer] = await db
       .update(schema.players)
       .set({
@@ -45,13 +63,12 @@ export const PATCH = withAuth(async (request, { params }) => {
         ...(body.isArchived !== undefined && { isArchived: body.isArchived }),
         ...(body.notes !== undefined && { notes: body.notes }),
         ...(normalizedBirthday !== undefined && { birthday: normalizedBirthday }),
-        // userId is explicitly NOT included - it comes from session
       })
-      .where(and(eq(schema.players.id, id), eq(schema.players.userId, user.id)))
+      .where(eq(schema.players.id, id))
       .returning()
 
     if (!updatedPlayer) {
-      return NextResponse.json({ error: 'Player not found or unauthorized' }, { status: 404 })
+      return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
     return NextResponse.json({ player: updatedPlayer })
@@ -63,30 +80,25 @@ export const PATCH = withAuth(async (request, { params }) => {
 
 /**
  * DELETE /api/players/[id]
- * Delete a player (only if it belongs to the current viewer)
+ * Delete a player (owner or linked parent)
  */
 export const DELETE = withAuth(async (_request, { params }) => {
   try {
     const { id } = (await params) as { id: string }
     const userId = await getUserId()
 
-    // Get user record (must exist if player exists)
-    const user = await db.query.users.findFirst({
-      where: eq(schema.users.id, userId),
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const authorized = await canManagePlayer(id, userId)
+    if (!authorized) {
+      return NextResponse.json({ error: 'Player not found or unauthorized' }, { status: 404 })
     }
 
-    // Delete player (only if it belongs to this user)
     const [deletedPlayer] = await db
       .delete(schema.players)
-      .where(and(eq(schema.players.id, id), eq(schema.players.userId, user.id)))
+      .where(eq(schema.players.id, id))
       .returning()
 
     if (!deletedPlayer) {
-      return NextResponse.json({ error: 'Player not found or unauthorized' }, { status: 404 })
+      return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
     return NextResponse.json({ success: true, player: deletedPlayer })
