@@ -147,7 +147,11 @@ CRITICAL: suggestedStepId MUST be one of: ${validStepIds}`
 /**
  * Call GPT-5 Responses API with vision
  */
-async function callGPT5Vision(imageDataUrl: string, prompt: string, userId?: string): Promise<GradingResult> {
+async function callGPT5Vision(
+  imageDataUrl: string,
+  prompt: string,
+  userId?: string
+): Promise<GradingResult> {
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {

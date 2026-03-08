@@ -106,9 +106,9 @@ describe('LLM middleware', () => {
         call: vi.fn().mockRejectedValue(new Error('API error')),
       }
 
-      await expect(
-        middleware.trackedCall(mockLlm as any, {} as any, context)
-      ).rejects.toThrow('API error')
+      await expect(middleware.trackedCall(mockLlm as any, {} as any, context)).rejects.toThrow(
+        'API error'
+      )
 
       expect(mockRecordLlmClientUsage).not.toHaveBeenCalled()
     })

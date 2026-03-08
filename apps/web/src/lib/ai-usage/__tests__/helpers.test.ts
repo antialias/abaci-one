@@ -61,9 +61,7 @@ describe('usage recording helpers', () => {
     it('defaults model to unknown', () => {
       helpers.recordOpenAiChatUsage({}, baseContext)
 
-      expect(mockRecordAiUsage).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'unknown' })
-      )
+      expect(mockRecordAiUsage).toHaveBeenCalledWith(expect.objectContaining({ model: 'unknown' }))
     })
   })
 
@@ -179,11 +177,7 @@ describe('usage recording helpers', () => {
     it('calculates total duration from sections', () => {
       helpers.recordElevenLabsUsage(
         {
-          sections: [
-            { duration_ms: 30000 },
-            { duration_ms: 45000 },
-            { duration_ms: 15000 },
-          ],
+          sections: [{ duration_ms: 30000 }, { duration_ms: 45000 }, { duration_ms: 15000 }],
         },
         { userId: 'user-123', feature: AiFeature.MUSIC_GENERATE }
       )
