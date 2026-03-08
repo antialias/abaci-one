@@ -174,7 +174,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
       },
       {
-        instruction: `Continue past {pt:B} and release to place {pt:E}`,
+        instruction: `Extend through the circle to place {pt:E} where the line meets it`,
         speech: byStyle({
           simple:
             'Keep going past B and release to place point E where the line meets the circle. Then BE equals BC.',
@@ -249,7 +249,7 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
       },
       {
-        instruction: `Continue past {pt:A} and release to place {pt:F}`,
+        instruction: `Extend through the circle to place {pt:F} where the line meets it`,
         speech: byStyle({
           simple:
             'Keep going past A and release to place point F. Then DF equals DE. Subtract equals from equals to get AF = BE, and since BE = BC, AF = BC.',
