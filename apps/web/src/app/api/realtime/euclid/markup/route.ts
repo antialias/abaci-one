@@ -18,6 +18,8 @@
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
+import { recordOpenAiChatUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
 import { EUCLID_ENTITY_MARKERS } from '@/components/toys/euclid/euclidEntityMarkers'
 import { MARKER_RE, validateMarkupStrict, wordOverlapRatio } from './validation'
@@ -27,7 +29,7 @@ const expandMarkers = (text: string) => stripEntityMarkers(text, EUCLID_ENTITY_M
 /** Minimum word overlap ratio for non-strict (sanity check) mode. */
 const SANITY_OVERLAP_THRESHOLD = 0.6
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   const body = await request.json()
   const {
     text,
@@ -165,6 +167,7 @@ CRITICAL RULES — read carefully:
     }
 
     const result = await response.json()
+    recordOpenAiChatUsage(result, { userId, feature: AiFeature.EUCLID_MARKUP })
     const markedText = result.choices?.[0]?.message?.content?.trim()
 
     if (!markedText) {

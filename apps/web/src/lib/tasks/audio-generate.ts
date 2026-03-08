@@ -3,6 +3,8 @@ import { join } from 'path'
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
 import { buildTtsParams } from '@/lib/audio/toneDirections'
 import { createTask } from '../task-manager'
+import { recordTtsUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 import type { AudioGenerateEvent } from './events'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
@@ -10,6 +12,7 @@ const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 export interface AudioGenerateInput {
   voice: string
   clipIds?: string[] // If provided, delete these files first and regenerate only them
+  _userId?: string
 }
 
 export interface AudioGenerateOutput {
@@ -128,6 +131,13 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
             generated++
             consecutiveErrors = 0
             handle.emit({ type: 'clip_done', clipId: clip.id })
+            if (config._userId) {
+              recordTtsUsage(clip.text, 'gpt-4o-mini-tts', {
+                userId: config._userId,
+                feature: AiFeature.TTS_BATCH,
+                backgroundTaskId: handle.id,
+              })
+            }
           }
         } catch (err) {
           errors++

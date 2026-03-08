@@ -12,7 +12,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  * Response: { taskId: string }
  */
 export const POST = withAuth(
-  async (request: NextRequest) => {
+  async (request: NextRequest, { userId }) => {
     try {
       const body = await request.json()
       const { voice, clipIds } = body
@@ -31,6 +31,7 @@ export const POST = withAuth(
       const taskId = await startAudioGeneration({
         voice: voice.trim(),
         ...(clipIds ? { clipIds } : {}),
+        _userId: userId,
       })
 
       return NextResponse.json({ taskId })

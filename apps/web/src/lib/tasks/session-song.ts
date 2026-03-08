@@ -22,6 +22,8 @@ import { getSocketIO } from '@/lib/socket-io'
 import type { SessionSongEvent } from './events'
 import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 
 // ============================================================================
 // Types
@@ -31,6 +33,7 @@ export interface SessionSongInput {
   sessionPlanId: string
   playerId: string
   triggerSource: SessionSongTriggerSource
+  _userId?: string
 }
 
 export interface SessionSongOutput {
@@ -83,9 +86,10 @@ export async function startSessionSongGeneration(
 
   const songId = songRecord.id
 
+  const inputWithUser = { ...input, _userId: userId }
   const taskId = await createTask<SessionSongInput, SessionSongOutput, SessionSongEvent>(
     'session-song',
-    input,
+    inputWithUser,
     async (handle) => {
       try {
         // Step 1: Extract stats
@@ -167,7 +171,7 @@ export async function startSessionSongGeneration(
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
 
-        const llmOutput = await generateSongPrompt(stats, genrePreference)
+        const llmOutput = await generateSongPrompt(stats, genrePreference, input._userId)
 
         handle.emit({
           type: 'song_prompt_ready',
@@ -195,6 +199,14 @@ export async function startSessionSongGeneration(
         const { audioBuffer } = await generateMusic({
           compositionPlan: llmOutput.plan,
         })
+
+        if (input._userId) {
+          recordElevenLabsUsage(llmOutput.plan, {
+            userId: input._userId,
+            feature: AiFeature.MUSIC_GENERATE,
+            backgroundTaskId: handle.id,
+          })
+        }
 
         // Step 4: Save MP3 locally
         handle.setProgress(90, 'Saving your song...')

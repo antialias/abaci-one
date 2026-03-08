@@ -13,6 +13,8 @@ import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { recordTtsUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
@@ -28,7 +30,7 @@ function safeClipId(clipId: string): string {
   return `hc-${hash}`
 }
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   try {
     const body = await request.json()
     const { voice, text, tone } = body
@@ -95,6 +97,7 @@ export const POST = withAuth(async (request) => {
 
     const arrayBuffer = await response.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
+    recordTtsUsage(text, 'gpt-4o-mini-tts', { userId, feature: AiFeature.TTS_CLIP })
 
     // Save to disk cache
     mkdirSync(voiceDir, { recursive: true })

@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { llm } from '@/lib/llm'
 import { withAuth } from '@/lib/auth/withAuth'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { AiFeature } from '@/lib/ai-usage/features'
 
 const postsDirectory = path.join(process.cwd(), 'content', 'blog')
 
@@ -16,7 +18,7 @@ const SYSTEM_CONTEXT = `You are an expert prompt engineer for AI image generatio
  * Uses an LLM to refine the current heroPrompt for better image generation.
  */
 export const POST = withAuth(
-  async (_request, { params }) => {
+  async (_request, { userId, params }) => {
     const { slug } = (await params) as { slug: string }
 
     const filePath = path.join(postsDirectory, `${slug}.md`)
@@ -35,8 +37,10 @@ export const POST = withAuth(
     const title = (data.title as string) || 'Untitled'
     const description = (data.description as string) || ''
 
-    const response = await llm.call({
-      prompt: `${SYSTEM_CONTEXT}
+    const response = await trackedCall(
+      llm,
+      {
+        prompt: `${SYSTEM_CONTEXT}
 
 Blog post title: "${title}"
 Blog post description: "${description}"
@@ -45,10 +49,12 @@ Current hero image prompt:
 "${heroPrompt}"
 
 Provide an improved version of this prompt.`,
-      schema: z.object({
-        refined: z.string().describe('The improved image generation prompt'),
-      }),
-    })
+        schema: z.object({
+          refined: z.string().describe('The improved image generation prompt'),
+        }),
+      },
+      { userId, feature: AiFeature.BLOG_REFINE_PROMPT }
+    )
 
     return NextResponse.json({
       original: heroPrompt,

@@ -19,6 +19,7 @@ import {
   type StreamParseWorksheetOptions,
   streamParseWorksheetImage,
 } from '../worksheet-parsing'
+import { AiFeature } from '@/lib/ai-usage/features'
 import type { BoundingBox, WorksheetParsingResult } from '../worksheet-parsing/schemas'
 import type { WorksheetParseEvent } from './events'
 
@@ -39,6 +40,7 @@ export interface WorksheetParseInput {
   playerId: string
   /** Preserved bounding boxes from user adjustments */
   preservedBoundingBoxes?: Record<number, BoundingBox>
+  _userId?: string
 }
 
 /**
@@ -125,6 +127,7 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
           promptOptions,
           attachmentId,
           preservedBoundingBoxes,
+          _userId: config._userId,
         })
       } catch (error) {
         // Update DB with error
@@ -146,6 +149,7 @@ interface ParseOptions {
   promptOptions?: WorksheetParseInput['promptOptions']
   attachmentId: string
   preservedBoundingBoxes?: Record<number, BoundingBox>
+  _userId?: string
 }
 
 /**
@@ -169,7 +173,10 @@ async function runStreamingParse(
   const promptUsed = buildWorksheetParsingPrompt(options.promptOptions ?? {})
 
   // Create task-aware LLM client (middleware handles reasoning/output streaming & snapshots)
-  const taskLLM = createTaskLLM(handle)
+  const usageCtx = options._userId
+    ? { userId: options._userId, feature: AiFeature.WORKSHEET_PARSE, backgroundTaskId: handle.id }
+    : undefined
+  const taskLLM = createTaskLLM(handle, usageCtx)
   const stream = streamParseWorksheetImage(imageDataUrl, streamOptions, taskLLM)
 
   for await (const event of stream) {

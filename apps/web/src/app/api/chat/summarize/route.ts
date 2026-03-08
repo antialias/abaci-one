@@ -10,6 +10,8 @@
 
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
+import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 
 const SUMMARIZE_PROMPT = `You are summarizing a conversation between a student and a tutor character.
 Produce a concise summary that preserves:
@@ -25,7 +27,7 @@ Compress aggressively:
 
 Write in third person ("The student...", "The tutor..."). Keep the summary under 300 words.`
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   try {
     const body = await request.json()
     const { messages, previousSummary } = body
@@ -76,6 +78,7 @@ export const POST = withAuth(async (request) => {
     }
 
     const data = await response.json()
+    recordOpenAiResponsesUsage(data, { userId, feature: AiFeature.CHAT_SUMMARIZE })
 
     // Extract text from Responses API output
     let summary = ''

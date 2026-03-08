@@ -10,6 +10,8 @@
 
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
+import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import {
   PROPOSITION_SUMMARIES,
@@ -27,7 +29,7 @@ const EFFORT_MAP: Record<Effort, string> = {
   xhigh: 'high', // 'xhigh' maps to 'high' — the Responses API doesn't support 'xhigh'
 }
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   try {
     const body = await request.json()
     const { question, effort, screenshot, proofState, propositionId, currentStep } = body
@@ -111,6 +113,7 @@ Keep your answer concise but thorough — it will be spoken aloud by an AI chara
     }
 
     const data = await response.json()
+    recordOpenAiResponsesUsage(data, { userId, feature: AiFeature.EUCLID_THINK_HARD })
 
     // Extract text from response output
     let answer = 'I could not find the answer in my writings.'

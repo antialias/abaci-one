@@ -153,7 +153,11 @@ Please modify the flowchart according to this request. Return the complete updat
         // Middleware automatically:
         // - Emits transient reasoning/output_delta events to Socket.IO
         // - Persists reasoning/output snapshots every 3s for page-reload recovery
-        const taskLLM = createTaskLLM(handle)
+        const taskLLM = createTaskLLM(handle, {
+          userId,
+          feature: 'flowchart:refine',
+          backgroundTaskId: handle.id,
+        })
 
         const llmStream = taskLLM.stream({
           provider: 'openai',

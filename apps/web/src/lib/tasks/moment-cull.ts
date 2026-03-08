@@ -19,6 +19,8 @@ export interface MomentCullInput {
   sessionId: string
   playerId: string
   callerNumber: number
+  /** User who triggered this cull — for usage tracking */
+  _userId?: string
 }
 
 export interface MomentCullOutput {
@@ -103,7 +105,12 @@ const handler: Handler = async (handle, config) => {
 
   handle.setProgress(20, 'Analyzing moments with LLM...')
 
-  const taskLLM = createTaskLLM(handle as TaskHandle<MomentCullOutput, MomentCullEvent>)
+  const taskLLM = createTaskLLM(
+    handle as TaskHandle<MomentCullOutput, MomentCullEvent>,
+    config._userId
+      ? { userId: config._userId, feature: 'moment:cull', backgroundTaskId: handle.id }
+      : undefined
+  )
 
   let result: z.infer<typeof cullSchema> | undefined
 

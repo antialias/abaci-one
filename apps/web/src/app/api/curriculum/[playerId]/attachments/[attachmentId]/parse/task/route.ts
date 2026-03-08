@@ -33,7 +33,7 @@ import { getUserId } from '@/lib/viewer'
  * Returns:
  *   - taskId: string - ID to subscribe via Socket.IO
  */
-export const POST = withAuth(async (request, { params }) => {
+export const POST = withAuth(async (request, { userId, params }) => {
   try {
     const { playerId, attachmentId } = (await params) as { playerId: string; attachmentId: string }
 
@@ -142,6 +142,7 @@ export const POST = withAuth(async (request, { params }) => {
       playerId,
       promptOptions: additionalContext ? { additionalContext } : undefined,
       preservedBoundingBoxes,
+      _userId: userId,
     })
     console.log('[ParseTaskAPI] Task created with ID:', taskId)
 

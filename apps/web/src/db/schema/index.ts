@@ -6,6 +6,7 @@
  */
 
 export * from './abacus-settings'
+export * from './ai-usage'
 export * from './auth-accounts'
 export * from './app-settings'
 export * from './arcade-rooms'

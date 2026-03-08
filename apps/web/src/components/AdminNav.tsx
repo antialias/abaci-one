@@ -102,6 +102,11 @@ const adminNavItems: AdminNavItem[] = [
     description: 'Generation pipeline',
   },
   {
+    href: '/admin/ai-usage',
+    label: 'AI Usage',
+    description: 'Cost tracking',
+  },
+  {
     href: '/vision-training',
     label: 'Vision',
     description: 'ML training',

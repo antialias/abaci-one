@@ -1,21 +1,29 @@
 /**
- * Background task for generating number-line postcards.
+ * Orchestrator task for generating number-line postcards.
  *
- * Flow:
- * 1. Load postcard record from DB
- * 2. Server-side re-render the best moment's number line scene
- * 3. Generate an AI postcard image using the scene as reference
- * 4. Store image + thumbnail
- * 5. Update postcard record with URLs
+ * Coordinates subtasks:
+ *   1. Render reference scenes (inline)
+ *   2. Loop: postcard-image-generate → postcard-review (max 3 attempts)
+ *   3. postcard-thumbnail-generate
+ *   4. Update DB + notify user
+ *
+ * Each subtask is a first-class background task with its own events,
+ * progress tracking, and admin visibility.
  */
 
-import { createTask } from '../task-manager'
+import { createTask, awaitTask } from '../task-manager'
 import { getImageProvider } from '../image-providers'
-import { generateAndStoreImage } from '../image-generation'
+import { storeImage, readPersistentImage } from '../image-storage'
+import { startPostcardImageGenerate } from './postcard-image-generate'
+import { startPostcardReview } from './postcard-review'
+import { startPostcardThumbnailGenerate } from './postcard-thumbnail-generate'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import type { PostcardGenerateEvent } from './events'
+import type { PostcardReviewOutput } from './postcard-review'
+
+const MAX_REVIEW_ATTEMPTS = 3
 
 export interface PostcardGenerateInput {
   postcardId: string
@@ -36,6 +44,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
     input,
     async (handle, config) => {
       const { postcardId } = config
+      const parentTaskId = handle.id
 
       // 1. Load postcard record
       const [postcard] = await db
@@ -58,21 +67,20 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         .where(eq(schema.numberLinePostcards.id, postcardId))
 
       handle.emit({ type: 'postcard_rendering', postcardId })
-      handle.setProgress(10, 'Preparing number line scene')
+      handle.setProgress(5, 'Preparing number line scene')
 
-      // 3. Try to render the number line scene(s) as a reference image
-      let referenceImage: Buffer | undefined
+      // 3. Render reference scenes and store for subtask access
+      let referenceImageKey: string | undefined
       try {
-        // Dynamic import to avoid loading @napi-rs/canvas in client bundles
         const { createServerCanvas } = await import('../server-canvas')
         const { renderMomentScene } = await import(
           '@/components/toys/number-line/renderMomentScene'
         )
 
         const momentCount = Math.min(manifest.moments.length, 4)
+        let referenceImage: Buffer | undefined
 
         if (momentCount === 1) {
-          // Single moment — render full-size
           const width = 800
           const height = 600
           const canvas = createServerCanvas(width, height)
@@ -85,7 +93,6 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
           )
           referenceImage = canvas.toBuffer('image/png')
         } else if (momentCount > 1) {
-          // Multiple moments — render as a 2x2 tiled grid
           const tileW = 400
           const tileH = 300
           const canvas = createServerCanvas(800, 600)
@@ -111,18 +118,21 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         }
 
         if (referenceImage) {
-          handle.setProgress(30, 'Number line scene rendered')
+          // Store reference image so subtasks can read it by key
+          const refFilename = `${postcardId}-reference.png`
+          storeImage(
+            { type: 'persistent', category: 'postcards', filename: refFilename },
+            referenceImage
+          )
+          referenceImageKey = `postcards/${refFilename}`
+          handle.setProgress(10, 'Number line scene rendered')
         }
       } catch (err) {
-        // Non-fatal — we can still generate without the reference
         console.warn('[postcard-generate] Scene render failed, continuing without reference:', err)
-        handle.setProgress(30, 'Skipping scene render, generating image directly')
+        handle.setProgress(10, 'Skipping scene render, generating image directly')
       }
 
-      // 4. Generate AI postcard image
-      // Prefer Gemini (Nano Banana Pro) — it handles reference images natively
-      // as inline content, producing collage-style output that incorporates the
-      // actual screenshots. Fall back to OpenAI if Gemini is unavailable.
+      // 4. Select provider
       const gemini = getImageProvider('gemini')
       const openai = getImageProvider('openai')
       const provider = gemini?.isAvailable() ? gemini : openai?.isAvailable() ? openai : null
@@ -144,9 +154,9 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         .map((m, i) => `${i + 1}. "${m.caption}" (${m.category})`)
         .join('\n')
 
-      const hasScreenshots = !!referenceImage
+      const hasScreenshots = !!referenceImageKey
 
-      const prompt = [
+      const basePrompt = [
         `Create a postcard commemorating a phone call between a child named ${manifest.childName}${manifest.childAge ? ` (age ${manifest.childAge})` : ''} and the number ${displayNum} on the number line.`,
         ``,
         `The number's personality: ${manifest.callerPersonality}`,
@@ -163,7 +173,6 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         `The overall postcard should feel warm, playful, and nostalgic — like a keepsake from a fun mathematical adventure. Include the number ${displayNum} as a character or prominent element.`,
       ].join('\n')
 
-      // Use Nano Banana Pro for Gemini, first model for OpenAI
       const modelId =
         provider.meta.id === 'gemini' ? 'gemini-3-pro-image-preview' : provider.meta.models[0].id
 
@@ -173,26 +182,102 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         provider: provider.meta.id,
         model: modelId,
       })
-      handle.setProgress(50, 'Generating postcard image')
+
+      // 5. Generate-review loop via subtasks
+      let acceptedImagePath: string | undefined
+      let reviewFeedback: string | undefined
 
       try {
-        const result = await generateAndStoreImage({
-          provider: provider.meta.id,
-          model: modelId,
-          prompt,
-          imageOptions: { size: { width: 1024, height: 768 } },
-          storageTarget: {
-            type: 'persistent',
-            category: 'postcards',
-            filename: `${postcardId}.png`,
-          },
-          referenceImage,
-        })
+        for (let attempt = 1; attempt <= MAX_REVIEW_ATTEMPTS; attempt++) {
+          if (handle.isCancelled()) return
 
+          const prompt = reviewFeedback ? `${basePrompt}\n\n${reviewFeedback}` : basePrompt
+
+          handle.setProgress(
+            15 + attempt * 15,
+            `Generating image (attempt ${attempt}/${MAX_REVIEW_ATTEMPTS})`
+          )
+
+          // Subtask: generate image
+          const genTaskId = await startPostcardImageGenerate(
+            {
+              postcardId,
+              prompt,
+              providerId: provider.meta.id,
+              modelId,
+              attempt,
+              referenceImageKey,
+              _userId: input.userId,
+            },
+            input.userId,
+            parentTaskId
+          )
+
+          const genState = await awaitTask<{ postcardId: string; imagePath: string }>(genTaskId)
+          const imagePath = genState.output!.imagePath
+
+          handle.emit({ type: 'postcard_reviewing', postcardId, attempt })
+          handle.setProgress(
+            20 + attempt * 15,
+            `Reviewing image (attempt ${attempt}/${MAX_REVIEW_ATTEMPTS})`
+          )
+
+          // Subtask: review image
+          const reviewTaskId = await startPostcardReview(
+            {
+              postcardId,
+              imagePath,
+              manifest,
+              hasReferenceScreenshots: hasScreenshots,
+              previousFeedback: reviewFeedback,
+            },
+            input.userId,
+            parentTaskId
+          )
+
+          const reviewState = await awaitTask<PostcardReviewOutput>(reviewTaskId)
+          const reviewResult = reviewState.output!
+
+          handle.emit({
+            type: 'postcard_review_result',
+            postcardId,
+            attempt,
+            pass: reviewResult.pass,
+            issues: reviewResult.criteriaResults.flatMap((r) => r.issues),
+          })
+
+          if (reviewResult.pass) {
+            acceptedImagePath = imagePath
+            break
+          }
+
+          // Last attempt — accept what we have
+          if (attempt === MAX_REVIEW_ATTEMPTS) {
+            console.warn(
+              `[postcard-generate] Review failed after ${MAX_REVIEW_ATTEMPTS} attempts, accepting best effort`
+            )
+            acceptedImagePath = imagePath
+            break
+          }
+
+          reviewFeedback = reviewResult.feedback
+        }
+
+        // 6. Copy accepted draft to final location
+        const [draftCategory, draftFilename] = acceptedImagePath!.split('/')
+        const draftData = await readPersistentImage(draftCategory, draftFilename)
+        if (!draftData) {
+          throw new Error(`Draft image not found at ${acceptedImagePath}`)
+        }
+
+        const { publicUrl: imageUrl } = storeImage(
+          { type: 'persistent', category: 'postcards', filename: `${postcardId}.png` },
+          draftData.buffer
+        )
+
+        // 7. Generate thumbnail via subtask
         handle.setProgress(80, 'Generating thumbnail')
 
-        // Generate a smaller thumbnail — no reference image needed,
-        // just a simplified version of the postcard concept
         const thumbnailPrompt = [
           `Create a simple, iconic thumbnail image for a postcard from the number ${displayNum}.`,
           `The number's personality: ${manifest.callerPersonality}.`,
@@ -200,22 +285,21 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
           `Simple composition suitable for a small thumbnail. No text or words.`,
         ].join(' ')
 
-        const thumbnailResult = await generateAndStoreImage({
-          provider: provider.meta.id,
-          model: modelId,
-          prompt: thumbnailPrompt,
-          imageOptions: { size: { width: 256, height: 192 } },
-          storageTarget: {
-            type: 'persistent',
-            category: 'postcards',
-            filename: `${postcardId}-thumb.png`,
+        const thumbTaskId = await startPostcardThumbnailGenerate(
+          {
+            postcardId,
+            prompt: thumbnailPrompt,
+            providerId: provider.meta.id,
+            modelId,
           },
-        })
+          input.userId,
+          parentTaskId
+        )
 
-        // 5. Update postcard record
-        const imageUrl = result.publicUrl
-        const thumbnailUrl = thumbnailResult.publicUrl
+        const thumbState = await awaitTask<{ thumbnailUrl: string }>(thumbTaskId)
+        const thumbnailUrl = thumbState.output!.thumbnailUrl
 
+        // 8. Update postcard record
         await db
           .update(schema.numberLinePostcards)
           .set({
@@ -233,7 +317,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
           thumbnailUrl,
         })
 
-        // Notify the user that their postcard is ready
+        // 9. Notify user
         try {
           const { bootstrapChannels } = await import('../notifications/bootstrap')
           bootstrapChannels()

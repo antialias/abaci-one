@@ -133,7 +133,11 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
         // Middleware automatically:
         // - Emits transient reasoning/output_delta events to Socket.IO
         // - Persists reasoning/output snapshots every 3s for page-reload recovery
-        const taskLLM = createTaskLLM(handle)
+        const taskLLM = createTaskLLM(handle, {
+          userId,
+          feature: 'flowchart:generate',
+          backgroundTaskId: handle.id,
+        })
 
         const llmStream = taskLLM.stream({
           provider: 'openai',

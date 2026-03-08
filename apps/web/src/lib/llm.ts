@@ -23,6 +23,10 @@
 import { createPersistenceMiddleware, LLMClient } from '@soroban/llm-client'
 import type { TaskHandle } from './task-manager'
 import type { TaskEventBase } from './tasks/events'
+import {
+  createUsageRecordingMiddleware,
+  type UsageRecordingContext,
+} from './ai-usage/llm-middleware'
 
 // Re-export LLMClient class for use in other modules
 export { LLMClient }
@@ -73,8 +77,8 @@ export function createTaskLLM<
     summaryIndex?: number
     outputIndex?: number
   },
->(handle: TaskHandle<TOutput, TEvent>) {
-  return llm.with(
+>(handle: TaskHandle<TOutput, TEvent>, usageContext?: UsageRecordingContext) {
+  const middlewares = [
     createPersistenceMiddleware({
       snapshotIntervalMs: LLM_SNAPSHOT_INTERVAL_MS,
       onReasoning: (text, isDelta, _accumulated) => {
@@ -89,8 +93,14 @@ export function createTaskLLM<
       onOutputSnapshot: (text) => {
         handle.emit({ type: 'output_snapshot', text } as TEvent)
       },
-    })
-  )
+    }),
+  ]
+
+  if (usageContext) {
+    middlewares.push(createUsageRecordingMiddleware(usageContext))
+  }
+
+  return llm.with(...middlewares)
 }
 
 // Re-export types and utilities for convenience

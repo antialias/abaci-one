@@ -9,6 +9,8 @@
  */
 
 import { withAuth } from '@/lib/auth/withAuth'
+import { recordOpenAiResponsesStreamUsage } from '@/lib/ai-usage/helpers'
+import { AiFeature } from '@/lib/ai-usage/features'
 import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
 import type { AttitudeId } from '@/components/toys/euclid/agent/attitudes/types'
 import { getAttitude } from '@/components/toys/euclid/agent/attitudes'
@@ -32,7 +34,7 @@ function toOpenAITool(tool: RealtimeTool) {
   }
 }
 
-export const POST = withAuth(async (request) => {
+export const POST = withAuth(async (request, { userId }) => {
   const body = await request.json()
   const {
     messages,
@@ -305,6 +307,17 @@ export const POST = withAuth(async (request) => {
                   }
                   pendingCalls.delete(key)
                 }
+              }
+              // Response completed — record usage
+              else if (event.type === 'response.completed' && event.response?.usage) {
+                recordOpenAiResponsesStreamUsage(
+                  {
+                    input_tokens: event.response.usage.input_tokens,
+                    output_tokens: event.response.usage.output_tokens,
+                  },
+                  event.response.model ?? 'gpt-5.2',
+                  { userId, feature: AiFeature.EUCLID_CHAT }
+                )
               }
               // Error events
               else if (event.type === 'error') {

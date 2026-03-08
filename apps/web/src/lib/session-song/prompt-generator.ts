@@ -7,6 +7,8 @@
 
 import { z } from 'zod'
 import { llm } from '@/lib/llm'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { AiFeature } from '@/lib/ai-usage/features'
 import type { SongPromptInput } from './extract-session-stats'
 import type { CompositionPlan } from '@/lib/elevenlabs/music-client'
 
@@ -132,9 +134,16 @@ Session details:
  */
 export async function generateSongPrompt(
   input: SongPromptInput,
-  genre: string = 'any'
+  genre: string = 'any',
+  userId?: string
 ): Promise<SongCompositionOutput> {
-  const genres = genre === 'any' ? [] : genre.split(',').map((s) => s.trim()).filter(Boolean)
+  const genres =
+    genre === 'any'
+      ? []
+      : genre
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
   const genreInstruction =
     genres.length > 1
       ? `\n\nThe parent has requested a genre mix: ${genres.join(' + ')}. Blend these styles together.`
@@ -143,10 +152,10 @@ export async function generateSongPrompt(
         : ''
   const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildUserPrompt(input)}${genreInstruction}`
 
-  const response = await llm.call({
-    prompt: fullPrompt,
-    schema: songLLMOutputSchema,
-  })
+  const callArgs = { prompt: fullPrompt, schema: songLLMOutputSchema }
+  const response = userId
+    ? await trackedCall(llm, callArgs, { userId, feature: AiFeature.SESSION_SONG_PROMPT })
+    : await llm.call(callArgs)
 
   const { title, positive_global_styles, negative_global_styles, sections } = response.data
 
