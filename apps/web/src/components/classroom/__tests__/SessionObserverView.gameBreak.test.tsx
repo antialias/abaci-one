@@ -225,6 +225,44 @@ describe('SessionObserverView game break overlay', () => {
     expect(document.querySelector('[data-element="game-break-overlay"]')).not.toBeInTheDocument()
   })
 
+  it('shows fallback overlay when flowState is break_pending but breakState is null', () => {
+    mockBreakState = null
+    mockFlowState = 'break_pending'
+    mockIsObserving = true
+    mockIsConnected = true
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    // Should show the fallback game break overlay (not blank)
+    expect(document.querySelector('[data-element="game-break-overlay"]')).toBeInTheDocument()
+    expect(screen.getByText('Alice is taking a game break...')).toBeInTheDocument()
+    expect(screen.getByText('Game Break')).toBeInTheDocument()
+  })
+
+  it('shows fallback overlay when flowState is break_active but breakState is null', () => {
+    mockBreakState = null
+    mockFlowState = 'break_active'
+    mockIsObserving = true
+    mockIsConnected = true
+
+    render(
+      <SessionObserverView
+        session={defaultSession}
+        student={defaultStudent}
+        observerId="observer-1"
+      />
+    )
+
+    expect(document.querySelector('[data-element="game-break-overlay"]')).toBeInTheDocument()
+    expect(screen.getByText('Alice is taking a game break...')).toBeInTheDocument()
+  })
+
   it('shows game break spectator view when breakState is playing (authenticated observer)', () => {
     mockFlowState = 'break_active'
     mockBreakState = {

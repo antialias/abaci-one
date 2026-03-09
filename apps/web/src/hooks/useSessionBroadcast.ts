@@ -218,6 +218,7 @@ export function useSessionBroadcast(
       // Join the session channel so we can receive 'observer-joined' events
       socket.emit('join-session', { sessionId })
       // Broadcast current state immediately so any waiting observers get it
+      broadcastFlowState()
       broadcastState()
     }
 

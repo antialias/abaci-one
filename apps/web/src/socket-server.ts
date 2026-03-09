@@ -1204,6 +1204,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     socket.on(
       'session-flow-state',
       (data: { sessionId: string; flowState: string; breakContext?: unknown }) => {
+        console.log(
+          `[FlowState] Relaying session-flow-state: session=${data.sessionId}, flowState=${data.flowState}, hasBreakContext=${!!data.breakContext}`
+        )
         socket.to(`session:${data.sessionId}`).emit('session-flow-state', data)
       }
     )
