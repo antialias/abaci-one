@@ -272,7 +272,7 @@ describe('GameBreakScreen onBreakContextChange', () => {
         fireEvent.click(screen.getByText('Memory Match'))
       })
 
-      expect(mockSelectGame).toHaveBeenCalledWith('matching')
+      expect(mockSelectGame).toHaveBeenCalledWith('matching', undefined)
     })
   })
 })

@@ -252,7 +252,7 @@ describe('GameBreakScreen', () => {
       fireEvent.click(screen.getByText('Matching Game'))
     })
 
-    expect(mockSelectGame).toHaveBeenCalledWith('game-1')
+    expect(mockSelectGame).toHaveBeenCalledWith('game-1', undefined)
   })
 
   it('displays student info with emoji and name', () => {
