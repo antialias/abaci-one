@@ -186,7 +186,10 @@ export async function startSessionSongGeneration(
           )
           .limit(1)
 
-        const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult)
+        const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult, {
+          breakSelectedGame: plan.breakSelectedGame ?? null,
+          breakReason: plan.breakReason ?? null,
+        })
 
         // Update song record with prompt input
         await db

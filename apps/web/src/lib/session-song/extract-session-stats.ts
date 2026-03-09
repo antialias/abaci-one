@@ -5,7 +5,7 @@
  * input object that the LLM uses to write personalized song lyrics.
  */
 
-import type { SessionPlan } from '@/db/schema/session-plans'
+import type { SessionPlan, GameBreakEndReason } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
 import type { GameResult } from '@/db/schema/game-results'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
@@ -84,6 +84,12 @@ interface RecentSessionSummary {
   accuracy: number
 }
 
+/** Fallback break info from the session plan (when no gameResults record exists) */
+interface PlanBreakFallback {
+  breakSelectedGame: string | null
+  breakReason: GameBreakEndReason | null
+}
+
 /**
  * Extract statistics from a session plan and player for use in song generation.
  *
@@ -91,12 +97,14 @@ interface RecentSessionSummary {
  * @param player - The player profile
  * @param recentSessions - Summary of recent sessions (past week) for trend calculation
  * @param gameBreakResult - Optional game result from the practice break
+ * @param planBreakFallback - Fallback break info from the plan (for skipped/timeout breaks that don't save to gameResults)
  */
 export function extractSessionStats(
   plan: SessionPlan,
   player: Player,
   recentSessions: RecentSessionSummary[],
-  gameBreakResult?: GameResult | null
+  gameBreakResult?: GameResult | null,
+  planBreakFallback?: PlanBreakFallback
 ): SongPromptInput {
   const accuracy = getSessionPlanAccuracy(plan)
   const problemsDone = getCompletedProblemCount(plan)
@@ -144,8 +152,8 @@ export function extractSessionStats(
     }
   }
 
-  // Extract game break info if available
-  const gameBreak = extractGameBreak(gameBreakResult)
+  // Extract game break info if available (full result preferred, plan fields as fallback)
+  const gameBreak = extractGameBreak(gameBreakResult) ?? extractGameBreakFallback(planBreakFallback)
 
   return {
     player: {
@@ -192,5 +200,28 @@ function extractGameBreak(result?: GameResult | null): SongPromptInput['gameBrea
     headline,
     accuracy: result.accuracy ?? undefined,
     highlights,
+  }
+}
+
+// ============================================================================
+// Helper — fallback game break info from plan fields (skipped/timeout breaks)
+// ============================================================================
+
+const BREAK_REASON_LABELS: Record<GameBreakEndReason, string> = {
+  timeout: 'timed out',
+  skipped: 'ended early',
+  gameFinished: 'completed',
+}
+
+function extractGameBreakFallback(fallback?: PlanBreakFallback): SongPromptInput['gameBreak'] {
+  if (!fallback?.breakSelectedGame) return undefined
+
+  const gameName = fallback.breakSelectedGame
+  const reasonLabel = fallback.breakReason ? BREAK_REASON_LABELS[fallback.breakReason] : 'played'
+
+  return {
+    gameName,
+    headline: `Played ${gameName} (${reasonLabel})`,
+    highlights: [],
   }
 }

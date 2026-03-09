@@ -35,6 +35,7 @@ export function SessionSongPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const fallbackTriggered = useRef(false)
 
   // Fire completion fallback trigger if needed
@@ -59,7 +60,8 @@ export function SessionSongPlayer({
       // Small delay to ensure the audio element is mounted and loaded
       const timer = setTimeout(() => {
         audioRef.current?.play().catch(() => {
-          // Browser may block autoplay — user can tap play manually
+          // Browser blocked autoplay — show tap-to-play prompt
+          setAutoplayBlocked(true)
         })
       }, 300)
       return () => clearTimeout(timer)
@@ -74,6 +76,7 @@ export function SessionSongPlayer({
       audio.pause()
     } else {
       audio.play()
+      setAutoplayBlocked(false)
     }
   }, [isPlaying])
 
@@ -173,97 +176,156 @@ export function SessionSongPlayer({
             onEnded={() => setIsPlaying(false)}
           />
 
-          {/* Title */}
-          {song.title && (
-            <div
-              className={css({
-                fontSize: 'md',
-                fontWeight: 'bold',
-                color: 'purple.800',
-                _dark: { color: 'purple.100' },
-                mb: 3,
-                textAlign: 'center',
-              })}
-            >
-              {song.title}
-            </div>
-          )}
-
-          {/* Play button + progress */}
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-            })}
-          >
-            {/* Play/Pause button */}
+          {/* Tap-to-play prompt when autoplay was blocked */}
+          {autoplayBlocked && !isPlaying ? (
             <button
-              data-action="toggle-play"
+              data-action="tap-to-play"
               onClick={togglePlay}
               className={css({
-                w: 12,
-                h: 12,
-                borderRadius: 'full',
-                bg: 'purple.500',
-                color: 'white',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 'xl',
-                cursor: 'pointer',
-                flexShrink: 0,
+                gap: 2,
+                w: '100%',
+                py: 3,
                 border: 'none',
-                _hover: { bg: 'purple.600' },
-                _active: { bg: 'purple.700' },
-                transition: 'background 0.15s',
+                bg: 'transparent',
+                cursor: 'pointer',
               })}
             >
-              {isPlaying ? '\u23F8' : '\u25B6'}
-            </button>
-
-            {/* Progress bar + time */}
-            <div className={css({ flex: 1, minW: 0 })}>
-              {/* Seekable progress bar */}
               <div
-                data-element="progress-bar"
-                onClick={handleSeek}
                 className={css({
-                  h: 2,
-                  bg: 'purple.200',
-                  _dark: { bg: 'purple.700' },
+                  w: 16,
+                  h: 16,
                   borderRadius: 'full',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  mb: 1,
+                  bg: 'purple.500',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2xl',
+                  animation: 'pulse 1.5s ease-in-out infinite',
                 })}
               >
+                {'\u25B6'}
+              </div>
+              <span
+                className={css({
+                  fontSize: 'md',
+                  fontWeight: 'bold',
+                  color: 'purple.700',
+                  _dark: { color: 'purple.200' },
+                })}
+              >
+                Tap to play your song!
+              </span>
+              {song.title && (
+                <span
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'purple.500',
+                    _dark: { color: 'purple.300' },
+                  })}
+                >
+                  {song.title}
+                </span>
+              )}
+            </button>
+          ) : (
+            <>
+              {/* Title */}
+              {song.title && (
                 <div
                   className={css({
-                    h: '100%',
-                    bg: 'purple.500',
-                    borderRadius: 'full',
-                    transition: 'width 0.1s linear',
+                    fontSize: 'md',
+                    fontWeight: 'bold',
+                    color: 'purple.800',
+                    _dark: { color: 'purple.100' },
+                    mb: 3,
+                    textAlign: 'center',
                   })}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+                >
+                  {song.title}
+                </div>
+              )}
 
-              {/* Time display */}
+              {/* Play button + progress */}
               <div
                 className={css({
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 'xs',
-                  color: 'purple.500',
-                  _dark: { color: 'purple.300' },
+                  alignItems: 'center',
+                  gap: 3,
                 })}
               >
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                {/* Play/Pause button */}
+                <button
+                  data-action="toggle-play"
+                  onClick={togglePlay}
+                  className={css({
+                    w: 12,
+                    h: 12,
+                    borderRadius: 'full',
+                    bg: 'purple.500',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'xl',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    border: 'none',
+                    _hover: { bg: 'purple.600' },
+                    _active: { bg: 'purple.700' },
+                    transition: 'background 0.15s',
+                  })}
+                >
+                  {isPlaying ? '\u23F8' : '\u25B6'}
+                </button>
+
+                {/* Progress bar + time */}
+                <div className={css({ flex: 1, minW: 0 })}>
+                  {/* Seekable progress bar */}
+                  <div
+                    data-element="progress-bar"
+                    onClick={handleSeek}
+                    className={css({
+                      h: 2,
+                      bg: 'purple.200',
+                      _dark: { bg: 'purple.700' },
+                      borderRadius: 'full',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      mb: 1,
+                    })}
+                  >
+                    <div
+                      className={css({
+                        h: '100%',
+                        bg: 'purple.500',
+                        borderRadius: 'full',
+                        transition: 'width 0.1s linear',
+                      })}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  {/* Time display */}
+                  <div
+                    className={css({
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: 'xs',
+                      color: 'purple.500',
+                      _dark: { color: 'purple.300' },
+                    })}
+                  >
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </>
       )}
     </div>
