@@ -20,7 +20,6 @@ import {
   buildPlayerMetadata,
   useArcadeSession,
   useGameMode,
-  useRoomData,
   useUpdateGameConfig,
   useUserId,
 } from '@/lib/arcade/game-sdk'
@@ -205,8 +204,7 @@ function applyMoveOptimistically(state: ComplementRaceState, move: GameMove): Co
  */
 export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useUserId()
-  const { roomData } = useRoomData()
-  const { activePlayers: activePlayerIds, players } = useGameMode()
+  const { activePlayers: activePlayerIds, players, roomData } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   // Get active players as array
@@ -1060,7 +1058,9 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
   return (
     <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
-      <ComplementRaceContext.Provider value={contextValue}>{children}</ComplementRaceContext.Provider>
+      <ComplementRaceContext.Provider value={contextValue}>
+        {children}
+      </ComplementRaceContext.Provider>
     </ArcadeSessionStateContext.Provider>
   )
 }

@@ -650,8 +650,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         // Apply game move - use roomId for room-based games to access shared session
         const result = await applyGameMove(data.userId, data.move, data.roomId)
 
-
-
         if (result.success && result.session) {
           // Extract game-specific state from namespaced storage
           const gameName = result.session.currentGame
@@ -1203,31 +1201,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Session Observation: Broadcast authoritative flow state (from student's client)
-    socket.on('session-flow-state', (data: { sessionId: string; flowState: string; breakContext?: unknown }) => {
-      socket.to(`session:${data.sessionId}`).emit('session-flow-state', data)
-    })
-
-    // Session Observation: Broadcast game break lifecycle events (from student's client)
     socket.on(
-      'game-break-started',
-      (data: { sessionId: string; roomId: string; gameName: string; gameId: string }) => {
-        socket.to(`session:${data.sessionId}`).emit('game-break-started', data)
-      }
-    )
-
-    socket.on('game-break-phase', (data: { sessionId: string; roomId: string; phase: string }) => {
-      socket.to(`session:${data.sessionId}`).emit('game-break-phase', data)
-    })
-
-    socket.on(
-      'game-break-ended',
-      (data: {
-        sessionId: string
-        roomId: string
-        reason: string
-        summary?: { gameName: string; headline?: string }
-      }) => {
-        socket.to(`session:${data.sessionId}`).emit('game-break-ended', data)
+      'session-flow-state',
+      (data: { sessionId: string; flowState: string; breakContext?: unknown }) => {
+        socket.to(`session:${data.sessionId}`).emit('session-flow-state', data)
       }
     )
 

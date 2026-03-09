@@ -7,9 +7,6 @@ import type { SessionPart, SessionPartType, SlotResult } from '@/db/schema/sessi
 import type { SessionFlowState } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
-  GameBreakEndedEvent,
-  GameBreakPhaseEvent,
-  GameBreakStartedEvent,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
@@ -523,56 +520,24 @@ export function useSessionObserver(
       setObservedFlowState(data.flowState)
 
       // Sync breakState from the authoritative flow state
-      if (data.breakContext && (data.flowState === 'break_pending' || data.flowState === 'break_active')) {
+      if (
+        data.breakContext &&
+        (data.flowState === 'break_pending' || data.flowState === 'break_active')
+      ) {
         setBreakState({
           roomId: data.breakContext.roomId,
           gameName: data.breakContext.gameName,
           gameId: data.breakContext.gameId,
           phase: data.breakContext.phase,
         })
-      } else if (data.flowState === 'practicing' || data.flowState === 'break_results' || data.flowState === 'completed') {
+      } else if (
+        data.flowState === 'practicing' ||
+        data.flowState === 'break_results' ||
+        data.flowState === 'completed'
+      ) {
         // Break is over or we're in results — clear break state
         setBreakState(null)
       }
-    })
-
-    // Listen for game break events (backwards compatibility — flow state is primary)
-    socket.on('game-break-started', (data: GameBreakStartedEvent) => {
-      if (data.sessionId !== sessionId) return
-      console.log('[SessionObserver] Game break started:', data.gameName)
-      setBreakState({
-        roomId: data.roomId,
-        gameName: data.gameName,
-        gameId: data.gameId,
-        phase: 'selecting',
-      })
-    })
-
-    socket.on('game-break-phase', (data: GameBreakPhaseEvent) => {
-      if (data.sessionId !== sessionId) return
-      console.log('[SessionObserver] Game break phase:', data.phase)
-      setBreakState((prev) => {
-        if (prev && prev.roomId === data.roomId) {
-          return { ...prev, phase: data.phase }
-        }
-        if (!prev) {
-          // Create breakState if it doesn't exist yet (e.g. selecting phase before game-break-started)
-          return {
-            roomId: data.roomId,
-            gameName: '',
-            gameId: '',
-            phase: data.phase,
-          }
-        }
-        // Different room — ignore
-        return prev
-      })
-    })
-
-    socket.on('game-break-ended', (data: GameBreakEndedEvent) => {
-      if (data.sessionId !== sessionId) return
-      console.log('[SessionObserver] Game break ended:', data.reason)
-      setBreakState(null)
     })
 
     // Listen for session ended event

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
+import { useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useUserId } from '@/hooks/useUserId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
@@ -210,8 +210,7 @@ function calculateStars(mistakeCount: number, durationMs: number, wordLength: nu
 
 export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useUserId()
-  const { roomData } = useRoomData()
-  const { activePlayers: activePlayerIds, players } = useGameMode()
+  const { activePlayers: activePlayerIds, players, roomData } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   const activePlayers = Array.from(activePlayerIds)
@@ -263,12 +262,13 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session
-  const { state, sendMove, exitSession, hasReceivedServerState } = useArcadeSession<TypeRacerJrState>({
-    userId: viewerId || '',
-    roomId: roomData?.id || undefined,
-    initialState: mergedInitialState,
-    applyMove: applyMoveOptimistically,
-  })
+  const { state, sendMove, exitSession, hasReceivedServerState } =
+    useArcadeSession<TypeRacerJrState>({
+      userId: viewerId || '',
+      roomId: roomData?.id || undefined,
+      initialState: mergedInitialState,
+      applyMove: applyMoveOptimistically,
+    })
 
   // Game completion callback (for practice breaks)
   const onGameComplete = useGameCompletionCallback()

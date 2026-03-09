@@ -3,7 +3,6 @@
 import { createContext, useContext, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { CONSTANT_IDS } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
-import { useRoomData } from '@/hooks/useRoomData'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { usePlayerGameHistory } from '@/hooks/useGameResults'
 
@@ -80,8 +79,7 @@ export function useConstantExplorerConfig() {
  * For 'balance', queries the player's game history to find least-watched constants.
  */
 export function ConstantExplorerProvider({ children }: { children: ReactNode }) {
-  const { roomData } = useRoomData()
-  const { getActivePlayers } = useGameMode()
+  const { getActivePlayers, roomData } = useGameMode()
 
   // Get player ID for history query
   const playerId = useMemo(() => {

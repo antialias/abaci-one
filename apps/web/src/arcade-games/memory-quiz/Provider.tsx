@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
+import { useUpdateGameConfig, useClearRoomGame } from '@/hooks/useRoomData'
 import { useUserId } from '@/hooks/useUserId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
@@ -239,8 +239,7 @@ export function useMemoryQuiz(): MemoryQuizContextValue {
  */
 export function MemoryQuizProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useUserId()
-  const { roomData } = useRoomData()
-  const { activePlayers: activePlayerIds, players } = useGameMode()
+  const { activePlayers: activePlayerIds, players, roomData } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
   const clearRoomGame = useClearRoomGame()
 
@@ -300,12 +299,13 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session integration
-  const { state, sendMove, exitSession, hasReceivedServerState } = useArcadeSession<MemoryQuizState>({
-    userId: viewerId || '',
-    roomId: roomData?.id || undefined,
-    initialState: mergedInitialState,
-    applyMove: applyMoveOptimistically,
-  })
+  const { state, sendMove, exitSession, hasReceivedServerState } =
+    useArcadeSession<MemoryQuizState>({
+      userId: viewerId || '',
+      roomId: roomData?.id || undefined,
+      initialState: mergedInitialState,
+      applyMove: applyMoveOptimistically,
+    })
 
   // Notify parent when game reaches results phase (for practice game break detection)
   const onGameComplete = useGameCompletionCallback()
@@ -491,7 +491,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
 
   // Determine if current user is room creator
   const isRoomCreator =
-    roomData?.members.find((member) => member.userId === viewerId)?.isCreator || false
+    roomData?.members?.find((member) => member.userId === viewerId)?.isCreator || false
 
   // Handle state corruption
   if (hasStateCorruption) {

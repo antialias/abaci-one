@@ -45,7 +45,13 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
   describe('sendVisionFrame', () => {
     it('returns sendVisionFrame function', () => {
       const { result } = renderHook(() =>
-        useSessionBroadcast('session-123', 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(
+          'session-123',
+          'player-456',
+          createMockBroadcastState(),
+          'practicing',
+          null
+        )
       )
 
       expect(result.current.sendVisionFrame).toBeDefined()
@@ -63,7 +69,13 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
       })
 
       const { result } = renderHook(() =>
-        useSessionBroadcast('session-123', 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(
+          'session-123',
+          'player-456',
+          createMockBroadcastState(),
+          'practicing',
+          null
+        )
       )
 
       // Trigger connect
@@ -105,7 +117,13 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
       })
 
       const { result } = renderHook(() =>
-        useSessionBroadcast('session-123', 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(
+          'session-123',
+          'player-456',
+          createMockBroadcastState(),
+          'practicing',
+          null
+        )
       )
 
       act(() => {
@@ -136,7 +154,13 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
       })
 
       const { result } = renderHook(() =>
-        useSessionBroadcast('session-123', 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(
+          'session-123',
+          'player-456',
+          createMockBroadcastState(),
+          'practicing',
+          null
+        )
       )
 
       act(() => {
@@ -160,7 +184,7 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
   describe('negative cases', () => {
     it('does not emit when sessionId is undefined', () => {
       const { result } = renderHook(() =>
-        useSessionBroadcast(undefined, 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(undefined, 'player-456', createMockBroadcastState(), 'practicing', null)
       )
 
       act(() => {
@@ -173,7 +197,13 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
     it('still emits vision-frame even when not connected (fire-and-forget)', () => {
       // Don't trigger connect handler
       const { result } = renderHook(() =>
-        useSessionBroadcast('session-123', 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(
+          'session-123',
+          'player-456',
+          createMockBroadcastState(),
+          'practicing',
+          null
+        )
       )
 
       act(() => {
@@ -188,7 +218,9 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
     })
 
     it('still emits vision-frame when state is null (fire-and-forget)', () => {
-      const { result } = renderHook(() => useSessionBroadcast('session-123', 'player-456', null, 'practicing'))
+      const { result } = renderHook(() =>
+        useSessionBroadcast('session-123', 'player-456', null, 'practicing', null)
+      )
 
       act(() => {
         result.current.sendVisionFrame('imageData', 123, 0.95)
@@ -205,7 +237,13 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
   describe('result interface', () => {
     it('includes sendVisionFrame in the result', () => {
       const { result } = renderHook(() =>
-        useSessionBroadcast('session-123', 'player-456', createMockBroadcastState(), 'practicing')
+        useSessionBroadcast(
+          'session-123',
+          'player-456',
+          createMockBroadcastState(),
+          'practicing',
+          null
+        )
       )
 
       expect(result.current).toHaveProperty('sendVisionFrame')

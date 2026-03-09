@@ -1,13 +1,13 @@
 /**
- * Unit tests for useSessionObserver game break state management
+ * Unit tests for useSessionObserver flow state + break context handling
+ *
+ * The observer now receives break state exclusively via the `session-flow-state`
+ * event (authoritative flow state from the server-side state machine).
+ * Legacy game-break-started/phase/ended events have been removed.
  */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type {
-  GameBreakStartedEvent,
-  GameBreakPhaseEvent,
-  GameBreakEndedEvent,
-} from '@/lib/classroom/socket-events'
+import type { SessionFlowStateEvent } from '@/lib/classroom/socket-events'
 import { useSessionObserver } from '../useSessionObserver'
 
 // Mock socket.io-client
@@ -23,7 +23,7 @@ vi.mock('socket.io-client', () => ({
   io: vi.fn(() => mockSocket),
 }))
 
-describe('useSessionObserver - game break state', () => {
+describe('useSessionObserver - flow state + break context', () => {
   let eventHandlers: Map<string, (data: unknown) => void>
 
   beforeEach(() => {
@@ -40,276 +40,331 @@ describe('useSessionObserver - game break state', () => {
   const OBSERVER_ID = 'observer-456'
   const PLAYER_ID = 'player-789'
 
-  describe('breakState', () => {
-    it('initially returns null breakState', () => {
+  describe('flowState', () => {
+    it('initially returns null flowState', () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
-      expect(result.current.breakState).toBeNull()
+      expect(result.current.flowState).toBeNull()
     })
 
-    it('sets breakState when game-break-started event is received', async () => {
+    it('updates flowState from session-flow-state event', async () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
-      const startedData: GameBreakStartedEvent = {
-        sessionId: SESSION_ID,
-        roomId: 'room-abc',
-        gameName: 'Memory Match',
-        gameId: 'matching',
-      }
-
       act(() => {
-        eventHandlers.get('game-break-started')?.(startedData)
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: SESSION_ID,
+          flowState: 'practicing',
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
-        expect(result.current.breakState).not.toBeNull()
+        expect(result.current.flowState).toBe('practicing')
+      })
+    })
+
+    it('ignores session-flow-state from a different session', async () => {
+      const { result } = renderHook(() =>
+        useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
+      )
+
+      act(() => {
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: 'other-session',
+          flowState: 'break_active',
+        } satisfies SessionFlowStateEvent)
+      })
+
+      await waitFor(() => {
+        expect(result.current.flowState).toBeNull()
+      })
+    })
+  })
+
+  describe('breakState from flow state', () => {
+    it('sets breakState when flow state is break_active with breakContext', async () => {
+      const { result } = renderHook(() =>
+        useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
+      )
+
+      act(() => {
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: SESSION_ID,
+          flowState: 'break_active',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'playing',
+          },
+        } satisfies SessionFlowStateEvent)
+      })
+
+      await waitFor(() => {
+        expect(result.current.flowState).toBe('break_active')
         expect(result.current.breakState).toEqual({
           roomId: 'room-abc',
           gameName: 'Memory Match',
           gameId: 'matching',
-          phase: 'selecting',
+          phase: 'playing',
         })
       })
     })
 
-    it('ignores game-break-started from a different session', async () => {
+    it('sets breakState when flow state is break_pending', async () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
       act(() => {
-        eventHandlers.get('game-break-started')?.({
-          sessionId: 'other-session',
-          roomId: 'room-abc',
-          gameName: 'Memory Match',
-          gameId: 'matching',
-        })
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: SESSION_ID,
+          flowState: 'break_pending',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'selecting',
+          },
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
+        expect(result.current.flowState).toBe('break_pending')
+        expect(result.current.breakState).not.toBeNull()
+        expect(result.current.breakState?.phase).toBe('selecting')
+      })
+    })
+
+    it('clears breakState when flow state transitions to practicing', async () => {
+      const { result } = renderHook(() =>
+        useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
+      )
+
+      // Start a break
+      act(() => {
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: SESSION_ID,
+          flowState: 'break_active',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'playing',
+          },
+        } satisfies SessionFlowStateEvent)
+      })
+
+      await waitFor(() => {
+        expect(result.current.breakState).not.toBeNull()
+      })
+
+      // Transition back to practicing
+      act(() => {
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: SESSION_ID,
+          flowState: 'practicing',
+        } satisfies SessionFlowStateEvent)
+      })
+
+      await waitFor(() => {
+        expect(result.current.flowState).toBe('practicing')
         expect(result.current.breakState).toBeNull()
       })
     })
 
-    it('updates phase when game-break-phase event is received', async () => {
-      const { result } = renderHook(() =>
-        useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
-      )
-
-      // Start a break first
-      act(() => {
-        eventHandlers.get('game-break-started')?.({
-          sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          gameName: 'Memory Match',
-          gameId: 'matching',
-        } satisfies GameBreakStartedEvent)
-      })
-
-      await waitFor(() => {
-        expect(result.current.breakState?.phase).toBe('selecting')
-      })
-
-      // Transition to playing
-      act(() => {
-        eventHandlers.get('game-break-phase')?.({
-          sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          phase: 'playing',
-        } satisfies GameBreakPhaseEvent)
-      })
-
-      await waitFor(() => {
-        expect(result.current.breakState?.phase).toBe('playing')
-        // Other fields should remain unchanged
-        expect(result.current.breakState?.roomId).toBe('room-abc')
-        expect(result.current.breakState?.gameName).toBe('Memory Match')
-        expect(result.current.breakState?.gameId).toBe('matching')
-      })
-    })
-
-    it('ignores phase update for a different room', async () => {
+    it('clears breakState when flow state transitions to break_results', async () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
       // Start a break
       act(() => {
-        eventHandlers.get('game-break-started')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          gameName: 'Memory Match',
-          gameId: 'matching',
-        } satisfies GameBreakStartedEvent)
-      })
-
-      await waitFor(() => {
-        expect(result.current.breakState?.phase).toBe('selecting')
-      })
-
-      // Phase update for a DIFFERENT room
-      act(() => {
-        eventHandlers.get('game-break-phase')?.({
-          sessionId: SESSION_ID,
-          roomId: 'room-DIFFERENT',
-          phase: 'playing',
-        } satisfies GameBreakPhaseEvent)
-      })
-
-      // Phase should remain 'selecting' since room doesn't match
-      await waitFor(() => {
-        expect(result.current.breakState?.phase).toBe('selecting')
-      })
-    })
-
-    it('clears breakState when game-break-ended event is received', async () => {
-      const { result } = renderHook(() =>
-        useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
-      )
-
-      // Start a break
-      act(() => {
-        eventHandlers.get('game-break-started')?.({
-          sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          gameName: 'Memory Match',
-          gameId: 'matching',
-        } satisfies GameBreakStartedEvent)
+          flowState: 'break_active',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'playing',
+          },
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
         expect(result.current.breakState).not.toBeNull()
       })
 
-      // End the break
+      // Transition to break results
       act(() => {
-        eventHandlers.get('game-break-ended')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          reason: 'gameFinished',
-          summary: { gameName: 'Memory Match', headline: 'Perfect Game!' },
-        } satisfies GameBreakEndedEvent)
+          flowState: 'break_results',
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
+        expect(result.current.flowState).toBe('break_results')
         expect(result.current.breakState).toBeNull()
       })
     })
 
-    it('ignores game-break-ended from a different session', async () => {
+    it('clears breakState when flow state transitions to completed', async () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
       // Start a break
       act(() => {
-        eventHandlers.get('game-break-started')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          gameName: 'Memory Match',
-          gameId: 'matching',
-        } satisfies GameBreakStartedEvent)
+          flowState: 'break_active',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'playing',
+          },
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
         expect(result.current.breakState).not.toBeNull()
       })
 
-      // End event from different session — should be ignored
+      // Session completes
       act(() => {
-        eventHandlers.get('game-break-ended')?.({
-          sessionId: 'other-session',
-          roomId: 'room-abc',
-          reason: 'gameFinished',
-        } satisfies GameBreakEndedEvent)
+        eventHandlers.get('session-flow-state')?.({
+          sessionId: SESSION_ID,
+          flowState: 'completed',
+        } satisfies SessionFlowStateEvent)
       })
 
-      // breakState should still be set
       await waitFor(() => {
-        expect(result.current.breakState).not.toBeNull()
+        expect(result.current.flowState).toBe('completed')
+        expect(result.current.breakState).toBeNull()
       })
     })
+  })
 
-    it('handles full lifecycle: started → selecting → playing → ended', async () => {
+  describe('full lifecycle via flow state', () => {
+    it('handles break_pending → break_active → break_results → practicing', async () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
-      // 1. Break starts
+      // 1. Break pending
       act(() => {
-        eventHandlers.get('game-break-started')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          gameName: 'Card Sorting',
-          gameId: 'card-sorting',
-        } satisfies GameBreakStartedEvent)
+          flowState: 'break_pending',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Card Sorting',
+            gameId: 'card-sorting',
+            phase: 'selecting',
+          },
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
-        expect(result.current.breakState?.phase).toBe('selecting')
+        expect(result.current.flowState).toBe('break_pending')
         expect(result.current.breakState?.gameName).toBe('Card Sorting')
       })
 
-      // 2. Game starts playing
+      // 2. Break active (playing)
       act(() => {
-        eventHandlers.get('game-break-phase')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          phase: 'playing',
-        } satisfies GameBreakPhaseEvent)
+          flowState: 'break_active',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Card Sorting',
+            gameId: 'card-sorting',
+            phase: 'playing',
+          },
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
+        expect(result.current.flowState).toBe('break_active')
         expect(result.current.breakState?.phase).toBe('playing')
       })
 
-      // 3. Game completes
+      // 3. Break results
       act(() => {
-        eventHandlers.get('game-break-phase')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          phase: 'completed',
-        } satisfies GameBreakPhaseEvent)
+          flowState: 'break_results',
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
-        expect(result.current.breakState?.phase).toBe('completed')
+        expect(result.current.flowState).toBe('break_results')
+        expect(result.current.breakState).toBeNull()
       })
 
-      // 4. Break ends
+      // 4. Back to practicing
       act(() => {
-        eventHandlers.get('game-break-ended')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          reason: 'gameFinished',
-        } satisfies GameBreakEndedEvent)
+          flowState: 'practicing',
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
+        expect(result.current.flowState).toBe('practicing')
         expect(result.current.breakState).toBeNull()
       })
     })
+  })
 
-    it('clears breakState when stopObserving is called', async () => {
+  describe('no legacy game-break events', () => {
+    it('does not register game-break-started listener', () => {
+      renderHook(() => useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true))
+
+      expect(eventHandlers.has('game-break-started')).toBe(false)
+    })
+
+    it('does not register game-break-phase listener', () => {
+      renderHook(() => useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true))
+
+      expect(eventHandlers.has('game-break-phase')).toBe(false)
+    })
+
+    it('does not register game-break-ended listener', () => {
+      renderHook(() => useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true))
+
+      expect(eventHandlers.has('game-break-ended')).toBe(false)
+    })
+  })
+
+  describe('stopObserving clears state', () => {
+    it('clears flowState and breakState when stopObserving is called', async () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, OBSERVER_ID, PLAYER_ID, true)
       )
 
-      // Start a break
+      // Set some state
       act(() => {
-        eventHandlers.get('game-break-started')?.({
+        eventHandlers.get('session-flow-state')?.({
           sessionId: SESSION_ID,
-          roomId: 'room-abc',
-          gameName: 'Memory Match',
-          gameId: 'matching',
-        } satisfies GameBreakStartedEvent)
+          flowState: 'break_active',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'playing',
+          },
+        } satisfies SessionFlowStateEvent)
       })
 
       await waitFor(() => {
+        expect(result.current.flowState).toBe('break_active')
         expect(result.current.breakState).not.toBeNull()
       })
 
@@ -319,6 +374,7 @@ describe('useSessionObserver - game break state', () => {
       })
 
       await waitFor(() => {
+        expect(result.current.flowState).toBeNull()
         expect(result.current.breakState).toBeNull()
       })
     })

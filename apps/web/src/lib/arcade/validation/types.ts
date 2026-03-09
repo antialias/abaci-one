@@ -125,5 +125,8 @@ export interface GameValidator<TState = unknown, TMove extends GameMove = GameMo
    * @param options Practice break specific options
    * @returns Game state in 'playing' phase, ready for immediate gameplay
    */
-  getInitialStateForPracticeBreak?(config: unknown, options: PracticeBreakOptions): TState | Promise<TState>
+  getInitialStateForPracticeBreak?(
+    config: unknown,
+    options: PracticeBreakOptions
+  ): TState | Promise<TState>
 }

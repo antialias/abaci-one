@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useMemo, createContext, useContext, useState } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
+import { useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useUserId } from '@/hooks/useUserId'
 import { buildPlayerMetadata as buildPlayerMetadataUtil } from '@/lib/arcade/player-ownership.client'
 import type { GameMove } from '@/lib/arcade/validation'
@@ -298,8 +298,7 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
  */
 export function CardSortingProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useUserId()
-  const { roomData } = useRoomData()
-  const { activePlayers, players } = useGameMode()
+  const { activePlayers, players, roomData } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   // Local UI state (not synced to server)
@@ -322,12 +321,13 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session integration
-  const { state, sendMove, exitSession, hasReceivedServerState } = useArcadeSession<CardSortingState>({
-    userId: viewerId || '',
-    roomId: roomData?.id,
-    initialState: mergedInitialState,
-    applyMove: applyMoveOptimistically,
-  })
+  const { state, sendMove, exitSession, hasReceivedServerState } =
+    useArcadeSession<CardSortingState>({
+      userId: viewerId || '',
+      roomId: roomData?.id,
+      initialState: mergedInitialState,
+      applyMove: applyMoveOptimistically,
+    })
 
   // Build player metadata for the single local player
   const buildPlayerMetadata = useCallback(() => {

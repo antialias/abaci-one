@@ -1,6 +1,5 @@
 /**
- * Unit tests for GameBreakScreen observer notification callbacks
- * (onBreakStarted, onBreakPhaseChange, onBreakEnded)
+ * Unit tests for GameBreakScreen observer notification via onBreakContextChange
  */
 import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
@@ -88,7 +87,7 @@ const defaultStudent = {
   color: '#FF6B6B',
 }
 
-describe('GameBreakScreen observer callbacks', () => {
+describe('GameBreakScreen onBreakContextChange', () => {
   let originalRaf: typeof requestAnimationFrame
   let originalCaf: typeof cancelAnimationFrame
 
@@ -112,9 +111,9 @@ describe('GameBreakScreen observer callbacks', () => {
     vi.restoreAllMocks()
   })
 
-  describe('onBreakPhaseChange', () => {
-    it('is called with "selecting" when room becomes ready in kid-chooses mode', () => {
-      const onBreakPhaseChange = vi.fn()
+  describe('room ready', () => {
+    it('is called with selecting phase when room becomes ready in kid-chooses mode', () => {
+      const onBreakContextChange = vi.fn()
 
       render(
         <GameBreakScreen
@@ -124,7 +123,7 @@ describe('GameBreakScreen observer callbacks', () => {
           student={defaultStudent}
           onComplete={vi.fn()}
           selectionMode="kid-chooses"
-          onBreakPhaseChange={onBreakPhaseChange}
+          onBreakContextChange={onBreakContextChange}
         />
       )
 
@@ -132,11 +131,16 @@ describe('GameBreakScreen observer callbacks', () => {
         mockOnRoomReady?.({ id: MOCK_ROOM_ID })
       })
 
-      expect(onBreakPhaseChange).toHaveBeenCalledWith(MOCK_ROOM_ID, 'selecting')
+      expect(onBreakContextChange).toHaveBeenCalledWith({
+        roomId: MOCK_ROOM_ID,
+        gameName: '',
+        gameId: '',
+        phase: 'selecting',
+      })
     })
 
-    it('is called with "selecting" when room becomes ready in auto-start mode', () => {
-      const onBreakPhaseChange = vi.fn()
+    it('is called with selecting phase when room becomes ready in auto-start mode', () => {
+      const onBreakContextChange = vi.fn()
 
       render(
         <GameBreakScreen
@@ -146,7 +150,7 @@ describe('GameBreakScreen observer callbacks', () => {
           student={defaultStudent}
           onComplete={vi.fn()}
           selectionMode="auto-start"
-          onBreakPhaseChange={onBreakPhaseChange}
+          onBreakContextChange={onBreakContextChange}
         />
       )
 
@@ -154,14 +158,18 @@ describe('GameBreakScreen observer callbacks', () => {
         mockOnRoomReady?.({ id: MOCK_ROOM_ID })
       })
 
-      // Even in auto-start, the selecting phase callback fires first
-      expect(onBreakPhaseChange).toHaveBeenCalledWith(MOCK_ROOM_ID, 'selecting')
+      expect(onBreakContextChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roomId: MOCK_ROOM_ID,
+          phase: 'selecting',
+        })
+      )
     })
   })
 
-  describe('onBreakStarted', () => {
-    it('is called when a game is selected in kid-chooses mode', async () => {
-      const onBreakStarted = vi.fn()
+  describe('game selection', () => {
+    it('is called with playing phase and game info when a game is selected', async () => {
+      const onBreakContextChange = vi.fn()
 
       render(
         <GameBreakScreen
@@ -171,7 +179,7 @@ describe('GameBreakScreen observer callbacks', () => {
           student={defaultStudent}
           onComplete={vi.fn()}
           selectionMode="kid-chooses"
-          onBreakStarted={onBreakStarted}
+          onBreakContextChange={onBreakContextChange}
         />
       )
 
@@ -179,45 +187,24 @@ describe('GameBreakScreen observer callbacks', () => {
         mockOnRoomReady?.({ id: MOCK_ROOM_ID })
       })
 
-      await act(async () => {
-        fireEvent.click(screen.getByText('Memory Match'))
-      })
-
-      expect(onBreakStarted).toHaveBeenCalledWith(MOCK_ROOM_ID, 'Memory Match', 'matching')
-    })
-
-    it('is called with the display name from the game registry', async () => {
-      const onBreakStarted = vi.fn()
-
-      render(
-        <GameBreakScreen
-          isVisible={true}
-          maxDurationMinutes={5}
-          startTime={Date.now()}
-          student={defaultStudent}
-          onComplete={vi.fn()}
-          selectionMode="kid-chooses"
-          onBreakStarted={onBreakStarted}
-        />
-      )
-
-      act(() => {
-        mockOnRoomReady?.({ id: MOCK_ROOM_ID })
-      })
+      onBreakContextChange.mockClear()
 
       await act(async () => {
         fireEvent.click(screen.getByText('Memory Match'))
       })
 
-      // Second argument should be display name, third the game ID
-      expect(onBreakStarted.mock.calls[0][1]).toBe('Memory Match')
-      expect(onBreakStarted.mock.calls[0][2]).toBe('matching')
+      expect(onBreakContextChange).toHaveBeenCalledWith({
+        roomId: MOCK_ROOM_ID,
+        gameName: 'Memory Match',
+        gameId: 'matching',
+        phase: 'playing',
+      })
     })
   })
 
-  describe('onBreakPhaseChange on game selection', () => {
-    it('is called with "playing" when game is selected', async () => {
-      const onBreakPhaseChange = vi.fn()
+  describe('break ended', () => {
+    it('is called with null when skip button is clicked', async () => {
+      const onBreakContextChange = vi.fn()
 
       render(
         <GameBreakScreen
@@ -226,38 +213,7 @@ describe('GameBreakScreen observer callbacks', () => {
           startTime={Date.now()}
           student={defaultStudent}
           onComplete={vi.fn()}
-          selectionMode="kid-chooses"
-          onBreakPhaseChange={onBreakPhaseChange}
-        />
-      )
-
-      act(() => {
-        mockOnRoomReady?.({ id: MOCK_ROOM_ID })
-      })
-
-      // Clear the 'selecting' call
-      onBreakPhaseChange.mockClear()
-
-      await act(async () => {
-        fireEvent.click(screen.getByText('Memory Match'))
-      })
-
-      expect(onBreakPhaseChange).toHaveBeenCalledWith(MOCK_ROOM_ID, 'playing')
-    })
-  })
-
-  describe('onBreakEnded', () => {
-    it('is called with "skipped" when skip button is clicked', async () => {
-      const onBreakEnded = vi.fn()
-
-      render(
-        <GameBreakScreen
-          isVisible={true}
-          maxDurationMinutes={5}
-          startTime={Date.now()}
-          student={defaultStudent}
-          onComplete={vi.fn()}
-          onBreakEnded={onBreakEnded}
+          onBreakContextChange={onBreakContextChange}
         />
       )
 
@@ -265,11 +221,11 @@ describe('GameBreakScreen observer callbacks', () => {
         fireEvent.click(screen.getByText('Back to Practice →'))
       })
 
-      expect(onBreakEnded).toHaveBeenCalledWith(MOCK_ROOM_ID, 'skipped', undefined)
+      expect(onBreakContextChange).toHaveBeenCalledWith(null)
     })
 
-    it('is called with "timeout" when time expires', async () => {
-      const onBreakEnded = vi.fn()
+    it('is called with null when time expires', async () => {
+      const onBreakContextChange = vi.fn()
       const now = Date.now()
       // Start time is 6 minutes ago, max is 5 minutes → already expired
       const startTime = now - 6 * 60 * 1000
@@ -281,7 +237,7 @@ describe('GameBreakScreen observer callbacks', () => {
           startTime={startTime}
           student={defaultStudent}
           onComplete={vi.fn()}
-          onBreakEnded={onBreakEnded}
+          onBreakContextChange={onBreakContextChange}
         />
       )
 
@@ -290,12 +246,12 @@ describe('GameBreakScreen observer callbacks', () => {
         await new Promise((resolve) => setTimeout(resolve, 50))
       })
 
-      expect(onBreakEnded).toHaveBeenCalledWith(MOCK_ROOM_ID, 'timeout', undefined)
+      expect(onBreakContextChange).toHaveBeenCalledWith(null)
     })
   })
 
-  describe('callbacks are optional', () => {
-    it('does not throw when callbacks are not provided', async () => {
+  describe('callback is optional', () => {
+    it('does not throw when onBreakContextChange is not provided', async () => {
       render(
         <GameBreakScreen
           isVisible={true}
@@ -311,7 +267,7 @@ describe('GameBreakScreen observer callbacks', () => {
         mockOnRoomReady?.({ id: MOCK_ROOM_ID })
       })
 
-      // Selecting a game without callbacks should not throw
+      // Selecting a game without callback should not throw
       await act(async () => {
         fireEvent.click(screen.getByText('Memory Match'))
       })

@@ -8,9 +8,6 @@ import type { SessionPartType } from '@/db/schema/session-plans'
 import type { SessionFlowState } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
-  GameBreakEndedEvent,
-  GameBreakPhaseEvent,
-  GameBreakStartedEvent,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
@@ -95,16 +92,17 @@ export interface UseSessionBroadcastResult {
       isManualRedo: boolean
     }
   ) => void
-  /** Notify observers that a game break has started */
-  sendGameBreakStarted: (roomId: string, gameName: string, gameId: string) => void
-  /** Notify observers of game break phase changes */
-  sendGameBreakPhase: (roomId: string, phase: 'selecting' | 'playing' | 'completed') => void
-  /** Notify observers that a game break has ended */
-  sendGameBreakEnded: (
-    roomId: string,
-    reason: 'gameFinished' | 'timeout' | 'skipped',
-    summary?: { gameName: string; headline?: string }
-  ) => void
+}
+
+/**
+ * Break context for game breaks — passed to broadcastFlowState so observers
+ * know which game is being played and in what phase.
+ */
+export interface BreakContext {
+  roomId: string
+  gameName: string
+  gameId: string
+  phase: 'selecting' | 'playing' | 'completed'
 }
 
 export function useSessionBroadcast(
@@ -112,6 +110,7 @@ export function useSessionBroadcast(
   playerId: string | undefined,
   state: BroadcastState | null,
   flowState: SessionFlowState,
+  breakContext: BreakContext | null,
   options?: UseSessionBroadcastOptions
 ): UseSessionBroadcastResult {
   const socketRef = useRef<Socket | null>(null)
@@ -132,13 +131,9 @@ export function useSessionBroadcast(
   const flowStateRef = useRef<SessionFlowState>(flowState)
   flowStateRef.current = flowState
 
-  // Track current game break state so we can re-broadcast on observer-joined
-  const breakStateRef = useRef<{
-    roomId: string
-    gameName: string
-    gameId: string
-    phase: 'selecting' | 'playing' | 'completed'
-  } | null>(null)
+  // Track current break context in ref for socket handlers
+  const breakContextRef = useRef<BreakContext | null>(breakContext)
+  breakContextRef.current = breakContext
 
   // Helper to broadcast current flow state (authoritative state for observers)
   const broadcastFlowState = useCallback(() => {
@@ -147,7 +142,7 @@ export function useSessionBroadcast(
     const event: SessionFlowStateEvent = {
       sessionId,
       flowState: flowStateRef.current,
-      breakContext: breakStateRef.current ?? undefined,
+      breakContext: breakContextRef.current ?? undefined,
     }
 
     socketRef.current.emit('session-flow-state', event)
@@ -320,10 +315,10 @@ export function useSessionBroadcast(
     }
   }, [sessionId, playerId, broadcastState])
 
-  // Broadcast flow state whenever it changes
+  // Broadcast flow state whenever it or break context changes
   useEffect(() => {
     broadcastFlowState()
-  }, [broadcastFlowState, flowState])
+  }, [broadcastFlowState, flowState, breakContext])
 
   // Broadcast practice state changes
   useEffect(() => {
@@ -485,60 +480,6 @@ export function useSessionBroadcast(
     [sessionId, playerId]
   )
 
-  // Notify observers that a game break has started
-  const sendGameBreakStarted = useCallback(
-    (roomId: string, gameName: string, gameId: string) => {
-      if (!socketRef.current || !isConnectedRef.current || !sessionId) return
-
-      const event: GameBreakStartedEvent = { sessionId, roomId, gameName, gameId }
-      breakStateRef.current = { roomId, gameName, gameId, phase: 'selecting' }
-      socketRef.current.emit('game-break-started', event)
-      // Also broadcast authoritative flow state with break context
-      broadcastFlowState()
-      console.log('[SessionBroadcast] Emitted game-break-started:', { roomId, gameName, gameId })
-    },
-    [sessionId, broadcastFlowState]
-  )
-
-  // Notify observers of game break phase changes
-  const sendGameBreakPhase = useCallback(
-    (roomId: string, phase: 'selecting' | 'playing' | 'completed') => {
-      if (!socketRef.current || !isConnectedRef.current || !sessionId) return
-
-      const event: GameBreakPhaseEvent = { sessionId, roomId, phase }
-      if (breakStateRef.current && breakStateRef.current.roomId === roomId) {
-        breakStateRef.current = { ...breakStateRef.current, phase }
-      } else if (!breakStateRef.current) {
-        // Phase event can arrive before started event (e.g. 'selecting' phase fires first)
-        breakStateRef.current = { roomId, gameName: '', gameId: '', phase }
-      }
-      socketRef.current.emit('game-break-phase', event)
-      // Also broadcast authoritative flow state with updated break context
-      broadcastFlowState()
-      console.log('[SessionBroadcast] Emitted game-break-phase:', { roomId, phase })
-    },
-    [sessionId, broadcastFlowState]
-  )
-
-  // Notify observers that a game break has ended
-  const sendGameBreakEnded = useCallback(
-    (
-      roomId: string,
-      reason: 'gameFinished' | 'timeout' | 'skipped',
-      summary?: { gameName: string; headline?: string }
-    ) => {
-      if (!socketRef.current || !isConnectedRef.current || !sessionId) return
-
-      const event: GameBreakEndedEvent = { sessionId, roomId, reason, summary }
-      breakStateRef.current = null
-      socketRef.current.emit('game-break-ended', event)
-      // Also broadcast authoritative flow state (break context now null)
-      broadcastFlowState()
-      console.log('[SessionBroadcast] Emitted game-break-ended:', { roomId, reason })
-    },
-    [sessionId, broadcastFlowState]
-  )
-
   return {
     isConnected: isConnectedRef.current,
     isBroadcasting: isConnectedRef.current && !!state,
@@ -550,8 +491,5 @@ export function useSessionBroadcast(
     startVisionRecording,
     stopVisionRecording,
     sendProblemMarker,
-    sendGameBreakStarted,
-    sendGameBreakPhase,
-    sendGameBreakEnded,
   }
 }

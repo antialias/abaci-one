@@ -26,10 +26,7 @@ interface GameBreakSpectatorViewProps {
  *
  * On unmount (break ends), the observer leaves the room.
  */
-export function GameBreakSpectatorView({
-  breakState,
-  studentName,
-}: GameBreakSpectatorViewProps) {
+export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpectatorViewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 

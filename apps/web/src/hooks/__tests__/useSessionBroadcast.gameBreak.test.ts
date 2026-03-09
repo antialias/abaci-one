@@ -1,9 +1,10 @@
 /**
- * Unit tests for useSessionBroadcast game break broadcasting
+ * Unit tests for useSessionBroadcast flow state + break context broadcasting
  */
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BroadcastState } from '@/components/practice'
+import type { BreakContext } from '../useSessionBroadcast'
 import { useSessionBroadcast } from '../useSessionBroadcast'
 
 // Mock socket.io-client
@@ -19,7 +20,7 @@ vi.mock('socket.io-client', () => ({
   io: vi.fn(() => mockSocket),
 }))
 
-describe('useSessionBroadcast - game break broadcasting', () => {
+describe('useSessionBroadcast - flow state + break context broadcasting', () => {
   let connectHandler: (() => void) | undefined
 
   beforeEach(() => {
@@ -53,9 +54,15 @@ describe('useSessionBroadcast - game break broadcasting', () => {
     slotResults: [],
   })
 
-  function renderAndConnect() {
+  function renderAndConnect(breakContext: BreakContext | null = null) {
     const result = renderHook(() =>
-      useSessionBroadcast(SESSION_ID, PLAYER_ID, createMockBroadcastState(), 'practicing')
+      useSessionBroadcast(
+        SESSION_ID,
+        PLAYER_ID,
+        createMockBroadcastState(),
+        'practicing',
+        breakContext
+      )
     )
 
     // Trigger connect
@@ -66,166 +73,118 @@ describe('useSessionBroadcast - game break broadcasting', () => {
     return result
   }
 
-  describe('sendGameBreakStarted', () => {
-    it('returns sendGameBreakStarted function', () => {
-      const { result } = renderAndConnect()
-      expect(typeof result.current.sendGameBreakStarted).toBe('function')
+  describe('session-flow-state broadcasting', () => {
+    it('emits session-flow-state on connect', () => {
+      renderAndConnect()
+
+      const flowStateCalls = mockSocket.emit.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'session-flow-state'
+      )
+      expect(flowStateCalls.length).toBeGreaterThan(0)
+      expect(flowStateCalls[0][1]).toEqual(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          flowState: 'practicing',
+        })
+      )
     })
 
-    it('emits game-break-started event with correct payload', () => {
-      const { result } = renderAndConnect()
-
-      act(() => {
-        result.current.sendGameBreakStarted('room-abc', 'Memory Match', 'matching')
-      })
-
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-started', {
-        sessionId: SESSION_ID,
+    it('includes breakContext when provided', () => {
+      const breakContext: BreakContext = {
         roomId: 'room-abc',
         gameName: 'Memory Match',
         gameId: 'matching',
-      })
-    })
-
-    it('does not emit when sessionId is undefined', () => {
-      const { result } = renderHook(() =>
-        useSessionBroadcast(undefined, PLAYER_ID, createMockBroadcastState(), 'practicing')
-      )
-
-      act(() => {
-        result.current.sendGameBreakStarted('room-abc', 'Memory Match', 'matching')
-      })
-
-      const gameBreakEmits = mockSocket.emit.mock.calls.filter(
-        (call: unknown[]) => call[0] === 'game-break-started'
-      )
-      expect(gameBreakEmits).toHaveLength(0)
-    })
-  })
-
-  describe('sendGameBreakPhase', () => {
-    it('emits game-break-phase event with correct payload', () => {
-      const { result } = renderAndConnect()
-
-      act(() => {
-        result.current.sendGameBreakPhase('room-abc', 'playing')
-      })
-
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-phase', {
-        sessionId: SESSION_ID,
-        roomId: 'room-abc',
         phase: 'playing',
-      })
+      }
+
+      renderAndConnect(breakContext)
+
+      const flowStateCalls = mockSocket.emit.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'session-flow-state'
+      )
+      expect(flowStateCalls.length).toBeGreaterThan(0)
+
+      const lastCall = flowStateCalls[flowStateCalls.length - 1]
+      expect(lastCall[1]).toEqual(
+        expect.objectContaining({
+          sessionId: SESSION_ID,
+          flowState: 'practicing',
+          breakContext: {
+            roomId: 'room-abc',
+            gameName: 'Memory Match',
+            gameId: 'matching',
+            phase: 'playing',
+          },
+        })
+      )
     })
 
-    it('emits different phases correctly', () => {
-      const { result } = renderAndConnect()
+    it('omits breakContext when null', () => {
+      renderAndConnect(null)
 
-      act(() => {
-        result.current.sendGameBreakPhase('room-abc', 'selecting')
-      })
+      const flowStateCalls = mockSocket.emit.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'session-flow-state'
+      )
+      expect(flowStateCalls.length).toBeGreaterThan(0)
 
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-phase', {
-        sessionId: SESSION_ID,
-        roomId: 'room-abc',
-        phase: 'selecting',
-      })
-
-      act(() => {
-        result.current.sendGameBreakPhase('room-abc', 'completed')
-      })
-
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-phase', {
-        sessionId: SESSION_ID,
-        roomId: 'room-abc',
-        phase: 'completed',
-      })
+      const lastCall = flowStateCalls[flowStateCalls.length - 1]
+      expect(lastCall[1].breakContext).toBeUndefined()
     })
   })
 
-  describe('sendGameBreakEnded', () => {
-    it('emits game-break-ended event with reason only', () => {
+  describe('no legacy game-break events', () => {
+    it('does not have sendGameBreakStarted/Phase/Ended functions', () => {
       const { result } = renderAndConnect()
 
-      act(() => {
-        result.current.sendGameBreakEnded('room-abc', 'timeout')
-      })
-
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-ended', {
-        sessionId: SESSION_ID,
-        roomId: 'room-abc',
-        reason: 'timeout',
-        summary: undefined,
-      })
+      expect(result.current).not.toHaveProperty('sendGameBreakStarted')
+      expect(result.current).not.toHaveProperty('sendGameBreakPhase')
+      expect(result.current).not.toHaveProperty('sendGameBreakEnded')
     })
 
-    it('emits game-break-ended event with summary', () => {
-      const { result } = renderAndConnect()
-
-      act(() => {
-        result.current.sendGameBreakEnded('room-abc', 'gameFinished', {
-          gameName: 'Memory Match',
-          headline: 'Perfect Game!',
-        })
-      })
-
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-ended', {
-        sessionId: SESSION_ID,
+    it('never emits game-break-* events', () => {
+      renderAndConnect({
         roomId: 'room-abc',
-        reason: 'gameFinished',
-        summary: {
-          gameName: 'Memory Match',
-          headline: 'Perfect Game!',
-        },
-      })
-    })
-
-    it('emits game-break-ended for skipped reason', () => {
-      const { result } = renderAndConnect()
-
-      act(() => {
-        result.current.sendGameBreakEnded('room-abc', 'skipped')
-      })
-
-      expect(mockSocket.emit).toHaveBeenCalledWith('game-break-ended', {
-        sessionId: SESSION_ID,
-        roomId: 'room-abc',
-        reason: 'skipped',
-        summary: undefined,
-      })
-    })
-  })
-
-  describe('full lifecycle', () => {
-    it('emits all three events in sequence', () => {
-      const { result } = renderAndConnect()
-
-      // 1. Break starts
-      act(() => {
-        result.current.sendGameBreakStarted('room-abc', 'Memory Match', 'matching')
-      })
-
-      // 2. Phase changes
-      act(() => {
-        result.current.sendGameBreakPhase('room-abc', 'playing')
-      })
-
-      // 3. Break ends
-      act(() => {
-        result.current.sendGameBreakEnded('room-abc', 'gameFinished', {
-          gameName: 'Memory Match',
-          headline: 'Great job!',
-        })
+        gameName: 'Memory Match',
+        gameId: 'matching',
+        phase: 'playing',
       })
 
       const gameBreakCalls = mockSocket.emit.mock.calls.filter((call: unknown[]) =>
         (call[0] as string).startsWith('game-break-')
       )
 
-      expect(gameBreakCalls).toHaveLength(3)
-      expect(gameBreakCalls[0][0]).toBe('game-break-started')
-      expect(gameBreakCalls[1][0]).toBe('game-break-phase')
-      expect(gameBreakCalls[2][0]).toBe('game-break-ended')
+      expect(gameBreakCalls).toHaveLength(0)
+    })
+  })
+
+  describe('re-broadcast on observer-joined', () => {
+    it('broadcasts flow state when observer joins', () => {
+      let observerJoinedHandler: ((data: { observerId: string }) => void) | undefined
+
+      mockSocket.on.mockImplementation((event: string, handler: unknown) => {
+        if (event === 'connect') {
+          connectHandler = handler as () => void
+        }
+        if (event === 'observer-joined') {
+          observerJoinedHandler = handler as (data: { observerId: string }) => void
+        }
+        return mockSocket
+      })
+
+      renderAndConnect()
+
+      // Clear emit calls from connect
+      mockSocket.emit.mockClear()
+
+      // Simulate observer joining
+      act(() => {
+        observerJoinedHandler?.({ observerId: 'observer-1' })
+      })
+
+      const flowStateCalls = mockSocket.emit.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'session-flow-state'
+      )
+      expect(flowStateCalls.length).toBeGreaterThan(0)
     })
   })
 })

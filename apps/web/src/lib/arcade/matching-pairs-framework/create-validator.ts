@@ -66,8 +66,7 @@ function defaultGetResultsReport<
       const playerScore = state.scores[playerId] ?? 0
       const isSinglePlayer = state.activePlayers.length === 1
       const movesForAccuracy = isSinglePlayer ? state.moves : playerScore * 2
-      const accuracy =
-        movesForAccuracy > 0 ? Math.round((playerScore / movesForAccuracy) * 100) : 0
+      const accuracy = movesForAccuracy > 0 ? Math.round((playerScore / movesForAccuracy) * 100) : 0
 
       return {
         playerId,

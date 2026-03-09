@@ -409,54 +409,20 @@ export interface GenericNotificationEvent {
 export interface SessionFlowStateEvent {
   sessionId: string
   /** Current flow state from the server-side state machine */
-  flowState: 'practicing' | 'part_transition' | 'break_pending' | 'break_active' | 'break_results' | 'completed' | 'abandoned'
+  flowState:
+    | 'practicing'
+    | 'part_transition'
+    | 'break_pending'
+    | 'break_active'
+    | 'break_results'
+    | 'completed'
+    | 'abandoned'
   /** Context for game break states — present when flowState involves a break */
   breakContext?: {
     roomId: string
     gameName: string
     gameId: string
     phase: 'selecting' | 'playing' | 'completed'
-  }
-}
-
-// ============================================================================
-// Game Break Observation Events (sent to session:${sessionId} channel)
-// ============================================================================
-
-/**
- * Sent when a game break starts during a practice session.
- * Allows observers to see that the student is taking a game break.
- */
-export interface GameBreakStartedEvent {
-  sessionId: string
-  /** Arcade room ID for the game break */
-  roomId: string
-  /** Display name of the game being played */
-  gameName: string
-  /** Game registry name (e.g. 'matching', 'card-sorting') */
-  gameId: string
-}
-
-/**
- * Sent when the game break phase changes (selecting → playing → completed).
- */
-export interface GameBreakPhaseEvent {
-  sessionId: string
-  roomId: string
-  phase: 'selecting' | 'playing' | 'completed'
-}
-
-/**
- * Sent when the game break ends (game finished, timeout, or skipped).
- */
-export interface GameBreakEndedEvent {
-  sessionId: string
-  roomId: string
-  reason: 'gameFinished' | 'timeout' | 'skipped'
-  /** Summary of game results, if available */
-  summary?: {
-    gameName: string
-    headline?: string
   }
 }
 
@@ -511,11 +477,6 @@ export interface ClassroomServerToClientEvents {
   // Session flow state (authoritative state broadcast)
   'session-flow-state': (data: SessionFlowStateEvent) => void
 
-  // Game break observation events (session channel) — kept for backwards compatibility
-  'game-break-started': (data: GameBreakStartedEvent) => void
-  'game-break-phase': (data: GameBreakPhaseEvent) => void
-  'game-break-ended': (data: GameBreakEndedEvent) => void
-
   // Notification events (user channel - unified notification system)
   notification: (data: GenericNotificationEvent) => void
 }
@@ -548,11 +509,6 @@ export interface ClassroomClientToServerEvents {
 
   // Session flow state broadcast (from student client)
   'session-flow-state': (data: SessionFlowStateEvent) => void
-
-  // Game break broadcasts (from student client to session channel) — kept for backwards compatibility
-  'game-break-started': (data: GameBreakStartedEvent) => void
-  'game-break-phase': (data: GameBreakPhaseEvent) => void
-  'game-break-ended': (data: GameBreakEndedEvent) => void
 
   // Skill tutorial broadcasts (from student client to classroom channel)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void

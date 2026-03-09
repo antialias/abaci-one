@@ -163,12 +163,9 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
       {
         instruction: `${drag} from {pt:D} toward {pt:B}`,
         speech: byStyle({
-          simple:
-            'Now extend line DB past B using Postulate 2. Drag from D toward B.',
-          standard:
-            'Now extend line DB past B using Postulate 2. Drag from point D toward B.',
-          classical:
-            'By Postulate 2, produce DB beyond B. Drag from D toward B.',
+          simple: 'Now extend line DB past B using Postulate 2. Drag from D toward B.',
+          standard: 'Now extend line DB past B using Postulate 2. Drag from point D toward B.',
+          classical: 'By Postulate 2, produce DB beyond B. Drag from D toward B.',
         }),
         hint: { type: 'point', pointId: 'pt-D' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },
@@ -238,12 +235,9 @@ function getProp2Tutorial(isTouch: boolean, options?: EuclidNarrationOptions): T
       {
         instruction: `${drag} from {pt:D} toward {pt:A}`,
         speech: byStyle({
-          simple:
-            'Now extend line DA past A. Drag from D toward A.',
-          standard:
-            'Now extend line DA past A using Postulate 2. Drag from point D toward A.',
-          classical:
-            'By Postulate 2, produce DA beyond A. Drag from D toward A.',
+          simple: 'Now extend line DA past A. Drag from D toward A.',
+          standard: 'Now extend line DA past A using Postulate 2. Drag from point D toward A.',
+          classical: 'By Postulate 2, produce DA beyond A. Drag from D toward A.',
         }),
         hint: { type: 'point', pointId: 'pt-D' },
         advanceOn: { kind: 'extend-phase' as const, phase: 'extending' as const },

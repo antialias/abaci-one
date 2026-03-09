@@ -90,12 +90,36 @@ vi.mock('@/lib/queryClient', () => ({
 vi.mock('@radix-ui/react-dialog', () => ({
   Root: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Portal: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Overlay: React.forwardRef(({ children, ...props }: any, ref: any) => <div ref={ref} {...props}>{children}</div>),
-  Content: React.forwardRef(({ children, ...props }: any, ref: any) => <div ref={ref} {...props}>{children}</div>),
-  Title: React.forwardRef(({ children, ...props }: any, ref: any) => <h2 ref={ref} {...props}>{children}</h2>),
-  Description: React.forwardRef(({ children, ...props }: any, ref: any) => <p ref={ref} {...props}>{children}</p>),
-  Close: React.forwardRef(({ children, ...props }: any, ref: any) => <button ref={ref} {...props}>{children}</button>),
-  Trigger: React.forwardRef(({ children, ...props }: any, ref: any) => <button ref={ref} {...props}>{children}</button>),
+  Overlay: React.forwardRef(({ children, ...props }: any, ref: any) => (
+    <div ref={ref} {...props}>
+      {children}
+    </div>
+  )),
+  Content: React.forwardRef(({ children, ...props }: any, ref: any) => (
+    <div ref={ref} {...props}>
+      {children}
+    </div>
+  )),
+  Title: React.forwardRef(({ children, ...props }: any, ref: any) => (
+    <h2 ref={ref} {...props}>
+      {children}
+    </h2>
+  )),
+  Description: React.forwardRef(({ children, ...props }: any, ref: any) => (
+    <p ref={ref} {...props}>
+      {children}
+    </p>
+  )),
+  Close: React.forwardRef(({ children, ...props }: any, ref: any) => (
+    <button ref={ref} {...props}>
+      {children}
+    </button>
+  )),
+  Trigger: React.forwardRef(({ children, ...props }: any, ref: any) => (
+    <button ref={ref} {...props}>
+      {children}
+    </button>
+  )),
 }))
 
 // Mock child components that are heavy to render

@@ -957,13 +957,11 @@ export function SessionObserverView({
         )}
 
         {/* Game break view - driven by authoritative flowState */}
-        {isInGameBreak && breakState && (
-          breakState.phase === 'playing' && breakState.gameId ? (
+        {isInGameBreak &&
+          breakState &&
+          (breakState.phase === 'playing' && breakState.gameId ? (
             // Observer (authenticated or guest): render live game spectator view
-            <GameBreakSpectatorView
-              breakState={breakState}
-              studentName={student.name}
-            />
+            <GameBreakSpectatorView breakState={breakState} studentName={student.name} />
           ) : (
             // Non-playing phase: informational overlay
             <div
@@ -1023,8 +1021,7 @@ export function SessionObserverView({
                     : 'Completed'}
               </div>
             </div>
-          )
-        )}
+          ))}
 
         {/* Game break results view - student reviewing game results */}
         {isInBreakResults && (
@@ -1066,143 +1063,147 @@ export function SessionObserverView({
         )}
 
         {/* Main content - either problem view or full report view */}
-        {state && !showFullReport && showPractice && !transitionState && selectedProblemNumber === null && (
-          <div
-            data-element="observer-main-content"
-            className={css({
-              display: 'flex',
-              flexDirection: { base: 'column', lg: 'row' },
-              alignItems: { base: 'center', lg: 'flex-start' },
-              gap: { base: '16px', md: '24px' },
-              width: '100%',
-              justifyContent: 'center',
-            })}
-          >
-            {/* Live results panel - hidden on small/medium, shown on large */}
+        {state &&
+          !showFullReport &&
+          showPractice &&
+          !transitionState &&
+          selectedProblemNumber === null && (
             <div
-              data-element="results-panel-desktop"
-              className={css({
-                display: { base: 'none', lg: 'block' },
-                width: '200px',
-                flexShrink: 0,
-              })}
-            >
-              <LiveResultsPanel
-                results={results}
-                totalProblems={state.totalProblems}
-                isDark={isDark}
-                onExpandFullReport={() => setShowFullReport(true)}
-              />
-            </div>
-
-            {/* Problem area - center */}
-            <div
-              data-element="observer-content"
+              data-element="observer-main-content"
               className={css({
                 display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: { base: '8px', md: '16px' },
+                flexDirection: { base: 'column', lg: 'row' },
+                alignItems: { base: 'center', lg: 'flex-start' },
+                gap: { base: '16px', md: '24px' },
                 width: '100%',
-                maxWidth: { base: '100%', md: '500px' },
+                justifyContent: 'center',
               })}
             >
-              {/* Purpose badge with tooltip - matches student's view */}
-              <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
-
-              {/* Problem container with AbacusDock - responsive flex layout */}
+              {/* Live results panel - hidden on small/medium, shown on large */}
               <div
-                data-element="problem-with-dock"
+                data-element="results-panel-desktop"
                 className={css({
-                  display: 'flex',
-                  flexDirection: { base: 'column', sm: 'row' },
-                  alignItems: { base: 'center', sm: 'flex-start' },
-                  justifyContent: 'center',
-                  gap: { base: '12px', sm: '24px' },
-                  width: '100%',
+                  display: { base: 'none', lg: 'block' },
+                  width: '200px',
+                  flexShrink: 0,
                 })}
               >
-                {/* Problem - ref for height measurement */}
-                <div ref={problemRef} className={css({ flexShrink: 0 })}>
-                  <VerticalProblem
-                    terms={state.currentProblem.terms}
-                    userAnswer={state.studentAnswer}
-                    isFocused={state.phase === 'problem'}
-                    isCompleted={state.phase === 'feedback'}
-                    correctAnswer={state.currentProblem.answer}
-                    size="large"
-                  />
-                </div>
-
-                {/* Vision feed or AbacusDock - flex layout instead of absolute */}
-                {state.phase === 'problem' && (
-                  <div
-                    data-element="abacus-container"
-                    className={css({
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: { base: '140px', sm: '120px', md: '140px' },
-                      height: { base: '160px', sm: 'auto' },
-                      minHeight: { sm: '160px' },
-                      flexShrink: 0,
-                    })}
-                    style={{
-                      height: problemHeight ? `${problemHeight}px` : undefined,
-                    }}
-                  >
-                    {/* Show vision feed if available, otherwise show teacher's abacus dock */}
-                    {visionFrame ? (
-                      <ObserverVisionFeed
-                        frame={visionFrame}
-                        sessionId={session.sessionId}
-                        dvrBufferInfo={dvrBufferInfo}
-                        isLive={isLive}
-                        onScrub={scrubTo}
-                        onGoLive={goLive}
-                      />
-                    ) : (
-                      <AbacusDock
-                        id="teacher-observer-dock"
-                        columns={abacusColumns}
-                        interactive={true}
-                        showNumbers={false}
-                        animated={true}
-                        onValueChange={handleTeacherAbacusChange}
-                        style={{ height: '100%', width: '100%' }}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Feedback message */}
-              {state.studentAnswer && state.phase === 'feedback' && (
-                <PracticeFeedback
-                  isCorrect={state.isCorrect ?? false}
-                  correctAnswer={state.currentProblem.answer}
-                />
-              )}
-
-              {/* Mobile results summary - shown on small/medium, hidden on large */}
-              <div
-                data-element="results-panel-mobile"
-                className={css({
-                  display: { base: 'flex', lg: 'none' },
-                  width: '100%',
-                  justifyContent: 'center',
-                })}
-              >
-                <MobileResultsSummary
+                <LiveResultsPanel
                   results={results}
                   totalProblems={state.totalProblems}
                   isDark={isDark}
-                  onExpand={() => setShowFullReport(true)}
+                  onExpandFullReport={() => setShowFullReport(true)}
                 />
               </div>
+
+              {/* Problem area - center */}
+              <div
+                data-element="observer-content"
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: { base: '8px', md: '16px' },
+                  width: '100%',
+                  maxWidth: { base: '100%', md: '500px' },
+                })}
+              >
+                {/* Purpose badge with tooltip - matches student's view */}
+                <PurposeBadge purpose={state.purpose} complexity={state.complexity} />
+
+                {/* Problem container with AbacusDock - responsive flex layout */}
+                <div
+                  data-element="problem-with-dock"
+                  className={css({
+                    display: 'flex',
+                    flexDirection: { base: 'column', sm: 'row' },
+                    alignItems: { base: 'center', sm: 'flex-start' },
+                    justifyContent: 'center',
+                    gap: { base: '12px', sm: '24px' },
+                    width: '100%',
+                  })}
+                >
+                  {/* Problem - ref for height measurement */}
+                  <div ref={problemRef} className={css({ flexShrink: 0 })}>
+                    <VerticalProblem
+                      terms={state.currentProblem.terms}
+                      userAnswer={state.studentAnswer}
+                      isFocused={state.phase === 'problem'}
+                      isCompleted={state.phase === 'feedback'}
+                      correctAnswer={state.currentProblem.answer}
+                      size="large"
+                    />
+                  </div>
+
+                  {/* Vision feed or AbacusDock - flex layout instead of absolute */}
+                  {state.phase === 'problem' && (
+                    <div
+                      data-element="abacus-container"
+                      className={css({
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: { base: '140px', sm: '120px', md: '140px' },
+                        height: { base: '160px', sm: 'auto' },
+                        minHeight: { sm: '160px' },
+                        flexShrink: 0,
+                      })}
+                      style={{
+                        height: problemHeight ? `${problemHeight}px` : undefined,
+                      }}
+                    >
+                      {/* Show vision feed if available, otherwise show teacher's abacus dock */}
+                      {visionFrame ? (
+                        <ObserverVisionFeed
+                          frame={visionFrame}
+                          sessionId={session.sessionId}
+                          dvrBufferInfo={dvrBufferInfo}
+                          isLive={isLive}
+                          onScrub={scrubTo}
+                          onGoLive={goLive}
+                        />
+                      ) : (
+                        <AbacusDock
+                          id="teacher-observer-dock"
+                          columns={abacusColumns}
+                          interactive={true}
+                          showNumbers={false}
+                          animated={true}
+                          onValueChange={handleTeacherAbacusChange}
+                          style={{ height: '100%', width: '100%' }}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Feedback message */}
+                {state.studentAnswer && state.phase === 'feedback' && (
+                  <PracticeFeedback
+                    isCorrect={state.isCorrect ?? false}
+                    correctAnswer={state.currentProblem.answer}
+                  />
+                )}
+
+                {/* Mobile results summary - shown on small/medium, hidden on large */}
+                <div
+                  data-element="results-panel-mobile"
+                  className={css({
+                    display: { base: 'flex', lg: 'none' },
+                    width: '100%',
+                    justifyContent: 'center',
+                  })}
+                >
+                  <MobileResultsSummary
+                    results={results}
+                    totalProblems={state.totalProblems}
+                    isDark={isDark}
+                    onExpand={() => setShowFullReport(true)}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Full Report View - inline */}
         {state && showFullReport && (

@@ -2,13 +2,7 @@
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
-import {
-  TEAM_MOVE,
-  useArcadeSession,
-  useRoomData,
-  useUpdateGameConfig,
-  useUserId,
-} from '@/lib/arcade/game-sdk'
+import { TEAM_MOVE, useArcadeSession, useUpdateGameConfig, useUserId } from '@/lib/arcade/game-sdk'
 import type {
   AmbushContext,
   Color,
@@ -125,8 +119,7 @@ export function useRithmomachia(): RithmomachiaContextValue {
  */
 export function RithmomachiaProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useUserId()
-  const { roomData } = useRoomData()
-  const { activePlayers: activePlayerIds, players } = useGameMode()
+  const { activePlayers: activePlayerIds, players, roomData } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
   const { showToast } = useToast()
 
@@ -476,7 +469,7 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
       // During gameplay, restrict config changes
       if (state.gamePhase === 'playing') {
         // Allow host to change player assignments at any time
-        const isHost = roomData?.members.some((m) => m.userId === viewerId && m.isCreator)
+        const isHost = roomData?.members?.some((m) => m.userId === viewerId && m.isCreator)
         const isPlayerAssignment = field === 'whitePlayerId' || field === 'blackPlayerId'
 
         if (isPlayerAssignment && isHost) {

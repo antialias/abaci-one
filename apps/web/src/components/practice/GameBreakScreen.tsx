@@ -36,15 +36,14 @@ export interface GameBreakScreenProps {
   gameConfig?: PracticeBreakGameConfig
   /** Per-player enabled game names (from session plan). Only these games are available. */
   enabledGames?: string[]
-  /** Called when the game break room is ready and a game is selected, with room/game info for observers */
-  onBreakStarted?: (roomId: string, gameName: string, gameId: string) => void
-  /** Called when the internal phase changes, for observer notification */
-  onBreakPhaseChange?: (roomId: string, phase: 'selecting' | 'playing' | 'completed') => void
-  /** Called when the game break ends, for observer notification */
-  onBreakEnded?: (
-    roomId: string,
-    reason: 'gameFinished' | 'timeout' | 'skipped',
-    summary?: { gameName: string; headline?: string }
+  /** Called when break context changes — updates PracticeClient's breakContext state for observer broadcast */
+  onBreakContextChange?: (
+    context: {
+      roomId: string
+      gameName: string
+      gameId: string
+      phase: 'selecting' | 'playing' | 'completed'
+    } | null
   ) => void
 }
 
@@ -61,9 +60,7 @@ export function GameBreakScreen({
   selectedGame = null,
   gameConfig,
   enabledGames,
-  onBreakStarted,
-  onBreakPhaseChange,
-  onBreakEnded,
+  onBreakContextChange,
 }: GameBreakScreenProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -106,7 +103,12 @@ export function GameBreakScreen({
     onRoomReady: (readyRoom) => {
       if (phase === 'initializing') {
         // Notify observers that game break selection has started
-        onBreakPhaseChange?.(readyRoom.id, 'selecting')
+        onBreakContextChange?.({
+          roomId: readyRoom.id,
+          gameName: '',
+          gameId: '',
+          phase: 'selecting',
+        })
         if (selectionMode === 'auto-start') {
           // Determine which game to auto-start
           let gameName: string | null = null
@@ -184,17 +186,8 @@ export function GameBreakScreen({
         }
       }
 
-      // Notify observers that the break ended
-      if (room?.id) {
-        console.log('[GameBreakScreen] Emitting break ended:', { roomId: room.id, reason })
-        onBreakEnded?.(
-          room.id,
-          reason,
-          results ? { gameName: results.gameName, headline: results.headline } : undefined
-        )
-      } else {
-        console.warn('[GameBreakScreen] Cannot emit break ended: room?.id is falsy', { room: room?.id })
-      }
+      // Clear break context — flow state transition handles observer rendering
+      onBreakContextChange?.(null)
 
       if (!hasCleanedUpRef.current) {
         hasCleanedUpRef.current = true
@@ -203,7 +196,7 @@ export function GameBreakScreen({
 
       onComplete(reason, results)
     },
-    [cleanup, onComplete, selectedGameName, gameConfig, room?.id, onBreakEnded]
+    [cleanup, onComplete, selectedGameName, gameConfig, onBreakContextChange]
   )
 
   const handleSkip = useCallback(() => {
@@ -217,17 +210,21 @@ export function GameBreakScreen({
         setSelectedGameName(gameName)
         setPhase('playing')
         onGameSelected?.(gameName)
-        // Notify observers: game selected and now playing
+        // Update break context for observer broadcast
         if (room?.id) {
           const game = getGame(gameName)
-          onBreakStarted?.(room.id, game?.manifest.displayName ?? gameName, gameName)
-          onBreakPhaseChange?.(room.id, 'playing')
+          onBreakContextChange?.({
+            roomId: room.id,
+            gameName: game?.manifest.displayName ?? gameName,
+            gameId: gameName,
+            phase: 'playing',
+          })
         }
       } catch (err) {
         console.error('Failed to select game:', err)
       }
     },
-    [selectGame, onGameSelected, room?.id, onBreakStarted, onBreakPhaseChange]
+    [selectGame, onGameSelected, room?.id, onBreakContextChange]
   )
 
   useEffect(() => {

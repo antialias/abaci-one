@@ -10,6 +10,14 @@ import { generateUniquePlayerName } from '../utils/playerNames'
 export interface RoomData {
   id?: string
   memberPlayers?: Record<string, Array<{ id: string; name: string; emoji: string; color: string }>>
+  gameConfig?: Record<string, unknown> | null
+  members?: Array<{
+    id: string
+    userId: string
+    displayName: string
+    isOnline: boolean
+    isCreator: boolean
+  }>
 }
 
 // Mutation options type for React Query style callbacks
@@ -75,6 +83,8 @@ export interface GameModeContextType {
   getAllPlayers: () => Player[]
   resetPlayers: () => void
   isLoading: boolean
+  /** Room data passed from the provider — always available when inside a GameModeProvider */
+  roomData: RoomData | null
 }
 
 // Default no-op context value for when GameModeProvider hasn't loaded yet
@@ -93,6 +103,7 @@ const defaultContextValue: GameModeContextType = {
   getAllPlayers: () => [],
   resetPlayers: () => {},
   isLoading: true,
+  roomData: null,
 }
 
 const GameModeContext = createContext<GameModeContextType>(defaultContextValue)
@@ -369,6 +380,7 @@ export function GameModeProvider({
     getAllPlayers,
     resetPlayers,
     isLoading,
+    roomData,
   }
 
   return <GameModeContext.Provider value={contextValue}>{children}</GameModeContext.Provider>

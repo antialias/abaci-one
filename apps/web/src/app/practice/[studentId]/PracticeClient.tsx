@@ -49,6 +49,7 @@ export interface RedoState {
   returnToSlotIndex: number
 }
 import {
+  type BreakContext,
   type ReceivedAbacusControl,
   type TeacherPauseRequest,
   useSessionBroadcast,
@@ -143,6 +144,8 @@ export function PracticeClient({
   >(undefined)
   // Redo state - allows students to re-attempt any completed problem
   const [redoState, setRedoState] = useState<RedoState | null>(null)
+  // Break context for observer broadcast — updated by GameBreakScreen callbacks
+  const [breakContext, setBreakContext] = useState<BreakContext | null>(null)
 
   const gameBreakTraceEnabled = searchParams.get('debugGameBreakTrace') === '1'
 
@@ -659,10 +662,7 @@ export function PracticeClient({
     startVisionRecording,
     stopVisionRecording,
     sendProblemMarker,
-    sendGameBreakStarted,
-    sendGameBreakPhase,
-    sendGameBreakEnded,
-  } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, flowState, {
+  } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, flowState, breakContext, {
     onAbacusControl: setTeacherControl,
     onTeacherPause: setTeacherPauseRequest,
     onTeacherResume: () => setTeacherResumeRequest(true),
@@ -975,9 +975,7 @@ export function PracticeClient({
               gameConfig={gameBreakGameConfig}
               enabledGames={gameBreakSettings?.enabledGames}
               onGameSelected={handleGameBreakStarted}
-              onBreakStarted={sendGameBreakStarted}
-              onBreakPhaseChange={sendGameBreakPhase}
-              onBreakEnded={sendGameBreakEnded}
+              onBreakContextChange={setBreakContext}
             />
           ) : (
             <ActiveSession

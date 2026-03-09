@@ -5,7 +5,7 @@
  * from client components without pulling in database code.
  */
 
-import type { RoomData } from '@/hooks/useRoomData'
+import type { RoomData } from '@/contexts/GameModeContext'
 
 /**
  * Map of player IDs to user IDs

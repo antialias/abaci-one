@@ -821,7 +821,11 @@ export class KnowYourWorldValidator
     const assistanceLevel: AssistanceLevel = typedConfig?.assistanceLevel || 'helpful'
 
     // Use async map loading (works on both client and server)
-    const mapData = await getFilteredMapDataBySizesLazy(selectedMap, selectedContinent, includeSizes)
+    const mapData = await getFilteredMapDataBySizesLazy(
+      selectedMap,
+      selectedContinent,
+      includeSizes
+    )
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 

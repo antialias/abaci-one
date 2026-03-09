@@ -5,7 +5,6 @@ import {
   buildPlayerMetadata,
   useArcadeSession,
   useGameMode,
-  useRoomData,
   useUpdateGameConfig,
   useUserId,
 } from '@/lib/arcade/game-sdk'
@@ -194,8 +193,7 @@ export function useKnowYourWorld() {
 
 export function KnowYourWorldProvider({ children }: { children: React.ReactNode }) {
   const { data: viewerId } = useUserId()
-  const { roomData } = useRoomData()
-  const { activePlayers: activePlayerIds, players } = useGameMode()
+  const { activePlayers: activePlayerIds, players, roomData } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   const activePlayers = Array.from(activePlayerIds)
@@ -420,7 +418,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         userId: viewerId || '',
         data: { regionId, regionName },
       })
-
     },
     [
       viewerId,
@@ -663,50 +660,50 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
 
   return (
     <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
-    <KnowYourWorldContext.Provider
-      value={{
-        state,
-        lastError,
-        clearError,
-        exitSession,
-        startGame,
-        clickRegion,
-        nextRound,
-        endGame,
-        giveUp,
-        requestHint,
-        confirmLetter,
-        returnToSetup,
-        setMap,
-        setMode,
-        setRegionSizes,
-        setAssistanceLevel,
-        setContinent,
-        otherPlayerCursors,
-        sendCursorUpdate,
-        memberPlayers,
-        controlsState,
-        setControlsState,
-        isInTakeover,
-        setIsInTakeover,
-        celebration,
-        setCelebration,
-        promptStartTime,
-        puzzlePieceTarget,
-        setPuzzlePieceTarget,
-        sharedContainerRef,
-      }}
-    >
-      <MusicProvider
-        isGameActive={isMusicActive}
-        currentRegionId={state.currentPrompt}
-        mapType={state.selectedMap}
-        hotColdFeedback={controlsState.hotColdFeedbackType}
-        celebration={musicCelebration}
+      <KnowYourWorldContext.Provider
+        value={{
+          state,
+          lastError,
+          clearError,
+          exitSession,
+          startGame,
+          clickRegion,
+          nextRound,
+          endGame,
+          giveUp,
+          requestHint,
+          confirmLetter,
+          returnToSetup,
+          setMap,
+          setMode,
+          setRegionSizes,
+          setAssistanceLevel,
+          setContinent,
+          otherPlayerCursors,
+          sendCursorUpdate,
+          memberPlayers,
+          controlsState,
+          setControlsState,
+          isInTakeover,
+          setIsInTakeover,
+          celebration,
+          setCelebration,
+          promptStartTime,
+          puzzlePieceTarget,
+          setPuzzlePieceTarget,
+          sharedContainerRef,
+        }}
       >
-        {children}
-      </MusicProvider>
-    </KnowYourWorldContext.Provider>
+        <MusicProvider
+          isGameActive={isMusicActive}
+          currentRegionId={state.currentPrompt}
+          mapType={state.selectedMap}
+          hotColdFeedback={controlsState.hotColdFeedbackType}
+          celebration={musicCelebration}
+        >
+          {children}
+        </MusicProvider>
+      </KnowYourWorldContext.Provider>
     </ArcadeSessionStateContext.Provider>
   )
 }
