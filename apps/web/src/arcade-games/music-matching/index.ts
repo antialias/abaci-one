@@ -77,6 +77,7 @@ const manifest: GameManifest = {
     resultsDisplayDurationMs: 5000,
     scoreboardCategory: 'memory',
   },
+  coPlay: { mode: 'join-at-start' },
 }
 
 function validateMusicConfig(config: unknown): config is MusicConfig {

@@ -62,6 +62,7 @@ const manifest: GameManifest = {
       },
     },
   },
+  coPlay: { mode: 'none' },
 }
 
 const defaultConfig: ConstantExplorerConfig = {

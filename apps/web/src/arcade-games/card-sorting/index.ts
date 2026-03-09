@@ -43,6 +43,7 @@ const manifest: GameManifest = {
       hard: { cardCount: 12, showNumbers: false },
     },
   },
+  coPlay: { mode: 'none' },
 }
 
 const defaultConfig: CardSortingConfig = {

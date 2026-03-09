@@ -272,5 +272,18 @@ export type MemoryQuizMove =
         value: any
       }
     }
+  | {
+      type: 'JOIN_GAME'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        playerId: string
+        playerName: string
+        emoji: string
+        color: string
+        userId: string
+      }
+    }
 
 export type MemoryQuizSetConfigMove = Extract<MemoryQuizMove, { type: 'SET_CONFIG' }>

@@ -92,6 +92,7 @@ Choose from multiple maps (World, USA States) and difficulty levels!`,
       },
     },
   },
+  coPlay: { mode: 'drop-in' },
 }
 
 const defaultConfig: KnowYourWorldConfig = {

@@ -113,6 +113,21 @@ export const GameResultsConfigSchema = z
   .describe('Configuration for game results reporting')
 
 /**
+ * Co-play mode for observer participation during practice game breaks.
+ *
+ * - 'drop-in': Observer can join mid-game (e.g., KYW, Memory Quiz)
+ * - 'join-at-start': Observer must be included before session creation (e.g., Matching)
+ * - 'none': Single-player only, observer can only spectate
+ */
+export const CoPlayConfigSchema = z
+  .object({
+    mode: z.enum(['drop-in', 'join-at-start', 'none']),
+    /** Maximum players including observers (defaults to manifest maxPlayers) */
+    maxPlayers: z.number().int().min(1).max(10).optional(),
+  })
+  .describe('Observer co-play configuration for practice game breaks')
+
+/**
  * Schema for game manifest (game.yaml)
  */
 export const GameManifestSchema = z.object({
@@ -151,6 +166,9 @@ export const GameManifestSchema = z.object({
     'Configuration for game results reporting including display duration, ' +
       'scoreboard category, and custom component options.'
   ),
+  coPlay: CoPlayConfigSchema.optional().describe(
+    'Observer co-play configuration. Declares whether observers can join as participants during practice game breaks.'
+  ),
 })
 
 /**
@@ -158,6 +176,7 @@ export const GameManifestSchema = z.object({
  */
 export type PracticeBreakConfig = z.infer<typeof PracticeBreakConfigSchema>
 export type GameResultsConfig = z.infer<typeof GameResultsConfigSchema>
+export type CoPlayConfig = z.infer<typeof CoPlayConfigSchema>
 export type GameManifest = z.infer<typeof GameManifestSchema>
 
 /**

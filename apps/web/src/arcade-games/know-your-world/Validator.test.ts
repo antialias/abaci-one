@@ -80,6 +80,121 @@ describe('KnowYourWorldValidator', () => {
     data: {},
   })
 
+  describe('validateJoinGame', () => {
+    const createJoinGameMove = (
+      overrides: Partial<KnowYourWorldMove & { type: 'JOIN_GAME' }> = {}
+    ): KnowYourWorldMove => ({
+      type: 'JOIN_GAME',
+      playerId: 'new-player',
+      userId: 'new-user',
+      timestamp: Date.now(),
+      data: {
+        playerId: 'new-player',
+        playerName: 'New Player',
+        emoji: '🎮',
+        color: '#ff0000',
+        userId: 'new-user',
+      },
+      ...overrides,
+    })
+
+    it('succeeds during playing phase and adds player to all collections', async () => {
+      const state = createBaseState()
+      const move = createJoinGameMove()
+
+      const result = await validator.validateMove(state, move)
+
+      expect(result.valid).toBe(true)
+      const newState = asState(result.newState)!
+      expect(newState.activePlayers).toContain('new-player')
+      expect(newState.scores['new-player']).toBe(0)
+      expect(newState.attempts['new-player']).toBe(0)
+      expect(newState.playerMetadata['new-player']).toEqual({
+        id: 'new-player',
+        name: 'New Player',
+        emoji: '🎮',
+        color: '#ff0000',
+        userId: 'new-user',
+      })
+      expect(newState.activeUserIds).toContain('new-user')
+    })
+
+    it('preserves existing players when a new player joins', async () => {
+      const state = createBaseState()
+      const move = createJoinGameMove()
+
+      const result = await validator.validateMove(state, move)
+
+      const newState = asState(result.newState)!
+      expect(newState.activePlayers).toContain('player-1')
+      expect(newState.scores['player-1']).toBe(0)
+      expect(newState.playerMetadata['player-1']).toEqual({ name: 'Player 1' })
+    })
+
+    it('fails during setup phase', async () => {
+      const state = createBaseState({ gamePhase: 'setup' })
+      const move = createJoinGameMove()
+
+      const result = await validator.validateMove(state, move)
+
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Can only join during playing phase')
+    })
+
+    it('fails during results phase', async () => {
+      const state = createBaseState({ gamePhase: 'results' })
+      const move = createJoinGameMove()
+
+      const result = await validator.validateMove(state, move)
+
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Can only join during playing phase')
+    })
+
+    it('fails with duplicate player', async () => {
+      const state = createBaseState()
+      const move = createJoinGameMove({
+        data: {
+          playerId: 'player-1',
+          playerName: 'Player 1 Again',
+          emoji: '🎮',
+          color: '#ff0000',
+          userId: 'user-1',
+        },
+      })
+
+      const result = await validator.validateMove(state, move)
+
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Player is already in the game')
+    })
+
+    it('fails at max capacity (8 players)', async () => {
+      const players = Array.from({ length: 8 }, (_, i) => `player-${i + 1}`)
+      const scores: Record<string, number> = {}
+      const attempts: Record<string, number> = {}
+      const playerMetadata: Record<string, any> = {}
+      for (const p of players) {
+        scores[p] = 0
+        attempts[p] = 0
+        playerMetadata[p] = { name: p }
+      }
+
+      const state = createBaseState({
+        activePlayers: players,
+        scores,
+        attempts,
+        playerMetadata,
+      })
+      const move = createJoinGameMove()
+
+      const result = await validator.validateMove(state, move)
+
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Game is at maximum capacity')
+    })
+  })
+
   describe('validateGiveUp', () => {
     describe('validation checks', () => {
       it('rejects give up when not in playing phase', async () => {

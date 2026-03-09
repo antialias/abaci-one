@@ -75,6 +75,14 @@ export interface PracticeBreakOptions {
   playerName?: string
   /** User/session ID who owns this player (for activeUserIds tracking) */
   userId?: string
+  /** Additional players (observers joining at game start) */
+  additionalPlayers?: Array<{
+    playerId: string
+    playerName: string
+    emoji: string
+    color: string
+    userId: string
+  }>
 }
 
 /**

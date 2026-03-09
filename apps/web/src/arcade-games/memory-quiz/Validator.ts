@@ -82,6 +82,9 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
         return this.validateSetConfig(state, configMove.data.field, configMove.data.value)
       }
 
+      case 'JOIN_GAME':
+        return this.validateJoinGame(state, move.data)
+
       default:
         return {
           valid: false,
@@ -434,6 +437,60 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
     }
   }
 
+  private validateJoinGame(
+    state: MemoryQuizState,
+    data: { playerId: string; playerName: string; emoji: string; color: string; userId: string }
+  ): ValidationResult {
+    // Can only join during display or input phase (not during results or setup)
+    if (state.gamePhase !== 'display' && state.gamePhase !== 'input') {
+      return {
+        valid: false,
+        error: `Cannot join game during ${state.gamePhase} phase`,
+      }
+    }
+
+    // Player must not already be in activePlayers
+    if (state.activePlayers.includes(data.playerId)) {
+      return {
+        valid: false,
+        error: 'Player is already in the game',
+      }
+    }
+
+    // Enforce max players (8, matching the manifest)
+    const MAX_PLAYERS = 8
+    if (state.activePlayers.length >= MAX_PLAYERS) {
+      return {
+        valid: false,
+        error: 'Game is full',
+      }
+    }
+
+    const newState: MemoryQuizState = {
+      ...state,
+      activePlayers: [...state.activePlayers, data.playerId],
+      playerMetadata: {
+        ...state.playerMetadata,
+        [data.playerId]: {
+          id: data.playerId,
+          name: data.playerName,
+          emoji: data.emoji,
+          userId: data.userId,
+          color: data.color,
+        },
+      },
+      playerScores: {
+        ...state.playerScores,
+        [data.userId]: state.playerScores[data.userId] || { correct: 0, incorrect: 0 },
+      },
+    }
+
+    return {
+      valid: true,
+      newState,
+    }
+  }
+
   isGameComplete(state: MemoryQuizState): boolean {
     return state.gamePhase === 'results'
   }
@@ -541,9 +598,9 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       element: null,
     }))
 
-    // Set up single player
+    // Set up primary player
     const playerId = options.playerId
-    const playerMetadata = {
+    const playerMetadata: Record<string, any> = {
       [playerId]: {
         id: playerId,
         name: options.playerName || 'Player',
@@ -551,6 +608,27 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
         userId: playerId,
         color: '#8b5cf6',
       },
+    }
+
+    // Build player arrays starting with the primary player
+    const activePlayers: string[] = [playerId]
+    const playerScores: Record<string, { correct: number; incorrect: number }> = {
+      [playerId]: { correct: 0, incorrect: 0 },
+    }
+
+    // Include additional players (observers joining at game start)
+    if (options.additionalPlayers) {
+      for (const ap of options.additionalPlayers) {
+        activePlayers.push(ap.playerId)
+        playerScores[ap.playerId] = { correct: 0, incorrect: 0 }
+        playerMetadata[ap.playerId] = {
+          id: ap.playerId,
+          name: ap.playerName,
+          emoji: ap.emoji,
+          userId: ap.userId,
+          color: ap.color,
+        }
+      }
     }
 
     return {
@@ -565,10 +643,10 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       guessesRemaining: numbers.length + Math.floor(numbers.length / 2),
       currentInput: '',
       incorrectGuesses: 0,
-      // Single player setup
-      activePlayers: [playerId],
+      // Player setup
+      activePlayers,
       playerMetadata,
-      playerScores: { [playerId]: { correct: 0, incorrect: 0 } },
+      playerScores,
       playMode: 'cooperative',
       numberFoundBy: {},
       // Start in display phase - skip setup!

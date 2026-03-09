@@ -54,6 +54,7 @@ const manifest: GameManifest = {
       },
     },
   },
+  coPlay: { mode: 'drop-in' },
 }
 
 const defaultConfig: MemoryQuizConfig = {

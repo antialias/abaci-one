@@ -57,6 +57,7 @@ const manifest: GameManifest = {
     resultsDisplayDurationMs: 5000,
     scoreboardCategory: 'speed',
   },
+  coPlay: { mode: 'none' },
 }
 
 const defaultConfig: TypeRacerJrConfig = {

@@ -614,13 +614,34 @@ export function createMatchingPairsValidator<
 
       const gameCards = variant.generateCards(fullConfig)
       const playerId = options.playerId
-      const playerMetadata = {
+      const playerMetadata: Record<string, any> = {
         [playerId]: {
           id: playerId,
           name: options.playerName || 'Player',
           emoji: '🎮',
           userId: playerId,
         },
+      }
+
+      // Build player arrays starting with the primary player
+      const activePlayers: string[] = [playerId]
+      const scores: Record<string, number> = { [playerId]: 0 }
+      const consecutiveMatches: Record<string, number> = { [playerId]: 0 }
+
+      // Include additional players (observers joining at game start)
+      if (options.additionalPlayers) {
+        for (const ap of options.additionalPlayers) {
+          activePlayers.push(ap.playerId)
+          scores[ap.playerId] = 0
+          consecutiveMatches[ap.playerId] = 0
+          playerMetadata[ap.playerId] = {
+            id: ap.playerId,
+            name: ap.playerName,
+            emoji: ap.emoji,
+            userId: ap.userId,
+            color: ap.color,
+          }
+        }
       }
 
       const state = buildInitialState(fullConfig)
@@ -630,10 +651,10 @@ export function createMatchingPairsValidator<
         gameCards,
         gamePhase: 'playing',
         currentPlayer: playerId,
-        scores: { [playerId]: 0 },
-        activePlayers: [playerId],
+        scores,
+        activePlayers,
         playerMetadata,
-        consecutiveMatches: { [playerId]: 0 },
+        consecutiveMatches,
         gameStartTime: Date.now(),
         originalConfig: variant.getOriginalConfig(fullConfig),
       }

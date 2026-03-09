@@ -123,6 +123,8 @@ export class KnowYourWorldValidator
         return this.validateRequestHint(state, move.playerId, move.timestamp)
       case 'CONFIRM_LETTER':
         return await this.validateConfirmLetter(state, move.playerId, move.userId, move.data)
+      case 'JOIN_GAME':
+        return this.validateJoinGame(state, move.data)
       default:
         return { valid: false, error: 'Unknown move type' }
     }
@@ -753,6 +755,42 @@ export class KnowYourWorldValidator
     return { valid: true, newState }
   }
 
+  private validateJoinGame(
+    state: KnowYourWorldState,
+    data: { playerId: string; playerName: string; emoji: string; color: string; userId: string }
+  ): ValidationResult {
+    if (state.gamePhase !== 'playing') {
+      return { valid: false, error: 'Can only join during playing phase' }
+    }
+
+    const { playerId, playerName, emoji, color, userId } = data
+
+    if (state.activePlayers.includes(playerId)) {
+      return { valid: false, error: 'Player is already in the game' }
+    }
+
+    const maxPlayers = 8
+    if (state.activePlayers.length >= maxPlayers) {
+      return { valid: false, error: 'Game is at maximum capacity' }
+    }
+
+    const activeUserIds = this.addUserIdIfNew(state.activeUserIds, userId)
+
+    const newState: KnowYourWorldState = {
+      ...state,
+      activePlayers: [...state.activePlayers, playerId],
+      scores: { ...state.scores, [playerId]: 0 },
+      attempts: { ...state.attempts, [playerId]: 0 },
+      playerMetadata: {
+        ...state.playerMetadata,
+        [playerId]: { id: playerId, name: playerName, emoji, color, userId },
+      },
+      activeUserIds,
+    }
+
+    return { valid: true, newState }
+  }
+
   isGameComplete(state: KnowYourWorldState): boolean {
     return state.gamePhase === 'results'
   }
@@ -835,13 +873,38 @@ export class KnowYourWorldValidator
     const limitedRegions = shuffledRegions.slice(0, maxRegions)
 
     const playerId = options.playerId
-    const playerMetadata = {
+    const playerMetadata: Record<string, any> = {
       [playerId]: {
         id: playerId,
         name: options.playerName || 'Player',
         emoji: '🌍',
         userId: playerId,
       },
+    }
+
+    // Build player arrays starting with the primary player
+    const activePlayers: string[] = [playerId]
+    const scores: Record<string, number> = { [playerId]: 0 }
+    const attempts: Record<string, number> = { [playerId]: 0 }
+    const activeUserIds: string[] = options.userId ? [options.userId] : []
+
+    // Include additional players (observers joining at game start)
+    if (options.additionalPlayers) {
+      for (const ap of options.additionalPlayers) {
+        activePlayers.push(ap.playerId)
+        scores[ap.playerId] = 0
+        attempts[ap.playerId] = 0
+        if (ap.userId && !activeUserIds.includes(ap.userId)) {
+          activeUserIds.push(ap.userId)
+        }
+        playerMetadata[ap.playerId] = {
+          id: ap.playerId,
+          name: ap.playerName,
+          emoji: ap.emoji,
+          userId: ap.userId,
+          color: ap.color,
+        }
+      }
     }
 
     return {
@@ -856,12 +919,12 @@ export class KnowYourWorldValidator
       regionsFound: [],
       regionsGivenUp: [],
       currentPlayer: playerId,
-      scores: { [playerId]: 0 },
-      attempts: { [playerId]: 0 },
+      scores,
+      attempts,
       guessHistory: [],
       startTime: Date.now(),
-      activePlayers: [playerId],
-      activeUserIds: options.userId ? [options.userId] : [],
+      activePlayers,
+      activeUserIds,
       playerMetadata,
       giveUpReveal: null,
       giveUpVotes: [],

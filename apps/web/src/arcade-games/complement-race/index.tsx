@@ -24,6 +24,7 @@ const manifest: GameManifest = {
   difficulty: 'Intermediate',
   available: true,
   practiceBreakReady: false,
+  coPlay: { mode: 'none' },
 }
 
 // Default configuration
