@@ -6,8 +6,9 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import type { ObservedGameBreakState } from '@/hooks/useSessionObserver'
 
-// Mock useSessionObserver to return controlled breakState
+// Mock useSessionObserver to return controlled breakState and flowState
 let mockBreakState: ObservedGameBreakState | null = null
+let mockFlowState: string | null = null
 let mockIsObserving = true
 let mockIsConnected = true
 
@@ -16,6 +17,7 @@ vi.mock('@/hooks/useSessionObserver', () => ({
     state: null,
     results: [],
     transitionState: null,
+    flowState: mockFlowState,
     breakState: mockBreakState,
     visionFrame: null,
     isConnected: mockIsConnected,
@@ -122,6 +124,15 @@ vi.mock('@radix-ui/react-dialog', () => ({
   )),
 }))
 
+// Mock Z_INDEX constants
+vi.mock('@/constants/zIndex', () => ({
+  Z_INDEX: {
+    MODAL_OVERLAY: 1000,
+    MODAL_CONTENT: 1001,
+    TOAST: 9999,
+  },
+}))
+
 // Mock child components that are heavy to render
 vi.mock('../AbacusDock', () => ({
   AbacusDock: () => null,
@@ -199,6 +210,7 @@ const defaultStudent = {
 describe('SessionObserverView game break overlay', () => {
   it('does not show game break overlay when breakState is null', () => {
     mockBreakState = null
+    mockFlowState = 'practicing'
     mockIsObserving = true
     mockIsConnected = true
 
@@ -214,6 +226,7 @@ describe('SessionObserverView game break overlay', () => {
   })
 
   it('shows game break spectator view when breakState is playing (authenticated observer)', () => {
+    mockFlowState = 'break_active'
     mockBreakState = {
       roomId: 'room-abc',
       gameName: 'Memory Match',
@@ -235,6 +248,7 @@ describe('SessionObserverView game break overlay', () => {
   })
 
   it('shows game break spectator view when breakState is playing (guest/share-token observer)', () => {
+    mockFlowState = 'break_active'
     mockBreakState = {
       roomId: 'room-abc',
       gameName: 'Memory Match',
@@ -257,6 +271,7 @@ describe('SessionObserverView game break overlay', () => {
   })
 
   it('shows "choosing a game" text during selecting phase', () => {
+    mockFlowState = 'break_pending'
     mockBreakState = {
       roomId: 'room-abc',
       gameName: 'Memory Match',
@@ -277,6 +292,7 @@ describe('SessionObserverView game break overlay', () => {
   })
 
   it('shows spectator view (not overlay text) during playing phase for guest observer', () => {
+    mockFlowState = 'break_active'
     mockBreakState = {
       roomId: 'room-abc',
       gameName: 'Memory Match',
@@ -301,13 +317,9 @@ describe('SessionObserverView game break overlay', () => {
     expect(overlay).not.toBeInTheDocument()
   })
 
-  it('shows "finished playing" during completed phase', () => {
-    mockBreakState = {
-      roomId: 'room-abc',
-      gameName: 'Memory Match',
-      gameId: 'matching',
-      phase: 'completed',
-    }
+  it('shows "reviewing results" during break_results flow state', () => {
+    mockFlowState = 'break_results'
+    mockBreakState = null // breakState cleared when transitioning to results
 
     render(
       <SessionObserverView
@@ -317,11 +329,11 @@ describe('SessionObserverView game break overlay', () => {
       />
     )
 
-    expect(screen.getByText('Alice finished playing')).toBeInTheDocument()
-    expect(screen.getByText('Completed')).toBeInTheDocument()
+    expect(screen.getByText('Alice is reviewing game results...')).toBeInTheDocument()
   })
 
   it('shows "Game Break" heading during selecting phase', () => {
+    mockFlowState = 'break_pending'
     mockBreakState = {
       roomId: 'room-abc',
       gameName: '',
@@ -341,6 +353,7 @@ describe('SessionObserverView game break overlay', () => {
   })
 
   it('hides "waiting for activity" message during game break', () => {
+    mockFlowState = 'break_pending'
     mockBreakState = {
       roomId: 'room-abc',
       gameName: '',
@@ -362,6 +375,7 @@ describe('SessionObserverView game break overlay', () => {
 
   it('shows "waiting for activity" when not in a break and no state', () => {
     mockBreakState = null
+    mockFlowState = null
     mockIsObserving = true
 
     render(
