@@ -39,6 +39,7 @@ import {
 } from '@/lib/utils/attempt-tracking'
 import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
 import { GameBreakSpectatorView } from './GameBreakSpectatorView'
+import { ObserverOnboardingCard } from './ObserverOnboardingCard'
 import { SessionShareButton } from './SessionShareButton'
 
 interface SessionObserverModalProps {
@@ -1249,6 +1250,13 @@ export function SessionObserverView({
             isDark={isDark}
             onBack={() => setShowFullReport(false)}
           />
+        )}
+
+        {/* Observer co-play onboarding — shown during practice, not during breaks or view-only */}
+        {!isViewOnly && !isInGameBreak && !isInBreakResults && !isInTransition && showPractice && (
+          <div className={css({ width: '100%', maxWidth: '500px', mt: 'auto', pt: '0.5rem' })}>
+            <ObserverOnboardingCard isDark={isDark} studentName={student.name} />
+          </div>
         )}
       </div>
 
