@@ -6,6 +6,7 @@ import { css } from '@styled/css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useMeasure from 'react-use-measure'
 import simplify from 'simplify-js'
+import { useIsSpectator } from '@/contexts/SpectatorModeContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { useUserId } from '@/lib/arcade/game-sdk'
@@ -69,6 +70,7 @@ export function GameInfoPanel({
   progress,
   onHintsUnlock,
 }: GameInfoPanelProps) {
+  const isSpectator = useIsSpectator()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const { isVisualDebugEnabled } = useVisualDebugSafe()
@@ -628,6 +630,7 @@ export function GameInfoPanel({
   // Listen for keypresses to confirm letters (only when name confirmation is required)
   // Dispatches to shared state so all multiplayer sessions see the same progress
   useEffect(() => {
+    if (isSpectator) return
     if (requiresNameConfirmation === 0 || nameConfirmed || !currentRegionName) {
       return
     }
@@ -690,6 +693,7 @@ export function GameInfoPanel({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
+    isSpectator,
     requiresNameConfirmation,
     nameConfirmed,
     currentRegionName,
@@ -727,6 +731,8 @@ export function GameInfoPanel({
 
   // Keyboard shortcut for give up (works even in pointer lock mode)
   useEffect(() => {
+    if (isSpectator) return
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // 'G' key for Give Up
       if (e.key === 'g' || e.key === 'G') {
@@ -744,7 +750,7 @@ export function GameInfoPanel({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleGiveUp, requiresNameConfirmation, nameConfirmed])
+  }, [isSpectator, handleGiveUp, requiresNameConfirmation, nameConfirmed])
 
   // Auto-dismiss errors after 3 seconds
   useEffect(() => {

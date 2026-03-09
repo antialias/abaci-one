@@ -11,6 +11,7 @@ import {
 } from '@/lib/arcade/game-sdk'
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import type { KnowYourWorldState, AssistanceLevel } from './types'
 import type { RegionSize } from './maps'
 import type { FeedbackType } from './utils/hotColdPhrases'
@@ -286,36 +287,13 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     clearError,
     otherPlayerCursors,
     sendCursorUpdate: sessionSendCursorUpdate,
+    hasReceivedServerState,
   } = useArcadeSession<KnowYourWorldState>({
     userId: viewerId || '',
     roomId: roomData?.id,
     initialState,
     applyMove: (state) => state, // Server handles all state updates
   })
-
-  // === DEBUG: Track rawState changes from server ===
-  const prevRawStateRef = useRef<KnowYourWorldState | null>(null)
-  useEffect(() => {
-    const prev = prevRawStateRef.current
-    console.log('[KYW-DEBUG] rawState updated:', {
-      gamePhase: rawState.gamePhase,
-      currentPrompt: rawState.currentPrompt,
-      regionsToFindCount: rawState.regionsToFind?.length,
-      regionsFoundCount: rawState.regionsFound?.length,
-      currentPlayer: rawState.currentPlayer,
-      activePlayers: rawState.activePlayers,
-      promptChanged: prev?.currentPrompt !== rawState.currentPrompt,
-      phaseChanged: prev?.gamePhase !== rawState.gamePhase,
-    })
-    prevRawStateRef.current = rawState
-  }, [rawState])
-
-  // === DEBUG: Track lastError ===
-  useEffect(() => {
-    if (lastError) {
-      console.error('[KYW-DEBUG] lastError from server:', lastError)
-    }
-  }, [lastError])
 
   // Detect and log incomplete state from server (backward compatibility with old sessions)
   // This helps us track when the database contains sessions created before certain fields were added
@@ -429,19 +407,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
   // Action: Click Region
   const clickRegion = useCallback(
     (regionId: string, regionName: string) => {
-      console.log('[KYW-DEBUG] clickRegion called:', {
-        regionId,
-        regionName,
-        currentPlayer: state.currentPlayer,
-        viewerId,
-        currentPrompt: state.currentPrompt,
-        isCorrect: regionId === state.currentPrompt,
-        regionsToFindCount: state.regionsToFind?.length,
-        gamePhase: state.gamePhase,
-      })
-
       if (!state.currentPlayer) {
-        console.error('[KYW-DEBUG] ERROR: currentPlayer is empty! Cannot send CLICK_REGION.')
         return
       }
 
@@ -455,7 +421,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         data: { regionId, regionName },
       })
 
-      console.log('[KYW-DEBUG] CLICK_REGION move sent to server')
     },
     [
       viewerId,
@@ -697,6 +662,7 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     : null
 
   return (
+    <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
     <KnowYourWorldContext.Provider
       value={{
         state,
@@ -741,5 +707,6 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
         {children}
       </MusicProvider>
     </KnowYourWorldContext.Provider>
+    </ArcadeSessionStateContext.Provider>
   )
 }

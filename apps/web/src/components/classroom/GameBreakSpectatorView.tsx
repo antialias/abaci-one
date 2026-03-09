@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { getGame } from '@/lib/arcade/game-registry'
 import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import { GameModeProviderWithHooks } from '@/contexts/GameModeProviderWithHooks'
+import { useArcadeSessionState } from '@/contexts/ArcadeSessionStateContext'
+import { SpectatorModeProvider } from '@/contexts/SpectatorModeContext'
 import { useJoinRoom, useLeaveRoom } from '@/hooks/useRoomData'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
@@ -160,15 +162,66 @@ export function GameBreakSpectatorView({
       >
         Spectating
       </div>
-      <GameLayoutProvider mode="container">
-        <GameModeProviderWithHooks>
-          <Provider>
-            <GameComponent />
-          </Provider>
-        </GameModeProviderWithHooks>
-      </GameLayoutProvider>
+      {/* SpectatorModeProvider tells game components to skip all interaction setup */}
+      <SpectatorModeProvider>
+        <GameLayoutProvider mode="container">
+          <GameModeProviderWithHooks>
+            <Provider>
+              <SpectatorLoadingGate studentName={studentName} isDark={isDark}>
+                <GameComponent />
+              </SpectatorLoadingGate>
+            </Provider>
+          </GameModeProviderWithHooks>
+        </GameLayoutProvider>
+      </SpectatorModeProvider>
     </div>
   )
+}
+
+/**
+ * Loading gate that waits for the game Provider to receive authoritative server state
+ * before rendering the GameComponent. This prevents showing the game's setup/config
+ * screen while the arcade session is connecting and loading state.
+ */
+function SpectatorLoadingGate({
+  children,
+  studentName,
+  isDark,
+}: {
+  children: ReactNode
+  studentName: string
+  isDark: boolean
+}) {
+  const { hasReceivedServerState } = useArcadeSessionState()
+
+  if (!hasReceivedServerState) {
+    return (
+      <div
+        data-element="spectator-loading-gate"
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.75rem',
+          padding: '2rem',
+          minHeight: '200px',
+        })}
+      >
+        <span className={css({ fontSize: '2rem' })}>🎮</span>
+        <p
+          className={css({
+            fontSize: '0.875rem',
+            color: isDark ? 'gray.400' : 'gray.500',
+          })}
+        >
+          Loading {studentName}&apos;s game...
+        </p>
+      </div>
+    )
+  }
+
+  return <>{children}</>
 }
 
 /**

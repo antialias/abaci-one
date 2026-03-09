@@ -11,6 +11,7 @@ import {
   buildPlayerOwnershipFromRoomData,
 } from '@/lib/arcade/player-ownership.client'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import { TEAM_MOVE } from '@/lib/arcade/validation/types'
 import type { QuizCard, MemoryQuizState, MemoryQuizMove } from './types'
 
@@ -299,7 +300,7 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session integration
-  const { state, sendMove, exitSession } = useArcadeSession<MemoryQuizState>({
+  const { state, sendMove, exitSession, hasReceivedServerState } = useArcadeSession<MemoryQuizState>({
     userId: viewerId || '',
     roomId: roomData?.id || undefined,
     initialState: mergedInitialState,
@@ -592,5 +593,9 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
     dispatch,
   }
 
-  return <MemoryQuizContext.Provider value={contextValue}>{children}</MemoryQuizContext.Provider>
+  return (
+    <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
+      <MemoryQuizContext.Provider value={contextValue}>{children}</MemoryQuizContext.Provider>
+    </ArcadeSessionStateContext.Provider>
+  )
 }

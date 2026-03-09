@@ -73,6 +73,8 @@ export interface PracticeBreakOptions {
   playerId: string
   /** Player name for display */
   playerName?: string
+  /** User/session ID who owns this player (for activeUserIds tracking) */
+  userId?: string
 }
 
 /**
@@ -123,5 +125,5 @@ export interface GameValidator<TState = unknown, TMove extends GameMove = GameMo
    * @param options Practice break specific options
    * @returns Game state in 'playing' phase, ready for immediate gameplay
    */
-  getInitialStateForPracticeBreak?(config: unknown, options: PracticeBreakOptions): TState
+  getInitialStateForPracticeBreak?(config: unknown, options: PracticeBreakOptions): TState | Promise<TState>
 }

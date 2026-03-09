@@ -3,6 +3,7 @@
 import { animated, to, useSpring } from '@react-spring/web'
 import { css } from '@styled/css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useIsSpectator } from '@/contexts/SpectatorModeContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { ContinentId } from '../continents'
@@ -207,6 +208,8 @@ export function MapRenderer({
   difficulty,
   mapName,
 }: MapRendererProps) {
+  const isSpectator = useIsSpectator()
+
   // Get context for sharing state with GameInfoPanel
   const {
     setControlsState,
@@ -811,6 +814,8 @@ export function MapRenderer({
 
   // Request pointer lock on first click
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isSpectator) return
+
     console.log('[handleContainerClick] Called', {
       suppressNextClick: suppressNextClickRef.current,
       pointerLocked,
@@ -1268,6 +1273,8 @@ export function MapRenderer({
 
   // Keyboard shortcuts - Shift for magnifier, H for hint
   useEffect(() => {
+    if (isSpectator) return
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger shortcuts if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -1297,7 +1304,7 @@ export function MapRenderer({
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [hasHint, interactionDispatch])
+  }, [hasHint, interactionDispatch, isSpectator])
 
   // Use the labels feature module for D3 force-based label positioning
   const { labelPositions, smallRegionLabelPositions } = useD3ForceLabels({
@@ -1415,6 +1422,7 @@ export function MapRenderer({
 
   // Handle mouse movement to track cursor and show magnifier when needed
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isSpectator) return
     if (!svgRef.current || !containerRef.current) return
 
     // Don't process mouse movement during pointer lock release animation

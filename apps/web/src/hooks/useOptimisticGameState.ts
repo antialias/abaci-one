@@ -47,6 +47,12 @@ export interface UseOptimisticGameStateReturn<TState> {
   hasPendingMoves: boolean
 
   /**
+   * Whether authoritative server state has been received at least once.
+   * False until the first syncWithServer() call (initial session-state from server).
+   */
+  hasReceivedServerState: boolean
+
+  /**
    * Last error from server (move rejection)
    */
   lastError: string | null
@@ -103,6 +109,9 @@ export function useOptimisticGameState<TState>(
 
   // Pending moves that haven't been confirmed by server yet
   const [pendingMoves, setPendingMoves] = useState<PendingMove<TState>[]>([])
+
+  // Whether we've received authoritative state from the server at least once
+  const [hasReceivedServerState, setHasReceivedServerState] = useState(false)
 
   // Last error from move rejection
   const [lastError, setLastError] = useState<string | null>(null)
@@ -204,12 +213,17 @@ export function useOptimisticGameState<TState>(
   }, [])
 
   const syncWithServer = useCallback((newServerState: TState, newServerVersion: number) => {
+    console.log('[OptimisticState] syncWithServer called:', {
+      newServerVersion,
+      gamePhase: (newServerState as any)?.gamePhase,
+    })
     setServerState(newServerState)
     setServerVersion(newServerVersion)
     // Update dedup tracker so subsequent move-accepted events are correctly compared
     lastProcessedVersionRef.current = newServerVersion
     // Clear pending moves on sync (new authoritative state from server)
     setPendingMoves([])
+    setHasReceivedServerState(true)
   }, [])
 
   const clearError = useCallback(() => {
@@ -221,12 +235,14 @@ export function useOptimisticGameState<TState>(
     setServerVersion(1)
     setPendingMoves([])
     setLastError(null)
+    setHasReceivedServerState(false)
   }, [initialState])
 
   return {
     state: currentState,
     version: serverVersion,
     hasPendingMoves: pendingMoves.length > 0,
+    hasReceivedServerState,
     lastError,
     applyOptimisticMove,
     handleMoveAccepted,

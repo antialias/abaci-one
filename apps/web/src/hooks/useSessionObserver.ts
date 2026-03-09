@@ -520,13 +520,17 @@ export function useSessionObserver(
         if (prev && prev.roomId === data.roomId) {
           return { ...prev, phase: data.phase }
         }
-        // Create breakState if it doesn't exist yet (e.g. selecting phase before game-break-started)
-        return {
-          roomId: data.roomId,
-          gameName: '',
-          gameId: '',
-          phase: data.phase,
+        if (!prev) {
+          // Create breakState if it doesn't exist yet (e.g. selecting phase before game-break-started)
+          return {
+            roomId: data.roomId,
+            gameName: '',
+            gameId: '',
+            phase: data.phase,
+          }
         }
+        // Different room — ignore
+        return prev
       })
     })
 

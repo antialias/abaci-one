@@ -25,6 +25,7 @@ import {
   useUserId,
 } from '@/lib/arcade/game-sdk'
 import { DEFAULT_COMPLEMENT_RACE_CONFIG } from '@/lib/arcade/game-configs'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import type { DifficultyTracker } from '@/app/arcade/complement-race/lib/gameTypes'
 import type { ComplementRaceConfig, ComplementRaceMove, ComplementRaceState } from './types'
 
@@ -277,6 +278,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     exitSession,
     lastError,
     clearError,
+    hasReceivedServerState,
   } = useArcadeSession<ComplementRaceState>({
     userId: viewerId || '',
     roomId: roomData?.id,
@@ -1057,6 +1059,8 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ComplementRaceContext.Provider value={contextValue}>{children}</ComplementRaceContext.Provider>
+    <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
+      <ComplementRaceContext.Provider value={contextValue}>{children}</ComplementRaceContext.Provider>
+    </ArcadeSessionStateContext.Provider>
   )
 }

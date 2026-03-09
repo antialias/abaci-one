@@ -809,10 +809,10 @@ export class KnowYourWorldValidator
     }
   }
 
-  getInitialStateForPracticeBreak(
+  async getInitialStateForPracticeBreak(
     config: unknown,
     options: PracticeBreakOptions
-  ): KnowYourWorldState {
+  ): Promise<KnowYourWorldState> {
     const typedConfig = config as Partial<KnowYourWorldConfig>
 
     const selectedMap = typedConfig?.selectedMap || 'world'
@@ -820,8 +820,8 @@ export class KnowYourWorldValidator
     const includeSizes: RegionSize[] = typedConfig?.includeSizes || ['huge', 'large', 'medium']
     const assistanceLevel: AssistanceLevel = typedConfig?.assistanceLevel || 'helpful'
 
-    // Shuffle regions using sync map loading (requires maps to be pre-loaded client-side)
-    const mapData = getFilteredMapDataBySizesSyncLazy(selectedMap, selectedContinent, includeSizes)
+    // Use async map loading (works on both client and server)
+    const mapData = await getFilteredMapDataBySizesLazy(selectedMap, selectedContinent, includeSizes)
     const regionIds = mapData.regions.map((r) => r.id)
     const shuffledRegions = this.shuffleArray([...regionIds])
 
@@ -857,7 +857,7 @@ export class KnowYourWorldValidator
       guessHistory: [],
       startTime: Date.now(),
       activePlayers: [playerId],
-      activeUserIds: [playerId],
+      activeUserIds: options.userId ? [options.userId] : [],
       playerMetadata,
       giveUpReveal: null,
       giveUpVotes: [],

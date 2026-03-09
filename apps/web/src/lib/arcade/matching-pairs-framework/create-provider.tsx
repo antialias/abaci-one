@@ -19,6 +19,7 @@ import {
 import type { GameMove } from '../validation/types'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import type {
   BaseMatchingCard,
   BaseMatchingConfig,
@@ -299,6 +300,7 @@ export function createMatchingPairsProvider<
       sendMove,
       connected: _connected,
       exitSession,
+      hasReceivedServerState,
     } = useArcadeSession<State>({
       userId: viewerId || '',
       roomId: roomData?.id,
@@ -608,7 +610,11 @@ export function createMatchingPairsProvider<
       activePlayers,
     }
 
-    return <Context.Provider value={contextValue}>{children}</Context.Provider>
+    return (
+      <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
+        <Context.Provider value={contextValue}>{children}</Context.Provider>
+      </ArcadeSessionStateContext.Provider>
+    )
   }
 
   function useMatchingPairs(): MatchingPairsContextValue<TCard, TConfig> {

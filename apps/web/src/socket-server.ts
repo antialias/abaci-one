@@ -424,11 +424,12 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               roomPlayerIds.length > 0
             ) {
               // Server-side auto-start: create session directly in playing/display phase
-              initialState = validator.getInitialStateForPracticeBreak(gameConfig, {
+              initialState = (await validator.getInitialStateForPracticeBreak(gameConfig, {
                 maxDurationMinutes: (typedConfig.maxDurationMinutes as number) ?? 5,
                 playerId: roomPlayerIds[0],
                 playerName: (typedConfig.playerName as string) ?? 'Player',
-              }) as Record<string, unknown>
+                userId,
+              })) as Record<string, unknown>
               usedPracticeBreakInit = true
             } else {
               initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
@@ -648,6 +649,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
         // Apply game move - use roomId for room-based games to access shared session
         const result = await applyGameMove(data.userId, data.move, data.roomId)
+
+
 
         if (result.success && result.session) {
           // Extract game-specific state from namespaced storage

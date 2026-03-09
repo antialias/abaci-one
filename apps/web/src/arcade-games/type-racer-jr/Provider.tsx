@@ -11,6 +11,7 @@ import {
   buildPlayerOwnershipFromRoomData,
 } from '@/lib/arcade/player-ownership.client'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import { TEAM_MOVE } from '@/lib/arcade/validation/types'
 import type {
   TypeRacerJrState,
@@ -262,7 +263,7 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session
-  const { state, sendMove, exitSession } = useArcadeSession<TypeRacerJrState>({
+  const { state, sendMove, exitSession, hasReceivedServerState } = useArcadeSession<TypeRacerJrState>({
     userId: viewerId || '',
     roomId: roomData?.id || undefined,
     initialState: mergedInitialState,
@@ -509,7 +510,11 @@ export function TypeRacerJrProvider({ children }: { children: ReactNode }) {
     dismissCelebration,
   }
 
-  return <TypeRacerJrContext.Provider value={contextValue}>{children}</TypeRacerJrContext.Provider>
+  return (
+    <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
+      <TypeRacerJrContext.Provider value={contextValue}>{children}</TypeRacerJrContext.Provider>
+    </ArcadeSessionStateContext.Provider>
+  )
 }
 
 // ============================================================================

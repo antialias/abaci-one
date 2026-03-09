@@ -49,6 +49,12 @@ export interface UseArcadeSessionReturn<TState> {
   hasPendingMoves: boolean
 
   /**
+   * Whether authoritative server state has been received at least once.
+   * False until the first session-state event from the server.
+   */
+  hasReceivedServerState: boolean
+
+  /**
    * Last error from server (move rejection)
    */
   lastError: string | null
@@ -148,6 +154,7 @@ export function useArcadeSession<TState>(
       version: 1,
       connected: true,
       hasPendingMoves: false,
+      hasReceivedServerState: true,
       lastError: null,
       retryState: mockRetryState,
       sendMove: () => {
@@ -204,23 +211,10 @@ export function useArcadeSession<TState>(
     sendCursorUpdate: socketSendCursorUpdate,
   } = useArcadeSocket({
     onSessionState: (data) => {
-      console.log('[ArcadeSession-DEBUG] session-state received:', {
-        gamePhase: (data.gameState as any)?.gamePhase,
-        currentPrompt: (data.gameState as any)?.currentPrompt,
-        version: data.version,
-        currentGame: data.currentGame,
-      })
       optimistic.syncWithServer(data.gameState as TState, data.version)
     },
 
     onMoveAccepted: (data) => {
-      console.log('[ArcadeSession-DEBUG] move-accepted:', {
-        moveType: data.move.type,
-        version: data.version,
-        gamePhase: (data.gameState as any)?.gamePhase,
-        currentPrompt: (data.gameState as any)?.currentPrompt,
-        regionsToFindCount: (data.gameState as any)?.regionsToFind?.length,
-      })
       // Check if this was a retried move
       const isRetry = retryState.move?.timestamp === data.move.timestamp
       if (isRetry && retryState.isRetrying) {
@@ -236,11 +230,6 @@ export function useArcadeSession<TState>(
     },
 
     onMoveRejected: (data) => {
-      console.error('[ArcadeSession-DEBUG] move-rejected:', {
-        moveType: data.move.type,
-        error: data.error,
-        versionConflict: data.versionConflict,
-      })
       const isRetry = retryState.move?.timestamp === data.move.timestamp
 
       // For version conflicts, automatically retry the move
@@ -370,6 +359,7 @@ export function useArcadeSession<TState>(
     version: optimistic.version,
     connected,
     hasPendingMoves: optimistic.hasPendingMoves,
+    hasReceivedServerState: optimistic.hasReceivedServerState,
     lastError: optimistic.lastError,
     retryState,
     sendMove,

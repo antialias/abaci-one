@@ -7,6 +7,7 @@ import { useUserId } from '@/hooks/useUserId'
 import { buildPlayerMetadata as buildPlayerMetadataUtil } from '@/lib/arcade/player-ownership.client'
 import type { GameMove } from '@/lib/arcade/validation'
 import { useGameMode } from '@/contexts/GameModeContext'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import { generateRandomCards, shuffleCards } from './utils/cardGeneration'
 import type {
   CardSortingState,
@@ -321,7 +322,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session integration
-  const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
+  const { state, sendMove, exitSession, hasReceivedServerState } = useArcadeSession<CardSortingState>({
     userId: viewerId || '',
     roomId: roomData?.id,
     initialState: mergedInitialState,
@@ -591,7 +592,11 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     players,
   }
 
-  return <CardSortingContext.Provider value={contextValue}>{children}</CardSortingContext.Provider>
+  return (
+    <ArcadeSessionStateContext.Provider value={{ hasReceivedServerState }}>
+      <CardSortingContext.Provider value={contextValue}>{children}</CardSortingContext.Provider>
+    </ArcadeSessionStateContext.Provider>
+  )
 }
 
 /**

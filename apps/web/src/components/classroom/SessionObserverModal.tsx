@@ -1030,7 +1030,7 @@ export function SessionObserverView({
         )}
 
         {/* Main content - either problem view or full report view */}
-        {state && !showFullReport && !transitionState && selectedProblemNumber === null && (
+        {state && !showFullReport && !transitionState && !breakState && selectedProblemNumber === null && (
           <div
             data-element="observer-main-content"
             className={css({
