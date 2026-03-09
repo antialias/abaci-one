@@ -1217,12 +1217,16 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     )
 
     // Observer co-play readiness: relay to session channel
+    // Track readiness per socket for disconnect cleanup
+    const coPlayReadySessions = new Map<string, { observerId: string }>()
+
     socket.on(
       'observer-coplay-ready',
       (data: { sessionId: string; observerId: string; player: unknown }) => {
         console.log(
           `[CoPlay] Observer ready: session=${data.sessionId}, observer=${data.observerId}`
         )
+        coPlayReadySessions.set(data.sessionId, { observerId: data.observerId })
         socket.to(`session:${data.sessionId}`).emit('observer-coplay-ready', data)
       }
     )
@@ -1233,6 +1237,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         console.log(
           `[CoPlay] Observer leaving: session=${data.sessionId}, observer=${data.observerId}`
         )
+        coPlayReadySessions.delete(data.sessionId)
         socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', data)
       }
     )
@@ -1894,6 +1899,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     socket.on('disconnect', () => {
       // Track Socket.IO disconnection metrics
       socketConnections.dec()
+
+      // Clean up co-play readiness on disconnect
+      for (const [sessionId, { observerId }] of coPlayReadySessions) {
+        console.log(`[CoPlay] Observer disconnected, removing readiness: session=${sessionId}, observer=${observerId}`)
+        socket.to(`session:${sessionId}`).emit('observer-coplay-leave', { sessionId, observerId })
+      }
+      coPlayReadySessions.clear()
 
       // Handle remote camera cleanup on disconnect
       const remoteCameraSessionId = socket.data.remoteCameraSessionId as string | undefined
