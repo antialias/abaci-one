@@ -427,6 +427,27 @@ export interface SessionFlowStateEvent {
 }
 
 // ============================================================================
+// Observer co-play events
+// ============================================================================
+
+/** Observer signals they're ready to join game breaks as a participant */
+export interface ObserverCoPlayReadyEvent {
+  sessionId: string
+  observerId: string
+  player: {
+    name: string
+    emoji: string
+    color: string
+  }
+}
+
+/** Observer signals they're no longer available for co-play */
+export interface ObserverCoPlayLeaveEvent {
+  sessionId: string
+  observerId: string
+}
+
+// ============================================================================
 // Client-Side Event Map (for typed socket.io client)
 // ============================================================================
 
@@ -477,6 +498,10 @@ export interface ClassroomServerToClientEvents {
   // Session flow state (authoritative state broadcast)
   'session-flow-state': (data: SessionFlowStateEvent) => void
 
+  // Observer co-play readiness (session channel)
+  'observer-coplay-ready': (data: ObserverCoPlayReadyEvent) => void
+  'observer-coplay-leave': (data: ObserverCoPlayLeaveEvent) => void
+
   // Notification events (user channel - unified notification system)
   notification: (data: GenericNotificationEvent) => void
 }
@@ -509,6 +534,10 @@ export interface ClassroomClientToServerEvents {
 
   // Session flow state broadcast (from student client)
   'session-flow-state': (data: SessionFlowStateEvent) => void
+
+  // Observer co-play readiness (from observer to session channel)
+  'observer-coplay-ready': (data: ObserverCoPlayReadyEvent) => void
+  'observer-coplay-leave': (data: ObserverCoPlayLeaveEvent) => void
 
   // Skill tutorial broadcasts (from student client to classroom channel)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void

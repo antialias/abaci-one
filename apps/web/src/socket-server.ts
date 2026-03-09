@@ -424,12 +424,17 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               roomPlayerIds.length > 0
             ) {
               // Server-side auto-start: create session directly in playing/display phase
-              initialState = (await validator.getInitialStateForPracticeBreak(gameConfig, {
+              const practiceBreakOptions: Record<string, unknown> = {
                 maxDurationMinutes: (typedConfig.maxDurationMinutes as number) ?? 5,
                 playerId: roomPlayerIds[0],
                 playerName: (typedConfig.playerName as string) ?? 'Player',
                 userId,
-              })) as Record<string, unknown>
+              }
+              // Pass additional players (co-play observers) if provided
+              if (Array.isArray(typedConfig.additionalPlayers) && typedConfig.additionalPlayers.length > 0) {
+                practiceBreakOptions.additionalPlayers = typedConfig.additionalPlayers
+              }
+              initialState = (await validator.getInitialStateForPracticeBreak(gameConfig, practiceBreakOptions as any)) as Record<string, unknown>
               usedPracticeBreakInit = true
             } else {
               initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
@@ -1208,6 +1213,27 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           `[FlowState] Relaying session-flow-state: session=${data.sessionId}, flowState=${data.flowState}, hasBreakContext=${!!data.breakContext}`
         )
         socket.to(`session:${data.sessionId}`).emit('session-flow-state', data)
+      }
+    )
+
+    // Observer co-play readiness: relay to session channel
+    socket.on(
+      'observer-coplay-ready',
+      (data: { sessionId: string; observerId: string; player: unknown }) => {
+        console.log(
+          `[CoPlay] Observer ready: session=${data.sessionId}, observer=${data.observerId}`
+        )
+        socket.to(`session:${data.sessionId}`).emit('observer-coplay-ready', data)
+      }
+    )
+
+    socket.on(
+      'observer-coplay-leave',
+      (data: { sessionId: string; observerId: string }) => {
+        console.log(
+          `[CoPlay] Observer leaving: session=${data.sessionId}, observer=${data.observerId}`
+        )
+        socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', data)
       }
     )
 

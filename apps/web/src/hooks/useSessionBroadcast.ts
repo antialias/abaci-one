@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
 import type { BroadcastState } from '@/components/practice'
@@ -8,6 +8,8 @@ import type { SessionPartType } from '@/db/schema/session-plans'
 import type { SessionFlowState } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
+  ObserverCoPlayLeaveEvent,
+  ObserverCoPlayReadyEvent,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
@@ -63,6 +65,8 @@ export interface UseSessionBroadcastResult {
   isRecording: boolean
   /** Recording ID if currently recording */
   recordingId: string | null
+  /** Observers who are ready to join game breaks as participants */
+  readyObservers: ReadyObserver[]
   /** Send part transition event to observers */
   sendPartTransition: (
     previousPartType: SessionPartType | null,
@@ -92,6 +96,18 @@ export interface UseSessionBroadcastResult {
       isManualRedo: boolean
     }
   ) => void
+}
+
+/**
+ * An observer who is ready to join game breaks as a participant.
+ */
+export interface ReadyObserver {
+  observerId: string
+  player: {
+    name: string
+    emoji: string
+    color: string
+  }
 }
 
 /**
@@ -126,6 +142,9 @@ export function useSessionBroadcast(
   // Vision recording state
   const isRecordingRef = useRef(false)
   const recordingIdRef = useRef<string | null>(null)
+
+  // Ready observers for co-play
+  const [readyObservers, setReadyObservers] = useState<ReadyObserver[]>([])
 
   // Track current flow state in ref for socket handlers
   const flowStateRef = useRef<SessionFlowState>(flowState)
@@ -308,6 +327,23 @@ export function useSessionBroadcast(
       }
     })
 
+    // Listen for observer co-play readiness
+    socket.on('observer-coplay-ready', (data: ObserverCoPlayReadyEvent) => {
+      if (data.sessionId !== sessionId) return
+      console.log('[SessionBroadcast] Observer ready for co-play:', data.observerId)
+      setReadyObservers((prev) => {
+        // Replace existing entry for same observer, or add new
+        const filtered = prev.filter((o) => o.observerId !== data.observerId)
+        return [...filtered, { observerId: data.observerId, player: data.player }]
+      })
+    })
+
+    socket.on('observer-coplay-leave', (data: ObserverCoPlayLeaveEvent) => {
+      if (data.sessionId !== sessionId) return
+      console.log('[SessionBroadcast] Observer leaving co-play:', data.observerId)
+      setReadyObservers((prev) => prev.filter((o) => o.observerId !== data.observerId))
+    })
+
     return () => {
       console.log('[SessionBroadcast] Cleaning up socket connection')
       socket.disconnect()
@@ -486,6 +522,7 @@ export function useSessionBroadcast(
     isBroadcasting: isConnectedRef.current && !!state,
     isRecording: isRecordingRef.current,
     recordingId: recordingIdRef.current,
+    readyObservers,
     sendPartTransition,
     sendPartTransitionComplete,
     sendVisionFrame,

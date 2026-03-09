@@ -662,6 +662,7 @@ export function PracticeClient({
     startVisionRecording,
     stopVisionRecording,
     sendProblemMarker,
+    readyObservers,
   } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, flowState, breakContext, {
     onAbacusControl: setTeacherControl,
     onTeacherPause: setTeacherPauseRequest,
@@ -976,6 +977,7 @@ export function PracticeClient({
               enabledGames={gameBreakSettings?.enabledGames}
               onGameSelected={handleGameBreakStarted}
               onBreakContextChange={setBreakContext}
+              readyObservers={readyObservers}
             />
           ) : (
             <ActiveSession

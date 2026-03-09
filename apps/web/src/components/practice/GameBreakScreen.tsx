@@ -5,6 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { getGame } from '@/lib/arcade/game-registry'
 import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import { useGameBreakRoom } from '@/hooks/useGameBreakRoom'
+import type { ReadyObserver } from '@/hooks/useSessionBroadcast'
 import type { GameBreakSelectionMode, PracticeBreakGameConfig } from '@/db/schema/session-plans'
 import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
@@ -45,6 +46,8 @@ export interface GameBreakScreenProps {
       phase: 'selecting' | 'playing' | 'completed'
     } | null
   ) => void
+  /** Observers who are ready to join as co-play participants */
+  readyObservers?: ReadyObserver[]
 }
 
 type GameBreakPhase = 'initializing' | 'auto-starting' | 'selecting' | 'playing' | 'completed'
@@ -61,6 +64,7 @@ export function GameBreakScreen({
   gameConfig,
   enabledGames,
   onBreakContextChange,
+  readyObservers,
 }: GameBreakScreenProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -206,13 +210,29 @@ export function GameBreakScreen({
   const handleSelectGame = useCallback(
     async (gameName: string) => {
       try {
-        await selectGame(gameName)
+        // For join-at-start games, include ready observers as additional players
+        const game = getGame(gameName)
+        const coPlayMode = game?.manifest.coPlay?.mode
+        let configOverride: Record<string, unknown> | undefined
+
+        if (coPlayMode === 'join-at-start' && readyObservers && readyObservers.length > 0) {
+          configOverride = {
+            additionalPlayers: readyObservers.map((o) => ({
+              playerId: o.observerId,
+              playerName: o.player.name,
+              emoji: o.player.emoji,
+              color: o.player.color,
+              userId: o.observerId,
+            })),
+          }
+        }
+
+        await selectGame(gameName, configOverride)
         setSelectedGameName(gameName)
         setPhase('playing')
         onGameSelected?.(gameName)
         // Update break context for observer broadcast
         if (room?.id) {
-          const game = getGame(gameName)
           onBreakContextChange?.({
             roomId: room.id,
             gameName: game?.manifest.displayName ?? gameName,
@@ -224,7 +244,7 @@ export function GameBreakScreen({
         console.error('Failed to select game:', err)
       }
     },
-    [selectGame, onGameSelected, room?.id, onBreakContextChange]
+    [selectGame, onGameSelected, room?.id, onBreakContextChange, readyObservers]
   )
 
   useEffect(() => {

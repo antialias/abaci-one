@@ -38,6 +38,7 @@ import {
   getAttemptLabel,
 } from '@/lib/utils/attempt-tracking'
 import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
+import { useObserverCoPlayProfile } from '@/hooks/useObserverCoPlayProfile'
 import { GameBreakSpectatorView } from './GameBreakSpectatorView'
 import { ObserverOnboardingCard } from './ObserverOnboardingCard'
 import { SessionShareButton } from './SessionShareButton'
@@ -196,7 +197,29 @@ export function SessionObserverView({
     isLive,
     scrubTo,
     goLive,
+    sendCoPlayReady,
+    sendCoPlayLeave,
   } = useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
+
+  // Co-play readiness: signal observer profile to the session channel
+  const { profile: coPlayProfile } = useObserverCoPlayProfile()
+  const prevCoPlayReadyRef = useRef(false)
+
+  useEffect(() => {
+    if (!isConnected) return
+
+    if (coPlayProfile?.isReady) {
+      sendCoPlayReady({
+        name: coPlayProfile.name,
+        emoji: coPlayProfile.emoji,
+        color: coPlayProfile.color,
+      })
+      prevCoPlayReadyRef.current = true
+    } else if (prevCoPlayReadyRef.current) {
+      sendCoPlayLeave()
+      prevCoPlayReadyRef.current = false
+    }
+  }, [isConnected, coPlayProfile, sendCoPlayReady, sendCoPlayLeave])
 
   // Derive rendering decisions from the authoritative flow state
   const isInGameBreak = flowState === 'break_pending' || flowState === 'break_active'

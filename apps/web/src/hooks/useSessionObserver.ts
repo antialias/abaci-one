@@ -198,6 +198,10 @@ interface UseSessionObserverResult {
   scrubTo: (offsetMs: number) => void
   /** Return to live feed */
   goLive: () => void
+  /** Signal readiness to join game breaks as a participant */
+  sendCoPlayReady: (player: { name: string; emoji: string; color: string }) => void
+  /** Signal no longer available for co-play */
+  sendCoPlayLeave: () => void
 }
 
 /**
@@ -648,6 +652,19 @@ export function useSessionObserver(
     setIsLive(true)
   }, [])
 
+  const sendCoPlayReady = useCallback(
+    (player: { name: string; emoji: string; color: string }) => {
+      if (!socketRef.current || !sessionId || !observerId) return
+      socketRef.current.emit('observer-coplay-ready', { sessionId, observerId, player })
+    },
+    [sessionId, observerId]
+  )
+
+  const sendCoPlayLeave = useCallback(() => {
+    if (!socketRef.current || !sessionId || !observerId) return
+    socketRef.current.emit('observer-coplay-leave', { sessionId, observerId })
+  }, [sessionId, observerId])
+
   return {
     state,
     results,
@@ -666,5 +683,7 @@ export function useSessionObserver(
     isLive,
     scrubTo,
     goLive,
+    sendCoPlayReady,
+    sendCoPlayLeave,
   }
 }
