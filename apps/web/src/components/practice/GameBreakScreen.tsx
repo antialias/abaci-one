@@ -186,11 +186,14 @@ export function GameBreakScreen({
 
       // Notify observers that the break ended
       if (room?.id) {
+        console.log('[GameBreakScreen] Emitting break ended:', { roomId: room.id, reason })
         onBreakEnded?.(
           room.id,
           reason,
           results ? { gameName: results.gameName, headline: results.headline } : undefined
         )
+      } else {
+        console.warn('[GameBreakScreen] Cannot emit break ended: room?.id is falsy', { room: room?.id })
       }
 
       if (!hasCleanedUpRef.current) {

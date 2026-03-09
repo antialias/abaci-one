@@ -321,6 +321,17 @@ export function useSessionObserver(
         problemNumber: data.currentProblemNumber,
       })
 
+      // If we receive practice-state while breakState is set, the game break
+      // is over — clear it. This handles the case where game-break-ended
+      // was never received (e.g., due to timing or the student's client
+      // not emitting it).
+      setBreakState((prev) => {
+        if (prev) {
+          console.log('[SessionObserver] Clearing breakState: practice resumed')
+        }
+        return prev ? null : prev
+      })
+
       const currentProblem = data.currentProblem as {
         terms: number[]
         answer: number
