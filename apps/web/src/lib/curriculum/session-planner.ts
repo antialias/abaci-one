@@ -1412,8 +1412,6 @@ export async function recordSlotResult(
     const flowStateChanged =
       (plan.flowState ?? 'practicing') !== nextFlowState ||
       plan.breakStartedAt !== null ||
-      plan.breakReason !== null ||
-      plan.breakSelectedGame !== null ||
       plan.breakResults !== null
     const nextFlowVersion = (plan.flowVersion ?? 0) + (flowStateChanged ? 1 : 0)
     dbResult = await db
@@ -1428,9 +1426,9 @@ export async function recordSlotResult(
         flowState: nextFlowState,
         flowUpdatedAt: flowStateChanged ? flowUpdatedAt : (plan.flowUpdatedAt ?? flowUpdatedAt),
         flowVersion: nextFlowVersion,
+        // Clear operational break fields but preserve metadata (breakSelectedGame,
+        // breakReason) — the song generator needs them later in the session.
         breakStartedAt: null,
-        breakReason: null,
-        breakSelectedGame: null,
         breakResults: null,
         completedAt: isComplete ? new Date() : null,
       })
