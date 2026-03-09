@@ -10,6 +10,7 @@ import {
 } from '@/lib/arcade/game-sdk'
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { useCoPlayInfo } from '@/contexts/CoPlayContext'
 import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import type { KnowYourWorldState, AssistanceLevel } from './types'
 import type { RegionSize } from './maps'
@@ -340,6 +341,43 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
       promptStartTime.current = Date.now()
     }
   }, [state.currentPrompt])
+
+  // Co-play auto-join: if an observer is in co-play mode and not yet in the game,
+  // send a JOIN_GAME move to add them as a participant (drop-in mode)
+  const coPlayInfo = useCoPlayInfo()
+  const hasAutoJoinedRef = useRef(false)
+  useEffect(() => {
+    if (
+      !coPlayInfo ||
+      !hasReceivedServerState ||
+      hasAutoJoinedRef.current ||
+      !state.activePlayers
+    ) {
+      return
+    }
+
+    // Check if observer is already in the game
+    if (state.activePlayers.includes(coPlayInfo.playerId)) {
+      hasAutoJoinedRef.current = true
+      return
+    }
+
+    // Only auto-join during playing phase
+    if (state.gamePhase !== 'playing') return
+
+    console.log('[KnowYourWorld] Co-play auto-join: sending JOIN_GAME for', coPlayInfo.playerName)
+    hasAutoJoinedRef.current = true
+    sendMove({
+      type: 'JOIN_GAME',
+      playerId: coPlayInfo.playerId,
+      userId: coPlayInfo.playerId,
+      data: {
+        playerName: coPlayInfo.playerName,
+        emoji: coPlayInfo.emoji,
+        color: coPlayInfo.color,
+      },
+    })
+  }, [coPlayInfo, hasReceivedServerState, state.activePlayers, state.gamePhase, sendMove])
 
   // Notify parent when game reaches results phase (for practice game break detection)
   const onGameComplete = useGameCompletionCallback()

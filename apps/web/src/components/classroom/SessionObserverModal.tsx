@@ -985,7 +985,12 @@ export function SessionObserverView({
           (breakState ? (
             breakState.phase === 'playing' && breakState.gameId ? (
               // Observer (authenticated or guest): render live game spectator view
-              <GameBreakSpectatorView breakState={breakState} studentName={student.name} />
+              <GameBreakSpectatorView
+                breakState={breakState}
+                studentName={student.name}
+                coPlayProfile={coPlayProfile?.isReady ? coPlayProfile : undefined}
+                observerId={observerId}
+              />
             ) : (
               // Non-playing phase: informational overlay
               <div

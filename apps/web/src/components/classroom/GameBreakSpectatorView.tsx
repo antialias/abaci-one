@@ -6,29 +6,52 @@ import { GameLayoutProvider } from '@/contexts/GameLayoutContext'
 import { GameModeProviderWithHooks } from '@/contexts/GameModeProviderWithHooks'
 import { useArcadeSessionState } from '@/contexts/ArcadeSessionStateContext'
 import { SpectatorModeProvider } from '@/contexts/SpectatorModeContext'
+import { CoPlayProvider, type CoPlayInfo } from '@/contexts/CoPlayContext'
 import { useJoinRoom, useLeaveRoom } from '@/hooks/useRoomData'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../styled-system/css'
 import type { ObservedGameBreakState } from '@/hooks/useSessionObserver'
+import { CoPlayGameModeProvider } from './CoPlayGameModeProvider'
+
+interface CoPlayProfile {
+  name: string
+  emoji: string
+  color: string
+}
 
 interface GameBreakSpectatorViewProps {
   breakState: ObservedGameBreakState
   studentName: string
+  /** If provided, observer participates as a co-player instead of spectating */
+  coPlayProfile?: CoPlayProfile
+  /** Observer's user ID — required for co-play mode */
+  observerId?: string
 }
 
 /**
- * Renders a live spectator view of a game break.
+ * Renders a live view of a game break — either as spectator or co-play participant.
  *
- * The observer joins the game break's arcade room as a member, which makes
- * useRoomData return the break room's data. The game's Provider + GameComponent
- * then render in spectator mode automatically (observer has no active players
- * in the game).
+ * The observer joins the game break's arcade room as a member. In spectator mode,
+ * the game renders read-only. In co-play mode, the game renders interactively
+ * and the observer can play alongside the student.
  *
  * On unmount (break ends), the observer leaves the room.
  */
-export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpectatorViewProps) {
+export function GameBreakSpectatorView({
+  breakState,
+  studentName,
+  coPlayProfile,
+  observerId,
+}: GameBreakSpectatorViewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  const isCoPlay = !!(coPlayProfile && observerId)
+  const game = getGame(breakState.gameId)
+  const coPlayMode = game?.manifest.coPlay?.mode
+
+  // Determine if co-play is actually possible for this game
+  const canCoPlay = isCoPlay && coPlayMode && coPlayMode !== 'none'
 
   const joinRoom = useJoinRoom()
   const leaveRoom = useLeaveRoom()
@@ -52,7 +75,7 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
       })
       .catch((err) => {
         if (!cancelled) {
-          console.error('[GameBreakSpectator] Failed to join room:', err)
+          console.error('[GameBreakObserver] Failed to join room:', err)
           setJoinError(err instanceof Error ? err.message : 'Failed to join game room')
         }
       })
@@ -61,14 +84,12 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
       cancelled = true
       // Leave the room on unmount
       leaveRoom.mutateAsync(roomId).catch((err) => {
-        console.error('[GameBreakSpectator] Failed to leave room:', err)
+        console.error('[GameBreakObserver] Failed to leave room:', err)
       })
     }
     // Only run on mount/unmount — roomId shouldn't change during a break
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [breakState.roomId])
-
-  const game = getGame(breakState.gameId)
 
   // If game isn't registered (shouldn't happen), show fallback
   if (!game) {
@@ -98,7 +119,7 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
 
     return (
       <div
-        data-element="game-break-spectator-loading"
+        data-element="game-break-observer-loading"
         className={css({
           display: 'flex',
           flexDirection: 'column',
@@ -116,7 +137,7 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
             color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
-          Connecting to {studentName}&apos;s game...
+          {canCoPlay ? 'Joining' : 'Connecting to'} {studentName}&apos;s game...
         </p>
       </div>
     )
@@ -124,6 +145,69 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
 
   const { Provider, GameComponent } = game
 
+  if (canCoPlay) {
+    const coPlayInfo: CoPlayInfo = {
+      playerId: observerId,
+      playerName: coPlayProfile.name,
+      emoji: coPlayProfile.emoji,
+      color: coPlayProfile.color,
+    }
+
+    return (
+      <div
+        data-element="game-break-coplay"
+        className={css({
+          width: '100%',
+          height: '100%',
+          minHeight: '300px',
+          overflow: 'hidden',
+          position: 'relative',
+        })}
+      >
+        {/* Co-play badge */}
+        <div
+          data-element="coplay-badge"
+          className={css({
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            padding: '0.25rem 0.625rem',
+            borderRadius: '9999px',
+            fontSize: '0.75rem',
+            fontWeight: '500',
+            pointerEvents: 'none',
+          })}
+          style={{
+            backgroundColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.15)',
+            color: isDark ? '#86efac' : '#16a34a',
+          }}
+        >
+          Playing
+        </div>
+        <CoPlayProvider info={coPlayInfo}>
+          <CoPlayGameModeProvider observerId={observerId} player={coPlayProfile}>
+            <GameLayoutProvider mode="container">
+              <Provider>
+                <LoadingGate
+                  studentName={studentName}
+                  isDark={isDark}
+                  label="Loading game..."
+                >
+                  <GameComponent />
+                </LoadingGate>
+              </Provider>
+            </GameLayoutProvider>
+          </CoPlayGameModeProvider>
+        </CoPlayProvider>
+      </div>
+    )
+  }
+
+  // Spectator mode (default)
   return (
     <div
       data-element="game-break-spectator"
@@ -164,9 +248,13 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
         <GameLayoutProvider mode="container">
           <GameModeProviderWithHooks>
             <Provider>
-              <SpectatorLoadingGate studentName={studentName} isDark={isDark}>
+              <LoadingGate
+                studentName={studentName}
+                isDark={isDark}
+                label={`Loading ${studentName}'s game...`}
+              >
                 <GameComponent />
-              </SpectatorLoadingGate>
+              </LoadingGate>
             </Provider>
           </GameModeProviderWithHooks>
         </GameLayoutProvider>
@@ -177,24 +265,26 @@ export function GameBreakSpectatorView({ breakState, studentName }: GameBreakSpe
 
 /**
  * Loading gate that waits for the game Provider to receive authoritative server state
- * before rendering the GameComponent. This prevents showing the game's setup/config
- * screen while the arcade session is connecting and loading state.
+ * before rendering children. Prevents showing the game's setup/config screen while
+ * the arcade session is connecting and loading state.
  */
-function SpectatorLoadingGate({
+function LoadingGate({
   children,
   studentName,
   isDark,
+  label,
 }: {
   children: ReactNode
   studentName: string
   isDark: boolean
+  label: string
 }) {
   const { hasReceivedServerState } = useArcadeSessionState()
 
   if (!hasReceivedServerState) {
     return (
       <div
-        data-element="spectator-loading-gate"
+        data-element="observer-loading-gate"
         className={css({
           display: 'flex',
           flexDirection: 'column',
@@ -212,7 +302,7 @@ function SpectatorLoadingGate({
             color: isDark ? 'gray.400' : 'gray.500',
           })}
         >
-          Loading {studentName}&apos;s game...
+          {label}
         </p>
       </div>
     )

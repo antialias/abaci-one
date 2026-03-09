@@ -11,6 +11,7 @@ import {
   buildPlayerOwnershipFromRoomData,
 } from '@/lib/arcade/player-ownership.client'
 import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
+import { useCoPlayInfo } from '@/contexts/CoPlayContext'
 import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
 import { TEAM_MOVE } from '@/lib/arcade/validation/types'
 import type { QuizCard, MemoryQuizState, MemoryQuizMove } from './types'
@@ -306,6 +307,43 @@ export function MemoryQuizProvider({ children }: { children: ReactNode }) {
       initialState: mergedInitialState,
       applyMove: applyMoveOptimistically,
     })
+
+  // Co-play auto-join: if an observer is in co-play mode and not yet in the game,
+  // send a JOIN_GAME move to add them as a participant (drop-in mode)
+  const coPlayInfo = useCoPlayInfo()
+  const hasAutoJoinedRef = useRef(false)
+  useEffect(() => {
+    if (
+      !coPlayInfo ||
+      !hasReceivedServerState ||
+      hasAutoJoinedRef.current ||
+      !state.activePlayers
+    ) {
+      return
+    }
+
+    // Check if observer is already in the game
+    if (state.activePlayers.includes(coPlayInfo.playerId)) {
+      hasAutoJoinedRef.current = true
+      return
+    }
+
+    // Only auto-join during display or input phase
+    if (state.gamePhase !== 'display' && state.gamePhase !== 'input') return
+
+    console.log('[MemoryQuiz] Co-play auto-join: sending JOIN_GAME for', coPlayInfo.playerName)
+    hasAutoJoinedRef.current = true
+    sendMove({
+      type: 'JOIN_GAME',
+      playerId: coPlayInfo.playerId,
+      userId: coPlayInfo.playerId,
+      data: {
+        playerName: coPlayInfo.playerName,
+        emoji: coPlayInfo.emoji,
+        color: coPlayInfo.color,
+      },
+    })
+  }, [coPlayInfo, hasReceivedServerState, state.activePlayers, state.gamePhase, sendMove])
 
   // Notify parent when game reaches results phase (for practice game break detection)
   const onGameComplete = useGameCompletionCallback()
