@@ -662,7 +662,7 @@ export function PracticeClient({
     sendGameBreakStarted,
     sendGameBreakPhase,
     sendGameBreakEnded,
-  } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, {
+  } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, flowState, {
     onAbacusControl: setTeacherControl,
     onTeacherPause: setTeacherPauseRequest,
     onTeacherResume: () => setTeacherResumeRequest(true),

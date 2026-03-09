@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
 import type { SessionPart, SessionPartType, SlotResult } from '@/db/schema/session-plans'
+import type { SessionFlowState } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
   GameBreakEndedEvent,
@@ -12,6 +13,7 @@ import type {
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
+  SessionFlowStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
   VisionFrameEvent,
@@ -167,6 +169,12 @@ interface UseSessionObserverResult {
   results: ObservedResult[]
   /** Current part transition state (null if not in transition) */
   transitionState: ObservedTransitionState | null
+  /**
+   * Authoritative flow state from the server-side state machine.
+   * This is the primary signal for what to render — use this over breakState.
+   * null until first session-flow-state event is received.
+   */
+  flowState: SessionFlowState | null
   /** Current game break state (null if no break in progress) */
   breakState: ObservedGameBreakState | null
   /** Latest vision frame from student's camera (null if vision not enabled) */
@@ -218,6 +226,7 @@ export function useSessionObserver(
   const [results, setResults] = useState<ObservedResult[]>([])
   const [transitionState, setTransitionState] = useState<ObservedTransitionState | null>(null)
   const [visionFrame, setVisionFrame] = useState<ObservedVisionFrame | null>(null)
+  const [observedFlowState, setObservedFlowState] = useState<SessionFlowState | null>(null)
   const [breakState, setBreakState] = useState<ObservedGameBreakState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isObserving, setIsObserving] = useState(false)
@@ -241,6 +250,7 @@ export function useSessionObserver(
       setState(null)
       setResults([])
       setTransitionState(null)
+      setObservedFlowState(null)
       setBreakState(null)
       setVisionFrame(null)
       setDvrBufferInfo(null)
@@ -319,17 +329,6 @@ export function useSessionObserver(
         answer: data.studentAnswer,
         isCorrect: data.isCorrect,
         problemNumber: data.currentProblemNumber,
-      })
-
-      // If we receive practice-state while breakState is set, the game break
-      // is over — clear it. This handles the case where game-break-ended
-      // was never received (e.g., due to timing or the student's client
-      // not emitting it).
-      setBreakState((prev) => {
-        if (prev) {
-          console.log('[SessionObserver] Clearing breakState: practice resumed')
-        }
-        return prev ? null : prev
       })
 
       const currentProblem = data.currentProblem as {
@@ -512,7 +511,32 @@ export function useSessionObserver(
       }
     )
 
-    // Listen for game break events
+    // Listen for authoritative flow state updates
+    // This is the primary signal for what the observer should render
+    socket.on('session-flow-state', (data: SessionFlowStateEvent) => {
+      if (data.sessionId !== sessionId) return
+      console.log('[SessionObserver] Received session-flow-state:', {
+        flowState: data.flowState,
+        hasBreakContext: !!data.breakContext,
+      })
+
+      setObservedFlowState(data.flowState)
+
+      // Sync breakState from the authoritative flow state
+      if (data.breakContext && (data.flowState === 'break_pending' || data.flowState === 'break_active')) {
+        setBreakState({
+          roomId: data.breakContext.roomId,
+          gameName: data.breakContext.gameName,
+          gameId: data.breakContext.gameId,
+          phase: data.breakContext.phase,
+        })
+      } else if (data.flowState === 'practicing' || data.flowState === 'break_results' || data.flowState === 'completed') {
+        // Break is over or we're in results — clear break state
+        setBreakState(null)
+      }
+    })
+
+    // Listen for game break events (backwards compatibility — flow state is primary)
     socket.on('game-break-started', (data: GameBreakStartedEvent) => {
       if (data.sessionId !== sessionId) return
       console.log('[SessionObserver] Game break started:', data.gameName)
@@ -663,6 +687,7 @@ export function useSessionObserver(
     state,
     results,
     transitionState,
+    flowState: observedFlowState,
     breakState,
     visionFrame,
     isConnected,

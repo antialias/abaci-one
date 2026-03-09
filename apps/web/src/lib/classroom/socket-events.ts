@@ -398,6 +398,28 @@ export interface GenericNotificationEvent {
 }
 
 // ============================================================================
+// Session Flow State Event (authoritative state broadcast)
+// ============================================================================
+
+/**
+ * Broadcast whenever the session's flow state changes (or on observer join).
+ * This is the authoritative source of truth — observers should render based on
+ * this rather than reconstructing state from individual game-break events.
+ */
+export interface SessionFlowStateEvent {
+  sessionId: string
+  /** Current flow state from the server-side state machine */
+  flowState: 'practicing' | 'part_transition' | 'break_pending' | 'break_active' | 'break_results' | 'completed' | 'abandoned'
+  /** Context for game break states — present when flowState involves a break */
+  breakContext?: {
+    roomId: string
+    gameName: string
+    gameId: string
+    phase: 'selecting' | 'playing' | 'completed'
+  }
+}
+
+// ============================================================================
 // Game Break Observation Events (sent to session:${sessionId} channel)
 // ============================================================================
 
@@ -486,7 +508,10 @@ export interface ClassroomServerToClientEvents {
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
   'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 
-  // Game break observation events (session channel)
+  // Session flow state (authoritative state broadcast)
+  'session-flow-state': (data: SessionFlowStateEvent) => void
+
+  // Game break observation events (session channel) — kept for backwards compatibility
   'game-break-started': (data: GameBreakStartedEvent) => void
   'game-break-phase': (data: GameBreakPhaseEvent) => void
   'game-break-ended': (data: GameBreakEndedEvent) => void
@@ -521,7 +546,10 @@ export interface ClassroomClientToServerEvents {
   'part-transition': (data: PartTransitionEvent) => void
   'part-transition-complete': (data: PartTransitionCompleteEvent) => void
 
-  // Game break broadcasts (from student client to session channel)
+  // Session flow state broadcast (from student client)
+  'session-flow-state': (data: SessionFlowStateEvent) => void
+
+  // Game break broadcasts (from student client to session channel) — kept for backwards compatibility
   'game-break-started': (data: GameBreakStartedEvent) => void
   'game-break-phase': (data: GameBreakPhaseEvent) => void
   'game-break-ended': (data: GameBreakEndedEvent) => void

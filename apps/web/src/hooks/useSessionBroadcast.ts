@@ -5,6 +5,7 @@ import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
 import type { BroadcastState } from '@/components/practice'
 import type { SessionPartType } from '@/db/schema/session-plans'
+import type { SessionFlowState } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
   GameBreakEndedEvent,
@@ -13,6 +14,7 @@ import type {
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
+  SessionFlowStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
   VisionFrameEvent,
@@ -109,6 +111,7 @@ export function useSessionBroadcast(
   sessionId: string | undefined,
   playerId: string | undefined,
   state: BroadcastState | null,
+  flowState: SessionFlowState,
   options?: UseSessionBroadcastOptions
 ): UseSessionBroadcastResult {
   const socketRef = useRef<Socket | null>(null)
@@ -125,6 +128,10 @@ export function useSessionBroadcast(
   const isRecordingRef = useRef(false)
   const recordingIdRef = useRef<string | null>(null)
 
+  // Track current flow state in ref for socket handlers
+  const flowStateRef = useRef<SessionFlowState>(flowState)
+  flowStateRef.current = flowState
+
   // Track current game break state so we can re-broadcast on observer-joined
   const breakStateRef = useRef<{
     roomId: string
@@ -132,6 +139,23 @@ export function useSessionBroadcast(
     gameId: string
     phase: 'selecting' | 'playing' | 'completed'
   } | null>(null)
+
+  // Helper to broadcast current flow state (authoritative state for observers)
+  const broadcastFlowState = useCallback(() => {
+    if (!socketRef.current || !isConnectedRef.current || !sessionId) return
+
+    const event: SessionFlowStateEvent = {
+      sessionId,
+      flowState: flowStateRef.current,
+      breakContext: breakStateRef.current ?? undefined,
+    }
+
+    socketRef.current.emit('session-flow-state', event)
+    console.log('[SessionBroadcast] Emitted session-flow-state:', {
+      flowState: event.flowState,
+      hasBreakContext: !!event.breakContext,
+    })
+  }, [sessionId])
 
   // Helper to broadcast current state
   const broadcastState = useCallback(() => {
@@ -219,27 +243,10 @@ export function useSessionBroadcast(
     // When an observer joins, re-broadcast current state so they see it immediately
     socket.on('observer-joined', (data: { observerId: string }) => {
       console.log('[SessionBroadcast] Observer joined:', data.observerId, '- re-broadcasting state')
+      // Always send authoritative flow state first — this is the primary state signal
+      broadcastFlowState()
+      // Then send practice state if available (may be null during game breaks)
       broadcastState()
-
-      // Re-broadcast game break state if a break is active
-      const breakState = breakStateRef.current
-      if (breakState && socketRef.current && isConnectedRef.current && sessionId) {
-        console.log('[SessionBroadcast] Re-broadcasting break state to new observer:', breakState)
-        const startedEvent: GameBreakStartedEvent = {
-          sessionId,
-          roomId: breakState.roomId,
-          gameName: breakState.gameName,
-          gameId: breakState.gameId,
-        }
-        socketRef.current.emit('game-break-started', startedEvent)
-
-        const phaseEvent: GameBreakPhaseEvent = {
-          sessionId,
-          roomId: breakState.roomId,
-          phase: breakState.phase,
-        }
-        socketRef.current.emit('game-break-phase', phaseEvent)
-      }
     })
 
     // Listen for abacus control events from teacher
@@ -313,7 +320,12 @@ export function useSessionBroadcast(
     }
   }, [sessionId, playerId, broadcastState])
 
-  // Broadcast state changes
+  // Broadcast flow state whenever it changes
+  useEffect(() => {
+    broadcastFlowState()
+  }, [broadcastFlowState, flowState])
+
+  // Broadcast practice state changes
   useEffect(() => {
     broadcastState()
   }, [
@@ -481,9 +493,11 @@ export function useSessionBroadcast(
       const event: GameBreakStartedEvent = { sessionId, roomId, gameName, gameId }
       breakStateRef.current = { roomId, gameName, gameId, phase: 'selecting' }
       socketRef.current.emit('game-break-started', event)
+      // Also broadcast authoritative flow state with break context
+      broadcastFlowState()
       console.log('[SessionBroadcast] Emitted game-break-started:', { roomId, gameName, gameId })
     },
-    [sessionId]
+    [sessionId, broadcastFlowState]
   )
 
   // Notify observers of game break phase changes
@@ -499,9 +513,11 @@ export function useSessionBroadcast(
         breakStateRef.current = { roomId, gameName: '', gameId: '', phase }
       }
       socketRef.current.emit('game-break-phase', event)
+      // Also broadcast authoritative flow state with updated break context
+      broadcastFlowState()
       console.log('[SessionBroadcast] Emitted game-break-phase:', { roomId, phase })
     },
-    [sessionId]
+    [sessionId, broadcastFlowState]
   )
 
   // Notify observers that a game break has ended
@@ -516,9 +532,11 @@ export function useSessionBroadcast(
       const event: GameBreakEndedEvent = { sessionId, roomId, reason, summary }
       breakStateRef.current = null
       socketRef.current.emit('game-break-ended', event)
+      // Also broadcast authoritative flow state (break context now null)
+      broadcastFlowState()
       console.log('[SessionBroadcast] Emitted game-break-ended:', { roomId, reason })
     },
-    [sessionId]
+    [sessionId, broadcastFlowState]
   )
 
   return {

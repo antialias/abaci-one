@@ -1202,6 +1202,11 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       socket.to(`session:${data.sessionId}`).emit('part-transition-complete', data)
     })
 
+    // Session Observation: Broadcast authoritative flow state (from student's client)
+    socket.on('session-flow-state', (data: { sessionId: string; flowState: string; breakContext?: unknown }) => {
+      socket.to(`session:${data.sessionId}`).emit('session-flow-state', data)
+    })
+
     // Session Observation: Broadcast game break lifecycle events (from student's client)
     socket.on(
       'game-break-started',

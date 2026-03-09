@@ -182,6 +182,7 @@ export function SessionObserverView({
     state,
     results,
     transitionState,
+    flowState,
     breakState,
     visionFrame,
     isConnected,
@@ -195,6 +196,14 @@ export function SessionObserverView({
     scrubTo,
     goLive,
   } = useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
+
+  // Derive rendering decisions from the authoritative flow state
+  const isInGameBreak = flowState === 'break_pending' || flowState === 'break_active'
+  const isInBreakResults = flowState === 'break_results'
+  const isInTransition = flowState === 'part_transition'
+  // Show practice when flow state says practicing, OR when we haven't received flow state yet
+  // but have practice state (backwards compatibility / initial load)
+  const showPractice = flowState === 'practicing' || flowState === null
 
   // Track if we've paused the session (teacher controls resume)
   const [hasPausedSession, setHasPausedSession] = useState(false)
@@ -920,7 +929,7 @@ export function SessionObserverView({
           </div>
         )}
 
-        {isObserving && !state && !transitionState && !breakState && (
+        {isObserving && !state && showPractice && !transitionState && (
           <div
             className={css({
               textAlign: 'center',
@@ -947,8 +956,8 @@ export function SessionObserverView({
           />
         )}
 
-        {/* Game break view - shows when student is on a game break */}
-        {breakState && !transitionState && (
+        {/* Game break view - driven by authoritative flowState */}
+        {isInGameBreak && breakState && (
           breakState.phase === 'playing' && breakState.gameId ? (
             // Observer (authenticated or guest): render live game spectator view
             <GameBreakSpectatorView
@@ -956,7 +965,7 @@ export function SessionObserverView({
               studentName={student.name}
             />
           ) : (
-            // Guest observer or non-playing phase: informational overlay
+            // Non-playing phase: informational overlay
             <div
               data-element="game-break-overlay"
               className={css({
@@ -1017,6 +1026,33 @@ export function SessionObserverView({
           )
         )}
 
+        {/* Game break results view - student reviewing game results */}
+        {isInBreakResults && (
+          <div
+            data-element="game-break-results-overlay"
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1rem',
+              padding: '2rem',
+              textAlign: 'center',
+              minHeight: '200px',
+            })}
+          >
+            <span className={css({ fontSize: '3rem' })}>🏆</span>
+            <p
+              className={css({
+                fontSize: '1rem',
+                color: isDark ? 'gray.300' : 'gray.600',
+              })}
+            >
+              {student.name} is reviewing game results...
+            </p>
+          </div>
+        )}
+
         {/* Past problem video playback - shown when clicking a completed problem in progress indicator */}
         {state && selectedProblemNumber !== null && !transitionState && (
           <ProblemVideoPlayer
@@ -1030,7 +1066,7 @@ export function SessionObserverView({
         )}
 
         {/* Main content - either problem view or full report view */}
-        {state && !showFullReport && !transitionState && !breakState && selectedProblemNumber === null && (
+        {state && !showFullReport && showPractice && !transitionState && selectedProblemNumber === null && (
           <div
             data-element="observer-main-content"
             className={css({

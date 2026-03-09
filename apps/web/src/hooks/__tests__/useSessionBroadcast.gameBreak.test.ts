@@ -55,7 +55,7 @@ describe('useSessionBroadcast - game break broadcasting', () => {
 
   function renderAndConnect() {
     const result = renderHook(() =>
-      useSessionBroadcast(SESSION_ID, PLAYER_ID, createMockBroadcastState())
+      useSessionBroadcast(SESSION_ID, PLAYER_ID, createMockBroadcastState(), 'practicing')
     )
 
     // Trigger connect
@@ -89,7 +89,7 @@ describe('useSessionBroadcast - game break broadcasting', () => {
 
     it('does not emit when sessionId is undefined', () => {
       const { result } = renderHook(() =>
-        useSessionBroadcast(undefined, PLAYER_ID, createMockBroadcastState())
+        useSessionBroadcast(undefined, PLAYER_ID, createMockBroadcastState(), 'practicing')
       )
 
       act(() => {
