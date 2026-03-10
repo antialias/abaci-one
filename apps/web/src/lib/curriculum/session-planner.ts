@@ -1533,6 +1533,21 @@ export async function recordRedoResult(
 
   const part = plan.parts[redoContext.originalPartIndex]
 
+  // Reject redo if the answer was already divulged (student exhausted all retries wrong)
+  const answerWasDivulged = (plan.results || []).some(
+    (r) =>
+      r.partNumber === part.partNumber &&
+      (r.originalSlotIndex ?? r.slotIndex) === redoContext.originalSlotIndex &&
+      !r.isCorrect &&
+      !r.isManualRedo &&
+      (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
+  )
+  if (answerWasDivulged) {
+    throw new Error(
+      `Cannot redo slot ${redoContext.originalSlotIndex} in part ${redoContext.originalPartIndex}: answer was already revealed after exhausting retries`
+    )
+  }
+
   // Build the result with manual redo flag
   const newResult: SlotResult = {
     ...result,

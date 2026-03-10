@@ -1531,7 +1531,10 @@ export function ActiveSession({
         }
       : null
     const hasRetriesRemaining = epochNumberAtSubmit < MAX_RETRY_EPOCHS
-    setShowCorrectAnswerOnIncorrect(isCorrect || isInRedoMode || !hasRetriesRemaining)
+    // Only reveal the correct answer when retries are exhausted (epoch 2 wrong).
+    // Never reveal during manual redo — the kid chose to retry voluntarily and
+    // shouldn't get a free look at the answer.
+    setShowCorrectAnswerOnIncorrect(isCorrect || !hasRetriesRemaining)
 
     // Notify assistance machine of incorrect answer
     if (!isCorrect) {

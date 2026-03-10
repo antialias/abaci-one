@@ -18,6 +18,7 @@
 
 import { useMemo } from 'react'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
+import { MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
 import { css } from '../../../styled-system/css'
 import { Tooltip } from '../ui/Tooltip'
 import { formatMs } from './autoPauseCalculator'
@@ -200,6 +201,27 @@ function getAttemptCount(results: SlotResult[], partNumber: number, slotIndex: n
   return results.filter(
     (r) => r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex
   ).length
+}
+
+/**
+ * Check whether the correct answer was divulged for a slot.
+ * This happens when the student exhausted all retry epochs without getting it right,
+ * at which point the UI reveals the correct answer. Redo should be blocked for these
+ * since the student already knows the answer.
+ */
+function wasAnswerDivulged(
+  results: SlotResult[],
+  partNumber: number,
+  slotIndex: number
+): boolean {
+  return results.some(
+    (r) =>
+      r.partNumber === partNumber &&
+      (r.originalSlotIndex ?? r.slotIndex) === slotIndex &&
+      !r.isCorrect &&
+      !r.isManualRedo &&
+      (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
+  )
 }
 
 /**
@@ -481,8 +503,10 @@ function ExpandedSection({
         // During redo mode, clicking the current position returns to it (cancels redo)
         const isInRedoMode = redoLinearIndex !== undefined
         const isClickableForBrowse = isBrowseMode && onNavigate
+        // Block redo if the correct answer was already shown (exhausted all retries wrong)
+        const answerWasShown = wasAnswerDivulged(results, part.partNumber, slotIndex)
         const isClickableForRedo =
-          !isBrowseMode && isCompleted && !isRedo && onRedoProblem && result
+          !isBrowseMode && isCompleted && !isRedo && !answerWasShown && onRedoProblem && result
         const isClickableToReturn = !isBrowseMode && isInRedoMode && isCurrent && onCancelRedo
         const isClickable = isClickableForBrowse || isClickableForRedo || isClickableToReturn
 
