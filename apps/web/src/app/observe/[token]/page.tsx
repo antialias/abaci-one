@@ -1,11 +1,13 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { players, sessionPlans } from '@/db/schema'
+import { players, sessionPlans, sessionSongs } from '@/db/schema'
 import { canPerformAction } from '@/lib/classroom'
 import { validateSessionShare } from '@/lib/session-share'
 import { getUserId, getViewer } from '@/lib/viewer'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import type { SessionSongLLMOutput } from '@/db/schema/session-songs'
 import { PublicObservationClient } from './PublicObservationClient'
 import { SessionEndedClient } from './SessionEndedClient'
 
@@ -13,6 +15,63 @@ export const dynamic = 'force-dynamic'
 
 interface PublicObservationPageProps {
   params: Promise<{ token: string }>
+}
+
+export async function generateMetadata({ params }: PublicObservationPageProps): Promise<Metadata> {
+  const { token } = await params
+
+  const validation = await validateSessionShare(token)
+  if (!validation.valid || !validation.share) {
+    return { title: 'Session Not Found | Abaci.One' }
+  }
+
+  const share = validation.share
+
+  const [playerResults, sessions] = await Promise.all([
+    db.select().from(players).where(eq(players.id, share.playerId)).limit(1),
+    db.select().from(sessionPlans).where(eq(sessionPlans.id, share.sessionId)).limit(1),
+  ])
+
+  const player = playerResults[0]
+  const session = sessions[0]
+  const studentName = player?.name ?? 'Student'
+  const studentEmoji = player?.emoji ?? ''
+
+  // Check for a completed song
+  let songTitle: string | null = null
+  if (session?.completedAt) {
+    const [song] = await db
+      .select()
+      .from(sessionSongs)
+      .where(eq(sessionSongs.sessionPlanId, share.sessionId))
+      .limit(1)
+    if (song?.status === 'completed' && song.llmOutput) {
+      songTitle = (song.llmOutput as SessionSongLLMOutput)?.title ?? null
+    }
+  }
+
+  const title = songTitle
+    ? `${studentEmoji} ${studentName}'s Practice Song`
+    : session?.completedAt
+      ? `${studentEmoji} ${studentName} finished practicing!`
+      : `${studentEmoji} Watch ${studentName} practice`
+
+  const description = songTitle
+    ? `Listen to "${songTitle}" — a song celebrating ${studentName}'s practice session on Abaci.One`
+    : session?.completedAt
+      ? `${studentName} just finished a practice session on Abaci.One!`
+      : `Watch ${studentName} practice math on Abaci.One in real time`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: 'Abaci.One',
+    },
+  }
 }
 
 export default async function PublicObservationPage({ params }: PublicObservationPageProps) {
@@ -71,6 +130,7 @@ export default async function PublicObservationPage({ params }: PublicObservatio
         studentEmoji={player?.emoji ?? '👤'}
         sessionCompleted={!!session.completedAt}
         playerId={share.playerId}
+        sessionPlanId={session.id}
         shareToken={token}
         sessionReportUrl={sessionReportUrl}
         userId={endedUserId}

@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { css } from '../../../../styled-system/css'
 import { SubscribeButton } from '@/components/notifications/SubscribeButton'
+import { SessionSongPlayer } from '@/components/practice/SessionSongPlayer'
 
 interface SessionEndedClientProps {
   studentName: string
   studentEmoji: string
   sessionCompleted: boolean
   playerId: string
+  sessionPlanId: string
   shareToken: string
   /** URL to the session report (only shown if user has access) */
   sessionReportUrl?: string
@@ -21,6 +23,7 @@ export function SessionEndedClient({
   studentEmoji,
   sessionCompleted,
   playerId,
+  sessionPlanId,
   shareToken,
   sessionReportUrl,
   userId,
@@ -123,6 +126,13 @@ export function SessionEndedClient({
             ? `${studentEmoji} ${studentName} has finished their practice session.`
             : `${studentEmoji} ${studentName}'s practice session hasn't started yet.`}
         </p>
+
+        {/* Session song player — shown when session completed */}
+        {sessionCompleted && (
+          <div data-element="session-song" className={css({ w: '100%', maxW: '480px', mb: 4 })}>
+            <SessionSongPlayer playerId={playerId} planId={sessionPlanId} />
+          </div>
+        )}
 
         {!sessionReportUrl && sessionCompleted && (
           <p
