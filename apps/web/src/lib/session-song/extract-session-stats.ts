@@ -24,6 +24,10 @@ export interface SongPromptInput {
   player: {
     name: string
     emoji: string
+    /** Age in years (computed from birthday), if available */
+    age?: number
+    /** Parent/teacher notes about the student */
+    notes?: string
   }
   currentSession: {
     accuracy: number
@@ -155,10 +159,25 @@ export function extractSessionStats(
   // Extract game break info if available (full result preferred, plan fields as fallback)
   const gameBreak = extractGameBreak(gameBreakResult) ?? extractGameBreakFallback(planBreakFallback)
 
+  // Compute age from birthday if available
+  let age: number | undefined
+  if (player.birthday) {
+    const birthDate = new Date(player.birthday)
+    const today = new Date()
+    age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    if (age < 1 || age > 18) age = undefined // Sanity check
+  }
+
   return {
     player: {
       name: player.name,
       emoji: player.emoji,
+      age,
+      notes: player.notes ?? undefined,
     },
     currentSession: {
       accuracy,
