@@ -24,6 +24,8 @@ export interface SongPromptInput {
   player: {
     name: string
     emoji: string
+    /** Age in years (computed from birthday, if available) */
+    age?: number
   }
   currentSession: {
     accuracy: number
@@ -74,6 +76,23 @@ function getBestCorrectStreak(results: Array<{ isCorrect: boolean }>): number {
 function getPartTypeLabel(partType: string): string {
   const found = PRACTICE_TYPES.find((t) => t.id === partType)
   return found?.label ?? partType
+}
+
+// ============================================================================
+// Helper — compute age in years from birthday string (YYYY-MM-DD)
+// ============================================================================
+
+function computeAge(birthday: string | null | undefined): number | undefined {
+  if (!birthday) return undefined
+  const birth = new Date(birthday)
+  if (isNaN(birth.getTime())) return undefined
+  const now = new Date()
+  let age = now.getFullYear() - birth.getFullYear()
+  const monthDiff = now.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    age--
+  }
+  return age >= 0 ? age : undefined
 }
 
 // ============================================================================
@@ -155,10 +174,14 @@ export function extractSessionStats(
   // Extract game break info if available (full result preferred, plan fields as fallback)
   const gameBreak = extractGameBreak(gameBreakResult) ?? extractGameBreakFallback(planBreakFallback)
 
+  // Compute age from birthday if available
+  const age = computeAge(player.birthday)
+
   return {
     player: {
       name: player.name,
       emoji: player.emoji,
+      ...(age != null && { age }),
     },
     currentSession: {
       accuracy,
