@@ -231,7 +231,8 @@ export default async function Image({ params }: OGImageProps) {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              background: 'linear-gradient(135deg, rgba(192, 132, 252, 0.2), rgba(124, 58, 237, 0.2))',
+              background:
+                'linear-gradient(135deg, rgba(192, 132, 252, 0.2), rgba(124, 58, 237, 0.2))',
               borderRadius: '16px',
               padding: '16px 20px',
               border: '1px solid rgba(192, 132, 252, 0.3)',
