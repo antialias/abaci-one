@@ -43,7 +43,9 @@ function makeBaseState(overrides: Partial<MemoryQuizState> = {}): MemoryQuizStat
   }
 }
 
-function makeJoinMove(overrides: Partial<MemoryQuizMove & { type: 'JOIN_GAME' }> = {}): MemoryQuizMove {
+function makeJoinMove(
+  overrides: Partial<MemoryQuizMove & { type: 'JOIN_GAME' }> = {}
+): MemoryQuizMove {
   return {
     type: 'JOIN_GAME',
     playerId: 'player-2',

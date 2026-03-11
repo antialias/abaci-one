@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import type { AbacusStaticConfig } from '@soroban/abacus-react/static'
 import sharp from 'sharp'
 import { renderAbacusSvg } from '@/lib/abacus-image/render'
@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'columns must be between 1 and 13' }, { status: 400 })
   }
 
-  const colorScheme = (params.get('colorScheme') ?? 'place-value') as AbacusStaticConfig['colorScheme']
+  const colorScheme = (params.get('colorScheme') ??
+    'place-value') as AbacusStaticConfig['colorScheme']
   const validColorSchemes = ['monochrome', 'place-value', 'alternating', 'heaven-earth']
   if (!validColorSchemes.includes(colorScheme!)) {
     return NextResponse.json(
@@ -54,7 +55,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const colorPalette = (params.get('colorPalette') ?? 'default') as AbacusStaticConfig['colorPalette']
+  const colorPalette = (params.get('colorPalette') ??
+    'default') as AbacusStaticConfig['colorPalette']
   const validPalettes = ['default', 'pastel', 'vibrant', 'earth-tones']
   if (!validPalettes.includes(colorPalette!)) {
     return NextResponse.json(
@@ -104,10 +106,7 @@ export async function GET(request: NextRequest) {
   }
 
   // PNG: use sharp to convert
-  const pngBuffer = await sharp(Buffer.from(svgString))
-    .resize({ width })
-    .png()
-    .toBuffer()
+  const pngBuffer = await sharp(Buffer.from(svgString)).resize({ width }).png().toBuffer()
 
   return new NextResponse(new Uint8Array(pngBuffer), {
     headers: {

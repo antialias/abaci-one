@@ -192,11 +192,7 @@ export function GameBreakSpectatorView({
           <CoPlayGameModeProvider observerId={observerId} player={coPlayProfile}>
             <GameLayoutProvider mode="container">
               <Provider>
-                <LoadingGate
-                  studentName={studentName}
-                  isDark={isDark}
-                  label="Loading game..."
-                >
+                <LoadingGate studentName={studentName} isDark={isDark} label="Loading game...">
                   <GameComponent />
                 </LoadingGate>
               </Provider>

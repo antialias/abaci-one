@@ -6,8 +6,22 @@ import { css } from '../../../styled-system/css'
 
 // Curated emoji subset for quick observer avatar selection
 const QUICK_EMOJIS = [
-  '😊', '😎', '🤓', '🦊', '🐱', '🐶', '🦁', '🐼',
-  '🌟', '🎯', '🎨', '🎵', '🚀', '💎', '🌈', '🦋',
+  '😊',
+  '😎',
+  '🤓',
+  '🦊',
+  '🐱',
+  '🐶',
+  '🦁',
+  '🐼',
+  '🌟',
+  '🎯',
+  '🎨',
+  '🎵',
+  '🚀',
+  '💎',
+  '🌈',
+  '🦋',
 ]
 
 const QUICK_COLORS = [
@@ -289,7 +303,8 @@ export function ObserverOnboardingCard({ isDark, studentName }: ObserverOnboardi
               height: '1.75rem',
               borderRadius: '50%',
               border: '3px solid',
-              borderColor: color === selectedColor ? (isDark ? 'white' : 'gray.800') : 'transparent',
+              borderColor:
+                color === selectedColor ? (isDark ? 'white' : 'gray.800') : 'transparent',
               cursor: 'pointer',
               transition: 'all 0.1s',
               _hover: { transform: 'scale(1.15)' },
