@@ -431,10 +431,16 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 userId,
               }
               // Pass additional players (co-play observers) if provided
-              if (Array.isArray(typedConfig.additionalPlayers) && typedConfig.additionalPlayers.length > 0) {
+              if (
+                Array.isArray(typedConfig.additionalPlayers) &&
+                typedConfig.additionalPlayers.length > 0
+              ) {
                 practiceBreakOptions.additionalPlayers = typedConfig.additionalPlayers
               }
-              initialState = (await validator.getInitialStateForPracticeBreak(gameConfig, practiceBreakOptions as any)) as Record<string, unknown>
+              initialState = (await validator.getInitialStateForPracticeBreak(
+                gameConfig,
+                practiceBreakOptions as any
+              )) as Record<string, unknown>
               usedPracticeBreakInit = true
             } else {
               initialState = validator.getInitialState(gameConfig) as Record<string, unknown>
@@ -1231,16 +1237,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    socket.on(
-      'observer-coplay-leave',
-      (data: { sessionId: string; observerId: string }) => {
-        console.log(
-          `[CoPlay] Observer leaving: session=${data.sessionId}, observer=${data.observerId}`
-        )
-        coPlayReadySessions.delete(data.sessionId)
-        socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', data)
-      }
-    )
+    socket.on('observer-coplay-leave', (data: { sessionId: string; observerId: string }) => {
+      console.log(
+        `[CoPlay] Observer leaving: session=${data.sessionId}, observer=${data.observerId}`
+      )
+      coPlayReadySessions.delete(data.sessionId)
+      socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', data)
+    })
 
     // Session Observation: Broadcast tutorial state (from student's client)
     socket.on(
@@ -1902,7 +1905,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
       // Clean up co-play readiness on disconnect
       for (const [sessionId, { observerId }] of coPlayReadySessions) {
-        console.log(`[CoPlay] Observer disconnected, removing readiness: session=${sessionId}, observer=${observerId}`)
+        console.log(
+          `[CoPlay] Observer disconnected, removing readiness: session=${sessionId}, observer=${observerId}`
+        )
         socket.to(`session:${sessionId}`).emit('observer-coplay-leave', { sessionId, observerId })
       }
       coPlayReadySessions.clear()

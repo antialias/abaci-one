@@ -209,11 +209,7 @@ function getAttemptCount(results: SlotResult[], partNumber: number, slotIndex: n
  * at which point the UI reveals the correct answer. Redo should be blocked for these
  * since the student already knows the answer.
  */
-function wasAnswerDivulged(
-  results: SlotResult[],
-  partNumber: number,
-  slotIndex: number
-): boolean {
+function wasAnswerDivulged(results: SlotResult[], partNumber: number, slotIndex: number): boolean {
   return results.some(
     (r) =>
       r.partNumber === partNumber &&
