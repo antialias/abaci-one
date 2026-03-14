@@ -1449,6 +1449,7 @@ function EuclidCanvasInner({
     postCompletionActionsRef,
     stepDataRef,
     interactionLockedRef: correctionActiveRef,
+    playgroundModeRef,
     dragPointIdRef,
     onReplayResult: handleDragReplay,
     onDragStart: dragTopologyStart,

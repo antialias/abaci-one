@@ -10,6 +10,7 @@ import type { CompassPhase, StraightedgePhase, ExtendPhase } from '../types'
 import { resolveSelector } from '../engine/selectors'
 import { getHiddenElementIds } from '../engine/macroExecution'
 import { getAllPoints } from '../engine/constructionState'
+import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
 import { rotatePoint } from '../engine/viewportMath'
 import { BYRNE_CYCLE } from '../types'
 import { renderConstruction, renderDragInvitation } from './renderConstruction'
@@ -106,10 +107,10 @@ export function renderFrame(
     undefined, // transparentBg
     complete
       ? ctx.playgroundModeRef.current
-        ? getAllPoints(drawState)
-            .filter((pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend')
-            .map((pt) => pt.id)
-        : prop.draggablePointIds
+        ? getAllPoints(drawState).map((pt) => pt.id)
+        : RECIPE_REGISTRY[prop.id]
+          ? getAllPoints(drawState).map((pt) => pt.id)
+          : prop.draggablePointIds
       : undefined,
     complete ? ctx.postCompletionActionsRef.current : undefined
   )
@@ -118,10 +119,10 @@ export function renderFrame(
   if (
     complete &&
     (ctx.playgroundModeRef.current
-      ? getAllPoints(drawState).some(
-          (pt) => pt.origin === 'given' || pt.origin === 'free' || pt.origin === 'extend'
-        )
-      : prop.draggablePointIds?.length)
+      ? getAllPoints(drawState).length > 0
+      : RECIPE_REGISTRY[prop.id]
+        ? getAllPoints(drawState).length > 0
+        : prop.draggablePointIds?.length)
   ) {
     ctx.needsDrawRef.current = true
   }

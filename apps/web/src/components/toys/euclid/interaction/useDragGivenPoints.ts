@@ -15,6 +15,15 @@ import type { PostCompletionAction, ReplayResult } from '../engine/replayConstru
 import { getAllPoints, getPoint } from '../engine/constructionState'
 import { screenToWorld2D, worldToScreen2D } from '../../shared/coordinateConversions'
 import { replayConstruction } from '../engine/replayConstruction'
+import {
+  solveInverseKinematics,
+  solveInverse,
+  createSolverState,
+  type InverseSolverState,
+  type ForwardFn,
+} from '../engine/inverseSolver'
+import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
+import type { Pt } from '../engine/recipe/types'
 
 /** Hit radius for draggable points (screen pixels) */
 const HIT_RADIUS_MOUSE = 30
@@ -37,6 +46,8 @@ interface UseDragGivenPointsOptions {
   stepDataRef?: React.MutableRefObject<Map<number, Record<string, unknown>>>
   /** When true, drag interactions are suppressed (e.g. during correction animations) */
   interactionLockedRef?: React.MutableRefObject<boolean>
+  /** Whether we're in free-form playground mode (no recipe) */
+  playgroundModeRef?: React.MutableRefObject<boolean | undefined>
   /** Called when construction state is replaced during drag */
   onReplayResult: (result: ReplayResult) => void
   /** Called once when a drag gesture starts on a given point */
@@ -48,10 +59,14 @@ interface UseDragGivenPointsOptions {
 }
 
 /**
- * Post-completion drag interaction for given points.
- * When the proposition is complete and has `draggablePointIds`, the user can
- * grab a given point and move it. The entire construction replays from scratch
- * on each frame with the updated positions.
+ * Post-completion drag interaction for all construction points.
+ *
+ * - Given/free/extend points: direct position update (existing behavior)
+ * - Derived points (intersections, produced, macro outputs): inverse solver
+ *   finds given point positions that place the dragged point at the cursor.
+ *
+ * The inverse solver uses Levenberg-Marquardt with the recipe evaluator as
+ * its forward model, warm-started across frames for real-time performance.
  */
 export function useDragGivenPoints({
   canvasRef,
@@ -68,6 +83,7 @@ export function useDragGivenPoints({
   postCompletionActionsRef,
   stepDataRef,
   interactionLockedRef,
+  playgroundModeRef,
   onReplayResult,
   onDragStart,
   dragPointIdRef,
@@ -82,7 +98,10 @@ export function useDragGivenPoints({
     if (!canvas) return
 
     let dragPointId: string | null = null
+    let dragPointOrigin: ConstructionPoint['origin'] | null = null
     let hoveredDraggableId: string | null = null
+    /** Solver state persisted across frames within a single drag gesture */
+    let solverState: InverseSolverState | null = null
 
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
@@ -106,7 +125,13 @@ export function useDragGivenPoints({
       }
     }
 
-    function hitTestDraggablePoints(
+    /**
+     * Hit-test ALL construction points — given, free, extend, AND derived.
+     * Returns the closest point within the hit radius, with priority:
+     * given/free/extend points win ties over derived points (so direct
+     * dragging is preferred when a given point overlaps a derived one).
+     */
+    function hitTestAllPoints(
       screenX: number,
       screenY: number,
       isTouch: boolean
@@ -117,13 +142,21 @@ export function useDragGivenPoints({
       const viewport = viewportRef.current
       const { w, h } = getCSSSize()
       const draggableSet = new Set(prop.draggablePointIds ?? [])
+      const recipe = RECIPE_REGISTRY[prop.id]
 
       let best: ConstructionPoint | null = null
       let bestDist = Infinity
+      let bestIsDirect = false // true if best is a given/free/extend point
+
+      const isPlayground = !!playgroundModeRef?.current
 
       for (const pt of getAllPoints(state)) {
-        // Include given draggable points, user-placed free points, and extend points
-        if (!draggableSet.has(pt.id) && pt.origin !== 'free' && pt.origin !== 'extend') continue
+        const isDirect =
+          draggableSet.has(pt.id) || pt.origin === 'free' || pt.origin === 'extend'
+        const isDerived = !isDirect && (recipe != null || isPlayground)
+
+        if (!isDirect && !isDerived) continue
+
         const s = worldToScreen2D(
           pt.x,
           pt.y,
@@ -137,9 +170,14 @@ export function useDragGivenPoints({
         const dx = screenX - s.x
         const dy = screenY - s.y
         const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < threshold && dist < bestDist) {
+
+        if (dist >= threshold) continue
+
+        // Direct points take priority over derived points at equal distance
+        if (dist < bestDist || (dist === bestDist && isDirect && !bestIsDirect)) {
           best = pt
           bestDist = dist
+          bestIsDirect = isDirect
         }
       }
 
@@ -156,6 +194,79 @@ export function useDragGivenPoints({
       return positions
     }
 
+    /**
+     * Collect current input positions ordered by recipe input slots.
+     * Returns null if the recipe or any input point is missing.
+     */
+    function collectRecipeInputPositions(): Pt[] | null {
+      const prop = propositionRef.current
+      const recipe = RECIPE_REGISTRY[prop.id]
+      if (!recipe) return null
+
+      const positions: Pt[] = []
+      for (const slot of recipe.inputSlots) {
+        const ptId = `pt-${slot.ref}`
+        const pt = getPoint(constructionRef.current, ptId)
+        if (!pt) return null
+        positions.push({ x: pt.x, y: pt.y })
+      }
+      return positions
+    }
+
+    /**
+     * Convert a construction point ID ('pt-C') to a recipe ref ('C').
+     */
+    function pointIdToRef(pointId: string): string {
+      return pointId.startsWith('pt-') ? pointId.slice(3) : pointId
+    }
+
+    /**
+     * Apply solved input positions to the construction via replay.
+     */
+    function applyInverseSolution(solvedPositions: Pt[]): void {
+      const prop = propositionRef.current
+      const recipe = RECIPE_REGISTRY[prop.id]
+      if (!recipe) return
+
+      // Build positions map from solved input positions
+      const positions = new Map<string, { x: number; y: number }>()
+      for (let i = 0; i < recipe.inputSlots.length; i++) {
+        const ptId = `pt-${recipe.inputSlots[i].ref}`
+        positions.set(ptId, solvedPositions[i])
+      }
+
+      // Compute fresh given elements
+      const computeFn = prop.computeGivenElements
+      let givenElements: ConstructionElement[]
+      if (computeFn) {
+        givenElements = computeFn(positions)
+      } else {
+        givenElements = prop.givenElements.map((el) => {
+          if (el.kind === 'point' && positions.has(el.id)) {
+            const pos = positions.get(el.id)!
+            return { ...el, x: pos.x, y: pos.y }
+          }
+          return el
+        })
+      }
+
+      // Replay the full construction
+      const actions = postCompletionActionsRef.current
+      const result = replayConstruction(
+        givenElements,
+        prop.steps,
+        prop,
+        actions,
+        stepDataRef?.current
+      )
+      constructionRef.current = result.state
+      factStoreRef.current = result.factStore
+      mergeProofFacts(factStoreRef.current, proofFactsRef.current)
+      candidatesRef.current = result.candidates
+      onReplayResult(result)
+      needsDrawRef.current = true
+    }
+
     function handlePointerDown(e: PointerEvent) {
       if (!isCompleteRef.current || activeToolRef.current !== 'move') return
       if (pointerCapturedRef.current) return
@@ -167,15 +278,24 @@ export function useDragGivenPoints({
       const sy = e.clientY - rect.top
       const isTouch = e.pointerType === 'touch'
 
-      const hit = hitTestDraggablePoints(sx, sy, isTouch)
+      const hit = hitTestAllPoints(sx, sy, isTouch)
       if (hit) {
         e.stopPropagation()
         e.preventDefault()
         dragPointId = hit.id
+        dragPointOrigin = hit.origin
         if (dragPointIdRef) dragPointIdRef.current = hit.id
         pointerCapturedRef.current = true
         canvas!.style.cursor = 'grabbing'
         needsDrawRef.current = true
+
+        // Initialize solver state for derived point drags
+        if (isDerivedOrigin(hit.origin)) {
+          solverState = createSolverState()
+        } else {
+          solverState = null
+        }
+
         onDragStart?.(hit.id)
       }
     }
@@ -198,53 +318,48 @@ export function useDragGivenPoints({
         e.preventDefault()
         const world = toWorld(sx, sy, w, h)
 
-        // Check if the dragged point is a user-placed free point
-        const draggedPt = getAllPoints(constructionRef.current).find((pt) => pt.id === dragPointId)
-        let actions = postCompletionActionsRef.current
+        // Route to the appropriate drag handler based on point origin
+        if (dragPointOrigin && isDerivedOrigin(dragPointOrigin)) {
+          // ── Inverse solver path: derived point ──
+          handleDerivedPointDrag(world)
+        } else {
+          // ── Direct path: given/free/extend point ──
+          handleDirectPointDrag(world, prop)
+        }
+      } else {
+        // Not dragging — update cursor based on hover
+        const hit = hitTestAllPoints(sx, sy, isTouch)
+        const newHoveredId = hit?.id ?? null
 
-        if (draggedPt?.origin === 'free') {
-          // Update the free-point action coordinates in place
-          actions = actions.map((a) =>
-            a.type === 'free-point' && a.id === dragPointId ? { ...a, x: world.x, y: world.y } : a
-          )
-          postCompletionActionsRef.current = actions
-        } else if (draggedPt?.origin === 'extend') {
-          // Ray-constrained drag: project cursor onto the ray and update distance
-          const extendAction = actions.find((a) => a.type === 'extend' && a.pointId === dragPointId)
-          if (extendAction && extendAction.type === 'extend') {
-            const basePt = getPoint(constructionRef.current, extendAction.baseId)
-            const throughPt = getPoint(constructionRef.current, extendAction.throughId)
-            if (basePt && throughPt) {
-              const dx = throughPt.x - basePt.x
-              const dy = throughPt.y - basePt.y
-              const len = Math.sqrt(dx * dx + dy * dy)
-              if (len > 0.001) {
-                const dirX = dx / len
-                const dirY = dy / len
-                // Project cursor onto ray beyond throughPt
-                const toX = world.x - throughPt.x
-                const toY = world.y - throughPt.y
-                const proj = toX * dirX + toY * dirY
-                const clampedDist = Math.max(0.1, proj)
-                // Update distance in the action
-                actions = actions.map((a) =>
-                  a.type === 'extend' && a.pointId === dragPointId
-                    ? { ...a, distance: clampedDist }
-                    : a
-                )
-                postCompletionActionsRef.current = actions
-              }
-            }
+        if (newHoveredId !== hoveredDraggableId) {
+          hoveredDraggableId = newHoveredId
+          if (hoveredDraggableId) {
+            canvas!.style.cursor = 'grab'
+          } else {
+            canvas!.style.cursor = ''
           }
         }
+      }
+    }
 
-        // Collect current given point positions (unchanged for free/extend point drag)
-        const positions = collectCurrentPositions()
-        if (draggedPt?.origin !== 'free' && draggedPt?.origin !== 'extend') {
-          positions.set(dragPointId, world)
+    /**
+     * Build a replay-based forward function for post-completion points.
+     * This replays the full construction (recipe steps + post-completion actions)
+     * and looks up the target point in the resulting state.
+     */
+    function buildReplayForward(targetPointId: string): ForwardFn {
+      const prop = propositionRef.current
+      const recipe = RECIPE_REGISTRY[prop.id]
+      if (!recipe) return () => null
+
+      return (inputPositions: Pt[]) => {
+        // Map solved input positions to given element positions
+        const positions = new Map<string, { x: number; y: number }>()
+        for (let i = 0; i < recipe.inputSlots.length; i++) {
+          positions.set(`pt-${recipe.inputSlots[i].ref}`, inputPositions[i])
         }
 
-        // Compute fresh given elements
+        // Compute given elements
         const computeFn = prop.computeGivenElements
         let givenElements: ConstructionElement[]
         if (computeFn) {
@@ -259,7 +374,86 @@ export function useDragGivenPoints({
           })
         }
 
-        // Replay the full construction + any post-completion user actions
+        // Replay with post-completion actions
+        const result = replayConstruction(
+          givenElements,
+          prop.steps,
+          prop,
+          postCompletionActionsRef.current,
+          stepDataRef?.current
+        )
+
+        // Find the target point in the replayed state
+        const pt = getPoint(result.state, targetPointId)
+        return pt ? { x: pt.x, y: pt.y } : null
+      }
+    }
+
+    /**
+     * Collect all given + free point positions as solver inputs for playground mode.
+     * Returns { positions, pointIds } where pointIds tracks which point each position maps to.
+     */
+    function collectPlaygroundInputPositions(): { positions: Pt[]; pointIds: string[] } | null {
+      const positions: Pt[] = []
+      const pointIds: string[] = []
+
+      // Given points
+      for (const el of constructionRef.current.elements) {
+        if (el.kind === 'point' && el.origin === 'given') {
+          positions.push({ x: el.x, y: el.y })
+          pointIds.push(el.id)
+        }
+      }
+
+      // Free points (from post-completion actions)
+      for (const action of postCompletionActionsRef.current) {
+        if (action.type === 'free-point') {
+          positions.push({ x: action.x, y: action.y })
+          pointIds.push(action.id)
+        }
+      }
+
+      return positions.length > 0 ? { positions, pointIds } : null
+    }
+
+    /**
+     * Build a replay-based forward function for playground mode.
+     * Maps given + free point positions through a full replay to find the target.
+     */
+    function buildPlaygroundForward(targetPointId: string, pointIds: string[]): ForwardFn {
+      const prop = propositionRef.current
+
+      return (inputPositions: Pt[]) => {
+        // Build given elements with updated positions
+        const givenPositions = new Map<string, { x: number; y: number }>()
+        const freePositions = new Map<string, { x: number; y: number }>()
+
+        for (let i = 0; i < pointIds.length; i++) {
+          const pt = getPoint(constructionRef.current, pointIds[i])
+          if (pt?.origin === 'given') {
+            givenPositions.set(pointIds[i], inputPositions[i])
+          } else {
+            freePositions.set(pointIds[i], inputPositions[i])
+          }
+        }
+
+        const givenElements = prop.givenElements.map((el) => {
+          if (el.kind === 'point' && givenPositions.has(el.id)) {
+            const pos = givenPositions.get(el.id)!
+            return { ...el, x: pos.x, y: pos.y }
+          }
+          return el
+        })
+
+        // Update free-point actions with solved positions
+        const actions = postCompletionActionsRef.current.map((a) => {
+          if (a.type === 'free-point' && freePositions.has(a.id)) {
+            const pos = freePositions.get(a.id)!
+            return { ...a, x: pos.x, y: pos.y }
+          }
+          return a
+        })
+
         const result = replayConstruction(
           givenElements,
           prop.steps,
@@ -267,32 +461,222 @@ export function useDragGivenPoints({
           actions,
           stepDataRef?.current
         )
-        constructionRef.current = result.state
-        factStoreRef.current = result.factStore
-        mergeProofFacts(factStoreRef.current, proofFactsRef.current)
-        candidatesRef.current = result.candidates
-        onReplayResult(result)
-        needsDrawRef.current = true
-      } else {
-        // Not dragging — update cursor based on hover
-        const hit = hitTestDraggablePoints(sx, sy, isTouch)
-        const newHoveredId = hit?.id ?? null
 
-        if (newHoveredId !== hoveredDraggableId) {
-          hoveredDraggableId = newHoveredId
-          if (hoveredDraggableId) {
-            canvas!.style.cursor = 'grab'
-          } else {
-            canvas!.style.cursor = ''
+        const pt = getPoint(result.state, targetPointId)
+        return pt ? { x: pt.x, y: pt.y } : null
+      }
+    }
+
+    /**
+     * Apply solved input positions in playground mode (given + free points).
+     */
+    function applyPlaygroundSolution(solvedPositions: Pt[], pointIds: string[]): void {
+      const prop = propositionRef.current
+
+      // Build given element positions
+      const positions = new Map<string, { x: number; y: number }>()
+      for (let i = 0; i < pointIds.length; i++) {
+        const pt = getPoint(constructionRef.current, pointIds[i])
+        if (pt?.origin === 'given') {
+          positions.set(pointIds[i], solvedPositions[i])
+        }
+      }
+
+      // Update free-point actions
+      let actions = postCompletionActionsRef.current.map((a) => {
+        if (a.type === 'free-point') {
+          const idx = pointIds.indexOf(a.id)
+          if (idx >= 0) return { ...a, x: solvedPositions[idx].x, y: solvedPositions[idx].y }
+        }
+        return a
+      })
+      postCompletionActionsRef.current = actions
+
+      const computeFn = prop.computeGivenElements
+      let givenElements: ConstructionElement[]
+      if (computeFn) {
+        givenElements = computeFn(positions)
+      } else {
+        givenElements = prop.givenElements.map((el) => {
+          if (el.kind === 'point' && positions.has(el.id)) {
+            const pos = positions.get(el.id)!
+            return { ...el, x: pos.x, y: pos.y }
+          }
+          return el
+        })
+      }
+
+      const result = replayConstruction(
+        givenElements,
+        prop.steps,
+        prop,
+        actions,
+        stepDataRef?.current
+      )
+      constructionRef.current = result.state
+      factStoreRef.current = result.factStore
+      mergeProofFacts(factStoreRef.current, proofFactsRef.current)
+      candidatesRef.current = result.candidates
+      onReplayResult(result)
+      needsDrawRef.current = true
+    }
+
+    /**
+     * Handle drag of a derived (non-given, non-free, non-extend) point
+     * using the inverse kinematics solver.
+     */
+    function handleDerivedPointDrag(world: { x: number; y: number }): void {
+      if (!dragPointId || !solverState) return
+
+      const prop = propositionRef.current
+      const recipe = RECIPE_REGISTRY[prop.id]
+      const isPlayground = !!playgroundModeRef?.current
+
+      if (isPlayground || !recipe) {
+        // Playground / no-recipe path: solve over given + free points
+        const inputs = collectPlaygroundInputPositions()
+        if (!inputs) return
+
+        const forward = buildPlaygroundForward(dragPointId, inputs.pointIds)
+        const result = solveInverse(
+          forward,
+          inputs.positions,
+          { x: world.x, y: world.y },
+          solverState
+        )
+        applyPlaygroundSolution(result.inputPositions, inputs.pointIds)
+        return
+      }
+
+      // Recipe path
+      const currentInputPositions = collectRecipeInputPositions()
+      if (!currentInputPositions) return
+
+      const targetRef = pointIdToRef(dragPointId)
+
+      // Check if this is a recipe-defined point or a post-completion point
+      const isRecipePoint = recipe.inputSlots.some((s) => s.ref === targetRef) ||
+        recipe.ops.some((op) => {
+          if (op.kind === 'intersection') return op.output === targetRef
+          if (op.kind === 'produce') return op.output === targetRef
+          if (op.kind === 'apply') return Object.values(op.outputs).includes(targetRef)
+          return false
+        })
+
+      let result
+      if (isRecipePoint) {
+        // Fast path: recipe evaluator as forward model
+        result = solveInverseKinematics(
+          recipe,
+          currentInputPositions,
+          targetRef,
+          { x: world.x, y: world.y },
+          RECIPE_REGISTRY,
+          solverState
+        )
+      } else {
+        // Slow path: full replay as forward model (for post-completion points)
+        const forward = buildReplayForward(dragPointId)
+        result = solveInverse(
+          forward,
+          currentInputPositions,
+          { x: world.x, y: world.y },
+          solverState
+        )
+      }
+
+      applyInverseSolution(result.inputPositions)
+    }
+
+    /**
+     * Handle direct drag of a given/free/extend point (existing behavior).
+     */
+    function handleDirectPointDrag(
+      world: { x: number; y: number },
+      prop: PropositionDef
+    ): void {
+      const draggedPt = getAllPoints(constructionRef.current).find((pt) => pt.id === dragPointId)
+      let actions = postCompletionActionsRef.current
+
+      if (draggedPt?.origin === 'free') {
+        // Update the free-point action coordinates in place
+        actions = actions.map((a) =>
+          a.type === 'free-point' && a.id === dragPointId ? { ...a, x: world.x, y: world.y } : a
+        )
+        postCompletionActionsRef.current = actions
+      } else if (draggedPt?.origin === 'extend') {
+        // Ray-constrained drag: project cursor onto the ray and update distance
+        const extendAction = actions.find((a) => a.type === 'extend' && a.pointId === dragPointId)
+        if (extendAction && extendAction.type === 'extend') {
+          const basePt = getPoint(constructionRef.current, extendAction.baseId)
+          const throughPt = getPoint(constructionRef.current, extendAction.throughId)
+          if (basePt && throughPt) {
+            const dx = throughPt.x - basePt.x
+            const dy = throughPt.y - basePt.y
+            const len = Math.sqrt(dx * dx + dy * dy)
+            if (len > 0.001) {
+              const dirX = dx / len
+              const dirY = dy / len
+              // Project cursor onto ray beyond throughPt
+              const toX = world.x - throughPt.x
+              const toY = world.y - throughPt.y
+              const proj = toX * dirX + toY * dirY
+              const clampedDist = Math.max(0.1, proj)
+              // Update distance in the action
+              actions = actions.map((a) =>
+                a.type === 'extend' && a.pointId === dragPointId
+                  ? { ...a, distance: clampedDist }
+                  : a
+              )
+              postCompletionActionsRef.current = actions
+            }
           }
         }
       }
+
+      // Collect current given point positions (unchanged for free/extend point drag)
+      const positions = collectCurrentPositions()
+      if (draggedPt?.origin !== 'free' && draggedPt?.origin !== 'extend') {
+        positions.set(dragPointId!, world)
+      }
+
+      // Compute fresh given elements
+      const computeFn = prop.computeGivenElements
+      let givenElements: ConstructionElement[]
+      if (computeFn) {
+        givenElements = computeFn(positions)
+      } else {
+        givenElements = prop.givenElements.map((el) => {
+          if (el.kind === 'point' && positions.has(el.id)) {
+            const pos = positions.get(el.id)!
+            return { ...el, x: pos.x, y: pos.y }
+          }
+          return el
+        })
+      }
+
+      // Replay the full construction + any post-completion user actions
+      const result = replayConstruction(
+        givenElements,
+        prop.steps,
+        prop,
+        actions,
+        stepDataRef?.current
+      )
+      constructionRef.current = result.state
+      factStoreRef.current = result.factStore
+      mergeProofFacts(factStoreRef.current, proofFactsRef.current)
+      candidatesRef.current = result.candidates
+      onReplayResult(result)
+      needsDrawRef.current = true
     }
 
     function handlePointerUp(e: PointerEvent) {
       if (!dragPointId) return
       e.stopPropagation()
       dragPointId = null
+      dragPointOrigin = null
+      solverState = null
       if (dragPointIdRef) dragPointIdRef.current = null
       pointerCapturedRef.current = false
       canvas!.style.cursor = hoveredDraggableId ? 'grab' : ''
@@ -303,6 +687,8 @@ export function useDragGivenPoints({
     function handlePointerCancel() {
       if (!dragPointId) return
       dragPointId = null
+      dragPointOrigin = null
+      solverState = null
       if (dragPointIdRef) dragPointIdRef.current = null
       pointerCapturedRef.current = false
       hoveredDraggableId = null
@@ -340,4 +726,12 @@ export function useDragGivenPoints({
     getCanvasRect,
     onDragEnd,
   ])
+}
+
+/**
+ * Whether a point origin represents a derived (solver-eligible) point.
+ * Given, free, and extend points are handled by direct drag.
+ */
+function isDerivedOrigin(origin: ConstructionPoint['origin']): boolean {
+  return origin !== 'given' && origin !== 'free' && origin !== 'extend'
 }
