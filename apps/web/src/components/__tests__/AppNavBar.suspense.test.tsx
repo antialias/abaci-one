@@ -20,8 +20,8 @@ vi.mock('../../contexts/FullscreenContext', () => ({
   }),
 }))
 
-vi.mock('../../contexts/DeploymentInfoContext', () => ({
-  useDeploymentInfo: () => ({
+vi.mock('@tidepool/debug-panel', () => ({
+  useDeploymentInfoPanel: () => ({
     isOpen: false,
     open: vi.fn(),
     close: vi.fn(),

@@ -101,7 +101,7 @@ const nextConfig = {
       '@napi-rs/canvas',
     ],
   },
-  transpilePackages: ['@soroban/core', '@soroban/client', '@svg-maps/world', '@svg-maps/usa'],
+  transpilePackages: ['@soroban/core', '@soroban/client', '@svg-maps/world', '@svg-maps/usa', '@tidepool/debug-panel'],
   webpack: (config, { isServer }) => {
     config.experiments = {
       ...config.experiments,

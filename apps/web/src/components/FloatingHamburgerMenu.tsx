@@ -6,7 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import Link from 'next/link'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useFullscreen } from '@/contexts/FullscreenContext'
-import { useDeploymentInfo } from '@/contexts/DeploymentInfoContext'
+import { useDeploymentInfoPanel } from '@tidepool/debug-panel'
 import { css } from '../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
 
@@ -39,7 +39,7 @@ export function FloatingHamburgerMenu({
   const pathname = usePathname()
   const { resolvedTheme, setTheme } = useTheme()
   const { isFullscreen, toggleFullscreen } = useFullscreen()
-  const { open: openDeploymentInfo } = useDeploymentInfo()
+  const { open: openDeploymentInfo } = useDeploymentInfoPanel()
 
   const [open, setOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)

@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { Z_INDEX } from '../constants/zIndex'
-import { useDeploymentInfo } from '../contexts/DeploymentInfoContext'
+import { useDeploymentInfoPanel } from '@tidepool/debug-panel'
 import { useFullscreen } from '../contexts/FullscreenContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useVisualDebug } from '../contexts/VisualDebugContext'
@@ -74,7 +74,7 @@ function MenuContent({
   sessionStatus: string
 }) {
   const isDark = resolvedTheme === 'dark'
-  const { open: openDeploymentInfo } = useDeploymentInfo()
+  const { open: openDeploymentInfo } = useDeploymentInfoPanel()
   const { isVisualDebugEnabled, toggleVisualDebug, isDebugAllowed } = useVisualDebug()
 
   const linkStyle = {
@@ -1374,7 +1374,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const isToysPage = pathname?.startsWith('/toys/')
   const isHomePage = pathname === '/'
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
-  const { open: openDeploymentInfo } = useDeploymentInfo()
+  const { open: openDeploymentInfo } = useDeploymentInfoPanel()
 
   // Try to get home hero context (if on homepage)
   const homeHero = useOptionalHomeHero()

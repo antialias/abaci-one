@@ -204,6 +204,9 @@ importers:
       '@tensorflow/tfjs':
         specifier: ^4.22.0
         version: 4.22.0(seedrandom@3.0.5)
+      '@tidepool/debug-panel':
+        specifier: 0.1.0
+        version: 0.1.0(@tanstack/react-query@5.90.2(react@18.3.1))(react@18.3.1)
       '@types/fluent-ffmpeg':
         specifier: ^2.1.28
         version: 2.1.28
@@ -5214,6 +5217,12 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
+  '@tidepool/debug-panel@0.1.0':
+    resolution: {integrity: sha512-rwRPXPIFbYHTBwxd2XuwUeURTCVqbw4cwn/JglYBSBuKoRRY6lpZurUijfCZA5cevjCY4PwbstoPg9ygd6FeaA==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40tidepool%2Fdebug-panel/-/0.1.0/debug-panel-0.1.0.tgz}
+    peerDependencies:
+      '@tanstack/react-query': '>=5.0.0'
+      react: ^18.0.0 || ^19.0.0
+
   '@tonaljs/abc-notation@4.9.1':
     resolution: {integrity: sha512-2fDUdPsFDdgZgyIiZCTYGKy30QiwIQxSXCSN2thGrSMXbQKCp8iTC8haStYcrA+25MPWhWlmvC/pz3tGcTNAqQ==}
 
@@ -6145,8 +6154,8 @@ packages:
   '@webgpu/types@0.1.38':
     resolution: {integrity: sha512-7LrhVKz2PRh+DD7+S+PVaFd5HxaWQvoMqBbsV9fNJO1pjUs1P8bM2vQVNfk+3URTqbuTI7gkXi0rfsN0IadoBA==}
 
-  '@webgpu/types@0.1.66':
-    resolution: {integrity: sha512-YA2hLrwLpDsRueNDXIMqN9NTzD6bCDkuXbOSe0heS+f8YE8usA6Gbv1prj81pzVHrbaAma7zObnIC+I6/sXJgA==}
+  '@webgpu/types@0.1.69':
+    resolution: {integrity: sha512-RPmm6kgRbI8e98zSD3RVACvnuktIja5+yLgDAkTmxLr90BEwdTXRQWNLF3ETTTyH/8mKhznZuN5AveXYFEsMGQ==}
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -11156,6 +11165,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   prelude-ls@1.2.1:
@@ -19201,6 +19211,11 @@ snapshots:
     dependencies:
       '@testing-library/dom': 9.3.4
 
+  '@tidepool/debug-panel@0.1.0(@tanstack/react-query@5.90.2(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/react-query': 5.90.2(react@18.3.1)
+      react: 18.3.1
+
   '@tonaljs/abc-notation@4.9.1':
     dependencies:
       '@tonaljs/pitch-distance': 5.0.5
@@ -19829,7 +19844,7 @@ snapshots:
       '@tweenjs/tween.js': 23.1.3
       '@types/stats.js': 0.17.4
       '@types/webxr': 0.5.24
-      '@webgpu/types': 0.1.66
+      '@webgpu/types': 0.1.69
       fflate: 0.8.2
       meshoptimizer: 0.22.0
 
@@ -20397,7 +20412,7 @@ snapshots:
 
   '@webgpu/types@0.1.38': {}
 
-  '@webgpu/types@0.1.66': {}
+  '@webgpu/types@0.1.69': {}
 
   '@xtuc/ieee754@1.2.0': {}
 
