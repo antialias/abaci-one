@@ -21,6 +21,30 @@ resource "helm_release" "argocd" {
   namespace        = kubernetes_namespace.argocd.metadata[0].name
   create_namespace = false
 
+  # Read-only local account for the claude-agent MCP.
+  # Token is minted manually: `argocd account generate-token --account claude-agent`
+  values = [
+    yamlencode({
+      configs = {
+        cm = {
+          "accounts.claude-agent"         = "apiKey"
+          "accounts.claude-agent.enabled" = "true"
+        }
+        rbac = {
+          "policy.csv" = <<-EOT
+            p, role:readonly-apps, applications, get, */*, allow
+            p, role:readonly-apps, applications, list, */*, allow
+            p, role:readonly-apps, logs, get, */*, allow
+            p, role:readonly-apps, clusters, get, *, allow
+            p, role:readonly-apps, projects, get, *, allow
+            p, role:readonly-apps, repositories, get, *, allow
+            g, claude-agent, role:readonly-apps
+          EOT
+        }
+      }
+    })
+  ]
+
   # Server configuration
   set {
     name  = "server.service.type"
