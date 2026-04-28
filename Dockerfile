@@ -22,15 +22,20 @@ RUN npm install -g pnpm@9.15.4 turbo@1.10.0
 WORKDIR /app
 
 # Copy package files for dependency resolution
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 COPY packages/llm-client/package.json ./packages/llm-client/
 
-# Install ALL dependencies for build stage
-RUN pnpm install --frozen-lockfile
+# Install ALL dependencies for build stage.
+# Mount the Gitea npm token as a buildkit secret (no layer leak) and use a
+# temp .npmrc that combines the committed registry mapping with the auth line.
+RUN --mount=type=secret,id=gitea_npm_token \
+    cp .npmrc /tmp/.npmrc \
+    && echo "//git.dev.abaci.one/api/packages/antialias/npm/:_authToken=$(cat /run/secrets/gitea_npm_token)" >> /tmp/.npmrc \
+    && NPM_CONFIG_USERCONFIG=/tmp/.npmrc pnpm install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder
@@ -79,7 +84,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN npm install -g pnpm@9.15.4
 
 # Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
@@ -87,7 +92,12 @@ COPY packages/templates/package.json ./packages/templates/
 COPY packages/llm-client/package.json ./packages/llm-client/
 
 # Install ONLY production dependencies
-RUN pnpm install --frozen-lockfile --prod
+# Mount the Gitea npm token as a buildkit secret (no layer leak) and use a
+# temp .npmrc that combines the committed registry mapping with the auth line.
+RUN --mount=type=secret,id=gitea_npm_token \
+    cp .npmrc /tmp/.npmrc \
+    && echo "//git.dev.abaci.one/api/packages/antialias/npm/:_authToken=$(cat /run/secrets/gitea_npm_token)" >> /tmp/.npmrc \
+    && NPM_CONFIG_USERCONFIG=/tmp/.npmrc pnpm install --frozen-lockfile --prod
 
 # Typst builder stage - download and prepare typst binary
 FROM node:20-slim AS typst-builder
