@@ -1,85 +1,157 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+/**
+ * @vitest-environment node
+ *
+ * Tests for getPaginatedSessions
+ *
+ * Uses an ephemeral in-memory SQLite database to verify:
+ * - First-page behavior (with and without more results)
+ * - Cursor-based pagination
+ * - Session transformation to PracticeSession
+ * - Edge cases (empty, exactly limit, single row)
+ *
+ * The tests run against the real Drizzle query path (db.select / db.query),
+ * which is the right level to pin the column-projection behavior introduced
+ * in #141: a regression that re-introduced findMany() without a projection
+ * would still pass mock-based tests but break the real query.
+ */
 
-// Mock the database module
-vi.mock('@/db', () => {
-  const mockFindMany = vi.fn()
-  const mockFindFirst = vi.fn()
-
-  return {
-    db: {
-      query: {
-        sessionPlans: {
-          findMany: mockFindMany,
-          findFirst: mockFindFirst,
-        },
-      },
-    },
-    schema: {
-      sessionPlans: {
-        id: 'id',
-        playerId: 'player_id',
-        status: 'status',
-        completedAt: 'completed_at',
-      },
-    },
-  }
-})
-
-// Import after mocking
-import { db } from '@/db'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as schema from '@/db/schema'
+import type { SessionStatus, SlotResult } from '@/db/schema/session-plans'
+import {
+  createEphemeralDatabase,
+  createTestStudent,
+  getCurrentEphemeralDb,
+  setCurrentEphemeralDb,
+  type EphemeralDbResult,
+} from '@/test/journey-simulator/EphemeralDatabase'
 import { getPaginatedSessions } from '../progress-manager'
 
-// Helper to create mock session data
-function createMockSession(
-  id: string,
-  completedAt: Date,
-  problemCount: number = 10
-): Record<string, unknown> {
+vi.mock('@/db', () => ({
+  get db() {
+    return getCurrentEphemeralDb()
+  },
+  schema,
+}))
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function makeSlotResult(overrides: Partial<SlotResult> = {}): SlotResult {
   return {
-    id,
-    playerId: 'test-player',
-    status: 'completed',
-    completedAt,
-    createdAt: completedAt,
-    startedAt: completedAt,
-    results: Array.from({ length: problemCount }, (_, i) => ({
-      isCorrect: i % 2 === 0,
-      responseTimeMs: 3000 + i * 100,
-      skillsExercised: [`skill-${i % 3}`],
-    })),
+    slotId: 'test-slot-0',
+    partNumber: 1,
+    slotIndex: 0,
+    problem: { terms: [1, 2], skillIds: ['basic.directAddition'], id: 'p1' } as any,
+    studentAnswer: 3,
+    isCorrect: true,
+    responseTimeMs: 5000,
+    skillsExercised: ['basic.directAddition'],
+    usedOnScreenAbacus: false,
+    timestamp: new Date(),
+    hadHelp: false,
+    incorrectAttempts: 0,
+    ...overrides,
   }
 }
 
-describe('getPaginatedSessions', () => {
-  const mockFindMany = db.query.sessionPlans.findMany as ReturnType<typeof vi.fn>
-  const mockFindFirst = db.query.sessionPlans.findFirst as ReturnType<typeof vi.fn>
+async function insertSession(
+  db: ReturnType<typeof getCurrentEphemeralDb>,
+  opts: {
+    id: string
+    playerId: string
+    status?: SessionStatus
+    completedAt?: Date | null
+    createdAt?: Date
+    startedAt?: Date | null
+    results?: SlotResult[]
+  }
+) {
+  const now = new Date()
+  await db.insert(schema.sessionPlans).values({
+    id: opts.id,
+    playerId: opts.playerId,
+    status: opts.status ?? 'completed',
+    parts: [],
+    results: opts.results ?? [],
+    completedAt: opts.completedAt !== undefined ? opts.completedAt : now,
+    createdAt: opts.createdAt ?? now,
+    startedAt: opts.startedAt !== undefined ? opts.startedAt : (opts.createdAt ?? now),
+    targetDurationMinutes: 12,
+    estimatedProblemCount: opts.results?.length ?? 0,
+    avgTimePerProblemSeconds: 5,
+    summary: { parts: [] } as any,
+  })
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+/**
+ * Insert a sequence of sessions whose completedAt timestamps are strictly
+ * decreasing in insertion order, so session-0 is the most recent.
+ *
+ * Returns the IDs in newest-first order (matching dashboard sort order).
+ */
+async function insertSessions(
+  db: ReturnType<typeof getCurrentEphemeralDb>,
+  playerId: string,
+  count: number,
+  problemsPerSession: number = 10
+): Promise<string[]> {
+  const ids: string[] = []
+  for (let i = 0; i < count; i++) {
+    const id = `session-${i}`
+    // session-0 most recent, session-(N-1) oldest
+    const completedAt = new Date(Date.UTC(2025, 0, count - i, 10, 0, 0))
+    const results = Array.from({ length: problemsPerSession }, (_, j) =>
+      makeSlotResult({
+        slotIndex: j,
+        isCorrect: j % 2 === 0,
+        responseTimeMs: 3000 + j * 100,
+        skillsExercised: [`skill-${j % 3}`],
+      })
+    )
+    await insertSession(db, { id, playerId, completedAt, results })
+    ids.push(id)
+  }
+  return ids
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe('getPaginatedSessions', () => {
+  let ephemeralDb: EphemeralDbResult
+  let playerId: string
+
+  beforeEach(async () => {
+    ephemeralDb = createEphemeralDatabase()
+    setCurrentEphemeralDb(ephemeralDb.db)
+    const student = await createTestStudent(ephemeralDb.db, 'test-player')
+    playerId = student.playerId
+  })
+
+  afterEach(() => {
+    setCurrentEphemeralDb(null)
+    ephemeralDb.cleanup()
   })
 
   describe('first page (no cursor)', () => {
     it('should return first page of sessions with hasMore=true when more exist', async () => {
-      // Create 21 mock sessions (limit + 1 to check for more)
-      const mockSessions = Array.from({ length: 21 }, (_, i) =>
-        createMockSession(`session-${i}`, new Date(2024, 0, 21 - i))
-      )
-      mockFindMany.mockResolvedValue(mockSessions)
+      // 21 sessions, request 20 → expect hasMore + cursor on the 20th
+      const ids = await insertSessions(ephemeralDb.db, playerId, 21)
 
-      const result = await getPaginatedSessions('test-player', 20)
+      const result = await getPaginatedSessions(playerId, 20)
 
       expect(result.sessions).toHaveLength(20)
       expect(result.hasMore).toBe(true)
-      expect(result.nextCursor).toBe('session-19')
+      expect(result.nextCursor).toBe(ids[19])
     })
 
     it('should return all sessions with hasMore=false when fewer than limit', async () => {
-      const mockSessions = Array.from({ length: 5 }, (_, i) =>
-        createMockSession(`session-${i}`, new Date(2024, 0, 5 - i))
-      )
-      mockFindMany.mockResolvedValue(mockSessions)
+      await insertSessions(ephemeralDb.db, playerId, 5)
 
-      const result = await getPaginatedSessions('test-player', 20)
+      const result = await getPaginatedSessions(playerId, 20)
 
       expect(result.sessions).toHaveLength(5)
       expect(result.hasMore).toBe(false)
@@ -87,9 +159,7 @@ describe('getPaginatedSessions', () => {
     })
 
     it('should return empty array when no sessions exist', async () => {
-      mockFindMany.mockResolvedValue([])
-
-      const result = await getPaginatedSessions('test-player', 20)
+      const result = await getPaginatedSessions(playerId, 20)
 
       expect(result.sessions).toHaveLength(0)
       expect(result.hasMore).toBe(false)
@@ -99,43 +169,37 @@ describe('getPaginatedSessions', () => {
 
   describe('subsequent pages (with cursor)', () => {
     it('should fetch sessions older than cursor', async () => {
-      const cursorSession = createMockSession('cursor-session', new Date(2024, 0, 15))
-      const olderSessions = Array.from({ length: 21 }, (_, i) =>
-        createMockSession(`session-${i}`, new Date(2024, 0, 14 - i))
-      )
+      // 30 total, paginate by 20: page 1 returns 20, page 2 returns 10
+      const ids = await insertSessions(ephemeralDb.db, playerId, 30)
 
-      mockFindFirst.mockResolvedValue(cursorSession)
-      mockFindMany.mockResolvedValue(olderSessions)
+      const page1 = await getPaginatedSessions(playerId, 20)
+      expect(page1.sessions).toHaveLength(20)
+      expect(page1.hasMore).toBe(true)
+      expect(page1.nextCursor).toBe(ids[19])
 
-      const result = await getPaginatedSessions('test-player', 20, 'cursor-session')
-
-      expect(mockFindFirst).toHaveBeenCalled()
-      expect(result.sessions).toHaveLength(20)
-      expect(result.hasMore).toBe(true)
+      const page2 = await getPaginatedSessions(playerId, 20, page1.nextCursor!)
+      expect(page2.sessions).toHaveLength(10)
+      expect(page2.hasMore).toBe(false)
+      expect(page2.nextCursor).toBeNull()
+      // Page 2 should start at session-20 (next-oldest after the cursor)
+      expect(page2.sessions[0].id).toBe(ids[20])
     })
 
     it('should return remaining sessions when cursor is near the end', async () => {
-      const cursorSession = createMockSession('cursor-session', new Date(2024, 0, 5))
-      const olderSessions = Array.from({ length: 3 }, (_, i) =>
-        createMockSession(`session-${i}`, new Date(2024, 0, 4 - i))
-      )
-
-      mockFindFirst.mockResolvedValue(cursorSession)
-      mockFindMany.mockResolvedValue(olderSessions)
-
-      const result = await getPaginatedSessions('test-player', 20, 'cursor-session')
+      const ids = await insertSessions(ephemeralDb.db, playerId, 5)
+      // Cursor at session-1 (second-newest); should return session-2, -3, -4
+      const result = await getPaginatedSessions(playerId, 20, ids[1])
 
       expect(result.sessions).toHaveLength(3)
       expect(result.hasMore).toBe(false)
       expect(result.nextCursor).toBeNull()
+      expect(result.sessions.map((s) => s.id)).toEqual([ids[2], ids[3], ids[4]])
     })
 
     it('should handle cursor not found gracefully', async () => {
-      mockFindFirst.mockResolvedValue(null)
-      mockFindMany.mockResolvedValue([])
+      const result = await getPaginatedSessions(playerId, 20, 'non-existent-cursor')
 
-      const result = await getPaginatedSessions('test-player', 20, 'non-existent-cursor')
-
+      // Cursor not found → no cursor condition added → returns first page (empty here)
       expect(result.sessions).toHaveLength(0)
       expect(result.hasMore).toBe(false)
     })
@@ -143,30 +207,43 @@ describe('getPaginatedSessions', () => {
 
   describe('session transformation', () => {
     it('should correctly transform session data to PracticeSession format', async () => {
-      const mockSession = createMockSession('session-1', new Date('2024-01-15T10:00:00Z'), 10)
-      mockFindMany.mockResolvedValue([mockSession])
+      const results: SlotResult[] = Array.from({ length: 10 }, (_, i) =>
+        makeSlotResult({
+          slotIndex: i,
+          isCorrect: i % 2 === 0,
+          responseTimeMs: 3000 + i * 100,
+          skillsExercised: [`skill-${i % 3}`],
+        })
+      )
+      await insertSession(ephemeralDb.db, {
+        id: 'session-1',
+        playerId,
+        completedAt: new Date('2024-01-15T10:00:00Z'),
+        results,
+      })
 
-      const result = await getPaginatedSessions('test-player', 20)
+      const result = await getPaginatedSessions(playerId, 20)
 
       expect(result.sessions).toHaveLength(1)
       const session = result.sessions[0]
       expect(session.id).toBe('session-1')
-      expect(session.playerId).toBe('test-player')
+      expect(session.playerId).toBe(playerId)
       expect(session.problemsAttempted).toBe(10)
-      expect(session.problemsCorrect).toBe(5) // Half correct based on mock
+      expect(session.problemsCorrect).toBe(5)
       expect(session.skillsUsed).toContain('skill-0')
       expect(session.skillsUsed).toContain('skill-1')
       expect(session.skillsUsed).toContain('skill-2')
     })
 
     it('should handle sessions with no results', async () => {
-      const mockSession = {
-        ...createMockSession('session-1', new Date('2024-01-15T10:00:00Z')),
+      await insertSession(ephemeralDb.db, {
+        id: 'session-1',
+        playerId,
+        completedAt: new Date('2024-01-15T10:00:00Z'),
         results: [],
-      }
-      mockFindMany.mockResolvedValue([mockSession])
+      })
 
-      const result = await getPaginatedSessions('test-player', 20)
+      const result = await getPaginatedSessions(playerId, 20)
 
       expect(result.sessions).toHaveLength(1)
       const session = result.sessions[0]
@@ -178,12 +255,9 @@ describe('getPaginatedSessions', () => {
 
   describe('edge cases', () => {
     it('should handle exactly limit sessions (hasMore should be false)', async () => {
-      const mockSessions = Array.from({ length: 20 }, (_, i) =>
-        createMockSession(`session-${i}`, new Date(2024, 0, 20 - i))
-      )
-      mockFindMany.mockResolvedValue(mockSessions)
+      await insertSessions(ephemeralDb.db, playerId, 20)
 
-      const result = await getPaginatedSessions('test-player', 20)
+      const result = await getPaginatedSessions(playerId, 20)
 
       expect(result.sessions).toHaveLength(20)
       expect(result.hasMore).toBe(false)
@@ -191,26 +265,19 @@ describe('getPaginatedSessions', () => {
     })
 
     it('should handle limit of 1', async () => {
-      const mockSessions = [
-        createMockSession('session-0', new Date(2024, 0, 2)),
-        createMockSession('session-1', new Date(2024, 0, 1)),
-      ]
-      mockFindMany.mockResolvedValue(mockSessions)
+      const ids = await insertSessions(ephemeralDb.db, playerId, 2)
 
-      const result = await getPaginatedSessions('test-player', 1)
+      const result = await getPaginatedSessions(playerId, 1)
 
       expect(result.sessions).toHaveLength(1)
       expect(result.hasMore).toBe(true)
-      expect(result.nextCursor).toBe('session-0')
+      expect(result.nextCursor).toBe(ids[0])
     })
 
     it('should use default limit of 20 when not specified', async () => {
-      const mockSessions = Array.from({ length: 21 }, (_, i) =>
-        createMockSession(`session-${i}`, new Date(2024, 0, 21 - i))
-      )
-      mockFindMany.mockResolvedValue(mockSessions)
+      await insertSessions(ephemeralDb.db, playerId, 21)
 
-      const result = await getPaginatedSessions('test-player')
+      const result = await getPaginatedSessions(playerId)
 
       expect(result.sessions).toHaveLength(20)
       expect(result.hasMore).toBe(true)

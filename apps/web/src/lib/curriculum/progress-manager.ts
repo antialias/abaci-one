@@ -243,6 +243,7 @@ export async function refreshSkillRecency(
   // Create a minimal session plan with status='recency-refresh'
   // This contains a single sentinel SlotResult
   const sentinelResult: schema.SlotResult = {
+    slotId: crypto.randomUUID(),
     partNumber: 1,
     slotIndex: 0,
     problem: {
@@ -460,15 +461,31 @@ export async function getRecentSessions(
   playerId: string,
   limit: number = 10
 ): Promise<PracticeSession[]> {
-  // Query completed/abandoned sessions from session_plans
-  const sessions = await db.query.sessionPlans.findMany({
-    where: and(
-      eq(schema.sessionPlans.playerId, playerId),
-      inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
-    ),
-    orderBy: desc(schema.sessionPlans.completedAt),
-    limit,
-  })
+  // Query completed/abandoned sessions from session_plans.
+  //
+  // IMPORTANT: We explicitly project only the columns the transform below reads.
+  // A previous version used `db.query.sessionPlans.findMany(...)` which selects
+  // every column — including `parts` (10–50 KB of problem-generation traces per
+  // row) — and blew libsql's response size cap on heavy users (issue #141).
+  // Same pattern used by batchGetRecentSessionResults in session-planner.ts.
+  const sessions = await db
+    .select({
+      id: schema.sessionPlans.id,
+      playerId: schema.sessionPlans.playerId,
+      results: schema.sessionPlans.results,
+      startedAt: schema.sessionPlans.startedAt,
+      createdAt: schema.sessionPlans.createdAt,
+      completedAt: schema.sessionPlans.completedAt,
+    })
+    .from(schema.sessionPlans)
+    .where(
+      and(
+        eq(schema.sessionPlans.playerId, playerId),
+        inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
+      )
+    )
+    .orderBy(desc(schema.sessionPlans.completedAt))
+    .limit(limit)
 
   // Transform session_plans data into PracticeSession format
   return sessions.map((session) => {
@@ -522,12 +539,15 @@ export async function getPaginatedSessions(
 ): Promise<PaginatedSessionsResponse> {
   console.log(`[getPaginatedSessions] playerId=${playerId}, limit=${limit}, cursor=${cursor}`)
 
-  // If we have a cursor, we need to find sessions older than that cursor's completedAt
-  let cursorSession: typeof schema.sessionPlans.$inferSelect | null = null
+  // If we have a cursor, we need to find sessions older than that cursor's completedAt.
+  // Project only the two columns we read (id, completedAt) to avoid pulling
+  // the heavy `parts`/`results` blobs just to check the cursor (#141).
+  let cursorSession: { id: string; completedAt: Date | null } | null = null
   if (cursor) {
     cursorSession =
       (await db.query.sessionPlans.findFirst({
         where: eq(schema.sessionPlans.id, cursor),
+        columns: { id: true, completedAt: true },
       })) ?? null
     console.log(
       `[getPaginatedSessions] cursorSession found: ${!!cursorSession}, completedAt=${cursorSession?.completedAt}`
@@ -554,12 +574,21 @@ export async function getPaginatedSessions(
     )
   }
 
-  // Query one extra to check if there are more
-  const sessions = await db.query.sessionPlans.findMany({
-    where: and(...conditions),
-    orderBy: desc(schema.sessionPlans.completedAt),
-    limit: limit + 1,
-  })
+  // Query one extra to check if there are more.
+  // Narrow projection — see getRecentSessions above for context (#141).
+  const sessions = await db
+    .select({
+      id: schema.sessionPlans.id,
+      playerId: schema.sessionPlans.playerId,
+      results: schema.sessionPlans.results,
+      startedAt: schema.sessionPlans.startedAt,
+      createdAt: schema.sessionPlans.createdAt,
+      completedAt: schema.sessionPlans.completedAt,
+    })
+    .from(schema.sessionPlans)
+    .where(and(...conditions))
+    .orderBy(desc(schema.sessionPlans.completedAt))
+    .limit(limit + 1)
 
   console.log(`[getPaginatedSessions] Raw query returned ${sessions.length} sessions`)
 
