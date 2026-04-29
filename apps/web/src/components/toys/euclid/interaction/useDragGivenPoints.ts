@@ -23,6 +23,8 @@ import {
   type ForwardFn,
 } from '../engine/inverseSolver'
 import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
+import { evaluateRecipe } from '../engine/recipe/evaluate'
+import { computeInfluence } from '../engine/jacobianInfluence'
 import type { InfluenceHighlightState } from '../render/renderInfluenceHighlight'
 import type { Pt } from '../engine/recipe/types'
 
@@ -231,6 +233,93 @@ export function useDragGivenPoints({
     }
 
     /**
+     * Build a forward function and collect input positions for influence
+     * computation. Works for both recipe and playground modes.
+     * Returns null if the construction can't be analyzed.
+     */
+    function buildInfluenceContext(targetPointId: string): {
+      forward: ForwardFn
+      inputPositions: Pt[]
+      pointIds: string[]
+    } | null {
+      const prop = propositionRef.current
+      const recipe = RECIPE_REGISTRY[prop.id]
+      const isPlayground = !!playgroundModeRef?.current
+
+      if (isPlayground || !recipe) {
+        // Playground: inputs are given + free points
+        const inputs = collectPlaygroundInputPositions()
+        if (!inputs) return null
+        const forward = buildPlaygroundForward(targetPointId, inputs.pointIds)
+        return { forward, inputPositions: inputs.positions, pointIds: inputs.pointIds }
+      }
+
+      // Recipe mode
+      const inputPositions = collectRecipeInputPositions()
+      if (!inputPositions) return null
+      const targetRef = pointIdToRef(targetPointId)
+      const pointIds = recipe.inputSlots.map((s) => `pt-${s.ref}`)
+
+      // Recipe-defined output vs post-completion point — pick the cheaper forward.
+      const isRecipePoint =
+        recipe.inputSlots.some((s) => s.ref === targetRef) ||
+        recipe.ops.some((op) => {
+          if (op.kind === 'intersection') return op.output === targetRef
+          if (op.kind === 'produce') return op.output === targetRef
+          if (op.kind === 'apply') return Object.values(op.outputs).includes(targetRef)
+          return false
+        })
+
+      if (isRecipePoint) {
+        const forward: ForwardFn = (positions) => {
+          const trace = evaluateRecipe(recipe, positions, RECIPE_REGISTRY)
+          return trace?.pointMap.get(targetRef) ?? null
+        }
+        return { forward, inputPositions, pointIds }
+      }
+
+      // Post-completion point: use replay forward
+      const forward = buildReplayForward(targetPointId)
+      return { forward, inputPositions, pointIds }
+    }
+
+    /**
+     * Compute which given point most influences the hovered derived point
+     * and write the result to the highlight refs. Pass null to clear.
+     */
+    function updateInfluenceHighlight(derivedPointId: string | null): void {
+      if (!derivedPointId) {
+        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
+        return
+      }
+
+      const ctx = buildInfluenceContext(derivedPointId)
+      if (!ctx) {
+        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
+        return
+      }
+
+      const influence = computeInfluence(ctx.forward, ctx.inputPositions, ctx.pointIds)
+      if (!influence || !influence.bestPointId) {
+        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
+        return
+      }
+
+      if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = derivedPointId
+      if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = influence.bestPointId
+      if (influenceHighlightStateRef) {
+        influenceHighlightStateRef.current.subJacobian = influence.subJacobian
+      }
+      needsDrawRef.current = true
+    }
+
+    /**
      * Apply solved input positions to the construction via replay.
      */
     function applyInverseSolution(solvedPositions: Pt[]): void {
@@ -306,6 +395,10 @@ export function useDragGivenPoints({
           solverState = null
         }
 
+        // Clear influence highlight while a drag is in progress.
+        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+
         onDragStart?.(hit.id)
       }
     }
@@ -337,7 +430,7 @@ export function useDragGivenPoints({
           handleDirectPointDrag(world, prop)
         }
       } else {
-        // Not dragging — update cursor based on hover
+        // Not dragging — update cursor and influence highlight based on hover
         const hit = hitTestAllPoints(sx, sy, isTouch)
         const newHoveredId = hit?.id ?? null
 
@@ -347,6 +440,13 @@ export function useDragGivenPoints({
             canvas!.style.cursor = 'grab'
           } else {
             canvas!.style.cursor = ''
+          }
+
+          // Update influence highlight only for derived points; clear otherwise.
+          if (hit && isDerivedOrigin(hit.origin)) {
+            updateInfluenceHighlight(hit.id)
+          } else {
+            updateInfluenceHighlight(null)
           }
         }
       }
