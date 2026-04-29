@@ -25,6 +25,10 @@ import { renderSuperpositionInteraction } from './renderSuperpositionInteraction
 import { renderCitationFlashes } from './renderCitationFlash'
 import { renderMacroPreview } from './renderMacroPreview'
 import { renderChatHighlight } from './renderChatHighlight'
+import {
+  renderInfluenceHighlight,
+  updateInfluenceTarget,
+} from './renderInfluenceHighlight'
 
 export function renderFrame(
   ctx: RAFContext,
@@ -299,6 +303,31 @@ export function renderFrame(
       cssHeight
     )
     ctx.needsDrawRef.current = true
+  }
+
+  // ── 11½. Influence highlight (hover over derived → pulsing ring on given) ──
+  {
+    const hlState = ctx.influenceHighlightStateRef.current
+    const nowMs = performance.now()
+    updateInfluenceTarget(
+      hlState,
+      ctx.hoveredDerivedPointIdRef.current,
+      ctx.influentialGivenPointIdRef.current,
+      nowMs
+    )
+    const influenceAnimating = renderInfluenceHighlight(
+      drawCtx,
+      drawState,
+      ctx.viewportRef.current,
+      cssWidth,
+      cssHeight,
+      hlState,
+      nowMs / 1000,
+      ctx.pointerWorldRef.current
+    )
+    if (influenceAnimating) {
+      ctx.needsDrawRef.current = true
+    }
   }
 
   // ── 12. Tool overlay (geometric previews + physical tool body) ──
