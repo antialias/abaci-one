@@ -29,6 +29,7 @@ import {
   renderInfluenceHighlight,
   renderMotionTrail,
   renderBreakFreeFlash,
+  renderConstraintField,
   updateInfluenceTarget,
 } from './renderInfluenceHighlight'
 
@@ -305,6 +306,23 @@ export function renderFrame(
       cssHeight
     )
     ctx.needsDrawRef.current = true
+  }
+
+  // ── 11¼. Constraint field (subtle elliptical halo around derived point;
+  // shape encodes J's principal axes; cursor bearing biases the highlight) ──
+  {
+    const hlState = ctx.influenceHighlightStateRef.current
+    if (hlState.opacity > 0.001 && hlState.subJacobian) {
+      renderConstraintField(
+        drawCtx,
+        ctx.constructionRef.current,
+        ctx.viewportRef.current,
+        cssWidth,
+        cssHeight,
+        hlState,
+        ctx.pointerWorldRef.current
+      )
+    }
   }
 
   // ── 11½. Influence highlight (hover over derived → pulsing ring on given) ──
