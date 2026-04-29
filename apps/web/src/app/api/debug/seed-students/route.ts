@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom/classroom-manager'
+import { explainError } from '@/lib/db-errors'
 import { createTask } from '@/lib/task-manager'
 import type { SeedStudentsEvent } from '@/lib/tasks/events'
 import { getUserId } from '@/lib/viewer'
@@ -166,7 +167,7 @@ export const POST = withAuth(
 
               seededCount++
             } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : String(err)
+              const errorMessage = explainError(err)
               console.error(`[seed-students] Failed to seed ${profile.name}:`, err)
 
               handle.emit({
