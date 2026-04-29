@@ -76,5 +76,8 @@ apps/web/public/models/
 # Terraform
 infra/terraform/tfplan
 
+# Claude Code scheduled-tasks runtime lockfile
+.claude/scheduled_tasks.lock
+
 # Throw-away one-shot operator scripts; see corresponding *.PLAN.md
 apps/web/scripts/backfill-slot-ids.mjs
