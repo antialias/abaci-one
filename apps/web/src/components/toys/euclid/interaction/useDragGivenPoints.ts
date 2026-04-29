@@ -1215,13 +1215,7 @@ export function useDragGivenPoints({
         prevDragWorld = world
         return
       }
-
-      // Compute cursor delta in world coords
-      let dx = world.x - prevDragWorld.x
-      let dy = world.y - prevDragWorld.y
-      prevDragWorld = world
-
-      if (Math.abs(dx) < 1e-10 && Math.abs(dy) < 1e-10) return
+      prevDragWorld = world // kept for snap-cancel seeding; not used for delta
 
       // Periodically refresh the sub-Jacobian to stay accurate
       constrainedDragFrameCount++
@@ -1289,10 +1283,21 @@ export function useDragGivenPoints({
         return
       }
 
-      // ── Dampen cursor influence based on tension ──
+      // ── Positional targeting (Newton step) instead of velocity integration ──
+      // The derived point chases the cursor each frame: we measure the actual
+      // residual error between where the derived IS and where it should be,
+      // then apply a single inverse-Jacobian step to close the gap. Errors
+      // get *corrected* per frame instead of *accumulated*, so closed cursor
+      // paths produce closed derived paths — no spiral drift on circular or
+      // repetitive motion.
+      //
+      // Tension dampens by limiting how far toward the cursor we aim each
+      // frame, not by scaling the velocity. Same elastic feel, no drift.
       const dampen = 1 - tension * TENSION_DAMPEN
-      dx *= dampen
-      dy *= dampen
+      const dx = dampen * (world.x - derivedPt.x)
+      const dy = dampen * (world.y - derivedPt.y)
+
+      if (Math.abs(dx) < 1e-10 && Math.abs(dy) < 1e-10) return
 
       // Get the current position of the influential given point
       const givenPointId = dragInfluence.bestPointId
@@ -1305,7 +1310,7 @@ export function useDragGivenPoints({
         tension: tension.toFixed(3),
         dampen: dampen.toFixed(3),
         screenDist: screenDist.toFixed(1),
-        cursorDelta: { dx: dx.toFixed(4), dy: dy.toFixed(4) },
+        targetError: { dx: dx.toFixed(4), dy: dy.toFixed(4) },
         givenPointId,
         givenPos: { x: givenPt.x.toFixed(3), y: givenPt.y.toFixed(3) },
         subJacobian: dragInfluence.subJacobian,
