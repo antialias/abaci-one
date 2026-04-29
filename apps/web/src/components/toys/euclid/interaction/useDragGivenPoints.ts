@@ -24,8 +24,24 @@ import {
 } from '../engine/inverseSolver'
 import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
 import { evaluateRecipe } from '../engine/recipe/evaluate'
-import { computeInfluence } from '../engine/jacobianInfluence'
-import type { InfluenceHighlightState } from '../render/renderInfluenceHighlight'
+import {
+  computeInfluence,
+  constrainedDragStep,
+  isSubJacobianRankDeficient,
+  type InfluenceResult,
+} from '../engine/jacobianInfluence'
+import type {
+  InfluenceHighlightState,
+  MotionTrailState,
+  BreakFreeFlash,
+} from '../render/renderInfluenceHighlight'
+import {
+  recordTrailPosition,
+  clearTrail,
+  TENSION_START_RADIUS,
+  BREAK_FREE_RADIUS,
+  TENSION_DAMPEN,
+} from '../render/renderInfluenceHighlight'
 import type { Pt } from '../engine/recipe/types'
 
 /** Hit radius for draggable points (screen pixels) */
@@ -51,12 +67,18 @@ interface UseDragGivenPointsOptions {
   interactionLockedRef?: React.MutableRefObject<boolean>
   /** Whether we're in free-form playground mode (no recipe) */
   playgroundModeRef?: React.MutableRefObject<boolean | undefined>
+  /** Whether full solver mode is active (vs constrained single-point drag) */
+  solverModeRef?: React.MutableRefObject<boolean>
   /** Ref updated with the hovered derived point ID (for influence highlight rendering) */
   hoveredDerivedPointIdRef?: React.MutableRefObject<string | null>
   /** Ref updated with the most influential given point ID (for influence highlight rendering) */
   influentialGivenPointIdRef?: React.MutableRefObject<string | null>
-  /** Influence highlight state ref — used to set subJacobian for the preview arrow */
+  /** Influence highlight state ref — used to set subJacobian for preview arrow */
   influenceHighlightStateRef?: React.MutableRefObject<InfluenceHighlightState>
+  /** Motion trail state ref — used to record given point positions during constrained drag */
+  motionTrailStateRef?: React.MutableRefObject<MotionTrailState>
+  /** Break-free flash ref — set when constraint snaps during drag */
+  breakFreeFlashRef?: React.MutableRefObject<BreakFreeFlash | null>
   /** Called when construction state is replaced during drag */
   onReplayResult: (result: ReplayResult) => void
   /** Called once when a drag gesture starts on a given point */
@@ -93,9 +115,12 @@ export function useDragGivenPoints({
   stepDataRef,
   interactionLockedRef,
   playgroundModeRef,
+  solverModeRef,
   hoveredDerivedPointIdRef,
   influentialGivenPointIdRef,
   influenceHighlightStateRef,
+  motionTrailStateRef,
+  breakFreeFlashRef,
   onReplayResult,
   onDragStart,
   dragPointIdRef,
@@ -114,6 +139,19 @@ export function useDragGivenPoints({
     let hoveredDraggableId: string | null = null
     /** Solver state persisted across frames within a single drag gesture */
     let solverState: InverseSolverState | null = null
+    /** Influence result locked at drag start for constrained drag */
+    let dragInfluence: InfluenceResult | null = null
+    /** Previous world position for computing drag deltas in constrained mode */
+    let prevDragWorld: { x: number; y: number } | null = null
+    /** Frame counter for periodic sub-Jacobian refresh during constrained drag */
+    let constrainedDragFrameCount = 0
+    /** RAF handle for snap-to-cursor animation at drag start */
+    let snapAnimId: number | null = null
+    /** Click-time cursor world position locked in by the snap-to-cursor anim;
+     *  used to seed prevDragWorld when the user cancels the snap by moving. */
+    let snapTargetWorld: { x: number; y: number } | null = null
+    /** Whether the constraint has broken free during this drag gesture (sticky) */
+    let breakFree = false
 
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
@@ -163,8 +201,7 @@ export function useDragGivenPoints({
       const isPlayground = !!playgroundModeRef?.current
 
       for (const pt of getAllPoints(state)) {
-        const isDirect =
-          draggableSet.has(pt.id) || pt.origin === 'free' || pt.origin === 'extend'
+        const isDirect = draggableSet.has(pt.id) || pt.origin === 'free' || pt.origin === 'extend'
         const isDerived = !isDirect && (recipe != null || isPlayground)
 
         if (!isDirect && !isDerived) continue
@@ -260,7 +297,7 @@ export function useDragGivenPoints({
       const targetRef = pointIdToRef(targetPointId)
       const pointIds = recipe.inputSlots.map((s) => `pt-${s.ref}`)
 
-      // Recipe-defined output vs post-completion point — pick the cheaper forward.
+      // Check if this is a recipe point or post-completion point
       const isRecipePoint =
         recipe.inputSlots.some((s) => s.ref === targetRef) ||
         recipe.ops.some((op) => {
@@ -284,8 +321,7 @@ export function useDragGivenPoints({
     }
 
     /**
-     * Compute which given point most influences the hovered derived point
-     * and write the result to the highlight refs. Pass null to clear.
+     * Compute influence for a derived point and update the highlight refs.
      */
     function updateInfluenceHighlight(derivedPointId: string | null): void {
       if (!derivedPointId) {
@@ -366,6 +402,198 @@ export function useDragGivenPoints({
       needsDrawRef.current = true
     }
 
+    /**
+     * Smoothly animate the derived point toward the cursor at the start
+     * of a constrained drag. Uses eased constrained drag steps over ~200ms
+     * so the point "magnetically" snaps to the cursor position.
+     */
+    function startSnapAnimation(pointId: string, targetWorld: { x: number; y: number }): void {
+      if (snapAnimId != null) {
+        cancelAnimationFrame(snapAnimId)
+        snapAnimId = null
+      }
+      snapTargetWorld = targetWorld
+
+      const SNAP_DURATION_MS = 200
+      const SNAP_STEPS = 12
+      const startTime = performance.now()
+      let step = 0
+
+      function snapFrame() {
+        snapAnimId = null
+        // Bail if drag ended, point changed, or break-free has fired (the
+        // solver path now owns the construction state — don't fight it).
+        if (dragPointId !== pointId || !dragInfluence || breakFree) {
+          snapTargetWorld = null
+          return
+        }
+
+        const elapsed = performance.now() - startTime
+        const t = Math.min(1, elapsed / SNAP_DURATION_MS)
+        step++
+
+        // Get current derived point position
+        const derivedPt = getPoint(constructionRef.current, pointId)
+        if (!derivedPt) return
+
+        // Vector from current derived position to cursor target
+        const dxWorld = targetWorld.x - derivedPt.x
+        const dyWorld = targetWorld.y - derivedPt.y
+        const dist = Math.sqrt(dxWorld * dxWorld + dyWorld * dyWorld)
+
+        // Close enough or done — stop
+        if (dist < 0.001 || step >= SNAP_STEPS) {
+          // Set prevDragWorld so subsequent pointer moves work correctly
+          prevDragWorld = targetWorld
+          snapTargetWorld = null
+          return
+        }
+
+        // Ease-out fraction: move a larger proportion each frame
+        const fraction = 1 - (1 - t) ** 2
+        const stepDx = dxWorld * fraction
+        const stepDy = dyWorld * fraction
+
+        // Refresh sub-Jacobian periodically
+        if (step % 4 === 0) {
+          const ctx = buildInfluenceContext(pointId)
+          if (ctx) {
+            const fresh = computeInfluence(ctx.forward, ctx.inputPositions, ctx.pointIds)
+            if (fresh && fresh.bestInputIndex === dragInfluence!.bestInputIndex) {
+              dragInfluence!.subJacobian = fresh.subJacobian
+            }
+          }
+        }
+
+        const givenPointId = dragInfluence!.bestPointId
+        if (!givenPointId) return
+        const givenPt = getPoint(constructionRef.current, givenPointId)
+        if (!givenPt) return
+
+        const newGivenPos = constrainedDragStep(
+          { x: givenPt.x, y: givenPt.y },
+          { x: stepDx, y: stepDy },
+          dragInfluence!.subJacobian
+        )
+        // Treat any near-singular result as degenerate. constrainedDragStep
+        // only returns null when |det| < 1e-12, but for rank-1 sub-Jacobians
+        // (e.g. line-line intersection driven by one corner) det can be
+        // ~1e-9 with finite-difference noise — small enough that 1/det
+        // still makes the corner fly to ~1e9 units. Reject by screen-px
+        // displacement of the given, which is what the user actually sees.
+        const SNAP_MAX_GIVEN_MOVE_PX = 200
+        const vpForCheck = viewportRef.current
+        const givenMoveDistPx = newGivenPos
+          ? Math.sqrt(
+              ((newGivenPos.x - givenPt.x) * vpForCheck.pixelsPerUnit) ** 2 +
+                ((newGivenPos.y - givenPt.y) * vpForCheck.pixelsPerUnit) ** 2
+            )
+          : Infinity
+        if (!newGivenPos || givenMoveDistPx > SNAP_MAX_GIVEN_MOVE_PX) {
+          // Degenerate / ill-conditioned Jacobian — abort snap, break free to solver
+          console.log(
+            '[snap-anim] constrained step degenerate or excessive — breaking free',
+            { newGivenPos, givenMoveDistPx }
+          )
+          const { w: sw, h: sh } = getCSSSize()
+          const vp = viewportRef.current
+          const dPt = getPoint(constructionRef.current, pointId)
+          if (dPt) {
+            const dScreen = worldToScreen2D(
+              dPt.x,
+              dPt.y,
+              vp.center.x,
+              vp.center.y,
+              vp.pixelsPerUnit,
+              vp.pixelsPerUnit,
+              sw,
+              sh
+            )
+            triggerBreakFree(targetWorld, dScreen, vp, sw, sh)
+          } else {
+            breakFree = true
+            handleDerivedPointDragSolver(targetWorld)
+          }
+          prevDragWorld = targetWorld
+          snapTargetWorld = null
+          return
+        }
+
+        // Apply the movement
+        const prop = propositionRef.current
+        if (givenPt.origin === 'free') {
+          postCompletionActionsRef.current = postCompletionActionsRef.current.map((a) =>
+            a.type === 'free-point' && a.id === givenPointId
+              ? { ...a, x: newGivenPos.x, y: newGivenPos.y }
+              : a
+          )
+        }
+
+        const positions = collectCurrentPositions()
+        if (givenPt.origin === 'given') {
+          positions.set(givenPointId, newGivenPos)
+        }
+
+        const computeFn = prop.computeGivenElements
+        let givenElements: ConstructionElement[]
+        if (computeFn) {
+          givenElements = computeFn(positions)
+        } else {
+          givenElements = prop.givenElements.map((el) => {
+            if (el.kind === 'point' && positions.has(el.id)) {
+              const pos = positions.get(el.id)!
+              return { ...el, x: pos.x, y: pos.y }
+            }
+            return el
+          })
+        }
+
+        const actions = postCompletionActionsRef.current
+        const result = replayConstruction(
+          givenElements,
+          prop.steps,
+          prop,
+          actions,
+          stepDataRef?.current
+        )
+        constructionRef.current = result.state
+        factStoreRef.current = result.factStore
+        mergeProofFacts(factStoreRef.current, proofFactsRef.current)
+        candidatesRef.current = result.candidates
+        onReplayResult(result)
+        needsDrawRef.current = true
+
+        // Record trail during snap
+        if (motionTrailStateRef) {
+          const updatedGivenPt = getPoint(result.state, givenPointId)
+          if (updatedGivenPt) {
+            const { w, h } = getCSSSize()
+            const v = viewportRef.current
+            const screen = worldToScreen2D(
+              updatedGivenPt.x,
+              updatedGivenPt.y,
+              v.center.x,
+              v.center.y,
+              v.pixelsPerUnit,
+              v.pixelsPerUnit,
+              w,
+              h
+            )
+            recordTrailPosition(motionTrailStateRef.current, givenPointId, screen.x, screen.y)
+          }
+        }
+
+        if (t < 1) {
+          snapAnimId = requestAnimationFrame(snapFrame)
+        } else {
+          prevDragWorld = targetWorld
+          snapTargetWorld = null
+        }
+      }
+
+      snapAnimId = requestAnimationFrame(snapFrame)
+    }
+
     function handlePointerDown(e: PointerEvent) {
       if (!isCompleteRef.current || activeToolRef.current !== 'move') return
       if (pointerCapturedRef.current) return
@@ -388,16 +616,69 @@ export function useDragGivenPoints({
         canvas!.style.cursor = 'grabbing'
         needsDrawRef.current = true
 
-        // Initialize solver state for derived point drags
+        // Initialize drag state for derived point drags
         if (isDerivedOrigin(hit.origin)) {
           solverState = createSolverState()
+
+          // Compute influence for constrained drag mode
+          const infCtx = buildInfluenceContext(hit.id)
+          if (infCtx) {
+            dragInfluence = computeInfluence(infCtx.forward, infCtx.inputPositions, infCtx.pointIds)
+          }
+          constrainedDragFrameCount = 0
+
+          // If the most-influential given's sub-Jacobian can only move the
+          // derived along a 1-D locus (canonical case: target is the
+          // intersection of two lines, perturbing one corner just slides
+          // the intersection along the other line), constrained drag will
+          // either jam or fly to infinity. Flip break-free immediately so
+          // the rest of the gesture goes straight to the LM solver — which
+          // can deploy all input DOFs together.
+          if (dragInfluence && isSubJacobianRankDeficient(dragInfluence.subJacobian)) {
+            breakFree = true
+          }
+
+          console.log('[drag-start] derived point', hit.id, {
+            origin: hit.origin,
+            influence: dragInfluence
+              ? {
+                  bestPointId: dragInfluence.bestPointId,
+                  bestInputIndex: dragInfluence.bestInputIndex,
+                  subJacobian: dragInfluence.subJacobian,
+                  magnitudes: dragInfluence.magnitudes,
+                }
+              : null,
+            breakFreeAtStart: breakFree,
+          })
+
+          // Start snap-to-cursor animation in constrained mode
+          const useSolver = solverModeRef?.current ?? false
+          if (!useSolver && !breakFree && dragInfluence) {
+            const { w, h } = getCSSSize()
+            const clickWorld = toWorld(sx, sy, w, h)
+            startSnapAnimation(hit.id, clickWorld)
+          }
+
+          // Keep the influence highlight (ring on the given, dashed line,
+          // rubber-band cue) visible during constrained drag so the user can
+          // see the tension build as they pull the cursor away. In solver or
+          // break-free modes there is no single "controlling" given, so clear.
+          if (!useSolver && !breakFree && dragInfluence && dragInfluence.bestPointId) {
+            if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = hit.id
+            if (influentialGivenPointIdRef)
+              influentialGivenPointIdRef.current = dragInfluence.bestPointId
+          } else {
+            if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+            if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+          }
         } else {
           solverState = null
+          dragInfluence = null
+          // Direct drag of a given/free/extend point — no influence highlight.
+          if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+          if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
         }
-
-        // Clear influence highlight while a drag is in progress.
-        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
-        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+        prevDragWorld = null
 
         onDragStart?.(hit.id)
       }
@@ -421,6 +702,17 @@ export function useDragGivenPoints({
         e.preventDefault()
         const world = toWorld(sx, sy, w, h)
 
+        // If the drag-start snap-to-cursor animation is still running, the
+        // user has taken control. Cancel the snap and seed prevDragWorld
+        // with its click target so the first constrained-drag delta is
+        // (cursor − click), matching what the user perceives as their drag.
+        if (snapAnimId != null) {
+          cancelAnimationFrame(snapAnimId)
+          snapAnimId = null
+          if (snapTargetWorld) prevDragWorld = snapTargetWorld
+          snapTargetWorld = null
+        }
+
         // Route to the appropriate drag handler based on point origin
         if (dragPointOrigin && isDerivedOrigin(dragPointOrigin)) {
           // ── Inverse solver path: derived point ──
@@ -442,7 +734,7 @@ export function useDragGivenPoints({
             canvas!.style.cursor = ''
           }
 
-          // Update influence highlight only for derived points; clear otherwise.
+          // Update influence highlight for derived points
           if (hit && isDerivedOrigin(hit.origin)) {
             updateInfluenceHighlight(hit.id)
           } else {
@@ -593,7 +885,7 @@ export function useDragGivenPoints({
       }
 
       // Update free-point actions
-      let actions = postCompletionActionsRef.current.map((a) => {
+      const actions = postCompletionActionsRef.current.map((a) => {
         if (a.type === 'free-point') {
           const idx = pointIds.indexOf(a.id)
           if (idx >= 0) return { ...a, x: solvedPositions[idx].x, y: solvedPositions[idx].y }
@@ -632,45 +924,33 @@ export function useDragGivenPoints({
     }
 
     /**
-     * Handle drag of a derived (non-given, non-free, non-extend) point
-     * using the inverse kinematics solver.
+     * Handle drag of a derived point using FULL SOLVER mode.
+     * The derived point tracks the cursor exactly.
      */
-    function handleDerivedPointDrag(world: { x: number; y: number }): void {
+    function handleDerivedPointDragSolver(world: { x: number; y: number }): void {
       if (!dragPointId || !solverState) return
 
       const prop = propositionRef.current
       const recipe = RECIPE_REGISTRY[prop.id]
       const isPlayground = !!playgroundModeRef?.current
 
-      // Snapshot construction state so we can revert if the solver places
-      // givens such that the dragged target disappears or a given flies
-      // wildly across the viewport (degenerate Jacobian, no real solution).
+      // Snapshot current state so we can revert if the solver destroys the target point
       const prevState = constructionRef.current
       const prevFactStore = factStoreRef.current
       const prevCandidates = candidatesRef.current
       const prevActions = postCompletionActionsRef.current
 
       if (isPlayground || !recipe) {
-        // Playground / no-recipe path: solve over given + free points
         const inputs = collectPlaygroundInputPositions()
         if (!inputs) return
-
         const forward = buildPlaygroundForward(dragPointId, inputs.pointIds)
-        const result = solveInverse(
-          forward,
-          inputs.positions,
-          { x: world.x, y: world.y },
-          solverState
-        )
-        applyPlaygroundSolution(result.inputPositions, inputs.pointIds)
+        const solveResult = solveInverse(forward, inputs.positions, world, solverState)
+        applyPlaygroundSolution(solveResult.inputPositions, inputs.pointIds)
       } else {
-        // Recipe path
         const currentInputPositions = collectRecipeInputPositions()
         if (!currentInputPositions) return
-
         const targetRef = pointIdToRef(dragPointId)
 
-        // Check if this is a recipe-defined point or a post-completion point
         const isRecipePoint =
           recipe.inputSlots.some((s) => s.ref === targetRef) ||
           recipe.ops.some((op) => {
@@ -680,75 +960,367 @@ export function useDragGivenPoints({
             return false
           })
 
-        let result
+        let solveResult
         if (isRecipePoint) {
-          // Fast path: recipe evaluator as forward model
-          result = solveInverseKinematics(
+          solveResult = solveInverseKinematics(
             recipe,
             currentInputPositions,
             targetRef,
-            { x: world.x, y: world.y },
+            world,
             RECIPE_REGISTRY,
             solverState
           )
         } else {
-          // Slow path: full replay as forward model (for post-completion points)
           const forward = buildReplayForward(dragPointId)
-          result = solveInverse(
-            forward,
-            currentInputPositions,
-            { x: world.x, y: world.y },
-            solverState
-          )
+          solveResult = solveInverse(forward, currentInputPositions, world, solverState)
         }
-
-        applyInverseSolution(result.inputPositions)
+        applyInverseSolution(solveResult.inputPositions)
       }
 
-      // ── Guard: revert if the solver produced a degenerate result ──
+      // ── Guard: if the solver produced a degenerate result, revert ──
       const targetPt = getPoint(constructionRef.current, dragPointId)
       if (!targetPt) {
-        // Solver placed givens such that the target point no longer exists
-        // (e.g. circles no longer intersect). Roll back.
+        console.log('[solver] target point disappeared after solve — reverting')
         constructionRef.current = prevState
         factStoreRef.current = prevFactStore
         candidatesRef.current = prevCandidates
         postCompletionActionsRef.current = prevActions
         needsDrawRef.current = true
-        return
-      }
-
-      // Catch the case where the Jacobian was near-singular and a given
-      // teleported far across the viewport in a single frame.
-      const MAX_POINT_MOVE_PX = 500
-      const v = viewportRef.current
-      for (const el of constructionRef.current.elements) {
-        if (el.kind !== 'point') continue
-        if (el.origin !== 'given' && el.origin !== 'free') continue
-        const prevPt = getPoint(prevState, el.id)
-        if (!prevPt) continue
-        const movePx = Math.sqrt(
-          ((el.x - prevPt.x) * v.pixelsPerUnit) ** 2 +
-            ((el.y - prevPt.y) * v.pixelsPerUnit) ** 2
-        )
-        if (movePx > MAX_POINT_MOVE_PX) {
+      } else {
+        // Check if any given/free point moved excessively far
+        const MAX_POINT_MOVE_PX = 500
+        const v = viewportRef.current
+        let degenerate = false
+        for (const el of constructionRef.current.elements) {
+          if (el.kind !== 'point') continue
+          if (el.origin !== 'given' && el.origin !== 'free') continue
+          const prevPt = getPoint(prevState, el.id)
+          if (!prevPt) continue
+          const movePx = Math.sqrt(
+            ((el.x - prevPt.x) * v.pixelsPerUnit) ** 2 + ((el.y - prevPt.y) * v.pixelsPerUnit) ** 2
+          )
+          if (movePx > MAX_POINT_MOVE_PX) {
+            console.log(`[solver] point ${el.id} moved ${movePx.toFixed(0)}px — reverting`)
+            degenerate = true
+            break
+          }
+        }
+        if (degenerate) {
           constructionRef.current = prevState
           factStoreRef.current = prevFactStore
           candidatesRef.current = prevCandidates
           postCompletionActionsRef.current = prevActions
           needsDrawRef.current = true
-          return
         }
+      }
+    }
+
+    /**
+     * Handle drag of a derived point using CONSTRAINED mode.
+     * Only moves a single given point — the derived point follows
+     * deterministically but doesn't perfectly track the cursor,
+     * revealing the construction's geometric constraints.
+     */
+    /**
+     * Trigger break-free: set sticky flag, fire visual flash, clear tension,
+     * and switch to solver mode for this frame.
+     */
+    function triggerBreakFree(
+      world: { x: number; y: number },
+      derivedScreen: { x: number; y: number },
+      v: EuclidViewportState,
+      w: number,
+      h: number
+    ): void {
+      console.log('[break-free] TRIGGERED at frame', constrainedDragFrameCount, {
+        world,
+        derivedScreen,
+      })
+      breakFree = true
+
+      // Cancel any in-flight snap-to-cursor animation. Its remaining frames
+      // would otherwise apply constrained-drag steps using a stale sub-Jacobian
+      // on top of the solver's output — visible as flicker / undone work.
+      if (snapAnimId != null) {
+        cancelAnimationFrame(snapAnimId)
+        snapAnimId = null
+      }
+      snapTargetWorld = null
+
+      // Fire the break-free flash
+      if (breakFreeFlashRef && dragInfluence) {
+        const gId = dragInfluence.bestPointId
+        if (gId) {
+          const gPt = getPoint(constructionRef.current, gId)
+          if (gPt) {
+            const gScreen = worldToScreen2D(
+              gPt.x,
+              gPt.y,
+              v.center.x,
+              v.center.y,
+              v.pixelsPerUnit,
+              v.pixelsPerUnit,
+              w,
+              h
+            )
+            breakFreeFlashRef.current = {
+              startTime: performance.now(),
+              givenScreen: { x: gScreen.x, y: gScreen.y },
+              derivedScreen: { x: derivedScreen.x, y: derivedScreen.y },
+            }
+          }
+        }
+      }
+
+      // Clear tension visuals + fade out the influence highlight — once the
+      // constraint snaps the rubber-band cue no longer applies.
+      if (influenceHighlightStateRef) {
+        influenceHighlightStateRef.current.tension = 0
+        influenceHighlightStateRef.current.cursorScreen = null
+      }
+      if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+      if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+
+      // Switch to solver for this frame (and all subsequent via breakFree flag)
+      handleDerivedPointDragSolver(world)
+      needsDrawRef.current = true
+    }
+
+    function handleDerivedPointDragConstrained(world: { x: number; y: number }): void {
+      if (!dragPointId || !dragInfluence) return
+
+      // First frame: just record position, no movement yet
+      if (!prevDragWorld) {
+        prevDragWorld = world
+        return
+      }
+
+      // Compute cursor delta in world coords
+      let dx = world.x - prevDragWorld.x
+      let dy = world.y - prevDragWorld.y
+      prevDragWorld = world
+
+      if (Math.abs(dx) < 1e-10 && Math.abs(dy) < 1e-10) return
+
+      // Periodically refresh the sub-Jacobian to stay accurate
+      constrainedDragFrameCount++
+      if (constrainedDragFrameCount % 8 === 0) {
+        const infCtx = buildInfluenceContext(dragPointId)
+        if (infCtx) {
+          const fresh = computeInfluence(infCtx.forward, infCtx.inputPositions, infCtx.pointIds)
+          if (fresh && fresh.bestInputIndex === dragInfluence.bestInputIndex) {
+            dragInfluence.subJacobian = fresh.subJacobian
+          }
+        }
+      }
+
+      // Update subJacobian on the highlight state during drag too
+      if (influenceHighlightStateRef) {
+        influenceHighlightStateRef.current.subJacobian = dragInfluence.subJacobian
+      }
+
+      // ── Compute tension: screen distance between cursor and derived point ──
+      const { w, h } = getCSSSize()
+      const v = viewportRef.current
+      const derivedPt = getPoint(constructionRef.current, dragPointId)
+      if (!derivedPt) return
+      const derivedScreen = worldToScreen2D(
+        derivedPt.x,
+        derivedPt.y,
+        v.center.x,
+        v.center.y,
+        v.pixelsPerUnit,
+        v.pixelsPerUnit,
+        w,
+        h
+      )
+      const cursorScreen = worldToScreen2D(
+        world.x,
+        world.y,
+        v.center.x,
+        v.center.y,
+        v.pixelsPerUnit,
+        v.pixelsPerUnit,
+        w,
+        h
+      )
+      const screenDx = cursorScreen.x - derivedScreen.x
+      const screenDy = cursorScreen.y - derivedScreen.y
+      const screenDist = Math.sqrt(screenDx * screenDx + screenDy * screenDy)
+
+      // Compute tension factor (0..1)
+      const tension =
+        screenDist <= TENSION_START_RADIUS
+          ? 0
+          : screenDist >= BREAK_FREE_RADIUS
+            ? 1
+            : (screenDist - TENSION_START_RADIUS) / (BREAK_FREE_RADIUS - TENSION_START_RADIUS)
+
+      // Update tension on highlight state for visual rendering
+      if (influenceHighlightStateRef) {
+        influenceHighlightStateRef.current.tension = tension
+        influenceHighlightStateRef.current.cursorScreen = { x: cursorScreen.x, y: cursorScreen.y }
+      }
+
+      // ── Check for break-free (cursor distance threshold) ──
+      if (screenDist >= BREAK_FREE_RADIUS) {
+        triggerBreakFree(world, derivedScreen, v, w, h)
+        return
+      }
+
+      // ── Dampen cursor influence based on tension ──
+      const dampen = 1 - tension * TENSION_DAMPEN
+      dx *= dampen
+      dy *= dampen
+
+      // Get the current position of the influential given point
+      const givenPointId = dragInfluence.bestPointId
+      if (!givenPointId) return
+      const givenPt = getPoint(constructionRef.current, givenPointId)
+      if (!givenPt) return
+
+      console.log('[constrained-drag]', {
+        frame: constrainedDragFrameCount,
+        tension: tension.toFixed(3),
+        dampen: dampen.toFixed(3),
+        screenDist: screenDist.toFixed(1),
+        cursorDelta: { dx: dx.toFixed(4), dy: dy.toFixed(4) },
+        givenPointId,
+        givenPos: { x: givenPt.x.toFixed(3), y: givenPt.y.toFixed(3) },
+        subJacobian: dragInfluence.subJacobian,
+      })
+
+      // Use sub-Jacobian to compute how to move the given point
+      const newGivenPos = constrainedDragStep(
+        { x: givenPt.x, y: givenPt.y },
+        { x: dx, y: dy },
+        dragInfluence.subJacobian
+      )
+      if (!newGivenPos) {
+        console.log(
+          '[constrained-drag] constrainedDragStep returned null — degenerate Jacobian, breaking free'
+        )
+        triggerBreakFree(world, derivedScreen, v, w, h)
+        return
+      }
+
+      // ── Safety check: if the given point would fly off screen, break free ──
+      // This catches degenerate Jacobians (e.g. line-line intersections at shallow angles)
+      const givenMoveX = (newGivenPos.x - givenPt.x) * v.pixelsPerUnit
+      const givenMoveY = (newGivenPos.y - givenPt.y) * v.pixelsPerUnit
+      const givenMoveDist = Math.sqrt(givenMoveX * givenMoveX + givenMoveY * givenMoveY)
+      const MAX_GIVEN_MOVE_PX = 200 // screen px per frame — anything larger is degenerate
+
+      console.log('[constrained-drag] given move:', {
+        newGivenPos: { x: newGivenPos.x.toFixed(3), y: newGivenPos.y.toFixed(3) },
+        givenMovePx: givenMoveDist.toFixed(1),
+        threshold: MAX_GIVEN_MOVE_PX,
+        willBreakFree: givenMoveDist > MAX_GIVEN_MOVE_PX,
+      })
+      if (givenMoveDist > MAX_GIVEN_MOVE_PX) {
+        triggerBreakFree(world, derivedScreen, v, w, h)
+        return
+      }
+
+      // Apply as a direct drag of the given point
+      const prop = propositionRef.current
+
+      if (givenPt.origin === 'free') {
+        // Update the free-point action
+        postCompletionActionsRef.current = postCompletionActionsRef.current.map((a) =>
+          a.type === 'free-point' && a.id === givenPointId
+            ? { ...a, x: newGivenPos.x, y: newGivenPos.y }
+            : a
+        )
+      }
+
+      const positions = collectCurrentPositions()
+      if (givenPt.origin === 'given') {
+        positions.set(givenPointId, newGivenPos)
+      }
+
+      const computeFn = prop.computeGivenElements
+      let givenElements: ConstructionElement[]
+      if (computeFn) {
+        givenElements = computeFn(positions)
+      } else {
+        givenElements = prop.givenElements.map((el) => {
+          if (el.kind === 'point' && positions.has(el.id)) {
+            const pos = positions.get(el.id)!
+            return { ...el, x: pos.x, y: pos.y }
+          }
+          return el
+        })
+      }
+
+      const actions = postCompletionActionsRef.current
+      const result = replayConstruction(
+        givenElements,
+        prop.steps,
+        prop,
+        actions,
+        stepDataRef?.current
+      )
+      constructionRef.current = result.state
+      factStoreRef.current = result.factStore
+      mergeProofFacts(factStoreRef.current, proofFactsRef.current)
+      candidatesRef.current = result.candidates
+      onReplayResult(result)
+      needsDrawRef.current = true
+
+      // Record the given point's new screen position for the motion trail
+      if (motionTrailStateRef) {
+        const updatedGivenPt = getPoint(result.state, givenPointId)
+        if (updatedGivenPt) {
+          const screen = worldToScreen2D(
+            updatedGivenPt.x,
+            updatedGivenPt.y,
+            v.center.x,
+            v.center.y,
+            v.pixelsPerUnit,
+            v.pixelsPerUnit,
+            w,
+            h
+          )
+          recordTrailPosition(motionTrailStateRef.current, givenPointId, screen.x, screen.y)
+        }
+      }
+    }
+
+    /**
+     * Handle drag of a derived (non-given, non-free, non-extend) point.
+     * Routes to constrained or solver mode based on solverModeRef.
+     * Once breakFree is set, stays in solver mode for the rest of the gesture.
+     */
+    function handleDerivedPointDrag(world: { x: number; y: number }): void {
+      const useSolver = solverModeRef?.current ?? false
+
+      if (useSolver || breakFree || !dragInfluence) {
+        // Clear tension visuals + influence target — solver/break-free has no
+        // single "controlling" given, so the rubber-band cue does not apply.
+        if (influenceHighlightStateRef) {
+          influenceHighlightStateRef.current.tension = 0
+          influenceHighlightStateRef.current.cursorScreen = null
+        }
+        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+        handleDerivedPointDragSolver(world)
+      } else {
+        // Keep the influence highlight pointing at the drag pair so the
+        // rubber band, ring vibration, and color shift are driven each frame.
+        if (dragPointId && dragInfluence.bestPointId) {
+          if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = dragPointId
+          if (influentialGivenPointIdRef)
+            influentialGivenPointIdRef.current = dragInfluence.bestPointId
+        }
+        handleDerivedPointDragConstrained(world)
       }
     }
 
     /**
      * Handle direct drag of a given/free/extend point (existing behavior).
      */
-    function handleDirectPointDrag(
-      world: { x: number; y: number },
-      prop: PropositionDef
-    ): void {
+    function handleDirectPointDrag(world: { x: number; y: number }, prop: PropositionDef): void {
       const draggedPt = getAllPoints(constructionRef.current).find((pt) => pt.id === dragPointId)
       let actions = postCompletionActionsRef.current
 
@@ -825,14 +1397,36 @@ export function useDragGivenPoints({
       needsDrawRef.current = true
     }
 
-    function handlePointerUp(e: PointerEvent) {
-      if (!dragPointId) return
-      e.stopPropagation()
+    function cleanupDragState() {
       dragPointId = null
       dragPointOrigin = null
       solverState = null
+      dragInfluence = null
+      prevDragWorld = null
+      constrainedDragFrameCount = 0
+      breakFree = false
+      if (snapAnimId != null) {
+        cancelAnimationFrame(snapAnimId)
+        snapAnimId = null
+      }
+      snapTargetWorld = null
       if (dragPointIdRef) dragPointIdRef.current = null
       pointerCapturedRef.current = false
+      if (motionTrailStateRef) clearTrail(motionTrailStateRef.current)
+      // Clear tension visuals + influence target on drag end so the highlight
+      // fades out (it will reappear if the user re-hovers a derived point).
+      if (influenceHighlightStateRef) {
+        influenceHighlightStateRef.current.tension = 0
+        influenceHighlightStateRef.current.cursorScreen = null
+      }
+      if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+      if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+    }
+
+    function handlePointerUp(e: PointerEvent) {
+      if (!dragPointId) return
+      e.stopPropagation()
+      cleanupDragState()
       canvas!.style.cursor = hoveredDraggableId ? 'grab' : ''
       needsDrawRef.current = true
       onDragEnd?.()
@@ -840,14 +1434,22 @@ export function useDragGivenPoints({
 
     function handlePointerCancel() {
       if (!dragPointId) return
-      dragPointId = null
-      dragPointOrigin = null
-      solverState = null
-      if (dragPointIdRef) dragPointIdRef.current = null
-      pointerCapturedRef.current = false
+      cleanupDragState()
       hoveredDraggableId = null
       canvas!.style.cursor = ''
       needsDrawRef.current = true
+    }
+
+    // ── Shift key: temporary solver mode override ──
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Shift' && solverModeRef) {
+        solverModeRef.current = true
+      }
+    }
+    function handleKeyUp(e: KeyboardEvent) {
+      if (e.key === 'Shift' && solverModeRef) {
+        solverModeRef.current = false
+      }
     }
 
     // Register with capture: true to intercept before tool interaction and pan/zoom
@@ -855,12 +1457,16 @@ export function useDragGivenPoints({
     canvas.addEventListener('pointermove', handlePointerMove, { capture: true })
     canvas.addEventListener('pointerup', handlePointerUp, { capture: true })
     canvas.addEventListener('pointercancel', handlePointerCancel, { capture: true })
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
 
     return () => {
       canvas.removeEventListener('pointerdown', handlePointerDown, { capture: true })
       canvas.removeEventListener('pointermove', handlePointerMove, { capture: true })
       canvas.removeEventListener('pointerup', handlePointerUp, { capture: true })
       canvas.removeEventListener('pointercancel', handlePointerCancel, { capture: true })
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
     }
   }, [
     canvasRef,

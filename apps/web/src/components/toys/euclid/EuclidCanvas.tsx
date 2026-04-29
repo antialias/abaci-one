@@ -1464,6 +1464,8 @@ function EuclidCanvasInner({
     hoveredDerivedPointIdRef,
     influentialGivenPointIdRef,
     influenceHighlightStateRef,
+    motionTrailStateRef,
+    breakFreeFlashRef,
     dragPointIdRef,
     onReplayResult: handleDragReplay,
     onDragStart: dragTopologyStart,
