@@ -220,22 +220,33 @@ function drawArrowhead(
   ctx.stroke()
 }
 
-// ── Constraint field ──
+// ── Constraint response field ──
 
 /**
- * Subtle elliptical halo around the derived point that visualizes the local
- * structure of the inverse Jacobian J⁻¹. Concentric level sets of
- * |J⁻¹·(P−D)| are exactly ellipses centered at D, with axes aligned to J's
- * singular vectors and lengths proportional to its singular values — so the
- * whole field is described by 4 numbers, no rasterization needed.
+ * Paint a per-direction encoding of the constrained-drag response over the
+ * entire canvas, anchored at the derived point. The user can read it before
+ * dragging to discover how the controlling given will react to each possible
+ * cursor direction.
  *
- * The radial gradient's inner circle is biased toward the cursor's bearing
- * (in ellipse-local coordinates), so as the user sweeps the cursor around D
- * the bright spot of the ellipse rotates with them — the radial direction
- * (cursor angle) modulates the cartesian representation (ellipse highlight).
+ * The 2×2 sub-Jacobian J is locally constant, so the response is radially
+ * symmetric around the derived point — every pixel along a ray from D
+ * produces the same Δg direction and gain. We encode that into 120 angular
+ * stops on a conic gradient and fill the whole canvas in a single draw.
  *
- * Renders behind influence-highlight artifacts (it's drawn *first* in the
- * highlight pass) so the ring + dashed connector + arrow stay readable.
+ * Coordinate handling: J is in world coords (y-up); the canvas is screen
+ * coords (y-down). The screen-effective Jacobian J' = (1/det) [[d, b],[c, a]]
+ * (derived from J⁻¹ with a y-flip on each side) takes a screen-space
+ * Δd_unit directly to a screen-space Δg vector — so screen-angle math
+ * produces the rotation the user actually perceives.
+ *
+ * Encoding:
+ *   • Hue from green (intuitive, Δg ‖ Δd) through yellow (sideways) to
+ *     red (anti-aligned, Δg ‖ -Δd) — based on |rotation|.
+ *   • Lightness from gain |Δg| / |Δd|, normalized within the frame so the
+ *     two principal-axis lobes always pop visually (bright = high mechanical
+ *     advantage in this direction; dim = the constraint resists motion).
+ *
+ * @returns true if a field was drawn (caller may want to redraw)
  */
 export function renderConstraintField(
   ctx: CanvasRenderingContext2D,
@@ -243,100 +254,63 @@ export function renderConstraintField(
   viewport: EuclidViewportState,
   w: number,
   h: number,
-  highlightState: InfluenceHighlightState,
-  pointerWorld: { x: number; y: number } | null
-): void {
-  if (highlightState.opacity <= 0.001) return
-  if (!highlightState.derivedPointId || !highlightState.subJacobian) return
+  highlightState: InfluenceHighlightState
+): boolean {
+  if (highlightState.opacity <= 0.001) return false
+  if (!highlightState.derivedPointId || !highlightState.subJacobian) return false
 
   const derivedPt = getPoint(state, highlightState.derivedPointId)
-  if (!derivedPt) return
+  if (!derivedPt) return false
+
+  const [a, b, c, d] = highlightState.subJacobian
+  const det = a * d - b * c
+  if (Math.abs(det) < 1e-9) return false // degenerate — nothing to show
+
   const derivedScreen = toScreen(derivedPt.x, derivedPt.y, viewport, w, h)
 
-  // ── Decompose J = [a b; c d]: principal axes of derived-space leverage ──
-  // M = JᵀJ has eigenvalues σ₁², σ₂² (singular values squared of J) and
-  // eigenvectors equal to the right singular vectors V — i.e. derived-space
-  // directions of "easy" pull (large σ ⇒ big derived motion per given step).
-  const [a, b, c, d] = highlightState.subJacobian
-  const M00 = a * a + c * c
-  const M01 = a * b + c * d
-  const M11 = b * b + d * d
-  const halfTr = (M00 + M11) / 2
-  const detM = M00 * M11 - M01 * M01
-  const disc = Math.sqrt(Math.max(0, halfTr * halfTr - detM))
-  const lam1 = halfTr + disc
-  const lam2 = halfTr - disc
-  if (lam1 < 1e-12 || lam2 < 1e-12) return // near-singular: don't draw a lie
-  const sigma1 = Math.sqrt(lam1)
-  const sigma2 = Math.sqrt(lam2)
+  const N = 120
+  const gains = new Float32Array(N + 1)
+  const rotations = new Float32Array(N + 1)
+  let maxGain = 0
 
-  // Eigenvector for the largest eigenvalue (the "easy" direction in world).
-  let vx: number, vy: number
-  if (Math.abs(M01) > 1e-9) {
-    vx = M01
-    vy = lam1 - M00
-  } else {
-    // M is diagonal; principal axis is whichever coord has the larger value
-    vx = M00 >= M11 ? 1 : 0
-    vy = M00 >= M11 ? 0 : 1
-  }
-  const vn = Math.sqrt(vx * vx + vy * vy) || 1
-  vx /= vn
-  vy /= vn
+  for (let i = 0; i <= N; i++) {
+    const θ = (i / N) * 2 * Math.PI
+    const sx = Math.cos(θ)
+    const sy = Math.sin(θ)
+    // Screen-effective J': Δg_screen = (1/det) · [[d, b],[c, a]] · Δd_screen
+    const gx = (d * sx + b * sy) / det
+    const gy = (c * sx + a * sy) / det
+    const gain = Math.sqrt(gx * gx + gy * gy)
+    if (gain > maxGain) maxGain = gain
+    gains[i] = gain
 
-  // World Y is flipped vs canvas Y; flip the eigenvector's y to get the
-  // screen-space rotation angle of the ellipse's major axis.
-  const theta = Math.atan2(-vy, vx)
-
-  // Ellipse semi-axes in screen pixels. Major axis is fixed (qualitative
-  // visualization — the *shape* carries the information, not absolute size);
-  // minor axis = major × σ₂/σ₁ so highly anisotropic constraints visibly
-  // squash to thin oblongs.
-  const SIZE = 130
-  const sx = SIZE
-  const sy = SIZE * (sigma2 / sigma1)
-
-  // ── Cursor → ellipse-local bias ──
-  // Bring the cursor screen-offset into ellipse-local (unit-circle) coords
-  // by inverting the canvas transform: rotate by −θ, then scale by 1/sx,1/sy.
-  // The bright spot of the radial gradient is then biased toward (ix, iy),
-  // clamped to stay inside the ellipse so it never exits the visible field.
-  let ix = 0
-  let iy = 0
-  let cursorLocalDist = 0
-  if (pointerWorld) {
-    const pScreen = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
-    const dx = pScreen.x - derivedScreen.x
-    const dy = pScreen.y - derivedScreen.y
-    const cos = Math.cos(theta)
-    const sin = Math.sin(theta)
-    const lx = (cos * dx + sin * dy) / sx
-    const ly = (-sin * dx + cos * dy) / sy
-    cursorLocalDist = Math.sqrt(lx * lx + ly * ly)
-    if (cursorLocalDist > 1e-6) {
-      const bias = Math.min(cursorLocalDist * 0.55, 0.45)
-      ix = (lx / cursorLocalDist) * bias
-      iy = (ly / cursorLocalDist) * bias
-    }
+    let rot = Math.atan2(gy, gx) - θ
+    while (rot > Math.PI) rot -= 2 * Math.PI
+    while (rot < -Math.PI) rot += 2 * Math.PI
+    rotations[i] = rot
   }
 
-  // Cursor proximity boosts brightness when the user is probing near D.
-  const proximity = pointerWorld ? Math.max(0, 1 - cursorLocalDist) : 0.4
-  const baseAlpha = 0.09 * highlightState.opacity * (1 + proximity * 0.9)
+  // Build conic gradient anchored at the derived point in screen space.
+  // Canvas conic angles measure clockwise from +x — same as our screen θ.
+  const grad = ctx.createConicGradient(0, derivedScreen.x, derivedScreen.y)
+  const fieldAlpha = 0.32 * highlightState.opacity
+  for (let i = 0; i <= N; i++) {
+    const t = i / N
+    const absRot = Math.abs(rotations[i])
+    // 0 rotation → 120 (green), π/2 → 60 (yellow), π → 0 (red)
+    const hue = 120 * (1 - absRot / Math.PI)
+    const normGain = maxGain > 0 ? gains[i] / maxGain : 0
+    // Bias lightness toward the bright end of high-gain lobes so the
+    // principal axes are unmistakable; dim sectors stay readable.
+    const lightness = 32 + 38 * normGain
+    grad.addColorStop(t, `hsla(${hue}, 75%, ${lightness}%, ${fieldAlpha})`)
+  }
 
   ctx.save()
-  ctx.translate(derivedScreen.x, derivedScreen.y)
-  ctx.rotate(theta)
-  ctx.scale(sx, sy)
-
-  const grad = ctx.createRadialGradient(ix, iy, 0, 0, 0, 1.0)
-  grad.addColorStop(0, `rgba(${HIGHLIGHT_COLOR_RGB}, ${(baseAlpha * 1.6).toFixed(3)})`)
-  grad.addColorStop(0.45, `rgba(${HIGHLIGHT_COLOR_RGB}, ${(baseAlpha * 0.6).toFixed(3)})`)
-  grad.addColorStop(1, `rgba(${HIGHLIGHT_COLOR_RGB}, 0)`)
-
   ctx.fillStyle = grad
-  ctx.fillRect(-1, -1, 2, 2)
+  ctx.fillRect(0, 0, w, h)
   ctx.restore()
+  return true
 }
 
 // ── Main render ──
