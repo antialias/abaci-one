@@ -152,6 +152,20 @@ export function useDragGivenPoints({
     let snapTargetWorld: { x: number; y: number } | null = null
     /** Whether the constraint has broken free during this drag gesture (sticky) */
     let breakFree = false
+    /** Eased transition from constrained pose → solver pose at the moment of break-free.
+     *  While active, the dispatcher routes nothing — the RAF loop owns construction state. */
+    let breakFreeTransition: {
+      kind: 'recipe' | 'playground'
+      /** Input positions at the moment of break-free (ordered to match toPositions). */
+      fromPositions: Pt[]
+      /** Solver-target input positions, computed once at break-free. */
+      toPositions: Pt[]
+      /** For playground mode, the point IDs corresponding to each position slot. */
+      pointIds?: string[]
+      startTime: number
+      durationMs: number
+    } | null = null
+    let breakFreeTransitionId: number | null = null
 
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
@@ -1022,8 +1036,50 @@ export function useDragGivenPoints({
      * revealing the construction's geometric constraints.
      */
     /**
+     * One frame of the break-free → solver-pose transition.
+     * Lerps input positions with easeOutCubic and replays the construction.
+     * Continues to RAF until t reaches 1, then clears the transition so the
+     * dispatcher resumes normal solver-mode handling on the next pointer move.
+     */
+    function stepBreakFreeTransition(): void {
+      breakFreeTransitionId = null
+      if (!breakFreeTransition || !dragPointId) {
+        breakFreeTransition = null
+        return
+      }
+
+      const elapsed = performance.now() - breakFreeTransition.startTime
+      const t = Math.min(1, elapsed / breakFreeTransition.durationMs)
+      const eased = 1 - (1 - t) ** 3 // easeOutCubic
+
+      const lerped: Pt[] = breakFreeTransition.fromPositions.map((from, i) => {
+        const to = breakFreeTransition!.toPositions[i]
+        return {
+          x: from.x + (to.x - from.x) * eased,
+          y: from.y + (to.y - from.y) * eased,
+        }
+      })
+
+      if (breakFreeTransition.kind === 'recipe') {
+        applyInverseSolution(lerped)
+      } else {
+        applyPlaygroundSolution(lerped, breakFreeTransition.pointIds!)
+      }
+      needsDrawRef.current = true
+
+      if (t < 1) {
+        breakFreeTransitionId = requestAnimationFrame(stepBreakFreeTransition)
+      } else {
+        breakFreeTransition = null
+      }
+    }
+
+    /**
      * Trigger break-free: set sticky flag, fire visual flash, clear tension,
-     * and switch to solver mode for this frame.
+     * and start an eased transition from the constrained pose to the solver
+     * pose. The transition runs as its own RAF loop and the drag dispatcher
+     * is gated until it completes — otherwise the user would see a hard snap
+     * (the construction can rearrange dramatically when freed).
      */
     function triggerBreakFree(
       world: { x: number; y: number },
@@ -1081,8 +1137,73 @@ export function useDragGivenPoints({
       if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
       if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
 
-      // Switch to solver for this frame (and all subsequent via breakFree flag)
-      handleDerivedPointDragSolver(world)
+      // ── Compute the solver-pose target ONCE, then ease toward it. ──
+      // Re-aiming the solver each frame during transition would let cursor
+      // jitter wobble the in-flight target; locking it produces a clean
+      // settle. Subsequent pointer moves resume normal solver tracking.
+      if (!dragPointId || !solverState) {
+        needsDrawRef.current = true
+        return
+      }
+      const prop = propositionRef.current
+      const recipe = RECIPE_REGISTRY[prop.id]
+      const isPlayground = !!playgroundModeRef?.current
+
+      if (isPlayground || !recipe) {
+        const inputs = collectPlaygroundInputPositions()
+        if (!inputs) {
+          handleDerivedPointDragSolver(world)
+          needsDrawRef.current = true
+          return
+        }
+        const fromPositions = inputs.positions.map((p) => ({ x: p.x, y: p.y }))
+        const forward = buildPlaygroundForward(dragPointId, inputs.pointIds)
+        const solveResult = solveInverse(forward, inputs.positions, world, solverState)
+        breakFreeTransition = {
+          kind: 'playground',
+          fromPositions,
+          toPositions: solveResult.inputPositions,
+          pointIds: inputs.pointIds,
+          startTime: performance.now(),
+          durationMs: 280,
+        }
+      } else {
+        const currentInputs = collectRecipeInputPositions()
+        if (!currentInputs) {
+          handleDerivedPointDragSolver(world)
+          needsDrawRef.current = true
+          return
+        }
+        const fromPositions = currentInputs.map((p) => ({ x: p.x, y: p.y }))
+        const targetRef = pointIdToRef(dragPointId)
+        const isRecipePoint =
+          recipe.inputSlots.some((s) => s.ref === targetRef) ||
+          recipe.ops.some((op) => {
+            if (op.kind === 'intersection') return op.output === targetRef
+            if (op.kind === 'produce') return op.output === targetRef
+            if (op.kind === 'apply') return Object.values(op.outputs).includes(targetRef)
+            return false
+          })
+        const solveResult = isRecipePoint
+          ? solveInverseKinematics(
+              recipe,
+              currentInputs,
+              targetRef,
+              world,
+              RECIPE_REGISTRY,
+              solverState
+            )
+          : solveInverse(buildReplayForward(dragPointId), currentInputs, world, solverState)
+        breakFreeTransition = {
+          kind: 'recipe',
+          fromPositions,
+          toPositions: solveResult.inputPositions,
+          startTime: performance.now(),
+          durationMs: 280,
+        }
+      }
+
+      breakFreeTransitionId = requestAnimationFrame(stepBreakFreeTransition)
       needsDrawRef.current = true
     }
 
@@ -1293,6 +1414,12 @@ export function useDragGivenPoints({
      * Once breakFree is set, stays in solver mode for the rest of the gesture.
      */
     function handleDerivedPointDrag(world: { x: number; y: number }): void {
+      // Break-free transition owns the construction state until it completes.
+      // Pointer moves during this window are intentionally ignored — the
+      // user sees the construction settle into its solver pose, and the
+      // next move (after t = 1) drives normal cursor tracking.
+      if (breakFreeTransition) return
+
       const useSolver = solverModeRef?.current ?? false
 
       if (useSolver || breakFree || !dragInfluence) {
@@ -1410,6 +1537,11 @@ export function useDragGivenPoints({
         snapAnimId = null
       }
       snapTargetWorld = null
+      if (breakFreeTransitionId != null) {
+        cancelAnimationFrame(breakFreeTransitionId)
+        breakFreeTransitionId = null
+      }
+      breakFreeTransition = null
       if (dragPointIdRef) dragPointIdRef.current = null
       pointerCapturedRef.current = false
       if (motionTrailStateRef) clearTrail(motionTrailStateRef.current)
