@@ -17,7 +17,7 @@ import {
 import { isCandidateBeyondPoint } from '../engine/intersections'
 import { worldToScreen2D } from '../../shared/coordinateConversions'
 
-const BG_COLOR = '#FAFAF0'
+export const BG_COLOR = '#FAFAF0'
 const POINT_RADIUS = 5
 const SNAP_RING_RADIUS = 8
 const LABEL_FONT = '14px system-ui, sans-serif'
@@ -57,14 +57,17 @@ export function renderConstruction(
   isComplete?: boolean,
   resultSegments?: Array<{ fromId: string; toId: string }>,
   hiddenElementIds?: Set<string>,
-  transparentBg?: boolean,
+  transparentBg?: boolean | 'preserve',
   draggablePointIds?: string[],
   postCompletionActions?: PostCompletionAction[]
 ) {
   const ppu = viewport.pixelsPerUnit
 
   // 1. Background
-  if (transparentBg) {
+  if (transparentBg === 'preserve') {
+    // Caller has already prepared the bg (e.g. with a constraint field) —
+    // leave whatever's on the canvas alone.
+  } else if (transparentBg) {
     ctx.clearRect(0, 0, w, h)
   } else {
     ctx.fillStyle = BG_COLOR

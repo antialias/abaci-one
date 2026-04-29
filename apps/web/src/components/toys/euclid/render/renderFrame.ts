@@ -13,7 +13,7 @@ import { getAllPoints } from '../engine/constructionState'
 import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
 import { rotatePoint } from '../engine/viewportMath'
 import { BYRNE_CYCLE } from '../types'
-import { renderConstruction, renderDragInvitation } from './renderConstruction'
+import { renderConstruction, renderDragInvitation, BG_COLOR } from './renderConstruction'
 import { renderToolOverlay } from './renderToolOverlay'
 import { renderTutorialHint } from './renderTutorialHint'
 import { renderEqualityMarks } from './renderEqualityMarks'
@@ -30,6 +30,7 @@ import {
   renderMotionTrail,
   renderBreakFreeFlash,
   renderConstraintField,
+  renderConstraintFieldFlow,
   updateInfluenceTarget,
 } from './renderInfluenceHighlight'
 
@@ -94,16 +95,30 @@ export function renderFrame(
     ctx.needsDrawRef.current = true
   }
 
-  // ── 0. Constraint response field (background under construction) ──
+  // ── 0. Background fill + constraint response field ──
   // Painted before the geometry so the construction lines, points, and
-  // labels sit on top of it. Inert when no derived point is highlighted.
+  // labels sit on top of them. We do the bg fill here (instead of letting
+  // renderConstruction handle it) and pass 'preserve' below, so the conic
+  // gradient survives into the geometry pass instead of being overwritten.
+  drawCtx.fillStyle = BG_COLOR
+  drawCtx.fillRect(0, 0, cssWidth, cssHeight)
   renderConstraintField(
     drawCtx,
     drawState,
     ctx.viewportRef.current,
     cssWidth,
     cssHeight,
-    ctx.influenceHighlightStateRef.current
+    ctx.influenceHighlightStateRef.current,
+    ctx.pointerWorldRef.current
+  )
+  renderConstraintFieldFlow(
+    drawCtx,
+    drawState,
+    ctx.viewportRef.current,
+    cssWidth,
+    cssHeight,
+    ctx.influenceHighlightStateRef.current,
+    ctx.pointerWorldRef.current
   )
 
   // ── 1. Main construction geometry ──
@@ -123,7 +138,7 @@ export function renderFrame(
     complete,
     complete ? ctx.effectiveResultSegmentsRef.current : undefined,
     hiddenIds.size > 0 ? hiddenIds : undefined,
-    undefined, // transparentBg
+    'preserve', // transparentBg — bg + field already painted above
     complete
       ? ctx.playgroundModeRef.current
         ? getAllPoints(drawState).map((pt) => pt.id)

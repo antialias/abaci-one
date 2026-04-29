@@ -20,7 +20,7 @@ const GLOW_RADIUS = 28
 const OUTER_RING_WIDTH = 2
 const INNER_RING_WIDTH = 3
 const DASH_PATTERN: [number, number] = [6, 4]
-const FADE_DURATION_MS = 200
+const FADE_DURATION_MS = 500
 const PREVIEW_ARROW_COLOR = '#4E79A7'
 const PREVIEW_ARROW_SCALE = 40 // pixels per unit of Jacobian response
 const PREVIEW_ARROW_MAX_LEN = 60 // max arrow length in pixels
@@ -56,6 +56,15 @@ export interface InfluenceHighlightState {
   tension: number
   /** Cursor screen position during constrained drag (for rubber band line) */
   cursorScreen: { x: number; y: number } | null
+  /**
+   * Field-only target — the derived point currently nearest to the cursor,
+   * with valid influence info. Independent of hover hit-test so the
+   * background field can appear smoothly via cursor-proximity falloff
+   * without a hit-test boundary discontinuity.
+   */
+  fieldDerivedPointId: string | null
+  fieldGivenPointId: string | null
+  fieldSubJacobian: [number, number, number, number] | null
 }
 
 export function createInfluenceHighlightState(): InfluenceHighlightState {
@@ -69,6 +78,9 @@ export function createInfluenceHighlightState(): InfluenceHighlightState {
     subJacobian: null,
     tension: 0,
     cursorScreen: null,
+    fieldDerivedPointId: null,
+    fieldGivenPointId: null,
+    fieldSubJacobian: null,
   }
 }
 
@@ -169,6 +181,31 @@ function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3
 }
 
+/**
+ * Cursor-proximity multiplier for the constraint-response field. As the
+ * mouse approaches the derived point being inspected, the field intensifies
+ * with a softened inverse-square falloff: f(d) = R² / (R² + d²). At d = 0
+ * the factor is 1; at d = R it's ½; for d ≫ R it decays as 1/d² (true
+ * inverse-square asymptote). Returns 0 when there is no cursor on canvas —
+ * field is hidden entirely.
+ */
+const PROXIMITY_HALF_RADIUS_PX = 220
+function computeProximityFactor(
+  pointerWorld: { x: number; y: number } | null,
+  derivedScreen: { x: number; y: number },
+  viewport: EuclidViewportState,
+  w: number,
+  h: number
+): number {
+  if (!pointerWorld) return 0
+  const cursor = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
+  const dx = cursor.x - derivedScreen.x
+  const dy = cursor.y - derivedScreen.y
+  const d2 = dx * dx + dy * dy
+  const r2 = PROXIMITY_HALF_RADIUS_PX * PROXIMITY_HALF_RADIUS_PX
+  return r2 / (r2 + d2)
+}
+
 /** Lerp between two RGB color strings based on t (0..1). Returns CSS rgba(). */
 function lerpColor(
   r1: number,
@@ -254,19 +291,21 @@ export function renderConstraintField(
   viewport: EuclidViewportState,
   w: number,
   h: number,
-  highlightState: InfluenceHighlightState
+  highlightState: InfluenceHighlightState,
+  pointerWorld: { x: number; y: number } | null
 ): boolean {
-  if (highlightState.opacity <= 0.001) return false
-  if (!highlightState.derivedPointId || !highlightState.subJacobian) return false
+  if (!highlightState.fieldDerivedPointId || !highlightState.fieldSubJacobian) return false
 
-  const derivedPt = getPoint(state, highlightState.derivedPointId)
+  const derivedPt = getPoint(state, highlightState.fieldDerivedPointId)
   if (!derivedPt) return false
 
-  const [a, b, c, d] = highlightState.subJacobian
+  const [a, b, c, d] = highlightState.fieldSubJacobian
   const det = a * d - b * c
   if (Math.abs(det) < 1e-9) return false // degenerate — nothing to show
 
   const derivedScreen = toScreen(derivedPt.x, derivedPt.y, viewport, w, h)
+  const proximityFactor = computeProximityFactor(pointerWorld, derivedScreen, viewport, w, h)
+  if (proximityFactor < 0.005) return false // cursor far from D — field invisible
 
   const N = 120
   const gains = new Float32Array(N + 1)
@@ -293,7 +332,7 @@ export function renderConstraintField(
   // Build conic gradient anchored at the derived point in screen space.
   // Canvas conic angles measure clockwise from +x — same as our screen θ.
   const grad = ctx.createConicGradient(0, derivedScreen.x, derivedScreen.y)
-  const fieldAlpha = 0.32 * highlightState.opacity
+  const fieldAlpha = 0.18 * proximityFactor
   for (let i = 0; i <= N; i++) {
     const t = i / N
     const absRot = Math.abs(rotations[i])
@@ -310,6 +349,242 @@ export function renderConstraintField(
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, w, h)
   ctx.restore()
+  return true
+}
+
+// ── LIC (Line Integral Convolution) ──
+// Continuous flow visualization: smear a noise texture along the field's
+// streamlines so coherent flow direction shows up as smeared streaks. Output
+// is grayscale, drawn with `multiply` blend so it darkens the existing color
+// (the conic gradient from renderConstraintField) without overwriting it.
+//
+// Computed at low resolution (LIC_W × LIC_H), upscaled to canvas size — the
+// upscale's bilinear smoothing is what makes the result feel like a smooth
+// gradient rather than a discrete tile pattern.
+
+// Target offscreen pixel count — LIC dimensions adapt to the main canvas
+// aspect ratio so a square or 4:3 canvas doesn't stretch streaks horizontally.
+const LIC_TARGET_PIXELS = 22000
+const NOISE_SIZE = 256 // power-of-two so wrapping uses bitmask; large enough that the table doesn't visibly tile across the canvas
+const NOISE_MASK = NOISE_SIZE - 1
+
+let licCanvas: HTMLCanvasElement | null = null
+let licCtx2D: CanvasRenderingContext2D | null = null
+let licImage: ImageData | null = null
+let licW = 0
+let licH = 0
+let noiseTable: Float32Array | null = null
+
+function computeLicDims(w: number, h: number): { lw: number; lh: number } {
+  const aspect = w / h
+  let lw = Math.round(Math.sqrt(LIC_TARGET_PIXELS * aspect))
+  let lh = Math.round(lw / aspect)
+  if (lw < 32) lw = 32
+  if (lh < 32) lh = 32
+  return { lw, lh }
+}
+
+function ensureLicResources(targetW: number, targetH: number): void {
+  if (!noiseTable) {
+    noiseTable = new Float32Array(NOISE_SIZE * NOISE_SIZE)
+    let s = 0x9e3779b9
+    for (let i = 0; i < noiseTable.length; i++) {
+      s = ((s * 1103515245) >>> 0) + 12345
+      noiseTable[i] = ((s >>> 8) & 0xffff) / 65535
+    }
+  }
+  if (typeof document === 'undefined') return
+  if (!licCanvas) {
+    licCanvas = document.createElement('canvas')
+    licCtx2D = licCanvas.getContext('2d')!
+  }
+  if (licW !== targetW || licH !== targetH || !licImage) {
+    licW = targetW
+    licH = targetH
+    licCanvas.width = licW
+    licCanvas.height = licH
+    licImage = licCtx2D!.createImageData(licW, licH)
+  }
+}
+
+function sampleNoise(x: number, y: number): number {
+  const t = noiseTable!
+  const xfm = x - Math.floor(x)
+  const yfm = y - Math.floor(y)
+  const xi = Math.floor(x) & NOISE_MASK
+  const yi = Math.floor(y) & NOISE_MASK
+  const xn = (xi + 1) & NOISE_MASK
+  const yn = (yi + 1) & NOISE_MASK
+  const r0 = yi * NOISE_SIZE
+  const r1 = yn * NOISE_SIZE
+  const n00 = t[r0 + xi]
+  const n10 = t[r0 + xn]
+  const n01 = t[r1 + xi]
+  const n11 = t[r1 + xn]
+  const a = n00 + (n10 - n00) * xfm
+  const b = n01 + (n11 - n01) * xfm
+  return a + (b - a) * yfm
+}
+
+/**
+ * Continuous flow visualization for the constraint response field
+ * Δg(P) = J' · (P − D). Rendered via Line Integral Convolution: at every
+ * output pixel, walk forward and backward along Δg in small steps, sampling
+ * a smooth noise texture; average the samples. The result is high autocorr-
+ * elation along streamlines (smooth) and decorrelation across them (sharp),
+ * producing a brushed-flow texture without discrete lines.
+ *
+ * Drawn after the conic gradient (renderConstraintField) with `multiply`
+ * blend, so the LIC darkens the colored field rather than replacing it.
+ */
+export function renderConstraintFieldFlow(
+  ctx: CanvasRenderingContext2D,
+  state: ConstructionState,
+  viewport: EuclidViewportState,
+  w: number,
+  h: number,
+  highlightState: InfluenceHighlightState,
+  pointerWorld: { x: number; y: number } | null
+): boolean {
+  if (!highlightState.fieldDerivedPointId || !highlightState.fieldSubJacobian) return false
+
+  const derivedPt = getPoint(state, highlightState.fieldDerivedPointId)
+  if (!derivedPt) return false
+
+  const [a, b, c, d] = highlightState.fieldSubJacobian
+  const det = a * d - b * c
+  if (Math.abs(det) < 1e-9) return false
+
+  const dims = computeLicDims(w, h)
+  ensureLicResources(dims.lw, dims.lh)
+  if (!licCanvas || !licCtx2D || !licImage) return false
+
+  const D = toScreen(derivedPt.x, derivedPt.y, viewport, w, h)
+  const proximityFactor = computeProximityFactor(pointerWorld, D, viewport, w, h)
+  // Skip the (expensive) per-pixel walk entirely when the field would be
+  // imperceptible — at d ≫ R the proximity factor falls below 1%.
+  if (proximityFactor < 0.005) return false
+  // Map derived-point screen position into LIC pixel space.
+  const sxk = licW / w
+  const syk = licH / h
+  const Dlx = D.x * sxk
+  const Dly = D.y * syk
+
+  // Tunables. Step/half scaled with LIC resolution so streak length on the
+  // final canvas stays comparable across resolution changes.
+  const STEP = 1.6 // LIC px per integration step
+  const HALF = 16 // steps each direction
+  const NOISE_SCALE = 0.45 // LIC-px-to-noise-px scale (smaller = chunkier streaks)
+  const CONTRAST = 1.9 // amplify deviation from 0.5 → more visible streaks
+  const NEAR_D_LIC = 2 // skip only the very pixel at D — blur covers residue
+
+  // Magnitude reference: |Δg| at (P−D) of length halfDiagLic in the worst
+  // direction is bounded by Frobenius(J')·halfDiagLic. We use this to map
+  // local |Δg(P)| into a 0..1 "intensity" so far-from-D pixels darken more
+  // (= bigger required given-point move). Both numerator and denominator
+  // carry the same |det| factor below, so it cancels — no need to divide.
+  const halfDiagLic2 = (licW * licW + licH * licH) / 4
+  const frobSquared = a * a + b * b + c * c + d * d
+  const refMag2 = frobSquared * halfDiagLic2
+
+  const data = licImage.data
+  let idx = 0
+
+  for (let py = 0; py < licH; py++) {
+    for (let px = 0; px < licW; px++) {
+      const xC = px + 0.5
+      const yC = py + 0.5
+      const dxN = xC - Dlx
+      const dyN = yC - Dly
+
+      let v = 0.5
+      let intensity = 0
+      if (dxN * dxN + dyN * dyN >= NEAR_D_LIC * NEAR_D_LIC) {
+        let sum = 0
+        let count = 0
+
+        // Forward walk
+        let cx = xC
+        let cy = yC
+        for (let i = 0; i < HALF; i++) {
+          const ex = cx - Dlx
+          const ey = cy - Dly
+          // Field direction (J' · e) — we normalize by m below, so direction
+          // matters but absolute scale doesn't here.
+          const gx = d * ex + b * ey
+          const gy = c * ex + a * ey
+          const m = Math.sqrt(gx * gx + gy * gy)
+          if (m < 1e-9) break
+          cx += (gx / m) * STEP
+          cy += (gy / m) * STEP
+          sum += sampleNoise(cx * NOISE_SCALE, cy * NOISE_SCALE)
+          count++
+        }
+
+        // Backward walk
+        cx = xC
+        cy = yC
+        for (let i = 0; i < HALF; i++) {
+          const ex = cx - Dlx
+          const ey = cy - Dly
+          const gx = d * ex + b * ey
+          const gy = c * ex + a * ey
+          const m = Math.sqrt(gx * gx + gy * gy)
+          if (m < 1e-9) break
+          cx -= (gx / m) * STEP
+          cy -= (gy / m) * STEP
+          sum += sampleNoise(cx * NOISE_SCALE, cy * NOISE_SCALE)
+          count++
+        }
+
+        if (count > 0) v = sum / count
+
+        // Local |J' · (P−D)|² (proportional to |Δg(P)|², |det|² factor
+        // cancels with refMag2 below).
+        const lgx = d * dxN + b * dyN
+        const lgy = c * dxN + a * dyN
+        const localMag2 = lgx * lgx + lgy * lgy
+        intensity = Math.sqrt(localMag2 / refMag2)
+        if (intensity > 1) intensity = 1
+      }
+
+      // Stretch contrast around 0.5 → streak value in [0,1].
+      let streak = 0.5 + (v - 0.5) * CONTRAST
+      if (streak < 0) streak = 0
+      else if (streak > 1) streak = 1
+
+      // Lerp from white (1.0 = no multiply effect) to the streak value,
+      // weighted by intensity. Near D: pixels stay white → multiply leaves
+      // canvas alone → light region. Far from D: full streak → multiply
+      // darkens streaks → "expensive zone" reads as denser, busier canvas.
+      const final = 1 + (streak - 1) * intensity
+      const g = (final * 255) | 0
+      data[idx++] = g
+      data[idx++] = g
+      data[idx++] = g
+      data[idx++] = 255
+    }
+  }
+
+  licCtx2D.putImageData(licImage, 0, 0)
+
+  // Composite LIC onto main canvas: multiply darkens (streaks become darker
+  // brush strokes against the conic gradient). Bilinear upscale alone leaves
+  // a Minecraft-grid look at ~7-10× factor, so we layer a Gaussian blur via
+  // ctx.filter on top — the radius scales with the upscale factor, large
+  // enough to dissolve cell boundaries while still preserving streak shape.
+  const upscaleFactor = w / licW
+  const blurPx = Math.max(1.5, upscaleFactor * 1.4)
+
+  ctx.save()
+  ctx.globalAlpha = 0.20 * proximityFactor
+  ctx.globalCompositeOperation = 'multiply'
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.filter = `blur(${blurPx.toFixed(2)}px)`
+  ctx.drawImage(licCanvas, 0, 0, w, h)
+  ctx.restore()
+
   return true
 }
 

@@ -335,38 +335,126 @@ export function useDragGivenPoints({
     }
 
     /**
-     * Compute influence for a derived point and update the highlight refs.
+     * Compute influence info for a derived point. Returns null if the point
+     * has no valid (non-rank-deficient) controlling given.
+     */
+    function tryComputeInfluence(derivedPointId: string): {
+      bestPointId: string
+      subJacobian: [number, number, number, number]
+    } | null {
+      const ctx = buildInfluenceContext(derivedPointId)
+      if (!ctx) return null
+      const influence = computeInfluence(ctx.forward, ctx.inputPositions, ctx.pointIds)
+      if (!influence || !influence.bestPointId) return null
+      if (isSubJacobianRankDeficient(influence.subJacobian)) return null
+      return { bestPointId: influence.bestPointId, subJacobian: influence.subJacobian }
+    }
+
+    /**
+     * Compute influence for a derived point and update the hover highlight
+     * refs (drives the ring + preview arrow + dashed line on hover).
      */
     function updateInfluenceHighlight(derivedPointId: string | null): void {
+      const clear = () => {
+        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
+        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
+        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
+      }
       if (!derivedPointId) {
-        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
-        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
-        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
+        clear()
         return
       }
-
-      const ctx = buildInfluenceContext(derivedPointId)
-      if (!ctx) {
-        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
-        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
-        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
+      const inf = tryComputeInfluence(derivedPointId)
+      if (!inf) {
+        clear()
         return
       }
-
-      const influence = computeInfluence(ctx.forward, ctx.inputPositions, ctx.pointIds)
-      if (!influence || !influence.bestPointId) {
-        if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = null
-        if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = null
-        if (influenceHighlightStateRef) influenceHighlightStateRef.current.subJacobian = null
-        return
-      }
-
       if (hoveredDerivedPointIdRef) hoveredDerivedPointIdRef.current = derivedPointId
-      if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = influence.bestPointId
+      if (influentialGivenPointIdRef) influentialGivenPointIdRef.current = inf.bestPointId
       if (influenceHighlightStateRef) {
-        influenceHighlightStateRef.current.subJacobian = influence.subJacobian
+        influenceHighlightStateRef.current.subJacobian = inf.subJacobian
       }
       needsDrawRef.current = true
+    }
+
+    /**
+     * Track the nearest derived-with-valid-influence point to the cursor
+     * (regardless of hit-test). Drives the background constraint-response
+     * field: as the cursor approaches a point, the field fades in via
+     * proximity falloff; as it moves away, the field fades out. Decoupling
+     * from hover hit-test removes the hard threshold the user observed.
+     *
+     * Caches influence results per derived point so we don't recompute on
+     * every pointer move. Cache is cleared when the construction changes
+     * (handled at handlePointerDown / handleDragEnd via clearFieldCache).
+     */
+    const fieldInfluenceCache = new Map<
+      string,
+      { bestPointId: string; subJacobian: [number, number, number, number] } | null
+    >()
+    function clearFieldCache(): void {
+      fieldInfluenceCache.clear()
+    }
+    function getCachedInfluence(
+      derivedPointId: string
+    ): { bestPointId: string; subJacobian: [number, number, number, number] } | null {
+      if (fieldInfluenceCache.has(derivedPointId)) {
+        return fieldInfluenceCache.get(derivedPointId) ?? null
+      }
+      const inf = tryComputeInfluence(derivedPointId)
+      fieldInfluenceCache.set(derivedPointId, inf)
+      return inf
+    }
+    function updateFieldTarget(screenX: number, screenY: number): void {
+      if (!influenceHighlightStateRef) return
+      const state = constructionRef.current
+      const viewport = viewportRef.current
+      const { w, h } = getCSSSize()
+      const recipe = RECIPE_REGISTRY[propositionRef.current.id]
+      const isPlayground = !!playgroundModeRef?.current
+
+      // Find the nearest derived point with valid (non-rank-deficient)
+      // influence. The proximity factor in the renderer handles the actual
+      // visual fade — we just need to keep the target current.
+      let bestId: string | null = null
+      let bestDist2 = Infinity
+      let bestInf: { bestPointId: string; subJacobian: [number, number, number, number] } | null =
+        null
+      for (const pt of getAllPoints(state)) {
+        if (!isDerivedOrigin(pt.origin)) continue
+        if (!recipe && !isPlayground) continue
+        const s = worldToScreen2D(
+          pt.x,
+          pt.y,
+          viewport.center.x,
+          viewport.center.y,
+          viewport.pixelsPerUnit,
+          viewport.pixelsPerUnit,
+          w,
+          h
+        )
+        const dx = screenX - s.x
+        const dy = screenY - s.y
+        const d2 = dx * dx + dy * dy
+        if (d2 >= bestDist2) continue
+        const inf = getCachedInfluence(pt.id)
+        if (!inf) continue
+        bestId = pt.id
+        bestDist2 = d2
+        bestInf = inf
+      }
+
+      const hl = influenceHighlightStateRef.current
+      if (
+        hl.fieldDerivedPointId !== bestId ||
+        hl.fieldGivenPointId !== (bestInf?.bestPointId ?? null) ||
+        hl.fieldSubJacobian !== (bestInf?.subJacobian ?? null)
+      ) {
+        hl.fieldDerivedPointId = bestId
+        hl.fieldGivenPointId = bestInf?.bestPointId ?? null
+        hl.fieldSubJacobian = bestInf?.subJacobian ?? null
+        needsDrawRef.current = true
+      }
     }
 
     /**
@@ -755,6 +843,11 @@ export function useDragGivenPoints({
             updateInfluenceHighlight(null)
           }
         }
+
+        // Track nearest-derived for the field background regardless of
+        // hit-test, so the field fades smoothly with cursor proximity rather
+        // than popping in at the hit-test boundary.
+        updateFieldTarget(sx, sy)
       }
     }
 
@@ -1565,6 +1658,9 @@ export function useDragGivenPoints({
       e.stopPropagation()
       cleanupDragState()
       canvas!.style.cursor = hoveredDraggableId ? 'grab' : ''
+      // Construction state may have changed during drag — invalidate the
+      // per-derived-point influence cache so the field re-derives next move.
+      clearFieldCache()
       needsDrawRef.current = true
       onDragEnd?.()
     }
@@ -1574,6 +1670,7 @@ export function useDragGivenPoints({
       cleanupDragState()
       hoveredDraggableId = null
       canvas!.style.cursor = ''
+      clearFieldCache()
       needsDrawRef.current = true
     }
 
