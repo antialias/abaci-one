@@ -29,6 +29,10 @@ const PREVIEW_ARROW_MAX_LEN = 60 // max arrow length in pixels
 const PREVIEW_ARROW_HEAD = 8 // arrowhead size
 const PREVIEW_ARROW_FADE_START = 15 // screen px from derived: arrow fully visible beyond this
 const PREVIEW_ARROW_FADE_END = 5 // screen px from derived: arrow fully hidden below this
+const TENSION_START_RADIUS = 40 // screen px: tension visuals begin
+const BREAK_FREE_RADIUS = 250 // screen px: constraint snaps
+const TENSION_DAMPEN = 0.95 // at max tension, cursor influence reduced to 1 - this
+const TRAIL_MAX_POINTS = 20
 
 // ── State ──
 
@@ -42,6 +46,10 @@ export interface InfluenceHighlightState {
   fadeStartOpacity: number
   /** Sub-Jacobian for the most influential given point: [∂tx/∂gx, ∂tx/∂gy, ∂ty/∂gx, ∂ty/∂gy] */
   subJacobian: [number, number, number, number] | null
+  /** 0..1 tension during constrained drag (0 = relaxed, 1 = about to break) */
+  tension: number
+  /** Cursor screen position during constrained drag (for rubber band line) */
+  cursorScreen: { x: number; y: number } | null
 }
 
 export function createInfluenceHighlightState(): InfluenceHighlightState {
@@ -53,8 +61,73 @@ export function createInfluenceHighlightState(): InfluenceHighlightState {
     fadeStartTime: 0,
     fadeStartOpacity: 0,
     subJacobian: null,
+    tension: 0,
+    cursorScreen: null,
   }
 }
+
+/** Visual flash when the constraint breaks free during a drag. */
+export interface BreakFreeFlash {
+  startTime: number
+  /** Screen position of the influential given point at the moment of break */
+  givenScreen: { x: number; y: number }
+  /** Screen position of the derived point at the moment of break */
+  derivedScreen: { x: number; y: number }
+}
+
+/** Motion trail state: ring buffer of recent positions for each tracked point. */
+export interface MotionTrailState {
+  /** Point ID being trailed */
+  pointId: string | null
+  /** Ring buffer of recent screen positions */
+  positions: Array<{ x: number; y: number }>
+  /** Write index into the ring buffer */
+  writeIdx: number
+  /** Number of valid entries */
+  count: number
+  /** Fade-out opacity (1 while dragging, decays after release) */
+  opacity: number
+}
+
+export function createMotionTrailState(): MotionTrailState {
+  return {
+    pointId: null,
+    positions: new Array(TRAIL_MAX_POINTS).fill({ x: 0, y: 0 }),
+    writeIdx: 0,
+    count: 0,
+    opacity: 0,
+  }
+}
+
+/** Record a new position in the trail. Call each drag frame. */
+export function recordTrailPosition(
+  trail: MotionTrailState,
+  pointId: string,
+  screenX: number,
+  screenY: number
+): void {
+  if (trail.pointId !== pointId) {
+    // New drag target — reset
+    trail.pointId = pointId
+    trail.count = 0
+    trail.writeIdx = 0
+  }
+  trail.positions[trail.writeIdx] = { x: screenX, y: screenY }
+  trail.writeIdx = (trail.writeIdx + 1) % TRAIL_MAX_POINTS
+  if (trail.count < TRAIL_MAX_POINTS) trail.count++
+  trail.opacity = 1
+}
+
+/** Call when drag ends to begin fade-out. */
+export function clearTrail(trail: MotionTrailState): void {
+  trail.pointId = null
+  trail.count = 0
+  trail.writeIdx = 0
+  trail.opacity = 0
+}
+
+/** Exported tension thresholds for use by the drag handler. */
+export { TENSION_START_RADIUS, BREAK_FREE_RADIUS, TENSION_DAMPEN }
 
 // ── Highlight target update ──
 
