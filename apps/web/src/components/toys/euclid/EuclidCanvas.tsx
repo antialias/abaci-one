@@ -57,7 +57,10 @@ import { GeometryTeacherProvider, useGeometryTeacher } from './GeometryTeacherCo
 import { getTeacherConfig } from './characters/registry'
 import { useConstructionNotifier } from './agent/useConstructionNotifier'
 import { ConstructionEventBus } from './agent/ConstructionEventBus'
-import { createInfluenceHighlightState } from './render/renderInfluenceHighlight'
+import {
+  createInfluenceHighlightState,
+  createMotionTrailState,
+} from './render/renderInfluenceHighlight'
 import type { AttitudeId } from './agent/attitudes/types'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -284,6 +287,11 @@ function EuclidCanvasInner({
   const hoveredDerivedPointIdRef = useRef<string | null>(null)
   const influentialGivenPointIdRef = useRef<string | null>(null)
   const influenceHighlightStateRef = useRef(createInfluenceHighlightState())
+  const motionTrailStateRef = useRef(createMotionTrailState())
+  const breakFreeFlashRef = useRef<
+    import('./render/renderInfluenceHighlight').BreakFreeFlash | null
+  >(null)
+  const solverModeRef = useRef(false)
   const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
   const ghostBoundsEnabledRef = useRef(false)
   const macroPreviewAutoFitRef = useRef(true)
@@ -394,6 +402,7 @@ function EuclidCanvasInner({
   const [panZoomEnabled, setPanZoomEnabled] = useState(false)
   const [toolPreview, setToolPreview] = useState<LedgerEntryDescriptor | null>(null)
   const [isToolDockActive, setIsToolDockActive] = useState(false)
+  const [solverModeUI, setSolverModeUI] = useState(false)
   const [isCorrectionActive, setIsCorrectionActive] = useState(false)
   const [frictionCoeff, setFrictionCoeff] = useState(getFriction)
   const [ghostBaseOpacityVal, setGhostBaseOpacityVal] = useState(getGhostBaseOpacity)
@@ -1454,9 +1463,12 @@ function EuclidCanvasInner({
     stepDataRef,
     interactionLockedRef: correctionActiveRef,
     playgroundModeRef,
+    solverModeRef,
     hoveredDerivedPointIdRef,
     influentialGivenPointIdRef,
     influenceHighlightStateRef,
+    motionTrailStateRef,
+    breakFreeFlashRef,
     dragPointIdRef,
     onReplayResult: handleDragReplay,
     onDragStart: dragTopologyStart,
@@ -1549,6 +1561,8 @@ function EuclidCanvasInner({
       hoveredDerivedPointIdRef,
       influentialGivenPointIdRef,
       influenceHighlightStateRef,
+      motionTrailStateRef,
+      breakFreeFlashRef,
       toolDockRef,
       ghostOpacitiesRef,
       currentHintRef,
@@ -1756,6 +1770,12 @@ function EuclidCanvasInner({
           givenSetupActive={givenSetup.isActive}
           activeToolRef={activeToolRef}
           toolDockRef={toolDockRef}
+          solverMode={solverModeUI}
+          onToggleSolverMode={() => {
+            const next = !solverModeUI
+            setSolverModeUI(next)
+            solverModeRef.current = next
+          }}
         />
 
         {/* Top-right bar — playground controls only */}

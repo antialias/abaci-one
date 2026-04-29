@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { computeInfluence, constrainedDragStep } from './jacobianInfluence'
+import {
+  computeInfluence,
+  constrainedDragStep,
+  isSubJacobianRankDeficient,
+} from './jacobianInfluence'
 import { evaluateRecipe } from './recipe/evaluate'
 import { RECIPE_PROP_1 } from './recipe/definitions/prop1'
 import { RECIPE_REGISTRY } from './recipe/definitions/registry'
@@ -79,6 +83,53 @@ describe('jacobianInfluence', () => {
       // dgy = (1/det)(-c*dx + a*dy) = (1/-6)(-3*1 + 0*1) = 1/2
       expect(result!.x).toBeCloseTo(1 + 1 / 3)
       expect(result!.y).toBeCloseTo(1 + 0.5)
+    })
+  })
+
+  describe('isSubJacobianRankDeficient', () => {
+    it('returns false for the identity (well-conditioned)', () => {
+      expect(isSubJacobianRankDeficient([1, 0, 0, 1])).toBe(false)
+    })
+
+    it('returns false for a non-singular diagonal with condition ~2', () => {
+      expect(isSubJacobianRankDeficient([1, 0, 0, 0.5])).toBe(false)
+    })
+
+    it('returns true for the all-zero matrix', () => {
+      expect(isSubJacobianRankDeficient([0, 0, 0, 0])).toBe(true)
+    })
+
+    it('returns true for an exactly rank-1 matrix (dependent rows)', () => {
+      // Rows are [1,2] and [2,4] — second is 2× the first.
+      expect(isSubJacobianRankDeficient([1, 2, 2, 4])).toBe(true)
+    })
+
+    it('returns true for the X-intersection canonical case (columns parallel)', () => {
+      // Both columns point along (3,4); intersection of two lines moves
+      // along this single direction regardless of which corner perturbation.
+      // J = [[3,6],[4,8]] — det = 0, T = 9+36+16+64 = 125, T² = 15625, det² = 0.
+      expect(isSubJacobianRankDeficient([3, 6, 4, 8])).toBe(true)
+    })
+
+    it('returns true for finite-difference noise on a rank-1 matrix', () => {
+      // Numerical computation gives a tiny non-zero det that should still be flagged.
+      expect(isSubJacobianRankDeficient([1, 2, 2 + 1e-9, 4])).toBe(true)
+    })
+
+    it('returns true when condition number exceeds the default threshold of 10', () => {
+      // Diagonal [1, 0.05] → κ = 20, well above the κ=10 cutoff.
+      expect(isSubJacobianRankDeficient([1, 0, 0, 0.05])).toBe(true)
+    })
+
+    it('returns false when condition number is just below the threshold', () => {
+      // Diagonal [1, 0.15] → κ ≈ 6.7, below the κ=10 cutoff.
+      expect(isSubJacobianRankDeficient([1, 0, 0, 0.15])).toBe(false)
+    })
+
+    it('threshold is configurable for stricter rejection', () => {
+      // [1, 0.15] has κ ≈ 6.7. Reject if we ask for κ < 5 (condSq = 25).
+      expect(isSubJacobianRankDeficient([1, 0, 0, 0.15], 25)).toBe(true)
+      expect(isSubJacobianRankDeficient([1, 0, 0, 0.15], 100)).toBe(false)
     })
   })
 })

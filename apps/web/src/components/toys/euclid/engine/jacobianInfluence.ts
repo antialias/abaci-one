@@ -120,3 +120,40 @@ export function constrainedDragStep(
     y: currentGivenPos.y + dgy,
   }
 }
+
+/**
+ * Returns true when the 2×2 sub-Jacobian is too ill-conditioned for
+ * constrained 2D dragging through a single given point.
+ *
+ * A rank-deficient sub-Jacobian means the chosen given point can move the
+ * target along (at most) a 1-D locus, not in arbitrary 2D directions. The
+ * canonical case: the target is the intersection of two lines, and the
+ * chosen given is one endpoint — perturbing it only slides the intersection
+ * along the *other* line. Both columns of the sub-Jacobian point along that
+ * other line; det(J) is mathematically zero, numerically ~1e-12.
+ *
+ * If we still try to invert J (in `constrainedDragStep`) the result is a
+ * given-point delta of magnitude ~1/det → effectively infinity. Detecting
+ * this at drag-start lets the caller skip constrained mode entirely and
+ * route the gesture to the full LM solver, which can deploy *all* input
+ * DOFs together.
+ *
+ * Math: for 2×2 J with singular values σ₁ ≥ σ₂ ≥ 0,
+ *   trace(JᵀJ) = a²+b²+c²+d² = σ₁²+σ₂²    (call this T)
+ *   det(JᵀJ)   = (ad-bc)²    = σ₁²·σ₂²    (call this D')
+ *   (σ₂/σ₁)² ≈ D'/T² when σ₁ ≫ σ₂.
+ * We flag ill-conditioning when (σ₂/σ₁)² < 1/conditionSqThreshold,
+ * i.e. when conditionSqThreshold·D' < T².
+ *
+ * Default conditionSqThreshold = 100 → reject when condition number κ > 10.
+ */
+export function isSubJacobianRankDeficient(
+  subJacobian: [number, number, number, number],
+  conditionSqThreshold = 100
+): boolean {
+  const [a, b, c, d] = subJacobian
+  const traceJtJ = a * a + b * b + c * c + d * d
+  if (traceJtJ < 1e-12) return true // J ≈ 0: no influence at all
+  const det = a * d - b * c
+  return conditionSqThreshold * det * det < traceJtJ * traceJtJ
+}

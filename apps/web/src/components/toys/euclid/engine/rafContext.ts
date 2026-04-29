@@ -32,7 +32,11 @@ import type { CitationFlash } from '../render/renderCitationFlash'
 import type { PostCompletionAction } from './replayConstruction'
 import type { ConstructionEventBus } from '../agent/ConstructionEventBus'
 import type { GeometricEntityRef } from '../chat/parseGeometricEntities'
-import type { InfluenceHighlightState } from '../render/renderInfluenceHighlight'
+import type {
+  InfluenceHighlightState,
+  MotionTrailState,
+  BreakFreeFlash,
+} from '../render/renderInfluenceHighlight'
 
 export interface RelocatePointAnim {
   actionIndex: number
@@ -147,6 +151,8 @@ export interface RAFContext {
   hoveredDerivedPointIdRef: MutableRefObject<string | null>
   influentialGivenPointIdRef: MutableRefObject<string | null>
   influenceHighlightStateRef: MutableRefObject<InfluenceHighlightState>
+  motionTrailStateRef: MutableRefObject<MotionTrailState>
+  breakFreeFlashRef: MutableRefObject<BreakFreeFlash | null>
 
   // ── Voice/chat refs ──
   sayMacroRevealRef: MutableRefObject<(opts: { say: { en: string }; tone: string }) => void>
