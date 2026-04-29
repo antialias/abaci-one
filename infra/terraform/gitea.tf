@@ -180,6 +180,49 @@ resource "kubernetes_service" "registry" {
   }
 }
 
+# Ingress for registry.dev.abaci.one (HTTPS frontend for Docker registry)
+resource "kubernetes_ingress_v1" "registry" {
+  metadata {
+    name      = "registry"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+    annotations = {
+      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
+    }
+  }
+
+  spec {
+    ingress_class_name = "traefik"
+
+    tls {
+      hosts       = ["registry.dev.${var.app_domain}"]
+      secret_name = "registry-tls"
+    }
+
+    rule {
+      host = "registry.dev.${var.app_domain}"
+
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+
+          backend {
+            service {
+              name = kubernetes_service.registry.metadata[0].name
+              port {
+                number = 5000
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [null_resource.cert_manager_issuers]
+}
+
 # ===========================================================================
 # Gitea Server
 # ===========================================================================
@@ -272,7 +315,7 @@ resource "kubernetes_config_map" "gitea" {
 
       [service]
       DISABLE_REGISTRATION              = true
-      REQUIRE_SIGNIN_VIEW               = false
+      REQUIRE_SIGNIN_VIEW               = true
       REGISTER_EMAIL_CONFIRM            = false
       ENABLE_NOTIFY_MAIL                = false
       ALLOW_ONLY_EXTERNAL_REGISTRATION  = false
@@ -306,6 +349,9 @@ resource "kubernetes_config_map" "gitea" {
       [actions]
       ENABLED = true
       DEFAULT_ACTIONS_URL = github
+
+      [webhook]
+      ALLOWED_HOST_LIST = external,loopback,*.svc.cluster.local
 
       [mirror]
       ENABLED = true
@@ -395,6 +441,39 @@ resource "kubernetes_deployment" "gitea" {
           volume_mount {
             name       = "config"
             mount_path = "/config"
+          }
+        }
+
+        # Workaround for Gitea dbfs log archival bug (go-gitea/gitea#35110).
+        # Action tasks reference log files in dbfs_meta that were never written;
+        # after pod restart the API returns 500 for those tasks. This inserts
+        # empty log entries so the API returns empty logs instead.
+        # TODO: remove after upgrading to Gitea >= 1.26 (fix: go-gitea/gitea#36844)
+        init_container {
+          name  = "fix-dbfs-logs"
+          image = "alpine:3.22"
+
+          command = ["/bin/sh", "-c"]
+          args = [
+            <<-EOT
+              apk add --no-cache sqlite >/dev/null 2>&1
+              DB=/data/gitea/gitea.db
+              [ -f "$DB" ] || exit 0
+              NOW=$(date +%s)
+              sqlite3 "$DB" "
+                INSERT OR IGNORE INTO dbfs_meta
+                  (full_path, block_size, file_size, create_timestamp, modify_timestamp)
+                SELECT '4:actions_log/' || log_filename, 4096, 0, $NOW, $NOW
+                FROM action_task
+                WHERE '4:actions_log/' || log_filename NOT IN
+                  (SELECT full_path FROM dbfs_meta);
+              "
+            EOT
+          ]
+
+          volume_mount {
+            name       = "data"
+            mount_path = "/data"
           }
         }
 
@@ -528,6 +607,50 @@ resource "kubernetes_ingress_v1" "gitea" {
 
     rule {
       host = "git.dev.${var.app_domain}"
+
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+
+          backend {
+            service {
+              name = kubernetes_service.gitea.metadata[0].name
+              port {
+                number = 3000
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [null_resource.cert_manager_issuers]
+}
+
+# Firmware OTA — public access to Gitea release assets via firmware.dev.abaci.one
+# NAS Traefik injects the Gitea auth token; k3s just needs to route to Gitea.
+resource "kubernetes_ingress_v1" "gitea_firmware" {
+  metadata {
+    name      = "gitea-firmware"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+    annotations = {
+      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
+    }
+  }
+
+  spec {
+    ingress_class_name = "traefik"
+
+    tls {
+      hosts       = ["firmware.dev.${var.app_domain}"]
+      secret_name = "gitea-firmware-tls"
+    }
+
+    rule {
+      host = "firmware.dev.${var.app_domain}"
 
       http {
         path {
