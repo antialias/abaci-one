@@ -27,6 +27,8 @@ import { renderMacroPreview } from './renderMacroPreview'
 import { renderChatHighlight } from './renderChatHighlight'
 import {
   renderInfluenceHighlight,
+  renderMotionTrail,
+  renderBreakFreeFlash,
   updateInfluenceTarget,
 } from './renderInfluenceHighlight'
 
@@ -308,12 +310,12 @@ export function renderFrame(
   // ── 11½. Influence highlight (hover over derived → pulsing ring on given) ──
   {
     const hlState = ctx.influenceHighlightStateRef.current
-    const nowMs = performance.now()
+    const now = performance.now() / 1000
     updateInfluenceTarget(
       hlState,
       ctx.hoveredDerivedPointIdRef.current,
       ctx.influentialGivenPointIdRef.current,
-      nowMs
+      now * 1000
     )
     const influenceAnimating = renderInfluenceHighlight(
       drawCtx,
@@ -322,11 +324,33 @@ export function renderFrame(
       cssWidth,
       cssHeight,
       hlState,
-      nowMs / 1000,
+      now,
       ctx.pointerWorldRef.current
     )
     if (influenceAnimating) {
       ctx.needsDrawRef.current = true
+    }
+  }
+
+  // ── 11¾. Motion trail (fading afterimage on given point during constrained drag) ──
+  if (ctx.motionTrailStateRef.current.count >= 2) {
+    const trailAnimating = renderMotionTrail(drawCtx, ctx.motionTrailStateRef.current)
+    if (trailAnimating) {
+      ctx.needsDrawRef.current = true
+    }
+  }
+
+  // ── 11⅞. Break-free flash (constraint snap animation) ──
+  if (ctx.breakFreeFlashRef.current) {
+    const stillAnimating = renderBreakFreeFlash(
+      drawCtx,
+      ctx.breakFreeFlashRef.current,
+      performance.now()
+    )
+    if (stillAnimating) {
+      ctx.needsDrawRef.current = true
+    } else {
+      ctx.breakFreeFlashRef.current = null
     }
   }
 
