@@ -24,6 +24,10 @@ interface ToolDockProps {
   givenSetupActive: boolean
   activeToolRef: MutableRefObject<ActiveTool>
   toolDockRef: React.Ref<HTMLDivElement>
+  /** Whether full solver mode is active (unlock icon) vs constrained (lock icon) */
+  solverMode?: boolean
+  /** Toggle solver mode on/off */
+  onToggleSolverMode?: () => void
 }
 
 export function ToolDock({
@@ -42,6 +46,8 @@ export function ToolDock({
   givenSetupActive,
   activeToolRef,
   toolDockRef,
+  solverMode,
+  onToggleSolverMode,
 }: ToolDockProps) {
   if (!hasConstructionSteps && !isComplete && !playgroundMode) return null
 
@@ -224,6 +230,47 @@ export function ToolDock({
           }
           active={false}
           onClick={() => startWiggle(0)}
+          size={isMobile ? 44 : 48}
+        />
+      )}
+      {isComplete && onToggleSolverMode && (
+        <ToolButton
+          label={solverMode ? 'Free drag (Shift)' : 'Constrained drag'}
+          icon={
+            solverMode ? (
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {/* Unlock icon — free solver mode */}
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+              </svg>
+            ) : (
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {/* Lock icon — constrained mode (default) */}
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            )
+          }
+          active={solverMode ?? false}
+          onClick={onToggleSolverMode}
           size={isMobile ? 44 : 48}
         />
       )}
