@@ -23,6 +23,7 @@ import {
   type ForwardFn,
 } from '../engine/inverseSolver'
 import { RECIPE_REGISTRY } from '../engine/recipe/definitions/registry'
+import type { InfluenceHighlightState } from '../render/renderInfluenceHighlight'
 import type { Pt } from '../engine/recipe/types'
 
 /** Hit radius for draggable points (screen pixels) */
@@ -48,6 +49,12 @@ interface UseDragGivenPointsOptions {
   interactionLockedRef?: React.MutableRefObject<boolean>
   /** Whether we're in free-form playground mode (no recipe) */
   playgroundModeRef?: React.MutableRefObject<boolean | undefined>
+  /** Ref updated with the hovered derived point ID (for influence highlight rendering) */
+  hoveredDerivedPointIdRef?: React.MutableRefObject<string | null>
+  /** Ref updated with the most influential given point ID (for influence highlight rendering) */
+  influentialGivenPointIdRef?: React.MutableRefObject<string | null>
+  /** Influence highlight state ref — used to set subJacobian for the preview arrow */
+  influenceHighlightStateRef?: React.MutableRefObject<InfluenceHighlightState>
   /** Called when construction state is replaced during drag */
   onReplayResult: (result: ReplayResult) => void
   /** Called once when a drag gesture starts on a given point */
@@ -84,6 +91,9 @@ export function useDragGivenPoints({
   stepDataRef,
   interactionLockedRef,
   playgroundModeRef,
+  hoveredDerivedPointIdRef,
+  influentialGivenPointIdRef,
+  influenceHighlightStateRef,
   onReplayResult,
   onDragStart,
   dragPointIdRef,

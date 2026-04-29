@@ -57,6 +57,7 @@ import { GeometryTeacherProvider, useGeometryTeacher } from './GeometryTeacherCo
 import { getTeacherConfig } from './characters/registry'
 import { useConstructionNotifier } from './agent/useConstructionNotifier'
 import { ConstructionEventBus } from './agent/ConstructionEventBus'
+import { createInfluenceHighlightState } from './render/renderInfluenceHighlight'
 import type { AttitudeId } from './agent/attitudes/types'
 import { EuclidContextDebugPanel } from './EuclidContextDebugPanel'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
@@ -280,6 +281,9 @@ function EuclidCanvasInner({
   const eventBusRef = useRef(new ConstructionEventBus())
   const ghostLayersRef = useRef<GhostLayer[]>([])
   const hoveredMacroStepRef = useRef<number | null>(null)
+  const hoveredDerivedPointIdRef = useRef<string | null>(null)
+  const influentialGivenPointIdRef = useRef<string | null>(null)
+  const influenceHighlightStateRef = useRef(createInfluenceHighlightState())
   const ghostOpacitiesRef = useRef<Map<string, number>>(new Map())
   const ghostBoundsEnabledRef = useRef(false)
   const macroPreviewAutoFitRef = useRef(true)
@@ -1450,6 +1454,9 @@ function EuclidCanvasInner({
     stepDataRef,
     interactionLockedRef: correctionActiveRef,
     playgroundModeRef,
+    hoveredDerivedPointIdRef,
+    influentialGivenPointIdRef,
+    influenceHighlightStateRef,
     dragPointIdRef,
     onReplayResult: handleDragReplay,
     onDragStart: dragTopologyStart,
@@ -1539,6 +1546,9 @@ function EuclidCanvasInner({
       macroPreviewAutoFitRef,
       ghostBoundsEnabledRef,
       hoveredMacroStepRef,
+      hoveredDerivedPointIdRef,
+      influentialGivenPointIdRef,
+      influenceHighlightStateRef,
       toolDockRef,
       ghostOpacitiesRef,
       currentHintRef,
