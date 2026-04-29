@@ -19,7 +19,7 @@ describe('inverseSolver', () => {
     it('converges when dragging apex C of equilateral triangle', () => {
       const inputPositions: Pt[] = [
         { x: -2, y: 0 }, // A
-        { x: 2, y: 0 },  // B
+        { x: 2, y: 0 }, // B
       ]
 
       // Get the current position of C
@@ -161,12 +161,8 @@ describe('inverseSolver', () => {
       const solvedC = getPoint(result.inputPositions, 'C')
       expect(solvedC).toBeDefined()
 
-      const originalDist = Math.sqrt(
-        (originalC.x - target.x) ** 2 + (originalC.y - target.y) ** 2
-      )
-      const solvedDist = Math.sqrt(
-        (solvedC!.x - target.x) ** 2 + (solvedC!.y - target.y) ** 2
-      )
+      const originalDist = Math.sqrt((originalC.x - target.x) ** 2 + (originalC.y - target.y) ** 2)
+      const solvedDist = Math.sqrt((solvedC!.x - target.x) ** 2 + (solvedC!.y - target.y) ** 2)
       expect(solvedDist).toBeLessThan(originalDist)
     })
 

@@ -122,10 +122,7 @@ export function solveInverse(
     const currentPos = forward(positions)
     if (!currentPos) break
 
-    const r: [number, number] = [
-      currentPos.x - targetPosition.x,
-      currentPos.y - targetPosition.y,
-    ]
+    const r: [number, number] = [currentPos.x - targetPosition.x, currentPos.y - targetPosition.y]
     const residualNorm = Math.sqrt(r[0] * r[0] + r[1] * r[1])
 
     if (residualNorm < bestResidualNorm) {
@@ -146,10 +143,7 @@ export function solveInverse(
 
     // Compute Jacobian via central finite differences
     const paramIndices = activeParams ?? Array.from({ length: n }, (_, i) => i)
-    const J: [number[], number[]] = [
-      new Array(n).fill(0),
-      new Array(n).fill(0),
-    ]
+    const J: [number[], number[]] = [new Array(n).fill(0), new Array(n).fill(0)]
 
     for (const j of paramIndices) {
       const paramsPlus = [...params]
@@ -257,7 +251,7 @@ export function solveInverseKinematics(
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-function flattenPositions(positions: Pt[]): number[] {
+export function flattenPositions(positions: Pt[]): number[] {
   const out: number[] = []
   for (const p of positions) {
     out.push(p.x, p.y)
@@ -265,7 +259,7 @@ function flattenPositions(positions: Pt[]): number[] {
   return out
 }
 
-function unflattenPositions(params: number[]): Pt[] {
+export function unflattenPositions(params: number[]): Pt[] {
   const out: Pt[] = []
   for (let i = 0; i < params.length; i += 2) {
     out.push({ x: params[i], y: params[i + 1] })
