@@ -101,6 +101,7 @@ function generateMockResults(config: {
     const usedAbacus = i < Math.floor(count * 0.5) && Math.random() < abacusUsageRate
 
     return {
+      slotId: `slot-${i}`,
       partNumber: (i < Math.floor(count * 0.5) ? 1 : i < Math.floor(count * 0.8) ? 2 : 3) as
         | 1
         | 2

@@ -37,6 +37,7 @@ export function generateSlotResults(
       realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
 
     const baseResult = {
+      slotId: crypto.randomUUID(),
       partNumber: 1 as const,
       slotIndex: startIndex + i,
       problem,

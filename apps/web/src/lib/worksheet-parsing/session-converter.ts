@@ -67,6 +67,7 @@ function toSlotResult(
   const isCorrect = parsed.studentAnswer !== null && parsed.studentAnswer === problem.answer
 
   return {
+    slotId: crypto.randomUUID(),
     partNumber: options.partNumber ?? 1,
     slotIndex,
     problem,

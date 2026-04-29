@@ -40,6 +40,7 @@ describe('useSessionBroadcast - flow state + break context broadcasting', () => 
 
   const createMockBroadcastState = (): BroadcastState => ({
     currentProblem: { terms: [5, 3], answer: 8 },
+    slotId: 'test-slot-0',
     phase: 'problem',
     studentAnswer: '',
     isCorrect: null,

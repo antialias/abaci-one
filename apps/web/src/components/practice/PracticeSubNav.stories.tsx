@@ -91,6 +91,7 @@ function createMockResults(
 ): SlotResult[] {
   const partNumber = partType === 'abacus' ? 1 : partType === 'visualization' ? 2 : 3
   return Array.from({ length: count }, (_, i) => ({
+    slotId: `test-slot-${i}`,
     partNumber: partNumber as 1 | 2 | 3,
     slotIndex: i % 5,
     problem: {
@@ -144,6 +145,7 @@ function createSessionHud(config: {
     const slotsToFill = Math.min(remaining, part.slots.length)
     for (let sIdx = 0; sIdx < slotsToFill; sIdx++) {
       results.push({
+        slotId: `test-slot-${pIdx}-${sIdx}`,
         partNumber: (pIdx + 1) as 1 | 2 | 3,
         slotIndex: sIdx,
         problem: {

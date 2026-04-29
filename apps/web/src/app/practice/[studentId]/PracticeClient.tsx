@@ -138,7 +138,9 @@ export function PracticeClient({
           attemptNumber: number
           isRetry: boolean
           isManualRedo: boolean
-        }
+        },
+        slotId?: string,
+        problem?: { terms: number[]; answer: number }
       ) => void)
     | undefined
   >(undefined)
@@ -713,7 +715,15 @@ export function PracticeClient({
       const partIndex = broadcastState.currentPartIndex ?? currentPlan.currentPartIndex
       const slotIndex = broadcastState.currentSlotIndex ?? currentPlan.currentSlotIndex
       const retryContext = getRetryContext(partIndex, slotIndex)
-      sendProblemMarker(currentProblemNumber, partIndex, 'problem-shown', undefined, retryContext)
+      sendProblemMarker(
+        currentProblemNumber,
+        partIndex,
+        'problem-shown',
+        undefined,
+        retryContext,
+        broadcastState.slotId,
+        broadcastState.currentProblem
+      )
     }
   }, [
     isRecording,
@@ -737,7 +747,15 @@ export function PracticeClient({
       const partIndex = broadcastState.currentPartIndex ?? currentPlan.currentPartIndex
       const slotIndex = broadcastState.currentSlotIndex ?? currentPlan.currentSlotIndex
       const retryContext = getRetryContext(partIndex, slotIndex)
-      sendProblemMarker(currentProblemNumber, partIndex, 'problem-shown', undefined, retryContext)
+      sendProblemMarker(
+        currentProblemNumber,
+        partIndex,
+        'problem-shown',
+        undefined,
+        retryContext,
+        broadcastState.slotId,
+        broadcastState.currentProblem
+      )
     }
 
     // Update ref for next comparison
@@ -764,15 +782,20 @@ export function PracticeClient({
     if (!wasInRedoMode && isNowInRedoMode && redoState) {
       const retryContext = getRetryContext(redoState.originalPartIndex, redoState.originalSlotIndex)
       const problemNumber = redoState.linearIndex + 1 // linearIndex is 0-based
+      // Get problem identity from the plan for the redo slot
+      const redoPart = currentPlan.parts[redoState.originalPartIndex]
+      const redoSlot = redoPart?.slots?.[redoState.originalSlotIndex]
       sendProblemMarker(
         problemNumber,
         redoState.originalPartIndex,
         'problem-shown',
         undefined,
-        retryContext
+        retryContext,
+        redoSlot?.slotId,
+        redoSlot?.problem
       )
     }
-  }, [redoState, sendProblemMarker, getRetryContext])
+  }, [redoState, sendProblemMarker, getRetryContext, currentPlan.parts])
 
   const handlePartTransition = useCallback(
     (

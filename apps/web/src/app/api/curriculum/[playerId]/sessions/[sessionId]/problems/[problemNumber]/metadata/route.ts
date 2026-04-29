@@ -106,6 +106,7 @@ export const GET = withAuth(async (request, { params }) => {
       // Metadata file doesn't exist - return empty metadata structure
       // This can happen for older recordings before metadata was implemented
       const emptyMetadata: ProblemMetadata = {
+        slotId: '',
         problem: { terms: [], answer: 0 },
         entries: [],
         durationMs: video.durationMs ?? 0,

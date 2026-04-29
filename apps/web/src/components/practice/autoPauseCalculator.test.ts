@@ -35,6 +35,7 @@ const PRODUCTION_TIMING: ProgressiveAssistanceTimingConfig = {
 // Helper to create mock SlotResult with only responseTimeMs
 function mockResult(responseTimeMs: number): SlotResult {
   return {
+    slotId: 'test-slot-0',
     partNumber: 1,
     slotIndex: 0,
     problem: { terms: [1, 2], answer: 3, skillsRequired: [] },

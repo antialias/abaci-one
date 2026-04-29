@@ -40,6 +40,7 @@ function makeSlotResult(
   overrides: Partial<SlotResult> & { partNumber: SlotResult['partNumber'] }
 ): SlotResult {
   return {
+    slotId: 'test-slot-0',
     slotIndex: 0,
     problem: { terms: [1, 2], skillIds: ['basic.directAddition'], id: 'p1' } as any,
     studentAnswer: 3,

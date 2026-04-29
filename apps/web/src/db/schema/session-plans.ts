@@ -233,8 +233,8 @@ export type SlotResultSource =
  * Result of a single problem slot
  */
 export interface SlotResult {
-  /** ID of the problem slot this result answers (for traceability) */
-  slotId?: string
+  /** ID of the problem slot this result answers */
+  slotId: string
   /** Which part this result belongs to (1, 2, or 3) */
   partNumber: 1 | 2 | 3
   /** Index within the part */
@@ -397,8 +397,8 @@ export type GameBreakEndReason = 'timeout' | 'skipped' | 'gameFinished'
  * A single problem queued for retry
  */
 export interface RetryItem {
-  /** Slot ID from the original problem slot (for traceability) */
-  slotId?: string
+  /** Slot ID from the original problem slot */
+  slotId: string
 
   /** Original slot index within the part */
   originalSlotIndex: number

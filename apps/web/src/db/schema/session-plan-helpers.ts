@@ -200,7 +200,7 @@ export function getCurrentProblemInfo(plan: SessionPlan): {
   isRetry: boolean
   epochNumber: number
   originalSlotIndex: number
-  slotId?: string
+  slotId: string
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   partNumber: 1 | 2 | 3
 } | null {

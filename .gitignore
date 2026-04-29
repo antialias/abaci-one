@@ -75,3 +75,6 @@ apps/web/public/models/
 
 # Terraform
 infra/terraform/tfplan
+
+# Throw-away one-shot operator scripts; see corresponding *.PLAN.md
+apps/web/scripts/backfill-slot-ids.mjs

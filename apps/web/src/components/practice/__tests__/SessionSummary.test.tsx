@@ -65,6 +65,7 @@ vi.mock('@/lib/curriculum/bkt', () => ({
 
 function createResult(overrides: Partial<SlotResult> = {}): SlotResult {
   return {
+    slotId: 'test-slot-0',
     partNumber: 1,
     slotIndex: 0,
     problem: { terms: [3, 4], answer: 7, skillsRequired: ['basic.directAddition'] },

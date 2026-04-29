@@ -94,7 +94,11 @@ export interface UseSessionBroadcastResult {
       attemptNumber: number
       isRetry: boolean
       isManualRedo: boolean
-    }
+    },
+    /** Slot ID identifying this problem (same ID used in answer validation) */
+    slotId?: string,
+    /** Problem data for problem-shown markers */
+    problem?: { terms: number[]; answer: number }
   ) => void
 }
 
@@ -485,7 +489,9 @@ export function useSessionBroadcast(
         attemptNumber: number
         isRetry: boolean
         isManualRedo: boolean
-      }
+      },
+      slotId?: string,
+      problem?: { terms: number[]; answer: number }
     ) => {
       if (!socketRef.current || !isConnectedRef.current || !sessionId) {
         return
@@ -505,6 +511,8 @@ export function useSessionBroadcast(
         attemptNumber: retryContext?.attemptNumber ?? 1,
         isRetry: retryContext?.isRetry ?? false,
         isManualRedo: retryContext?.isManualRedo ?? false,
+        slotId,
+        problem,
       })
       console.log('[SessionBroadcast] Sent problem marker:', {
         problemNumber,

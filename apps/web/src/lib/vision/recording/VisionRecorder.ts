@@ -37,6 +37,10 @@ export interface ProblemMarkerInput {
   isRetry: boolean
   /** Whether this is a manual redo (student clicked on completed problem) */
   isManualRedo: boolean
+  /** Unique slot ID tying this recording to the specific problem slot (same ID used in answer validation) */
+  slotId: string
+  /** Problem data sent with 'problem-shown' markers (avoids relying on stale practice state) */
+  problem?: { terms: number[]; answer: number }
 }
 
 /**
@@ -82,6 +86,8 @@ export interface ProblemMetadataEntry {
  * Full metadata for a problem video
  */
 export interface ProblemMetadata {
+  /** Unique slot ID matching the session plan's problem slot */
+  slotId: string
   /** Problem details */
   problem: { terms: number[]; answer: number }
   /** Time-coded entries */
@@ -101,6 +107,8 @@ interface ProblemRecording {
   videoId: string
   problemNumber: number
   partIndex: number
+  /** Unique slot ID matching the session plan's problem slot */
+  slotId: string
   /** Epoch number: 0 = initial pass, 1-2 = retry epochs */
   epochNumber: number
   /** Attempt number within the epoch (1-indexed) */
@@ -114,7 +122,7 @@ interface ProblemRecording {
   startedAt: Date
   lastFrameAt: Date
   isCorrect?: boolean
-  /** Problem details captured from practice state */
+  /** Problem details from the marker (not from stale state) */
   problem: { terms: number[]; answer: number } | null
   /** Metadata entries for this problem */
   metadata: ProblemMetadataEntry[]
@@ -379,7 +387,9 @@ export class VisionRecorder {
         marker.epochNumber,
         marker.attemptNumber,
         marker.isRetry,
-        marker.isManualRedo
+        marker.isManualRedo,
+        marker.problem ?? null,
+        marker.slotId
       )
 
       console.log(
@@ -406,7 +416,9 @@ export class VisionRecorder {
     epochNumber: number,
     attemptNumber: number,
     isRetry: boolean,
-    isManualRedo: boolean
+    isManualRedo: boolean,
+    problem: { terms: number[]; answer: number } | null,
+    slotId: string
   ): Promise<void> {
     const videoId = createId()
     // New filename pattern: problem_NNN_eX_aY.mp4
@@ -448,6 +460,7 @@ export class VisionRecorder {
       videoId,
       problemNumber,
       partIndex,
+      slotId,
       epochNumber,
       attemptNumber,
       isRetry,
@@ -456,7 +469,7 @@ export class VisionRecorder {
       frameCount: 0,
       startedAt: now,
       lastFrameAt: now,
-      problem: session.latestPracticeState.problem, // Capture problem details
+      problem: problem ?? session.latestPracticeState.problem, // Prefer marker data over potentially stale state
       metadata: [],
     }
 
@@ -500,6 +513,7 @@ export class VisionRecorder {
     // This ensures we capture student answers for playback/review
     if (problem.problem || problem.metadata.length > 0) {
       const metadata: ProblemMetadata = {
+        slotId: problem.slotId,
         problem: problem.problem ?? { terms: [], answer: 0 }, // Fallback if problem details weren't captured
         entries: problem.metadata,
         durationMs,

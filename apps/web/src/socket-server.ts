@@ -1444,6 +1444,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         isRetry,
         isManualRedo,
         playerId,
+        slotId,
+        problem,
       }: {
         sessionId: string
         problemNumber: number
@@ -1455,6 +1457,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         isRetry?: boolean
         isManualRedo?: boolean
         playerId?: string
+        slotId?: string
+        problem?: { terms: number[]; answer: number }
       }) => {
         const recorder = VisionRecorder.getInstance()
 
@@ -1478,6 +1482,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             attemptNumber: attemptNumber ?? 1,
             isRetry: isRetry ?? false,
             isManualRedo: isManualRedo ?? false,
+            slotId: slotId ?? '',
+            problem,
           })
         }
       }

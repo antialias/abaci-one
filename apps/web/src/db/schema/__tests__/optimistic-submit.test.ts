@@ -199,7 +199,7 @@ describe('getCurrentProblemInfo — slotId', () => {
     expect(getCurrentProblemInfo(plan)).toBeNull()
   })
 
-  it('returns undefined slotId when retry item has no slotId (backward compat)', () => {
+  it('returns slotId from retry item', () => {
     const plan = buildPlan({
       currentSlotIndex: 5,
       retryState: {
@@ -208,7 +208,7 @@ describe('getCurrentProblemInfo — slotId', () => {
           pendingRetries: [],
           currentEpochItems: [
             {
-              // No slotId — old session data
+              slotId: 'test-slot-retry',
               originalSlotIndex: 0,
               problem: fakeProblem,
               epochNumber: 1,
@@ -222,7 +222,7 @@ describe('getCurrentProblemInfo — slotId', () => {
 
     const info = getCurrentProblemInfo(plan)
     expect(info).not.toBeNull()
-    expect(info!.slotId).toBeUndefined()
+    expect(info!.slotId).toBe('test-slot-retry')
   })
 
   it('returns null when part index is beyond parts array', () => {

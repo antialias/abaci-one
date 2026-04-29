@@ -91,6 +91,7 @@ function createMockSessionPlan(config: {
 
   // Generate mock results for completed problems
   const results: SlotResult[] = Array.from({ length: completedCount }, (_, i) => ({
+    slotId: `slot-${i}`,
     partNumber: (i < 5 ? 1 : i < 10 ? 2 : 3) as 1 | 2 | 3,
     slotIndex: i % 5,
     problem: {

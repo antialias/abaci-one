@@ -71,6 +71,7 @@ function createResults(
   if (pattern === 'none') return []
 
   return Array.from({ length: count }, (_, i) => ({
+    slotId: `slot-${i}`,
     partNumber,
     slotIndex: i,
     problem: { terms: [1, 2], answer: 3, skillsRequired: [] },

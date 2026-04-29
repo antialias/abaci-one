@@ -96,6 +96,7 @@ function createPart(overrides: Partial<SessionPart> = {}): SessionPart {
 
 function createResult(overrides: Partial<SlotResult> = {}): SlotResult {
   return {
+    slotId: 'test-slot-0',
     partNumber: 1,
     slotIndex: 0,
     problem: createProblem(),

@@ -91,6 +91,8 @@ export interface BroadcastState {
     terms: number[]
     answer: number
   }
+  /** Unique slot ID for this problem (same ID used in answer validation) */
+  slotId: string
   /** Current phase of the interaction */
   phase: 'problem' | 'feedback' | 'tutorial'
   /** Student's current answer (empty string if not yet started typing) */
@@ -759,6 +761,7 @@ export function ActiveSession({
           terms: outgoingAttempt.problem.terms,
           answer: outgoingAttempt.problem.answer,
         },
+        slotId: prevSlot?.slotId ?? slot?.slotId ?? '',
         phase: 'feedback',
         studentAnswer: outgoingAttempt.userAnswer,
         isCorrect: outgoingAttempt.result === 'correct',
@@ -804,6 +807,7 @@ export function ActiveSession({
         terms: attempt.problem.terms,
         answer: attempt.problem.answer,
       },
+      slotId: currentProblemInfo?.slotId ?? slot?.slotId ?? '',
       phase: broadcastPhase,
       studentAnswer: attempt.userAnswer,
       isCorrect,
@@ -836,6 +840,7 @@ export function ActiveSession({
     redoState?.isActive,
     redoState?.originalPartIndex,
     redoState?.originalSlotIndex,
+    currentProblemInfo?.slotId,
   ])
 
   // Handle teacher abacus control events
@@ -1151,7 +1156,7 @@ export function ActiveSession({
   // Use getCurrentProblemInfo which handles both original slots and retry epochs
   const regularSlot = currentProblemInfo
     ? {
-        slotId: currentProblemInfo.slotId ?? '',
+        slotId: currentProblemInfo.slotId,
         index: currentProblemInfo.originalSlotIndex,
         purpose: currentProblemInfo.purpose,
         problem: currentProblemInfo.problem,
@@ -1549,7 +1554,7 @@ export function ActiveSession({
 
     // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-      slotId: currentProblemInfo?.slotId,
+      slotId: currentProblemInfo!.slotId,
       slotIndex: attemptData.slotIndex,
       problem: attemptData.problem,
       studentAnswer: answerNum,
@@ -1766,7 +1771,7 @@ export function ActiveSession({
     // Record as incorrect with help
     const responseTimeMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-      slotId: currentProblemInfo?.slotId,
+      slotId: currentProblemInfo!.slotId,
       slotIndex: attempt.slotIndex,
       problem: attempt.problem,
       studentAnswer: attempt.problem.answer, // Record the correct answer
