@@ -532,6 +532,14 @@ export function useDragGivenPoints({
       const recipe = RECIPE_REGISTRY[prop.id]
       const isPlayground = !!playgroundModeRef?.current
 
+      // Snapshot construction state so we can revert if the solver places
+      // givens such that the dragged target disappears or a given flies
+      // wildly across the viewport (degenerate Jacobian, no real solution).
+      const prevState = constructionRef.current
+      const prevFactStore = factStoreRef.current
+      const prevCandidates = candidatesRef.current
+      const prevActions = postCompletionActionsRef.current
+
       if (isPlayground || !recipe) {
         // Playground / no-recipe path: solve over given + free points
         const inputs = collectPlaygroundInputPositions()
@@ -545,47 +553,83 @@ export function useDragGivenPoints({
           solverState
         )
         applyPlaygroundSolution(result.inputPositions, inputs.pointIds)
+      } else {
+        // Recipe path
+        const currentInputPositions = collectRecipeInputPositions()
+        if (!currentInputPositions) return
+
+        const targetRef = pointIdToRef(dragPointId)
+
+        // Check if this is a recipe-defined point or a post-completion point
+        const isRecipePoint =
+          recipe.inputSlots.some((s) => s.ref === targetRef) ||
+          recipe.ops.some((op) => {
+            if (op.kind === 'intersection') return op.output === targetRef
+            if (op.kind === 'produce') return op.output === targetRef
+            if (op.kind === 'apply') return Object.values(op.outputs).includes(targetRef)
+            return false
+          })
+
+        let result
+        if (isRecipePoint) {
+          // Fast path: recipe evaluator as forward model
+          result = solveInverseKinematics(
+            recipe,
+            currentInputPositions,
+            targetRef,
+            { x: world.x, y: world.y },
+            RECIPE_REGISTRY,
+            solverState
+          )
+        } else {
+          // Slow path: full replay as forward model (for post-completion points)
+          const forward = buildReplayForward(dragPointId)
+          result = solveInverse(
+            forward,
+            currentInputPositions,
+            { x: world.x, y: world.y },
+            solverState
+          )
+        }
+
+        applyInverseSolution(result.inputPositions)
+      }
+
+      // ── Guard: revert if the solver produced a degenerate result ──
+      const targetPt = getPoint(constructionRef.current, dragPointId)
+      if (!targetPt) {
+        // Solver placed givens such that the target point no longer exists
+        // (e.g. circles no longer intersect). Roll back.
+        constructionRef.current = prevState
+        factStoreRef.current = prevFactStore
+        candidatesRef.current = prevCandidates
+        postCompletionActionsRef.current = prevActions
+        needsDrawRef.current = true
         return
       }
 
-      // Recipe path
-      const currentInputPositions = collectRecipeInputPositions()
-      if (!currentInputPositions) return
-
-      const targetRef = pointIdToRef(dragPointId)
-
-      // Check if this is a recipe-defined point or a post-completion point
-      const isRecipePoint = recipe.inputSlots.some((s) => s.ref === targetRef) ||
-        recipe.ops.some((op) => {
-          if (op.kind === 'intersection') return op.output === targetRef
-          if (op.kind === 'produce') return op.output === targetRef
-          if (op.kind === 'apply') return Object.values(op.outputs).includes(targetRef)
-          return false
-        })
-
-      let result
-      if (isRecipePoint) {
-        // Fast path: recipe evaluator as forward model
-        result = solveInverseKinematics(
-          recipe,
-          currentInputPositions,
-          targetRef,
-          { x: world.x, y: world.y },
-          RECIPE_REGISTRY,
-          solverState
+      // Catch the case where the Jacobian was near-singular and a given
+      // teleported far across the viewport in a single frame.
+      const MAX_POINT_MOVE_PX = 500
+      const v = viewportRef.current
+      for (const el of constructionRef.current.elements) {
+        if (el.kind !== 'point') continue
+        if (el.origin !== 'given' && el.origin !== 'free') continue
+        const prevPt = getPoint(prevState, el.id)
+        if (!prevPt) continue
+        const movePx = Math.sqrt(
+          ((el.x - prevPt.x) * v.pixelsPerUnit) ** 2 +
+            ((el.y - prevPt.y) * v.pixelsPerUnit) ** 2
         )
-      } else {
-        // Slow path: full replay as forward model (for post-completion points)
-        const forward = buildReplayForward(dragPointId)
-        result = solveInverse(
-          forward,
-          currentInputPositions,
-          { x: world.x, y: world.y },
-          solverState
-        )
+        if (movePx > MAX_POINT_MOVE_PX) {
+          constructionRef.current = prevState
+          factStoreRef.current = prevFactStore
+          candidatesRef.current = prevCandidates
+          postCompletionActionsRef.current = prevActions
+          needsDrawRef.current = true
+          return
+        }
       }
-
-      applyInverseSolution(result.inputPositions)
     }
 
     /**
