@@ -1,9 +1,6 @@
 'use client'
 
-import {
-  DeploymentInfoModal,
-  DeploymentInfoContent,
-} from '@tidepool/debug-panel'
+import { DeploymentInfoModal, DeploymentInfoContent } from '@tidepool/debug-panel'
 import { useAbacusDeploymentInfo } from '@/hooks/useAbacusDeploymentInfo'
 
 /**

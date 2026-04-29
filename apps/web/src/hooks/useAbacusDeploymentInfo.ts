@@ -125,7 +125,11 @@ function transformAbacusData(rawBuild: unknown, rawHealth?: unknown): Deployment
 
   instanceItems.push({
     label: 'Redis',
-    value: build.redis.connected ? 'Connected' : build.redis.configured ? 'Disconnected' : 'Not configured',
+    value: build.redis.connected
+      ? 'Connected'
+      : build.redis.configured
+        ? 'Disconnected'
+        : 'Not configured',
     status: build.redis.connected ? 'ok' : build.redis.configured ? 'error' : 'warn',
   })
 
