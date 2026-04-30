@@ -70,6 +70,7 @@ export async function mergeGuestIntoUser(
   // Game results and observation shares
   await reparent('game_results', 'user_id')
   await reparent('session_observation_shares', 'created_by')
+  await reparent('session_songs', 'content_reviewed_by')
 
   // Tables with unique constraint on user_id (one settings row per user)
   // Prefer the target user's settings; drop the guest's if both exist
