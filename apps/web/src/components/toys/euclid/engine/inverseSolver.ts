@@ -154,10 +154,26 @@ export function solveInverse(
       const posPlus = forward(unflattenPositions(paramsPlus))
       const posMinus = forward(unflattenPositions(paramsMinus))
 
-      if (!posPlus || !posMinus) continue
-
-      J[0][j] = (posPlus.x - posMinus.x) / (2 * epsilon)
-      J[1][j] = (posPlus.y - posMinus.y) / (2 * epsilon)
+      // At a topology boundary one side of the central difference can fall
+      // off the feasibility manifold (forward returns null). Falling back to
+      // a one-sided difference preserves the gradient information from the
+      // valid side, which is what tells LM the direction *into* the
+      // feasible region. Zeroing the column instead (the previous behavior)
+      // discarded that signal — the resulting step would then point across
+      // the boundary, every backtracking alpha would land in null space,
+      // lambda would saturate, and the dragged point would freeze.
+      if (posPlus && posMinus) {
+        J[0][j] = (posPlus.x - posMinus.x) / (2 * epsilon)
+        J[1][j] = (posPlus.y - posMinus.y) / (2 * epsilon)
+      } else if (posPlus) {
+        J[0][j] = (posPlus.x - currentPos.x) / epsilon
+        J[1][j] = (posPlus.y - currentPos.y) / epsilon
+      } else if (posMinus) {
+        J[0][j] = (currentPos.x - posMinus.x) / epsilon
+        J[1][j] = (currentPos.y - posMinus.y) / epsilon
+      }
+      // else both sides null — column stays 0; this parameter is bracketed
+      // by infeasibility and can't safely move at the current epsilon.
     }
 
     // LM update: δ = Jᵀ (J Jᵀ + λI)⁻¹ (-r) — only a 2×2 invert
@@ -193,19 +209,47 @@ export function solveInverse(
       delta[j] = J[0][j] * v0 + J[1][j] * v1
     }
 
-    const candidateParams = params.map((p, i) => p + delta[i])
-    const candidatePos = forward(unflattenPositions(candidateParams))
+    // Backtracking line search: try the full LM step first, then shrink
+    // the step (alpha = 1, 1/2, 1/4, …) if the forward model returns null
+    // (topology boundary crossed) or the residual fails to decrease. This
+    // finds the largest feasible step in the LM-prescribed direction —
+    // crucial when the cursor is pulled into an infeasible region: instead
+    // of stalling at the previous params, the solver creeps to the boundary
+    // and lets subsequent frames slide along it.
+    let alpha = 1
+    let acceptedParams: number[] | null = null
+    let acceptedResidualNorm = Infinity
+    for (let bt = 0; bt < 8; bt++) {
+      const trialParams = params.map((p, i) => p + alpha * delta[i])
+      const trialPos = forward(unflattenPositions(trialParams))
+      if (trialPos) {
+        const dr0 = trialPos.x - targetPosition.x
+        const dr1 = trialPos.y - targetPosition.y
+        const trialResidualNorm = Math.sqrt(dr0 * dr0 + dr1 * dr1)
+        if (trialResidualNorm < residualNorm) {
+          acceptedParams = trialParams
+          acceptedResidualNorm = trialResidualNorm
+          break
+        }
+      }
+      alpha *= 0.5
+    }
 
-    if (candidatePos) {
-      const newR0 = candidatePos.x - targetPosition.x
-      const newR1 = candidatePos.y - targetPosition.y
-      const newResidualNorm = Math.sqrt(newR0 * newR0 + newR1 * newR1)
-
-      if (newResidualNorm < residualNorm) {
-        params = candidateParams
+    if (acceptedParams) {
+      params = acceptedParams
+      // Smaller alpha means we had to back off — keep lambda where it is or
+      // increase it slightly so the next iteration proposes a more cautious
+      // direction. Full step (alpha = 1) lets us decay lambda as before.
+      if (alpha >= 1) {
         lambda = Math.max(lambda * 0.5, 1e-8)
-      } else {
+      } else if (alpha < 0.25) {
         lambda *= 2
+      }
+      // Track the accepted residual against bestResidualNorm immediately so
+      // the boundary-creeping pose is preserved if subsequent iters fail.
+      if (acceptedResidualNorm < bestResidualNorm) {
+        bestResidualNorm = acceptedResidualNorm
+        bestParams = [...params]
       }
     } else {
       lambda *= 4

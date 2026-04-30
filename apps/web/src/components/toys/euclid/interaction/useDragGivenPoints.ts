@@ -170,6 +170,11 @@ export function useDragGivenPoints({
     let prevCursorWorldSolver: { x: number; y: number } | null = null
     /** Consecutive frames where solver didn't move target despite cursor movement */
     let solverStuckCount = 0
+    /** Consecutive frames where solveInverse exhausted its iterations without
+     *  progress (post-call lambda saturated near the per-call cap). Logged in
+     *  the per-frame diagnostic only — useful for verifying that the
+     *  one-sided-diff + backtracking fixes keep this counter low. */
+    let solverSaturatedCount = 0
 
     // ── Diagnostic logging (filter console by "[stuck-debug]") ──
     // Per-frame logs are throttled to one every 250ms; discrete events
@@ -1170,6 +1175,15 @@ export function useDragGivenPoints({
         applyInverseSolution(solveResult.inputPositions)
       }
 
+      // Track whether this solveInverse call exhausted its iteration budget
+      // without making progress (lambda saturated near its per-call ceiling
+      // of 1e-3 × 4^5 ≈ 1). Logged for diagnostics; behavior is "block":
+      // when saturated, solveInverse returns its starting params unchanged
+      // (bestParams = iter 0 params if no candidate ever improved residual),
+      // so the apply call is a no-op and the construction stays where it is.
+      if (solverState.lambda > 0.5) solverSaturatedCount++
+      else solverSaturatedCount = 0
+
       // ── Guard: if the solver produced a degenerate result, revert ──
       const targetPt = getPoint(constructionRef.current, dragPointId)
       if (!targetPt) {
@@ -1214,7 +1228,7 @@ export function useDragGivenPoints({
           cursorMovePx: cursorMovePx.toFixed(0),
           errFromCursorPx: errFromCursorPx.toFixed(0),
           lambda: solverState?.lambda.toExponential(1),
-          stuckCount: solverStuckCount,
+          satCount: solverSaturatedCount,
         })
         // Check if any given/free point moved excessively far
         const MAX_POINT_MOVE_PX = 500
@@ -1784,6 +1798,7 @@ export function useDragGivenPoints({
       prevDragWorld = null
       prevCursorWorldSolver = null
       solverStuckCount = 0
+      solverSaturatedCount = 0
       constrainedDragFrameCount = 0
       breakFree = false
       if (snapAnimId != null) {
