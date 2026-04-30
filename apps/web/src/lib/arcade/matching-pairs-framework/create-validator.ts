@@ -6,6 +6,7 @@
  */
 
 import type { GameResultsReport, PlayerResult } from '../game-sdk/types'
+import { finalizeSongContext, pluralize, songDetail, songList, songMoment } from '../song-context'
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '../validation/types'
 import type {
   BaseMatchingCard,
@@ -73,6 +74,99 @@ function uniqueSongDetails(values: Array<string | null | undefined>, limit: numb
     if (result.length >= limit) break
   }
   return result
+}
+
+function describeCardIdsForSong<TCard extends BaseMatchingCard>(
+  state: MatchingPairsState<TCard>,
+  cardIds: [string, string] | null
+): string | undefined {
+  if (!cardIds) return undefined
+  const labels = uniqueSongDetails(
+    cardIds.map((id) => {
+      const card = state.gameCards.find((candidate) => candidate.id === id)
+      return card ? describeCardForSong(card) : null
+    }),
+    2
+  )
+  return labels.length > 0 ? labels.join(' + ') : undefined
+}
+
+function buildMatchingPairsSongContext<
+  TCard extends BaseMatchingCard,
+  TConfig extends BaseMatchingConfig,
+>(
+  state: MatchingPairsState<TCard, TConfig> & TConfig,
+  options: {
+    gameName: string
+    headline: string
+    gameModeLabel: string
+    difficultyLabel: string
+    matchedDetails: string[]
+    unmatchedDetails: string[]
+    bestStreak: number
+    isSinglePlayer: boolean
+  }
+): NonNullable<GameResultsReport['songContext']> {
+  const {
+    gameName,
+    headline,
+    gameModeLabel,
+    difficultyLabel,
+    matchedDetails,
+    unmatchedDetails,
+    bestStreak,
+    isSinglePlayer,
+  } = options
+  const remainingPairs = Math.max(0, state.totalPairs - state.matchedPairs)
+  const mismatchChecks = Math.max(0, state.moves - state.matchedPairs)
+  const finalMatch = describeCardIdsForSong(state, state.lastMatchedPair)
+  const openingMatch = matchedDetails[0]
+  const cleanRun = state.matchedPairs === state.totalPairs && mismatchChecks === 0
+
+  return finalizeSongContext({
+    summary: `${state.matchedPairs}/${state.totalPairs} pairs found in ${state.moves} ${pluralize(
+      state.moves,
+      'move'
+    )}`,
+    details: [
+      songDetail('Mode', gameModeLabel),
+      songDetail('Difficulty', difficultyLabel),
+      finalMatch ? songDetail('Final match', finalMatch) : undefined,
+      songList('Matched pairs', matchedDetails, 8),
+      songList('Still hidden', unmatchedDetails, 5),
+    ],
+    dramaticMoments: [
+      openingMatch
+        ? songMoment('Opening beat', `first visible matched pair was ${openingMatch}`)
+        : undefined,
+      finalMatch ? songMoment('Clutch moment', `final match was ${finalMatch}`) : undefined,
+      cleanRun ? songMoment('Perfect run', 'cleared the board with no mismatch checks') : undefined,
+      remainingPairs === 1 && unmatchedDetails[0]
+        ? songMoment('Near miss', `one pair left hidden: ${unmatchedDetails[0]}`)
+        : undefined,
+      mismatchChecks > 0 && state.matchedPairs > 0
+        ? songMoment(
+            'Comeback',
+            `found ${state.matchedPairs} ${pluralize(
+              state.matchedPairs,
+              'pair'
+            )} after ${mismatchChecks} mismatch ${pluralize(mismatchChecks, 'check')}`
+          )
+        : undefined,
+      bestStreak >= 3 ? songMoment('Strategy', `built a ${bestStreak}-match streak`) : undefined,
+      unmatchedDetails[0] && remainingPairs > 0
+        ? songMoment('Tough item', `${unmatchedDetails[0]} stayed hidden`)
+        : undefined,
+    ],
+    strategyNotes: [
+      gameName === 'music-matching'
+        ? 'Matched musical notes by name and staff position'
+        : 'Matched abacus, numeral, or complement cards by value',
+      isSinglePlayer ? 'Solo scan of the board' : 'Competitive turn-taking match',
+    ],
+    outcome:
+      state.matchedPairs === state.totalPairs ? `cleared all ${state.totalPairs} pairs` : headline,
+  })
 }
 
 /**
@@ -244,28 +338,16 @@ function defaultGetResultsReport<
       : `Final Score: ${winner?.score ?? 0} pairs`,
     resultTheme,
     celebrationType,
-    songContext: {
-      summary: `${state.matchedPairs}/${state.totalPairs} pairs found in ${state.moves} moves`,
-      details: [
-        `Mode: ${gameModeLabel}`,
-        `Difficulty: ${difficultyLabel}`,
-        ...(matchedDetails.length > 0 ? [`Matched: ${matchedDetails.join(', ')}`] : []),
-        ...(unmatchedDetails.length > 0 ? [`Still hidden: ${unmatchedDetails.join(', ')}`] : []),
-      ],
-      dramaticMoments: [
-        ...(state.matchedPairs === state.totalPairs ? ['Cleared every pair on the board'] : []),
-        ...(bestStreak >= 3 ? [`Built a ${bestStreak}-match streak`] : []),
-        ...(matchedDetails.length > 0
-          ? [`Last matched set included ${matchedDetails[matchedDetails.length - 1]}`]
-          : []),
-      ],
-      strategyNotes: [
-        gameName === 'music-matching'
-          ? 'Matched musical notes by name and staff position'
-          : 'Matched abacus, numeral, or complement cards by value',
-      ],
-      outcome: headline,
-    },
+    songContext: buildMatchingPairsSongContext(state, {
+      gameName,
+      headline,
+      gameModeLabel,
+      difficultyLabel,
+      matchedDetails,
+      unmatchedDetails,
+      bestStreak,
+      isSinglePlayer,
+    }),
   }
 }
 
@@ -348,6 +430,7 @@ export function createMatchingPairsValidator<
           moves: state.moves + 1,
           flippedCards: [],
           isProcessingMove: false,
+          lastMatchedPair: [card1.id, card2.id],
         }
 
         if (newState.matchedPairs === newState.totalPairs) {

@@ -8,6 +8,13 @@
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
 import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
+  finalizeSongContext,
+  pluralize,
+  songDetail,
+  songList,
+  songMoment,
+} from '@/lib/arcade/song-context'
+import {
   type DifficultyLevel,
   type TypeRacerJrConfig,
   type TypeRacerJrMove,
@@ -366,6 +373,111 @@ function formatDuration(ms: number): string {
   return `${seconds}s`
 }
 
+function formatCompletedWord(word: TypeRacerJrState['completedWords'][number]) {
+  return `${word.emoji} ${word.word}`.trim()
+}
+
+function buildTypeRacerSongContext(
+  state: TypeRacerJrState,
+  wordsTyped: number,
+  totalMistakes: number,
+  accuracy: number,
+  headline: string
+): NonNullable<GameResultsReport['songContext']> {
+  const completedWords = state.completedWords
+  const firstWord = completedWords[0]
+  const finalWord = completedWords[completedWords.length - 1]
+  const cleanWords = completedWords.filter((word) => word.mistakeCount === 0)
+  const trickiestWord = [...completedWords].sort(
+    (a, b) => b.mistakeCount - a.mistakeCount || b.durationMs - a.durationMs
+  )[0]
+  const firstMistakeIndex = completedWords.findIndex((word) => word.mistakeCount > 0)
+  const cleanAfterMistake =
+    firstMistakeIndex >= 0
+      ? completedWords.slice(firstMistakeIndex + 1).find((word) => word.mistakeCount === 0)
+      : undefined
+  const remainingWords = Math.max(0, state.wordQueue.length - wordsTyped)
+  const nextWord = state.wordQueue[wordsTyped]?.word
+  const cleanRun = wordsTyped > 0 && totalMistakes === 0
+
+  return finalizeSongContext({
+    summary: `${wordsTyped} ${pluralize(wordsTyped, 'word')} typed, ${state.totalStars} stars, ${accuracy}% typing accuracy`,
+    details: [
+      firstWord ? songDetail('Opening word', firstWord.word) : undefined,
+      finalWord
+        ? songDetail(
+            'Final word',
+            `${finalWord.word} (${finalWord.mistakeCount} ${pluralize(finalWord.mistakeCount, 'mistake')}, ${finalWord.stars} ${pluralize(finalWord.stars, 'star')})`
+          )
+        : undefined,
+      songList(
+        'Words typed',
+        completedWords.map((word) => word.word),
+        8
+      ),
+      songList('Clean words', cleanWords.map(formatCompletedWord), 5),
+      trickiestWord && trickiestWord.mistakeCount > 0
+        ? songDetail(
+            'Tough word',
+            `${trickiestWord.word} with ${trickiestWord.mistakeCount} ${pluralize(
+              trickiestWord.mistakeCount,
+              'mistake'
+            )}`
+          )
+        : undefined,
+    ],
+    dramaticMoments: [
+      firstWord ? songMoment('Opening beat', `first word was "${firstWord.word}"`) : undefined,
+      cleanRun
+        ? songMoment(
+            'Clean run',
+            `no mistakes across ${wordsTyped} ${pluralize(wordsTyped, 'word')}`
+          )
+        : undefined,
+      state.bestStreak > 1
+        ? songMoment('Strategy', `built a ${state.bestStreak}-word clean streak`)
+        : undefined,
+      trickiestWord && trickiestWord.mistakeCount > 0
+        ? songMoment(
+            'Tough item',
+            `"${trickiestWord.word}" took ${trickiestWord.mistakeCount} ${pluralize(
+              trickiestWord.mistakeCount,
+              'mistake'
+            )}`
+          )
+        : undefined,
+      cleanAfterMistake
+        ? songMoment('Comeback', `after a mistake, "${cleanAfterMistake.word}" landed clean`)
+        : undefined,
+      remainingWords === 1
+        ? songMoment('Near miss', `one word left${nextWord ? `: "${nextWord}"` : ''}`)
+        : undefined,
+      finalWord
+        ? songMoment(
+            'Clutch moment',
+            `final word was "${finalWord.word}" with ${finalWord.mistakeCount} ${pluralize(
+              finalWord.mistakeCount,
+              'mistake'
+            )}`
+          )
+        : undefined,
+    ],
+    strategyNotes: [
+      songDetail('Typing level', state.currentDifficulty),
+      songDetail('Keyboard layout', state.keyboardLayout),
+      cleanRun
+        ? 'Typed carefully enough to keep every completed word clean'
+        : totalMistakes > 0
+          ? `Recovered from ${totalMistakes} total ${pluralize(totalMistakes, 'mistake')}`
+          : undefined,
+    ],
+    outcome:
+      remainingWords === 0 && wordsTyped > 0
+        ? `finished ${wordsTyped} typed ${pluralize(wordsTyped, 'word')}`
+        : headline,
+  })
+}
+
 // Create validator instance
 const validator = new TypeRacerJrValidator()
 
@@ -454,14 +566,6 @@ const validator = new TypeRacerJrValidator()
     })
   }
 
-  const cleanWords = state.completedWords
-    .filter((word) => word.mistakeCount === 0)
-    .map((word) => `${word.emoji} ${word.word}`)
-    .slice(-4)
-  const trickiestWord = [...state.completedWords].sort(
-    (a, b) => b.mistakeCount - a.mistakeCount || b.durationMs - a.durationMs
-  )[0]
-
   return {
     gameName: 'type-racer-jr',
     gameDisplayName: 'Type Racer Jr.',
@@ -488,39 +592,7 @@ const validator = new TypeRacerJrValidator()
     subheadline: `${wordsTyped} words in ${formatDuration(durationMs)}`,
     resultTheme,
     celebrationType,
-    songContext: {
-      summary: `${wordsTyped} words, ${state.totalStars} stars, ${accuracy}% typing accuracy`,
-      details: [
-        ...(state.completedWords.length > 0
-          ? [
-              `Words typed: ${state.completedWords
-                .map((word) => word.word)
-                .slice(0, 8)
-                .join(', ')}`,
-            ]
-          : []),
-        ...(cleanWords.length > 0 ? [`Clean words: ${cleanWords.join(', ')}`] : []),
-      ],
-      dramaticMoments: [
-        ...(state.bestStreak > 1 ? [`Built a ${state.bestStreak}-word typing streak`] : []),
-        ...(trickiestWord && trickiestWord.mistakeCount > 0
-          ? [
-              `Worked through ${trickiestWord.mistakeCount} mistake${
-                trickiestWord.mistakeCount === 1 ? '' : 's'
-              } on "${trickiestWord.word}"`,
-            ]
-          : []),
-        ...(cleanWords.length > 0
-          ? [`Finished clean on ${cleanWords[cleanWords.length - 1]}`]
-          : []),
-      ],
-      strategyNotes: [
-        ...(state.consecutiveCleanWords > 0
-          ? [`Stayed careful enough for ${state.consecutiveCleanWords} clean word streak progress`]
-          : []),
-      ],
-      outcome: headline,
-    },
+    songContext: buildTypeRacerSongContext(state, wordsTyped, totalMistakes, accuracy, headline),
   }
 }
 

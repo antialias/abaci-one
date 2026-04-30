@@ -6,6 +6,13 @@
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
 import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
+  finalizeSongContext,
+  pluralize,
+  songDetail,
+  songList,
+  songMoment,
+} from '@/lib/arcade/song-context'
+import {
   DIFFICULTY_LEVELS,
   type DifficultyLevel,
   type MemoryQuizConfig,
@@ -683,6 +690,66 @@ function formatDuration(ms: number): string {
   return `${seconds}s`
 }
 
+function buildMemoryQuizSongContext(
+  state: MemoryQuizState,
+  totalCards: number,
+  found: number,
+  accuracy: number,
+  headline: string
+): NonNullable<GameResultsReport['songContext']> {
+  const missedNumbers = state.correctAnswers.filter(
+    (number) => !state.foundNumbers.includes(number)
+  )
+  const firstShown = state.correctAnswers[0]
+  const firstRecalled = state.foundNumbers[0]
+  const finalRecalled = state.foundNumbers[state.foundNumbers.length - 1]
+  const cleanRun = totalCards > 0 && found === totalCards && state.incorrectGuesses === 0
+  const remaining = Math.max(0, totalCards - found)
+
+  return finalizeSongContext({
+    summary: `Remembered ${found} of ${totalCards} hidden ${pluralize(totalCards, 'number')} with ${accuracy}% recall accuracy`,
+    details: [
+      firstShown != null ? songDetail('Opening number', firstShown) : undefined,
+      finalRecalled != null ? songDetail('Final recall', finalRecalled) : undefined,
+      songList('Numbers shown', state.correctAnswers, 10),
+      songList('Numbers recalled', state.foundNumbers, 8),
+      songList('Numbers still hiding', missedNumbers, 5),
+    ],
+    dramaticMoments: [
+      firstShown != null
+        ? songMoment('Opening beat', `first hidden number was ${firstShown}`)
+        : undefined,
+      firstRecalled != null
+        ? songMoment('Clutch moment', `first recalled number was ${firstRecalled}`)
+        : undefined,
+      cleanRun ? songMoment('Clean run', 'recalled every number with no wrong guesses') : undefined,
+      remaining === 1 && missedNumbers[0] != null
+        ? songMoment('Near miss', `one number left hidden: ${missedNumbers[0]}`)
+        : undefined,
+      state.incorrectGuesses > 0 && found > 0
+        ? songMoment(
+            'Comeback',
+            `kept searching after ${state.incorrectGuesses} wrong ${pluralize(
+              state.incorrectGuesses,
+              'guess',
+              'guesses'
+            )}`
+          )
+        : undefined,
+      missedNumbers[0] != null
+        ? songMoment('Tough item', `${missedNumbers[0]} stayed hidden`)
+        : undefined,
+    ],
+    strategyNotes: [
+      `Memory load: ${totalCards} ${pluralize(totalCards, 'number')} at ${state.selectedDifficulty} difficulty`,
+      state.foundNumbers.length > 1
+        ? `Recall order started ${state.foundNumbers.slice(0, 3).join(', ')}`
+        : undefined,
+    ],
+    outcome: found === totalCards ? `recalled all ${totalCards} numbers` : headline,
+  })
+}
+
 // Singleton instance
 const validator = new MemoryQuizGameValidator()
 
@@ -768,11 +835,6 @@ const validator = new MemoryQuizGameValidator()
     })
   }
 
-  const missedNumbers = state.correctAnswers.filter(
-    (number) => !state.foundNumbers.includes(number)
-  )
-  const recalledNumbers = state.foundNumbers.slice(0, 8)
-
   return {
     gameName: 'memory-quiz',
     gameDisplayName: 'Memory Lightning',
@@ -798,31 +860,7 @@ const validator = new MemoryQuizGameValidator()
     subheadline: `${found} of ${totalCards} numbers in ${formatDuration(durationMs)}`,
     resultTheme,
     celebrationType,
-    songContext: {
-      summary: `Remembered ${found} of ${totalCards} hidden numbers`,
-      details: [
-        ...(state.correctAnswers.length > 0
-          ? [`Numbers shown: ${state.correctAnswers.slice(0, 10).join(', ')}`]
-          : []),
-        ...(recalledNumbers.length > 0 ? [`Numbers recalled: ${recalledNumbers.join(', ')}`] : []),
-        ...(missedNumbers.length > 0
-          ? [`Numbers still hiding: ${missedNumbers.slice(0, 5).join(', ')}`]
-          : []),
-      ],
-      dramaticMoments: [
-        ...(found === totalCards ? ['Found every number from memory'] : []),
-        ...(state.incorrectGuesses > 0
-          ? [
-              `Kept searching after ${state.incorrectGuesses} wrong guess${state.incorrectGuesses === 1 ? '' : 'es'}`,
-            ]
-          : []),
-        ...(found > 0 ? [`First recalled number: ${state.foundNumbers[0]}`] : []),
-      ],
-      strategyNotes: [
-        `Memory load: ${totalCards} number${totalCards === 1 ? '' : 's'} at ${state.selectedDifficulty} difficulty`,
-      ],
-      outcome: headline,
-    },
+    songContext: buildMemoryQuizSongContext(state, totalCards, found, accuracy, headline),
   }
 }
 

@@ -162,7 +162,9 @@ export type CelebrationType = 'confetti' | 'fireworks' | 'stars' | 'none'
  *
  * The normal scoreboard fields are intentionally generic. Session songs need
  * more story-shaped evidence: memorable plays, specific items, and strategy
- * notes that can become a short lyric without inventing details.
+ * notes that can become a short lyric without inventing details. Prefer short
+ * category-prefixed moments such as "Opening beat:", "Clutch moment:",
+ * "Near miss:", "Clean run:", "Comeback:", and "Tough item:".
  */
 export interface GameSongContext {
   /** One-sentence summary of what made this game break memorable */

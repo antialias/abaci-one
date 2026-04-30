@@ -1,6 +1,13 @@
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
 import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
+  finalizeSongContext,
+  pluralize,
+  songDetail,
+  songList,
+  songMoment,
+} from '@/lib/arcade/song-context'
+import {
   type AssistanceLevel,
   type GuessRecord,
   type KnowYourWorldConfig,
@@ -85,6 +92,94 @@ function getFilteredMapDataBySizesSyncLazy(
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { getFilteredMapDataBySizesSync } = require('./maps') as typeof import('./maps')
   return getFilteredMapDataBySizesSync(...args)
+}
+
+function buildKnowYourWorldSongContext(options: {
+  state: KnowYourWorldState
+  foundNames: string[]
+  givenUpNames: string[]
+  remainingNames: string[]
+  totalRegions: number
+  incorrectGuesses: number
+  headline: string
+}): NonNullable<GameResultsReport['songContext']> {
+  const {
+    state,
+    foundNames,
+    givenUpNames,
+    remainingNames,
+    totalRegions,
+    incorrectGuesses,
+    headline,
+  } = options
+  const firstCorrect = state.guessHistory.find((guess) => guess.correct)
+  const finalCorrect = [...state.guessHistory].reverse().find((guess) => guess.correct)
+  const toughestCorrect = [...state.guessHistory]
+    .filter((guess) => guess.correct)
+    .sort((a, b) => b.attempts - a.attempts)[0]
+  const firstFoundName = firstCorrect?.regionName ?? foundNames[0]
+  const finalFoundName = finalCorrect?.regionName ?? foundNames[foundNames.length - 1]
+  const remainingCount = Math.max(0, totalRegions - state.regionsFound.length)
+  const cleanRun =
+    totalRegions > 0 &&
+    state.regionsFound.length === totalRegions &&
+    incorrectGuesses === 0 &&
+    state.hintsUsed === 0
+
+  return finalizeSongContext({
+    summary: `Found ${state.regionsFound.length} of ${totalRegions} regions on the ${state.selectedMap} map`,
+    details: [
+      songDetail('Map', state.selectedMap),
+      songDetail('Assistance', state.assistanceLevel),
+      firstFoundName ? songDetail('Opening region', firstFoundName) : undefined,
+      finalFoundName ? songDetail('Final region found', finalFoundName) : undefined,
+      songList('Regions found', foundNames, 8),
+      songList('Revealed', givenUpNames, 5),
+      songList('Still searching for', remainingNames, 5),
+    ],
+    dramaticMoments: [
+      firstFoundName
+        ? songMoment('Opening beat', `first region found was ${firstFoundName}`)
+        : undefined,
+      finalFoundName && state.regionsFound.length === totalRegions
+        ? songMoment('Clutch moment', `final region found was ${finalFoundName}`)
+        : undefined,
+      cleanRun
+        ? songMoment('Clean run', 'found every region with no wrong clicks or hints')
+        : undefined,
+      remainingCount === 1 && remainingNames[0]
+        ? songMoment('Near miss', `one region left: ${remainingNames[0]}`)
+        : undefined,
+      incorrectGuesses > 0 && finalFoundName
+        ? songMoment(
+            'Comeback',
+            `kept mapping after ${incorrectGuesses} wrong ${pluralize(incorrectGuesses, 'click')}`
+          )
+        : undefined,
+      toughestCorrect && toughestCorrect.attempts > 1
+        ? songMoment(
+            'Tough item',
+            `${toughestCorrect.regionName} took ${toughestCorrect.attempts} ${pluralize(
+              toughestCorrect.attempts,
+              'attempt'
+            )}`
+          )
+        : givenUpNames[0]
+          ? songMoment('Tough item', `${givenUpNames[0]} needed a reveal`)
+          : undefined,
+    ],
+    strategyNotes: [
+      state.hintsUsed > 0
+        ? `Used ${state.hintsUsed} ${pluralize(state.hintsUsed, 'hint')}`
+        : 'Navigated without hints',
+      `Region sizes in play: ${state.includeSizes.join(', ')}`,
+      `Mode: ${state.gameMode}`,
+    ],
+    outcome:
+      state.regionsFound.length === totalRegions && totalRegions > 0
+        ? `mapped all ${totalRegions} regions`
+        : headline,
+  })
 }
 
 export class KnowYourWorldValidator
@@ -1054,36 +1149,15 @@ export class KnowYourWorldValidator
           : undefined,
       resultTheme,
       celebrationType,
-      songContext: {
-        summary: `Found ${state.regionsFound.length} of ${totalRegions} regions on the ${state.selectedMap} map`,
-        details: [
-          `Map: ${state.selectedMap}`,
-          `Assistance: ${state.assistanceLevel}`,
-          ...(foundNames.length > 0 ? [`Regions found: ${foundNames.slice(0, 8).join(', ')}`] : []),
-          ...(givenUpNames.length > 0 ? [`Revealed: ${givenUpNames.slice(0, 5).join(', ')}`] : []),
-          ...(remainingNames.length > 0
-            ? [`Still searching for: ${remainingNames.slice(0, 5).join(', ')}`]
-            : []),
-        ],
-        dramaticMoments: [
-          ...(state.regionsFound.length === totalRegions ? ['Found every region in the set'] : []),
-          ...(incorrectGuesses > 0
-            ? [
-                `Kept searching after ${incorrectGuesses} wrong map click${
-                  incorrectGuesses === 1 ? '' : 's'
-                }`,
-              ]
-            : []),
-          ...(foundNames.length > 0 ? [`First region found: ${foundNames[0]}`] : []),
-        ],
-        strategyNotes: [
-          ...(state.hintsUsed > 0
-            ? [`Used ${state.hintsUsed} hint${state.hintsUsed === 1 ? '' : 's'}`]
-            : []),
-          `Region sizes in play: ${state.includeSizes.join(', ')}`,
-        ],
-        outcome: headline,
-      },
+      songContext: buildKnowYourWorldSongContext({
+        state,
+        foundNames,
+        givenUpNames,
+        remainingNames,
+        totalRegions,
+        incorrectGuesses,
+        headline,
+      }),
     }
   }
 

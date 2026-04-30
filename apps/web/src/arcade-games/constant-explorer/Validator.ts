@@ -3,8 +3,29 @@ import {
   EXPLORATION_DISPLAY,
 } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { finalizeSongContext, songDetail, songMoment } from '@/lib/arcade/song-context'
 import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'
 import type { ConstantExplorerMove, ConstantExplorerState } from './types'
+
+function buildConstantExplorerSongContext(
+  symbol: string,
+  name: string,
+  value: number | undefined
+): NonNullable<GameResultsReport['songContext']> {
+  return finalizeSongContext({
+    summary: `Explored the constant ${symbol} (${name})`,
+    details: [
+      songDetail('Signature constant', `${symbol} ${name}`),
+      value !== undefined ? songDetail('Approximate value', value.toFixed(6)) : undefined,
+    ],
+    dramaticMoments: [
+      songMoment('Opening beat', `the discovery detour opened on ${symbol}`),
+      songMoment('Signature items', `${symbol} and ${name}`),
+    ],
+    strategyNotes: ['Discovery break focused on noticing a famous number pattern'],
+    outcome: `explored ${symbol}`,
+  })
+}
 
 /**
  * Validator for constant-explorer.
@@ -98,16 +119,7 @@ class ConstantExplorerValidator
       subheadline: name,
       resultTheme: 'success',
       celebrationType: 'stars',
-      songContext: {
-        summary: `Explored the constant ${symbol} (${name})`,
-        details: [
-          `Constant: ${symbol} ${name}`,
-          ...(value !== undefined ? [`Approximate value: ${value.toFixed(6)}`] : []),
-        ],
-        dramaticMoments: [`Took a math discovery detour into ${name}`],
-        strategyNotes: ['Discovery break focused on noticing a famous number pattern'],
-        outcome: `Explored ${symbol}`,
-      },
+      songContext: buildConstantExplorerSongContext(symbol, name, value),
     }
   }
 }
