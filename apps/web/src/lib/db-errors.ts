@@ -34,9 +34,8 @@ function findRootCause(err: unknown): { code?: string; message: string } | null 
  */
 export function explainError(err: unknown): string {
   const topMessage = err instanceof Error ? err.message : String(err)
-  const query = typeof (err as { query?: unknown })?.query === 'string'
-    ? ((err as { query: string }).query)
-    : ''
+  const query =
+    typeof (err as { query?: unknown })?.query === 'string' ? (err as { query: string }).query : ''
   const root = findRootCause(err)
 
   // Foreign key violation — by far the most common cause is a stale auth
@@ -50,7 +49,9 @@ export function explainError(err: unknown): string {
         '(likely after a DB reset).',
         '',
         'Fix: sign out and sign back in. NextAuth will reissue the session against the current user record.',
-      ].join(' ').replace(/ +/g, ' ')
+      ]
+        .join(' ')
+        .replace(/ +/g, ' ')
     }
     return `Foreign key violation: a referenced row does not exist. (${root.message})`
   }

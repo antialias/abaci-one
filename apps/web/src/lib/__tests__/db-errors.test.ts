@@ -5,17 +5,23 @@ describe('explainError', () => {
   it('translates an FK violation on user_id into a stale-session message', () => {
     // Shape mirrors a real DrizzleQueryError -> LibsqlError -> SqliteError chain
     // captured from a failed seed-students run.
-    const err = Object.assign(new Error('Failed query: insert into "players" ("id", "user_id", ...) values (?, ?, ...)'), {
-      query: 'insert into "players" ("id", "user_id", "name") values (?, ?, ?)',
-      params: ['p1', 'stale-user-id', 'Test'],
-      cause: Object.assign(new Error('SQLITE_CONSTRAINT_FOREIGNKEY: FOREIGN KEY constraint failed'), {
-        code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
-        cause: Object.assign(new Error('FOREIGN KEY constraint failed'), {
-          code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
-          rawCode: 787,
-        }),
-      }),
-    })
+    const err = Object.assign(
+      new Error('Failed query: insert into "players" ("id", "user_id", ...) values (?, ?, ...)'),
+      {
+        query: 'insert into "players" ("id", "user_id", "name") values (?, ?, ?)',
+        params: ['p1', 'stale-user-id', 'Test'],
+        cause: Object.assign(
+          new Error('SQLITE_CONSTRAINT_FOREIGNKEY: FOREIGN KEY constraint failed'),
+          {
+            code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
+            cause: Object.assign(new Error('FOREIGN KEY constraint failed'), {
+              code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
+              rawCode: 787,
+            }),
+          }
+        ),
+      }
+    )
 
     const result = explainError(err)
     expect(result).toMatch(/session is stale/i)
@@ -23,10 +29,13 @@ describe('explainError', () => {
   })
 
   it('falls back to a generic FK message when the column is not user_id', () => {
-    const err = Object.assign(new Error('Failed query: insert into "child_thing" (parent_id) values (?)'), {
-      query: 'insert into "child_thing" (parent_id) values (?)',
-      cause: { code: 'SQLITE_CONSTRAINT_FOREIGNKEY', message: 'FOREIGN KEY constraint failed' },
-    })
+    const err = Object.assign(
+      new Error('Failed query: insert into "child_thing" (parent_id) values (?)'),
+      {
+        query: 'insert into "child_thing" (parent_id) values (?)',
+        cause: { code: 'SQLITE_CONSTRAINT_FOREIGNKEY', message: 'FOREIGN KEY constraint failed' },
+      }
+    )
     expect(explainError(err)).toMatch(/Foreign key violation/i)
     expect(explainError(err)).not.toMatch(/session is stale/i)
   })
