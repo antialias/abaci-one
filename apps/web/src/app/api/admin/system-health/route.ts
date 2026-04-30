@@ -13,6 +13,7 @@ import { sql, and, eq, gte } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import type { SessionSongFailureKind } from '@/db/schema/session-songs'
+import { classifySongFailure } from '@/lib/session-song/classify-failure'
 
 interface SongFailureGroup {
   failureKind: SessionSongFailureKind | 'unknown'
@@ -63,10 +64,14 @@ export const GET = withAuth(
         .orderBy(sql`${schema.sessionSongs.createdAt} DESC`)
         .limit(1)
 
+      const classified = classifySongFailure(
+        latest?.errorMessage ?? row.failureKind ?? 'unknown'
+      ).kind
+
       // `MAX(created_at)` comes back as raw INTEGER seconds (drizzle's
       // timestamp mode stores epoch seconds). Convert to ms for the client.
       groups.push({
-        failureKind: (row.failureKind as SessionSongFailureKind | null) ?? 'unknown',
+        failureKind: classified,
         count: Number(row.count),
         latestErrorMessage: latest?.errorMessage ?? null,
         latestAt: Number(row.latestAt) * 1000,

@@ -4,6 +4,7 @@ import { relations } from 'drizzle-orm'
 import { sessionPlans } from './session-plans'
 import { players } from './players'
 import { backgroundTasks } from './background-tasks'
+import { users } from './users'
 
 // ============================================================================
 // Session Songs table
@@ -67,7 +68,7 @@ export const sessionSongs = sqliteTable(
     /**
      * Classified failure kind, set alongside `errorMessage` when status='failed'.
      * Drives the user-facing failure card (kid-safe message + owner remediation).
-     * Values: 'auth_invalid' | 'quota_exceeded' | 'rate_limited' | 'transient' | 'unknown'
+     * Values: 'missing_config' | 'auth_invalid' | 'quota_exceeded' | 'rate_limited' | 'transient' | 'unknown'
      */
     failureKind: text('failure_kind'),
 
@@ -76,6 +77,34 @@ export const sessionSongs = sqliteTable(
 
     /** How the song generation was triggered */
     triggerSource: text('trigger_source'), // 'smart_trigger' | 'completion_fallback'
+
+    /**
+     * Admin content review state.
+     * Values: 'none' | 'flagged' | 'resolved'
+     *
+     * Used when a completed song may have inaccurate or under-informed content.
+     * A flagged song can be regenerated from the admin dashboard after the
+     * prompt/session-data pipeline has been patched.
+     */
+    contentReviewStatus: text('content_review_status').notNull().default('none'),
+
+    /** Admin note explaining why the song was flagged */
+    contentReviewNote: text('content_review_note'),
+
+    /** When the content review status was last updated */
+    contentReviewedAt: integer('content_reviewed_at', { mode: 'timestamp' }),
+
+    /** Admin who last updated the content review status */
+    contentReviewedBy: text('content_reviewed_by').references(() => users.id),
+
+    /** Number of admin-triggered retry/regeneration requests for this song */
+    regenerationCount: integer('regeneration_count').notNull().default(0),
+
+    /** Most recent admin reason for retrying/regenerating */
+    lastRegenerationReason: text('last_regeneration_reason'),
+
+    /** When the most recent admin retry/regeneration was queued */
+    lastRegenerationAt: integer('last_regeneration_at', { mode: 'timestamp' }),
 
     /** When the song record was created */
     createdAt: integer('created_at', { mode: 'timestamp' })
@@ -92,6 +121,9 @@ export const sessionSongs = sqliteTable(
     sessionPlanIdx: index('session_songs_session_plan_id_idx').on(table.sessionPlanId),
     playerIdx: index('session_songs_player_id_idx').on(table.playerId),
     statusIdx: index('session_songs_status_idx').on(table.status),
+    contentReviewStatusIdx: index('session_songs_content_review_status_idx').on(
+      table.contentReviewStatus
+    ),
   })
 )
 
@@ -112,6 +144,10 @@ export const sessionSongsRelations = relations(sessionSongs, ({ one }) => ({
     fields: [sessionSongs.backgroundTaskId],
     references: [backgroundTasks.id],
   }),
+  contentReviewer: one(users, {
+    fields: [sessionSongs.contentReviewedBy],
+    references: [users.id],
+  }),
 }))
 
 // ============================================================================
@@ -130,12 +166,30 @@ export type SessionSongStatus =
 
 export type SessionSongTriggerSource = 'smart_trigger' | 'completion_fallback'
 
+export type SessionSongContentReviewStatus = 'none' | 'flagged' | 'resolved'
+
 export type SessionSongFailureKind =
+  | 'missing_config'
   | 'auth_invalid'
   | 'quota_exceeded'
   | 'rate_limited'
   | 'transient'
   | 'unknown'
+
+export interface SessionSongPlanValidationMetadata {
+  mode: 'off' | 'observe' | 'repair' | 'enforce'
+  outcome: 'skipped' | 'passed' | 'flagged' | 'repaired' | 'fallback' | 'blocked'
+  issues: Array<{
+    code: string
+    message: string
+    evidenceType?: 'player' | 'problem' | 'skill' | 'game' | 'duration' | 'invented_fact'
+  }>
+  rawTotalDurationMs: number
+  finalTotalDurationMs: number
+  repaired: boolean
+  fallbackUsed: boolean
+  repairAttempts: number
+}
 
 export interface SessionSongLLMOutput {
   title: string
@@ -150,4 +204,5 @@ export interface SessionSongLLMOutput {
       lines: string[]
     }>
   }
+  validation?: SessionSongPlanValidationMetadata
 }

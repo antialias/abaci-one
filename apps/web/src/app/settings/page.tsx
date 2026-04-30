@@ -1398,6 +1398,11 @@ const NOTIFICATION_TYPES = [
     label: 'Number line postcards',
     description: 'When a postcard is ready to view',
   },
+  {
+    id: 'admin-song-failed' as const,
+    label: 'Admin song failures',
+    description: 'When session song generation fails and needs attention',
+  },
 ]
 
 interface NotifSettings {

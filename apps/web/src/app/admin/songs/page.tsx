@@ -8,9 +8,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { css } from '../../../../styled-system/css'
-import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
+import { AppNavBar } from '@/components/AppNavBar'
+import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
+import { css } from '../../../../styled-system/css'
 
 // ============================================================================
 // Types
@@ -20,6 +21,12 @@ interface SectionSummary {
   name: string
   durationMs: number
   lineCount: number
+}
+
+interface ValidationIssue {
+  code: string
+  message: string
+  evidenceType: string | null
 }
 
 interface Song {
@@ -32,7 +39,15 @@ interface Song {
   title: string | null
   triggerSource: string | null
   errorMessage: string | null
+  failureKind: string | null
   backgroundTaskId: string | null
+  contentReviewStatus: 'none' | 'flagged' | 'resolved'
+  contentReviewNote: string | null
+  contentReviewedAt: string | null
+  contentReviewedBy: string | null
+  regenerationCount: number
+  lastRegenerationReason: string | null
+  lastRegenerationAt: string | null
   fileExists: boolean
   fileSizeBytes: number | null
   durationSeconds: number | null
@@ -41,6 +56,12 @@ interface Song {
   styles: string[]
   totalDurationMs: number
   sectionSummary: SectionSummary[]
+  validationMode: string | null
+  validationOutcome: string | null
+  validationIssueCount: number
+  validationIssues: ValidationIssue[]
+  repairAttempts: number | null
+  fallbackUsed: boolean
   promptInput: unknown
   llmOutput: unknown
 }
@@ -50,7 +71,14 @@ interface Stats {
   completed: number
   failed: number
   generating: number
+  flagged: number
+  validationFlagged: number
+  validationRepaired: number
+  validationFallback: number
+  validationBlocked: number
 }
+
+type RegenerationMode = 'auto' | 'reuse_prompt' | 'regenerate_prompt'
 
 // ============================================================================
 // Page
@@ -63,7 +91,8 @@ export default function AdminSongsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const [retrying, setRetrying] = useState<string | null>(null)
+  const [validationFilter, setValidationFilter] = useState<string | null>(null)
+  const [busySongId, setBusySongId] = useState<string | null>(null)
 
   const fetchSongs = useCallback(async () => {
     try {
@@ -86,32 +115,73 @@ export default function AdminSongsPage() {
     return () => clearInterval(interval)
   }, [fetchSongs])
 
+  const postSongAction = useCallback(async (body: Record<string, unknown>) => {
+    const res = await fetch('/api/admin/songs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error ?? 'Song action failed')
+    }
+  }, [])
+
   const handleRetry = useCallback(
-    async (songId: string) => {
-      setRetrying(songId)
+    async (songId: string, mode: RegenerationMode = 'auto', reason?: string) => {
+      setBusySongId(songId)
       try {
-        const res = await fetch('/api/admin/songs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ songId, action: 'retry' }),
-        })
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error ?? 'Retry failed')
-        }
-        // Refresh list
+        await postSongAction({ songId, action: 'retry', mode, reason })
         await fetchSongs()
-        setSelectedSongId(null)
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Retry failed')
       } finally {
-        setRetrying(null)
+        setBusySongId(null)
       }
     },
-    [fetchSongs]
+    [fetchSongs, postSongAction]
   )
 
-  const filtered = statusFilter ? songs.filter((s) => s.status === statusFilter) : songs
+  const handleFlagContent = useCallback(
+    async (songId: string, reason: string) => {
+      setBusySongId(songId)
+      try {
+        await postSongAction({ songId, action: 'flag_content', reason })
+        await fetchSongs()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Flag failed')
+      } finally {
+        setBusySongId(null)
+      }
+    },
+    [fetchSongs, postSongAction]
+  )
+
+  const handleClearContentFlag = useCallback(
+    async (songId: string) => {
+      setBusySongId(songId)
+      try {
+        await postSongAction({ songId, action: 'clear_content_flag' })
+        await fetchSongs()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Clear failed')
+      } finally {
+        setBusySongId(null)
+      }
+    },
+    [fetchSongs, postSongAction]
+  )
+
+  const filtered = songs.filter((song) => {
+    if (statusFilter && song.status !== statusFilter) return false
+    if (!validationFilter) return true
+    if (validationFilter === 'content_flagged') return song.contentReviewStatus === 'flagged'
+    if (validationFilter === 'flagged') return song.validationIssueCount > 0
+    if (validationFilter === 'clean') {
+      return song.validationOutcome === 'passed' || song.validationOutcome === 'skipped'
+    }
+    return song.validationOutcome === validationFilter
+  })
   const selectedSong = selectedSongId ? songs.find((s) => s.id === selectedSongId) : null
 
   if (loading) {
@@ -180,11 +250,16 @@ export default function AdminSongsPage() {
                 <StatBadge label="OK" value={stats.completed} color="#4CAF50" />
                 <StatBadge label="Failed" value={stats.failed} color="#f44336" />
                 <StatBadge label="Active" value={stats.generating} color="#2196F3" />
+                <StatBadge label="Content" value={stats.flagged} color="#d97706" />
+                <StatBadge label="Flagged" value={stats.validationFlagged} color="#ff9800" />
+                <StatBadge label="Repaired" value={stats.validationRepaired} color="#00bcd4" />
+                <StatBadge label="Fallback" value={stats.validationFallback} color="#9c27b0" />
+                <StatBadge label="Blocked" value={stats.validationBlocked} color="#e91e63" />
               </div>
             )}
 
             {/* Filter */}
-            <div className={css({ marginTop: '8px' })}>
+            <div className={css({ marginTop: '8px', display: 'grid', gap: '6px' })}>
               <select
                 data-element="status-filter"
                 value={statusFilter ?? ''}
@@ -205,6 +280,28 @@ export default function AdminSongsPage() {
                 <option value="generating">Generating Music</option>
                 <option value="completed">Completed</option>
                 <option value="failed">Failed</option>
+              </select>
+              <select
+                data-element="validation-filter"
+                value={validationFilter ?? ''}
+                onChange={(e) => setValidationFilter(e.target.value || null)}
+                className={css({
+                  backgroundColor: '#0d1117',
+                  color: '#eee',
+                  border: '1px solid #333',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  width: '100%',
+                })}
+              >
+                <option value="">All validation outcomes</option>
+                <option value="content_flagged">Content flagged</option>
+                <option value="flagged">Any validation issue</option>
+                <option value="clean">Clean/skipped</option>
+                <option value="repaired">Repaired</option>
+                <option value="fallback">Fallback</option>
+                <option value="blocked">Blocked</option>
               </select>
             </div>
           </div>
@@ -230,7 +327,9 @@ export default function AdminSongsPage() {
             <SongDetail
               song={selectedSong}
               onRetry={handleRetry}
-              retrying={retrying === selectedSong.id}
+              onFlagContent={handleFlagContent}
+              onClearContentFlag={handleClearContentFlag}
+              busy={busySongId === selectedSong.id}
             />
           ) : (
             <div
@@ -269,6 +368,9 @@ function PageShell({ children }: { children: React.ReactNode }) {
       <div className={css({ paddingTop: '56px' })}>
         <AdminNav />
       </div>
+      <div className={css({ padding: '16px 16px 0' })}>
+        <SystemHealthBanner />
+      </div>
       {children}
     </div>
   )
@@ -297,13 +399,20 @@ function SongRow({
   onClick: () => void
 }) {
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       className={css({
+        width: '100%',
         padding: '12px 16px',
         borderBottom: '1px solid #2a2a4a',
+        borderTop: 'none',
+        borderLeft: 'none',
+        borderRight: 'none',
         cursor: 'pointer',
         backgroundColor: isSelected ? '#2a2a5a' : 'transparent',
+        color: 'inherit',
+        textAlign: 'left',
         '&:hover': { backgroundColor: '#2a2a4a' },
       })}
     >
@@ -319,7 +428,11 @@ function SongRow({
         <span className={css({ fontWeight: 'bold' })}>
           {song.playerEmoji} {song.playerName}
         </span>
-        <StatusBadge status={song.status} />
+        <div className={css({ display: 'flex', gap: '4px', alignItems: 'center' })}>
+          <ContentReviewBadge status={song.contentReviewStatus} />
+          <ValidationBadge song={song} />
+          <StatusBadge status={song.status} />
+        </div>
       </div>
 
       {/* Row 2: Title or ID */}
@@ -369,7 +482,65 @@ function SongRow({
           {song.errorMessage}
         </div>
       )}
-    </div>
+    </button>
+  )
+}
+
+function ContentReviewBadge({ status }: { status: Song['contentReviewStatus'] }) {
+  if (status === 'none') return null
+  const color = status === 'flagged' ? '#d97706' : '#2e7d32'
+  return (
+    <span
+      data-element="content-review-badge"
+      className={css({
+        padding: '2px 6px',
+        borderRadius: '4px',
+        fontSize: '10px',
+        color: 'white',
+      })}
+      style={{ backgroundColor: color }}
+    >
+      {status === 'flagged' ? 'content' : 'resolved'}
+    </span>
+  )
+}
+
+function ValidationBadge({ song }: { song: Song }) {
+  if (!song.validationOutcome || song.validationOutcome === 'skipped') return null
+
+  const flagged = song.validationIssueCount > 0
+  const label =
+    song.validationOutcome === 'passed'
+      ? 'valid'
+      : song.validationOutcome === 'flagged'
+        ? `flagged ${song.validationIssueCount}`
+        : song.validationOutcome
+  const color =
+    song.validationOutcome === 'passed'
+      ? '#2e7d32'
+      : song.validationOutcome === 'repaired'
+        ? '#00838f'
+        : song.validationOutcome === 'fallback'
+          ? '#7b1fa2'
+          : song.validationOutcome === 'blocked'
+            ? '#c2185b'
+            : flagged
+              ? '#ef6c00'
+              : '#666'
+
+  return (
+    <span
+      data-element="validation-badge"
+      className={css({
+        padding: '2px 6px',
+        borderRadius: '4px',
+        fontSize: '10px',
+        color: 'white',
+      })}
+      style={{ backgroundColor: color }}
+    >
+      {label}
+    </span>
   )
 }
 
@@ -393,19 +564,25 @@ function StatusBadge({ status }: { status: string }) {
 function SongDetail({
   song,
   onRetry,
-  retrying,
+  onFlagContent,
+  onClearContentFlag,
+  busy,
 }: {
   song: Song
-  onRetry: (songId: string) => void
-  retrying: boolean
+  onRetry: (songId: string, mode?: RegenerationMode, reason?: string) => void
+  onFlagContent: (songId: string, reason: string) => void
+  onClearContentFlag: (songId: string) => void
+  busy: boolean
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [contentReason, setContentReason] = useState('')
 
   // Reset audio state when song changes
   useEffect(() => {
     setIsPlaying(false)
-  }, [song.id])
+    setContentReason(song.contentReviewNote ?? '')
+  }, [song.id, song.contentReviewNote])
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
@@ -420,6 +597,7 @@ function SongDetail({
   const llmOutput = song.llmOutput as Record<string, unknown> | null
   const plan = llmOutput?.plan as Record<string, unknown> | null
   const sections = (plan?.sections as Array<Record<string, unknown>>) ?? []
+  const hasCompositionPlan = sections.length > 0
   const promptInput = song.promptInput as Record<string, unknown> | null
   const llmMeta = llmOutput?.llmMeta as {
     provider?: string
@@ -449,25 +627,42 @@ function SongDetail({
         </div>
         <div className={css({ display: 'flex', gap: '8px', alignItems: 'center' })}>
           {song.status === 'failed' && (
-            <button
-              data-action="retry-song"
-              onClick={() => onRetry(song.id)}
-              disabled={retrying}
-              className={css({
-                padding: '6px 16px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: '#f44336',
-                color: 'white',
-                opacity: retrying ? 0.5 : 1,
-                '&:hover': { backgroundColor: '#d32f2f' },
-              })}
+            <>
+              <ActionButton
+                dataAction="retry-song"
+                tone="danger"
+                disabled={busy}
+                onClick={() => onRetry(song.id, 'auto')}
+              >
+                {busy ? 'Queueing...' : hasCompositionPlan ? 'Retry music' : 'Retry'}
+              </ActionButton>
+              {hasCompositionPlan && (
+                <ActionButton
+                  dataAction="regenerate-song-prompt"
+                  tone="secondary"
+                  disabled={busy}
+                  onClick={() => onRetry(song.id, 'regenerate_prompt')}
+                >
+                  Regenerate lyrics
+                </ActionButton>
+              )}
+            </>
+          )}
+          {song.contentReviewStatus === 'flagged' && !isSongActive(song.status) && (
+            <ActionButton
+              dataAction="regenerate-flagged-song"
+              tone="warning"
+              disabled={busy}
+              onClick={() =>
+                onRetry(
+                  song.id,
+                  'regenerate_prompt',
+                  song.contentReviewNote ?? 'Content review regeneration'
+                )
+              }
             >
-              {retrying ? 'Retrying...' : 'Retry'}
-            </button>
+              {busy ? 'Queueing...' : 'Regenerate'}
+            </ActionButton>
           )}
           <StatusBadge status={song.status} />
         </div>
@@ -486,6 +681,7 @@ function SongDetail({
             gap: '12px',
           })}
         >
+          {/* biome-ignore lint/a11y/useMediaCaption: Admin song previews are generated audio without an available caption track. */}
           <audio
             ref={audioRef}
             src={`/api/audio/songs/${song.id}`}
@@ -548,8 +744,15 @@ function SongDetail({
             ['Plan ID', song.sessionPlanId],
             ['Player ID', song.playerId],
             ['Status', song.status],
+            ['Failure Kind', song.failureKind ?? '-'],
             ['Trigger', song.triggerSource ?? '-'],
             ['Task ID', song.backgroundTaskId ?? '-'],
+            ['Regenerations', String(song.regenerationCount ?? 0)],
+            [
+              'Last Regeneration',
+              song.lastRegenerationAt ? formatTimestamp(song.lastRegenerationAt) : '-',
+            ],
+            ['Last Reason', song.lastRegenerationReason ?? '-'],
             ['Created', formatTimestamp(song.createdAt)],
             ['Completed', song.completedAt ? formatTimestamp(song.completedAt) : '-'],
             [
@@ -560,6 +763,75 @@ function SongDetail({
             ],
           ]}
         />
+      </DetailSection>
+
+      {/* Content Review */}
+      <DetailSection title="Content Review">
+        <InfoTable
+          rows={[
+            ['Status', song.contentReviewStatus],
+            ['Reviewed', song.contentReviewedAt ? formatTimestamp(song.contentReviewedAt) : '-'],
+            ['Reviewed By', song.contentReviewedBy ?? '-'],
+            ['Note', song.contentReviewNote ?? '-'],
+          ]}
+        />
+        {song.contentReviewStatus === 'flagged' ? (
+          <div className={css({ display: 'flex', gap: '8px', marginTop: '10px' })}>
+            <ActionButton
+              dataAction="regenerate-content-song"
+              tone="warning"
+              disabled={busy || isSongActive(song.status)}
+              onClick={() =>
+                onRetry(
+                  song.id,
+                  'regenerate_prompt',
+                  song.contentReviewNote ?? 'Content review regeneration'
+                )
+              }
+            >
+              Regenerate lyrics
+            </ActionButton>
+            <ActionButton
+              dataAction="clear-content-flag"
+              tone="secondary"
+              disabled={busy}
+              onClick={() => onClearContentFlag(song.id)}
+            >
+              Clear flag
+            </ActionButton>
+          </div>
+        ) : (
+          song.status === 'completed' && (
+            <div className={css({ marginTop: '10px', display: 'grid', gap: '8px' })}>
+              <textarea
+                data-element="content-review-note"
+                value={contentReason}
+                onChange={(e) => setContentReason(e.target.value)}
+                placeholder="What seems inaccurate or under-informed?"
+                className={css({
+                  minHeight: '72px',
+                  backgroundColor: '#0d1117',
+                  color: '#eee',
+                  border: '1px solid #333',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '12px',
+                  resize: 'vertical',
+                })}
+              />
+              <div>
+                <ActionButton
+                  dataAction="flag-content"
+                  tone="warning"
+                  disabled={busy || contentReason.trim().length === 0}
+                  onClick={() => onFlagContent(song.id, contentReason.trim())}
+                >
+                  Flag content
+                </ActionButton>
+              </div>
+            </div>
+          )
+        )}
       </DetailSection>
 
       {/* LLM Info */}
@@ -575,6 +847,46 @@ function SongDetail({
               ['Attempts', String(llmMeta.attempts ?? '-')],
             ]}
           />
+        </DetailSection>
+      )}
+
+      {/* Plan Validation */}
+      {song.validationOutcome && (
+        <DetailSection title="Plan Validation">
+          <InfoTable
+            rows={[
+              ['Mode', song.validationMode ?? '-'],
+              ['Outcome', song.validationOutcome],
+              ['Issues', String(song.validationIssueCount)],
+              ['Repair Attempts', String(song.repairAttempts ?? 0)],
+              ['Fallback Used', song.fallbackUsed ? 'yes' : 'no'],
+            ]}
+          />
+          {song.validationIssues.length > 0 && (
+            <div className={css({ marginTop: '8px', display: 'grid', gap: '6px' })}>
+              {song.validationIssues.map((issue, index) => (
+                <div
+                  key={`${issue.code}-${index}`}
+                  data-element="validation-issue"
+                  className={css({
+                    padding: '8px 10px',
+                    backgroundColor: '#20160f',
+                    borderLeft: '3px solid #ff9800',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                  })}
+                >
+                  <div className={css({ color: '#ffb74d', fontWeight: 'bold' })}>
+                    {issue.code}
+                    {issue.evidenceType ? ` / ${issue.evidenceType}` : ''}
+                  </div>
+                  <div className={css({ color: '#c9d1d9', marginTop: '2px' })}>
+                    {issue.message || '-'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </DetailSection>
       )}
 
@@ -719,6 +1031,52 @@ function InfoTable({ rows }: { rows: [string, string][] }) {
   )
 }
 
+function ActionButton({
+  children,
+  dataAction,
+  tone,
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode
+  dataAction: string
+  tone: 'danger' | 'warning' | 'secondary'
+  disabled?: boolean
+  onClick: () => void
+}) {
+  const colors = {
+    danger: { bg: '#f44336', border: '#f44336', fg: 'white', hover: '#d32f2f' },
+    warning: { bg: '#d97706', border: '#d97706', fg: 'white', hover: '#b45309' },
+    secondary: { bg: 'transparent', border: '#475569', fg: '#cbd5e1', hover: '#1e293b' },
+  }[tone]
+
+  return (
+    <button
+      data-action={dataAction}
+      disabled={disabled}
+      onClick={onClick}
+      className={css({
+        padding: '6px 12px',
+        borderRadius: '6px',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        border: '1px solid',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+      })}
+      style={{ backgroundColor: colors.bg, borderColor: colors.border, color: colors.fg }}
+      onMouseEnter={(event) => {
+        if (!disabled) event.currentTarget.style.backgroundColor = colors.hover
+      }}
+      onMouseLeave={(event) => {
+        if (!disabled) event.currentTarget.style.backgroundColor = colors.bg
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <div className={css({ fontSize: '11px', color: '#666', marginBottom: '2px' })}>{children}</div>
@@ -770,6 +1128,10 @@ function JsonBlock({ data }: { data: unknown }) {
 // ============================================================================
 // Helpers
 // ============================================================================
+
+function isSongActive(status: string): boolean {
+  return status === 'pending' || status === 'prompt_generating' || status === 'generating'
+}
 
 function getStatusColor(status: string): string {
   switch (status) {

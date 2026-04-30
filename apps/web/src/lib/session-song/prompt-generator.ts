@@ -5,11 +5,25 @@
  * with personalized lyrics based on session performance data.
  */
 
+import type { LLMResponse } from '@soroban/llm-client'
 import { z } from 'zod'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { trackedCall } from '@/lib/ai-usage/llm-middleware'
 import type { CompositionPlan } from '@/lib/elevenlabs/music-client'
 import { llm } from '@/lib/llm'
+import {
+  buildFallbackSongPlan,
+  buildValidationEvidenceSummary,
+  clampCompositionPlanDuration,
+  getTotalDurationMs,
+  SongCompositionValidationError,
+  type SongPlanCandidate,
+  type SongPlanValidationMetadata,
+  type SongPlanValidationOutcome,
+  type SongPlanValidationPolicy,
+  type SongPlanValidationResult,
+  validateCompositionPlan,
+} from './composition-plan-validation'
 import type { SongConcept } from './concept-selector'
 import type { SongPromptInput } from './extract-session-stats'
 
@@ -59,6 +73,8 @@ export interface SongCompositionOutput {
   plan: CompositionPlan
   /** Deterministic story concept selected before prompt generation */
   songConcept?: SongConcept
+  /** Semantic quality gate metadata for admin observability */
+  validation?: SongPlanValidationMetadata
   /** LLM metadata for observability */
   llmMeta: {
     provider: string
@@ -70,6 +86,10 @@ export interface SongCompositionOutput {
     }
     attempts: number
   }
+}
+
+interface GenerateSongPromptOptions {
+  validationPolicy?: SongPlanValidationPolicy
 }
 
 // ============================================================================
@@ -293,6 +313,169 @@ Use the selected song concept and the specific problem, skill, attempt, and game
 // Generator
 // ============================================================================
 
+const OFF_VALIDATION_POLICY: SongPlanValidationPolicy = {
+  mode: 'off',
+  maxRepairAttempts: 0,
+  fallbackOnFailedRepair: false,
+  logPassingPlans: false,
+}
+
+function toSongPlanCandidate(output: SongLLMOutput): SongPlanCandidate {
+  return {
+    title: output.title,
+    positive_global_styles: output.positive_global_styles,
+    negative_global_styles: output.negative_global_styles,
+    sections: output.sections,
+  }
+}
+
+function toCompositionPlan(candidate: SongPlanCandidate): CompositionPlan {
+  return {
+    positive_global_styles: candidate.positive_global_styles,
+    negative_global_styles: candidate.negative_global_styles,
+    sections: candidate.sections,
+  }
+}
+
+async function callSongPlanLlm(
+  prompt: string,
+  userId?: string
+): Promise<LLMResponse<SongLLMOutput>> {
+  const callArgs = { prompt, schema: songLLMOutputSchema }
+  return userId
+    ? trackedCall(llm, callArgs, {
+        userId,
+        feature: AiFeature.SESSION_SONG_PROMPT,
+      })
+    : llm.call(callArgs)
+}
+
+function buildRepairPrompt({
+  originalPrompt,
+  originalPlan,
+  validation,
+  input,
+}: {
+  originalPrompt: string
+  originalPlan: SongPlanCandidate
+  validation: SongPlanValidationResult
+  input: SongPromptInput
+}): string {
+  const issueList = validation.issues.map((issue) => `- ${issue.code}: ${issue.message}`).join('\n')
+
+  return `${SYSTEM_PROMPT}
+
+---
+
+Repair this session song composition plan. Return corrected JSON only, matching the schema.
+
+Failed validation checks:
+${issueList}
+
+Allowed evidence:
+${buildValidationEvidenceSummary(input)}
+
+Rules for the repair:
+- Preserve the genre, kid-safe energy, and useful structure where possible.
+- Remove or replace invented names, games, scores, attempt counts, words, notes, regions, or strategies.
+- Do not add an interlude, rap break, bridge, breakdown, drop, cadence, or game-break section unless game-break evidence exists.
+- Keep the total planned duration at or below 60000ms.
+
+Original request:
+${originalPrompt}
+
+Invalid structured plan:
+${JSON.stringify(originalPlan, null, 2)}`
+}
+
+function buildLlmMeta(
+  responses: Array<LLMResponse<SongLLMOutput>>
+): SongCompositionOutput['llmMeta'] {
+  const latest = responses[responses.length - 1]
+  return {
+    provider: latest.provider,
+    model: latest.model,
+    usage: responses.reduce(
+      (sum, response) => ({
+        promptTokens: sum.promptTokens + response.usage.promptTokens,
+        completionTokens: sum.completionTokens + response.usage.completionTokens,
+        totalTokens: sum.totalTokens + response.usage.totalTokens,
+      }),
+      { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+    ),
+    attempts: responses.reduce((sum, response) => sum + response.attempts, 0),
+  }
+}
+
+function buildValidationMetadata({
+  policy,
+  outcome,
+  issues,
+  rawTotalDurationMs,
+  finalPlan,
+  repaired,
+  fallbackUsed,
+  repairAttempts,
+}: {
+  policy: SongPlanValidationPolicy
+  outcome: SongPlanValidationOutcome
+  issues: SongPlanValidationResult['issues']
+  rawTotalDurationMs: number
+  finalPlan: CompositionPlan
+  repaired: boolean
+  fallbackUsed: boolean
+  repairAttempts: number
+}): SongPlanValidationMetadata {
+  return {
+    mode: policy.mode,
+    outcome,
+    issues,
+    rawTotalDurationMs,
+    finalTotalDurationMs: getTotalDurationMs(finalPlan),
+    repaired,
+    fallbackUsed,
+    repairAttempts,
+  }
+}
+
+function buildCompositionOutput({
+  candidate,
+  input,
+  responses,
+  validation,
+}: {
+  candidate: SongPlanCandidate
+  input: SongPromptInput
+  responses: Array<LLMResponse<SongLLMOutput>>
+  validation?: SongPlanValidationMetadata
+}): SongCompositionOutput {
+  return {
+    title: candidate.title,
+    plan: toCompositionPlan(candidate),
+    ...(input.songConcept && { songConcept: input.songConcept }),
+    ...(validation && { validation }),
+    llmMeta: buildLlmMeta(responses),
+  }
+}
+
+function logValidationResult(
+  validation: SongPlanValidationMetadata,
+  title: string,
+  shouldLogPassing: boolean
+) {
+  if (validation.outcome === 'passed' && !shouldLogPassing) return
+  const level = validation.issues.length > 0 ? 'warn' : 'log'
+  console[level]('[session-song] composition plan validation', {
+    title,
+    mode: validation.mode,
+    outcome: validation.outcome,
+    issueCodes: validation.issues.map((issue) => issue.code),
+    repaired: validation.repaired,
+    fallbackUsed: validation.fallbackUsed,
+    repairAttempts: validation.repairAttempts,
+  })
+}
+
 /**
  * Generate a composition plan with personalized lyrics using the LLM.
  *
@@ -302,8 +485,10 @@ Use the selected song concept and the specific problem, skill, attempt, and game
 export async function generateSongPrompt(
   input: SongPromptInput,
   genre: string = 'any',
-  userId?: string
+  userId?: string,
+  options: GenerateSongPromptOptions = {}
 ): Promise<SongCompositionOutput> {
+  const validationPolicy = options.validationPolicy ?? OFF_VALIDATION_POLICY
   const genres =
     genre === 'any'
       ? []
@@ -319,39 +504,173 @@ export async function generateSongPrompt(
         : ''
   const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildSongUserPrompt(input)}${genreInstruction}`
 
-  const callArgs = { prompt: fullPrompt, schema: songLLMOutputSchema }
-  const response = userId
-    ? await trackedCall(llm, callArgs, {
-        userId,
-        feature: AiFeature.SESSION_SONG_PROMPT,
-      })
-    : await llm.call(callArgs)
+  const responses = [await callSongPlanLlm(fullPrompt, userId)]
+  const rawCandidate = toSongPlanCandidate(responses[0].data)
+  const rawValidation = validateCompositionPlan(input, rawCandidate)
+  const rawTotalDurationMs = rawValidation.totalDurationMs
 
-  const { title, positive_global_styles, negative_global_styles, sections } = response.data
+  if (validationPolicy.mode === 'off') {
+    const finalCandidate = clampCompositionPlanDuration(rawCandidate)
+    const finalPlan = toCompositionPlan(finalCandidate)
+    return buildCompositionOutput({
+      candidate: finalCandidate,
+      input,
+      responses,
+      validation: buildValidationMetadata({
+        policy: validationPolicy,
+        outcome: 'skipped',
+        issues: [],
+        rawTotalDurationMs,
+        finalPlan,
+        repaired: false,
+        fallbackUsed: false,
+        repairAttempts: 0,
+      }),
+    })
+  }
 
-  // Clamp total duration to 60s — proportionally scale sections if LLM overshoots
-  const MAX_DURATION_MS = 60_000
-  const totalMs = sections.reduce((sum, s) => sum + s.duration_ms, 0)
-  if (totalMs > MAX_DURATION_MS) {
-    const scale = MAX_DURATION_MS / totalMs
-    for (const section of sections) {
-      section.duration_ms = Math.round(section.duration_ms * scale)
+  if (validationPolicy.mode === 'observe' || rawValidation.ok) {
+    const finalCandidate = clampCompositionPlanDuration(rawCandidate)
+    const finalPlan = toCompositionPlan(finalCandidate)
+    const metadata = buildValidationMetadata({
+      policy: validationPolicy,
+      outcome: rawValidation.ok ? 'passed' : 'flagged',
+      issues: rawValidation.issues,
+      rawTotalDurationMs,
+      finalPlan,
+      repaired: false,
+      fallbackUsed: false,
+      repairAttempts: 0,
+    })
+    logValidationResult(metadata, finalCandidate.title, validationPolicy.logPassingPlans)
+    return buildCompositionOutput({
+      candidate: finalCandidate,
+      input,
+      responses,
+      validation: metadata,
+    })
+  }
+
+  let latestCandidate = rawCandidate
+  let latestValidation = rawValidation
+  let repaired = false
+  let repairAttempts = 0
+
+  for (let i = 0; i < validationPolicy.maxRepairAttempts; i++) {
+    repairAttempts++
+    const repairPrompt = buildRepairPrompt({
+      originalPrompt: fullPrompt,
+      originalPlan: latestCandidate,
+      validation: latestValidation,
+      input,
+    })
+    const repairResponse = await callSongPlanLlm(repairPrompt, userId)
+    responses.push(repairResponse)
+
+    latestCandidate = toSongPlanCandidate(repairResponse.data)
+    latestValidation = validateCompositionPlan(input, latestCandidate)
+    if (latestValidation.ok) {
+      repaired = true
+      break
     }
   }
 
-  return {
-    title,
-    plan: {
-      positive_global_styles,
-      negative_global_styles,
-      sections,
-    },
-    ...(input.songConcept && { songConcept: input.songConcept }),
-    llmMeta: {
-      provider: response.provider,
-      model: response.model,
-      usage: response.usage,
-      attempts: response.attempts,
-    },
+  let finalCandidate = repaired ? latestCandidate : rawCandidate
+  let fallbackUsed = false
+  let outcome: SongPlanValidationOutcome = repaired ? 'repaired' : 'flagged'
+
+  if (!repaired && validationPolicy.fallbackOnFailedRepair) {
+    const fallbackCandidate = buildFallbackSongPlan(input, rawCandidate, genre)
+    const fallbackValidation = validateCompositionPlan(input, fallbackCandidate)
+    if (fallbackValidation.ok) {
+      finalCandidate = fallbackCandidate
+      fallbackUsed = true
+      outcome = 'fallback'
+    } else if (validationPolicy.mode === 'enforce') {
+      const finalPlan = toCompositionPlan(fallbackCandidate)
+      const metadata = buildValidationMetadata({
+        policy: validationPolicy,
+        outcome: 'blocked',
+        issues: fallbackValidation.issues,
+        rawTotalDurationMs,
+        finalPlan,
+        repaired: false,
+        fallbackUsed: true,
+        repairAttempts,
+      })
+      logValidationResult(metadata, fallbackCandidate.title, true)
+      throw new SongCompositionValidationError(
+        `Session song composition plan failed validation: ${fallbackValidation.issues
+          .map((issue) => issue.code)
+          .join(', ')}`,
+        metadata,
+        fallbackCandidate
+      )
+    }
+  } else if (!repaired && validationPolicy.mode === 'enforce') {
+    const finalPlan = toCompositionPlan(rawCandidate)
+    const metadata = buildValidationMetadata({
+      policy: validationPolicy,
+      outcome: 'blocked',
+      issues: latestValidation.issues,
+      rawTotalDurationMs,
+      finalPlan,
+      repaired: false,
+      fallbackUsed: false,
+      repairAttempts,
+    })
+    logValidationResult(metadata, rawCandidate.title, true)
+    throw new SongCompositionValidationError(
+      `Session song composition plan failed validation: ${latestValidation.issues
+        .map((issue) => issue.code)
+        .join(', ')}`,
+      metadata,
+      rawCandidate
+    )
   }
+
+  if (validationPolicy.mode === 'enforce') {
+    const finalValidation = validateCompositionPlan(input, finalCandidate)
+    if (!finalValidation.ok) {
+      const finalPlan = toCompositionPlan(finalCandidate)
+      const metadata = buildValidationMetadata({
+        policy: validationPolicy,
+        outcome: 'blocked',
+        issues: finalValidation.issues,
+        rawTotalDurationMs,
+        finalPlan,
+        repaired,
+        fallbackUsed,
+        repairAttempts,
+      })
+      logValidationResult(metadata, finalCandidate.title, true)
+      throw new SongCompositionValidationError(
+        `Session song composition plan failed validation: ${finalValidation.issues
+          .map((issue) => issue.code)
+          .join(', ')}`,
+        metadata,
+        finalCandidate
+      )
+    }
+  }
+
+  finalCandidate = clampCompositionPlanDuration(finalCandidate)
+  const finalPlan = toCompositionPlan(finalCandidate)
+  const metadata = buildValidationMetadata({
+    policy: validationPolicy,
+    outcome,
+    issues: rawValidation.issues,
+    rawTotalDurationMs,
+    finalPlan,
+    repaired,
+    fallbackUsed,
+    repairAttempts,
+  })
+  logValidationResult(metadata, finalCandidate.title, validationPolicy.logPassingPlans)
+  return buildCompositionOutput({
+    candidate: finalCandidate,
+    input,
+    responses,
+    validation: metadata,
+  })
 }

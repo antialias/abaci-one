@@ -71,7 +71,7 @@ export const userPushSubscriptions = sqliteTable(
 // ---------------------------------------------------------------------------
 
 /** Notification types the system supports */
-export type NotificationType = 'session-started' | 'postcard-ready'
+export type NotificationType = 'session-started' | 'postcard-ready' | 'admin-song-failed'
 
 /** Per-channel override (null = inherit from user default) */
 export interface ChannelOverrides {

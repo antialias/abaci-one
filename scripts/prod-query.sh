@@ -18,8 +18,9 @@ fi
 
 SQL="$1"
 
-# Find a running pod
-POD=$(kubectl get pods -n abaci -l app=abaci-app -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+# Find a running pod. During deploys there can be initializing app pods with
+# the same label; execing into those fails before the app container exists.
+POD=$(kubectl get pods -n abaci -l app=abaci-app --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 if [ -z "$POD" ]; then
   echo "Error: no running abaci-app pod found" >&2
   exit 1
@@ -57,4 +58,4 @@ fetch('http://libsql.abaci.svc.cluster.local:8080/v2/pipeline', {
 .catch(err => { console.error('Fetch error:', err.message); process.exit(1); });
 NODESCRIPT
 
-kubectl exec -n abaci "$POD" -- node -e "$NODE_SCRIPT" -- "$SQL"
+kubectl exec -n abaci -c app "$POD" -- node -e "$NODE_SCRIPT" -- "$SQL"

@@ -18,6 +18,15 @@ describe('classifySongFailure', () => {
     expect(result.remediation?.href).toContain('elevenlabs.io')
   })
 
+  it('classifies missing ElevenLabs music config as missing_config', () => {
+    const result = classifySongFailure(
+      new Error('ELEVENLABS_MUSIC_API_KEY environment variable is not set')
+    )
+    expect(result.kind).toBe('missing_config')
+    expect(result.ownerMessage).toContain('ELEVENLABS_MUSIC_API_KEY')
+    expect(result.remediation?.href).toContain('elevenlabs.io')
+  })
+
   it('classifies "insufficient credits" as quota_exceeded', () => {
     const result = classifySongFailure(new Error('elevenlabs: insufficient credits available'))
     expect(result.kind).toBe('quota_exceeded')

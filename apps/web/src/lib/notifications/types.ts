@@ -20,6 +20,15 @@ export interface PostcardReadyPayload {
   postcardUrl: string
 }
 
+export interface AdminSongFailedPayload {
+  songId: string
+  sessionPlanId: string
+  playerId: string
+  playerName: string
+  failureKind: string
+  adminUrl: string
+}
+
 // ---------------------------------------------------------------------------
 // Discriminated union of all notification events
 // ---------------------------------------------------------------------------
@@ -27,6 +36,7 @@ export interface PostcardReadyPayload {
 export type NotificationEvent =
   | { type: 'session-started'; data: SessionStartedPayload }
   | { type: 'postcard-ready'; data: PostcardReadyPayload }
+  | { type: 'admin-song-failed'; data: AdminSongFailedPayload }
 
 /**
  * Extract the payload type for a given notification type.
@@ -113,6 +123,13 @@ export function formatNotificationContent(event: NotificationEvent): Notificatio
         body: 'Tap to view your postcard',
         icon: event.data.thumbnailUrl ?? '/icon-192x192.png',
         url: event.data.postcardUrl,
+      }
+    case 'admin-song-failed':
+      return {
+        title: `Session song failed for ${event.data.playerName}`,
+        body: `${event.data.failureKind.replace('_', ' ')}. Open the songs dashboard to inspect and retry.`,
+        icon: '/icon-192x192.png',
+        url: event.data.adminUrl,
       }
   }
 }

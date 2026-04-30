@@ -69,6 +69,13 @@ variable "gemini_api_key" {
   default     = ""
 }
 
+variable "elevenlabs_music_api_key" {
+  description = "ElevenLabs Music API key for session song generation"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "nfs_server" {
   description = "NFS server IP address (NAS)"
   type        = string

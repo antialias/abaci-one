@@ -78,6 +78,8 @@ function ctaLabel(event: NotificationEvent): string {
       return 'Watch Now'
     case 'postcard-ready':
       return 'View Postcard'
+    case 'admin-song-failed':
+      return 'Open Songs Dashboard'
   }
 }
 

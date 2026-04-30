@@ -2,15 +2,19 @@
  * Admin Songs API
  *
  * GET  /api/admin/songs — List all session songs with player/plan context
- * POST /api/admin/songs — Retry a failed song generation
+ * POST /api/admin/songs — Retry/regenerate songs or flag content issues
  */
 
-import { NextResponse } from 'next/server'
 import { desc, eq, inArray } from 'drizzle-orm'
 import { stat } from 'fs/promises'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
-import { startSessionSongGeneration } from '@/lib/tasks/session-song'
+import { getSongPlanValidationSummary } from '@/lib/session-song/admin-validation-summary'
+import {
+  retrySessionSongGeneration,
+  type SessionSongRegenerationMode,
+} from '@/lib/tasks/session-song'
 
 export const GET = withAuth(
   async (request) => {
@@ -29,8 +33,16 @@ export const GET = withAuth(
         localFilePath: schema.sessionSongs.localFilePath,
         durationSeconds: schema.sessionSongs.durationSeconds,
         errorMessage: schema.sessionSongs.errorMessage,
+        failureKind: schema.sessionSongs.failureKind,
         backgroundTaskId: schema.sessionSongs.backgroundTaskId,
         triggerSource: schema.sessionSongs.triggerSource,
+        contentReviewStatus: schema.sessionSongs.contentReviewStatus,
+        contentReviewNote: schema.sessionSongs.contentReviewNote,
+        contentReviewedAt: schema.sessionSongs.contentReviewedAt,
+        contentReviewedBy: schema.sessionSongs.contentReviewedBy,
+        regenerationCount: schema.sessionSongs.regenerationCount,
+        lastRegenerationReason: schema.sessionSongs.lastRegenerationReason,
+        lastRegenerationAt: schema.sessionSongs.lastRegenerationAt,
         createdAt: schema.sessionSongs.createdAt,
         completedAt: schema.sessionSongs.completedAt,
       })
@@ -82,6 +94,7 @@ export const GET = withAuth(
         // Extract title from llmOutput
         const llmOutput = song.llmOutput as Record<string, unknown> | null
         const title = (llmOutput?.title as string) ?? null
+        const validationSummary = getSongPlanValidationSummary(llmOutput)
 
         // Extract composition plan summary
         const plan = llmOutput?.plan as Record<string, unknown> | null
@@ -108,7 +121,15 @@ export const GET = withAuth(
           title,
           triggerSource: song.triggerSource,
           errorMessage: song.errorMessage,
+          failureKind: song.failureKind,
           backgroundTaskId: song.backgroundTaskId,
+          contentReviewStatus: song.contentReviewStatus,
+          contentReviewNote: song.contentReviewNote,
+          contentReviewedAt: song.contentReviewedAt,
+          contentReviewedBy: song.contentReviewedBy,
+          regenerationCount: song.regenerationCount,
+          lastRegenerationReason: song.lastRegenerationReason,
+          lastRegenerationAt: song.lastRegenerationAt,
           fileExists,
           fileSizeBytes,
           durationSeconds: song.durationSeconds,
@@ -118,6 +139,7 @@ export const GET = withAuth(
           styles: positiveStyles,
           totalDurationMs,
           sectionSummary,
+          ...validationSummary,
           // Full data for detail view
           promptInput: song.promptInput,
           llmOutput: song.llmOutput,
@@ -130,10 +152,15 @@ export const GET = withAuth(
       total: allSongs.length,
       completed: allSongs.filter((s) => s.status === 'completed').length,
       failed: allSongs.filter((s) => s.status === 'failed').length,
+      flagged: allSongs.filter((s) => s.contentReviewStatus === 'flagged').length,
       generating: allSongs.filter(
         (s) =>
           s.status === 'pending' || s.status === 'prompt_generating' || s.status === 'generating'
       ).length,
+      validationFlagged: songs.filter((s) => s.validationIssueCount > 0).length,
+      validationRepaired: songs.filter((s) => s.validationOutcome === 'repaired').length,
+      validationFallback: songs.filter((s) => s.validationOutcome === 'fallback').length,
+      validationBlocked: songs.filter((s) => s.validationOutcome === 'blocked').length,
     }
 
     return NextResponse.json({ songs, stats })
@@ -142,15 +169,24 @@ export const GET = withAuth(
 )
 
 export const POST = withAuth(
-  async (request) => {
+  async (request, { userId }) => {
     const body = await request.json()
-    const { songId, action } = body as { songId: string; action: string }
+    const { songId, action } = body as {
+      songId: string
+      action: string
+      mode?: SessionSongRegenerationMode
+      reason?: string
+    }
 
-    if (action !== 'retry') {
+    if (!songId) {
+      return NextResponse.json({ error: 'Song ID is required' }, { status: 400 })
+    }
+
+    if (!['retry', 'regenerate', 'flag_content', 'clear_content_flag'].includes(action)) {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
 
-    // Look up the failed song
+    // Look up the song
     const [song] = await db
       .select()
       .from(schema.sessionSongs)
@@ -161,25 +197,55 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'Song not found' }, { status: 404 })
     }
 
-    if (song.status !== 'failed') {
-      return NextResponse.json({ error: 'Can only retry failed songs' }, { status: 400 })
+    if (action === 'flag_content') {
+      const reason = typeof body.reason === 'string' ? body.reason.trim() : ''
+      if (!reason) {
+        return NextResponse.json({ error: 'Flag reason is required' }, { status: 400 })
+      }
+
+      await db
+        .update(schema.sessionSongs)
+        .set({
+          contentReviewStatus: 'flagged',
+          contentReviewNote: reason,
+          contentReviewedAt: new Date(),
+          contentReviewedBy: userId,
+        })
+        .where(eq(schema.sessionSongs.id, songId))
+
+      return NextResponse.json({ ok: true })
     }
 
-    // Delete the failed record so startSessionSongGeneration creates a fresh one
-    await db.delete(schema.sessionSongs).where(eq(schema.sessionSongs.id, songId))
+    if (action === 'clear_content_flag') {
+      await db
+        .update(schema.sessionSongs)
+        .set({
+          contentReviewStatus: 'none',
+          contentReviewNote: null,
+          contentReviewedAt: new Date(),
+          contentReviewedBy: userId,
+        })
+        .where(eq(schema.sessionSongs.id, songId))
 
-    // Re-trigger generation
-    const result = await startSessionSongGeneration({
-      sessionPlanId: song.sessionPlanId,
-      playerId: song.playerId,
-      triggerSource:
-        (song.triggerSource as 'smart_trigger' | 'completion_fallback') ?? 'completion_fallback',
+      return NextResponse.json({ ok: true })
+    }
+
+    const requestedMode = body.mode ?? (action === 'regenerate' ? 'regenerate_prompt' : 'auto')
+    if (!['auto', 'reuse_prompt', 'regenerate_prompt'].includes(requestedMode)) {
+      return NextResponse.json({ error: 'Invalid regeneration mode' }, { status: 400 })
+    }
+
+    const result = await retrySessionSongGeneration(songId, {
+      mode: requestedMode,
+      reason: typeof body.reason === 'string' ? body.reason : undefined,
+      userId,
     })
 
     return NextResponse.json({
       ok: true,
-      newSongId: result.songId,
+      songId: result.songId,
       taskId: result.taskId,
+      mode: result.mode,
     })
   },
   { role: 'admin' }

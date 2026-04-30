@@ -52,7 +52,10 @@ export function SystemHealthBanner() {
   // Only escalate on server-level kinds. Skip rate_limited (transient) and
   // unknown (could be one-offs), and skip transient.
   const escalating = data.songFailures.filter(
-    (g) => g.failureKind === 'auth_invalid' || g.failureKind === 'quota_exceeded'
+    (g) =>
+      g.failureKind === 'missing_config' ||
+      g.failureKind === 'auth_invalid' ||
+      g.failureKind === 'quota_exceeded'
   )
   if (escalating.length === 0) return null
 

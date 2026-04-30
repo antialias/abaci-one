@@ -108,6 +108,7 @@ async function resolveDeliveryTarget(
     Record<NotificationType, { inApp: boolean; push: boolean; email: boolean }>
   > = {
     'postcard-ready': { inApp: true, push: false, email: true },
+    'admin-song-failed': { inApp: true, push: true, email: true },
   }
   const defaults = typeDefaults[eventType] ?? {
     inApp: true,

@@ -10,21 +10,32 @@
  * 6. Save MP3 locally, mark completed, emit Socket.IO event
  */
 
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { db, schema } from '@/db'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
-import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
+import type {
+  SessionSong,
+  SessionSongLLMOutput,
+  SessionSongTriggerSource,
+} from '@/db/schema/session-songs'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
+import { getFlag } from '@/lib/feature-flags'
 import { getSocketIO } from '@/lib/socket-io'
-import { generateMusic } from '../elevenlabs/music-client'
+import { type CompositionPlan, generateMusic } from '../elevenlabs/music-client'
 import { classifySongFailure } from '../session-song/classify-failure'
+import {
+  resolveSongPlanValidationPolicy,
+  SESSION_SONG_PLAN_VALIDATION_FLAG,
+  SongCompositionValidationError,
+  type SongPlanValidationPolicy,
+} from '../session-song/composition-plan-validation'
 import { resolveSongGenres, selectSongConcept } from '../session-song/concept-selector'
-import { extractSessionStats } from '../session-song/extract-session-stats'
-import { generateSongPrompt } from '../session-song/prompt-generator'
-import { createTask } from '../task-manager'
+import { extractSessionStats, type SongPromptInput } from '../session-song/extract-session-stats'
+import { generateSongPrompt, type SongCompositionOutput } from '../session-song/prompt-generator'
+import { createTask, type TaskHandle } from '../task-manager'
 import type { SessionSongEvent } from './events'
 
 // ============================================================================
@@ -41,6 +52,15 @@ export interface SessionSongInput {
 export interface SessionSongOutput {
   songId: string
   status: string
+}
+
+export type SessionSongRegenerationMode = 'auto' | 'reuse_prompt' | 'regenerate_prompt'
+
+interface SongPromptBuildResult {
+  playerName: string
+  disabled: boolean
+  promptInput?: SongPromptInput
+  genrePreference?: string
 }
 
 const SONGS_DIR = join(process.cwd(), 'data', 'audio', 'songs')
@@ -95,6 +115,266 @@ function buildConceptSeed(
     .join(':')
 }
 
+async function getSongPlanValidationPolicy(userId?: string): Promise<SongPlanValidationPolicy> {
+  try {
+    const flag = await getFlag(SESSION_SONG_PLAN_VALIDATION_FLAG, userId ? { userId } : undefined)
+    return resolveSongPlanValidationPolicy(flag)
+  } catch (error) {
+    console.error('[session-song] Failed to load plan-validation feature flag:', error)
+    return resolveSongPlanValidationPolicy(null)
+  }
+}
+
+function getCompositionPlan(llmOutput: unknown): CompositionPlan | null {
+  const output = asRecord(llmOutput)
+  const plan = asRecord(output?.plan)
+  if (!plan) return null
+
+  if (!Array.isArray(plan.positive_global_styles)) return null
+  if (!Array.isArray(plan.negative_global_styles)) return null
+  if (!Array.isArray(plan.sections)) return null
+
+  return plan as unknown as CompositionPlan
+}
+
+function getSongTitle(llmOutput: unknown): string | null {
+  const title = asRecord(llmOutput)?.title
+  return typeof title === 'string' ? title : null
+}
+
+async function getPlayerName(playerId: string): Promise<string> {
+  const [player] = await db
+    .select({ name: schema.players.name })
+    .from(schema.players)
+    .where(eq(schema.players.id, playerId))
+    .limit(1)
+
+  return player?.name ?? 'Unknown player'
+}
+
+async function buildSongPromptInput(input: SessionSongInput): Promise<SongPromptBuildResult> {
+  const [plan] = await db
+    .select()
+    .from(schema.sessionPlans)
+    .where(eq(schema.sessionPlans.id, input.sessionPlanId))
+    .limit(1)
+
+  const [player] = await db
+    .select()
+    .from(schema.players)
+    .where(eq(schema.players.id, input.playerId))
+    .limit(1)
+
+  if (!plan || !player) {
+    throw new Error('Session plan or player not found')
+  }
+
+  const [prefRow] = await db
+    .select()
+    .from(schema.playerSessionPreferences)
+    .where(eq(schema.playerSessionPreferences.playerId, input.playerId))
+    .limit(1)
+
+  const prefs = prefRow ? (JSON.parse(prefRow.config) as PlayerSessionPreferencesConfig) : null
+  const studentSongEnabled = prefs?.sessionSongEnabled ?? true
+  if (!studentSongEnabled) {
+    return { playerName: player.name, disabled: true }
+  }
+
+  const rawGenre = prefs?.sessionSongGenre ?? 'shuffle'
+
+  const recentPlans = await db
+    .select()
+    .from(schema.sessionPlans)
+    .where(
+      and(
+        eq(schema.sessionPlans.playerId, input.playerId),
+        eq(schema.sessionPlans.status, 'completed')
+      )
+    )
+    .orderBy(schema.sessionPlans.createdAt)
+    .limit(10)
+
+  const recentSessions = recentPlans.map((p) => {
+    const results = (p as { results: Array<{ isCorrect: boolean }> }).results ?? []
+    const correct = results.filter((r) => r.isCorrect).length
+    return {
+      accuracy: results.length > 0 ? correct / results.length : 0,
+    }
+  })
+
+  const recentSongs = await db
+    .select({
+      promptInput: schema.sessionSongs.promptInput,
+      llmOutput: schema.sessionSongs.llmOutput,
+    })
+    .from(schema.sessionSongs)
+    .where(
+      and(
+        eq(schema.sessionSongs.playerId, input.playerId),
+        eq(schema.sessionSongs.status, 'completed')
+      )
+    )
+    .orderBy(desc(schema.sessionSongs.createdAt))
+    .limit(10)
+
+  const [gameBreakResult] = await db
+    .select()
+    .from(schema.gameResults)
+    .where(
+      and(
+        eq(schema.gameResults.sessionId, input.sessionPlanId),
+        eq(schema.gameResults.sessionType, 'practice-break')
+      )
+    )
+    .limit(1)
+
+  const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult, {
+    breakSelectedGame: plan.breakSelectedGame ?? null,
+    breakReason: plan.breakReason ?? null,
+    breakResults: plan.breakResults ?? null,
+  })
+  const conceptContext = {
+    seed: buildConceptSeed(input, plan),
+    recentConceptIds: getRecentSongConceptIds(recentSongs),
+    recentGenreTags: getRecentSongGenreTags(recentSongs),
+    genrePreference: rawGenre,
+  }
+  const songConcept = selectSongConcept(stats, conceptContext)
+  const genrePreference = resolveSongGenres(rawGenre, songConcept, conceptContext)
+
+  return {
+    playerName: player.name,
+    disabled: false,
+    promptInput: { ...stats, songConcept },
+    genrePreference,
+  }
+}
+
+async function emitSongReady(input: SessionSongInput, songId: string) {
+  try {
+    const io = await getSocketIO()
+    if (io) {
+      io.emit(`session-song:ready:${input.sessionPlanId}`, {
+        songId,
+        planId: input.sessionPlanId,
+      })
+    }
+  } catch {
+    // Socket.IO not available — client will pick up via polling
+  }
+}
+
+async function generateAndSaveMusic({
+  songId,
+  input,
+  handle,
+  llmOutput,
+  markContentResolved = false,
+}: {
+  songId: string
+  input: SessionSongInput
+  handle: TaskHandle<SessionSongOutput, SessionSongEvent>
+  llmOutput: SongCompositionOutput | Pick<SessionSongLLMOutput, 'title' | 'plan'>
+  markContentResolved?: boolean
+}) {
+  handle.emit({ type: 'song_generating_music' })
+  handle.setProgress(60, 'Creating your music...')
+
+  await db
+    .update(schema.sessionSongs)
+    .set({
+      status: 'generating',
+      errorMessage: null,
+      failureKind: null,
+    })
+    .where(eq(schema.sessionSongs.id, songId))
+
+  const { audioBuffer } = await generateMusic({
+    compositionPlan: llmOutput.plan,
+  })
+
+  if (input._userId) {
+    recordElevenLabsUsage(llmOutput.plan, {
+      userId: input._userId,
+      feature: AiFeature.MUSIC_GENERATE,
+      backgroundTaskId: handle.id,
+    })
+  }
+
+  handle.setProgress(90, 'Saving your song...')
+
+  const localPath = join(SONGS_DIR, `${songId}.mp3`)
+  await mkdir(dirname(localPath), { recursive: true })
+  await writeFile(localPath, audioBuffer)
+
+  await db
+    .update(schema.sessionSongs)
+    .set({
+      status: 'completed',
+      localFilePath: localPath,
+      completedAt: new Date(),
+      errorMessage: null,
+      failureKind: null,
+      ...(markContentResolved ? { contentReviewStatus: 'resolved' } : {}),
+    })
+    .where(eq(schema.sessionSongs.id, songId))
+
+  await emitSongReady(input, songId)
+
+  handle.complete({ songId, status: 'completed' })
+}
+
+async function notifyAdminsOfSongFailure({
+  songId,
+  input,
+  playerName,
+  failureKind,
+}: {
+  songId: string
+  input: SessionSongInput
+  playerName: string
+  failureKind: string
+}) {
+  try {
+    const admins = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.role, 'admin'))
+
+    if (admins.length === 0) return
+
+    const [{ bootstrapChannels }, { notifyUser }] = await Promise.all([
+      import('@/lib/notifications/bootstrap'),
+      import('@/lib/notifications/dispatcher'),
+    ])
+
+    bootstrapChannels()
+
+    const event = {
+      type: 'admin-song-failed' as const,
+      data: {
+        songId,
+        sessionPlanId: input.sessionPlanId,
+        playerId: input.playerId,
+        playerName,
+        failureKind,
+        adminUrl: '/admin/songs',
+      },
+    }
+
+    const results = await Promise.allSettled(admins.map((admin) => notifyUser(admin.id, event)))
+    const failures = results.filter((result) => result.status === 'rejected')
+    if (failures.length > 0) {
+      console.error(
+        `[session-song] Failed to notify ${failures.length} admin(s) about song failure`
+      )
+    }
+  } catch (error) {
+    console.error('[session-song] Failed to notify admins about song failure:', error)
+  }
+}
+
 // ============================================================================
 // Handler
 // ============================================================================
@@ -143,6 +423,8 @@ export async function startSessionSongGeneration(
     'session-song',
     inputWithUser,
     async (handle) => {
+      let playerNameForFailure = 'Unknown player'
+
       try {
         // Step 1: Extract stats
         handle.emit({ type: 'song_extracting_stats' })
@@ -163,6 +445,7 @@ export async function startSessionSongGeneration(
         if (!plan || !player) {
           throw new Error('Session plan or player not found')
         }
+        playerNameForFailure = player.name
 
         // Check per-student preference
         const [prefRow] = await db
@@ -265,7 +548,10 @@ export async function startSessionSongGeneration(
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
 
-        const llmOutput = await generateSongPrompt(promptInput, genrePreference, input._userId)
+        const validationPolicy = await getSongPlanValidationPolicy(input._userId)
+        const llmOutput = await generateSongPrompt(promptInput, genrePreference, input._userId, {
+          validationPolicy,
+        })
 
         handle.emit({
           type: 'song_prompt_ready',
@@ -336,6 +622,18 @@ export async function startSessionSongGeneration(
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error'
         const classified = classifySongFailure(error)
+        const blockedOutput =
+          error instanceof SongCompositionValidationError && error.candidate
+            ? {
+                title: error.candidate.title,
+                plan: {
+                  positive_global_styles: error.candidate.positive_global_styles,
+                  negative_global_styles: error.candidate.negative_global_styles,
+                  sections: error.candidate.sections,
+                },
+                validation: error.metadata,
+              }
+            : null
 
         handle.emit({ type: 'song_error', error: message })
 
@@ -346,8 +644,18 @@ export async function startSessionSongGeneration(
             status: 'failed',
             errorMessage: message,
             failureKind: classified.kind,
+            ...(blockedOutput && {
+              llmOutput: blockedOutput as unknown as Record<string, unknown>,
+            }),
           })
           .where(eq(schema.sessionSongs.id, songId))
+
+        await notifyAdminsOfSongFailure({
+          songId,
+          input,
+          playerName: playerNameForFailure,
+          failureKind: classified.kind,
+        })
 
         handle.fail(message)
       }
@@ -362,4 +670,227 @@ export async function startSessionSongGeneration(
     .where(eq(schema.sessionSongs.id, songId))
 
   return { taskId, songId }
+}
+
+export interface RetrySessionSongOptions {
+  mode?: SessionSongRegenerationMode
+  reason?: string
+  userId?: string
+}
+
+function isSongActive(status: string): boolean {
+  return status === 'pending' || status === 'prompt_generating' || status === 'generating'
+}
+
+function resolveRetryMode(
+  song: SessionSong,
+  requestedMode: SessionSongRegenerationMode
+): Exclude<SessionSongRegenerationMode, 'auto'> {
+  if (requestedMode === 'auto') {
+    return getCompositionPlan(song.llmOutput) ? 'reuse_prompt' : 'regenerate_prompt'
+  }
+  return requestedMode
+}
+
+function getValidationBlockedOutput(error: unknown) {
+  if (!(error instanceof SongCompositionValidationError) || !error.candidate) {
+    return null
+  }
+
+  return {
+    title: error.candidate.title,
+    plan: {
+      positive_global_styles: error.candidate.positive_global_styles,
+      negative_global_styles: error.candidate.negative_global_styles,
+      sections: error.candidate.sections,
+    },
+    validation: error.metadata,
+  }
+}
+
+/**
+ * Retry or regenerate an existing song without deleting the row.
+ *
+ * This keeps the failed song row as the durable queue:
+ * - LLM failures retain promptInput and can regenerate lyrics later.
+ * - ElevenLabs failures retain llmOutput.plan and can resume at music generation.
+ * - Flagged completed songs can regenerate lyrics/music after prompt fixes ship.
+ */
+export async function retrySessionSongGeneration(
+  songId: string,
+  options: RetrySessionSongOptions = {}
+): Promise<{
+  taskId: string
+  songId: string
+  mode: Exclude<SessionSongRegenerationMode, 'auto'>
+}> {
+  const [song] = await db
+    .select()
+    .from(schema.sessionSongs)
+    .where(eq(schema.sessionSongs.id, songId))
+    .limit(1)
+
+  if (!song) {
+    throw new Error('Song not found')
+  }
+
+  if (isSongActive(song.status)) {
+    throw new Error(`Song is already ${song.status}`)
+  }
+
+  const mode = resolveRetryMode(song, options.mode ?? 'auto')
+  const reusablePlan = getCompositionPlan(song.llmOutput)
+  if (mode === 'reuse_prompt' && !reusablePlan) {
+    throw new Error('No saved composition plan is available; regenerate lyrics instead')
+  }
+
+  const retryReason =
+    options.reason ??
+    (mode === 'reuse_prompt' ? 'Retry from saved composition plan' : 'Regenerate lyrics and music')
+  const markContentResolved = song.contentReviewStatus === 'flagged' && mode === 'regenerate_prompt'
+  const inputWithUser: SessionSongInput = {
+    sessionPlanId: song.sessionPlanId,
+    playerId: song.playerId,
+    triggerSource: (song.triggerSource as SessionSongTriggerSource | null) ?? 'completion_fallback',
+    _userId: options.userId,
+  }
+
+  await db
+    .update(schema.sessionSongs)
+    .set({
+      status: 'pending',
+      errorMessage: null,
+      failureKind: null,
+      backgroundTaskId: null,
+      lastRegenerationReason: retryReason,
+      lastRegenerationAt: new Date(),
+      regenerationCount: sql`${schema.sessionSongs.regenerationCount} + 1`,
+      ...(mode === 'regenerate_prompt' ? { llmOutput: null } : {}),
+    })
+    .where(eq(schema.sessionSongs.id, songId))
+
+  const taskId = await createTask<SessionSongInput, SessionSongOutput, SessionSongEvent>(
+    'session-song',
+    inputWithUser,
+    async (handle) => {
+      let playerNameForFailure = await getPlayerName(song.playerId)
+
+      try {
+        if (mode === 'reuse_prompt') {
+          const title = getSongTitle(song.llmOutput) ?? 'Session song'
+          handle.emit({ type: 'song_prompt_ready', title })
+          handle.setProgress(50, 'Song lyrics ready!')
+
+          await generateAndSaveMusic({
+            songId,
+            input: inputWithUser,
+            handle,
+            llmOutput: { title, plan: reusablePlan! },
+            markContentResolved,
+          })
+          return
+        }
+
+        handle.emit({ type: 'song_extracting_stats' })
+        handle.setProgress(10, 'Analyzing session data...')
+
+        const built = await buildSongPromptInput(inputWithUser)
+        playerNameForFailure = built.playerName
+
+        if (built.disabled) {
+          handle.complete({ songId, status: 'disabled' })
+          await db
+            .update(schema.sessionSongs)
+            .set({
+              status: 'failed',
+              errorMessage: 'Songs disabled for this student',
+              failureKind: 'unknown',
+            })
+            .where(eq(schema.sessionSongs.id, songId))
+          return
+        }
+
+        if (!built.promptInput || !built.genrePreference) {
+          throw new Error('Failed to build song prompt input')
+        }
+
+        await db
+          .update(schema.sessionSongs)
+          .set({
+            promptInput: built.promptInput as unknown as Record<string, unknown>,
+            status: 'prompt_generating',
+            errorMessage: null,
+            failureKind: null,
+          })
+          .where(eq(schema.sessionSongs.id, songId))
+
+        handle.emit({ type: 'song_generating_prompt' })
+        handle.setProgress(30, 'Writing your song...')
+
+        const validationPolicy = await getSongPlanValidationPolicy(inputWithUser._userId)
+        const llmOutput = await generateSongPrompt(
+          built.promptInput,
+          built.genrePreference,
+          inputWithUser._userId,
+          { validationPolicy }
+        )
+
+        handle.emit({
+          type: 'song_prompt_ready',
+          title: llmOutput.title,
+        })
+        handle.setProgress(50, 'Song lyrics ready!')
+
+        await db
+          .update(schema.sessionSongs)
+          .set({
+            llmOutput: llmOutput as unknown as Record<string, unknown>,
+          })
+          .where(eq(schema.sessionSongs.id, songId))
+
+        await generateAndSaveMusic({
+          songId,
+          input: inputWithUser,
+          handle,
+          llmOutput,
+          markContentResolved,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        const classified = classifySongFailure(error)
+        const blockedOutput = getValidationBlockedOutput(error)
+
+        handle.emit({ type: 'song_error', error: message })
+
+        await db
+          .update(schema.sessionSongs)
+          .set({
+            status: 'failed',
+            errorMessage: message,
+            failureKind: classified.kind,
+            ...(blockedOutput && {
+              llmOutput: blockedOutput as unknown as Record<string, unknown>,
+            }),
+          })
+          .where(eq(schema.sessionSongs.id, songId))
+
+        await notifyAdminsOfSongFailure({
+          songId,
+          input: inputWithUser,
+          playerName: playerNameForFailure,
+          failureKind: classified.kind,
+        })
+
+        handle.fail(message)
+      }
+    },
+    options.userId
+  )
+
+  await db
+    .update(schema.sessionSongs)
+    .set({ backgroundTaskId: taskId })
+    .where(eq(schema.sessionSongs.id, songId))
+
+  return { taskId, songId, mode }
 }
