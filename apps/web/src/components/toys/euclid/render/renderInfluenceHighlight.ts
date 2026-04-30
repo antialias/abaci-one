@@ -57,14 +57,21 @@ export interface InfluenceHighlightState {
   /** Cursor screen position during constrained drag (for rubber band line) */
   cursorScreen: { x: number; y: number } | null
   /**
-   * Field-only target — the derived point currently nearest to the cursor,
-   * with valid influence info. Independent of hover hit-test so the
-   * background field can appear smoothly via cursor-proximity falloff
-   * without a hit-test boundary discontinuity.
+   * Field targets — derived points whose constraint-response field
+   * contributes to the background. Each is rendered with its own
+   * proximity factor based on cursor distance, so as the cursor moves
+   * between two derived points their fields naturally crossfade
+   * (one's prox shrinks while the other's grows) — no hard switch.
+   * Updated on every pointer move; entries with negligible proximity
+   * are dropped to bound cost.
    */
-  fieldDerivedPointId: string | null
-  fieldGivenPointId: string | null
-  fieldSubJacobian: [number, number, number, number] | null
+  fieldTargets: FieldTarget[]
+}
+
+export interface FieldTarget {
+  derivedPointId: string
+  givenPointId: string
+  subJacobian: [number, number, number, number]
 }
 
 export function createInfluenceHighlightState(): InfluenceHighlightState {
@@ -78,9 +85,7 @@ export function createInfluenceHighlightState(): InfluenceHighlightState {
     subJacobian: null,
     tension: 0,
     cursorScreen: null,
-    fieldDerivedPointId: null,
-    fieldGivenPointId: null,
-    fieldSubJacobian: null,
+    fieldTargets: [],
   }
 }
 
@@ -182,28 +187,77 @@ function easeOutCubic(t: number): number {
 }
 
 /**
- * Cursor-proximity multiplier for the constraint-response field. As the
- * mouse approaches the derived point being inspected, the field intensifies
- * with a softened inverse-square falloff: f(d) = R² / (R² + d²). At d = 0
- * the factor is 1; at d = R it's ½; for d ≫ R it decays as 1/d² (true
- * inverse-square asymptote). Returns 0 when there is no cursor on canvas —
- * field is hidden entirely.
+ * Distance-based proximity multiplier. Softened inverse-square falloff:
+ * f(d) = R² / (R² + d²). At d = 0 the factor is 1; at d = R it's ½; for
+ * d ≫ R it decays as 1/d² (true inverse-square asymptote).
  */
 const PROXIMITY_HALF_RADIUS_PX = 220
-function computeProximityFactor(
-  pointerWorld: { x: number; y: number } | null,
-  derivedScreen: { x: number; y: number },
+function proximityFromDistance(d: number): number {
+  const r = PROXIMITY_HALF_RADIUS_PX
+  return (r * r) / (r * r + d * d)
+}
+
+/**
+ * Width (px) of the soft Voronoi boundary between adjacent field targets.
+ * Targets at distance > d_min + this contribute weight 0; at distance =
+ * d_min they get weight 1; linearly interpolated in between. Larger →
+ * wider blend zone near bisectors. Smaller → harder Voronoi cells.
+ */
+const VORONOI_TRANSITION_PX = 70
+
+interface FieldRenderItem {
+  target: FieldTarget
+  derivedScreen: { x: number; y: number }
+  distance: number
+  weight: number
+}
+
+/**
+ * Compute the cursor-relative weighting for each field target. Returns the
+ * minimum distance to any target plus a per-target weight that's 1 on the
+ * nearest, falls linearly to 0 for any target farther than VORONOI_TRANSITION_PX
+ * past the nearest, and is normalized so the weights sum to 1. This gives:
+ *   - Firmly near point A: only A's field renders (weight ≈ 1, neighbors 0)
+ *   - Near a bisector between A & B: smooth crossfade (weights split)
+ *   - Far from all: dMin large, caller can use proximity falloff to fade out
+ */
+function computeFieldRenderItems(
+  state: ConstructionState,
   viewport: EuclidViewportState,
   w: number,
-  h: number
-): number {
-  if (!pointerWorld) return 0
+  h: number,
+  pointerWorld: { x: number; y: number } | null,
+  fieldTargets: FieldTarget[]
+): { dMin: number; items: FieldRenderItem[] } | null {
+  if (!pointerWorld || fieldTargets.length === 0) return null
   const cursor = toScreen(pointerWorld.x, pointerWorld.y, viewport, w, h)
-  const dx = cursor.x - derivedScreen.x
-  const dy = cursor.y - derivedScreen.y
-  const d2 = dx * dx + dy * dy
-  const r2 = PROXIMITY_HALF_RADIUS_PX * PROXIMITY_HALF_RADIUS_PX
-  return r2 / (r2 + d2)
+
+  const items: Array<FieldRenderItem & { rawWeight: number }> = []
+  let dMin = Infinity
+  for (const target of fieldTargets) {
+    const pt = getPoint(state, target.derivedPointId)
+    if (!pt) continue
+    const ds = toScreen(pt.x, pt.y, viewport, w, h)
+    const dx = cursor.x - ds.x
+    const dy = cursor.y - ds.y
+    const d = Math.sqrt(dx * dx + dy * dy)
+    if (d < dMin) dMin = d
+    items.push({ target, derivedScreen: ds, distance: d, weight: 0, rawWeight: 0 })
+  }
+  if (items.length === 0) return null
+
+  let sumRaw = 0
+  for (const it of items) {
+    it.rawWeight = Math.max(0, 1 - (it.distance - dMin) / VORONOI_TRANSITION_PX)
+    sumRaw += it.rawWeight
+  }
+  const out: FieldRenderItem[] = items.map((it) => ({
+    target: it.target,
+    derivedScreen: it.derivedScreen,
+    distance: it.distance,
+    weight: sumRaw > 0 ? it.rawWeight / sumRaw : 0,
+  }))
+  return { dMin, items: out }
 }
 
 /** Lerp between two RGB color strings based on t (0..1). Returns CSS rgba(). */
@@ -294,18 +348,44 @@ export function renderConstraintField(
   highlightState: InfluenceHighlightState,
   pointerWorld: { x: number; y: number } | null
 ): boolean {
-  if (!highlightState.fieldDerivedPointId || !highlightState.fieldSubJacobian) return false
+  if (highlightState.fieldTargets.length === 0) return false
 
-  const derivedPt = getPoint(state, highlightState.fieldDerivedPointId)
-  if (!derivedPt) return false
+  const result = computeFieldRenderItems(
+    state,
+    viewport,
+    w,
+    h,
+    pointerWorld,
+    highlightState.fieldTargets
+  )
+  if (!result) return false
+  const globalProx = proximityFromDistance(result.dMin)
+  if (globalProx < 0.005) return false
 
-  const [a, b, c, d] = highlightState.fieldSubJacobian
+  let drewAny = false
+  for (const item of result.items) {
+    const alphaMultiplier = globalProx * item.weight
+    if (alphaMultiplier < 0.005) continue
+    if (renderConstraintFieldForTarget(ctx, viewport, w, h, item, alphaMultiplier)) {
+      drewAny = true
+    }
+  }
+  return drewAny
+}
+
+function renderConstraintFieldForTarget(
+  ctx: CanvasRenderingContext2D,
+  viewport: EuclidViewportState,
+  w: number,
+  h: number,
+  item: FieldRenderItem,
+  alphaMultiplier: number
+): boolean {
+  const [a, b, c, d] = item.target.subJacobian
   const det = a * d - b * c
   if (Math.abs(det) < 1e-9) return false // degenerate — nothing to show
 
-  const derivedScreen = toScreen(derivedPt.x, derivedPt.y, viewport, w, h)
-  const proximityFactor = computeProximityFactor(pointerWorld, derivedScreen, viewport, w, h)
-  if (proximityFactor < 0.005) return false // cursor far from D — field invisible
+  const derivedScreen = item.derivedScreen
 
   const N = 120
   const gains = new Float32Array(N + 1)
@@ -332,7 +412,7 @@ export function renderConstraintField(
   // Build conic gradient anchored at the derived point in screen space.
   // Canvas conic angles measure clockwise from +x — same as our screen θ.
   const grad = ctx.createConicGradient(0, derivedScreen.x, derivedScreen.y)
-  const fieldAlpha = 0.18 * proximityFactor
+  const fieldAlpha = 0.18 * alphaMultiplier
   for (let i = 0; i <= N; i++) {
     const t = i / N
     const absRot = Math.abs(rotations[i])
@@ -446,12 +526,40 @@ export function renderConstraintFieldFlow(
   highlightState: InfluenceHighlightState,
   pointerWorld: { x: number; y: number } | null
 ): boolean {
-  if (!highlightState.fieldDerivedPointId || !highlightState.fieldSubJacobian) return false
+  if (highlightState.fieldTargets.length === 0) return false
 
-  const derivedPt = getPoint(state, highlightState.fieldDerivedPointId)
-  if (!derivedPt) return false
+  const result = computeFieldRenderItems(
+    state,
+    viewport,
+    w,
+    h,
+    pointerWorld,
+    highlightState.fieldTargets
+  )
+  if (!result) return false
+  const globalProx = proximityFromDistance(result.dMin)
+  if (globalProx < 0.005) return false
 
-  const [a, b, c, d] = highlightState.fieldSubJacobian
+  let drewAny = false
+  for (const item of result.items) {
+    const alphaMultiplier = globalProx * item.weight
+    if (alphaMultiplier < 0.005) continue
+    if (renderConstraintFieldFlowForTarget(ctx, viewport, w, h, item, alphaMultiplier)) {
+      drewAny = true
+    }
+  }
+  return drewAny
+}
+
+function renderConstraintFieldFlowForTarget(
+  ctx: CanvasRenderingContext2D,
+  viewport: EuclidViewportState,
+  w: number,
+  h: number,
+  item: FieldRenderItem,
+  alphaMultiplier: number
+): boolean {
+  const [a, b, c, d] = item.target.subJacobian
   const det = a * d - b * c
   if (Math.abs(det) < 1e-9) return false
 
@@ -459,11 +567,7 @@ export function renderConstraintFieldFlow(
   ensureLicResources(dims.lw, dims.lh)
   if (!licCanvas || !licCtx2D || !licImage) return false
 
-  const D = toScreen(derivedPt.x, derivedPt.y, viewport, w, h)
-  const proximityFactor = computeProximityFactor(pointerWorld, D, viewport, w, h)
-  // Skip the (expensive) per-pixel walk entirely when the field would be
-  // imperceptible — at d ≫ R the proximity factor falls below 1%.
-  if (proximityFactor < 0.005) return false
+  const D = item.derivedScreen
   // Map derived-point screen position into LIC pixel space.
   const sxk = licW / w
   const syk = licH / h
@@ -577,7 +681,7 @@ export function renderConstraintFieldFlow(
   const blurPx = Math.max(1.5, upscaleFactor * 1.4)
 
   ctx.save()
-  ctx.globalAlpha = 0.20 * proximityFactor
+  ctx.globalAlpha = 0.20 * alphaMultiplier
   ctx.globalCompositeOperation = 'multiply'
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'

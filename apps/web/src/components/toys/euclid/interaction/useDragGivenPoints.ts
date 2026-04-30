@@ -166,6 +166,24 @@ export function useDragGivenPoints({
       durationMs: number
     } | null = null
     let breakFreeTransitionId: number | null = null
+    /** Last cursor world position seen by solver path — used to detect "stuck" */
+    let prevCursorWorldSolver: { x: number; y: number } | null = null
+    /** Consecutive frames where solver didn't move target despite cursor movement */
+    let solverStuckCount = 0
+
+    // ── Diagnostic logging (filter console by "[stuck-debug]") ──
+    // Per-frame logs are throttled to one every 250ms; discrete events
+    // (drag-start, guard-fired, break-free, solver-revert, etc.) always fire.
+    let lastFrameLogMs = 0
+    function logFrame(data: object): void {
+      const now = performance.now()
+      if (now - lastFrameLogMs < 250) return
+      lastFrameLogMs = now
+      console.log('[stuck-debug] frame', data)
+    }
+    function logEvent(name: string, data?: object): void {
+      console.log(`[stuck-debug] ${name}`, data ?? '')
+    }
 
     function toWorld(sx: number, sy: number, cw: number, ch: number) {
       const v = viewportRef.current
@@ -413,13 +431,23 @@ export function useDragGivenPoints({
       const recipe = RECIPE_REGISTRY[propositionRef.current.id]
       const isPlayground = !!playgroundModeRef?.current
 
-      // Find the nearest derived point with valid (non-rank-deficient)
-      // influence. The proximity factor in the renderer handles the actual
-      // visual fade — we just need to keep the target current.
-      let bestId: string | null = null
-      let bestDist2 = Infinity
-      let bestInf: { bestPointId: string; subJacobian: [number, number, number, number] } | null =
-        null
+      // Find all derived points with valid (non-rank-deficient) influence,
+      // compute screen-space distance to cursor. We render the closest few
+      // simultaneously, each with its own proximity factor, so as the cursor
+      // moves between two derived points their fields naturally crossfade —
+      // no hard switch.
+      const PROX_EPSILON = 0.05
+      // pre-filter radius: prox = R²/(R²+d²) > eps  ⇔  d < R·√(1/eps − 1).
+      // R = 220 px (must match PROXIMITY_HALF_RADIUS_PX in the renderer).
+      const maxD = 220 * Math.sqrt(1 / PROX_EPSILON - 1)
+      const maxD2 = maxD * maxD
+
+      type Candidate = {
+        pt: ReturnType<typeof getAllPoints>[number]
+        d2: number
+        inf: { bestPointId: string; subJacobian: [number, number, number, number] }
+      }
+      const candidates: Candidate[] = []
       for (const pt of getAllPoints(state)) {
         if (!isDerivedOrigin(pt.origin)) continue
         if (!recipe && !isPlayground) continue
@@ -436,23 +464,43 @@ export function useDragGivenPoints({
         const dx = screenX - s.x
         const dy = screenY - s.y
         const d2 = dx * dx + dy * dy
-        if (d2 >= bestDist2) continue
+        if (d2 > maxD2) continue
         const inf = getCachedInfluence(pt.id)
         if (!inf) continue
-        bestId = pt.id
-        bestDist2 = d2
-        bestInf = inf
+        candidates.push({ pt, d2, inf })
       }
 
+      // Sort by ascending distance, keep at most MAX_TARGETS to bound LIC
+      // cost. 3 is plenty for Voronoi junctions where multiple points are
+      // near-equidistant; further targets contribute negligibly anyway.
+      const MAX_TARGETS = 3
+      candidates.sort((a, b) => a.d2 - b.d2)
+      const top = candidates.slice(0, MAX_TARGETS)
+
       const hl = influenceHighlightStateRef.current
-      if (
-        hl.fieldDerivedPointId !== bestId ||
-        hl.fieldGivenPointId !== (bestInf?.bestPointId ?? null) ||
-        hl.fieldSubJacobian !== (bestInf?.subJacobian ?? null)
-      ) {
-        hl.fieldDerivedPointId = bestId
-        hl.fieldGivenPointId = bestInf?.bestPointId ?? null
-        hl.fieldSubJacobian = bestInf?.subJacobian ?? null
+      const next = top.map((c) => ({
+        derivedPointId: c.pt.id,
+        givenPointId: c.inf.bestPointId,
+        subJacobian: c.inf.subJacobian,
+      }))
+
+      let changed = next.length !== hl.fieldTargets.length
+      if (!changed) {
+        for (let i = 0; i < next.length; i++) {
+          const a = hl.fieldTargets[i]
+          const b = next[i]
+          if (
+            a.derivedPointId !== b.derivedPointId ||
+            a.givenPointId !== b.givenPointId ||
+            a.subJacobian !== b.subJacobian
+          ) {
+            changed = true
+            break
+          }
+        }
+      }
+      if (changed) {
+        hl.fieldTargets = next
         needsDrawRef.current = true
       }
     }
@@ -592,11 +640,9 @@ export function useDragGivenPoints({
             )
           : Infinity
         if (!newGivenPos || givenMoveDistPx > SNAP_MAX_GIVEN_MOVE_PX) {
-          // Degenerate / ill-conditioned Jacobian — abort snap, break free to solver
-          console.log(
-            '[snap-anim] constrained step degenerate or excessive — breaking free',
-            { newGivenPos, givenMoveDistPx }
-          )
+          logEvent('snap-degenerate-breakfree', {
+            givenMoveDistPx: givenMoveDistPx.toFixed(1),
+          })
           const { w: sw, h: sh } = getCSSSize()
           const vp = viewportRef.current
           const dPt = getPoint(constructionRef.current, pointId)
@@ -623,6 +669,7 @@ export function useDragGivenPoints({
 
         // Apply the movement
         const prop = propositionRef.current
+        const prevActions = postCompletionActionsRef.current
         if (givenPt.origin === 'free') {
           postCompletionActionsRef.current = postCompletionActionsRef.current.map((a) =>
             a.type === 'free-point' && a.id === givenPointId
@@ -658,6 +705,36 @@ export function useDragGivenPoints({
           actions,
           stepDataRef?.current
         )
+
+        // Guard: if this snap step would destroy the dragged point, break
+        // free to solver — retrying on the next snap frame would just fail
+        // the same way (see handleDerivedPointDragConstrained).
+        if (!getPoint(result.state, pointId)) {
+          postCompletionActionsRef.current = prevActions
+          const dPt = getPoint(constructionRef.current, pointId)
+          if (dPt) {
+            const { w: sw, h: sh } = getCSSSize()
+            const vp = viewportRef.current
+            const dScreen = worldToScreen2D(
+              dPt.x,
+              dPt.y,
+              vp.center.x,
+              vp.center.y,
+              vp.pixelsPerUnit,
+              vp.pixelsPerUnit,
+              sw,
+              sh
+            )
+            triggerBreakFree(targetWorld, dScreen, vp, sw, sh)
+          } else {
+            breakFree = true
+            handleDerivedPointDragSolver(targetWorld)
+          }
+          prevDragWorld = targetWorld
+          snapTargetWorld = null
+          return
+        }
+
         constructionRef.current = result.state
         factStoreRef.current = result.factStore
         mergeProofFacts(factStoreRef.current, proofFactsRef.current)
@@ -740,16 +817,11 @@ export function useDragGivenPoints({
             breakFree = true
           }
 
-          console.log('[drag-start] derived point', hit.id, {
+          logEvent('drag-start', {
+            id: hit.id,
             origin: hit.origin,
-            influence: dragInfluence
-              ? {
-                  bestPointId: dragInfluence.bestPointId,
-                  bestInputIndex: dragInfluence.bestInputIndex,
-                  subJacobian: dragInfluence.subJacobian,
-                  magnitudes: dragInfluence.magnitudes,
-                }
-              : null,
+            bestPointId: dragInfluence?.bestPointId,
+            subJ: dragInfluence?.subJacobian.map((n) => n.toFixed(3)).join(','),
             breakFreeAtStart: breakFree,
           })
 
@@ -1041,11 +1113,25 @@ export function useDragGivenPoints({
       const recipe = RECIPE_REGISTRY[prop.id]
       const isPlayground = !!playgroundModeRef?.current
 
+      // Cap warm-started lambda. solveInverse adapts lambda within its
+      // 5-iteration call (growing 4× on null forward, 2× on residual not
+      // decreasing, 0.5× on improvement). Warm-starting across frames is
+      // useful in the converged regime (lambda settles around 1e-8). But
+      // when the cursor enters a topologically unreachable region, every
+      // iteration fails and lambda grows by ~1024× per frame. A few stuck
+      // frames take it to 1e+30+, after which any future step is too
+      // damped to recover even when the cursor returns to reachable space.
+      // Capping keeps the converged regime fast (1e-3 is a small step from
+      // 1e-8) while preventing the runaway.
+      solverState.lambda = Math.min(solverState.lambda, 1e-3)
+
       // Snapshot current state so we can revert if the solver destroys the target point
       const prevState = constructionRef.current
       const prevFactStore = factStoreRef.current
       const prevCandidates = candidatesRef.current
       const prevActions = postCompletionActionsRef.current
+
+      const prevDerivedPt = getPoint(prevState, dragPointId)
 
       if (isPlayground || !recipe) {
         const inputs = collectPlaygroundInputPositions()
@@ -1087,13 +1173,49 @@ export function useDragGivenPoints({
       // ── Guard: if the solver produced a degenerate result, revert ──
       const targetPt = getPoint(constructionRef.current, dragPointId)
       if (!targetPt) {
-        console.log('[solver] target point disappeared after solve — reverting')
+        logEvent('solver-revert-no-target', {
+          cursorWorld: { x: world.x.toFixed(3), y: world.y.toFixed(3) },
+          prevDerived: prevDerivedPt
+            ? { x: prevDerivedPt.x.toFixed(3), y: prevDerivedPt.y.toFixed(3) }
+            : null,
+        })
         constructionRef.current = prevState
         factStoreRef.current = prevFactStore
         candidatesRef.current = prevCandidates
         postCompletionActionsRef.current = prevActions
         needsDrawRef.current = true
       } else {
+        const v2 = viewportRef.current
+        const errFromCursorPx = Math.sqrt(
+          ((targetPt.x - world.x) * v2.pixelsPerUnit) ** 2 +
+            ((targetPt.y - world.y) * v2.pixelsPerUnit) ** 2
+        )
+        const targetMovePx = prevDerivedPt
+          ? Math.sqrt(
+              ((targetPt.x - prevDerivedPt.x) * v2.pixelsPerUnit) ** 2 +
+                ((targetPt.y - prevDerivedPt.y) * v2.pixelsPerUnit) ** 2
+            )
+          : 0
+        // Track cursor velocity for stuck detection (logging only — the
+        // warm-start cap above is what actually prevents the lambda trap).
+        const cursorMovePx = prevCursorWorldSolver
+          ? Math.sqrt(
+              ((world.x - prevCursorWorldSolver.x) * v2.pixelsPerUnit) ** 2 +
+                ((world.y - prevCursorWorldSolver.y) * v2.pixelsPerUnit) ** 2
+            )
+          : 0
+        prevCursorWorldSolver = world
+        const isStuck = targetMovePx < 1 && cursorMovePx > 3 && errFromCursorPx > 5
+        if (isStuck) solverStuckCount++
+        else if (targetMovePx >= 1) solverStuckCount = 0
+        logFrame({
+          mode: 'solver',
+          targetMovePx: targetMovePx.toFixed(1),
+          cursorMovePx: cursorMovePx.toFixed(0),
+          errFromCursorPx: errFromCursorPx.toFixed(0),
+          lambda: solverState?.lambda.toExponential(1),
+          stuckCount: solverStuckCount,
+        })
         // Check if any given/free point moved excessively far
         const MAX_POINT_MOVE_PX = 500
         const v = viewportRef.current
@@ -1107,7 +1229,10 @@ export function useDragGivenPoints({
             ((el.x - prevPt.x) * v.pixelsPerUnit) ** 2 + ((el.y - prevPt.y) * v.pixelsPerUnit) ** 2
           )
           if (movePx > MAX_POINT_MOVE_PX) {
-            console.log(`[solver] point ${el.id} moved ${movePx.toFixed(0)}px — reverting`)
+            logEvent('solver-revert-excessive-move', {
+              pointId: el.id,
+              movePx: movePx.toFixed(0),
+            })
             degenerate = true
             break
           }
@@ -1181,10 +1306,7 @@ export function useDragGivenPoints({
       w: number,
       h: number
     ): void {
-      console.log('[break-free] TRIGGERED at frame', constrainedDragFrameCount, {
-        world,
-        derivedScreen,
-      })
+      logEvent('break-free-triggered', { frame: constrainedDragFrameCount })
       breakFree = true
 
       // Cancel any in-flight snap-to-cursor animation. Its remaining frames
@@ -1398,17 +1520,6 @@ export function useDragGivenPoints({
       const givenPt = getPoint(constructionRef.current, givenPointId)
       if (!givenPt) return
 
-      console.log('[constrained-drag]', {
-        frame: constrainedDragFrameCount,
-        tension: tension.toFixed(3),
-        dampen: dampen.toFixed(3),
-        screenDist: screenDist.toFixed(1),
-        targetError: { dx: dx.toFixed(4), dy: dy.toFixed(4) },
-        givenPointId,
-        givenPos: { x: givenPt.x.toFixed(3), y: givenPt.y.toFixed(3) },
-        subJacobian: dragInfluence.subJacobian,
-      })
-
       // Use sub-Jacobian to compute how to move the given point
       const newGivenPos = constrainedDragStep(
         { x: givenPt.x, y: givenPt.y },
@@ -1416,9 +1527,7 @@ export function useDragGivenPoints({
         dragInfluence.subJacobian
       )
       if (!newGivenPos) {
-        console.log(
-          '[constrained-drag] constrainedDragStep returned null — degenerate Jacobian, breaking free'
-        )
+        logEvent('degenerate-jacobian-breakfree')
         triggerBreakFree(world, derivedScreen, v, w, h)
         return
       }
@@ -1430,19 +1539,18 @@ export function useDragGivenPoints({
       const givenMoveDist = Math.sqrt(givenMoveX * givenMoveX + givenMoveY * givenMoveY)
       const MAX_GIVEN_MOVE_PX = 200 // screen px per frame — anything larger is degenerate
 
-      console.log('[constrained-drag] given move:', {
-        newGivenPos: { x: newGivenPos.x.toFixed(3), y: newGivenPos.y.toFixed(3) },
-        givenMovePx: givenMoveDist.toFixed(1),
-        threshold: MAX_GIVEN_MOVE_PX,
-        willBreakFree: givenMoveDist > MAX_GIVEN_MOVE_PX,
-      })
       if (givenMoveDist > MAX_GIVEN_MOVE_PX) {
+        logEvent('excessive-given-move-breakfree', { givenMovePx: givenMoveDist.toFixed(1) })
         triggerBreakFree(world, derivedScreen, v, w, h)
         return
       }
 
       // Apply as a direct drag of the given point
       const prop = propositionRef.current
+
+      // Snapshot the pre-mutation actions so we can revert the free-point
+      // mutation below if the proposed move would destroy the dragged point.
+      const prevActions = postCompletionActionsRef.current
 
       if (givenPt.origin === 'free') {
         // Update the free-point action
@@ -1480,6 +1588,52 @@ export function useDragGivenPoints({
         actions,
         stepDataRef?.current
       )
+
+      // Guard: if the proposed frame would destroy the dragged point, escape
+      // to the full solver. The canonical case is dragging an intersection
+      // up to a tangency boundary — the sub-Jacobian becomes singular and
+      // the constrained step (which only tweaks one given) can no longer
+      // recover. Just rejecting the frame leaves the point stuck on the
+      // boundary; handing off to break-free → LM solver lets it work in the
+      // full input-position space and find a configuration where the point
+      // lands at the cursor.
+      const replayedDerived = getPoint(result.state, dragPointId)
+      if (!replayedDerived) {
+        logEvent('guard-fired-breakfree', {
+          dragPointId,
+          cursorWorld: { x: world.x.toFixed(3), y: world.y.toFixed(3) },
+        })
+        postCompletionActionsRef.current = prevActions
+        triggerBreakFree(world, derivedScreen, v, w, h)
+        return
+      }
+
+      const derivedMoveX = (replayedDerived.x - derivedPt.x) * v.pixelsPerUnit
+      const derivedMoveY = (replayedDerived.y - derivedPt.y) * v.pixelsPerUnit
+      const derivedMovePx = Math.sqrt(derivedMoveX * derivedMoveX + derivedMoveY * derivedMoveY)
+      const replayedScreen = worldToScreen2D(
+        replayedDerived.x,
+        replayedDerived.y,
+        v.center.x,
+        v.center.y,
+        v.pixelsPerUnit,
+        v.pixelsPerUnit,
+        w,
+        h
+      )
+      const newCursorErrPx = Math.sqrt(
+        (cursorScreen.x - replayedScreen.x) ** 2 + (cursorScreen.y - replayedScreen.y) ** 2
+      )
+      logFrame({
+        mode: 'constrained',
+        tension: tension.toFixed(2),
+        cursorErrPx: screenDist.toFixed(0),
+        newCursorErrPx: newCursorErrPx.toFixed(0),
+        derivedMovePx: derivedMovePx.toFixed(1),
+        givenMovePx: givenMoveDist.toFixed(1),
+        subJ: dragInfluence.subJacobian.map((n) => n.toFixed(3)).join(','),
+      })
+
       constructionRef.current = result.state
       factStoreRef.current = result.factStore
       mergeProofFacts(factStoreRef.current, proofFactsRef.current)
@@ -1628,6 +1782,8 @@ export function useDragGivenPoints({
       solverState = null
       dragInfluence = null
       prevDragWorld = null
+      prevCursorWorldSolver = null
+      solverStuckCount = 0
       constrainedDragFrameCount = 0
       breakFree = false
       if (snapAnimId != null) {
