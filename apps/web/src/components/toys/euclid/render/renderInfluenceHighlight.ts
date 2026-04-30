@@ -681,7 +681,7 @@ function renderConstraintFieldFlowForTarget(
   const blurPx = Math.max(1.5, upscaleFactor * 1.4)
 
   ctx.save()
-  ctx.globalAlpha = 0.20 * alphaMultiplier
+  ctx.globalAlpha = 0.2 * alphaMultiplier
   ctx.globalCompositeOperation = 'multiply'
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
