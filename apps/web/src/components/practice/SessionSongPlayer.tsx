@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSessionSong } from '@/hooks/useSessionSong'
+import { SongFailureCard } from './SongFailureCard'
 import { css } from '../../../styled-system/css'
 
 interface SessionSongPlayerProps {
@@ -25,11 +26,13 @@ export function SessionSongPlayer({
   planId,
   triggerFallback = false,
 }: SessionSongPlayerProps) {
-  const { song, isGenerating, isReady } = useSessionSong({
-    playerId,
-    planId,
-    enabled: true,
-  })
+  const { song, isGenerating, isReady, failureKind, errorDetail, viewerIsOwner } = useSessionSong(
+    {
+      playerId,
+      planId,
+      enabled: true,
+    }
+  )
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -106,9 +109,20 @@ export function SessionSongPlayer({
     [duration]
   )
 
-  // Don't render anything if no song or failed
+  // Don't render anything if there's no song at all
   if (!song && !isGenerating) return null
-  if (song?.status === 'failed') return null
+
+  // Show a soft failure card instead of silently swallowing failures.
+  // Kid sees a warm one-liner; account owners/admins also see remediation.
+  if (song?.status === 'failed') {
+    return (
+      <SongFailureCard
+        failureKind={failureKind}
+        errorDetail={errorDetail}
+        viewerIsOwner={viewerIsOwner}
+      />
+    )
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)

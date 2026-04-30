@@ -13,6 +13,8 @@ import { createSocket } from '@/lib/socket'
 import { sessionSongKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
 
+import type { SessionSongFailureKind } from '@/db/schema/session-songs'
+
 interface SessionSongData {
   id: string
   status: string
@@ -20,6 +22,11 @@ interface SessionSongData {
   durationSeconds: number | null
   audioPath: string | null
   triggerSource: string | null
+  failureKind: SessionSongFailureKind | null
+  /** Raw error string — server only includes for owners/admins; null otherwise. */
+  errorDetail: string | null
+  /** True when the requesting viewer is the player's account owner or an admin. */
+  viewerIsOwner: boolean
   createdAt: number | null
   completedAt: number | null
 }
@@ -83,6 +90,9 @@ export function useSessionSong({ playerId, planId, enabled = true }: UseSessionS
     isGenerating,
     isReady,
     hasFailed,
+    failureKind: song?.failureKind ?? null,
+    errorDetail: song?.errorDetail ?? null,
+    viewerIsOwner: song?.viewerIsOwner ?? false,
     isLoading: query.isLoading,
   }
 }

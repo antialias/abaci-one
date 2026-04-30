@@ -73,8 +73,8 @@ export const POST = withAuth(async (request, { userId, params }) => {
  *
  * Get song status for a session plan.
  */
-export const GET = withAuth(async (_request, { params }) => {
-  const { planId } = (await params) as { playerId: string; planId: string }
+export const GET = withAuth(async (_request, { userId, userRole, params }) => {
+  const { playerId, planId } = (await params) as { playerId: string; planId: string }
 
   try {
     const [song] = await db
@@ -87,6 +87,18 @@ export const GET = withAuth(async (_request, { params }) => {
       return NextResponse.json({ song: null })
     }
 
+    // Owner = the user who owns the player profile. Admins see owner-level
+    // detail for any player. Used to gate raw error details and remediation.
+    let isOwnerOrAdmin = userRole === 'admin'
+    if (!isOwnerOrAdmin && userId) {
+      const [player] = await db
+        .select({ userId: schema.players.userId })
+        .from(schema.players)
+        .where(eq(schema.players.id, playerId))
+        .limit(1)
+      if (player?.userId === userId) isOwnerOrAdmin = true
+    }
+
     return NextResponse.json({
       song: {
         id: song.id,
@@ -95,6 +107,10 @@ export const GET = withAuth(async (_request, { params }) => {
         durationSeconds: song.durationSeconds,
         audioPath: song.status === 'completed' ? `/api/audio/songs/${song.id}` : null,
         triggerSource: song.triggerSource,
+        failureKind: song.status === 'failed' ? (song.failureKind ?? null) : null,
+        // Raw error string is owner/admin-only — leak nothing to other viewers.
+        errorDetail: song.status === 'failed' && isOwnerOrAdmin ? song.errorMessage : null,
+        viewerIsOwner: isOwnerOrAdmin,
         createdAt: song.createdAt instanceof Date ? song.createdAt.getTime() : song.createdAt,
         completedAt:
           song.completedAt instanceof Date ? song.completedAt.getTime() : song.completedAt,

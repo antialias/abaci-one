@@ -64,6 +64,13 @@ export const sessionSongs = sqliteTable(
     /** Error message if generation failed */
     errorMessage: text('error_message'),
 
+    /**
+     * Classified failure kind, set alongside `errorMessage` when status='failed'.
+     * Drives the user-facing failure card (kid-safe message + owner remediation).
+     * Values: 'auth_invalid' | 'quota_exceeded' | 'rate_limited' | 'transient' | 'unknown'
+     */
+    failureKind: text('failure_kind'),
+
     /** FK to background_tasks.id for progress tracking */
     backgroundTaskId: text('background_task_id').references(() => backgroundTasks.id),
 
@@ -122,6 +129,13 @@ export type SessionSongStatus =
   | 'failed'
 
 export type SessionSongTriggerSource = 'smart_trigger' | 'completion_fallback'
+
+export type SessionSongFailureKind =
+  | 'auth_invalid'
+  | 'quota_exceeded'
+  | 'rate_limited'
+  | 'transient'
+  | 'unknown'
 
 export interface SessionSongLLMOutput {
   title: string

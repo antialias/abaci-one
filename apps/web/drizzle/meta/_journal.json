@@ -911,6 +911,13 @@
       "when": 1775000000000,
       "tag": "0129_add_ai_usage_table",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "6",
+      "when": 1777551406940,
+      "tag": "0130_add_session_song_failure_kind",
+      "breakpoints": true
     }
   ]
 }

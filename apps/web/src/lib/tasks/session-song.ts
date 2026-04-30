@@ -18,6 +18,7 @@ import { createTask } from '../task-manager'
 import { generateMusic } from '../elevenlabs/music-client'
 import { extractSessionStats } from '../session-song/extract-session-stats'
 import { generateSongPrompt } from '../session-song/prompt-generator'
+import { classifySongFailure } from '../session-song/classify-failure'
 import { getSocketIO } from '@/lib/socket-io'
 import type { SessionSongEvent } from './events'
 import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
@@ -274,15 +275,17 @@ export async function startSessionSongGeneration(
         handle.complete({ songId, status: 'completed' })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error'
+        const classified = classifySongFailure(error)
 
         handle.emit({ type: 'song_error', error: message })
 
-        // Update song record with error
+        // Update song record with error + classification
         await db
           .update(schema.sessionSongs)
           .set({
             status: 'failed',
             errorMessage: message,
+            failureKind: classified.kind,
           })
           .where(eq(schema.sessionSongs.id, songId))
 

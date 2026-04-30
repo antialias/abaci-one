@@ -7,6 +7,7 @@ import { createSocket } from '@/lib/socket'
 import { css } from '../../../styled-system/css'
 import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
+import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
 
 interface TaskSummary {
   id: string
@@ -171,6 +172,8 @@ export default function AdminDashboardPage() {
           padding: '24px',
         })}
       >
+        <SystemHealthBanner />
+
         {/* Header */}
         <div className={css({ marginBottom: '24px' })}>
           <h1 className={css({ fontSize: '24px', fontWeight: 'bold', marginBottom: '4px' })}>
