@@ -1,10 +1,10 @@
-import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'
-import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
-import type { ConstantExplorerState, ConstantExplorerMove } from './types'
 import {
   CONSTANT_IDS,
   EXPLORATION_DISPLAY,
 } from '@/components/toys/number-line/talkToNumber/explorationRegistry'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'
+import type { ConstantExplorerMove, ConstantExplorerState } from './types'
 
 /**
  * Validator for constant-explorer.
@@ -77,9 +77,20 @@ class ConstantExplorerValidator
       },
 
       customStats: [
-        { label: 'Constant', value: `${symbol} ${name}`, icon: '\uD83D\uDD2D', highlight: true },
+        {
+          label: 'Constant',
+          value: `${symbol} ${name}`,
+          icon: '\uD83D\uDD2D',
+          highlight: true,
+        },
         ...(value !== undefined
-          ? [{ label: 'Value', value: `${value.toFixed(6)}...`, icon: '\uD83D\uDCCA' }]
+          ? [
+              {
+                label: 'Value',
+                value: `${value.toFixed(6)}...`,
+                icon: '\uD83D\uDCCA',
+              },
+            ]
           : []),
       ],
 
@@ -87,6 +98,16 @@ class ConstantExplorerValidator
       subheadline: name,
       resultTheme: 'success',
       celebrationType: 'stars',
+      songContext: {
+        summary: `Explored the constant ${symbol} (${name})`,
+        details: [
+          `Constant: ${symbol} ${name}`,
+          ...(value !== undefined ? [`Approximate value: ${value.toFixed(6)}`] : []),
+        ],
+        dramaticMoments: [`Took a math discovery detour into ${name}`],
+        strategyNotes: ['Discovery break focused on noticing a famous number pattern'],
+        outcome: `Explored ${symbol}`,
+      },
     }
   }
 }

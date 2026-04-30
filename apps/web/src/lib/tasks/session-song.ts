@@ -10,24 +10,22 @@
  * 6. Save MP3 locally, mark completed, emit Socket.IO event
  */
 
-import { eq, and } from 'drizzle-orm'
-import { writeFile, mkdir } from 'fs/promises'
-import { join, dirname } from 'path'
+import { and, desc, eq } from 'drizzle-orm'
+import { mkdir, writeFile } from 'fs/promises'
+import { dirname, join } from 'path'
 import { db, schema } from '@/db'
-import { createTask } from '../task-manager'
+import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
+import { AiFeature } from '@/lib/ai-usage/features'
+import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
+import { getSocketIO } from '@/lib/socket-io'
 import { generateMusic } from '../elevenlabs/music-client'
+import { classifySongFailure } from '../session-song/classify-failure'
+import { resolveSongGenres, selectSongConcept } from '../session-song/concept-selector'
 import { extractSessionStats } from '../session-song/extract-session-stats'
 import { generateSongPrompt } from '../session-song/prompt-generator'
-import { classifySongFailure } from '../session-song/classify-failure'
-import { getSocketIO } from '@/lib/socket-io'
+import { createTask } from '../task-manager'
 import type { SessionSongEvent } from './events'
-import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
-import {
-  type PlayerSessionPreferencesConfig,
-  SESSION_SONG_GENRES,
-} from '@/db/schema/player-session-preferences'
-import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
-import { AiFeature } from '@/lib/ai-usage/features'
 
 // ============================================================================
 // Types
@@ -47,15 +45,54 @@ export interface SessionSongOutput {
 
 const SONGS_DIR = join(process.cwd(), 'data', 'audio', 'songs')
 
-/** Pick 2-3 random genres from the preset list and return as comma-separated string. */
-function resolveShuffleGenres(): string {
-  const pool = SESSION_SONG_GENRES.filter((g) => g.id !== 'shuffle' && g.id !== 'any')
-  const count = 2 + Math.floor(Math.random() * 2) // 2 or 3
-  const shuffled = [...pool].sort(() => Math.random() - 0.5)
-  return shuffled
-    .slice(0, count)
-    .map((g) => g.id)
-    .join(', ')
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function nestedRecord(value: unknown, key: string): Record<string, unknown> | null {
+  return asRecord(asRecord(value)?.[key])
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
+}
+
+function getRecentSongConceptIds(
+  songs: Array<{ promptInput: unknown; llmOutput: unknown }>
+): string[] {
+  return songs
+    .map((song) => {
+      const promptConcept = nestedRecord(song.promptInput, 'songConcept')
+      const outputConcept = nestedRecord(song.llmOutput, 'songConcept')
+      return promptConcept?.id ?? outputConcept?.id
+    })
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+}
+
+function getRecentSongGenreTags(songs: Array<{ llmOutput: unknown }>): string[] {
+  return songs.flatMap((song) => {
+    const plan = nestedRecord(song.llmOutput, 'plan')
+    return stringArray(plan?.positive_global_styles)
+  })
+}
+
+function seedPart(value: unknown): string {
+  if (value instanceof Date) return String(value.getTime())
+  if (value == null) return ''
+  return String(value)
+}
+
+function buildConceptSeed(
+  input: SessionSongInput,
+  plan: { createdAt?: unknown; completedAt?: unknown }
+) {
+  return [input.playerId, input.sessionPlanId, seedPart(plan.completedAt), seedPart(plan.createdAt)]
+    .filter(Boolean)
+    .join(':')
 }
 
 // ============================================================================
@@ -149,8 +186,6 @@ export async function startSessionSongGeneration(
         }
 
         const rawGenre = prefs?.sessionSongGenre ?? 'shuffle'
-        // 'shuffle' → pick 2-3 random genres fresh each time for variety
-        const genrePreference = rawGenre === 'shuffle' ? resolveShuffleGenres() : rawGenre
 
         // Get recent completed sessions for history
         const recentPlans = await db
@@ -173,6 +208,21 @@ export async function startSessionSongGeneration(
           }
         })
 
+        const recentSongs = await db
+          .select({
+            promptInput: schema.sessionSongs.promptInput,
+            llmOutput: schema.sessionSongs.llmOutput,
+          })
+          .from(schema.sessionSongs)
+          .where(
+            and(
+              eq(schema.sessionSongs.playerId, input.playerId),
+              eq(schema.sessionSongs.status, 'completed')
+            )
+          )
+          .orderBy(desc(schema.sessionSongs.createdAt))
+          .limit(10)
+
         // Look up game break result for this session (if any).
         // The smart trigger only fires in the last practice part, so game break
         // results (which happen between parts) are already persisted by now.
@@ -190,13 +240,23 @@ export async function startSessionSongGeneration(
         const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult, {
           breakSelectedGame: plan.breakSelectedGame ?? null,
           breakReason: plan.breakReason ?? null,
+          breakResults: plan.breakResults ?? null,
         })
+        const conceptContext = {
+          seed: buildConceptSeed(input, plan),
+          recentConceptIds: getRecentSongConceptIds(recentSongs),
+          recentGenreTags: getRecentSongGenreTags(recentSongs),
+          genrePreference: rawGenre,
+        }
+        const songConcept = selectSongConcept(stats, conceptContext)
+        const genrePreference = resolveSongGenres(rawGenre, songConcept, conceptContext)
+        const promptInput = { ...stats, songConcept }
 
         // Update song record with prompt input
         await db
           .update(schema.sessionSongs)
           .set({
-            promptInput: stats as unknown as Record<string, unknown>,
+            promptInput: promptInput as unknown as Record<string, unknown>,
             status: 'prompt_generating',
           })
           .where(eq(schema.sessionSongs.id, songId))
@@ -205,7 +265,7 @@ export async function startSessionSongGeneration(
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
 
-        const llmOutput = await generateSongPrompt(stats, genrePreference, input._userId)
+        const llmOutput = await generateSongPrompt(promptInput, genrePreference, input._userId)
 
         handle.emit({
           type: 'song_prompt_ready',

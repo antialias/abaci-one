@@ -6,13 +6,13 @@
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
 import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
-  MemoryQuizStateSchema,
   DIFFICULTY_LEVELS,
   type DifficultyLevel,
   type MemoryQuizConfig,
-  type MemoryQuizState,
   type MemoryQuizMove,
   type MemoryQuizSetConfigMove,
+  type MemoryQuizState,
+  MemoryQuizStateSchema,
 } from './types'
 
 // Default config for practice breaks (quick games)
@@ -439,7 +439,13 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
 
   private validateJoinGame(
     state: MemoryQuizState,
-    data: { playerId: string; playerName: string; emoji: string; color: string; userId: string }
+    data: {
+      playerId: string
+      playerName: string
+      emoji: string
+      color: string
+      userId: string
+    }
   ): ValidationResult {
     // Can only join during display or input phase (not during results or setup)
     if (state.gamePhase !== 'display' && state.gamePhase !== 'input') {
@@ -481,7 +487,10 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
       },
       playerScores: {
         ...state.playerScores,
-        [data.userId]: state.playerScores[data.userId] || { correct: 0, incorrect: 0 },
+        [data.userId]: state.playerScores[data.userId] || {
+          correct: 0,
+          incorrect: 0,
+        },
       },
     }
 
@@ -496,7 +505,9 @@ export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, M
   }
 
   getInitialState(config: MemoryQuizConfig): MemoryQuizState {
-    const typedConfig = config as MemoryQuizConfig & { skipSetupPhase?: boolean }
+    const typedConfig = config as MemoryQuizConfig & {
+      skipSetupPhase?: boolean
+    }
 
     // Practice break: skip setup, generate cards, start in display phase
     if (typedConfig.skipSetupPhase) {
@@ -757,6 +768,11 @@ const validator = new MemoryQuizGameValidator()
     })
   }
 
+  const missedNumbers = state.correctAnswers.filter(
+    (number) => !state.foundNumbers.includes(number)
+  )
+  const recalledNumbers = state.foundNumbers.slice(0, 8)
+
   return {
     gameName: 'memory-quiz',
     gameDisplayName: 'Memory Lightning',
@@ -782,6 +798,31 @@ const validator = new MemoryQuizGameValidator()
     subheadline: `${found} of ${totalCards} numbers in ${formatDuration(durationMs)}`,
     resultTheme,
     celebrationType,
+    songContext: {
+      summary: `Remembered ${found} of ${totalCards} hidden numbers`,
+      details: [
+        ...(state.correctAnswers.length > 0
+          ? [`Numbers shown: ${state.correctAnswers.slice(0, 10).join(', ')}`]
+          : []),
+        ...(recalledNumbers.length > 0 ? [`Numbers recalled: ${recalledNumbers.join(', ')}`] : []),
+        ...(missedNumbers.length > 0
+          ? [`Numbers still hiding: ${missedNumbers.slice(0, 5).join(', ')}`]
+          : []),
+      ],
+      dramaticMoments: [
+        ...(found === totalCards ? ['Found every number from memory'] : []),
+        ...(state.incorrectGuesses > 0
+          ? [
+              `Kept searching after ${state.incorrectGuesses} wrong guess${state.incorrectGuesses === 1 ? '' : 'es'}`,
+            ]
+          : []),
+        ...(found > 0 ? [`First recalled number: ${state.foundNumbers[0]}`] : []),
+      ],
+      strategyNotes: [
+        `Memory load: ${totalCards} number${totalCards === 1 ? '' : 's'} at ${state.selectedDifficulty} difficulty`,
+      ],
+      outcome: headline,
+    },
   }
 }
 

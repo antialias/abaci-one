@@ -1,11 +1,12 @@
-import type { GameValidator, ValidationResult, PracticeBreakOptions } from '@/lib/arcade/game-sdk'
+import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
+import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
-  KnowYourWorldStateSchema,
+  type AssistanceLevel,
+  type GuessRecord,
   type KnowYourWorldConfig,
   type KnowYourWorldMove,
   type KnowYourWorldState,
-  type GuessRecord,
-  type AssistanceLevel,
+  KnowYourWorldStateSchema,
   type RegionSize,
 } from './types'
 
@@ -757,7 +758,13 @@ export class KnowYourWorldValidator
 
   private validateJoinGame(
     state: KnowYourWorldState,
-    data: { playerId: string; playerName: string; emoji: string; color: string; userId: string }
+    data: {
+      playerId: string
+      playerName: string
+      emoji: string
+      color: string
+      userId: string
+    }
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
       return { valid: false, error: 'Can only join during playing phase' }
@@ -931,6 +938,167 @@ export class KnowYourWorldValidator
       hintsUsed: 0,
       hintActive: null,
       nameConfirmationProgress: 0,
+    }
+  }
+
+  getResultsReport(state: KnowYourWorldState, _config: unknown): GameResultsReport {
+    const startedAt = state.startTime ?? Date.now()
+    const endedAt = state.endTime ?? Date.now()
+    const durationMs = endedAt - startedAt
+    const regionName = this.buildRegionNameLookup(state)
+    const foundNames = state.regionsFound.map((id) => regionName(id))
+    const givenUpNames = state.regionsGivenUp.map((id) => regionName(id))
+    const remainingNames = [
+      ...(state.currentPrompt ? [regionName(state.currentPrompt)] : []),
+      ...state.regionsToFind.map((id) => regionName(id)),
+    ]
+    const totalRegions = Math.max(
+      state.regionsFound.length +
+        state.regionsGivenUp.length +
+        state.regionsToFind.length +
+        (state.currentPrompt ? 1 : 0),
+      state.regionsFound.length
+    )
+    const correctGuesses = state.guessHistory.filter((guess) => guess.correct).length
+    const incorrectGuesses = state.guessHistory.length - correctGuesses
+    const accuracy =
+      state.guessHistory.length > 0
+        ? Math.round((correctGuesses / state.guessHistory.length) * 100)
+        : 0
+    const playerResults: PlayerResult[] = state.activePlayers.map((playerId, index) => {
+      const meta = state.playerMetadata[playerId] as
+        | { name?: string; emoji?: string; userId?: string }
+        | undefined
+      const playerGuesses = state.guessHistory.filter((guess) => guess.playerId === playerId)
+      const playerCorrect = playerGuesses.filter((guess) => guess.correct).length
+      const playerIncorrect = playerGuesses.length - playerCorrect
+      const playerAccuracy =
+        playerGuesses.length > 0 ? Math.round((playerCorrect / playerGuesses.length) * 100) : 0
+
+      return {
+        playerId,
+        playerName: meta?.name ?? 'Explorer',
+        playerEmoji: meta?.emoji ?? '🌎',
+        userId: meta?.userId ?? playerId,
+        score: state.scores[playerId] ?? playerCorrect * 10,
+        rank: index + 1,
+        isWinner: index === 0,
+        correctCount: playerCorrect,
+        incorrectCount: playerIncorrect,
+        totalAttempts: playerGuesses.length,
+        accuracy: playerAccuracy,
+      }
+    })
+
+    let headline = 'World Explorer!'
+    let resultTheme: GameResultsReport['resultTheme'] = 'neutral'
+    let celebrationType: GameResultsReport['celebrationType'] = 'none'
+
+    if (totalRegions > 0 && state.regionsFound.length === totalRegions) {
+      headline = 'Map Mastered!'
+      resultTheme = 'success'
+      celebrationType = 'confetti'
+    } else if (accuracy >= 80) {
+      headline = 'Sharp Map Skills!'
+      resultTheme = 'good'
+      celebrationType = 'stars'
+    }
+
+    return {
+      gameName: 'know-your-world',
+      gameDisplayName: 'Know Your World',
+      gameIcon: '🌎',
+      durationMs,
+      completedNormally: state.gamePhase === 'results',
+      startedAt,
+      endedAt,
+      gameMode: state.gameMode === 'race' ? 'competitive' : state.gameMode,
+      playerCount: state.activePlayers.length,
+      playerResults,
+      winnerId: null,
+      teamScore: state.regionsFound.length * 10,
+      teamAccuracy: accuracy,
+      itemsCompleted: state.regionsFound.length,
+      itemsTotal: totalRegions,
+      completionPercent:
+        totalRegions > 0 ? Math.round((state.regionsFound.length / totalRegions) * 100) : 0,
+      leaderboardEntry: {
+        normalizedScore: accuracy,
+        category: 'geography',
+        difficulty: state.selectedMap,
+      },
+      customStats: [
+        {
+          label: 'Regions Found',
+          value: `${state.regionsFound.length}/${totalRegions}`,
+          icon: '🗺️',
+          highlight: state.regionsFound.length === totalRegions,
+        },
+        {
+          label: 'Accuracy',
+          value: `${accuracy}%`,
+          icon: '🎯',
+          highlight: accuracy >= 80,
+        },
+        {
+          label: 'Hints Used',
+          value: state.hintsUsed,
+          icon: '💡',
+          highlight: state.hintsUsed === 0,
+        },
+      ],
+      headline,
+      subheadline:
+        foundNames.length > 0
+          ? `Found ${foundNames.slice(0, 3).join(', ')}${foundNames.length > 3 ? '...' : ''}`
+          : undefined,
+      resultTheme,
+      celebrationType,
+      songContext: {
+        summary: `Found ${state.regionsFound.length} of ${totalRegions} regions on the ${state.selectedMap} map`,
+        details: [
+          `Map: ${state.selectedMap}`,
+          `Assistance: ${state.assistanceLevel}`,
+          ...(foundNames.length > 0 ? [`Regions found: ${foundNames.slice(0, 8).join(', ')}`] : []),
+          ...(givenUpNames.length > 0 ? [`Revealed: ${givenUpNames.slice(0, 5).join(', ')}`] : []),
+          ...(remainingNames.length > 0
+            ? [`Still searching for: ${remainingNames.slice(0, 5).join(', ')}`]
+            : []),
+        ],
+        dramaticMoments: [
+          ...(state.regionsFound.length === totalRegions ? ['Found every region in the set'] : []),
+          ...(incorrectGuesses > 0
+            ? [
+                `Kept searching after ${incorrectGuesses} wrong map click${
+                  incorrectGuesses === 1 ? '' : 's'
+                }`,
+              ]
+            : []),
+          ...(foundNames.length > 0 ? [`First region found: ${foundNames[0]}`] : []),
+        ],
+        strategyNotes: [
+          ...(state.hintsUsed > 0
+            ? [`Used ${state.hintsUsed} hint${state.hintsUsed === 1 ? '' : 's'}`]
+            : []),
+          `Region sizes in play: ${state.includeSizes.join(', ')}`,
+        ],
+        outcome: headline,
+      },
+    }
+  }
+
+  private buildRegionNameLookup(state: KnowYourWorldState): (id: string) => string {
+    try {
+      const mapData = getFilteredMapDataBySizesSyncLazy(
+        state.selectedMap,
+        state.selectedContinent,
+        state.includeSizes
+      )
+      const names = new Map(mapData.regions.map((region) => [region.id, region.name]))
+      return (id: string) => names.get(id) ?? id
+    } catch {
+      const names = new Map(state.guessHistory.map((guess) => [guess.regionId, guess.regionName]))
+      return (id: string) => names.get(id) ?? id
     }
   }
 

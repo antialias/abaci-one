@@ -5,8 +5,8 @@
  * Ported from arcade-games/matching/Validator.ts with variant hooks.
  */
 
-import type { GameValidator, PracticeBreakOptions, ValidationResult } from '../validation/types'
 import type { GameResultsReport, PlayerResult } from '../game-sdk/types'
+import type { GameValidator, PracticeBreakOptions, ValidationResult } from '../validation/types'
 import type {
   BaseMatchingCard,
   BaseMatchingConfig,
@@ -27,6 +27,52 @@ function formatDuration(ms: number): string {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
   return `${seconds}s`
+}
+
+function getGameDisplay(gameName: string): { name: string; icon: string } {
+  switch (gameName) {
+    case 'music-matching':
+      return { name: 'Music Note Match', icon: '🎵' }
+    default:
+      return { name: 'Matching Pairs Battle', icon: '⚔️' }
+  }
+}
+
+function describeCardForSong(card: BaseMatchingCard): string | null {
+  const data = card as unknown as Record<string, unknown>
+
+  if (typeof data.friendlyName === 'string' && data.friendlyName.trim()) {
+    return data.friendlyName
+  }
+  if (typeof data.displayName === 'string' && data.displayName.trim()) {
+    const clef = typeof data.clef === 'string' ? ` (${data.clef})` : ''
+    return `${data.displayName}${clef}`
+  }
+  if (typeof data.pitchClass === 'string') {
+    const octave = typeof data.octave === 'number' ? data.octave : ''
+    return `${data.pitchClass}${octave}`
+  }
+  if (typeof data.number === 'number') {
+    if (typeof data.complement === 'number' && typeof data.targetSum === 'number') {
+      return `${data.number} + ${data.complement} = ${data.targetSum}`
+    }
+    return String(data.number)
+  }
+
+  return null
+}
+
+function uniqueSongDetails(values: Array<string | null | undefined>, limit: number): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const value of values) {
+    const trimmed = value?.trim()
+    if (!trimmed || seen.has(trimmed)) continue
+    seen.add(trimmed)
+    result.push(trimmed)
+    if (result.length >= limit) break
+  }
+  return result
 }
 
 /**
@@ -149,6 +195,17 @@ function defaultGetResultsReport<
     })
   }
 
+  const display = getGameDisplay(gameName)
+  const matchedDetails = uniqueSongDetails(
+    state.gameCards.filter((card) => card.matched).map(describeCardForSong),
+    8
+  )
+  const unmatchedDetails = uniqueSongDetails(
+    state.gameCards.filter((card) => !card.matched).map(describeCardForSong),
+    5
+  )
+  const gameModeLabel = isSinglePlayer ? 'single-player' : 'competitive'
+
   let difficultyLabel: string
   if (config.difficulty <= 6) {
     difficultyLabel = 'easy'
@@ -162,8 +219,8 @@ function defaultGetResultsReport<
 
   return {
     gameName,
-    gameDisplayName: 'Matching Pairs Battle',
-    gameIcon: '⚔️',
+    gameDisplayName: display.name,
+    gameIcon: display.icon,
     durationMs,
     completedNormally: state.matchedPairs === state.totalPairs,
     startedAt,
@@ -187,6 +244,28 @@ function defaultGetResultsReport<
       : `Final Score: ${winner?.score ?? 0} pairs`,
     resultTheme,
     celebrationType,
+    songContext: {
+      summary: `${state.matchedPairs}/${state.totalPairs} pairs found in ${state.moves} moves`,
+      details: [
+        `Mode: ${gameModeLabel}`,
+        `Difficulty: ${difficultyLabel}`,
+        ...(matchedDetails.length > 0 ? [`Matched: ${matchedDetails.join(', ')}`] : []),
+        ...(unmatchedDetails.length > 0 ? [`Still hidden: ${unmatchedDetails.join(', ')}`] : []),
+      ],
+      dramaticMoments: [
+        ...(state.matchedPairs === state.totalPairs ? ['Cleared every pair on the board'] : []),
+        ...(bestStreak >= 3 ? [`Built a ${bestStreak}-match streak`] : []),
+        ...(matchedDetails.length > 0
+          ? [`Last matched set included ${matchedDetails[matchedDetails.length - 1]}`]
+          : []),
+      ],
+      strategyNotes: [
+        gameName === 'music-matching'
+          ? 'Matched musical notes by name and staff position'
+          : 'Matched abacus, numeral, or complement cards by value',
+      ],
+      outcome: headline,
+    },
   }
 }
 
@@ -211,7 +290,10 @@ export function createMatchingPairsValidator<
     context?: { userId?: string; playerOwnership?: Record<string, string> }
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Cannot flip cards outside of playing phase' }
+      return {
+        valid: false,
+        error: 'Cannot flip cards outside of playing phase',
+      }
     }
 
     if (state.activePlayers.length > 1 && state.currentPlayer !== playerId) {
@@ -412,7 +494,10 @@ export function createMatchingPairsValidator<
 
   function validateSetConfig(state: State, field: string, value: any): ValidationResult {
     if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Cannot change configuration outside of setup phase' }
+      return {
+        valid: false,
+        error: 'Cannot change configuration outside of setup phase',
+      }
     }
 
     const error = variant.validateConfigField(field, value)
@@ -456,7 +541,10 @@ export function createMatchingPairsValidator<
     if (state.originalConfig) {
       const configFromState = extractConfig(state)
       if (variant.hasConfigChangedFrom(configFromState, state.originalConfig)) {
-        return { valid: false, error: 'Cannot resume - configuration has changed' }
+        return {
+          valid: false,
+          error: 'Cannot resume - configuration has changed',
+        }
       }
     }
 
@@ -575,7 +663,10 @@ export function createMatchingPairsValidator<
         case 'HOVER_CARD':
           return validateHoverCard(state, move.data.cardId, move.playerId)
         default:
-          return { valid: false, error: `Unknown move type: ${(move as any).type}` }
+          return {
+            valid: false,
+            error: `Unknown move type: ${(move as any).type}`,
+          }
       }
     },
 
@@ -604,7 +695,10 @@ export function createMatchingPairsValidator<
 
     getInitialStateForPracticeBreak(config: unknown, options: PracticeBreakOptions): State {
       const defaults = variant.practiceBreakDefaults ?? variant.defaultConfig
-      let fullConfig: TConfig = { ...defaults, ...(config as Partial<TConfig>) }
+      let fullConfig: TConfig = {
+        ...defaults,
+        ...(config as Partial<TConfig>),
+      }
 
       if (variant.adjustConfigForBreak) {
         fullConfig = variant.adjustConfigForBreak(fullConfig, options.maxDurationMinutes)

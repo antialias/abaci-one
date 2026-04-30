@@ -13,7 +13,6 @@ export type {
   GameResultsConfig,
   PracticeBreakConfig,
 } from '../manifest-schema'
-
 /**
  * Re-export base validation types from arcade system
  */
@@ -21,11 +20,11 @@ export type {
   GameMove,
   GameValidator,
   PracticeBreakOptions,
+  TeamMoveSentinel,
   ValidationContext,
   ValidationResult,
 } from '../validation/types'
 export { TEAM_MOVE } from '../validation/types'
-export type { TeamMoveSentinel } from '../validation/types'
 
 /**
  * Generic game configuration
@@ -159,6 +158,26 @@ export type ResultTheme = 'success' | 'good' | 'neutral' | 'needs-practice'
 export type CelebrationType = 'confetti' | 'fireworks' | 'stars' | 'none'
 
 /**
+ * Optional song-specific context that a game can attach to its results report.
+ *
+ * The normal scoreboard fields are intentionally generic. Session songs need
+ * more story-shaped evidence: memorable plays, specific items, and strategy
+ * notes that can become a short lyric without inventing details.
+ */
+export interface GameSongContext {
+  /** One-sentence summary of what made this game break memorable */
+  summary?: string
+  /** Concrete, game-specific details worth mentioning */
+  details?: string[]
+  /** Dramatic beats from gameplay, ordered from most song-worthy to least */
+  dramaticMoments?: string[]
+  /** Strategy or skill notes used during the game */
+  strategyNotes?: string[]
+  /** Plain-language outcome, if different from headline/subheadline */
+  outcome?: string
+}
+
+/**
  * Standard game results report that all games can produce.
  * Games implement this via their validator's getResultsReport() method.
  *
@@ -282,6 +301,12 @@ export interface GameResultsReport {
   resultTheme?: ResultTheme
   /** Optional celebration animation to show */
   celebrationType?: CelebrationType
+
+  /**
+   * Optional song-generation context. Games should populate this when their
+   * normal stats are too generic to produce interesting personalized lyrics.
+   */
+  songContext?: GameSongContext
 }
 
 // GameResultsConfig is re-exported from manifest-schema at line 11

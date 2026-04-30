@@ -8,11 +8,11 @@
 import type { GameValidator, PracticeBreakOptions, ValidationResult } from '@/lib/arcade/game-sdk'
 import type { GameResultsReport, PlayerResult } from '@/lib/arcade/game-sdk/types'
 import {
-  TypeRacerJrStateSchema,
-  type TypeRacerJrConfig,
-  type TypeRacerJrState,
-  type TypeRacerJrMove,
   type DifficultyLevel,
+  type TypeRacerJrConfig,
+  type TypeRacerJrMove,
+  type TypeRacerJrState,
+  TypeRacerJrStateSchema,
 } from './types'
 import { pickWords, type DifficultyLevel as WordDifficultyLevel } from './words'
 
@@ -51,13 +51,19 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
       case 'RESET_GAME':
         return this.validateResetGame(state)
       default:
-        return { valid: false, error: `Unknown move type: ${(move as TypeRacerJrMove).type}` }
+        return {
+          valid: false,
+          error: `Unknown move type: ${(move as TypeRacerJrMove).type}`,
+        }
     }
   }
 
   private validateStartGame(
     state: TypeRacerJrState,
-    data: { wordQueue: typeof state.wordQueue; playerMetadata: typeof state.playerMetadata }
+    data: {
+      wordQueue: typeof state.wordQueue
+      playerMetadata: typeof state.playerMetadata
+    }
   ): ValidationResult {
     if (state.gamePhase !== 'setup') {
       return { valid: false, error: 'Can only start from setup phase' }
@@ -89,10 +95,18 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
 
   private validateCompleteWord(
     state: TypeRacerJrState,
-    data: { word: string; stars: number; mistakeCount: number; durationMs: number }
+    data: {
+      word: string
+      stars: number
+      mistakeCount: number
+      durationMs: number
+    }
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only complete words during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only complete words during playing phase',
+      }
     }
 
     const currentWord = state.wordQueue[state.currentWordIndex]
@@ -145,7 +159,10 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
     data: { newDifficulty: DifficultyLevel; newWords: typeof state.wordQueue }
   ): ValidationResult {
     if (state.gamePhase !== 'playing') {
-      return { valid: false, error: 'Can only advance difficulty during playing phase' }
+      return {
+        valid: false,
+        error: 'Can only advance difficulty during playing phase',
+      }
     }
 
     // Append new words to queue
@@ -213,7 +230,10 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
         }
         return {
           valid: true,
-          newState: { ...state, timeLimit: value as TypeRacerJrState['timeLimit'] },
+          newState: {
+            ...state,
+            timeLimit: value as TypeRacerJrState['timeLimit'],
+          },
         }
 
       case 'startingDifficulty':
@@ -232,7 +252,10 @@ export class TypeRacerJrValidator implements GameValidator<TypeRacerJrState, Typ
         if (value !== null && (typeof value !== 'number' || value < 1 || value > 20)) {
           return { valid: false, error: 'Invalid word count' }
         }
-        return { valid: true, newState: { ...state, wordCount: value as number | null } }
+        return {
+          valid: true,
+          newState: { ...state, wordCount: value as number | null },
+        }
 
       default:
         return { valid: false, error: `Unknown config field: ${field}` }
@@ -401,20 +424,43 @@ const validator = new TypeRacerJrValidator()
   }
 
   const customStats: GameResultsReport['customStats'] = [
-    { label: 'Words', value: wordsTyped, icon: '📝', highlight: wordsTyped >= 5 },
+    {
+      label: 'Words',
+      value: wordsTyped,
+      icon: '📝',
+      highlight: wordsTyped >= 5,
+    },
     {
       label: 'Stars',
       value: `${state.totalStars}`,
       icon: '⭐',
       highlight: state.totalStars >= wordsTyped * 2,
     },
-    { label: 'Accuracy', value: `${accuracy}%`, icon: '🎯', highlight: accuracy >= 90 },
+    {
+      label: 'Accuracy',
+      value: `${accuracy}%`,
+      icon: '🎯',
+      highlight: accuracy >= 90,
+    },
     { label: 'Time', value: formatDuration(durationMs), icon: '⏱️' },
   ]
 
   if (state.bestStreak > 1) {
-    customStats.push({ label: 'Best Streak', value: state.bestStreak, icon: '🔥', highlight: true })
+    customStats.push({
+      label: 'Best Streak',
+      value: state.bestStreak,
+      icon: '🔥',
+      highlight: true,
+    })
   }
+
+  const cleanWords = state.completedWords
+    .filter((word) => word.mistakeCount === 0)
+    .map((word) => `${word.emoji} ${word.word}`)
+    .slice(-4)
+  const trickiestWord = [...state.completedWords].sort(
+    (a, b) => b.mistakeCount - a.mistakeCount || b.durationMs - a.durationMs
+  )[0]
 
   return {
     gameName: 'type-racer-jr',
@@ -442,6 +488,39 @@ const validator = new TypeRacerJrValidator()
     subheadline: `${wordsTyped} words in ${formatDuration(durationMs)}`,
     resultTheme,
     celebrationType,
+    songContext: {
+      summary: `${wordsTyped} words, ${state.totalStars} stars, ${accuracy}% typing accuracy`,
+      details: [
+        ...(state.completedWords.length > 0
+          ? [
+              `Words typed: ${state.completedWords
+                .map((word) => word.word)
+                .slice(0, 8)
+                .join(', ')}`,
+            ]
+          : []),
+        ...(cleanWords.length > 0 ? [`Clean words: ${cleanWords.join(', ')}`] : []),
+      ],
+      dramaticMoments: [
+        ...(state.bestStreak > 1 ? [`Built a ${state.bestStreak}-word typing streak`] : []),
+        ...(trickiestWord && trickiestWord.mistakeCount > 0
+          ? [
+              `Worked through ${trickiestWord.mistakeCount} mistake${
+                trickiestWord.mistakeCount === 1 ? '' : 's'
+              } on "${trickiestWord.word}"`,
+            ]
+          : []),
+        ...(cleanWords.length > 0
+          ? [`Finished clean on ${cleanWords[cleanWords.length - 1]}`]
+          : []),
+      ],
+      strategyNotes: [
+        ...(state.consecutiveCleanWords > 0
+          ? [`Stayed careful enough for ${state.consecutiveCleanWords} clean word streak progress`]
+          : []),
+      ],
+      outcome: headline,
+    },
   }
 }
 

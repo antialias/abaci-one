@@ -3,11 +3,11 @@
  * (both full GameResult and plan-level fallback for skipped/timeout breaks).
  */
 
-import { describe, it, expect } from 'vitest'
-import { extractSessionStats } from '../extract-session-stats'
-import type { SessionPlan } from '@/db/schema/session-plans'
-import type { Player } from '@/db/schema/players'
+import { describe, expect, it } from 'vitest'
 import type { GameResult } from '@/db/schema/game-results'
+import type { Player } from '@/db/schema/players'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import { extractSessionStats } from '../extract-session-stats'
 
 // ============================================================================
 // Minimal fixtures
@@ -59,7 +59,7 @@ describe('extractSessionStats — game break', () => {
     expect(stats.gameBreak).toBeDefined()
     expect(stats.gameBreak!.gameName).toBe('Memory Match')
     expect(stats.gameBreak!.headline).toBe('Great memory!')
-    expect(stats.gameBreak!.accuracy).toBe(0.85)
+    expect(stats.gameBreak!.accuracy).toBe(85)
     expect(stats.gameBreak!.highlights).toEqual(['Pairs Found: 8/10', 'Time: 1:23'])
   })
 
@@ -152,6 +152,33 @@ describe('extractSessionStats — game break', () => {
     expect(stats.gameBreak).toBeDefined()
     expect(stats.gameBreak!.headline).toBe('Played some-game (played)')
   })
+
+  it('includes song-specific game break details when a game reports them', () => {
+    const gameResult = {
+      accuracy: 92,
+      fullReport: {
+        gameDisplayName: 'Type Racer Jr.',
+        headline: 'Clean typing sprint!',
+        customStats: [{ label: 'Stars', value: '9', highlight: true }],
+        playerResults: [{ playerName: 'Sonia', score: 9, accuracy: 92 }],
+        songContext: {
+          summary: 'Typed five animal words before the timer.',
+          details: ['Words typed: cat, moon, rocket'],
+          dramaticMoments: ['No mistakes on rocket'],
+          strategyNotes: ['Slowed down for the double-o in moon'],
+          outcome: 'finished with a clean final word',
+        },
+      },
+    } as unknown as GameResult
+
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], gameResult)
+
+    expect(stats.gameBreak!.details).toContain('Typed five animal words before the timer.')
+    expect(stats.gameBreak!.details).toContain('Words typed: cat, moon, rocket')
+    expect(stats.gameBreak!.moments).toContain('No mistakes on rocket')
+    expect(stats.gameBreak!.moments).toContain('Slowed down for the double-o in moon')
+    expect(stats.gameBreak!.outcome).toBe('finished with a clean final word')
+  })
 })
 
 // ============================================================================
@@ -195,5 +222,91 @@ describe('extractSessionStats — core fields', () => {
     ]
     const stats = extractSessionStats(minimalPlan, minimalPlayer, sessions)
     expect(stats.history.trend).toBe('declining')
+  })
+
+  it('surfaces dramatic problem details for song lyrics', () => {
+    const problem = {
+      terms: [9, 6],
+      answer: 15,
+      skillsRequired: ['tenComplements.6=10-4'],
+      generationTrace: {
+        terms: [9, 6],
+        answer: 15,
+        allSkills: ['tenComplements.6=10-4'],
+        totalComplexityCost: 5,
+        steps: [
+          {
+            stepNumber: 1,
+            operation: '0 + 9 = 9',
+            accumulatedBefore: 0,
+            termAdded: 9,
+            accumulatedAfter: 9,
+            skillsUsed: [],
+            explanation: 'Start with 9',
+          },
+          {
+            stepNumber: 2,
+            operation: '9 + 6 = 15',
+            accumulatedBefore: 9,
+            termAdded: 6,
+            accumulatedAfter: 15,
+            skillsUsed: ['tenComplements.6=10-4'],
+            explanation: 'Use ten complement',
+          },
+        ],
+      },
+    }
+
+    const dramaticPlan = {
+      id: 'plan-drama',
+      parts: [
+        {
+          partNumber: 1,
+          type: 'abacus',
+          format: 'vertical',
+          useAbacus: true,
+          estimatedMinutes: 5,
+          slots: [
+            {
+              slotId: 'slot-hard',
+              index: 0,
+              purpose: 'challenge',
+              constraints: {},
+              problem,
+            },
+          ],
+        },
+      ],
+      results: [
+        {
+          slotId: 'slot-hard',
+          partNumber: 1,
+          slotIndex: 0,
+          problem,
+          studentAnswer: 15,
+          isCorrect: true,
+          responseTimeMs: 12000,
+          skillsExercised: ['tenComplements.6=10-4'],
+          usedOnScreenAbacus: false,
+          hadHelp: true,
+          incorrectAttempts: 2,
+          timestamp: new Date(),
+        },
+      ],
+      targetDurationMinutes: 5,
+    } as unknown as SessionPlan
+
+    const stats = extractSessionStats(dramaticPlan, minimalPlayer, [])
+    const moment = stats.practiceDrama.problemMoments[0]
+
+    expect(stats.practiceDrama.storyAngle).toContain('9 + 6 = 15')
+    expect(stats.currentSession.totalIncorrectAttempts).toBe(2)
+    expect(stats.currentSession.helpMoments).toBe(1)
+    expect(moment.problem).toBe('9 + 6 = 15')
+    expect(moment.outcome).toBe('eventually_correct')
+    expect(moment.attempts).toBe(3)
+    expect(moment.skills).toContain('+6 = +10 - 4')
+    expect(moment.strategySteps[0]).toContain('9 + 6 = 15')
+    expect(stats.practiceDrama.skillSpotlights[0].skill).toBe('+6 = +10 - 4')
   })
 })

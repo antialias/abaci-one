@@ -6,11 +6,12 @@
  */
 
 import { z } from 'zod'
-import { llm } from '@/lib/llm'
-import { trackedCall } from '@/lib/ai-usage/llm-middleware'
 import { AiFeature } from '@/lib/ai-usage/features'
-import type { SongPromptInput } from './extract-session-stats'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
 import type { CompositionPlan } from '@/lib/elevenlabs/music-client'
+import { llm } from '@/lib/llm'
+import type { SongConcept } from './concept-selector'
+import type { SongPromptInput } from './extract-session-stats'
 
 // ============================================================================
 // Output Schema
@@ -56,11 +57,17 @@ export type SongLLMOutput = z.infer<typeof songLLMOutputSchema>
 export interface SongCompositionOutput {
   title: string
   plan: CompositionPlan
+  /** Deterministic story concept selected before prompt generation */
+  songConcept?: SongConcept
   /** LLM metadata for observability */
   llmMeta: {
     provider: string
     model: string
-    usage: { promptTokens: number; completionTokens: number; totalTokens: number }
+    usage: {
+      promptTokens: number
+      completionTokens: number
+      totalTokens: number
+    }
     attempts: number
   }
 }
@@ -71,35 +78,46 @@ export interface SongCompositionOutput {
 
 const SYSTEM_PROMPT = `You are a songwriter who writes short, fun, personalized celebration songs for kids who just finished math practice. Your output will be used as a composition plan for the ElevenLabs Music API.
 
-NARRATIVE — THE MOST IMPORTANT RULE:
-Every song must tell a tiny STORY, not just list achievements. Use the session details and kid's profile to build a narrative arc across the verses. Here's how:
+SPECIFICITY CONTRACT - THE MOST IMPORTANT RULE:
+Every song must prove it knows THIS session. Use the "Song concept", "Practice drama", and "Game break evidence" sections as raw material.
 
-- **Verse 1 = The Setup**: Paint a scene. Who is this kid? What did they set out to do today? Use their name, emoji, age, and the skills they practiced to establish a character on a mission. Think metaphor and imagery — a kid working on addition could be "stacking towers to the sky"; visualization practice could be "closing your eyes and seeing the beads"; a number line could be "walking the path one step at a time." Don't just say "you did math" — make the practice feel like an adventure.
-- **Chorus = The Anthem**: This is the emotional core — a singable hook that captures how this kid should FEEL right now. It should work as a standalone celebration that relates to the story in the verses.
-- **Verse 2 = The Payoff**: This is where the story lands. Reference the specific journey of THIS session — the streak they built, the effort they put in, how they grew. If they're on an improving trend, that's a comeback story. If they used help, that's a "brave enough to ask" moment. If accuracy was moderate, that's a "never gave up" arc. Connect back to the imagery from Verse 1 to close the loop.
+- Use at least one specific problem expression if a problem moment is provided, such as "9 + 6 = 15" or a shorter singable fragment like "nine plus six."
+- Use at least one specific skill or strategy if provided, such as "+6 = +10 - 4", "five-complement", "ten-complement", "visualizing beads", or "asked for help and kept going."
+- If game-break evidence is provided, use at least one game-specific detail, not just the game name.
+- Do not invent problems, attempts, scores, words, notes, regions, or strategies. If a detail is not provided, keep it general.
+- Frame mistakes and attempts as plot tension or perseverance. Never mock wrong answers or turn low accuracy into the hook.
+
+NARRATIVE:
+Every song must tell a tiny story, not list achievements.
+
+- Verse 1 = The setup. Paint a fresh scene for the session angle. Avoid generic "you did math" openings.
+- Chorus = The anthem. Make a short hook that captures how the kid should feel now.
+- Verse 2 = The payoff. Land the specific session journey: comeback, streak, strategy unlock, hard problem, or skill tour.
+- Interlude = The game-break surprise when game evidence exists.
+
+CREATIVE ANGLE:
+If a Song concept is provided, use that selected concept as the creative lens. Do not swap it for a different metaphor. If no concept is provided, pick one vivid lens that fits the evidence and genre: detective case, kitchen experiment, tiny train route, lab test, arcade announcer, weather report, city builder, space checklist, treasure map, sports replay, marching cadence, or another fresh angle. The angle must serve the real session details. Avoid defaulting to stars, superheroes, trophies, or "you are amazing" filler.
 
 Narrative inspiration by session profile:
-- **High accuracy + long streak** → a triumph/conquest story ("climbed the mountain, reached the top")
-- **Improving trend** → a comeback/growth story ("started shaky but look at you now")
-- **Used help** → a wisdom/teamwork story ("smart enough to ask, brave enough to learn")
-- **Low accuracy but finished** → a perseverance/grit story ("fell down seven times, got up eight")
-- **Many skills practiced** → a quest/adventure story ("traveled through addition land and subtraction valley")
-- **Game break included** → weave the game into the narrative as a "side quest" or "recharge moment"
+- High accuracy + long streak: triumph or momentum story
+- Improving trend: comeback or leveling-up story
+- Used help: wisdom, coaching, or tool-use story
+- Low accuracy but finished: grit and brave persistence
+- Many skills practiced: journey through different math terrains
+- Game break included: side quest, recharge, plot twist, or halftime show
 
-The narrative should feel natural and playful — NOT forced or formulaic. Vary your imagery and metaphors. Avoid clichés like "you're a star" every time. Draw from the SPECIFIC details to make each song feel unique to THIS kid's THIS session.
-
-If the kid's age is provided, tailor imagery and vocabulary accordingly — a 5-year-old gets simpler, more playful imagery (animals, colors, silly sounds); an 8-year-old can handle slightly more sophisticated metaphors (quests, building, exploring).
+If the kid's age is provided, tailor imagery and vocabulary accordingly. A 5-year-old gets simpler, playful imagery; an 8-year-old can handle more layered metaphors.
 
 RULES:
-- Write 1-2 short verses and a chorus — a SHORT celebration jingle with a narrative thread, not a full song
+- Write 1-2 short verses and a chorus: a SHORT celebration jingle with a narrative thread, not a full song
 - Use the kid's name naturally in at least one verse
-- Weave their specific achievements into the story (don't just list them)
+- Weave specific achievements into the story; do not merely list stats
 - If accuracy is high (>85%), the narrative tone is triumphant
 - If accuracy is moderate (60-85%), the narrative tone celebrates effort and progress
 - If accuracy is low (<60%), the narrative emphasizes grit, growth mindset, and bravery
 - Keep language age-appropriate, positive, and encouraging
-- Never mention specific numbers that might make a kid feel bad
-- The title should hint at the narrative (not just "Great Job!" — something like "The Addition Adventure" or "Bead Master's Groove")
+- It is okay to mention problem terms and attempt counts when framed warmly
+- The title must hint at the specific story angle, not "Great Job!"
 
 STRUCTURE:
 - Without game break: Verse 1, Chorus, Verse 2, Chorus. That's 4 sections.
@@ -121,8 +139,8 @@ STYLE TIPS:
 
 GAME BREAK INTERLUDE:
 When a game break is mentioned, create a dedicated interlude section between the last verse and the final chorus. This interlude should:
-- Weave the game break into the narrative as a "side quest", "recharge", or "plot twist" moment in the story
-- Reference what the kid did during the game break (the game they played, how they did)
+- Weave the game break into the narrative as a "side quest", "recharge", "plot twist", or "halftime" moment in the story
+- Reference what the kid did during the game break using the provided evidence
 - Be styled as a genre-appropriate "break" moment that fits the song's genre. Examples:
   - Funk/disco → a breakdown or groove section
   - Pop → a rap break or spoken-word bridge
@@ -150,7 +168,78 @@ GENRE INSTRUCTIONS:
 // Prompt Builder
 // ============================================================================
 
-function buildUserPrompt(input: SongPromptInput): string {
+function formatLines(title: string, lines: string[]): string {
+  if (lines.length === 0) return ''
+  return `\n\n${title}:\n${lines.join('\n')}`
+}
+
+function formatProblemMoments(input: SongPromptInput): string[] {
+  return input.practiceDrama.problemMoments.map((moment, index) => {
+    const pieces = [
+      `${index + 1}. ${moment.kind}: ${moment.problem}`,
+      `part: ${moment.partType}`,
+      moment.purpose ? `purpose: ${moment.purpose}` : null,
+      `outcome: ${moment.outcome}`,
+      `attempts: ${moment.attempts}`,
+      moment.incorrectAttempts > 0 ? `incorrect attempts: ${moment.incorrectAttempts}` : null,
+      moment.studentAnswers.length > 0
+        ? `student answers: ${moment.studentAnswers.join(', ')}`
+        : null,
+      moment.skills.length > 0 ? `skills: ${moment.skills.join(', ')}` : null,
+      moment.strategySteps.length > 0 ? `strategies: ${moment.strategySteps.join('; ')}` : null,
+      moment.responseSeconds != null ? `response: ${moment.responseSeconds}s` : null,
+      `why it matters: ${moment.reason}`,
+    ].filter(Boolean)
+    return `- ${pieces.join(' | ')}`
+  })
+}
+
+function formatSkillSpotlights(input: SongPromptInput): string[] {
+  return input.practiceDrama.skillSpotlights.map((skill) => {
+    const examples =
+      skill.exampleProblems.length > 0 ? ` | examples: ${skill.exampleProblems.join('; ')}` : ''
+    return `- ${skill.skill}: ${skill.correct}/${skill.problems} problems correct across ${skill.attempts} attempt${skill.attempts === 1 ? '' : 's'}${examples}`
+  })
+}
+
+function formatGameBreak(input: SongPromptInput): string {
+  const gb = input.gameBreak
+  if (!gb) return ''
+
+  const details = [
+    gb.headline,
+    gb.outcome ? `outcome: ${gb.outcome}` : null,
+    gb.accuracy != null ? `${Math.round(gb.accuracy)}% accuracy` : null,
+    ...gb.highlights,
+    ...gb.details,
+    ...gb.moments.map((moment) => `moment: ${moment}`),
+  ].filter(Boolean)
+
+  return `\n\nGame break evidence:\n- Played ${gb.gameName}: ${details.join(' | ')}`
+}
+
+function formatSongConcept(input: SongPromptInput): string {
+  const concept = input.songConcept
+  if (!concept) return ''
+
+  const lines = [
+    `- Concept: ${concept.title} (${concept.id})`,
+    `- Lens: ${concept.lens}`,
+    `- Why this fits: ${concept.fitReason}`,
+    concept.hookSeeds.length > 0 ? `- Hook seeds: ${concept.hookSeeds.join(' | ')}` : null,
+    concept.requiredDetails.length > 0
+      ? `- Must use factual details: ${concept.requiredDetails.join(' | ')}`
+      : null,
+    concept.gameBreakInterludeStyle
+      ? `- Game-break interlude style: ${concept.gameBreakInterludeStyle}`
+      : null,
+    concept.avoid.length > 0 ? `- Avoid: ${concept.avoid.join(' | ')}` : null,
+  ].filter(Boolean)
+
+  return `\n\nSong concept:\n${lines.join('\n')}`
+}
+
+export function buildSongUserPrompt(input: SongPromptInput): string {
   const { player, currentSession, history } = input
 
   const accuracyPercent = Math.round(currentSession.accuracy * 100)
@@ -172,17 +261,6 @@ function buildUserPrompt(input: SongPromptInput): string {
     historyNote = `\nRecent history: ${history.recentSessionCount} sessions this week, ${avgPct}% average accuracy, trend: ${history.trend}.`
   }
 
-  let gameBreakNote = ''
-  if (input.gameBreak) {
-    const gb = input.gameBreak
-    const details = [
-      gb.headline,
-      ...(gb.accuracy != null ? [`${Math.round(gb.accuracy)}% accuracy`] : []),
-      ...gb.highlights,
-    ]
-    gameBreakNote = `\nGame break: played ${gb.gameName} — ${details.join(', ')}.`
-  }
-
   return `Write a celebration song for ${playerNote} who just finished math practice!
 
 Session details:
@@ -191,7 +269,24 @@ Session details:
 - Best correct streak: ${currentSession.bestCorrectStreak} in a row
 - Practice types: ${parts}${skillsNote}
 - Session length: ${currentSession.durationMinutes} minutes
-- Used help: ${currentSession.helpUsed ? 'yes' : 'no'}${historyNote}${gameBreakNote}`
+- Used help: ${currentSession.helpUsed ? 'yes' : 'no'}
+- Total incorrect attempts: ${currentSession.totalIncorrectAttempts}
+- Help moments: ${currentSession.helpMoments}
+- Retry/comeback moments: ${currentSession.retryMoments}${
+    currentSession.averageResponseSeconds != null
+      ? `\n- Average response time: ${currentSession.averageResponseSeconds}s`
+      : ''
+  }${historyNote}${formatSongConcept(input)}
+
+Practice drama:
+- Story angle to build around: ${input.practiceDrama.storyAngle}${
+    input.practiceDrama.arcs.length > 0 ? `\n- Arcs: ${input.practiceDrama.arcs.join(' | ')}` : ''
+  }${formatLines('Specific problem moments', formatProblemMoments(input))}${formatLines(
+    'Skill spotlights',
+    formatSkillSpotlights(input)
+  )}${formatGameBreak(input)}
+
+Use the selected song concept and the specific problem, skill, attempt, and game-break evidence above. Keep it warm and singable.`
 }
 
 // ============================================================================
@@ -222,11 +317,14 @@ export async function generateSongPrompt(
       : genres.length === 1
         ? `\n\nThe parent has requested a ${genres[0]} style song. Use ${genres[0]} as the primary genre.`
         : ''
-  const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildUserPrompt(input)}${genreInstruction}`
+  const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildSongUserPrompt(input)}${genreInstruction}`
 
   const callArgs = { prompt: fullPrompt, schema: songLLMOutputSchema }
   const response = userId
-    ? await trackedCall(llm, callArgs, { userId, feature: AiFeature.SESSION_SONG_PROMPT })
+    ? await trackedCall(llm, callArgs, {
+        userId,
+        feature: AiFeature.SESSION_SONG_PROMPT,
+      })
     : await llm.call(callArgs)
 
   const { title, positive_global_styles, negative_global_styles, sections } = response.data
@@ -248,6 +346,7 @@ export async function generateSongPrompt(
       negative_global_styles,
       sections,
     },
+    ...(input.songConcept && { songConcept: input.songConcept }),
     llmMeta: {
       provider: response.provider,
       model: response.model,
