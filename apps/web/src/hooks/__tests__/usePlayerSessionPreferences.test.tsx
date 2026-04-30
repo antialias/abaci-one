@@ -46,6 +46,8 @@ const mockPreferences: PlayerSessionPreferencesConfig = {
   gameBreakSelectionMode: 'auto-start',
   gameBreakSelectedGame: 'matching',
   gameBreakDifficultyPreset: 'hard',
+  gameBreakShowCustomize: true,
+  gameBreakCustomConfig: { difficulty: 12 },
 }
 
 // ============================================================================

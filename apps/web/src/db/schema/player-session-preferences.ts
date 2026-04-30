@@ -16,6 +16,10 @@ export interface PlayerSessionPreferencesConfig {
   gameBreakSelectionMode: string
   gameBreakSelectedGame: string | null
   gameBreakDifficultyPreset: string | null
+  /** Whether the selected game should use custom break-game settings instead of a preset. */
+  gameBreakShowCustomize?: boolean
+  /** Custom settings for the selected break game. */
+  gameBreakCustomConfig?: Record<string, unknown>
   gameBreakEnabledGames?: string[]
   /** Optional narration level for kid-facing explanations. */
   kidLanguageStyle?: KidLanguageStyle
@@ -72,6 +76,8 @@ export const DEFAULT_SESSION_PREFERENCES: PlayerSessionPreferencesConfig = {
   gameBreakSelectionMode: 'kid-chooses',
   gameBreakSelectedGame: null,
   gameBreakDifficultyPreset: 'medium',
+  gameBreakShowCustomize: false,
+  gameBreakCustomConfig: {},
   gameBreakEnabledGames: [],
 }
 

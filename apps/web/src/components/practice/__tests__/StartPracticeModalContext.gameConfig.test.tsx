@@ -7,6 +7,8 @@ import type { ReactNode } from 'react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import type { CurriculumPhase } from '@/lib/curriculum/definitions'
+import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 import { StartPracticeModalProvider, useStartPracticeModal } from '../StartPracticeModalContext'
 
 // Mock hooks and dependencies
@@ -171,7 +173,7 @@ const defaultSessionMode: SessionMode = {
   canSkipTutorial: true,
 }
 
-function createWrapper() {
+function createWrapper(savedPreferences?: PlayerSessionPreferencesConfig | null) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <StartPracticeModalProvider
@@ -179,6 +181,7 @@ function createWrapper() {
         studentName="Test Student"
         focusDescription="Test focus"
         sessionMode={defaultSessionMode}
+        savedPreferences={savedPreferences}
       >
         {children}
       </StartPracticeModalProvider>
@@ -230,6 +233,33 @@ describe('StartPracticeModalContext - Game Break Configuration (Phase 3)', () =>
       })
 
       expect(result.current.resolvedGameConfig).toEqual({})
+    })
+
+    it('should initialize saved custom config for the selected game', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper({
+          ...DEFAULT_SESSION_PREFERENCES,
+          gameBreakEnabledGames: ['memory-quiz'],
+          gameBreakSelectedGame: 'memory-quiz',
+          gameBreakShowCustomize: true,
+          gameBreakCustomConfig: {
+            selectedCount: 10,
+            displayTime: 1.0,
+          },
+        }),
+      })
+
+      expect(result.current.gameBreakSelectedGame).toBe('memory-quiz')
+      expect(result.current.gameBreakShowCustomize).toBe(true)
+      expect(result.current.gameBreakCustomConfig).toEqual({
+        selectedCount: 10,
+        displayTime: 1.0,
+      })
+      expect(result.current.resolvedGameConfig).toEqual({
+        selectedCount: 10,
+        displayTime: 1.0,
+        selectedDifficulty: 'easy',
+      })
     })
   })
 

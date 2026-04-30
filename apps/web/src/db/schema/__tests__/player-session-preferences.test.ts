@@ -49,22 +49,29 @@ describe('PlayerSessionPreferencesConfig', () => {
       expect(DEFAULT_SESSION_PREFERENCES.gameBreakDifficultyPreset).toBe('medium')
     })
 
+    it('has custom game break settings disabled by default', () => {
+      expect(DEFAULT_SESSION_PREFERENCES.gameBreakShowCustomize).toBe(false)
+      expect(DEFAULT_SESSION_PREFERENCES.gameBreakCustomConfig).toEqual({})
+    })
+
     it('satisfies the PlayerSessionPreferencesConfig interface', () => {
       // TypeScript compile-time check — if this assignment compiles, the shape is correct
       const config: PlayerSessionPreferencesConfig = DEFAULT_SESSION_PREFERENCES
       expect(config).toBeDefined()
     })
 
-    it('contains exactly the 11 expected keys', () => {
+    it('contains exactly the 13 expected keys', () => {
       const keys = Object.keys(DEFAULT_SESSION_PREFERENCES).sort()
       expect(keys).toEqual([
         'durationMinutes',
+        'gameBreakCustomConfig',
         'gameBreakDifficultyPreset',
         'gameBreakEnabled',
         'gameBreakEnabledGames',
         'gameBreakMinutes',
         'gameBreakSelectedGame',
         'gameBreakSelectionMode',
+        'gameBreakShowCustomize',
         'partWeights',
         'problemLengthPreference',
         'purposeWeights',

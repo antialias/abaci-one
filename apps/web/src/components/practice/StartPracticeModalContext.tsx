@@ -320,8 +320,12 @@ export function StartPracticeModalProvider({
     useState<GameBreakDifficultyPreset>(
       (savedPreferences?.gameBreakDifficultyPreset as GameBreakDifficultyPreset) ?? 'medium'
     )
-  const [gameBreakCustomConfig, setGameBreakCustomConfig] = useState<Record<string, unknown>>({})
-  const [gameBreakShowCustomize, setGameBreakShowCustomize] = useState(false)
+  const [gameBreakCustomConfig, setGameBreakCustomConfig] = useState<Record<string, unknown>>(
+    savedPreferences?.gameBreakCustomConfig ?? {}
+  )
+  const [gameBreakShowCustomize, setGameBreakShowCustomize] = useState(
+    savedPreferences?.gameBreakShowCustomize ?? false
+  )
 
   // Tap on segment: 0→1, 1→2, 2→1 (never disables; no-op if sole active mode)
   const cyclePartWeight = useCallback((partType: keyof PartWeights) => {
@@ -524,6 +528,8 @@ export function StartPracticeModalProvider({
       gameBreakSelectionMode,
       gameBreakSelectedGame: gameBreakSelectedGame === 'random' ? null : gameBreakSelectedGame,
       gameBreakDifficultyPreset,
+      gameBreakShowCustomize,
+      gameBreakCustomConfig,
       gameBreakEnabledGames,
       kidLanguageStyle: savedPreferences?.kidLanguageStyle,
     }
@@ -550,6 +556,8 @@ export function StartPracticeModalProvider({
     gameBreakSelectionMode,
     gameBreakSelectedGame,
     gameBreakDifficultyPreset,
+    gameBreakShowCustomize,
+    gameBreakCustomConfig,
     gameBreakEnabledGames,
     savedPreferences?.kidLanguageStyle,
   ])

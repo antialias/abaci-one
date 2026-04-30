@@ -121,6 +121,8 @@ const customPreferences: PlayerSessionPreferencesConfig = {
   gameBreakSelectionMode: 'auto-start',
   gameBreakSelectedGame: 'game1',
   gameBreakDifficultyPreset: 'hard',
+  gameBreakShowCustomize: true,
+  gameBreakCustomConfig: { selectedMap: 'usa', assistanceLevel: 'guided' },
   gameBreakEnabledGames: ['game1', 'game2'],
 }
 
@@ -273,7 +275,19 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       expect(result.current.gameBreakDifficultyPreset).toBe('hard')
     })
 
-    it('initializes all 10 persisted settings from savedPreferences at once', () => {
+    it('initializes custom game break config from savedPreferences', () => {
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper({ savedPreferences: customPreferences }),
+      })
+
+      expect(result.current.gameBreakShowCustomize).toBe(true)
+      expect(result.current.gameBreakCustomConfig).toEqual({
+        selectedMap: 'usa',
+        assistanceLevel: 'guided',
+      })
+    })
+
+    it('initializes all persisted settings from savedPreferences at once', () => {
       const { result } = renderHook(() => useStartPracticeModal(), {
         wrapper: createWrapper({ savedPreferences: customPreferences }),
       })
@@ -288,6 +302,8 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       expect(result.current.gameBreakDifficultyPreset).toBe(
         customPreferences.gameBreakDifficultyPreset
       )
+      expect(result.current.gameBreakShowCustomize).toBe(customPreferences.gameBreakShowCustomize)
+      expect(result.current.gameBreakCustomConfig).toEqual(customPreferences.gameBreakCustomConfig)
     })
   })
 
@@ -492,6 +508,33 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       )
     })
 
+    it('fires onSavePreferences when custom game break config changes', () => {
+      const onSave = vi.fn()
+
+      const { result } = renderHook(() => useStartPracticeModal(), {
+        wrapper: createWrapper({ onSavePreferences: onSave }),
+      })
+
+      act(() => {
+        result.current.setGameBreakShowCustomize(true)
+        result.current.setGameBreakCustomConfig({
+          selectedMap: 'usa',
+          assistanceLevel: 'guided',
+        })
+      })
+
+      expect(onSave).toHaveBeenCalledTimes(1)
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gameBreakShowCustomize: true,
+          gameBreakCustomConfig: {
+            selectedMap: 'usa',
+            assistanceLevel: 'guided',
+          },
+        })
+      )
+    })
+
     it('does NOT fire onSavePreferences when setting same value (no-op)', () => {
       const onSave = vi.fn()
 
@@ -508,7 +551,7 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       expect(onSave).not.toHaveBeenCalled()
     })
 
-    it('includes all 11 persisted settings in the save payload', () => {
+    it('includes all 13 persisted settings in the save payload', () => {
       const onSave = vi.fn()
 
       const { result } = renderHook(() => useStartPracticeModal(), {
@@ -531,6 +574,8 @@ describe('StartPracticeModalContext — Saved Preferences', () => {
       expect(payload).toHaveProperty('gameBreakSelectionMode')
       expect(payload).toHaveProperty('gameBreakSelectedGame')
       expect(payload).toHaveProperty('gameBreakDifficultyPreset')
+      expect(payload).toHaveProperty('gameBreakShowCustomize')
+      expect(payload).toHaveProperty('gameBreakCustomConfig')
       expect(payload).toHaveProperty('gameBreakEnabledGames')
     })
 

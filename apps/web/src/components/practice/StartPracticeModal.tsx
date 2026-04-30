@@ -93,11 +93,29 @@ export function StartPracticeModal({
 
   // Debounced save: 1000ms after last change
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingPrefsRef = useRef<PlayerSessionPreferencesConfig | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef = useRef(true)
+
+  const savePreferencesNow = useCallback((prefs: PlayerSessionPreferencesConfig) => {
+    saveMutationRef.current.mutate(prefs, {
+      onSuccess: () => {
+        if (!mountedRef.current) return
+        setSaveStatus('saved')
+        // Fade the "Saved" indicator after 3 seconds
+        fadeTimer.current = setTimeout(() => setSaveStatus('idle'), 3000)
+      },
+      onError: () => {
+        if (!mountedRef.current) return
+        setSaveStatus('error')
+      },
+    })
+  }, [])
 
   const handleSavePreferences = useCallback(
     (prefs: PlayerSessionPreferencesConfig) => {
+      pendingPrefsRef.current = prefs
       // Clear any existing debounce timer
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
       // Clear any "saved" fade timer
@@ -106,26 +124,41 @@ export function StartPracticeModal({
       setSaveStatus('saving')
 
       debounceTimer.current = setTimeout(() => {
-        saveMutationRef.current.mutate(prefs, {
-          onSuccess: () => {
-            setSaveStatus('saved')
-            // Fade the "Saved" indicator after 3 seconds
-            fadeTimer.current = setTimeout(() => setSaveStatus('idle'), 3000)
-          },
-          onError: () => {
-            setSaveStatus('error')
-          },
-        })
+        const pendingPrefs = pendingPrefsRef.current
+        pendingPrefsRef.current = null
+        debounceTimer.current = null
+        if (pendingPrefs) savePreferencesNow(pendingPrefs)
       }, 1000)
     },
-    [] // stable — no deps that change identity
+    [savePreferencesNow]
   )
+
+  const flushPendingPreferences = useCallback(() => {
+    const pendingPrefs = pendingPrefsRef.current
+    if (!pendingPrefs) return
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+      debounceTimer.current = null
+    }
+    if (fadeTimer.current) clearTimeout(fadeTimer.current)
+
+    pendingPrefsRef.current = null
+    savePreferencesNow(pendingPrefs)
+  }, [savePreferencesNow])
+
+  const handleClose = useCallback(() => {
+    flushPendingPreferences()
+    onClose()
+  }, [flushPendingPreferences, onClose])
 
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
+      mountedRef.current = false
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
       if (fadeTimer.current) clearTimeout(fadeTimer.current)
+      pendingPrefsRef.current = null
     }
   }, [])
 
@@ -154,9 +187,10 @@ export function StartPracticeModal({
         studentId={studentId}
         studentName={studentName}
         focusDescription={focusDescription}
-        onClose={onClose}
+        onClose={handleClose}
         open={open}
         saveStatus={saveStatus}
+        flushPendingPreferences={flushPendingPreferences}
       />
     </StartPracticeModalProvider>
   )
@@ -169,6 +203,7 @@ interface StartPracticeModalContentProps {
   onClose: () => void
   open: boolean
   saveStatus: 'idle' | 'saving' | 'saved' | 'error'
+  flushPendingPreferences: () => void
 }
 
 function StartPracticeModalContent({
@@ -178,6 +213,7 @@ function StartPracticeModalContent({
   onClose,
   open,
   saveStatus,
+  flushPendingPreferences,
 }: StartPracticeModalContentProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -225,15 +261,17 @@ function StartPracticeModalContent({
       queryKey: sessionModeKeys.forPlayer(studentId),
     })
     // Start practice - session plan will be generated with newly-enabled skill
+    flushPendingPreferences()
     handleStart()
-  }, [queryClient, studentId, handleStart])
+  }, [queryClient, studentId, handleStart, flushPendingPreferences])
 
   // Skip tutorial and start practice with existing skills
   const handleTutorialSkip = useCallback(() => {
     setShowTutorial(false)
     setIncludeTutorial(false)
+    flushPendingPreferences()
     handleStart()
-  }, [handleStart, setIncludeTutorial])
+  }, [handleStart, setIncludeTutorial, flushPendingPreferences])
 
   const handleTutorialCancel = useCallback(() => {
     setShowTutorial(false)
@@ -242,12 +280,13 @@ function StartPracticeModalContent({
 
   // "Let's Go!" button handler - show tutorial first if needed, otherwise start practice
   const handleStartOrTutorial = useCallback(() => {
+    flushPendingPreferences()
     if (includeTutorial && nextSkill) {
       setShowTutorial(true)
       return
     }
     handleStart()
-  }, [includeTutorial, nextSkill, handleStart])
+  }, [includeTutorial, nextSkill, handleStart, flushPendingPreferences])
 
   // Render tutorial modal if tutorial is active
   if (showTutorial && nextSkill) {
