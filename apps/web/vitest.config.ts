@@ -42,6 +42,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@soroban/llm-client': path.resolve(__dirname, '../../packages/llm-client/src/index.ts'),
       '@styled/css': path.resolve(__dirname, './styled-system/css'),
       '@styled/jsx': path.resolve(__dirname, './styled-system/jsx'),
       '@styled/patterns': path.resolve(__dirname, './styled-system/patterns'),
