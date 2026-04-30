@@ -24,12 +24,26 @@ describe('classifySongFailure', () => {
     expect(result.remediation?.href).toContain('elevenlabs.io')
   })
 
-  it('classifies OpenAI insufficient_quota as quota_exceeded pointing at OpenAI', () => {
-    const result = classifySongFailure('openai API error (429): insufficient_quota')
-    // 429 wins matching first; that's acceptable. Check explicit quota path:
-    const result2 = classifySongFailure('openai: You exceeded your current quota')
-    expect(result.kind === 'rate_limited' || result.kind === 'quota_exceeded').toBe(true)
-    expect(result2.kind).toBe('quota_exceeded')
+  it('distinguishes OpenAI out-of-funds (429+insufficient_quota) from rate-limit (429 alone)', () => {
+    // Real OpenAI strings — both come back as 429 but mean very different things.
+    const outOfFunds = classifySongFailure(
+      'openai API error (429): You exceeded your current quota, please check your plan and billing details.'
+    )
+    const insufficientQuotaCode = classifySongFailure(
+      'openai API error (429): insufficient_quota'
+    )
+    const rateLimited = classifySongFailure(
+      'openai API error (429): Rate limit reached for gpt-4o in organization org-...'
+    )
+
+    expect(outOfFunds.kind).toBe('quota_exceeded')
+    expect(outOfFunds.remediation?.href).toContain('platform.openai.com/account/billing')
+
+    expect(insufficientQuotaCode.kind).toBe('quota_exceeded')
+    expect(insufficientQuotaCode.remediation?.href).toContain('platform.openai.com/account/billing')
+
+    expect(rateLimited.kind).toBe('rate_limited')
+    expect(rateLimited.remediation).toBeNull()
   })
 
   it('classifies 429 as rate_limited', () => {
