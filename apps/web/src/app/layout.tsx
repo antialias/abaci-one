@@ -1,16 +1,16 @@
-import type { Metadata, Viewport } from 'next'
 import { dehydrate } from '@tanstack/react-query'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { auth } from '@/auth'
 import { ClientProviders } from '@/components/ClientProviders'
-import { isAdminEmail } from '@/lib/auth/admin-emails'
+import { getMessages } from '@/i18n/messages'
+import { getRequestLocale } from '@/i18n/request'
+import { resolveUserRole } from '@/lib/auth/roles'
 import { getAllFlags } from '@/lib/feature-flags'
 import { getQueryClient } from '@/lib/queryClient'
 import { billingKeys, featureFlagKeys } from '@/lib/queryKeys'
 import { getTierForUser } from '@/lib/subscription'
 import { TIER_LIMITS } from '@/lib/tier-limits'
-import { getRequestLocale } from '@/i18n/request'
-import { getMessages } from '@/i18n/messages'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://abaci.one'),
@@ -102,11 +102,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // on the client without an extra API request.
   // Session-aware: logged-in users get their per-user overrides merged in.
   const session = await auth()
-  const userRole = session?.user?.id
-    ? isAdminEmail(session.user.email)
-      ? 'admin'
-      : 'user'
-    : 'guest'
+  const userRole = await resolveUserRole({
+    userId: session?.user?.id,
+    email: session?.user?.email,
+  })
   const queryClient = getQueryClient()
   await Promise.all([
     queryClient.prefetchQuery({

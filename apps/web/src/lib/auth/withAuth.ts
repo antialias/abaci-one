@@ -1,12 +1,12 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { isAdminEmail } from './admin-emails'
 import { getRouteEnforcer } from './enforcer'
+import { resolveUserRole, type UserRole } from './roles'
 
 export interface AuthenticatedContext {
   userId: string
   userEmail: string | null
-  userRole: 'guest' | 'user' | 'admin'
+  userRole: UserRole
   /** Next.js dynamic route params (e.g. { id: string }). Always present — resolves to {} for non-dynamic routes. */
   params: Promise<Record<string, string | string[]>>
 }
@@ -45,7 +45,7 @@ export function withAuth(handler: RouteHandler, options?: WithAuthOptions) {
     const session = await auth()
 
     // Determine role
-    let role: 'guest' | 'user' | 'admin' = 'guest'
+    let role: UserRole = 'guest'
     let userId = ''
     let userEmail: string | null = null
 
@@ -53,8 +53,7 @@ export function withAuth(handler: RouteHandler, options?: WithAuthOptions) {
       userId = session.user.id
       userEmail = session.user.email ?? null
 
-      // Check admin status via email list
-      role = isAdminEmail(userEmail) ? 'admin' : 'user'
+      role = await resolveUserRole({ userId, email: userEmail })
     }
 
     // Check route-level RBAC

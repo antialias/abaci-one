@@ -21,8 +21,8 @@ vi.mock('../../auth', () => ({
   auth: vi.fn(() => Promise.resolve(null)),
 }))
 
-vi.mock('../../lib/auth/admin-emails', () => ({
-  isAdminEmail: vi.fn(() => false),
+vi.mock('../../lib/auth/roles', () => ({
+  resolveUserRole: vi.fn(() => Promise.resolve('guest')),
 }))
 
 vi.mock('../../lib/feature-flags', () => ({

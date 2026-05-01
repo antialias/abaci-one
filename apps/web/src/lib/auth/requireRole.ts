@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { isAdminEmail } from './admin-emails'
+import { isUserAdmin } from './roles'
 
 export interface AuthContext {
   userId: string
@@ -28,13 +28,13 @@ export async function requireAuthenticated(): Promise<AuthContext | NextResponse
  * Require the current request to be made by an admin.
  * Returns AuthContext on success, NextResponse (401/403) on failure.
  *
- * Admin is determined by checking the user's email against ADMIN_EMAILS env var.
+ * Admin is determined by the user's database role, with ADMIN_EMAILS as a bootstrap override.
  */
 export async function requireAdmin(): Promise<AuthContext | NextResponse> {
   const result = await requireAuthenticated()
   if (result instanceof NextResponse) return result
 
-  if (!isAdminEmail(result.email)) {
+  if (!(await isUserAdmin({ userId: result.userId, email: result.email }))) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
   }
 

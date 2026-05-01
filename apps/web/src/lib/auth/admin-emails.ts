@@ -2,7 +2,7 @@
  * Admin email management via ADMIN_EMAILS environment variable.
  *
  * Comma-separated list of emails that should be auto-promoted to admin role.
- * Checked during sign-in (jwt callback) and by requireAdmin() guard.
+ * Checked during sign-in (jwt callback) and by the shared role resolver.
  */
 
 let cachedEmails: string[] | null = null

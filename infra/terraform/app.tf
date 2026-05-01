@@ -13,20 +13,20 @@ resource "kubernetes_secret" "app_env" {
   }
 
   data = {
-    AUTH_SECRET                     = var.auth_secret
-    AUTH_GOOGLE_ID                  = var.auth_google_id
-    AUTH_GOOGLE_SECRET              = var.auth_google_secret
-    EMAIL_SERVER                    = var.email_server
-    EMAIL_FROM                      = var.email_from
-    LLM_OPENAI_API_KEY              = var.openai_api_key
-    GEMINI_API_KEY                  = var.gemini_api_key
-    ELEVENLABS_MUSIC_API_KEY        = var.elevenlabs_music_api_key
-    COVERAGE_API_TOKEN              = var.coverage_api_token
-    STRIPE_SECRET_KEY               = var.stripe_secret_key
-    STRIPE_FAMILY_MONTHLY_PRICE_ID  = local.stripe_enabled ? stripe_price.family_monthly[0].id : ""
-    STRIPE_FAMILY_ANNUAL_PRICE_ID   = local.stripe_enabled ? stripe_price.family_annual[0].id : ""
-    STRIPE_WEBHOOK_SECRET           = local.stripe_enabled ? stripe_webhook_endpoint.app[0].secret : ""
-    VAPID_PRIVATE_KEY               = var.vapid_private_key
+    AUTH_SECRET                    = var.auth_secret
+    AUTH_GOOGLE_ID                 = var.auth_google_id
+    AUTH_GOOGLE_SECRET             = var.auth_google_secret
+    EMAIL_SERVER                   = var.email_server
+    EMAIL_FROM                     = var.email_from
+    LLM_OPENAI_API_KEY             = var.openai_api_key
+    GEMINI_API_KEY                 = var.gemini_api_key
+    ELEVENLABS_MUSIC_API_KEY       = var.elevenlabs_music_api_key
+    COVERAGE_API_TOKEN             = var.coverage_api_token
+    STRIPE_SECRET_KEY              = var.stripe_secret_key
+    STRIPE_FAMILY_MONTHLY_PRICE_ID = local.stripe_enabled ? stripe_price.family_monthly[0].id : ""
+    STRIPE_FAMILY_ANNUAL_PRICE_ID  = local.stripe_enabled ? stripe_price.family_annual[0].id : ""
+    STRIPE_WEBHOOK_SECRET          = local.stripe_enabled ? stripe_webhook_endpoint.app[0].secret : ""
+    VAPID_PRIVATE_KEY              = var.vapid_private_key
   }
 }
 
@@ -71,6 +71,7 @@ resource "kubernetes_config_map" "app_config" {
     # Auth.js — explicit URL so OAuth callbacks use https://
     AUTH_URL        = "https://${var.app_domain}"
     AUTH_TRUST_HOST = "true"
+    ADMIN_EMAILS    = var.admin_emails
     # OpenTelemetry tracing configuration
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://tempo.monitoring.svc.cluster.local:4317"
     OTEL_SERVICE_NAME           = "abaci-app"
@@ -361,8 +362,8 @@ resource "kubernetes_manifest" "app_ingressroute" {
           ]
           services = [
             {
-              name   = kubernetes_service.app.metadata[0].name
-              port   = 80
+              name = kubernetes_service.app.metadata[0].name
+              port = 80
               sticky = {
                 cookie = {
                   name     = "abaci_sticky"
@@ -444,8 +445,8 @@ resource "kubernetes_ingress_v1" "app_http_redirect" {
     name      = "abaci-app-http-redirect"
     namespace = kubernetes_namespace.abaci.metadata[0].name
     annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints"  = "web"
-      "traefik.ingress.kubernetes.io/router.middlewares"  = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "${kubernetes_namespace.abaci.metadata[0].name}-redirect-https@kubernetescrd"
     }
   }
 

@@ -174,6 +174,12 @@ variable "email_from" {
   default     = "Abaci One <hallock@gmail.com>"
 }
 
+variable "admin_emails" {
+  description = "Comma-separated email list that receives bootstrap admin access"
+  type        = string
+  default     = "hallock@gmail.com"
+}
+
 # Stripe Billing
 variable "stripe_secret_key" {
   description = "Stripe secret API key (live or test)"

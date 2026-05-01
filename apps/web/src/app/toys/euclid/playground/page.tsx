@@ -1,10 +1,13 @@
 import { auth } from '@/auth'
-import { isAdminEmail } from '@/lib/auth/admin-emails'
+import { isUserAdmin } from '@/lib/auth/roles'
 import { PlaygroundClient } from './PlaygroundClient'
 
 export default async function EuclidPlaygroundPage() {
   const session = await auth()
-  const isAdmin = isAdminEmail(session?.user?.email)
+  const isAdmin = await isUserAdmin({
+    userId: session?.user?.id,
+    email: session?.user?.email,
+  })
 
   return <PlaygroundClient isAdmin={isAdmin} />
 }
