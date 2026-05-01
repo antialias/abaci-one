@@ -80,6 +80,36 @@ interface Stats {
 
 type RegenerationMode = 'auto' | 'reuse_prompt' | 'regenerate_prompt'
 
+async function getApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  let detail = ''
+
+  try {
+    const contentType = res.headers.get('content-type') ?? ''
+    if (contentType.includes('application/json')) {
+      const data = (await res.json()) as { error?: unknown; message?: unknown }
+      const value = data.error ?? data.message
+      detail = typeof value === 'string' ? value : ''
+    } else {
+      detail = await res.text()
+    }
+  } catch {
+    detail = ''
+  }
+
+  const status = [res.status, res.statusText].filter(Boolean).join(' ')
+  const message = `${fallback}${status ? ` (${status})` : ''}`
+  const normalizedDetail = detail.trim().replace(/\s+/g, ' ')
+  const authDetail =
+    res.status === 401
+      ? 'Authentication required'
+      : res.status === 403 && (!normalizedDetail || normalizedDetail === 'Forbidden')
+        ? 'Admin access required'
+        : normalizedDetail
+  const cleanDetail = authDetail.slice(0, 240)
+
+  return cleanDetail ? `${message}: ${cleanDetail}` : message
+}
+
 // ============================================================================
 // Page
 // ============================================================================
@@ -97,7 +127,7 @@ export default function AdminSongsPage() {
   const fetchSongs = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/songs')
-      if (!res.ok) throw new Error('Failed to fetch songs')
+      if (!res.ok) throw new Error(await getApiErrorMessage(res, 'Failed to fetch songs'))
       const data = await res.json()
       setSongs(data.songs)
       setStats(data.stats)
@@ -122,8 +152,7 @@ export default function AdminSongsPage() {
       body: JSON.stringify(body),
     })
     if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error ?? 'Song action failed')
+      throw new Error(await getApiErrorMessage(res, 'Song action failed'))
     }
   }, [])
 

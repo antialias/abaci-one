@@ -10,7 +10,10 @@ import { stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getSongPlanValidationSummary } from '@/lib/session-song/admin-validation-summary'
+import {
+  getAdminSongPlanSummary,
+  getSongPlanValidationSummary,
+} from '@/lib/session-song/admin-validation-summary'
 import {
   retrySessionSongGeneration,
   type SessionSongRegenerationMode,
@@ -18,152 +21,139 @@ import {
 
 export const GET = withAuth(
   async (request) => {
-    const url = new URL(request.url)
-    const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10), 200)
-    const statusFilter = url.searchParams.get('status')
+    try {
+      const url = new URL(request.url)
+      const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10), 200)
+      const statusFilter = url.searchParams.get('status')
 
-    const allSongs = await db
-      .select({
-        id: schema.sessionSongs.id,
-        sessionPlanId: schema.sessionSongs.sessionPlanId,
-        playerId: schema.sessionSongs.playerId,
-        status: schema.sessionSongs.status,
-        promptInput: schema.sessionSongs.promptInput,
-        llmOutput: schema.sessionSongs.llmOutput,
-        localFilePath: schema.sessionSongs.localFilePath,
-        durationSeconds: schema.sessionSongs.durationSeconds,
-        errorMessage: schema.sessionSongs.errorMessage,
-        failureKind: schema.sessionSongs.failureKind,
-        backgroundTaskId: schema.sessionSongs.backgroundTaskId,
-        triggerSource: schema.sessionSongs.triggerSource,
-        contentReviewStatus: schema.sessionSongs.contentReviewStatus,
-        contentReviewNote: schema.sessionSongs.contentReviewNote,
-        contentReviewedAt: schema.sessionSongs.contentReviewedAt,
-        contentReviewedBy: schema.sessionSongs.contentReviewedBy,
-        regenerationCount: schema.sessionSongs.regenerationCount,
-        lastRegenerationReason: schema.sessionSongs.lastRegenerationReason,
-        lastRegenerationAt: schema.sessionSongs.lastRegenerationAt,
-        createdAt: schema.sessionSongs.createdAt,
-        completedAt: schema.sessionSongs.completedAt,
-      })
-      .from(schema.sessionSongs)
-      .orderBy(desc(schema.sessionSongs.createdAt))
-      .limit(limit)
+      const allSongs = await db
+        .select({
+          id: schema.sessionSongs.id,
+          sessionPlanId: schema.sessionSongs.sessionPlanId,
+          playerId: schema.sessionSongs.playerId,
+          status: schema.sessionSongs.status,
+          promptInput: schema.sessionSongs.promptInput,
+          llmOutput: schema.sessionSongs.llmOutput,
+          localFilePath: schema.sessionSongs.localFilePath,
+          durationSeconds: schema.sessionSongs.durationSeconds,
+          errorMessage: schema.sessionSongs.errorMessage,
+          failureKind: schema.sessionSongs.failureKind,
+          backgroundTaskId: schema.sessionSongs.backgroundTaskId,
+          triggerSource: schema.sessionSongs.triggerSource,
+          contentReviewStatus: schema.sessionSongs.contentReviewStatus,
+          contentReviewNote: schema.sessionSongs.contentReviewNote,
+          contentReviewedAt: schema.sessionSongs.contentReviewedAt,
+          contentReviewedBy: schema.sessionSongs.contentReviewedBy,
+          regenerationCount: schema.sessionSongs.regenerationCount,
+          lastRegenerationReason: schema.sessionSongs.lastRegenerationReason,
+          lastRegenerationAt: schema.sessionSongs.lastRegenerationAt,
+          createdAt: schema.sessionSongs.createdAt,
+          completedAt: schema.sessionSongs.completedAt,
+        })
+        .from(schema.sessionSongs)
+        .orderBy(desc(schema.sessionSongs.createdAt))
+        .limit(limit)
 
-    // Filter in JS (simpler than building dynamic SQL for optional filter)
-    const filtered = statusFilter ? allSongs.filter((s) => s.status === statusFilter) : allSongs
+      // Filter in JS (simpler than building dynamic SQL for optional filter)
+      const filtered = statusFilter ? allSongs.filter((s) => s.status === statusFilter) : allSongs
 
-    // Fetch player names for all songs
-    const playerIds = [...new Set(filtered.map((s) => s.playerId))]
-    const allPlayers =
-      playerIds.length > 0
-        ? await db
-            .select({
-              id: schema.players.id,
-              name: schema.players.name,
-              emoji: schema.players.emoji,
-            })
-            .from(schema.players)
-            .where(
-              playerIds.length === 1
-                ? eq(schema.players.id, playerIds[0])
-                : inArray(schema.players.id, playerIds)
-            )
-        : []
+      // Fetch player names for all songs
+      const playerIds = [...new Set(filtered.map((s) => s.playerId))]
+      const allPlayers =
+        playerIds.length > 0
+          ? await db
+              .select({
+                id: schema.players.id,
+                name: schema.players.name,
+                emoji: schema.players.emoji,
+              })
+              .from(schema.players)
+              .where(
+                playerIds.length === 1
+                  ? eq(schema.players.id, playerIds[0])
+                  : inArray(schema.players.id, playerIds)
+              )
+          : []
 
-    const playerMap = new Map(allPlayers.map((p) => [p.id, p]))
+      const playerMap = new Map(allPlayers.map((p) => [p.id, p]))
 
-    // Check file existence for completed songs
-    const songs = await Promise.all(
-      filtered.map(async (song) => {
-        let fileExists = false
-        let fileSizeBytes: number | null = null
+      // Check file existence for completed songs
+      const songs = await Promise.all(
+        filtered.map(async (song) => {
+          let fileExists = false
+          let fileSizeBytes: number | null = null
 
-        if (song.localFilePath) {
-          try {
-            const stats = await stat(song.localFilePath)
-            fileExists = true
-            fileSizeBytes = stats.size
-          } catch {
-            fileExists = false
+          if (song.localFilePath) {
+            try {
+              const stats = await stat(song.localFilePath)
+              fileExists = true
+              fileSizeBytes = stats.size
+            } catch {
+              fileExists = false
+            }
           }
-        }
 
-        const player = playerMap.get(song.playerId)
+          const player = playerMap.get(song.playerId)
+          const planSummary = getAdminSongPlanSummary(song.llmOutput)
+          const validationSummary = getSongPlanValidationSummary(song.llmOutput)
 
-        // Extract title from llmOutput
-        const llmOutput = song.llmOutput as Record<string, unknown> | null
-        const title = (llmOutput?.title as string) ?? null
-        const validationSummary = getSongPlanValidationSummary(llmOutput)
+          return {
+            id: song.id,
+            sessionPlanId: song.sessionPlanId,
+            playerId: song.playerId,
+            playerName: player?.name ?? 'Unknown',
+            playerEmoji: player?.emoji ?? '',
+            status: song.status,
+            title: planSummary.title,
+            triggerSource: song.triggerSource,
+            errorMessage: song.errorMessage,
+            failureKind: song.failureKind,
+            backgroundTaskId: song.backgroundTaskId,
+            contentReviewStatus: song.contentReviewStatus,
+            contentReviewNote: song.contentReviewNote,
+            contentReviewedAt: song.contentReviewedAt,
+            contentReviewedBy: song.contentReviewedBy,
+            regenerationCount: song.regenerationCount,
+            lastRegenerationReason: song.lastRegenerationReason,
+            lastRegenerationAt: song.lastRegenerationAt,
+            fileExists,
+            fileSizeBytes,
+            durationSeconds: song.durationSeconds,
+            createdAt: song.createdAt,
+            completedAt: song.completedAt,
+            // Composition plan observability
+            styles: planSummary.styles,
+            totalDurationMs: planSummary.totalDurationMs,
+            sectionSummary: planSummary.sectionSummary,
+            ...validationSummary,
+            // Full data for detail view
+            promptInput: song.promptInput,
+            llmOutput: song.llmOutput,
+          }
+        })
+      )
 
-        // Extract composition plan summary
-        const plan = llmOutput?.plan as Record<string, unknown> | null
-        const sections = (plan?.sections as Array<Record<string, unknown>>) ?? []
-        const sectionSummary = sections.map((s) => ({
-          name: s.section_name as string,
-          durationMs: s.duration_ms as number,
-          lineCount: (s.lines as string[])?.length ?? 0,
-        }))
+      // Aggregate stats
+      const stats = {
+        total: allSongs.length,
+        completed: allSongs.filter((s) => s.status === 'completed').length,
+        failed: allSongs.filter((s) => s.status === 'failed').length,
+        flagged: allSongs.filter((s) => s.contentReviewStatus === 'flagged').length,
+        generating: allSongs.filter(
+          (s) =>
+            s.status === 'pending' || s.status === 'prompt_generating' || s.status === 'generating'
+        ).length,
+        validationFlagged: songs.filter((s) => s.validationIssueCount > 0).length,
+        validationRepaired: songs.filter((s) => s.validationOutcome === 'repaired').length,
+        validationFallback: songs.filter((s) => s.validationOutcome === 'fallback').length,
+        validationBlocked: songs.filter((s) => s.validationOutcome === 'blocked').length,
+      }
 
-        const positiveStyles = (plan?.positive_global_styles as string[]) ?? []
-        const totalDurationMs = sections.reduce(
-          (sum, s) => sum + ((s.duration_ms as number) ?? 0),
-          0
-        )
-
-        return {
-          id: song.id,
-          sessionPlanId: song.sessionPlanId,
-          playerId: song.playerId,
-          playerName: player?.name ?? 'Unknown',
-          playerEmoji: player?.emoji ?? '',
-          status: song.status,
-          title,
-          triggerSource: song.triggerSource,
-          errorMessage: song.errorMessage,
-          failureKind: song.failureKind,
-          backgroundTaskId: song.backgroundTaskId,
-          contentReviewStatus: song.contentReviewStatus,
-          contentReviewNote: song.contentReviewNote,
-          contentReviewedAt: song.contentReviewedAt,
-          contentReviewedBy: song.contentReviewedBy,
-          regenerationCount: song.regenerationCount,
-          lastRegenerationReason: song.lastRegenerationReason,
-          lastRegenerationAt: song.lastRegenerationAt,
-          fileExists,
-          fileSizeBytes,
-          durationSeconds: song.durationSeconds,
-          createdAt: song.createdAt,
-          completedAt: song.completedAt,
-          // Composition plan observability
-          styles: positiveStyles,
-          totalDurationMs,
-          sectionSummary,
-          ...validationSummary,
-          // Full data for detail view
-          promptInput: song.promptInput,
-          llmOutput: song.llmOutput,
-        }
-      })
-    )
-
-    // Aggregate stats
-    const stats = {
-      total: allSongs.length,
-      completed: allSongs.filter((s) => s.status === 'completed').length,
-      failed: allSongs.filter((s) => s.status === 'failed').length,
-      flagged: allSongs.filter((s) => s.contentReviewStatus === 'flagged').length,
-      generating: allSongs.filter(
-        (s) =>
-          s.status === 'pending' || s.status === 'prompt_generating' || s.status === 'generating'
-      ).length,
-      validationFlagged: songs.filter((s) => s.validationIssueCount > 0).length,
-      validationRepaired: songs.filter((s) => s.validationOutcome === 'repaired').length,
-      validationFallback: songs.filter((s) => s.validationOutcome === 'fallback').length,
-      validationBlocked: songs.filter((s) => s.validationOutcome === 'blocked').length,
+      return NextResponse.json({ songs, stats })
+    } catch (error) {
+      console.error('[admin/songs] Failed to fetch songs:', error)
+      return NextResponse.json({ error: 'Failed to fetch songs' }, { status: 500 })
     }
-
-    return NextResponse.json({ songs, stats })
   },
   { role: 'admin' }
 )

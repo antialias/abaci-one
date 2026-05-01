@@ -13,6 +13,48 @@ export interface AdminSongValidationSummary {
   fallbackUsed: boolean
 }
 
+export interface AdminSongSectionSummary {
+  name: string
+  durationMs: number
+  lineCount: number
+}
+
+export interface AdminSongPlanSummary {
+  title: string | null
+  styles: string[]
+  totalDurationMs: number
+  sectionSummary: AdminSongSectionSummary[]
+}
+
+export function getAdminSongPlanSummary(llmOutput: unknown): AdminSongPlanSummary {
+  const output = asRecord(llmOutput)
+  const plan = asRecord(output?.plan)
+  const rawSections = Array.isArray(plan?.sections) ? plan.sections : []
+  const sections = rawSections.filter(
+    (section): section is Record<string, unknown> => asRecord(section) !== null
+  )
+
+  const sectionSummary = sections.map((section) => {
+    const lines = section.lines
+    const durationMs = typeof section.duration_ms === 'number' ? section.duration_ms : 0
+
+    return {
+      name: typeof section.section_name === 'string' ? section.section_name : 'Untitled section',
+      durationMs,
+      lineCount: Array.isArray(lines) ? lines.length : 0,
+    }
+  })
+
+  return {
+    title: typeof output?.title === 'string' ? output.title : null,
+    styles: Array.isArray(plan?.positive_global_styles)
+      ? plan.positive_global_styles.filter((style): style is string => typeof style === 'string')
+      : [],
+    totalDurationMs: sectionSummary.reduce((sum, section) => sum + section.durationMs, 0),
+    sectionSummary,
+  }
+}
+
 export function getSongPlanValidationSummary(llmOutput: unknown): AdminSongValidationSummary {
   const output = asRecord(llmOutput)
   const validation = asRecord(output?.validation)
