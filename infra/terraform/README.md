@@ -163,6 +163,33 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci scale statefulset abaci-app --r
 # Or update var.app_replicas in terraform.tfvars and apply
 ```
 
+## Node-Level Configuration
+
+These settings live on the k3s node filesystem (not managed by Terraform) and must be reapplied if the node is reprovisioned.
+
+### Journal Size Limit
+
+Caps systemd journal logs at 500M to prevent disk pressure from log accumulation.
+
+```
+# /etc/systemd/journald.conf.d/size-limit.conf
+[Journal]
+SystemMaxUse=500M
+```
+
+### Kubelet Image GC Thresholds
+
+Raised from the defaults (70/50) to avoid premature disk pressure taints on a 92G disk.
+
+```yaml
+# /etc/rancher/k3s/config.yaml
+kubelet-arg:
+  - "image-gc-high-threshold=85"
+  - "image-gc-low-threshold=70"
+```
+
+If disk usage exceeds 85%, kubelet will start evicting pods and tainting the node with `node.kubernetes.io/disk-pressure:NoSchedule`. To recover: free space (journal vacuum, `crictl rmi --prune`, apt clean) then restart k3s (`sudo systemctl restart k3s`).
+
 ## Troubleshooting
 
 ### Pods Stuck in Pending
