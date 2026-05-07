@@ -93,9 +93,47 @@ resource "helm_release" "kube_prometheus_stack" {
         }
       }
     }
-    # Disable alertmanager for now (can enable later)
     alertmanager = {
-      enabled = false
+      enabled = true
+      config = {
+        global = {
+          smtp_smarthost    = "smtp.gmail.com:587"
+          smtp_from         = "hallock@gmail.com"
+          smtp_auth_username = "hallock@gmail.com"
+          smtp_auth_password = var.smtp_password
+          smtp_require_tls   = true
+        }
+        route = {
+          receiver       = "email"
+          group_by       = ["alertname"]
+          group_wait     = "30s"
+          group_interval = "5m"
+          repeat_interval = "4h"
+        }
+        receivers = [
+          {
+            name = "email"
+            email_configs = [
+              {
+                to             = "hallock@gmail.com"
+                send_resolved  = true
+                headers = {
+                  Subject = "{{ template \"custom_subject\" . }}"
+                }
+                html = "{{ template \"custom_html\" . }}"
+              }
+            ]
+          },
+          {
+            name = "null"
+          }
+        ]
+        templates = ["/etc/alertmanager/configmaps/alertmanager-email-templates/*.tmpl"]
+      }
+      alertmanagerSpec = {
+        configMaps = ["alertmanager-email-templates"]
+      }
+      templateFiles = {}
     }
     # Disable components not needed for single-app monitoring
     kubeStateMetrics = {
@@ -123,6 +161,20 @@ resource "helm_release" "kube_prometheus_stack" {
   })]
 
   depends_on = [kubernetes_namespace.monitoring]
+}
+
+# AlertManager email template — human-readable alerts for a solo operator.
+resource "kubernetes_config_map" "alertmanager_email_templates" {
+  metadata {
+    name      = "alertmanager-email-templates"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+
+  data = {
+    "custom.tmpl" = file("${path.module}/files/alertmanager-email.tmpl")
+  }
+
+  depends_on = [helm_release.kube_prometheus_stack]
 }
 
 # =============================================================================
@@ -1117,6 +1169,52 @@ resource "kubernetes_config_map" "grafana_dashboard_product" {
   depends_on = [helm_release.kube_prometheus_stack]
 }
 
+# Disk pressure early-warning PrometheusRule.
+# The default kube-prometheus-stack alerts fire at <5% / <3% free — too late,
+# kubelet evicts at 15% free. This fires at 20% free to give advance warning.
+resource "null_resource" "disk_pressure_alert" {
+  depends_on = [helm_release.kube_prometheus_stack]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
+
+      kubectl wait --for=condition=Established crd/prometheusrules.monitoring.coreos.com --timeout=120s
+
+      cat <<EOF | kubectl apply -f -
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: disk-pressure-early-warning
+        namespace: ${kubernetes_namespace.monitoring.metadata[0].name}
+        labels:
+          app: kube-prometheus-stack
+          release: kube-prometheus-stack
+      spec:
+        groups:
+        - name: disk-pressure-early-warning
+          rules:
+          - alert: NodeDiskPressureImminent
+            expr: |
+              (
+                node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint="/"} /
+                node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint="/"}
+              ) < 0.20
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node root filesystem is above 80% usage"
+              description: "{{ \$labels.instance }} root filesystem has only {{ \$value | humanizePercentage }} free. Kubelet eviction triggers at 85%."
+      EOF
+    EOT
+  }
+
+  triggers = {
+    rule_version = "1"
+  }
+}
+
 # Ops Metrics Dashboard - Infrastructure and CI/CD monitoring
 resource "kubernetes_config_map" "grafana_dashboard_ops" {
   metadata {
@@ -1228,6 +1326,44 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
           title     = "Node Resources"
           type      = "row"
         },
+        # Node Disk Usage Gauge
+        {
+          datasource = { type = "prometheus", uid = "prometheus" }
+          fieldConfig = {
+            defaults = {
+              color = {
+                mode = "thresholds"
+              }
+              max = 1
+              min = 0
+              thresholds = {
+                mode = "percentage"
+                steps = [
+                  { color = "green", value = null },
+                  { color = "yellow", value = 80 },
+                  { color = "red", value = 85 }
+                ]
+              }
+              unit = "percentunit"
+            }
+          }
+          gridPos = { h = 8, w = 6, x = 0, y = 10 }
+          id      = 210
+          options = {
+            orientation          = "auto"
+            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
+            showThresholdLabels  = false
+            showThresholdMarkers = true
+          }
+          targets = [
+            {
+              expr  = "1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"\"})"
+              refId = "A"
+            }
+          ]
+          title = "Root Disk %"
+          type  = "gauge"
+        },
         # Node Memory Gauge
         {
           datasource = { type = "prometheus", uid = "prometheus" }
@@ -1249,7 +1385,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit = "percentunit"
             }
           }
-          gridPos = { h = 8, w = 6, x = 0, y = 10 }
+          gridPos = { h = 8, w = 6, x = 6, y = 10 }
           id      = 201
           options = {
             orientation          = "auto"
@@ -1275,7 +1411,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               unit  = "bytes"
             }
           }
-          gridPos = { h = 8, w = 10, x = 6, y = 10 }
+          gridPos = { h = 8, w = 8, x = 12, y = 10 }
           id      = 202
           options = {
             legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
@@ -1316,7 +1452,7 @@ resource "kubernetes_config_map" "grafana_dashboard_ops" {
               max   = 1
             }
           }
-          gridPos = { h = 8, w = 8, x = 16, y = 10 }
+          gridPos = { h = 8, w = 4, x = 20, y = 10 }
           id      = 203
           options = {
             legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }

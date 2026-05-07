@@ -1,0 +1,175 @@
+{{ define "custom_subject" -}}
+{{ if eq .Status "resolved" }}[OK]{{ else }}[{{ .Status | toUpper }}]{{ end }} {{ range .Alerts }}{{ .Labels.alertname }}{{ end }}{{ if gt (len .Alerts) 1 }} ({{ len .Alerts }} alerts){{ end }}
+{{- end }}
+
+{{ define "runbook_prompt" -}}
+{{- if eq .Labels.alertname "KubePodCrashLooping" -}}
+Pod `{{ .Labels.pod }}` in namespace `{{ .Labels.namespace }}` (container: `{{ .Labels.container }}`) is crash-looping.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check previous crash logs: sudo kubectl logs -n {{ .Labels.namespace }} {{ .Labels.pod }} -c {{ .Labels.container }} --previous --tail=100
+2. Check pod events: sudo kubectl describe pod -n {{ .Labels.namespace }} {{ .Labels.pod }}
+3. Look for OOMKilled, missing ConfigMap/Secret, image pull errors, or dependency failures
+4. Fix the root cause — don't just delete the pod
+{{- else if eq .Labels.alertname "KubePodNotReady" -}}
+Pod `{{ .Labels.pod }}` in namespace `{{ .Labels.namespace }}` has been not-ready for an extended period.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check pod status and events: sudo kubectl describe pod -n {{ .Labels.namespace }} {{ .Labels.pod }}
+2. Check logs: sudo kubectl logs -n {{ .Labels.namespace }} {{ .Labels.pod }} --tail=50
+3. Look for readiness probe failures, stuck init containers, or scheduling issues
+4. If the pod is from a previous outage and no longer needed, delete it
+{{- else if eq .Labels.alertname "KubeContainerWaiting" -}}
+Container `{{ .Labels.container }}` in pod `{{ .Labels.pod }}` (namespace `{{ .Labels.namespace }}`) is stuck waiting.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check pod events: sudo kubectl describe pod -n {{ .Labels.namespace }} {{ .Labels.pod }}
+2. ImagePullBackOff → verify image tag exists and registry is reachable
+3. CreateContainerConfigError → check referenced ConfigMaps/Secrets exist
+4. Pending → check node resources and taints: sudo kubectl describe node
+{{- else if eq .Labels.alertname "KubeDeploymentReplicasMismatch" -}}
+Deployment `{{ .Labels.deployment }}` in namespace `{{ .Labels.namespace }}` has fewer running replicas than desired.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check deployment: sudo kubectl get deploy {{ .Labels.deployment }} -n {{ .Labels.namespace }} -o wide
+2. Find stuck pods: sudo kubectl get pods -n {{ .Labels.namespace }} | grep {{ .Labels.deployment }}
+3. Describe any Pending/CrashLooping pods for the root cause
+4. Common causes: DiskPressure node taint (cascade from full disk), image pull failures, resource exhaustion
+{{- else if eq .Labels.alertname "KubeStatefulSetReplicasMismatch" -}}
+StatefulSet `{{ .Labels.statefulset }}` in namespace `{{ .Labels.namespace }}` has fewer running replicas than desired.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check statefulset: sudo kubectl get sts {{ .Labels.statefulset }} -n {{ .Labels.namespace }} -o wide
+2. Find stuck pods: sudo kubectl get pods -n {{ .Labels.namespace }} | grep {{ .Labels.statefulset }}
+3. Check for PVC provisioning failures or scheduling issues
+4. Describe any Pending pods for the root cause
+{{- else if eq .Labels.alertname "KubeJobFailed" -}}
+Job `{{ .Labels.job_name }}` in namespace `{{ .Labels.namespace }}` failed.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check job: sudo kubectl describe job {{ .Labels.job_name }} -n {{ .Labels.namespace }}
+2. Check pod logs: sudo kubectl logs -n {{ .Labels.namespace }} -l job-name={{ .Labels.job_name }} --tail=100
+3. If migration job (tidepool namespace): check database connectivity and migration SQL
+4. If CronJob child: check parent CronJob spec and recent history
+{{- else if eq .Labels.alertname "KubeJobNotCompleted" -}}
+Job `{{ .Labels.job_name }}` in namespace `{{ .Labels.namespace }}` has not completed in the expected time.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check running pods: sudo kubectl get pods -n {{ .Labels.namespace }} -l job-name={{ .Labels.job_name }}
+2. Check logs: sudo kubectl logs -n {{ .Labels.namespace }} -l job-name={{ .Labels.job_name }} --tail=100
+3. Determine if stuck or just slow. Consider increasing activeDeadlineSeconds if legitimately long-running.
+{{- else if eq .Labels.alertname "NodeFilesystemSpaceFillingUp" -}}
+Node filesystem is filling up and predicted to run out of space.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias. URGENT — DiskPressure taint at 85% causes cascading scheduling failures. Diagnose and fix:
+1. Check disk: df -h /
+2. Docker cleanup: sudo docker system df && sudo docker system prune -af
+3. Containerd cleanup: sudo k3s crictl rmi --prune
+4. Find large dirs: sudo du -h --max-depth=2 /var/lib/ | sort -rh | head -20
+5. Check registry GC ran: sudo kubectl get jobs -n gitea | grep registry-gc
+6. Infrastructure: Terraform in ~/projects/soroban-abacus-flashcards/infra/terraform/ manages CronJobs for automated cleanup
+{{- else if eq .Labels.alertname "NodeFilesystemAlmostOutOfSpace" -}}
+Node filesystem is almost out of space.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias. CRITICAL — DiskPressure taint at 85% causes cascading scheduling failures. Act immediately:
+1. Check disk: df -h /
+2. Docker cleanup: sudo docker system df && sudo docker system prune -af
+3. Containerd cleanup: sudo k3s crictl rmi --prune
+4. Find large dirs: sudo du -h --max-depth=2 /var/lib/ | sort -rh | head -20
+5. Check registry GC ran: sudo kubectl get jobs -n gitea | grep registry-gc
+6. If above 80%, every minute counts — the cascade takes down the entire cluster
+{{- else if eq .Labels.alertname "NodeDiskPressureImminent" -}}
+Node disk usage crossed the early-warning threshold (fires before the 85% DiskPressure taint).{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias. Not yet critical but needs cleanup before it cascades:
+1. Check disk: df -h /
+2. Docker cleanup: sudo docker system df && sudo docker system prune -af
+3. Containerd cleanup: sudo k3s crictl rmi --prune
+4. Find large dirs: sudo du -h --max-depth=2 /var/lib/ | sort -rh | head -20
+5. Check registry GC CronJob: sudo kubectl get jobs -n gitea | grep registry-gc
+{{- else if eq .Labels.alertname "KubePersistentVolumeFillingUp" -}}
+PVC `{{ .Labels.persistentvolumeclaim }}` in namespace `{{ .Labels.namespace }}` is filling up.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Find pod using this PVC: sudo kubectl get pods -n {{ .Labels.namespace }} -o wide
+2. Check usage inside: sudo kubectl exec -n {{ .Labels.namespace }} <pod> -- df -h
+3. For Prometheus PVC: consider lowering retention (currently 15d in helm values)
+4. For registry PVC (NFS): run registry GC — check registry-gc CronJob in gitea namespace
+{{- else if eq .Labels.alertname "CPUThrottlingHigh" -}}
+Container `{{ .Labels.container }}` in pod `{{ .Labels.pod }}` (namespace `{{ .Labels.namespace }}`) has high CPU throttling.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check CPU limits: sudo kubectl get pod {{ .Labels.pod }} -n {{ .Labels.namespace }} -o jsonpath='{.spec.containers[*].resources}'
+2. Check actual usage in Grafana: https://grafana.dev.abaci.one/d/ops-metrics
+3. If limits too low, increase them. Infrastructure managed via Terraform in ~/projects/soroban-abacus-flashcards/infra/terraform/
+{{- else if eq .Labels.alertname "TargetDown" -}}
+Prometheus scrape target `{{ .Labels.job }}` is down.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check targets: https://prometheus.dev.abaci.one/targets
+2. Find backing pods: sudo kubectl get pods -A | grep -i {{ .Labels.job }}
+3. If the service is down, fix it. If intentionally removed, delete the ServiceMonitor to stop the alert.
+{{- else if eq .Labels.alertname "KubeDaemonSetNotScheduled" -}}
+DaemonSet `{{ .Labels.daemonset }}` in namespace `{{ .Labels.namespace }}` has unscheduled pods.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose and fix:
+1. Check daemonset: sudo kubectl get ds {{ .Labels.daemonset }} -n {{ .Labels.namespace }}
+2. Check node taints: sudo kubectl describe node | grep -A5 Taints
+3. Common cause on this cluster: DiskPressure taint from full disk — see disk cleanup steps
+{{- else if eq .Labels.alertname "NodeClockSkewDetected" -}}
+Node clock skew detected — system time may be drifting.{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias. Diagnose and fix:
+1. Check NTP status: timedatectl status
+2. Force sync: sudo timedatectl set-ntp true && sudo systemctl restart systemd-timesyncd
+3. Verify: date
+{{- else -}}
+Alert `{{ .Labels.alertname }}` fired.{{ if .Annotations.summary }} {{ .Annotations.summary }}{{ end }}{{ if .Annotations.description }} {{ .Annotations.description }}{{ end }}
+
+Labels:{{ range .Labels.SortedPairs }} {{ .Name }}={{ .Value }}{{ end }}
+
+Cluster: k3s single-node at 192.168.86.37, ssh antialias, sudo kubectl. Diagnose this alert and fix the underlying issue. Check relevant pods, logs, and events.
+{{- end -}}
+{{- end }}
+
+{{ define "custom_html" -}}
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+
+{{ if eq .Status "resolved" }}
+<div style="background: #4CAF50; color: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px;">
+  <strong style="font-size: 18px;">Resolved</strong>
+</div>
+{{ else }}
+<div style="background: {{ if eq (index .Alerts 0).Labels.severity "critical" }}#e53e3e{{ else }}#dd6b20{{ end }}; color: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px;">
+  <strong style="font-size: 18px;">Alert Firing</strong>
+</div>
+{{ end }}
+
+{{ range .Alerts }}
+<div style="background: #f7f7f7; border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid {{ if eq .Labels.severity "critical" }}#e53e3e{{ else if eq $.Status "resolved" }}#4CAF50{{ else }}#dd6b20{{ end }};">
+  <h2 style="margin: 0 0 8px 0; font-size: 16px;">{{ .Labels.alertname }}</h2>
+  {{ if .Annotations.summary }}<p style="margin: 0 0 8px 0;">{{ .Annotations.summary }}</p>{{ end }}
+  {{ if .Annotations.description }}<p style="margin: 0; color: #666; font-size: 14px;">{{ .Annotations.description }}</p>{{ end }}
+</div>
+
+{{ if ne $.Status "resolved" }}
+<div style="margin-bottom: 20px;">
+  <div style="font-size: 11px; color: #999; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Paste into Claude Code</div>
+  <pre style="background: #1e1e2e; color: #cdd6f4; padding: 14px 16px; border-radius: 6px; font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; margin: 0; border: 1px solid #313244;">{{ template "runbook_prompt" . }}</pre>
+</div>
+{{ end }}
+
+{{ end }}
+
+<div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; font-size: 13px; color: #999;">
+  <a href="https://grafana.dev.abaci.one/d/ops-metrics" style="color: #4a90d9;">Grafana Dashboard</a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://prometheus.dev.abaci.one/alerts" style="color: #4a90d9;">Prometheus Alerts</a>
+</div>
+
+</body>
+</html>
+{{- end }}
