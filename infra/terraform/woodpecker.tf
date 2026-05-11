@@ -143,7 +143,7 @@ resource "kubernetes_deployment" "woodpecker_server" {
 
         container {
           name  = "server"
-          image = "woodpeckerci/woodpecker-server:v3.13.0"
+          image = "woodpeckerci/woodpecker-server:v3.14.0-rc.0"
 
           port {
             container_port = 8000
@@ -167,6 +167,13 @@ resource "kubernetes_deployment" "woodpecker_server" {
 
           env {
             name  = "WOODPECKER_GITEA_URL"
+            value = "http://gitea.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:3000"
+          }
+
+          # Keep browser OAuth redirects on the public Gitea hostname while the
+          # server talks to Gitea through the in-cluster service URL above.
+          env {
+            name  = "WOODPECKER_EXPERT_FORGE_OAUTH_HOST"
             value = "https://git.dev.${var.app_domain}"
           }
 
@@ -210,6 +217,11 @@ resource "kubernetes_deployment" "woodpecker_server" {
           env {
             name  = "WOODPECKER_PLUGINS_PRIVILEGED"
             value = "woodpeckerci/plugin-docker-buildx"
+          }
+
+          env {
+            name  = "WOODPECKER_LOG_LEVEL"
+            value = "info"
           }
 
           volume_mount {
@@ -301,7 +313,7 @@ resource "kubernetes_deployment" "woodpecker_agent" {
       spec {
         container {
           name  = "agent"
-          image = "woodpeckerci/woodpecker-agent:v3.13.0"
+          image = "woodpeckerci/woodpecker-agent:v3.14.0-rc.0"
 
           env {
             name  = "WOODPECKER_SERVER"
@@ -323,7 +335,95 @@ resource "kubernetes_deployment" "woodpecker_agent" {
             value = "2"
           }
 
+          env {
+            name  = "WOODPECKER_LOG_LEVEL"
+            value = "info"
+          }
+
           # Mount Docker socket for executing pipeline steps as containers
+          volume_mount {
+            name       = "docker-sock"
+            mount_path = "/var/run/docker.sock"
+          }
+        }
+
+        volume {
+          name = "docker-sock"
+          host_path {
+            path = "/var/run/docker.sock"
+            type = "Socket"
+          }
+        }
+      }
+    }
+  }
+}
+
+# ===========================================================================
+# Woodpecker Package Agent (Docker backend)
+# ===========================================================================
+
+resource "kubernetes_deployment" "woodpecker_agent_packages" {
+  metadata {
+    name      = "woodpecker-agent-packages"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+    labels = {
+      app = "woodpecker-agent-packages"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "woodpecker-agent-packages"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "woodpecker-agent-packages"
+        }
+      }
+
+      spec {
+        container {
+          name  = "agent"
+          image = "woodpeckerci/woodpecker-agent:v3.14.0-rc.0"
+
+          env {
+            name  = "WOODPECKER_SERVER"
+            value = "woodpecker-server.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:9000"
+          }
+
+          env {
+            name  = "WOODPECKER_AGENT_SECRET"
+            value = random_password.woodpecker_agent_secret.result
+          }
+
+          env {
+            name  = "WOODPECKER_BACKEND"
+            value = "docker"
+          }
+
+          env {
+            name  = "WOODPECKER_AGENT_LABELS"
+            value = "repo=antialias/weather-display,!lane=packages"
+          }
+
+          env {
+            name  = "WOODPECKER_MAX_WORKFLOWS"
+            value = "2"
+          }
+
+          env {
+            name  = "WOODPECKER_LOG_LEVEL"
+            value = "info"
+          }
+
+          # Mount Docker socket for executing pipeline steps as containers.
           volume_mount {
             name       = "docker-sock"
             mount_path = "/var/run/docker.sock"
@@ -352,7 +452,7 @@ resource "kubernetes_ingress_v1" "woodpecker" {
     namespace = kubernetes_namespace.gitea.metadata[0].name
 
     annotations = {
-      "cert-manager.io/cluster-issuer"                = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
+      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
       "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
     }
   }
@@ -395,8 +495,8 @@ resource "kubernetes_ingress_v1" "woodpecker_redirect" {
     namespace = kubernetes_namespace.gitea.metadata[0].name
 
     annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints"  = "web"
-      "traefik.ingress.kubernetes.io/router.middlewares"   = "abaci-redirect-https@kubernetescrd"
+      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
+      "traefik.ingress.kubernetes.io/router.middlewares" = "abaci-redirect-https@kubernetescrd"
     }
   }
 
