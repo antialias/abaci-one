@@ -2,7 +2,7 @@
  * URL helpers for share codes
  */
 
-export type ShareType = 'classroom' | 'family' | 'room' | 'observe'
+export type ShareType = 'classroom' | 'family' | 'room' | 'observe' | 'song'
 
 /**
  * Get the base URL for the current environment
@@ -29,6 +29,8 @@ export function getShareUrl(type: ShareType, code: string): string {
       return `${base}/arcade/join/${code}`
     case 'observe':
       return `${base}/observe/${code}`
+    case 'song':
+      return `${base}/song/${code}`
   }
 }
 
@@ -45,5 +47,7 @@ export function getShareTypeLabel(type: ShareType): string {
       return 'Room'
     case 'observe':
       return 'Session'
+    case 'song':
+      return 'Song'
   }
 }

@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSessionSong } from '@/hooks/useSessionSong'
+import { ShareSongPopover } from '@/components/song/ShareSongPopover'
 import { SongFailureCard } from './SongFailureCard'
 import { css } from '../../../styled-system/css'
 
@@ -26,13 +27,11 @@ export function SessionSongPlayer({
   planId,
   triggerFallback = false,
 }: SessionSongPlayerProps) {
-  const { song, isGenerating, isReady, failureKind, errorDetail, viewerIsOwner } = useSessionSong(
-    {
-      playerId,
-      planId,
-      enabled: true,
-    }
-  )
+  const { song, isGenerating, isReady, failureKind, errorDetail, viewerIsOwner } = useSessionSong({
+    playerId,
+    planId,
+    enabled: true,
+  })
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -339,6 +338,15 @@ export function SessionSongPlayer({
                 </div>
               </div>
             </>
+          )}
+
+          {song?.id && (
+            <div
+              data-element="song-share-control"
+              className={css({ display: 'flex', justifyContent: 'center', mt: 3 })}
+            >
+              <ShareSongPopover songId={song.id} songTitle={song.title} />
+            </div>
           )}
         </>
       )}

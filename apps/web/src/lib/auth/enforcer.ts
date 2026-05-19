@@ -115,6 +115,10 @@ p, guest, /api/notifications/*, *
 p, user, /api/postcards, *
 p, user, /api/postcards/*, *
 
+# Song shares — owner routes authenticated only; public read by share code is guest
+p, user, /api/songs/*, *
+p, guest, /api/song-shares/*, GET
+
 # Guest classroom access (student-side participation only)
 # Guests can view a classroom and participate, but cannot create or manage classrooms
 p, guest, /api/classrooms/:id, GET

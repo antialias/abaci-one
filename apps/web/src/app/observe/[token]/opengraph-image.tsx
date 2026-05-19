@@ -3,6 +3,13 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { players, sessionPlans, sessionSongs } from '@/db/schema'
 import { validateSessionShare } from '@/lib/session-share'
+import {
+  type SessionProblem,
+  type SessionStats,
+  extractProblems,
+  formatProblem,
+  formatSkill,
+} from '@/lib/song-share/sessionFacts'
 import type { SessionSongLLMOutput } from '@/db/schema/session-songs'
 
 export const runtime = 'nodejs'
@@ -17,52 +24,6 @@ export const contentType = 'image/png'
 
 interface OGImageProps {
   params: Promise<{ token: string }>
-}
-
-interface SessionStats {
-  accuracy: number
-  problemsDone: number
-  problemsTotal: number
-  bestCorrectStreak: number
-  partTypes: string[]
-  durationMinutes: number
-  skillsPracticed: string[]
-}
-
-interface SessionProblem {
-  terms: number[]
-  answer: number
-}
-
-/** Format a skill key like "basic.directAddition" into "Direct Addition" */
-function formatSkill(skill: string): string {
-  const name = skill.includes('.') ? skill.split('.').pop()! : skill
-  return name
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (s) => s.toUpperCase())
-    .replace(/^\+/, 'Plus ')
-    .trim()
-}
-
-/** Extract sample problems from session plan parts */
-function extractProblems(parts: unknown): SessionProblem[] {
-  if (!Array.isArray(parts)) return []
-  const problems: SessionProblem[] = []
-  for (const part of parts) {
-    if (part?.slots && Array.isArray(part.slots)) {
-      for (const slot of part.slots) {
-        if (slot?.problem?.terms && slot.problem.answer != null) {
-          problems.push({ terms: slot.problem.terms, answer: slot.problem.answer })
-        }
-      }
-    }
-  }
-  return problems
-}
-
-/** Format a problem as a string like "13 + 11 + 10 = 34" */
-function formatProblem(p: SessionProblem): string {
-  return `${p.terms.join(' + ')} = ${p.answer}`
 }
 
 export default async function Image({ params }: OGImageProps) {

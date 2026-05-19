@@ -201,6 +201,12 @@ export const songKeys = {
   player: (playerId: string) => [...songKeys.all, 'player', playerId] as const,
 }
 
+// Song share link query keys (permanent, revocable public links to a song)
+export const songShareKeys = {
+  all: ['songShares'] as const,
+  forSong: (songId: string) => [...songShareKeys.all, 'song', songId] as const,
+}
+
 // Number line postcard query keys
 export const postcardKeys = {
   all: ['postcards'] as const,

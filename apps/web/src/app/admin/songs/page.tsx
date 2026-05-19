@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AdminNav } from '@/components/AdminNav'
 import { AppNavBar } from '@/components/AppNavBar'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
+import { parseSongPlan } from '@/lib/song-share/songPlan'
 import { css } from '../../../../styled-system/css'
 
 // ============================================================================
@@ -625,7 +626,8 @@ function SongDetail({
 
   const llmOutput = song.llmOutput as Record<string, unknown> | null
   const plan = llmOutput?.plan as Record<string, unknown> | null
-  const sections = (plan?.sections as Array<Record<string, unknown>>) ?? []
+  const parsedPlan = parseSongPlan(song.llmOutput)
+  const sections = parsedPlan.sections
   const hasCompositionPlan = sections.length > 0
   const promptInput = song.promptInput as Record<string, unknown> | null
   const llmMeta = llmOutput?.llmMeta as {
@@ -941,11 +943,11 @@ function SongDetail({
         <DetailSection title="Composition Plan">
           <div className={css({ marginBottom: '8px' })}>
             <Label>Global Styles</Label>
-            <TagList tags={(plan.positive_global_styles as string[]) ?? []} color="#4CAF50" />
-            {((plan.negative_global_styles as string[]) ?? []).length > 0 && (
+            <TagList tags={parsedPlan.globalStyles} color="#4CAF50" />
+            {parsedPlan.negativeGlobalStyles.length > 0 && (
               <>
                 <Label>Negative Styles</Label>
-                <TagList tags={(plan.negative_global_styles as string[]) ?? []} color="#f44336" />
+                <TagList tags={parsedPlan.negativeGlobalStyles} color="#f44336" />
               </>
             )}
           </div>
@@ -956,8 +958,8 @@ function SongDetail({
 
           {/* Sections with lyrics */}
           {sections.map((section, i) => {
-            const lines = (section.lines as string[]) ?? []
-            const localStyles = (section.positive_local_styles as string[]) ?? []
+            const lines = section.lines
+            const localStyles = section.localStyles
             return (
               <div
                 key={i}
@@ -977,10 +979,10 @@ function SongDetail({
                   })}
                 >
                   <span className={css({ fontWeight: 'bold', fontSize: '12px' })}>
-                    {section.section_name as string}
+                    {section.name}
                   </span>
                   <span className={css({ fontSize: '11px', color: '#666' })}>
-                    {((section.duration_ms as number) / 1000).toFixed(1)}s
+                    {(section.durationMs / 1000).toFixed(1)}s
                   </span>
                 </div>
                 {localStyles.length > 0 && (
