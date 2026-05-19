@@ -61,129 +61,141 @@ export function PlayerStuffModal({
             top: { base: 0, md: '50%' },
             left: { base: 0, md: '50%' },
             transform: { base: 'none', md: 'translate(-50%, -50%)' },
-            width: { base: '100vw', md: '92vw' },
-            maxWidth: { base: 'none', md: '720px' },
-            height: { base: '100vh', md: 'auto' },
-            maxHeight: { base: '100vh', md: '85vh' },
-            backgroundColor: 'gray.50',
-            borderRadius: { base: 0, md: '16px' },
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
             zIndex: Z_INDEX.MODAL,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
+            // Non-clipping positioned wrapper. It establishes the modal's
+            // stacking + focus context and is the portal target for
+            // descendant popovers (ShareSongPopover), so they overlap the
+            // frame instead of being clipped by it. The visual box, rounded
+            // corners, and scroll live on the inner frame below.
+            overflow: 'visible',
             outline: 'none',
           })}
         >
           <PortalContainerProvider container={contentEl}>
-            {/* Header */}
             <div
-              data-element="player-stuff-modal-header"
-              className={hstack({
-                gap: '12px',
-                alignItems: 'center',
-                p: '16px 20px',
-                bg: 'white',
-                borderBottom: '1px solid token(colors.gray.200)',
-                flexShrink: 0,
+              data-element="player-stuff-modal-frame"
+              className={css({
+                width: { base: '100vw', md: '92vw' },
+                maxWidth: { base: 'none', md: '720px' },
+                height: { base: '100vh', md: 'auto' },
+                maxHeight: { base: '100vh', md: '85vh' },
+                backgroundColor: 'gray.50',
+                borderRadius: { base: 0, md: '16px' },
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
               })}
             >
-              <span
-                className={css({
-                  fontSize: '28px',
-                  lineHeight: '1',
-                  w: '44px',
-                  h: '44px',
-                  display: 'flex',
+              {/* Header */}
+              <div
+                data-element="player-stuff-modal-header"
+                className={hstack({
+                  gap: '12px',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  bg: 'gray.50',
-                  borderRadius: '50%',
-                  border: '1px solid token(colors.gray.200)',
+                  p: '16px 20px',
+                  bg: 'white',
+                  borderBottom: '1px solid token(colors.gray.200)',
                   flexShrink: 0,
                 })}
               >
-                {playerEmoji ?? '🧒'}
-              </span>
-              <div className={vstack({ alignItems: 'flex-start', gap: '1px', flex: 1, minW: 0 })}>
-                <Dialog.Title
+                <span
                   className={css({
-                    fontSize: '18px',
-                    fontWeight: '800',
-                    color: 'gray.900',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxW: '100%',
-                  })}
-                >
-                  {playerName}&apos;s Stuff
-                </Dialog.Title>
-                <Dialog.Description className={css({ fontSize: '12px', color: 'gray.500' })}>
-                  Songs, creations & postcards
-                </Dialog.Description>
-              </div>
-
-              <Link
-                href={`/my-stuff/player/${playerId}`}
-                data-action="view-full-player-stuff"
-                onClick={onClose}
-                className={css({
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: 'blue.600',
-                  textDecoration: 'none',
-                  px: '10px',
-                  py: '6px',
-                  borderRadius: '8px',
-                  flexShrink: 0,
-                  _hover: { bg: 'blue.50', textDecoration: 'underline' },
-                })}
-              >
-                View full page →
-              </Link>
-
-              <Dialog.Close asChild>
-                <button
-                  type="button"
-                  data-action="close-player-stuff-modal"
-                  aria-label="Close"
-                  className={css({
-                    w: '32px',
-                    h: '32px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    bg: 'transparent',
-                    color: 'gray.500',
-                    fontSize: '20px',
-                    cursor: 'pointer',
+                    fontSize: '28px',
+                    lineHeight: '1',
+                    w: '44px',
+                    h: '44px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    bg: 'gray.50',
+                    borderRadius: '50%',
+                    border: '1px solid token(colors.gray.200)',
                     flexShrink: 0,
-                    _hover: { bg: 'gray.100', color: 'gray.800' },
                   })}
                 >
-                  ✕
-                </button>
-              </Dialog.Close>
-            </div>
+                  {playerEmoji ?? '🧒'}
+                </span>
+                <div className={vstack({ alignItems: 'flex-start', gap: '1px', flex: 1, minW: 0 })}>
+                  <Dialog.Title
+                    className={css({
+                      fontSize: '18px',
+                      fontWeight: '800',
+                      color: 'gray.900',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxW: '100%',
+                    })}
+                  >
+                    {playerName}&apos;s Stuff
+                  </Dialog.Title>
+                  <Dialog.Description className={css({ fontSize: '12px', color: 'gray.500' })}>
+                    Songs, creations & postcards
+                  </Dialog.Description>
+                </div>
 
-            {/* Scrollable body */}
-            <div
-              data-element="player-stuff-modal-body"
-              className={vstack({
-                alignItems: 'stretch',
-                gap: '32px',
-                p: '20px',
-                overflow: 'auto',
-                flex: 1,
-                minH: 0,
-              })}
-            >
-              <PostcardsSection playerId={playerId} />
-              <CelebrationSongsSection playerId={playerId} />
-              <EuclidCreationsSection playerId={playerId} />
+                <Link
+                  href={`/my-stuff/player/${playerId}`}
+                  data-action="view-full-player-stuff"
+                  onClick={onClose}
+                  className={css({
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: 'blue.600',
+                    textDecoration: 'none',
+                    px: '10px',
+                    py: '6px',
+                    borderRadius: '8px',
+                    flexShrink: 0,
+                    _hover: { bg: 'blue.50', textDecoration: 'underline' },
+                  })}
+                >
+                  View full page →
+                </Link>
+
+                <Dialog.Close asChild>
+                  <button
+                    type="button"
+                    data-action="close-player-stuff-modal"
+                    aria-label="Close"
+                    className={css({
+                      w: '32px',
+                      h: '32px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      bg: 'transparent',
+                      color: 'gray.500',
+                      fontSize: '20px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      _hover: { bg: 'gray.100', color: 'gray.800' },
+                    })}
+                  >
+                    ✕
+                  </button>
+                </Dialog.Close>
+              </div>
+
+              {/* Scrollable body */}
+              <div
+                data-element="player-stuff-modal-body"
+                className={vstack({
+                  alignItems: 'stretch',
+                  gap: '32px',
+                  p: '20px',
+                  overflow: 'auto',
+                  flex: 1,
+                  minH: 0,
+                })}
+              >
+                <PostcardsSection playerId={playerId} />
+                <CelebrationSongsSection playerId={playerId} />
+                <EuclidCreationsSection playerId={playerId} />
+              </div>
             </div>
           </PortalContainerProvider>
         </Dialog.Content>

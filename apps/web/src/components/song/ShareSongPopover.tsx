@@ -280,7 +280,11 @@ export function ShareSongPopover({
             boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
             border: '1px solid token(colors.gray.200)',
             width: 'min(440px, calc(100vw - 32px))',
-            maxHeight: 'calc(100vh - 100px)',
+            // Cap to the space Radix computes between the trigger and the
+            // viewport edge (set via the Popper) and scroll internally, so
+            // the popover never runs off-screen — works both standalone and
+            // when portaled inside the My Stuff modal.
+            maxHeight: 'var(--radix-popover-content-available-height)',
             overflowY: 'auto',
             zIndex: Z_INDEX.POPOVER,
             display: 'flex',
