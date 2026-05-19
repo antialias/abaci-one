@@ -47,6 +47,7 @@ export default async function SharedSongPage({ params }: Props) {
     stats.accuracyPct != null ||
     stats.bestCorrectStreak != null ||
     (stats.skills?.length ?? 0) > 0 ||
+    (stats.highlights?.length ?? 0) > 0 ||
     !!stats.storyAngle
 
   return (
@@ -162,6 +163,35 @@ export default async function SharedSongPage({ params }: Props) {
               <p className={css({ fontSize: '15px', color: 'gray.800', fontStyle: 'italic' })}>
                 The story: {stats.storyAngle}
               </p>
+            )}
+            {stats.highlights && stats.highlights.length > 0 && (
+              <ul
+                data-element="session-highlights"
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  listStyle: 'none',
+                  m: 0,
+                  p: 0,
+                })}
+              >
+                {stats.highlights.map((h) => (
+                  <li
+                    key={h}
+                    className={css({
+                      fontSize: '14px',
+                      color: 'gray.700',
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'flex-start',
+                    })}
+                  >
+                    <span aria-hidden="true">✨</span>
+                    <span>{h}</span>
+                  </li>
+                ))}
+              </ul>
             )}
             <div className={wrap({ gap: '20px' })}>
               {stats.age != null && <Stat label="Age" value={String(stats.age)} />}

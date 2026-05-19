@@ -1,17 +1,27 @@
 /**
  * Server-side projection for a shared celebration song.
  *
- * Single source of truth for what a share code reveals — used by both the
- * public API route (`/api/song-shares/[code]`) and the public page
- * (`/song/[code]`). The raw `promptInput` never leaves this function; only the
- * fields the share's visibility toggles permit are returned. This is the
- * privacy boundary for a child's data.
+ * Single source of truth for what a share code reveals — used by the public
+ * API route (`/api/song-shares/[code]`), the public page (`/song/[code]`), and
+ * its OG image. The raw `promptInput` never leaves this function; only the
+ * fields the share's visibility toggles permit are returned, and the lyric
+ * annotation engine runs *here*, after the gate, fed only permitted facts.
+ * This is the privacy boundary for a child's data.
  */
 
 import { eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { parseSongPlan, type ParsedSongSection } from '@/lib/song-share/songPlan'
+import type {
+  SongProblemMoment,
+  SongSkillSpotlight,
+} from '@/lib/session-song/extract-session-stats'
+import {
+  type AnnotateFacts,
+  type AnnotatedSongSection,
+  annotateSections,
+} from '@/lib/song-share/annotate'
 import { formatSkill } from '@/lib/song-share/sessionFacts'
+import { parseSongPlan } from '@/lib/song-share/songPlan'
 import type { SongShareVisibility } from '@/db/schema/song-shares'
 
 interface PromptInputShape {
@@ -23,7 +33,13 @@ interface PromptInputShape {
     bestCorrectStreak?: number
     skillsPracticed?: string[]
   }
-  practiceDrama?: { storyAngle?: string }
+  practiceDrama?: {
+    storyAngle?: string
+    arcs?: string[]
+    problemMoments?: SongProblemMoment[]
+    skillSpotlights?: SongSkillSpotlight[]
+  }
+  gameBreak?: { gameName?: string; headline?: string }
 }
 
 export interface SharedSongStats {
@@ -34,6 +50,8 @@ export interface SharedSongStats {
   bestCorrectStreak?: number
   skills?: string[]
   storyAngle?: string
+  /** A few human "what happened this session" lines (gated by problem detail). */
+  highlights?: string[]
 }
 
 export interface SharedSongPayload {
@@ -42,7 +60,7 @@ export interface SharedSongPayload {
     title: string | null
     audioPath: string
     styles: string[]
-    sections: ParsedSongSection[]
+    sections: AnnotatedSongSection[]
     createdAt: number
   }
   stats: SharedSongStats
@@ -53,7 +71,8 @@ export interface SharedSongPayload {
  * Resolve a share code to its projected payload, or `null` if the code is
  * missing/revoked or the song isn't a completed song (callers map null → 404).
  *
- * @param opts.bumpView increment the view counter (only the page render should)
+ * @param opts.bumpView increment the view counter (only the page render should;
+ *   the OG image / API must not, or crawlers inflate the count)
  */
 export async function getSharedSong(
   code: string,
@@ -104,9 +123,36 @@ export async function getSharedSong(
     }
   }
 
-  const visibility = share.visibility as SongShareVisibility
-  const plan = parseSongPlan(song.llmOutput)
-  const pi = (song.promptInput ?? {}) as PromptInputShape
+  return projectSharedSong({
+    visibility: share.visibility as SongShareVisibility,
+    llmOutput: song.llmOutput,
+    promptInput: song.promptInput,
+    playerName: player?.name ?? 'A learner',
+    playerEmoji: player?.emoji ?? '🧮',
+    songId: song.id,
+    createdAt: song.createdAt instanceof Date ? song.createdAt.getTime() : song.createdAt,
+  })
+}
+
+/**
+ * The privacy projection itself — pure, no I/O. Separated from the DB reads so
+ * the toggle-gating contract can be unit-tested directly (and so the boundary
+ * has exactly one implementation). `promptInput`/`llmOutput` come straight off
+ * the row as `unknown`; nothing here returns them verbatim.
+ */
+export function projectSharedSong(input: {
+  visibility: SongShareVisibility
+  llmOutput: unknown
+  promptInput: unknown
+  playerName: string
+  playerEmoji: string
+  songId: string
+  createdAt: number
+}): SharedSongPayload {
+  const { visibility, playerName, playerEmoji, songId, createdAt } = input
+  const plan = parseSongPlan(input.llmOutput)
+  const pi = (input.promptInput ?? {}) as PromptInputShape
+  const firstName = playerName.trim().split(/\s+/)[0] || playerName
 
   // ---- Projection (privacy boundary) ----
   const stats: SharedSongStats = {}
@@ -124,29 +170,56 @@ export async function getSharedSong(
       stats.problemsTotal = pi.currentSession.problemsTotal
     }
   }
+  const rawSkills = Array.isArray(pi.currentSession?.skillsPracticed)
+    ? pi.currentSession!.skillsPracticed!
+    : []
   if (visibility.showStreakSkills && pi.currentSession) {
     if (typeof pi.currentSession.bestCorrectStreak === 'number') {
       stats.bestCorrectStreak = pi.currentSession.bestCorrectStreak
     }
-    if (Array.isArray(pi.currentSession.skillsPracticed)) {
-      stats.skills = pi.currentSession.skillsPracticed.map(formatSkill).slice(0, 8)
+    if (rawSkills.length > 0) {
+      stats.skills = rawSkills.map(formatSkill).slice(0, 8)
     }
   }
   if (visibility.showProblemDetail && typeof pi.practiceDrama?.storyAngle === 'string') {
     stats.storyAngle = pi.practiceDrama.storyAngle
   }
+  if (visibility.showProblemDetail && Array.isArray(pi.practiceDrama?.arcs)) {
+    const arcs = pi.practiceDrama.arcs.filter((a): a is string => typeof a === 'string' && !!a.trim())
+    if (arcs.length > 0) stats.highlights = arcs.slice(0, 3)
+  }
+
+  // ---- Gated facts for the lyric annotation engine ----
+  const facts: AnnotateFacts = { playerName: firstName }
+  if (visibility.showProblemDetail) {
+    if (Array.isArray(pi.practiceDrama?.problemMoments)) {
+      facts.problemMoments = pi.practiceDrama.problemMoments
+    }
+    if (typeof pi.practiceDrama?.storyAngle === 'string') {
+      facts.storyAngle = pi.practiceDrama.storyAngle
+    }
+    if (pi.gameBreak?.gameName) {
+      facts.gameBreak = { gameName: pi.gameBreak.gameName, headline: pi.gameBreak.headline }
+    }
+  }
+  if (visibility.showStreakSkills) {
+    if (Array.isArray(pi.practiceDrama?.skillSpotlights)) {
+      facts.skillSpotlights = pi.practiceDrama.skillSpotlights
+    }
+    if (rawSkills.length > 0) facts.skills = rawSkills
+  }
 
   return {
     player: {
-      name: player?.name ?? 'A learner',
-      emoji: player?.emoji ?? '🧮',
+      name: playerName,
+      emoji: playerEmoji,
     },
     song: {
       title: plan.title,
-      audioPath: `/api/audio/songs/${song.id}`,
+      audioPath: `/api/audio/songs/${songId}`,
       styles: plan.globalStyles,
-      sections: plan.sections,
-      createdAt: song.createdAt instanceof Date ? song.createdAt.getTime() : song.createdAt,
+      sections: annotateSections(plan.sections, facts),
+      createdAt,
     },
     stats,
     visibility,

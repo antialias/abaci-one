@@ -10,13 +10,10 @@
  * keeps its own dark technical treatment but consumes the same parser.
  */
 
-import type { ParsedSongSection } from '@/lib/song-share/songPlan'
+import type { AnnotatedSongSection } from '@/lib/song-share/annotate'
 import { css } from '../../../styled-system/css'
 
-export interface AnnotatedSongSection extends ParsedSongSection {
-  /** Optional "behind the line" notes derived from session metadata. */
-  annotations?: string[]
-}
+export type { AnnotatedSongSection }
 
 interface SongLyricsProps {
   sections: AnnotatedSongSection[]
