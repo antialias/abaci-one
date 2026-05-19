@@ -29,6 +29,8 @@ export interface SongLyricsSection {
   name: string
   lines: string[]
   durationMs: number
+  /** Stable short IDs of session moments this section references, if any. */
+  momentRefs?: string[]
 }
 
 export interface SyncedWord {

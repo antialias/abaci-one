@@ -19,6 +19,12 @@ export interface SongSection {
   negative_local_styles: string[]
   duration_ms: number
   lines: string[]
+  /**
+   * Stable short IDs of session moments this section references. Used by our
+   * scene-stage renderer to pick a visual for the section. NOT sent to
+   * ElevenLabs (stripped in `generateMusic`) — they have no meaning there.
+   */
+  moment_refs?: string[]
 }
 
 export interface CompositionPlan {
@@ -144,8 +150,15 @@ function splitMultipart(buffer: Buffer, boundary: string): MultipartPart[] {
 export async function generateMusic(request: GenerateMusicRequest): Promise<GenerateMusicResult> {
   const apiKey = getApiKey()
 
+  // Strip our scene-rendering metadata before sending. moment_refs are an
+  // internal field — ElevenLabs has no use for them and would either ignore
+  // them or reject the request as malformed.
+  const wireSections = request.compositionPlan.sections.map(({ moment_refs, ...rest }) => rest)
   const body = {
-    composition_plan: request.compositionPlan,
+    composition_plan: {
+      ...request.compositionPlan,
+      sections: wireSections,
+    },
     model_id: MUSIC_MODEL,
     with_timestamps: true,
   }

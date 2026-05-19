@@ -16,6 +16,8 @@ export interface ParsedSongSection {
   localStyles: string[]
   negativeLocalStyles: string[]
   durationMs: number
+  /** Stable short IDs of session moments this section references, if any. */
+  momentRefs: string[]
 }
 
 export interface ParsedSongPlan {
@@ -50,6 +52,7 @@ export function parseSongPlan(llmOutput: unknown): ParsedSongPlan {
       localStyles: stringArray(s.positive_local_styles),
       negativeLocalStyles: stringArray(s.negative_local_styles),
       durationMs: typeof s.duration_ms === 'number' ? s.duration_ms : 0,
+      momentRefs: stringArray(s.moment_refs),
     }))
 
   return {

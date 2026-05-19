@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { isEnabled } from '@/lib/feature-flags'
+import { loadSessionMoments } from '@/lib/session-moments/persist'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
 import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { startSessionSongGeneration } from '@/lib/tasks/session-song'
@@ -109,8 +110,13 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
             name: s.name,
             lines: s.lines,
             durationMs: s.durationMs,
+            momentRefs: s.momentRefs,
           }))
         : null
+
+    // Resolved moments (snapshot + summary) for the SceneStage renderer.
+    // Empty for legacy songs that pre-date moment derivation.
+    const moments = song.status === 'completed' ? await loadSessionMoments(song.sessionPlanId) : []
 
     return NextResponse.json({
       song: {
@@ -124,6 +130,7 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
         alignmentPath:
           song.status === 'completed' ? `/api/audio/songs/${song.id}/alignment` : null,
         lyrics,
+        moments,
         triggerSource: song.triggerSource,
         failureKind: song.status === 'failed' ? (song.failureKind ?? null) : null,
         // Raw error string is owner/admin-only — leak nothing to other viewers.

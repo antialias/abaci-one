@@ -266,7 +266,7 @@ function slotLookup(plan: SessionPlan) {
 // Practice drama extraction
 // ============================================================================
 
-interface ProblemAttemptSummary {
+export interface ProblemAttemptSummary {
   slotId: string
   resultIndex: number
   partType: string
@@ -290,7 +290,7 @@ interface ProblemAttemptSummary {
   retryEpochs: number[]
 }
 
-function summarizeProblemAttempts(plan: SessionPlan): ProblemAttemptSummary[] {
+export function summarizeProblemAttempts(plan: SessionPlan): ProblemAttemptSummary[] {
   const lookup = slotLookup(plan)
   const groups = new Map<string, Array<{ result: SlotResult; resultIndex: number }>>()
 
@@ -374,7 +374,10 @@ function isHardSkill(skillId: string): boolean {
   )
 }
 
-function scoreProblemMoment(summary: ProblemAttemptSummary, responseMedian?: number): number {
+export function scoreProblemMoment(
+  summary: ProblemAttemptSummary,
+  responseMedian?: number
+): number {
   let score = 0
 
   if (summary.outcome === 'eventually_correct') score += 10
@@ -391,7 +394,7 @@ function scoreProblemMoment(summary: ProblemAttemptSummary, responseMedian?: num
   return score
 }
 
-function kindForSummary(
+export function kindForSummary(
   summary: ProblemAttemptSummary,
   responseMedian?: number
 ): SongProblemMomentKind {
@@ -401,7 +404,7 @@ function kindForSummary(
   return 'hard_problem'
 }
 
-function reasonForSummary(
+export function reasonForSummary(
   summary: ProblemAttemptSummary,
   kind: SongProblemMomentKind,
   streakLength?: number
@@ -862,7 +865,7 @@ function extractGameBreakFromReport(
   }
 }
 
-function extractGameBreak(result?: GameResult | null): SongPromptInput['gameBreak'] {
+export function extractGameBreak(result?: GameResult | null): SongPromptInput['gameBreak'] {
   if (!result?.fullReport) return undefined
   return extractGameBreakFromReport(result.fullReport as GameResultsReport, result.accuracy)
 }

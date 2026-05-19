@@ -29,6 +29,11 @@ import {
   generateMusic,
   type MusicAlignmentJson,
 } from '../elevenlabs/music-client'
+import { deriveSessionMoments } from '../session-moments/derive'
+import { persistSessionMoments } from '../session-moments/persist'
+import type { MomentCatalogEntry } from '../session-moments/types'
+import type { GameResult } from '@/db/schema/game-results'
+import type { SessionPlan } from '@/db/schema/session-plans'
 import { classifySongFailure } from '../session-song/classify-failure'
 import {
   resolveSongPlanValidationPolicy,
@@ -81,6 +86,26 @@ async function writeAlignmentSidecar(
   if (!alignment) return
   const alignmentPath = join(SONGS_DIR, `${songId}.json`)
   await writeFile(alignmentPath, JSON.stringify(alignment))
+}
+
+/**
+ * Derive notable moments from session data and persist them, returning the
+ * compact catalog the lyric LLM will reference. Called fresh per song-gen
+ * (and per regeneration) so moments rotate with regeneration.
+ */
+async function prepareMomentCatalog(
+  plan: SessionPlan,
+  playerId: string,
+  gameBreakResult: GameResult | null
+): Promise<MomentCatalogEntry[]> {
+  const derived = deriveSessionMoments(plan, gameBreakResult, { limit: 10 })
+  await persistSessionMoments(plan.id, playerId, derived)
+  return derived.map((m) => ({
+    shortId: m.shortId,
+    type: m.type,
+    summary: m.summary,
+    significance: m.significance,
+  }))
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -563,13 +588,21 @@ export async function startSessionSongGeneration(
           })
           .where(eq(schema.sessionSongs.id, songId))
 
-        // Step 2: Generate LLM composition plan
+        // Step 2: Derive + persist notable moments (catalog feeds the lyric LLM)
+        const momentCatalog = await prepareMomentCatalog(
+          plan,
+          input.playerId,
+          gameBreakResult ?? null
+        )
+
+        // Step 3: Generate LLM composition plan
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
 
         const validationPolicy = await getSongPlanValidationPolicy(input._userId)
         const llmOutput = await generateSongPrompt(promptInput, genrePreference, input._userId, {
           validationPolicy,
+          momentCatalog,
         })
 
         handle.emit({
@@ -844,6 +877,27 @@ export async function retrySessionSongGeneration(
           })
           .where(eq(schema.sessionSongs.id, songId))
 
+        // Re-derive moments for the regenerated song (plan may have new
+        // results since the original run, e.g. completed problems mid-flight).
+        const [planForMoments] = await db
+          .select()
+          .from(schema.sessionPlans)
+          .where(eq(schema.sessionPlans.id, song.sessionPlanId))
+          .limit(1)
+        const [gameBreakForMoments] = await db
+          .select()
+          .from(schema.gameResults)
+          .where(
+            and(
+              eq(schema.gameResults.sessionId, song.sessionPlanId),
+              eq(schema.gameResults.sessionType, 'practice-break')
+            )
+          )
+          .limit(1)
+        const momentCatalog = planForMoments
+          ? await prepareMomentCatalog(planForMoments, song.playerId, gameBreakForMoments ?? null)
+          : []
+
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
 
@@ -852,7 +906,7 @@ export async function retrySessionSongGeneration(
           built.promptInput,
           built.genrePreference,
           inputWithUser._userId,
-          { validationPolicy }
+          { validationPolicy, momentCatalog }
         )
 
         handle.emit({

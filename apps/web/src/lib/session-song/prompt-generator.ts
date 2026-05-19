@@ -26,6 +26,7 @@ import {
 } from './composition-plan-validation'
 import type { SongConcept } from './concept-selector'
 import type { SongPromptInput } from './extract-session-stats'
+import type { MomentCatalogEntry } from '@/lib/session-moments/types'
 
 // ============================================================================
 // Output Schema
@@ -45,6 +46,13 @@ const songSectionSchema = z.object({
     .max(6)
     .describe(
       'Lyrics for this section. Keep sparse — 2-4 short lines per verse, 2-3 for chorus. Max 80 chars per line.'
+    ),
+  moment_refs: z
+    .array(z.string())
+    .max(3)
+    .optional()
+    .describe(
+      'Optional. Short IDs (e.g. "m_p1q3") of session moments this section musically references. Only use IDs from the Moment catalog. 0-3 per section.'
     ),
 })
 
@@ -90,6 +98,12 @@ export interface SongCompositionOutput {
 
 interface GenerateSongPromptOptions {
   validationPolicy?: SongPlanValidationPolicy
+  /**
+   * Catalog of derived session moments. When present, the LLM is shown the
+   * catalog and may attach `moment_refs: ["m_xxx"]` to lyric sections that
+   * musically reference those moments. Invalid IDs are filtered post-LLM.
+   */
+  momentCatalog?: MomentCatalogEntry[]
 }
 
 // ============================================================================
@@ -150,6 +164,12 @@ STRUCTURE:
 - Total song MUST be at most 60000ms (60 seconds). Aim for 45000-55000ms. Never exceed 60000ms.
 - positive_global_styles should ALWAYS include "children" and "upbeat"
 - negative_global_styles should ALWAYS include "explicit" and "sad"
+
+MOMENT REFERENCES (optional):
+- If a "Moment catalog" is provided below, you MAY attach moment_refs to sections whose lyrics evoke that moment.
+- Use ONLY shortIds from the catalog. Do not invent IDs. Invented IDs will be discarded silently.
+- 0-3 refs per section; most sections need none. The chorus typically gets none (it's an anthem).
+- These IDs let our scene renderer pick a visual to play behind the lyrics. Choose refs that share the section's emotional thrust.
 
 STYLE TIPS:
 - LESS IS MORE. A few great lines beat many crammed ones. Leave space for the music.
@@ -259,7 +279,16 @@ function formatSongConcept(input: SongPromptInput): string {
   return `\n\nSong concept:\n${lines.join('\n')}`
 }
 
-export function buildSongUserPrompt(input: SongPromptInput): string {
+function formatMomentCatalog(catalog: MomentCatalogEntry[] | undefined): string {
+  if (!catalog || catalog.length === 0) return ''
+  const lines = catalog.map((m) => `  - ${m.shortId} (${m.type}, sig ${m.significance.toFixed(1)}): ${m.summary}`)
+  return `\n\nMoment catalog (reference these by shortId in section.moment_refs when a lyric line evokes the moment):\n${lines.join('\n')}`
+}
+
+export function buildSongUserPrompt(
+  input: SongPromptInput,
+  momentCatalog?: MomentCatalogEntry[]
+): string {
   const { player, currentSession, history } = input
 
   const accuracyPercent = Math.round(currentSession.accuracy * 100)
@@ -304,7 +333,7 @@ Practice drama:
   }${formatLines('Specific problem moments', formatProblemMoments(input))}${formatLines(
     'Skill spotlights',
     formatSkillSpotlights(input)
-  )}${formatGameBreak(input)}
+  )}${formatGameBreak(input)}${formatMomentCatalog(momentCatalog)}
 
 Use the selected song concept and the specific problem, skill, attempt, and game-break evidence above. Keep it warm and singable.`
 }
@@ -320,12 +349,27 @@ const OFF_VALIDATION_POLICY: SongPlanValidationPolicy = {
   logPassingPlans: false,
 }
 
-function toSongPlanCandidate(output: SongLLMOutput): SongPlanCandidate {
+function toSongPlanCandidate(
+  output: SongLLMOutput,
+  validShortIds?: Set<string>
+): SongPlanCandidate {
   return {
     title: output.title,
     positive_global_styles: output.positive_global_styles,
     negative_global_styles: output.negative_global_styles,
-    sections: output.sections,
+    sections: output.sections.map((section) => {
+      const refs = section.moment_refs ?? []
+      // Drop IDs the LLM hallucinated or hasn't been told about.
+      const filtered = validShortIds
+        ? refs.filter((id) => validShortIds.has(id))
+        : refs
+      // Omit the field when empty so we don't litter the stored plan.
+      if (filtered.length === 0) {
+        const { moment_refs: _drop, ...rest } = section
+        return rest
+      }
+      return { ...section, moment_refs: filtered }
+    }),
   }
 }
 
@@ -489,6 +533,7 @@ export async function generateSongPrompt(
   options: GenerateSongPromptOptions = {}
 ): Promise<SongCompositionOutput> {
   const validationPolicy = options.validationPolicy ?? OFF_VALIDATION_POLICY
+  const momentCatalog = options.momentCatalog
   const genres =
     genre === 'any'
       ? []
@@ -502,10 +547,13 @@ export async function generateSongPrompt(
       : genres.length === 1
         ? `\n\nThe parent has requested a ${genres[0]} style song. Use ${genres[0]} as the primary genre.`
         : ''
-  const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildSongUserPrompt(input)}${genreInstruction}`
+  const fullPrompt = `${SYSTEM_PROMPT}\n\n---\n\n${buildSongUserPrompt(input, momentCatalog)}${genreInstruction}`
 
+  const validShortIds = momentCatalog
+    ? new Set(momentCatalog.map((m) => m.shortId))
+    : undefined
   const responses = [await callSongPlanLlm(fullPrompt, userId)]
-  const rawCandidate = toSongPlanCandidate(responses[0].data)
+  const rawCandidate = toSongPlanCandidate(responses[0].data, validShortIds)
   const rawValidation = validateCompositionPlan(input, rawCandidate)
   const rawTotalDurationMs = rawValidation.totalDurationMs
 
@@ -567,7 +615,7 @@ export async function generateSongPrompt(
     const repairResponse = await callSongPlanLlm(repairPrompt, userId)
     responses.push(repairResponse)
 
-    latestCandidate = toSongPlanCandidate(repairResponse.data)
+    latestCandidate = toSongPlanCandidate(repairResponse.data, validShortIds)
     latestValidation = validateCompositionPlan(input, latestCandidate)
     if (latestValidation.ok) {
       repaired = true

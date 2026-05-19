@@ -14,6 +14,7 @@ import { sessionSongKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
 
 import type { SessionSongFailureKind } from '@/db/schema/session-songs'
+import type { ResolvedMoment } from '@/lib/session-moments/types'
 import type { SongLyricsSection } from '@/lib/song/alignment'
 
 interface SessionSongData {
@@ -26,6 +27,11 @@ interface SessionSongData {
   alignmentPath: string | null
   /** Per-section lyrics for the synced-lyrics player. Null until completed. */
   lyrics: SongLyricsSection[] | null
+  /**
+   * Resolved session moments (snapshot + summary), keyed by `shortId` from
+   * lyric `section.momentRefs`. Empty for legacy songs with no moments derived.
+   */
+  moments: ResolvedMoment[]
   triggerSource: string | null
   failureKind: SessionSongFailureKind | null
   /** Raw error string — server only includes for owners/admins; null otherwise. */
