@@ -19,6 +19,7 @@ import type {
 import { css } from '../../../styled-system/css'
 import { EnrollChildModal } from '@/components/classroom/EnrollChildModal'
 import { FamilyCodeDisplay } from '@/components/family'
+import { PlayerStuffModal } from '@/components/my-stuff/PlayerStuffModal'
 import { RelationshipCard } from './RelationshipCard'
 import { RelationshipSummary } from './RelationshipBadge'
 import { SessionMoodIndicator } from './SessionMoodIndicator'
@@ -294,6 +295,10 @@ export function PracticeSubNav({
   const isInActiveSession = !!sessionHud
   const isOnGameBreak = !!gameBreakHud
   const showFocusBanner = !!focusSkills && focusSkills.length > 0 && !!sessionHud && !isOnGameBreak
+
+  // Mini "My Stuff" modal — summoned from the student-context popover. State
+  // lives here (outside the popover) so the modal survives the popover closing.
+  const [showStuffModal, setShowStuffModal] = useState(false)
 
   // Stakeholder data for relationship popover
   const { data: stakeholdersData } = useStudentStakeholders(student.id)
@@ -785,6 +790,34 @@ export function PracticeSubNav({
                       <span>⚙️</span>
                       <span>Player settings</span>
                     </Link>
+                    <Popover.Close asChild>
+                      <button
+                        type="button"
+                        data-action="open-player-stuff"
+                        onClick={() => setShowStuffModal(true)}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          width: '100%',
+                          padding: '0.45rem 0.6rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: 'none',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          fontFamily: 'inherit',
+                          color: isDark ? 'gray.200' : 'gray.700',
+                          _hover: {
+                            backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                          },
+                        })}
+                      >
+                        <span>⭐</span>
+                        <span>My Stuff</span>
+                      </button>
+                    </Popover.Close>
                   </div>
 
                   {viewerRelationship && viewerRelationship.type !== 'none' && (
@@ -1509,6 +1542,14 @@ export function PracticeSubNav({
         onClose={modals.enroll.close}
         playerId={student.id}
         playerName={student.name}
+      />
+
+      <PlayerStuffModal
+        open={showStuffModal}
+        onClose={() => setShowStuffModal(false)}
+        playerId={student.id}
+        playerName={student.name}
+        playerEmoji={student.emoji}
       />
     </nav>
   )
