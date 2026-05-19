@@ -21,6 +21,8 @@ interface SessionSongData {
   title: string | null
   durationSeconds: number | null
   audioPath: string | null
+  /** URL for the word-alignment JSON. May 404 for legacy songs without timestamps. */
+  alignmentPath: string | null
   triggerSource: string | null
   failureKind: SessionSongFailureKind | null
   /** Raw error string — server only includes for owners/admins; null otherwise. */

@@ -106,6 +106,10 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
         title: (song.llmOutput as { title?: string } | null)?.title ?? null,
         durationSeconds: song.durationSeconds,
         audioPath: song.status === 'completed' ? `/api/audio/songs/${song.id}` : null,
+        // Word-alignment sidecar. The route 404s for songs generated before
+        // timestamps shipped, so older songs degrade to plain playback.
+        alignmentPath:
+          song.status === 'completed' ? `/api/audio/songs/${song.id}/alignment` : null,
         triggerSource: song.triggerSource,
         failureKind: song.status === 'failed' ? (song.failureKind ?? null) : null,
         // Raw error string is owner/admin-only — leak nothing to other viewers.

@@ -24,7 +24,11 @@ import { AiFeature } from '@/lib/ai-usage/features'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
 import { getFlag } from '@/lib/feature-flags'
 import { getSocketIO } from '@/lib/socket-io'
-import { type CompositionPlan, generateMusic } from '../elevenlabs/music-client'
+import {
+  type CompositionPlan,
+  generateMusic,
+  type MusicAlignmentJson,
+} from '../elevenlabs/music-client'
 import { classifySongFailure } from '../session-song/classify-failure'
 import {
   resolveSongPlanValidationPolicy,
@@ -64,6 +68,20 @@ interface SongPromptBuildResult {
 }
 
 const SONGS_DIR = join(process.cwd(), 'data', 'audio', 'songs')
+
+/**
+ * Write the ElevenLabs word-alignment JSON to a sidecar file next to the MP3.
+ * The detailed music endpoint returns this when `with_timestamps: true` is set;
+ * it powers karaoke-style lyric highlighting in the celebration UI.
+ */
+async function writeAlignmentSidecar(
+  songId: string,
+  alignment: MusicAlignmentJson | null
+): Promise<void> {
+  if (!alignment) return
+  const alignmentPath = join(SONGS_DIR, `${songId}.json`)
+  await writeFile(alignmentPath, JSON.stringify(alignment))
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -290,7 +308,7 @@ async function generateAndSaveMusic({
     })
     .where(eq(schema.sessionSongs.id, songId))
 
-  const { audioBuffer } = await generateMusic({
+  const { audioBuffer, alignment } = await generateMusic({
     compositionPlan: llmOutput.plan,
   })
 
@@ -307,6 +325,7 @@ async function generateAndSaveMusic({
   const localPath = join(SONGS_DIR, `${songId}.mp3`)
   await mkdir(dirname(localPath), { recursive: true })
   await writeFile(localPath, audioBuffer)
+  await writeAlignmentSidecar(songId, alignment)
 
   await db
     .update(schema.sessionSongs)
@@ -576,7 +595,7 @@ export async function startSessionSongGeneration(
           .set({ status: 'generating' })
           .where(eq(schema.sessionSongs.id, songId))
 
-        const { audioBuffer } = await generateMusic({
+        const { audioBuffer, alignment } = await generateMusic({
           compositionPlan: llmOutput.plan,
         })
 
@@ -588,12 +607,13 @@ export async function startSessionSongGeneration(
           })
         }
 
-        // Step 4: Save MP3 locally
+        // Step 4: Save MP3 (and alignment JSON sidecar) locally
         handle.setProgress(90, 'Saving your song...')
 
         const localPath = join(SONGS_DIR, `${songId}.mp3`)
         await mkdir(dirname(localPath), { recursive: true })
         await writeFile(localPath, audioBuffer)
+        await writeAlignmentSidecar(songId, alignment)
 
         // Step 5: Mark completed
         await db
