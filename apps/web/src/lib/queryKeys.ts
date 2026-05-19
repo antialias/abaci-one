@@ -186,6 +186,9 @@ export const notificationSubscriptionKeys = {
 export const sessionSongKeys = {
   all: ['sessionSongs'] as const,
   forPlan: (planId: string) => [...sessionSongKeys.all, 'plan', planId] as const,
+  /** Per-song word-alignment JSON (keyed on the alignment URL since it's content-addressable). */
+  alignment: (alignmentPath: string) =>
+    [...sessionSongKeys.all, 'alignment', alignmentPath] as const,
 }
 
 // Page spots query keys (admin content spot management)

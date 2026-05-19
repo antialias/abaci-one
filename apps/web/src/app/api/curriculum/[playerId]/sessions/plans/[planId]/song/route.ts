@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { isEnabled } from '@/lib/feature-flags'
+import { parseSongPlan } from '@/lib/song-share/songPlan'
 import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { startSessionSongGeneration } from '@/lib/tasks/session-song'
 import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
@@ -99,17 +100,30 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
       if (player?.userId === userId) isOwnerOrAdmin = true
     }
 
+    const parsedPlan = parseSongPlan(song.llmOutput)
+    // Per-section lyrics for the synced-lyrics player. Shaped down from the
+    // full plan so we don't leak style/validation metadata to the client.
+    const lyrics =
+      song.status === 'completed'
+        ? parsedPlan.sections.map((s) => ({
+            name: s.name,
+            lines: s.lines,
+            durationMs: s.durationMs,
+          }))
+        : null
+
     return NextResponse.json({
       song: {
         id: song.id,
         status: song.status,
-        title: (song.llmOutput as { title?: string } | null)?.title ?? null,
+        title: parsedPlan.title,
         durationSeconds: song.durationSeconds,
         audioPath: song.status === 'completed' ? `/api/audio/songs/${song.id}` : null,
         // Word-alignment sidecar. The route 404s for songs generated before
         // timestamps shipped, so older songs degrade to plain playback.
         alignmentPath:
           song.status === 'completed' ? `/api/audio/songs/${song.id}/alignment` : null,
+        lyrics,
         triggerSource: song.triggerSource,
         failureKind: song.status === 'failed' ? (song.failureKind ?? null) : null,
         // Raw error string is owner/admin-only — leak nothing to other viewers.

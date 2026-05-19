@@ -14,6 +14,7 @@ import { sessionSongKeys } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
 
 import type { SessionSongFailureKind } from '@/db/schema/session-songs'
+import type { SongLyricsSection } from '@/lib/song/alignment'
 
 interface SessionSongData {
   id: string
@@ -23,6 +24,8 @@ interface SessionSongData {
   audioPath: string | null
   /** URL for the word-alignment JSON. May 404 for legacy songs without timestamps. */
   alignmentPath: string | null
+  /** Per-section lyrics for the synced-lyrics player. Null until completed. */
+  lyrics: SongLyricsSection[] | null
   triggerSource: string | null
   failureKind: SessionSongFailureKind | null
   /** Raw error string — server only includes for owners/admins; null otherwise. */
