@@ -7,11 +7,13 @@
  * and retry controls for failed songs.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AdminNav } from '@/components/AdminNav'
 import { AppNavBar } from '@/components/AppNavBar'
 import { SystemHealthBanner } from '@/components/admin/SystemHealthBanner'
+import { SyncedLyricsPlayer } from '@/components/song/SyncedLyricsPlayer'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
+import type { SongLyricsSection } from '@/lib/song/alignment'
 import { css } from '../../../../styled-system/css'
 
 // ============================================================================
@@ -51,6 +53,8 @@ interface Song {
   lastRegenerationAt: string | null
   fileExists: boolean
   fileSizeBytes: number | null
+  alignmentExists: boolean
+  lyrics: SongLyricsSection[]
   durationSeconds: number | null
   createdAt: string
   completedAt: string | null
@@ -461,6 +465,7 @@ function SongRow({
         <div className={css({ display: 'flex', gap: '4px', alignItems: 'center' })}>
           <ContentReviewBadge status={song.contentReviewStatus} />
           <ValidationBadge song={song} />
+          <AlignmentBadge song={song} />
           <StatusBadge status={song.status} />
         </div>
       </div>
@@ -574,6 +579,27 @@ function ValidationBadge({ song }: { song: Song }) {
   )
 }
 
+function AlignmentBadge({ song }: { song: Song }) {
+  if (song.status !== 'completed') return null
+  const color = song.alignmentExists ? '#0ea5e9' : '#475569'
+  const label = song.alignmentExists ? 'synced' : 'no sync'
+  return (
+    <span
+      data-element="alignment-badge"
+      data-has-alignment={song.alignmentExists ? 'true' : 'false'}
+      className={css({
+        padding: '2px 6px',
+        borderRadius: '4px',
+        fontSize: '10px',
+        color: 'white',
+      })}
+      style={{ backgroundColor: color }}
+    >
+      {label}
+    </span>
+  )
+}
+
 function StatusBadge({ status }: { status: string }) {
   const color = getStatusColor(status)
   return (
@@ -604,25 +630,11 @@ function SongDetail({
   onClearContentFlag: (songId: string) => void
   busy: boolean
 }) {
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
   const [contentReason, setContentReason] = useState('')
 
-  // Reset audio state when song changes
   useEffect(() => {
-    setIsPlaying(false)
     setContentReason(song.contentReviewNote ?? '')
   }, [song.id, song.contentReviewNote])
-
-  const togglePlay = useCallback(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (isPlaying) {
-      audio.pause()
-    } else {
-      audio.play()
-    }
-  }, [isPlaying])
 
   const llmOutput = song.llmOutput as Record<string, unknown> | null
   const plan = llmOutput?.plan as Record<string, unknown> | null
@@ -699,55 +711,32 @@ function SongDetail({
         </div>
       </div>
 
-      {/* Audio Player (completed songs only) */}
+      {/* Integrated player + lyrics \u2014 uses the same SyncedLyricsPlayer the
+          kid celebration card and share page use, so admins can sanity-check
+          the alignment exactly as families experience it. */}
       {song.status === 'completed' && song.fileExists && (
-        <div
-          className={css({
-            padding: '12px 16px',
-            backgroundColor: '#16213e',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          })}
-        >
-          {/* biome-ignore lint/a11y/useMediaCaption: Admin song previews are generated audio without an available caption track. */}
-          <audio
-            ref={audioRef}
-            src={`/api/audio/songs/${song.id}`}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onEnded={() => setIsPlaying(false)}
+        <div className={css({ marginBottom: '16px' })}>
+          <SyncedLyricsPlayer
+            audioPath={`/api/audio/songs/${song.id}`}
+            alignmentPath={song.alignmentExists ? `/api/audio/songs/${song.id}/alignment` : null}
+            lyrics={song.lyrics}
+            title={song.title}
+            variant="full"
           />
-          <button
-            data-action="toggle-play"
-            onClick={togglePlay}
+          <div
             className={css({
-              width: '36px',
-              height: '36px',
-              borderRadius: 'full',
-              backgroundColor: '#7c3aed',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
+              fontSize: '11px',
+              color: '#8b949e',
+              marginTop: '6px',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              flexShrink: 0,
-              '&:hover': { backgroundColor: '#6d28d9' },
+              gap: '12px',
             })}
           >
-            {isPlaying ? '\u23F8' : '\u25B6'}
-          </button>
-          <div className={css({ fontSize: '12px', color: '#8b949e' })}>
-            {song.durationSeconds ? `${song.durationSeconds.toFixed(1)}s` : 'audio available'}
-            {song.fileSizeBytes && (
-              <span className={css({ marginLeft: '8px' })}>
-                ({(song.fileSizeBytes / 1024).toFixed(0)} KB)
-              </span>
-            )}
+            <span>
+              {song.durationSeconds ? `${song.durationSeconds.toFixed(1)}s` : 'duration unknown'}
+            </span>
+            {song.fileSizeBytes && <span>{(song.fileSizeBytes / 1024).toFixed(0)} KB</span>}
+            <span>{song.alignmentExists ? 'synced lyrics available' : 'no alignment data'}</span>
           </div>
         </div>
       )}

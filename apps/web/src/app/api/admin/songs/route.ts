@@ -8,12 +8,14 @@
 import { desc, eq, inArray } from 'drizzle-orm'
 import { stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
+import path from 'path'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import {
   getAdminSongPlanSummary,
   getSongPlanValidationSummary,
 } from '@/lib/session-song/admin-validation-summary'
+import { parseSongPlan } from '@/lib/song-share/songPlan'
 import {
   retrySessionSongGeneration,
   type SessionSongRegenerationMode,
@@ -77,6 +79,10 @@ export const GET = withAuth(
 
       const playerMap = new Map(allPlayers.map((p) => [p.id, p]))
 
+      // Alignment sidecar lives next to the MP3 as `<songId>.json` — same dir
+      // the public alignment route reads from.
+      const songsDir = path.join(process.cwd(), 'data', 'audio', 'songs')
+
       // Check file existence for completed songs
       const songs = await Promise.all(
         filtered.map(async (song) => {
@@ -93,9 +99,29 @@ export const GET = withAuth(
             }
           }
 
+          let alignmentExists = false
+          if (song.status === 'completed') {
+            try {
+              await stat(path.join(songsDir, `${song.id}.json`))
+              alignmentExists = true
+            } catch {
+              alignmentExists = false
+            }
+          }
+
           const player = playerMap.get(song.playerId)
           const planSummary = getAdminSongPlanSummary(song.llmOutput)
           const validationSummary = getSongPlanValidationSummary(song.llmOutput)
+          const parsedPlan = parseSongPlan(song.llmOutput)
+          // Shape down to what SyncedLyricsPlayer accepts.
+          const lyrics =
+            song.status === 'completed'
+              ? parsedPlan.sections.map((s) => ({
+                  name: s.name,
+                  lines: s.lines,
+                  durationMs: s.durationMs,
+                }))
+              : []
 
           return {
             id: song.id,
@@ -118,6 +144,8 @@ export const GET = withAuth(
             lastRegenerationAt: song.lastRegenerationAt,
             fileExists,
             fileSizeBytes,
+            alignmentExists,
+            lyrics,
             durationSeconds: song.durationSeconds,
             createdAt: song.createdAt,
             completedAt: song.completedAt,

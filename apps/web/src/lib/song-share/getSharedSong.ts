@@ -59,6 +59,8 @@ export interface SharedSongPayload {
   song: {
     title: string | null
     audioPath: string
+    /** Sidecar JSON path served by /api/audio/songs/{id}/alignment, or null if not present. */
+    alignmentPath: string | null
     styles: string[]
     sections: AnnotatedSongSection[]
     createdAt: number
@@ -185,7 +187,9 @@ export function projectSharedSong(input: {
     stats.storyAngle = pi.practiceDrama.storyAngle
   }
   if (visibility.showProblemDetail && Array.isArray(pi.practiceDrama?.arcs)) {
-    const arcs = pi.practiceDrama.arcs.filter((a): a is string => typeof a === 'string' && !!a.trim())
+    const arcs = pi.practiceDrama.arcs.filter(
+      (a): a is string => typeof a === 'string' && !!a.trim()
+    )
     if (arcs.length > 0) stats.highlights = arcs.slice(0, 3)
   }
 
@@ -217,6 +221,9 @@ export function projectSharedSong(input: {
     song: {
       title: plan.title,
       audioPath: `/api/audio/songs/${songId}`,
+      // Alignment sidecar — route 404s gracefully for legacy songs without timestamps,
+      // and the player falls back to static lyrics in that case.
+      alignmentPath: `/api/audio/songs/${songId}/alignment`,
       styles: plan.globalStyles,
       sections: annotateSections(plan.sections, facts),
       createdAt,

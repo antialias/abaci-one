@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useRef, useState } from 'react'
 import { ShareSongPopover } from '@/components/song/ShareSongPopover'
+import { SyncedLyricsPlayer } from '@/components/song/SyncedLyricsPlayer'
 import { useEuclidCreations } from '@/hooks/useEuclidCreations'
 import { usePostcards } from '@/hooks/usePostcards'
 import { usePlayerSongs, type PlayerSong } from '@/hooks/usePlayerSongs'
@@ -323,103 +323,49 @@ export function EuclidCreationsSection({ playerId }: { playerId: string }) {
 }
 
 export function SongRow({ song }: { song: PlayerSong }) {
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const [playing, setPlaying] = useState(false)
-
-  const toggle = useCallback(() => {
-    const el = audioRef.current
-    if (!el) return
-    if (playing) {
-      el.pause()
-    } else {
-      el.play()
-    }
-  }, [playing])
+  const displayTitle = song.title ?? 'Celebration Song'
+  const downloadName = `${displayTitle.replace(/[^\w\s-]/g, '').trim() || 'song'}.mp3`
 
   return (
     <div
       data-element="song-row"
-      className={hstack({
-        gap: '12px',
-        p: '12px 16px',
-        bg: 'white',
-        borderRadius: '12px',
-        border: '1px solid token(colors.gray.200)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      className={css({
         mb: '8px',
-        alignItems: 'center',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        borderRadius: '12px',
       })}
     >
-      <audio
-        ref={audioRef}
-        src={song.audioPath}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
+      <SyncedLyricsPlayer
+        audioPath={song.audioPath}
+        alignmentPath={song.alignmentPath}
+        lyrics={song.lyrics}
+        title={displayTitle}
+        variant="row"
+        footer={
+          <div className={css({ display: 'flex', gap: '8px', alignItems: 'center' })}>
+            <a
+              data-action="download-song"
+              href={song.audioPath}
+              download={downloadName}
+              aria-label="Download song"
+              className={css({
+                px: '10px',
+                py: '6px',
+                bg: 'gray.100',
+                color: 'gray.700',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                _hover: { bg: 'gray.200' },
+              })}
+            >
+              ⬇
+            </a>
+            <ShareSongPopover songId={song.id} songTitle={song.title} />
+          </div>
+        }
       />
-      <button
-        type="button"
-        data-action="toggle-play"
-        onClick={toggle}
-        className={css({
-          w: '40px',
-          h: '40px',
-          borderRadius: '50%',
-          bg: 'purple.600',
-          color: 'white',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '18px',
-          flexShrink: 0,
-          transition: 'background 0.15s',
-          _hover: { bg: 'purple.700' },
-        })}
-      >
-        {playing ? '⏸' : '▶'}
-      </button>
-      <div className={vstack({ alignItems: 'flex-start', gap: '2px', flex: 1, minW: 0 })}>
-        <span
-          className={css({
-            fontSize: '14px',
-            fontWeight: '600',
-            color: 'gray.800',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxW: '100%',
-          })}
-        >
-          {song.title ?? 'Celebration Song'}
-        </span>
-        <span className={css({ fontSize: '11px', color: 'gray.400' })}>
-          {new Date(song.createdAt).toLocaleDateString()}
-        </span>
-      </div>
-
-      <a
-        data-action="download-song"
-        href={song.audioPath}
-        download={`${(song.title ?? 'Celebration Song').replace(/[^\w\s-]/g, '').trim() || 'song'}.mp3`}
-        className={css({
-          px: '12px',
-          py: '8px',
-          bg: 'gray.100',
-          color: 'gray.700',
-          borderRadius: '8px',
-          fontSize: '13px',
-          fontWeight: '600',
-          textDecoration: 'none',
-          flexShrink: 0,
-          _hover: { bg: 'gray.200' },
-        })}
-      >
-        ⬇ Download
-      </a>
-
-      <ShareSongPopover songId={song.id} songTitle={song.title} />
     </div>
   )
 }

@@ -29,6 +29,8 @@ export interface SongLyricsSection {
   name: string
   lines: string[]
   durationMs: number
+  /** Optional "behind the line" notes rendered under the section in the player. */
+  annotations?: string[]
 }
 
 export interface SyncedWord {
@@ -53,6 +55,8 @@ export interface SyncedSection {
   endMs: number | null
   /** From the composition plan — used when alignment is absent. */
   fallbackDurationMs: number
+  /** Optional "behind the line" notes — passed through from the source section. */
+  annotations?: string[]
 }
 
 export interface SyncedLyricsModel {
@@ -231,12 +235,11 @@ export function buildSyncedLyricsModel(
       startMs: firstWithStart?.startMs ?? null,
       endMs: lastWithEnd?.endMs ?? null,
       fallbackDurationMs: section.durationMs,
+      annotations: section.annotations,
     }
   })
 
-  const totalFromAlignment = hasAlignment
-    ? flat.reduce((max, w) => Math.max(max, w.endMs), 0)
-    : 0
+  const totalFromAlignment = hasAlignment ? flat.reduce((max, w) => Math.max(max, w.endMs), 0) : 0
   const totalFromPlan = sections.reduce((sum, s) => sum + s.durationMs, 0)
   const totalDurationMs = totalFromAlignment > 0 ? totalFromAlignment : totalFromPlan
 

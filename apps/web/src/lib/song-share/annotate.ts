@@ -17,12 +17,12 @@
  *
  * This runs *inside* `getSharedSong` after the visibility gate, so it only
  * ever sees the facts the share's toggles permit. A section with no match is
- * returned unchanged (it renders as plain lyrics — `SongLyrics` already
- * supports the absent-annotations case). Absent/empty facts (default share, or
+ * returned unchanged (it renders as plain lyrics — `SyncedLyricsPlayer` treats
+ * missing `annotations` as a no-op). Absent/empty facts (default share, or
  * pre-`practiceDrama` rows) → sections returned untouched.
  *
- * Owns `AnnotatedSongSection` (consumed by `SongLyrics`) so the presentational
- * component never has to import the engine.
+ * Owns `AnnotatedSongSection` (consumed by `SyncedLyricsPlayer` via the
+ * `SongLyricsSection.annotations` field).
  */
 
 import type {

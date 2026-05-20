@@ -7,19 +7,29 @@
  * highlights as it's sung, and the section/line/word stack reads as your
  * progress through the song. A thin sliver progress bar at the top covers
  * non-lyrical sections (intros, instrumental breaks) and songs without
- * alignment data; a floating play/pause button stays bottom-center.
+ * alignment data.
  *
- * Two variants:
+ * Variants — pick the display context, the component handles the rest:
  * - `compact`: 480px card used in the kid celebration card (auto-scrolls
- *   the active line to vertical center within a bounded scroll region)
+ *   the active line to vertical center within a bounded scroll region;
+ *   floating play/pause control at the bottom)
  * - `full`:    width-100% surface used on the public share page
- *   (no internal scroll; relies on page scroll)
+ *   (no internal scroll; relies on page scroll; floating play/pause control
+ *   at the bottom)
+ * - `row`:     list-item friendly. Collapses to a single header row when
+ *   the song is idle, smoothly expands to reveal the lyrics surface on
+ *   play. The play button + footer slot live inline in the header so the
+ *   collapsed state remains a one-line list item.
  *
  * Degradation:
  * - No alignment data → lines render as static text. The sliver progress
  *   bar and play/pause still work.
  * - Alignment data present but extra words on either side → unmatched
  *   words just lose timing; the rest still highlight.
+ *
+ * Annotations:
+ * - Sections may carry optional "behind the line" notes; when present
+ *   they render as a warm strip beneath the lines (share-page Phase 2).
  */
 
 import {
@@ -35,20 +45,24 @@ import { useSongAlignment } from '@/hooks/useSongAlignment'
 import {
   buildSyncedLyricsModel,
   findActiveLocation,
+  type ActiveLyricLocation,
   type SongLyricsSection,
   type SyncedLine,
+  type SyncedLyricsModel,
 } from '@/lib/song/alignment'
 import { css } from '../../../styled-system/css'
+
+export type SyncedLyricsVariant = 'compact' | 'full' | 'row'
 
 export interface SyncedLyricsPlayerProps {
   audioPath: string
   alignmentPath: string | null
   lyrics: SongLyricsSection[]
   title?: string | null
-  variant?: 'compact' | 'full'
+  variant?: SyncedLyricsVariant
   /** Try to begin playback as soon as the audio element mounts. */
   autoPlay?: boolean
-  /** Optional slot rendered under the play/pause control (e.g. share button). */
+  /** Optional slot rendered next to the play control (header in row, footer otherwise). */
   footer?: ReactNode
 }
 
@@ -77,6 +91,7 @@ export function SyncedLyricsPlayer({
   const [durationMs, setDurationMs] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+  const [userExpanded, setUserExpanded] = useState(false)
 
   const alignmentQuery = useSongAlignment(alignmentPath)
 
@@ -86,6 +101,19 @@ export function SyncedLyricsPlayer({
   )
 
   const active = useMemo(() => findActiveLocation(model, currentMs), [model, currentMs])
+
+  // For row variant: only the user's explicit/auto-expand toggles the body open.
+  // We intentionally do NOT include `isPlaying` here so the user can manually
+  // collapse during playback — in that state the header's karaoke ticker is the
+  // lyric surface, leaving the row as a one-line item in a long library.
+  const isRow = variant === 'row'
+  const expanded = !isRow || userExpanded
+
+  // Auto-expand row variant when playback starts (e.g. via autoPlay or first
+  // click of the play button from a fully-collapsed state).
+  useEffect(() => {
+    if (isPlaying && isRow) setUserExpanded(true)
+  }, [isPlaying, isRow])
 
   // Smooth RAF loop while playing — onTimeUpdate alone fires ~4Hz which is
   // too coarse for word-level highlight transitions.
@@ -114,9 +142,11 @@ export function SyncedLyricsPlayer({
   }, [autoPlay])
 
   // Auto-scroll the active line into view (compact only — full variant
-  // assumes the whole song fits on the page).
+  // assumes the whole song fits on the page; row defers to its own scroll
+  // container which is also bounded when expanded).
   useEffect(() => {
-    if (variant !== 'compact') return
+    if (variant === 'full') return
+    if (!expanded) return
     const lineEl = activeLineRef.current
     const container = scrollRef.current
     if (!lineEl || !container) return
@@ -127,7 +157,7 @@ export function SyncedLyricsPlayer({
     if (outOfView) {
       lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }, [variant, active?.sectionIndex, active?.lineIndex])
+  }, [variant, expanded, active?.sectionIndex, active?.lineIndex])
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
@@ -135,10 +165,13 @@ export function SyncedLyricsPlayer({
     if (isPlaying) {
       audio.pause()
     } else {
+      // Expand the row synchronously when starting playback — avoids a
+      // single-frame gap before the auto-expand effect catches up.
+      if (isRow) setUserExpanded(true)
       audio.play().catch(() => setAutoplayBlocked(true))
       setAutoplayBlocked(false)
     }
-  }, [isPlaying])
+  }, [isPlaying, isRow])
 
   const seekToMs = useCallback(
     (targetMs: number) => {
@@ -164,13 +197,58 @@ export function SyncedLyricsPlayer({
     [durationMs, seekToMs]
   )
 
+  const handleEnded = useCallback(() => {
+    setIsPlaying(false)
+    // Collapse the row variant back to idle when the song finishes.
+    if (isRow) setUserExpanded(false)
+  }, [isRow])
+
+  const handleHeaderToggle = useCallback(() => {
+    if (!isRow) return
+    setUserExpanded((prev) => !prev)
+  }, [isRow])
+
   const progress = durationMs > 0 ? (currentMs / durationMs) * 100 : 0
+
+  const playButton = (
+    <button
+      type="button"
+      data-action="toggle-play"
+      aria-label={isPlaying ? 'Pause song' : 'Play song'}
+      onClick={(e) => {
+        e.stopPropagation()
+        togglePlay()
+      }}
+      className={css({
+        w: isRow ? '40px' : '52px',
+        h: isRow ? '40px' : '52px',
+        borderRadius: '50%',
+        bg: 'purple.600',
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: isRow ? '16px' : '22px',
+        lineHeight: 1,
+        cursor: 'pointer',
+        border: 'none',
+        boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)',
+        transition: 'background 0.15s, transform 0.1s',
+        flexShrink: 0,
+        _hover: { bg: 'purple.700' },
+        _active: { transform: 'scale(0.94)' },
+      })}
+    >
+      {isPlaying ? '⏸' : '▶'}
+    </button>
+  )
 
   return (
     <div
       data-component="synced-lyrics-player"
       data-variant={variant}
       data-has-alignment={model.hasAlignment ? 'true' : 'false'}
+      data-expanded={expanded ? 'true' : 'false'}
       className={css({
         position: 'relative',
         w: '100%',
@@ -178,7 +256,11 @@ export function SyncedLyricsPlayer({
         mx: variant === 'compact' ? 'auto' : 0,
         borderRadius: '16px',
         bg: 'purple.50',
-        _dark: { bg: 'purple.900/30' },
+        // Solid in dark mode — the previous 30% opacity blended into whatever
+        // sat behind the card, and when host pages haven't gone dark (e.g. My
+        // Stuff stays on gray.50) the result was a washed-out lavender that
+        // killed contrast with the light dark-mode text.
+        _dark: { bg: 'purple.900', borderColor: 'purple.700' },
         overflow: 'hidden',
         border: '1px solid token(colors.purple.100)',
       })}
@@ -197,7 +279,7 @@ export function SyncedLyricsPlayer({
         }}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onEnded={handleEnded}
       />
 
       {/* Sliver progress bar — scrubbable, top of card */}
@@ -225,160 +307,380 @@ export function SyncedLyricsPlayer({
         />
       </div>
 
-      {/* Title + current time */}
-      <div
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          px: '16px',
-          pt: '14px',
-          pb: '6px',
-        })}
-      >
+      {/* Header — layout varies by variant */}
+      {isRow ? (
         <div
-          data-element="song-title"
+          data-element="row-header"
           className={css({
-            fontSize: variant === 'compact' ? '15px' : '17px',
-            fontWeight: '700',
-            color: 'purple.800',
-            _dark: { color: 'purple.100' },
-            flex: 1,
-            minW: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          })}
-        >
-          {title ?? ''}
-        </div>
-        <div
-          data-element="song-time"
-          className={css({
-            fontSize: '12px',
-            color: 'purple.600',
-            _dark: { color: 'purple.300' },
-            fontVariantNumeric: 'tabular-nums',
-            flexShrink: 0,
-          })}
-        >
-          {formatTime(currentMs / 1000)}
-        </div>
-      </div>
-
-      {/* Lyrics surface */}
-      <div
-        ref={scrollRef}
-        data-element="lyrics-scroll"
-        className={css({
-          px: '16px',
-          py: '8px',
-          maxH: variant === 'compact' ? '240px' : 'unset',
-          overflowY: variant === 'compact' ? 'auto' : 'visible',
-          scrollBehavior: 'smooth',
-        })}
-      >
-        {model.sections.map((section, si) => {
-          const isActiveSection = active?.sectionIndex === si
-          return (
-            <div
-              key={si}
-              data-element="lyric-section"
-              data-active-section={isActiveSection ? 'true' : undefined}
-              className={css({ mb: '14px' })}
-            >
-              <div
-                data-element="section-label"
-                className={css({
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: isActiveSection ? 'purple.600' : 'purple.300',
-                  _dark: { color: isActiveSection ? 'purple.200' : 'purple.500' },
-                  mb: '6px',
-                  transition: 'color 0.2s',
-                })}
-              >
-                {section.name}
-              </div>
-
-              {section.lines.map((line, li) => {
-                const isActiveLine = active?.sectionIndex === si && active?.lineIndex === li
-                const isPastLine =
-                  active != null &&
-                  (si < active.sectionIndex ||
-                    (si === active.sectionIndex && li < active.lineIndex))
-                return (
-                  <LyricLine
-                    key={li}
-                    ref={isActiveLine ? activeLineRef : null}
-                    line={line}
-                    isActiveLine={isActiveLine}
-                    isPastLine={isPastLine}
-                    activeWordIndex={isActiveLine ? (active?.wordIndex ?? -1) : -1}
-                    variant={variant}
-                    onSeekToWord={seekToMs}
-                  />
-                )
-              })}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Floating play/pause */}
-      <div
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '8px',
-          py: '12px',
-        })}
-      >
-        <button
-          type="button"
-          data-action="toggle-play"
-          aria-label={isPlaying ? 'Pause song' : 'Play song'}
-          onClick={togglePlay}
-          className={css({
-            w: '52px',
-            h: '52px',
-            borderRadius: '50%',
-            bg: 'purple.600',
-            color: 'white',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '22px',
-            lineHeight: 1,
-            cursor: 'pointer',
-            border: 'none',
-            boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)',
-            transition: 'background 0.15s, transform 0.1s',
-            _hover: { bg: 'purple.700' },
-            _active: { transform: 'scale(0.94)' },
+            gap: '12px',
+            px: '14px',
+            pt: '12px',
+            pb: '10px',
           })}
         >
-          {isPlaying ? '⏸' : '▶'}
-        </button>
-        {autoplayBlocked && !isPlaying && (
+          {/* Title + secondary line. The title is its own toggle button so
+              the karaoke ticker below it (which contains word-buttons for
+              seeking) can sit alongside without nesting buttons. */}
+          <div className={css({ flex: 1, minW: 0 })}>
+            <button
+              type="button"
+              data-action="toggle-row-expand"
+              aria-expanded={expanded ? 'true' : 'false'}
+              onClick={handleHeaderToggle}
+              className={css({
+                display: 'block',
+                w: '100%',
+                bg: 'transparent',
+                border: 'none',
+                p: 0,
+                m: 0,
+                textAlign: 'left',
+                cursor: 'pointer',
+                color: 'inherit',
+                font: 'inherit',
+              })}
+            >
+              <div
+                data-element="song-title"
+                className={css({
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  color: 'purple.800',
+                  _dark: { color: 'purple.100' },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                })}
+              >
+                {title ?? 'Celebration Song'}
+              </div>
+            </button>
+            {/* Secondary line — karaoke ticker when the row is collapsed and
+                we have alignment data to surface; otherwise plain time text.
+                Keeps the collapsed row from going lyric-less while the song
+                plays in the background. */}
+            {!expanded && model.hasAlignment && active != null ? (
+              <ActiveLyricStrip
+                model={model}
+                active={active}
+                onSeekToWord={seekToMs}
+              />
+            ) : (
+              <div
+                data-element="song-time"
+                className={css({
+                  fontSize: '11px',
+                  color: 'purple.600',
+                  _dark: { color: 'purple.300' },
+                  fontVariantNumeric: 'tabular-nums',
+                  mt: '2px',
+                })}
+              >
+                {durationMs > 0
+                  ? `${formatTime(currentMs / 1000)} / ${formatTime(durationMs / 1000)}`
+                  : formatTime(currentMs / 1000)}
+              </div>
+            )}
+          </div>
+          {playButton}
+          {footer && (
+            <div
+              data-element="row-footer"
+              className={css({ display: 'flex', alignItems: 'center', flexShrink: 0 })}
+            >
+              {footer}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            px: '16px',
+            pt: '14px',
+            pb: '6px',
+          })}
+        >
           <div
-            data-element="autoplay-hint"
+            data-element="song-title"
+            className={css({
+              fontSize: variant === 'compact' ? '15px' : '17px',
+              fontWeight: '700',
+              color: 'purple.800',
+              _dark: { color: 'purple.100' },
+              flex: 1,
+              minW: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            })}
+          >
+            {title ?? ''}
+          </div>
+          <div
+            data-element="song-time"
             className={css({
               fontSize: '12px',
               color: 'purple.600',
               _dark: { color: 'purple.300' },
-              fontWeight: '500',
+              fontVariantNumeric: 'tabular-nums',
+              flexShrink: 0,
             })}
           >
-            Tap to play
+            {formatTime(currentMs / 1000)}
           </div>
-        )}
-        {footer}
+        </div>
+      )}
+
+      {/* Collapsible body — only the row variant actually collapses; others
+          render their body unconditionally. Uses CSS grid template rows for a
+          smooth height transition without measuring the content. */}
+      <div
+        data-element="body-collapse"
+        className={css({
+          display: 'grid',
+          transition: 'grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1)',
+        })}
+        style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
+      >
+        <div
+          className={css({
+            overflow: 'hidden',
+            transition: 'opacity 220ms ease',
+          })}
+          style={{ opacity: expanded ? 1 : 0 }}
+        >
+          {/* Lyrics surface */}
+          <div
+            ref={scrollRef}
+            data-element="lyrics-scroll"
+            className={css({
+              px: '16px',
+              py: '8px',
+              maxH: variant === 'compact' ? '240px' : variant === 'row' ? '320px' : 'unset',
+              overflowY: variant === 'compact' || variant === 'row' ? 'auto' : 'visible',
+              scrollBehavior: 'smooth',
+            })}
+          >
+            {model.sections.map((section, si) => {
+              const isActiveSection = active?.sectionIndex === si
+              const sectionAnnotations = section.annotations ?? []
+              return (
+                <div
+                  key={si}
+                  data-element="lyric-section"
+                  data-active-section={isActiveSection ? 'true' : undefined}
+                  className={css({ mb: '14px' })}
+                >
+                  <div
+                    data-element="section-label"
+                    className={css({
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: isActiveSection ? 'purple.600' : 'purple.300',
+                      _dark: { color: isActiveSection ? 'purple.200' : 'purple.500' },
+                      mb: '6px',
+                      transition: 'color 0.2s',
+                    })}
+                  >
+                    {section.name}
+                  </div>
+
+                  {section.lines.map((line, li) => {
+                    const isActiveLine = active?.sectionIndex === si && active?.lineIndex === li
+                    const isPastLine =
+                      active != null &&
+                      (si < active.sectionIndex ||
+                        (si === active.sectionIndex && li < active.lineIndex))
+                    return (
+                      <LyricLine
+                        key={li}
+                        ref={isActiveLine ? activeLineRef : null}
+                        line={line}
+                        isActiveLine={isActiveLine}
+                        isPastLine={isPastLine}
+                        activeWordIndex={isActiveLine ? (active?.wordIndex ?? -1) : -1}
+                        variant={variant}
+                        onSeekToWord={seekToMs}
+                      />
+                    )
+                  })}
+
+                  {sectionAnnotations.length > 0 && (
+                    <div
+                      data-element="lyric-annotations"
+                      className={css({
+                        mt: '8px',
+                        px: '10px',
+                        py: '8px',
+                        bg: 'amber.50',
+                        _dark: { bg: 'amber.900/20' },
+                        borderLeft: '2px dashed token(colors.amber.300)',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                      })}
+                    >
+                      {sectionAnnotations.map((note, ai) => (
+                        <div
+                          key={ai}
+                          className={css({
+                            fontSize: '12px',
+                            lineHeight: '1.5',
+                            color: 'amber.800',
+                            _dark: { color: 'amber.200' },
+                            display: 'flex',
+                            gap: '6px',
+                            alignItems: 'flex-start',
+                          })}
+                        >
+                          <span aria-hidden="true">↳</span>
+                          <span>{note}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Bottom controls — compact/full only. Row variant keeps controls in the header. */}
+          {!isRow && (
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                py: '12px',
+              })}
+            >
+              {playButton}
+              {autoplayBlocked && !isPlaying && (
+                <div
+                  data-element="autoplay-hint"
+                  className={css({
+                    fontSize: '12px',
+                    color: 'purple.600',
+                    _dark: { color: 'purple.300' },
+                    fontWeight: '500',
+                  })}
+                >
+                  Tap to play
+                </div>
+              )}
+              {footer}
+            </div>
+          )}
+        </div>
       </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// ActiveLyricStrip — single-line karaoke ticker for tight contexts (the
+// collapsed `row` variant). Renders the current line of lyrics with the
+// active word pill-styled, and auto-scrolls horizontally to keep that word
+// centered. Each word is a seek target, same as the full lyrics surface.
+// ============================================================================
+
+interface ActiveLyricStripProps {
+  model: SyncedLyricsModel
+  active: ActiveLyricLocation
+  onSeekToWord: (ms: number) => void
+}
+
+function ActiveLyricStrip({ model, active, onSeekToWord }: ActiveLyricStripProps) {
+  const stripRef = useRef<HTMLDivElement>(null)
+  const activeWordRef = useRef<HTMLButtonElement>(null)
+
+  // Center the active word inside the strip's scrollport. Runs whenever the
+  // active location moves (word, line, or section).
+  useEffect(() => {
+    const strip = stripRef.current
+    const word = activeWordRef.current
+    if (!strip || !word) return
+    const target = word.offsetLeft + word.offsetWidth / 2 - strip.clientWidth / 2
+    strip.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
+  }, [active.sectionIndex, active.lineIndex, active.wordIndex])
+
+  const section = model.sections[active.sectionIndex]
+  const line = section?.lines[active.lineIndex]
+  if (!line?.words) return null
+
+  return (
+    <div
+      ref={stripRef}
+      data-element="active-lyric-strip"
+      className={css({
+        mt: '2px',
+        display: 'flex',
+        gap: '3px',
+        overflowX: 'auto',
+        whiteSpace: 'nowrap',
+        scrollbarWidth: 'none',
+        // Soft fade at both edges so off-screen words don't visually clip hard.
+        WebkitMaskImage:
+          'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
+        maskImage:
+          'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
+        '&::-webkit-scrollbar': { display: 'none' },
+      })}
+    >
+      {line.words.map((word, wi) => {
+        const isActive = wi === active.wordIndex
+        return (
+          <button
+            key={wi}
+            ref={isActive ? activeWordRef : null}
+            type="button"
+            data-action="seek-to-word"
+            data-active-word={isActive ? 'true' : undefined}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSeekToWord(word.startMs)
+            }}
+            className={css({
+              fontSize: '12px',
+              lineHeight: '18px',
+              border: 'none',
+              bg: 'transparent',
+              color: 'purple.500',
+              // Brighter in dark mode — purple.300 was too faint against the
+              // solid purple.900 card; the dim words still read as secondary
+              // but stay legible.
+              _dark: { color: 'purple.200' },
+              cursor: 'pointer',
+              borderRadius: '4px',
+              px: '4px',
+              flexShrink: 0,
+              transition: 'color 120ms, background 120ms, font-weight 120ms',
+              '&[data-active-word="true"]': {
+                color: 'purple.900',
+                bg: 'purple.200',
+                fontWeight: '700',
+                _dark: { color: 'purple.50', bg: 'purple.600' },
+              },
+              _hover: {
+                bg: 'purple.200/60',
+                _dark: { bg: 'purple.700/60' },
+              },
+            })}
+          >
+            {word.text}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -392,7 +694,7 @@ interface LyricLineProps {
   isActiveLine: boolean
   isPastLine: boolean
   activeWordIndex: number
-  variant: 'compact' | 'full'
+  variant: SyncedLyricsVariant
   onSeekToWord: (ms: number) => void
 }
 
@@ -411,15 +713,13 @@ const LyricLine = forwardRef<HTMLDivElement, LyricLineProps>(function LyricLine(
       data-active-line={isActiveLine ? 'true' : undefined}
       data-past-line={isPastLine ? 'true' : undefined}
       className={css({
-        fontSize: variant === 'compact' ? '16px' : '17px',
+        fontSize: variant === 'full' ? '17px' : '16px',
         lineHeight: '1.55',
         color,
         _dark: { color: darkColor },
         fontWeight: isActiveLine ? '700' : '500',
         transition: 'color 0.2s, font-weight 0.2s, border-color 0.2s',
-        borderLeft: isActiveLine
-          ? '3px solid token(colors.purple.500)'
-          : '3px solid transparent',
+        borderLeft: isActiveLine ? '3px solid token(colors.purple.500)' : '3px solid transparent',
         pl: '8px',
         mb: '4px',
       })}

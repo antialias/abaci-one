@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { SharedSongPlayer } from '@/components/song/SharedSongPlayer'
-import { SongLyrics } from '@/components/song/SongLyrics'
+import { SyncedLyricsPlayer } from '@/components/song/SyncedLyricsPlayer'
 import { getSharedSong } from '@/lib/song-share/getSharedSong'
 import { css } from '@styled/css'
 import { vstack, hstack, wrap } from '@styled/patterns'
@@ -92,8 +91,14 @@ export default async function SharedSongPage({ params }: Props) {
           )}
         </div>
 
-        {/* Player */}
-        <SharedSongPlayer audioPath={song.audioPath} title={song.title} />
+        {/* Integrated player + lyrics — the lyrics are the playback surface */}
+        <SyncedLyricsPlayer
+          audioPath={song.audioPath}
+          alignmentPath={song.alignmentPath}
+          lyrics={song.sections}
+          title={song.title}
+          variant="full"
+        />
 
         {/* Musical style */}
         {song.styles.length > 0 && (
@@ -117,23 +122,6 @@ export default async function SharedSongPage({ params }: Props) {
             ))}
           </div>
         )}
-
-        {/* Lyrics */}
-        <section data-section="lyrics">
-          <h2
-            className={css({
-              fontSize: '15px',
-              fontWeight: '700',
-              color: 'gray.700',
-              mb: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            })}
-          >
-            Lyrics
-          </h2>
-          <SongLyrics sections={song.sections} />
-        </section>
 
         {/* Opt-in stats */}
         {hasStats && (
