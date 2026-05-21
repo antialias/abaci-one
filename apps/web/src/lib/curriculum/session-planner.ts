@@ -1142,6 +1142,13 @@ export async function batchGetRecentSessionResults(
     const typeByPartNumber = new Map(partTypes.map((p) => [p.n, p.t]))
 
     for (const result of session.results) {
+      // Some pre-schema fixtures (e.g. validation seed plans) carry result
+      // entries that don't match SlotResult — missing skillsExercised,
+      // partNumber, etc. Skip them so downstream consumers can assume the
+      // SlotResult contract holds. Real practice records always have at
+      // least `skillsExercised: []` from `recordSlotResult`.
+      if (!Array.isArray((result as Partial<SlotResult>).skillsExercised)) continue
+
       const partType = (typeByPartNumber.get(result.partNumber) ?? 'linear') as SessionPartType
 
       list.push({
