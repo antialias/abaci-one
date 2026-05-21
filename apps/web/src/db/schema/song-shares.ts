@@ -15,7 +15,12 @@ import { players } from './players'
  * than the time-limited `session_observation_shares`.
  */
 
-/** Per-share opt-in visibility toggles. All default to false. */
+/**
+ * Per-share visibility + playback toggles. Privacy toggles (the `show*` keys)
+ * default to false; `autoPlay` is a UX preference that defaults to true so the
+ * keepsake link feels alive when opened. Browsers may still block autoplay —
+ * the player surfaces a tappable button when that happens.
+ */
 export interface SongShareVisibility {
   /** Reveal the child's age */
   showAge: boolean
@@ -25,6 +30,8 @@ export interface SongShareVisibility {
   showProblemDetail: boolean
   /** Reveal best streak and skill spotlights */
   showStreakSkills: boolean
+  /** Attempt to autoplay when the public page opens (default true). */
+  autoPlay: boolean
 }
 
 export const DEFAULT_SONG_SHARE_VISIBILITY: SongShareVisibility = {
@@ -32,6 +39,7 @@ export const DEFAULT_SONG_SHARE_VISIBILITY: SongShareVisibility = {
   showAccuracy: false,
   showProblemDetail: false,
   showStreakSkills: false,
+  autoPlay: true,
 }
 
 export const songShares = sqliteTable(

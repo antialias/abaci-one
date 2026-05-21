@@ -68,7 +68,13 @@ const PROMPT_INPUT = {
       },
     ],
     skillSpotlights: [
-      { skill: '-8 = +2 - 10', attempts: 4, correct: 3, problems: 3, exampleProblems: ['1 + 2 = 3'] },
+      {
+        skill: '-8 = +2 - 10',
+        attempts: 4,
+        correct: 3,
+        problems: 3,
+        exampleProblems: ['1 + 2 = 3'],
+      },
     ],
   },
   gameBreak: { gameName: 'Type Racer Jr.', headline: 'Great Typing!' },
@@ -79,6 +85,9 @@ const ALL_OFF: SongShareVisibility = {
   showAccuracy: false,
   showProblemDetail: false,
   showStreakSkills: false,
+  // autoPlay isn't a privacy gate; tests here assert the privacy projection,
+  // so we leave it off too — its default lives in DEFAULT_SONG_SHARE_VISIBILITY.
+  autoPlay: false,
 }
 
 const baseInput = (visibility: SongShareVisibility) => ({
@@ -141,6 +150,7 @@ describe('projectSharedSong — privacy boundary', () => {
         showAccuracy: true,
         showProblemDetail: true,
         showStreakSkills: true,
+        autoPlay: true,
       })
     )
     const serialized = JSON.stringify(p)

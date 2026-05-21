@@ -52,10 +52,16 @@ export default defineConfig({
         },
         fonts: {
           body: {
-            value: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            value:
+              'var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           },
           heading: {
-            value: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            value:
+              'var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          },
+          // Display: Fraunces variable serif — celebration/marketing moments.
+          display: {
+            value: 'var(--font-fraunces), Georgia, "Times New Roman", serif',
           },
           mono: {
             value: 'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace',

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { auth } from '@/auth'
 import { ClientProviders } from '@/components/ClientProviders'
+import { fraunces, inter } from '@/lib/fonts'
 import { getMessages } from '@/i18n/messages'
 import { getRequestLocale } from '@/i18n/request'
 import { resolveUserRole } from '@/lib/auth/roles'
@@ -136,7 +137,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ])
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${inter.variable} ${fraunces.variable}`}
+    >
       <body data-deploy-test="argocd-2026-01-31">
         <ClientProviders
           initialLocale={locale}

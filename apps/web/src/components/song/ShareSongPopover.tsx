@@ -16,7 +16,10 @@ import * as Popover from '@radix-ui/react-popover'
 import { useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
 import { usePortalContainer } from '@/contexts/PortalContainerContext'
-import type { SongShareVisibility } from '@/db/schema/song-shares'
+import {
+  DEFAULT_SONG_SHARE_VISIBILITY,
+  type SongShareVisibility,
+} from '@/db/schema/song-shares'
 import { type SongShareInfo, useSongShares } from '@/hooks/useSongShares'
 import { css } from '../../../styled-system/css'
 import { AbacusQRCode } from '../common/AbacusQRCode'
@@ -27,14 +30,8 @@ const TOGGLES: { key: keyof SongShareVisibility; label: string }[] = [
   { key: 'showAccuracy', label: 'Accuracy & score' },
   { key: 'showProblemDetail', label: 'Problem detail' },
   { key: 'showStreakSkills', label: 'Streak & skills' },
+  { key: 'autoPlay', label: 'Auto-play on open' },
 ]
-
-const ALL_OFF: SongShareVisibility = {
-  showAge: false,
-  showAccuracy: false,
-  showProblemDetail: false,
-  showStreakSkills: false,
-}
 
 /** Shared toggle-grid presentation for both the new-link draft and edit rows. */
 function ToggleGrid({
@@ -233,7 +230,7 @@ export function ShareSongPopover({
   songTitle: string | null
 }) {
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<SongShareVisibility>(ALL_OFF)
+  const [draft, setDraft] = useState<SongShareVisibility>(DEFAULT_SONG_SHARE_VISIBILITY)
   const { shares, isLoading, createShare, updateVisibility, revokeShare } = useSongShares(
     songId,
     open
@@ -309,7 +306,7 @@ export function ShareSongPopover({
             type="button"
             data-action="create-song-share"
             disabled={createShare.isPending}
-            onClick={() => createShare.mutate(draft, { onSuccess: () => setDraft(ALL_OFF) })}
+            onClick={() => createShare.mutate(draft, { onSuccess: () => setDraft(DEFAULT_SONG_SHARE_VISIBILITY) })}
             className={css({
               px: '14px',
               py: '10px',

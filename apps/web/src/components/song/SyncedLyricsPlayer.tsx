@@ -64,6 +64,12 @@ export interface SyncedLyricsPlayerProps {
   autoPlay?: boolean
   /** Optional slot rendered next to the play control (header in row, footer otherwise). */
   footer?: ReactNode
+  /**
+   * Fired exactly once per mount, the first time the audio actually starts
+   * playing — host pages use this for confetti / celebration moments that
+   * should accompany the first beat (not re-fire on every pause/resume).
+   */
+  onFirstPlay?: () => void
 }
 
 function formatTime(seconds: number): string {
@@ -81,11 +87,16 @@ export function SyncedLyricsPlayer({
   variant = 'compact',
   autoPlay = false,
   footer,
+  onFirstPlay,
 }: SyncedLyricsPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeLineRef = useRef<HTMLDivElement | null>(null)
   const hasAutoplayed = useRef(false)
+  // Tracks whether `onFirstPlay` has already fired this mount — the audio
+  // element emits `play` on every resume too, but we only want the callback
+  // on the very first beat.
+  const hasFiredFirstPlay = useRef(false)
 
   const [currentMs, setCurrentMs] = useState(0)
   const [durationMs, setDurationMs] = useState(0)
@@ -107,6 +118,7 @@ export function SyncedLyricsPlayer({
   // collapse during playback — in that state the header's karaoke ticker is the
   // lyric surface, leaving the row as a one-line item in a long library.
   const isRow = variant === 'row'
+  const isFull = variant === 'full'
   const expanded = !isRow || userExpanded
 
   // Auto-expand row variant when playback starts (e.g. via autoPlay or first
@@ -220,19 +232,24 @@ export function SyncedLyricsPlayer({
         togglePlay()
       }}
       className={css({
-        w: isRow ? '40px' : '52px',
-        h: isRow ? '40px' : '52px',
+        w: isRow ? '40px' : isFull ? '64px' : '52px',
+        h: isRow ? '40px' : isFull ? '64px' : '52px',
         borderRadius: '50%',
         bg: 'purple.600',
         color: 'white',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: isRow ? '16px' : '22px',
+        fontSize: isRow ? '16px' : isFull ? '28px' : '22px',
         lineHeight: 1,
         cursor: 'pointer',
         border: 'none',
-        boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)',
+        // Stronger glow for the full variant so the button reads as the focal
+        // CTA above the lyrics (the share page lands here and visitors should
+        // immediately understand this is something to play, not just read).
+        boxShadow: isFull
+          ? '0 6px 22px rgba(168, 85, 247, 0.55)'
+          : '0 4px 12px rgba(168, 85, 247, 0.4)',
         transition: 'background 0.15s, transform 0.1s',
         flexShrink: 0,
         _hover: { bg: 'purple.700' },
@@ -277,7 +294,13 @@ export function SyncedLyricsPlayer({
           const d = audioRef.current?.duration ?? 0
           if (Number.isFinite(d)) setDurationMs(d * 1000)
         }}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => {
+          setIsPlaying(true)
+          if (!hasFiredFirstPlay.current) {
+            hasFiredFirstPlay.current = true
+            onFirstPlay?.()
+          }
+        }}
         onPause={() => setIsPlaying(false)}
         onEnded={handleEnded}
       />
@@ -402,38 +425,58 @@ export function SyncedLyricsPlayer({
             justifyContent: 'space-between',
             gap: '12px',
             px: '16px',
-            pt: '14px',
-            pb: '6px',
+            pt: isFull ? '18px' : '14px',
+            pb: isFull ? '14px' : '6px',
           })}
         >
-          <div
-            data-element="song-title"
-            className={css({
-              fontSize: variant === 'compact' ? '15px' : '17px',
-              fontWeight: '700',
-              color: 'purple.800',
-              _dark: { color: 'purple.100' },
-              flex: 1,
-              minW: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            })}
-          >
-            {title ?? ''}
+          <div className={css({ flex: 1, minW: 0 })}>
+            <div
+              data-element="song-title"
+              className={css({
+                fontSize: isFull ? '17px' : '15px',
+                fontWeight: '700',
+                color: 'purple.800',
+                _dark: { color: 'purple.100' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              })}
+            >
+              {title ?? ''}
+            </div>
+            <div
+              data-element="song-time"
+              className={css({
+                fontSize: '12px',
+                color: 'purple.600',
+                _dark: { color: 'purple.300' },
+                fontVariantNumeric: 'tabular-nums',
+                mt: '2px',
+              })}
+            >
+              {durationMs > 0
+                ? `${formatTime(currentMs / 1000)} / ${formatTime(durationMs / 1000)}`
+                : formatTime(currentMs / 1000)}
+            </div>
+            {/* Full variant only — the play button lives in the header now (so
+                share-page visitors see it before the lyric wall), and this
+                line surfaces the autoplay-blocked hint near it. */}
+            {isFull && autoplayBlocked && !isPlaying && (
+              <div
+                data-element="autoplay-hint"
+                className={css({
+                  mt: '4px',
+                  fontSize: '12px',
+                  color: 'purple.700',
+                  _dark: { color: 'purple.200' },
+                  fontWeight: '600',
+                })}
+              >
+                Tap play to start the song
+              </div>
+            )}
           </div>
-          <div
-            data-element="song-time"
-            className={css({
-              fontSize: '12px',
-              color: 'purple.600',
-              _dark: { color: 'purple.300' },
-              fontVariantNumeric: 'tabular-nums',
-              flexShrink: 0,
-            })}
-          >
-            {formatTime(currentMs / 1000)}
-          </div>
+          {isFull && playButton}
         </div>
       )}
 
@@ -480,13 +523,30 @@ export function SyncedLyricsPlayer({
                   <div
                     data-element="section-label"
                     className={css({
-                      fontSize: '10px',
-                      fontWeight: '700',
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      color: isActiveSection ? 'purple.600' : 'purple.300',
+                      // Full variant: display-italic, larger, with a thin
+                      // rule beneath so each section reads like a chapter.
+                      // Compact/row variants keep the original tight caps.
+                      ...(isFull
+                        ? {
+                            fontFamily: 'display',
+                            fontStyle: 'italic',
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            letterSpacing: 'normal',
+                            textTransform: 'none',
+                            pb: '6px',
+                            mb: '10px',
+                            borderBottom: '1px solid token(colors.purple.200)',
+                          }
+                        : {
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            mb: '6px',
+                          }),
+                      color: isActiveSection ? 'purple.600' : 'purple.400',
                       _dark: { color: isActiveSection ? 'purple.200' : 'purple.500' },
-                      mb: '6px',
                       transition: 'color 0.2s',
                     })}
                   >
@@ -517,32 +577,36 @@ export function SyncedLyricsPlayer({
                     <div
                       data-element="lyric-annotations"
                       className={css({
-                        mt: '8px',
-                        px: '10px',
-                        py: '8px',
-                        bg: 'amber.50',
-                        _dark: { bg: 'amber.900/20' },
-                        borderLeft: '2px dashed token(colors.amber.300)',
-                        borderRadius: '6px',
+                        mt: '10px',
+                        px: isFull ? '14px' : '10px',
+                        py: isFull ? '12px' : '8px',
+                        background: isFull
+                          ? 'linear-gradient(135deg, rgba(254, 243, 199, 0.7), rgba(254, 215, 170, 0.5))'
+                          : 'token(colors.amber.50)',
+                        _dark: { bg: 'amber.900/20', background: 'none' },
+                        borderLeft: '3px solid token(colors.amber.400)',
+                        borderRadius: '10px',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '4px',
+                        gap: '6px',
                       })}
                     >
                       {sectionAnnotations.map((note, ai) => (
                         <div
                           key={ai}
                           className={css({
-                            fontSize: '12px',
+                            fontFamily: isFull ? 'display' : 'inherit',
+                            fontStyle: isFull ? 'italic' : 'normal',
+                            fontSize: isFull ? '14px' : '12px',
                             lineHeight: '1.5',
                             color: 'amber.800',
                             _dark: { color: 'amber.200' },
                             display: 'flex',
-                            gap: '6px',
+                            gap: '8px',
                             alignItems: 'flex-start',
                           })}
                         >
-                          <span aria-hidden="true">↳</span>
+                          <span aria-hidden="true">✨</span>
                           <span>{note}</span>
                         </div>
                       ))}
@@ -553,8 +617,10 @@ export function SyncedLyricsPlayer({
             })}
           </div>
 
-          {/* Bottom controls — compact/full only. Row variant keeps controls in the header. */}
-          {!isRow && (
+          {/* Bottom controls — compact variant only. The full variant lifts
+              the play button into the header so it's visible above the lyric
+              wall; the row variant carries its controls in the header too. */}
+          {!isRow && !isFull && (
             <div
               className={css({
                 display: 'flex',

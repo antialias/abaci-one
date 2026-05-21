@@ -22,7 +22,10 @@ import {
 } from '@/lib/song-share/annotate'
 import { formatSkill } from '@/lib/song-share/sessionFacts'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
-import type { SongShareVisibility } from '@/db/schema/song-shares'
+import {
+  DEFAULT_SONG_SHARE_VISIBILITY,
+  type SongShareVisibility,
+} from '@/db/schema/song-shares'
 
 interface PromptInputShape {
   player?: { name?: string; emoji?: string; age?: number }
@@ -125,8 +128,16 @@ export async function getSharedSong(
     }
   }
 
+  // Legacy rows (written before a key was added to SongShareVisibility) lack
+  // newer fields in the JSON column — spread the default first so every key
+  // has a value before the page reads them.
+  const visibility: SongShareVisibility = {
+    ...DEFAULT_SONG_SHARE_VISIBILITY,
+    ...(share.visibility as Partial<SongShareVisibility>),
+  }
+
   return projectSharedSong({
-    visibility: share.visibility as SongShareVisibility,
+    visibility,
     llmOutput: song.llmOutput,
     promptInput: song.promptInput,
     playerName: player?.name ?? 'A learner',

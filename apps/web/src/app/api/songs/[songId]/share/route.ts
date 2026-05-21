@@ -24,14 +24,19 @@ const VISIBILITY_KEYS: (keyof SongShareVisibility)[] = [
   'showAccuracy',
   'showProblemDetail',
   'showStreakSkills',
+  'autoPlay',
 ]
 
-/** Coerce arbitrary input into a fully-populated, boolean-only visibility object. */
+/**
+ * Coerce arbitrary input into a fully-populated visibility object. Keys default
+ * to DEFAULT_SONG_SHARE_VISIBILITY (which differs per key — privacy toggles
+ * default false, autoPlay defaults true); only an explicit boolean overrides.
+ */
 function sanitizeVisibility(input: unknown): SongShareVisibility {
   const source = input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
   const result = { ...DEFAULT_SONG_SHARE_VISIBILITY }
   for (const key of VISIBILITY_KEYS) {
-    result[key] = source[key] === true
+    if (typeof source[key] === 'boolean') result[key] = source[key] as boolean
   }
   return result
 }
