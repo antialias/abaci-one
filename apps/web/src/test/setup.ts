@@ -68,6 +68,22 @@ if (typeof (React as any).cache !== 'function') {
   ;(React as any).cache = <T extends (...args: any[]) => any>(fn: T): T => fn
 }
 
+// Mock next/font/google — the real loader requires Next's build-time transform
+// (it tries to fetch & subset the font from Google during render) and crashes
+// vitest with "Inter is not a function". Tests only need the font object's
+// `variable` / `className` shape.
+vi.mock('next/font/google', () => {
+  const makeFont = (varName: string) => () => ({
+    variable: varName,
+    className: '',
+    style: { fontFamily: 'mock' },
+  })
+  return {
+    Inter: makeFont('--font-inter'),
+    Fraunces: makeFont('--font-fraunces'),
+  }
+})
+
 // Mock next-intl for tests
 // This provides a passthrough translation function that returns the key
 vi.mock('next-intl', () => ({
