@@ -113,6 +113,16 @@ export const POST = withAuth(async (request, { userId, params }) => {
       createdAt: new Date(),
     })
 
+    // Fire-and-forget pre-generation of the iMessage preview MP4. Apple's
+    // LinkPresentation crawler hits the link within seconds of paste, and
+    // ffmpeg-wrapping the audio takes 1–3s — warming the cache now means
+    // the crawler usually finds a static file. If this HEAD fails, the
+    // route's lazy path still generates on first real hit.
+    const previewOrigin = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
+    void fetch(`${previewOrigin}/api/song-share/${shareId}/preview.mp4`, { method: 'HEAD' }).catch(
+      () => {}
+    )
+
     return NextResponse.json({
       id: shareId,
       url: getShareUrl('song', shareId),

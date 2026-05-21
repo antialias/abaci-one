@@ -22,10 +22,7 @@ import {
 } from '@/lib/song-share/annotate'
 import { formatSkill } from '@/lib/song-share/sessionFacts'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
-import {
-  DEFAULT_SONG_SHARE_VISIBILITY,
-  type SongShareVisibility,
-} from '@/db/schema/song-shares'
+import { DEFAULT_SONG_SHARE_VISIBILITY, type SongShareVisibility } from '@/db/schema/song-shares'
 
 interface PromptInputShape {
   player?: { name?: string; emoji?: string; age?: number }
@@ -60,6 +57,11 @@ export interface SharedSongStats {
 export interface SharedSongPayload {
   player: { name: string; emoji: string }
   song: {
+    /** The underlying session_songs row id — used by derived-asset routes
+     *  (audio, alignment, preview MP4) that key on the file path
+     *  data/audio/songs/{songId}.{ext}. Already exposed via audioPath; this
+     *  field just saves callers from string-parsing the URL. */
+    id: string
     title: string | null
     audioPath: string
     /** Sidecar JSON path served by /api/audio/songs/{id}/alignment, or null if not present. */
@@ -230,6 +232,7 @@ export function projectSharedSong(input: {
       emoji: playerEmoji,
     },
     song: {
+      id: songId,
       title: plan.title,
       audioPath: `/api/audio/songs/${songId}`,
       // Alignment sidecar — route 404s gracefully for legacy songs without timestamps,

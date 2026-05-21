@@ -31,11 +31,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? `Listen to "${song.title}" — a celebration song made for ${player.name} on Abaci.One`
     : `A celebration song made for ${player.name} on Abaci.One`
 
-  // Twitter Player Card + og:video light up inline playback in Twitter/X,
-  // Discord, Mastodon. Clients that don't honor these tags fall back to the
-  // OG image (the static "tap to play" poster) — no degradation.
+  // Two surfaces, two purposes:
+  //
+  // - `embedUrl` → HTML iframe player. Twitter / X / Discord / Mastodon read
+  //   `twitter:player` and load it inline, getting the full SyncedLyricsPlayer
+  //   experience.
+  //
+  // - `previewVideoUrl` → direct MP4 (H.264 + AAC, ~1 MB). Apple's
+  //   LinkPresentation (per TN3156) only autoplays a tap-to-listen overlay in
+  //   iMessage when `og:video` (or `twitter:player:stream`) points at a
+  //   downloadable media asset; an HTML page is explicitly NOT enough. The
+  //   MP4 is the still OG artwork held as a video track behind the song's
+  //   audio. See `/api/song-share/[code]/preview.mp4`.
   const embedUrl = `${ORIGIN}/embed/song/${code}`
-  const streamUrl = `${ORIGIN}${song.audioPath}`
+  const previewVideoUrl = `${ORIGIN}/api/song-share/${code}/preview.mp4`
 
   return {
     title,
@@ -47,13 +56,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       type: 'website',
       siteName: 'Abaci.One',
-      videos: [{ url: embedUrl, secureUrl: embedUrl, type: 'text/html', width: 480, height: 600 }],
+      videos: [
+        {
+          url: previewVideoUrl,
+          secureUrl: previewVideoUrl,
+          type: 'video/mp4',
+          width: 1200,
+          height: 630,
+        },
+      ],
     },
     twitter: {
       card: 'player',
       title,
       description,
-      players: [{ playerUrl: embedUrl, streamUrl, width: 480, height: 600 }],
+      players: [
+        {
+          playerUrl: embedUrl, // Twitter/Discord/Mastodon → HTML iframe
+          streamUrl: previewVideoUrl, // Apple/iMessage → direct MP4
+          width: 480,
+          height: 600,
+        },
+      ],
     },
   }
 }
