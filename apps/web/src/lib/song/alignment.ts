@@ -158,8 +158,10 @@ function tryParallelArrays(obj: Record<string, unknown>): FlatAlignedWord[] | nu
 }
 
 function tryObjectArray(obj: Record<string, unknown>): FlatAlignedWord[] | null {
-  // Sweep likely keys for an array of word-objects.
-  const arrayKeys = ['words', 'word_timestamps', 'lyrics', 'tokens']
+  // Sweep likely keys for an array of word-objects. ElevenLabs `/v1/music/detailed`
+  // emits `words_timestamps` (with the plural 's' on words); other shapes are kept
+  // as defensive fallbacks in case the response format shifts.
+  const arrayKeys = ['words_timestamps', 'words', 'word_timestamps', 'lyrics', 'tokens']
   for (const key of arrayKeys) {
     const arr = obj[key]
     if (!Array.isArray(arr)) continue
