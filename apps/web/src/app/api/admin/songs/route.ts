@@ -17,8 +17,10 @@ import {
 } from '@/lib/session-song/admin-validation-summary'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
 import {
+  publishSuppressAlive,
   retrySessionSongGeneration,
   startSessionSongGeneration,
+  startSuppressAliveLocal,
   type SessionSongRegenerationMode,
 } from '@/lib/tasks/session-song'
 import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
@@ -202,7 +204,16 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'Song ID is required' }, { status: 400 })
     }
 
-    if (!['retry', 'regenerate', 'spawn', 'flag_content', 'clear_content_flag'].includes(action)) {
+    if (
+      ![
+        'retry',
+        'regenerate',
+        'spawn',
+        'flag_content',
+        'clear_content_flag',
+        'suppress_alive',
+      ].includes(action)
+    ) {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
 
@@ -253,6 +264,35 @@ export const POST = withAuth(
         .where(eq(schema.sessionSongs.id, songId))
 
       return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'suppress_alive') {
+      if (!song.backgroundTaskId) {
+        return NextResponse.json(
+          { error: 'Song has no active background task to suppress' },
+          { status: 400 }
+        )
+      }
+      if (
+        song.status !== 'pending' &&
+        song.status !== 'prompt_generating' &&
+        song.status !== 'generating'
+      ) {
+        return NextResponse.json(
+          { error: 'Song is not currently generating — suppress-alive is a no-op' },
+          { status: 400 }
+        )
+      }
+      // Always apply locally so single-pod / no-Redis dev environments work;
+      // also publish for cross-pod fan-out when Redis is available.
+      startSuppressAliveLocal(song.backgroundTaskId)
+      const fannedOut = await publishSuppressAlive(song.backgroundTaskId)
+      return NextResponse.json({
+        ok: true,
+        taskId: song.backgroundTaskId,
+        durationMs: 60_000,
+        fannedOut,
+      })
     }
 
     if (action === 'clear_content_flag') {

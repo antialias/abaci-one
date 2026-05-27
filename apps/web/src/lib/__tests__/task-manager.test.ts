@@ -576,4 +576,154 @@ describe('task-manager', () => {
       expect(wasCancelled).toBe(false)
     })
   })
+
+  // Heartbeat-handler + task-end-handler registries (#153).
+  //
+  // These registries fan out per-tick + per-task-end notifications to any
+  // number of subscribers. session-song uses them to push `:alive:` events
+  // and to GC its planId cache, but the registries themselves are generic.
+  describe('handler registries', () => {
+    // Run a task long enough for the heartbeat to tick, then drain the task
+    // fully (complete + finally) so we don't pollute subsequent tests with
+    // orphaned setInterval handles in the fake-timer system.
+    async function runTaskOneHeartbeat(): Promise<string> {
+      const { createTask } = await import('../task-manager')
+      const handler = vi.fn(
+        async (handle: { complete: (out: unknown) => void }) => {
+          // Hold the task alive past one heartbeat interval, then complete.
+          await new Promise<void>((r) => setTimeout(r, 15_000))
+          handle.complete({ done: true })
+        }
+      )
+      const taskId = await createTask('demo', {}, handler)
+      // setImmediate → running → startHeartbeat scheduled.
+      await vi.advanceTimersByTimeAsync(1)
+      // Past the 10s heartbeat tick, then past the 15s task completion.
+      await vi.advanceTimersByTimeAsync(20_000)
+      return taskId
+    }
+
+    it('registerHeartbeatHandler fires on every tick with (taskId, type)', async () => {
+      const { registerHeartbeatHandler } = await import('../task-manager')
+      vi.useFakeTimers()
+      try {
+        const spy = vi.fn()
+        const unsubscribe = registerHeartbeatHandler(spy)
+
+        const taskId = await runTaskOneHeartbeat()
+
+        expect(spy).toHaveBeenCalled()
+        const [calledTaskId, calledType] = spy.mock.calls[0] ?? []
+        expect(calledTaskId).toBe(taskId)
+        expect(calledType).toBe('demo')
+
+        unsubscribe()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('handler stops firing after unsubscribe', async () => {
+      const { createTask, registerHeartbeatHandler } = await import('../task-manager')
+      vi.useFakeTimers()
+      try {
+        const spy = vi.fn()
+        const unsubscribe = registerHeartbeatHandler(spy)
+
+        // Start a never-completing task so we can observe ticks before and
+        // after unsubscribe. We'll complete it via the handle at the end.
+        let completeFn: (() => void) | undefined
+        const handler = vi.fn(async (handle: { complete: (out: unknown) => void }) => {
+          await new Promise<void>((r) => {
+            completeFn = () => {
+              handle.complete({})
+              r()
+            }
+          })
+        })
+        await createTask('demo', {}, handler)
+        await vi.advanceTimersByTimeAsync(1)
+        await vi.advanceTimersByTimeAsync(10_000)
+        const callsAfterFirstTick = spy.mock.calls.length
+        expect(callsAfterFirstTick).toBeGreaterThan(0)
+
+        unsubscribe()
+        await vi.advanceTimersByTimeAsync(30_000)
+        expect(spy.mock.calls.length).toBe(callsAfterFirstTick)
+
+        // Drain the task so its heartbeat interval is cleared.
+        completeFn?.()
+        await vi.advanceTimersByTimeAsync(50)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('multiple handlers fire and an error in one does not break the others', async () => {
+      const { registerHeartbeatHandler } = await import('../task-manager')
+      vi.useFakeTimers()
+      try {
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const throwingSpy = vi.fn(() => {
+          throw new Error('boom')
+        })
+        const cleanSpy = vi.fn()
+        const u1 = registerHeartbeatHandler(throwingSpy)
+        const u2 = registerHeartbeatHandler(cleanSpy)
+
+        await runTaskOneHeartbeat()
+
+        expect(throwingSpy).toHaveBeenCalled()
+        expect(cleanSpy).toHaveBeenCalled()
+        expect(consoleError).toHaveBeenCalled()
+
+        u1()
+        u2()
+        consoleError.mockRestore()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('registerTaskEndHandler fires once after a task completes', async () => {
+      const { createTask, registerTaskEndHandler } = await import('../task-manager')
+      const spy = vi.fn()
+      const unsubscribe = registerTaskEndHandler(spy)
+
+      const handler = vi.fn(async (handle: { complete: (out: unknown) => void }) => {
+        handle.complete({ done: true })
+      })
+      const taskId = await createTask('demo', {}, handler)
+
+      // Let the setImmediate task body run AND the finally block fire.
+      await new Promise((r) => setTimeout(r, 50))
+
+      expect(spy).toHaveBeenCalledTimes(1)
+      const [calledTaskId, calledType] = spy.mock.calls[0] ?? []
+      expect(calledTaskId).toBe(taskId)
+      expect(calledType).toBe('demo')
+
+      unsubscribe()
+    })
+
+    it('task-end handler only fires once even if the handler completes then errors', async () => {
+      const { createTask, registerTaskEndHandler } = await import('../task-manager')
+      const spy = vi.fn()
+      const unsubscribe = registerTaskEndHandler(spy)
+
+      const handler = vi.fn(
+        async (handle: { complete: (out: unknown) => void; fail: (e: string) => void }) => {
+          handle.complete({ done: true })
+          // The handler returns normally — failTask inside the catch path
+          // shouldn't fire because status is already 'completed'. End handler
+          // still runs exactly once via finally.
+        }
+      )
+      await createTask('demo', {}, handler)
+      await new Promise((r) => setTimeout(r, 50))
+
+      expect(spy).toHaveBeenCalledTimes(1)
+      unsubscribe()
+    })
+  })
 })

@@ -24,6 +24,7 @@ import type {
 import { AiFeature } from '@/lib/ai-usage/features'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
 import { getFlag } from '@/lib/feature-flags'
+import { createRedisClient, getRedisClient } from '@/lib/redis'
 import { getSocketIO } from '@/lib/socket-io'
 import {
   type CompositionPlan,
@@ -324,7 +325,53 @@ export function rememberSessionSongPlan(taskId: string, planId: string): void {
   planIdByTaskId.set(taskId, planId)
 }
 
+// ============================================================================
+// Suppress-alive testing tool (#153 follow-up)
+//
+// Admins can request "simulate stale UI for task X for N seconds" via the
+// admin songs page. Cross-pod via Redis pub/sub (the task runs on one pod
+// but the admin may hit another). Each pod that receives the broadcast adds
+// the taskId to a local Set and schedules its own expiry; emissions are
+// gated against this Set in `emitSessionSongAlive`.
+//
+// DB heartbeat is untouched — the zombie reaper still sees the worker as
+// alive. Only the socket fan-out to the client is suppressed.
+// ============================================================================
+
+const SUPPRESS_ALIVE_DURATION_MS = 60_000
+const SUPPRESS_ALIVE_CHANNEL_PREFIX = 'session-song:suppress-alive:'
+
+const suppressAliveTasks = new Set<string>()
+const suppressAliveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+/**
+ * Mark a task as "do not emit alive events" for SUPPRESS_ALIVE_DURATION_MS.
+ * Idempotent — re-calling resets the timer to a fresh 60s.
+ *
+ * Pod-local: callers wanting cross-pod effect should publish to the Redis
+ * channel `session-song:suppress-alive:<taskId>` instead, which fans out
+ * to every pod's subscriber (set up in `setupSessionSongLiveness`).
+ */
+export function startSuppressAliveLocal(taskId: string): void {
+  suppressAliveTasks.add(taskId)
+  const existing = suppressAliveTimers.get(taskId)
+  if (existing) clearTimeout(existing)
+  const timer = setTimeout(() => {
+    suppressAliveTasks.delete(taskId)
+    suppressAliveTimers.delete(taskId)
+  }, SUPPRESS_ALIVE_DURATION_MS)
+  suppressAliveTimers.set(taskId, timer)
+}
+
+/** Test-only — clears the suppress set immediately. */
+export function _clearSuppressAliveForTests(): void {
+  suppressAliveTasks.clear()
+  for (const t of suppressAliveTimers.values()) clearTimeout(t)
+  suppressAliveTimers.clear()
+}
+
 async function emitSessionSongAlive(taskId: string): Promise<void> {
+  if (suppressAliveTasks.has(taskId)) return
   let planId = planIdByTaskId.get(taskId)
   if (!planId) {
     const rows = await db
@@ -348,6 +395,7 @@ async function emitSessionSongAlive(taskId: string): Promise<void> {
 }
 
 let livenessRegistered = false
+let suppressAliveSubscriber: ReturnType<typeof createRedisClient> = null
 
 /**
  * Register session-song's heartbeat fan-out and cache cleanup with the
@@ -366,6 +414,44 @@ export function setupSessionSongLiveness(): void {
     if (type !== 'session-song') return
     planIdByTaskId.delete(taskId)
   })
+
+  // Cross-pod suppress-alive subscriber (mirrors the cancellation pattern
+  // in task-manager.ts). Separate Redis client so it doesn't share the
+  // pmessage handler with other subsystems.
+  const sub = createRedisClient()
+  if (!sub) {
+    console.log('[SessionSong] Redis unavailable, suppress-alive is pod-local only')
+    return
+  }
+  suppressAliveSubscriber = sub
+  sub.psubscribe(`${SUPPRESS_ALIVE_CHANNEL_PREFIX}*`).catch((err) => {
+    console.error('[SessionSong] Failed to subscribe to suppress-alive channel:', err)
+  })
+  sub.on('pmessage', (_pattern, channel, _message) => {
+    if (!channel.startsWith(SUPPRESS_ALIVE_CHANNEL_PREFIX)) return
+    const taskId = channel.slice(SUPPRESS_ALIVE_CHANNEL_PREFIX.length)
+    if (!taskId) return
+    startSuppressAliveLocal(taskId)
+    console.log(`[SessionSong] Received suppress-alive for ${taskId} via Redis`)
+  })
+}
+
+/**
+ * Publish a cross-pod suppress-alive request. Returns whether the publish
+ * actually reached Redis (false if Redis is unavailable in this env — in
+ * that case the caller should also invoke `startSuppressAliveLocal` so the
+ * current pod still honors the request).
+ */
+export async function publishSuppressAlive(taskId: string): Promise<boolean> {
+  const redis = getRedisClient()
+  if (!redis) return false
+  try {
+    await redis.publish(`${SUPPRESS_ALIVE_CHANNEL_PREFIX}${taskId}`, '1')
+    return true
+  } catch (err) {
+    console.error('[SessionSong] Failed to publish suppress-alive to Redis:', err)
+    return false
+  }
 }
 
 /**
