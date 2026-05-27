@@ -59,6 +59,10 @@ const CONNECTION_LOST_COPY =
 const CONNECTION_LOST_OWNER_COPY =
   'Lost the realtime connection to the server. The song is still generating in the background — reconnect to resume live updates.'
 
+const STALE_COPY = 'Checking on your song...'
+const STALE_OWNER_COPY =
+  "Worker heartbeat is stale — the task may have stalled. We'll know more in a minute."
+
 export function SessionSongPlayer({
   playerId,
   planId,
@@ -73,6 +77,7 @@ export function SessionSongPlayer({
     viewerIsOwner,
     connectionState,
     reconnect,
+    liveness,
   } = useSessionSong({
     playerId,
     planId,
@@ -121,16 +126,71 @@ export function SessionSongPlayer({
         mb: 4,
       })}
     >
-      {isGenerating && !isReady && connectionState !== 'lost' && (
+      {isGenerating &&
+        !isReady &&
+        connectionState !== 'lost' &&
+        !(connectionState === 'connected' && liveness === 'stale') && (
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              p: 4,
+              borderRadius: 'xl',
+              bg: 'purple.50',
+              _dark: { bg: 'purple.900/30' },
+            })}
+          >
+            <div
+              className={css({
+                w: 8,
+                h: 8,
+                borderRadius: 'full',
+                bg: 'purple.200',
+                _dark: { bg: 'purple.700' },
+                animation: 'pulse 1.5s ease-in-out infinite',
+                flexShrink: 0,
+              })}
+            />
+            <span
+              className={css({
+                fontSize: 'sm',
+                color: 'purple.700',
+                _dark: { color: 'purple.200' },
+                fontWeight: 'medium',
+              })}
+            >
+              {getReassuranceCopy(song?.status, elapsedMs)}
+              {connectionState === 'reconnecting' && (
+                <span
+                  className={css({
+                    ml: 2,
+                    fontSize: 'xs',
+                    color: 'purple.500',
+                    _dark: { color: 'purple.400' },
+                    fontStyle: 'italic',
+                  })}
+                >
+                  · reconnecting…
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
+      {isGenerating && !isReady && connectionState === 'connected' && liveness === 'stale' && (
         <div
+          data-element="worker-stale"
           className={css({
             display: 'flex',
             alignItems: 'center',
             gap: 3,
             p: 4,
             borderRadius: 'xl',
-            bg: 'purple.50',
-            _dark: { bg: 'purple.900/30' },
+            bg: 'amber.50',
+            border: '1px solid',
+            borderColor: 'amber.200',
+            _dark: { bg: 'amber.900/30', borderColor: 'amber.700' },
           })}
         >
           <div
@@ -138,34 +198,21 @@ export function SessionSongPlayer({
               w: 8,
               h: 8,
               borderRadius: 'full',
-              bg: 'purple.200',
-              _dark: { bg: 'purple.700' },
-              animation: 'pulse 1.5s ease-in-out infinite',
+              bg: 'amber.300',
+              _dark: { bg: 'amber.600' },
+              animation: 'pulse 2s ease-in-out infinite',
               flexShrink: 0,
             })}
           />
           <span
             className={css({
               fontSize: 'sm',
-              color: 'purple.700',
-              _dark: { color: 'purple.200' },
+              color: 'amber.800',
+              _dark: { color: 'amber.100' },
               fontWeight: 'medium',
             })}
           >
-            {getReassuranceCopy(song?.status, elapsedMs)}
-            {connectionState === 'reconnecting' && (
-              <span
-                className={css({
-                  ml: 2,
-                  fontSize: 'xs',
-                  color: 'purple.500',
-                  _dark: { color: 'purple.400' },
-                  fontStyle: 'italic',
-                })}
-              >
-                · reconnecting…
-              </span>
-            )}
+            {viewerIsOwner ? STALE_OWNER_COPY : STALE_COPY}
           </span>
         </div>
       )}

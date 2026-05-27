@@ -40,7 +40,13 @@ import {
 import { resolveSongGenres, selectSongConcept } from '../session-song/concept-selector'
 import { extractSessionStats, type SongPromptInput } from '../session-song/extract-session-stats'
 import { generateSongPrompt, type SongCompositionOutput } from '../session-song/prompt-generator'
-import { createTask, type TaskHandle } from '../task-manager'
+import {
+  createTask,
+  registerHeartbeatHandler,
+  registerTaskEndHandler,
+  type TaskHandle,
+  type TaskType,
+} from '../task-manager'
 import type { SessionSongEvent } from './events'
 
 // ============================================================================
@@ -293,6 +299,73 @@ async function emitSongPhase(planId: string, status: SessionSongStatus) {
   } catch {
     // Socket.IO not available — best effort
   }
+}
+
+// ============================================================================
+// Worker liveness fan-out (#153)
+//
+// The task-manager's centralized heartbeat tick (every 10s while the task
+// runs) writes `background_tasks.last_heartbeat`. We piggy-back on it to
+// emit `session-song:alive:<planId>` so the client can derive a freshness
+// signal without polling.
+//
+// `planIdByTaskId` is a per-pod in-memory cache so steady-state emission
+// does zero extra DB work. On a pod restart mid-task the cache is cold;
+// the handler falls back to a single DB lookup, then warms the cache.
+// ============================================================================
+
+const planIdByTaskId = new Map<string, string>()
+
+/**
+ * Cache the taskId → planId mapping at task-creation time. Avoids a DB
+ * read on every heartbeat tick.
+ */
+export function rememberSessionSongPlan(taskId: string, planId: string): void {
+  planIdByTaskId.set(taskId, planId)
+}
+
+async function emitSessionSongAlive(taskId: string): Promise<void> {
+  let planId = planIdByTaskId.get(taskId)
+  if (!planId) {
+    const rows = await db
+      .select({ planId: schema.sessionSongs.sessionPlanId })
+      .from(schema.sessionSongs)
+      .where(eq(schema.sessionSongs.backgroundTaskId, taskId))
+      .limit(1)
+    const row = rows[0]
+    if (!row) return
+    planId = row.planId
+    planIdByTaskId.set(taskId, planId)
+  }
+  try {
+    const io = await getSocketIO()
+    if (io) {
+      io.emit(`session-song:alive:${planId}`, { ts: Date.now() })
+    }
+  } catch {
+    // Socket.IO not available — best effort
+  }
+}
+
+let livenessRegistered = false
+
+/**
+ * Register session-song's heartbeat fan-out and cache cleanup with the
+ * task-manager. Call once at server boot (from socket-server.ts).
+ */
+export function setupSessionSongLiveness(): void {
+  if (livenessRegistered) return
+  livenessRegistered = true
+
+  registerHeartbeatHandler(async (taskId: string, type: TaskType) => {
+    if (type !== 'session-song') return
+    await emitSessionSongAlive(taskId)
+  })
+
+  registerTaskEndHandler((taskId: string, type: TaskType) => {
+    if (type !== 'session-song') return
+    planIdByTaskId.delete(taskId)
+  })
 }
 
 /**
@@ -692,6 +765,9 @@ export async function startSessionSongGeneration(
     .set({ backgroundTaskId: taskId })
     .where(eq(schema.sessionSongs.id, songId))
 
+  // Seed the liveness cache so the first heartbeat tick can emit without a DB read.
+  rememberSessionSongPlan(taskId, input.sessionPlanId)
+
   return { taskId, songId }
 }
 
@@ -898,6 +974,8 @@ export async function retrySessionSongGeneration(
     .update(schema.sessionSongs)
     .set({ backgroundTaskId: taskId })
     .where(eq(schema.sessionSongs.id, songId))
+
+  rememberSessionSongPlan(taskId, song.sessionPlanId)
 
   return { taskId, songId, mode }
 }

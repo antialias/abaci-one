@@ -1960,6 +1960,15 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           },
         })
 
+        // Wire session-song worker-liveness fan-out (#153)
+        import('./lib/tasks/session-song')
+          .then(({ setupSessionSongLiveness }) => {
+            setupSessionSongLiveness()
+          })
+          .catch((err) => {
+            console.error('[TaskManager] Failed to set up session-song liveness:', err)
+          })
+
         // Clean up zombie tasks (now pod-aware)
         cleanupZombieTasks()
           .then((count) => {
