@@ -28,6 +28,16 @@ interface SessionSongPlayerProps {
   triggerFallback?: boolean
 }
 
+const GENERATING_COPY: Record<string, string> = {
+  pending: 'Getting ready to write your song...',
+  prompt_generating: 'Listening to how your session went...',
+  generating: 'Writing your celebration song 🎵',
+}
+
+function getGeneratingCopy(status: string | undefined): string {
+  return (status && GENERATING_COPY[status]) || 'Creating your song...'
+}
+
 export function SessionSongPlayer({
   playerId,
   planId,
@@ -110,7 +120,7 @@ export function SessionSongPlayer({
               fontWeight: 'medium',
             })}
           >
-            Creating your song...
+            {getGeneratingCopy(song?.status)}
           </span>
         </div>
       )}

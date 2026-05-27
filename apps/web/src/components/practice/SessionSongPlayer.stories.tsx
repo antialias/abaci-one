@@ -32,7 +32,7 @@ function PlayerShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function GeneratingState() {
+function GeneratingState({ copy = 'Creating your song...' }: { copy?: string }) {
   return (
     <PlayerShell>
       <div
@@ -62,7 +62,7 @@ function GeneratingState() {
             fontWeight: 'medium',
           })}
         >
-          Creating your song...
+          {copy}
         </span>
       </div>
     </PlayerShell>
@@ -266,7 +266,25 @@ type Story = StoryObj
 // Stories
 // ============================================================================
 
-/** Song is being generated in the background. Pulsing shimmer animation. */
+/** Song is queued; worker hasn't picked it up yet. */
+export const GeneratingPending: Story = {
+  render: () => <GeneratingState copy="Getting ready to write your song..." />,
+}
+
+/** LLM is writing the lyrics + composition plan. */
+export const GeneratingPrompt: Story = {
+  render: () => <GeneratingState copy="Listening to how your session went..." />,
+}
+
+/** ElevenLabs is producing the audio. */
+export const GeneratingMusic: Story = {
+  render: () => <GeneratingState copy="Writing your celebration song 🎵" />,
+}
+
+/**
+ * Back-compat: matches the previous generic "Creating your song..." shimmer.
+ * Used as a fallback when status doesn't match a known phase.
+ */
 export const Generating: Story = {
   render: () => <GeneratingState />,
 }
