@@ -281,6 +281,20 @@ export const GeneratingMusic: Story = {
   render: () => <GeneratingState copy="Writing your celebration song 🎵" />,
 }
 
+/** Generation has been running longer than ~45s — soft reassurance copy. */
+export const GeneratingLongRunning: Story = {
+  render: () => (
+    <GeneratingState copy="Still cooking — this one's taking a little longer, hang tight!" />
+  ),
+}
+
+/** Generation has been running longer than ~3min — invite the user to come back. */
+export const GeneratingVeryLongRunning: Story = {
+  render: () => (
+    <GeneratingState copy="You can come back later — we'll have it ready for you" />
+  ),
+}
+
 /**
  * Back-compat: matches the previous generic "Creating your song..." shimmer.
  * Used as a fallback when status doesn't match a known phase.

@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef } from 'react'
+import { useElapsedMs } from '@/hooks/useElapsedMs'
 import { useSessionSong } from '@/hooks/useSessionSong'
 import { ShareSongPopover } from '@/components/song/ShareSongPopover'
 import { SyncedLyricsPlayer } from '@/components/song/SyncedLyricsPlayer'
@@ -38,6 +39,24 @@ function getGeneratingCopy(status: string | undefined): string {
   return (status && GENERATING_COPY[status]) || 'Creating your song...'
 }
 
+const LONG_GENERATION_MS = 45_000
+const VERY_LONG_GENERATION_MS = 180_000
+const LONG_GENERATION_COPY = "Still cooking — this one's taking a little longer, hang tight!"
+const VERY_LONG_GENERATION_COPY = "You can come back later — we'll have it ready for you"
+
+function getReassuranceCopy(
+  status: string | undefined,
+  elapsedMs: number | null
+): string {
+  if (elapsedMs != null && elapsedMs >= VERY_LONG_GENERATION_MS) {
+    return VERY_LONG_GENERATION_COPY
+  }
+  if (elapsedMs != null && elapsedMs >= LONG_GENERATION_MS) {
+    return LONG_GENERATION_COPY
+  }
+  return getGeneratingCopy(status)
+}
+
 export function SessionSongPlayer({
   playerId,
   planId,
@@ -48,6 +67,8 @@ export function SessionSongPlayer({
     planId,
     enabled: true,
   })
+
+  const elapsedMs = useElapsedMs(song?.createdAt ?? null)
 
   const fallbackTriggered = useRef(false)
 
@@ -120,7 +141,7 @@ export function SessionSongPlayer({
               fontWeight: 'medium',
             })}
           >
-            {getGeneratingCopy(song?.status)}
+            {getReassuranceCopy(song?.status, elapsedMs)}
           </span>
         </div>
       )}
