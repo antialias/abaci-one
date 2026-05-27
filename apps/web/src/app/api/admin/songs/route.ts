@@ -18,8 +18,10 @@ import {
 import { parseSongPlan } from '@/lib/song-share/songPlan'
 import {
   retrySessionSongGeneration,
+  startSessionSongGeneration,
   type SessionSongRegenerationMode,
 } from '@/lib/tasks/session-song'
+import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
 
 export const GET = withAuth(
   async (request) => {
@@ -200,7 +202,7 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'Song ID is required' }, { status: 400 })
     }
 
-    if (!['retry', 'regenerate', 'flag_content', 'clear_content_flag'].includes(action)) {
+    if (!['retry', 'regenerate', 'spawn', 'flag_content', 'clear_content_flag'].includes(action)) {
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
 
@@ -213,6 +215,25 @@ export const POST = withAuth(
 
     if (!song) {
       return NextResponse.json({ error: 'Song not found' }, { status: 404 })
+    }
+
+    if (action === 'spawn') {
+      const result = await startSessionSongGeneration(
+        {
+          sessionPlanId: song.sessionPlanId,
+          playerId: song.playerId,
+          triggerSource:
+            (song.triggerSource as SessionSongTriggerSource | null) ?? 'completion_fallback',
+        },
+        userId,
+        { force: true }
+      )
+
+      return NextResponse.json({
+        ok: true,
+        songId: result.songId,
+        taskId: result.taskId,
+      })
     }
 
     if (action === 'flag_content') {

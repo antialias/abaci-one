@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { isEnabled } from '@/lib/feature-flags'
@@ -82,6 +82,7 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
       .select()
       .from(schema.sessionSongs)
       .where(eq(schema.sessionSongs.sessionPlanId, planId))
+      .orderBy(desc(schema.sessionSongs.createdAt))
       .limit(1)
 
     if (!song) {
@@ -121,8 +122,7 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
         audioPath: song.status === 'completed' ? `/api/audio/songs/${song.id}` : null,
         // Word-alignment sidecar. The route 404s for songs generated before
         // timestamps shipped, so older songs degrade to plain playback.
-        alignmentPath:
-          song.status === 'completed' ? `/api/audio/songs/${song.id}/alignment` : null,
+        alignmentPath: song.status === 'completed' ? `/api/audio/songs/${song.id}/alignment` : null,
         lyrics,
         triggerSource: song.triggerSource,
         failureKind: song.status === 'failed' ? (song.failureKind ?? null) : null,

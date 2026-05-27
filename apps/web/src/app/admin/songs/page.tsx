@@ -206,6 +206,21 @@ export default function AdminSongsPage() {
     [fetchSongs, postSongAction]
   )
 
+  const handleSpawn = useCallback(
+    async (songId: string) => {
+      setBusySongId(songId)
+      try {
+        await postSongAction({ songId, action: 'spawn' })
+        await fetchSongs()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Spawn failed')
+      } finally {
+        setBusySongId(null)
+      }
+    },
+    [fetchSongs, postSongAction]
+  )
+
   const filtered = songs.filter((song) => {
     if (statusFilter && song.status !== statusFilter) return false
     if (!validationFilter) return true
@@ -361,6 +376,7 @@ export default function AdminSongsPage() {
             <SongDetail
               song={selectedSong}
               onRetry={handleRetry}
+              onSpawn={handleSpawn}
               onFlagContent={handleFlagContent}
               onClearContentFlag={handleClearContentFlag}
               busy={busySongId === selectedSong.id}
@@ -620,12 +636,14 @@ function StatusBadge({ status }: { status: string }) {
 function SongDetail({
   song,
   onRetry,
+  onSpawn,
   onFlagContent,
   onClearContentFlag,
   busy,
 }: {
   song: Song
   onRetry: (songId: string, mode?: RegenerationMode, reason?: string) => void
+  onSpawn: (songId: string) => void
   onFlagContent: (songId: string, reason: string) => void
   onClearContentFlag: (songId: string) => void
   busy: boolean
@@ -669,6 +687,14 @@ function SongDetail({
           </div>
         </div>
         <div className={css({ display: 'flex', gap: '8px', alignItems: 'center' })}>
+          <ActionButton
+            dataAction="spawn-song"
+            tone="secondary"
+            disabled={busy}
+            onClick={() => onSpawn(song.id)}
+          >
+            {busy ? 'Queueing...' : 'Spawn copy'}
+          </ActionButton>
           {song.status === 'failed' && (
             <>
               <ActionButton

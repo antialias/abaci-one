@@ -407,20 +407,23 @@ async function notifyAdminsOfSongFailure({
  */
 export async function startSessionSongGeneration(
   input: SessionSongInput,
-  userId?: string
+  userId?: string,
+  options: { force?: boolean } = {}
 ): Promise<{ taskId: string; songId?: string; existing?: boolean }> {
-  // Check for existing song (idempotency)
-  const existing = await db
-    .select()
-    .from(schema.sessionSongs)
-    .where(eq(schema.sessionSongs.sessionPlanId, input.sessionPlanId))
-    .limit(1)
+  if (!options.force) {
+    const existing = await db
+      .select()
+      .from(schema.sessionSongs)
+      .where(eq(schema.sessionSongs.sessionPlanId, input.sessionPlanId))
+      .orderBy(desc(schema.sessionSongs.createdAt))
+      .limit(1)
 
-  if (existing.length > 0) {
-    return {
-      taskId: existing[0].backgroundTaskId ?? '',
-      songId: existing[0].id,
-      existing: true,
+    if (existing.length > 0) {
+      return {
+        taskId: existing[0].backgroundTaskId ?? '',
+        songId: existing[0].id,
+        existing: true,
+      }
     }
   }
 
