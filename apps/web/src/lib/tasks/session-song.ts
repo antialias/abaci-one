@@ -18,6 +18,7 @@ import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-
 import type {
   SessionSong,
   SessionSongLLMOutput,
+  SessionSongStatus,
   SessionSongTriggerSource,
 } from '@/db/schema/session-songs'
 import { AiFeature } from '@/lib/ai-usage/features'
@@ -279,8 +280,41 @@ async function emitSongReady(input: SessionSongInput, songId: string) {
       })
     }
   } catch {
-    // Socket.IO not available — client will pick up via polling
+    // Socket.IO not available — best effort
   }
+}
+
+async function emitSongPhase(planId: string, status: SessionSongStatus) {
+  try {
+    const io = await getSocketIO()
+    if (io) {
+      io.emit(`session-song:phase:${planId}`, { status })
+    }
+  } catch {
+    // Socket.IO not available — best effort
+  }
+}
+
+/**
+ * Update a session_songs row's status (plus any extra fields) and broadcast
+ * the phase transition over Socket.IO. Centralized so we never write a status
+ * without telling the client.
+ */
+type SessionSongUpdateExtras = Parameters<
+  ReturnType<typeof db.update<typeof schema.sessionSongs>>['set']
+>[0]
+
+async function setSongStatus(
+  songId: string,
+  planId: string,
+  status: SessionSongStatus,
+  extra: Omit<SessionSongUpdateExtras, 'status'> = {}
+): Promise<void> {
+  await db
+    .update(schema.sessionSongs)
+    .set({ status, ...extra })
+    .where(eq(schema.sessionSongs.id, songId))
+  await emitSongPhase(planId, status)
 }
 
 async function generateAndSaveMusic({
@@ -299,14 +333,10 @@ async function generateAndSaveMusic({
   handle.emit({ type: 'song_generating_music' })
   handle.setProgress(60, 'Creating your music...')
 
-  await db
-    .update(schema.sessionSongs)
-    .set({
-      status: 'generating',
-      errorMessage: null,
-      failureKind: null,
-    })
-    .where(eq(schema.sessionSongs.id, songId))
+  await setSongStatus(songId, input.sessionPlanId, 'generating', {
+    errorMessage: null,
+    failureKind: null,
+  })
 
   const { audioBuffer, alignment } = await generateMusic({
     compositionPlan: llmOutput.plan,
@@ -327,17 +357,13 @@ async function generateAndSaveMusic({
   await writeFile(localPath, audioBuffer)
   await writeAlignmentSidecar(songId, alignment)
 
-  await db
-    .update(schema.sessionSongs)
-    .set({
-      status: 'completed',
-      localFilePath: localPath,
-      completedAt: new Date(),
-      errorMessage: null,
-      failureKind: null,
-      ...(markContentResolved ? { contentReviewStatus: 'resolved' } : {}),
-    })
-    .where(eq(schema.sessionSongs.id, songId))
+  await setSongStatus(songId, input.sessionPlanId, 'completed', {
+    localFilePath: localPath,
+    completedAt: new Date(),
+    errorMessage: null,
+    failureKind: null,
+    ...(markContentResolved ? { contentReviewStatus: 'resolved' } : {}),
+  })
 
   await emitSongReady(input, songId)
 
@@ -439,6 +465,7 @@ export async function startSessionSongGeneration(
     .returning()
 
   const songId = songRecord.id
+  await emitSongPhase(input.sessionPlanId, 'pending')
 
   const inputWithUser = { ...input, _userId: userId }
   const taskId = await createTask<SessionSongInput, SessionSongOutput, SessionSongEvent>(
@@ -483,10 +510,9 @@ export async function startSessionSongGeneration(
         if (!studentSongEnabled) {
           // Student has songs disabled — complete silently
           handle.complete({ songId, status: 'disabled' })
-          await db
-            .update(schema.sessionSongs)
-            .set({ status: 'failed', errorMessage: 'Songs disabled for this student' })
-            .where(eq(schema.sessionSongs.id, songId))
+          await setSongStatus(songId, input.sessionPlanId, 'failed', {
+            errorMessage: 'Songs disabled for this student',
+          })
           return
         }
 
@@ -558,13 +584,9 @@ export async function startSessionSongGeneration(
         const promptInput = { ...stats, songConcept }
 
         // Update song record with prompt input
-        await db
-          .update(schema.sessionSongs)
-          .set({
-            promptInput: promptInput as unknown as Record<string, unknown>,
-            status: 'prompt_generating',
-          })
-          .where(eq(schema.sessionSongs.id, songId))
+        await setSongStatus(songId, input.sessionPlanId, 'prompt_generating', {
+          promptInput: promptInput as unknown as Record<string, unknown>,
+        })
 
         // Step 2: Generate LLM composition plan
         handle.emit({ type: 'song_generating_prompt' })
@@ -593,10 +615,7 @@ export async function startSessionSongGeneration(
         handle.emit({ type: 'song_generating_music' })
         handle.setProgress(60, 'Creating your music...')
 
-        await db
-          .update(schema.sessionSongs)
-          .set({ status: 'generating' })
-          .where(eq(schema.sessionSongs.id, songId))
+        await setSongStatus(songId, input.sessionPlanId, 'generating')
 
         const { audioBuffer, alignment } = await generateMusic({
           compositionPlan: llmOutput.plan,
@@ -619,27 +638,12 @@ export async function startSessionSongGeneration(
         await writeAlignmentSidecar(songId, alignment)
 
         // Step 5: Mark completed
-        await db
-          .update(schema.sessionSongs)
-          .set({
-            status: 'completed',
-            localFilePath: localPath,
-            completedAt: new Date(),
-          })
-          .where(eq(schema.sessionSongs.id, songId))
+        await setSongStatus(songId, input.sessionPlanId, 'completed', {
+          localFilePath: localPath,
+          completedAt: new Date(),
+        })
 
-        // Emit Socket.IO event for instant client notification
-        try {
-          const io = await getSocketIO()
-          if (io) {
-            io.emit(`session-song:ready:${input.sessionPlanId}`, {
-              songId,
-              planId: input.sessionPlanId,
-            })
-          }
-        } catch {
-          // Socket.IO not available — client will pick up via polling
-        }
+        await emitSongReady(input, songId)
 
         handle.complete({ songId, status: 'completed' })
       } catch (error) {
@@ -661,17 +665,13 @@ export async function startSessionSongGeneration(
         handle.emit({ type: 'song_error', error: message })
 
         // Update song record with error + classification
-        await db
-          .update(schema.sessionSongs)
-          .set({
-            status: 'failed',
-            errorMessage: message,
-            failureKind: classified.kind,
-            ...(blockedOutput && {
-              llmOutput: blockedOutput as unknown as Record<string, unknown>,
-            }),
-          })
-          .where(eq(schema.sessionSongs.id, songId))
+        await setSongStatus(songId, input.sessionPlanId, 'failed', {
+          errorMessage: message,
+          failureKind: classified.kind,
+          ...(blockedOutput && {
+            llmOutput: blockedOutput as unknown as Record<string, unknown>,
+          }),
+        })
 
         await notifyAdminsOfSongFailure({
           songId,
@@ -778,19 +778,15 @@ export async function retrySessionSongGeneration(
     _userId: options.userId,
   }
 
-  await db
-    .update(schema.sessionSongs)
-    .set({
-      status: 'pending',
-      errorMessage: null,
-      failureKind: null,
-      backgroundTaskId: null,
-      lastRegenerationReason: retryReason,
-      lastRegenerationAt: new Date(),
-      regenerationCount: sql`${schema.sessionSongs.regenerationCount} + 1`,
-      ...(mode === 'regenerate_prompt' ? { llmOutput: null } : {}),
-    })
-    .where(eq(schema.sessionSongs.id, songId))
+  await setSongStatus(songId, song.sessionPlanId, 'pending', {
+    errorMessage: null,
+    failureKind: null,
+    backgroundTaskId: null,
+    lastRegenerationReason: retryReason,
+    lastRegenerationAt: new Date(),
+    regenerationCount: sql`${schema.sessionSongs.regenerationCount} + 1`,
+    ...(mode === 'regenerate_prompt' ? { llmOutput: null } : {}),
+  })
 
   const taskId = await createTask<SessionSongInput, SessionSongOutput, SessionSongEvent>(
     'session-song',
@@ -822,14 +818,10 @@ export async function retrySessionSongGeneration(
 
         if (built.disabled) {
           handle.complete({ songId, status: 'disabled' })
-          await db
-            .update(schema.sessionSongs)
-            .set({
-              status: 'failed',
-              errorMessage: 'Songs disabled for this student',
-              failureKind: 'unknown',
-            })
-            .where(eq(schema.sessionSongs.id, songId))
+          await setSongStatus(songId, song.sessionPlanId, 'failed', {
+            errorMessage: 'Songs disabled for this student',
+            failureKind: 'unknown',
+          })
           return
         }
 
@@ -837,15 +829,11 @@ export async function retrySessionSongGeneration(
           throw new Error('Failed to build song prompt input')
         }
 
-        await db
-          .update(schema.sessionSongs)
-          .set({
-            promptInput: built.promptInput as unknown as Record<string, unknown>,
-            status: 'prompt_generating',
-            errorMessage: null,
-            failureKind: null,
-          })
-          .where(eq(schema.sessionSongs.id, songId))
+        await setSongStatus(songId, song.sessionPlanId, 'prompt_generating', {
+          promptInput: built.promptInput as unknown as Record<string, unknown>,
+          errorMessage: null,
+          failureKind: null,
+        })
 
         handle.emit({ type: 'song_generating_prompt' })
         handle.setProgress(30, 'Writing your song...')
@@ -885,17 +873,13 @@ export async function retrySessionSongGeneration(
 
         handle.emit({ type: 'song_error', error: message })
 
-        await db
-          .update(schema.sessionSongs)
-          .set({
-            status: 'failed',
-            errorMessage: message,
-            failureKind: classified.kind,
-            ...(blockedOutput && {
-              llmOutput: blockedOutput as unknown as Record<string, unknown>,
-            }),
-          })
-          .where(eq(schema.sessionSongs.id, songId))
+        await setSongStatus(songId, song.sessionPlanId, 'failed', {
+          errorMessage: message,
+          failureKind: classified.kind,
+          ...(blockedOutput && {
+            llmOutput: blockedOutput as unknown as Record<string, unknown>,
+          }),
+        })
 
         await notifyAdminsOfSongFailure({
           songId,

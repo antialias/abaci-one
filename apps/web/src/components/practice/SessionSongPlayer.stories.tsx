@@ -32,7 +32,13 @@ function PlayerShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function GeneratingState({ copy = 'Creating your song...' }: { copy?: string }) {
+function GeneratingState({
+  copy = 'Creating your song...',
+  reconnecting = false,
+}: {
+  copy?: string
+  reconnecting?: boolean
+}) {
   return (
     <PlayerShell>
       <div
@@ -63,9 +69,75 @@ function GeneratingState({ copy = 'Creating your song...' }: { copy?: string }) 
           })}
         >
           {copy}
+          {reconnecting && (
+            <span
+              className={css({
+                ml: 2,
+                fontSize: 'xs',
+                color: 'purple.500',
+                _dark: { color: 'purple.400' },
+                fontStyle: 'italic',
+              })}
+            >
+              · reconnecting…
+            </span>
+          )}
         </span>
       </div>
     </PlayerShell>
+  )
+}
+
+function ConnectionLostState({ ownerCopy = false }: { ownerCopy?: boolean }) {
+  return (
+    <div
+      data-element="connection-lost"
+      className={css({
+        mx: 'auto',
+        maxW: '480px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'start',
+        gap: 2,
+        p: 4,
+        borderRadius: 'xl',
+        bg: 'amber.50',
+        border: '1px solid',
+        borderColor: 'amber.200',
+        _dark: { bg: 'amber.900/30', borderColor: 'amber.700' },
+      })}
+    >
+      <span
+        className={css({
+          fontSize: 'sm',
+          color: 'amber.800',
+          _dark: { color: 'amber.100' },
+          fontWeight: 'medium',
+        })}
+      >
+        {ownerCopy
+          ? 'Lost the realtime connection to the server. The song is still generating in the background — reconnect to resume live updates.'
+          : "Lost the live updates — your song is still cooking, but we won't see it the moment it's done."}
+      </span>
+      <button
+        type="button"
+        data-action="reconnect-session-song"
+        onClick={() => {}}
+        className={css({
+          fontSize: 'xs',
+          fontWeight: 'bold',
+          color: 'amber.900',
+          _dark: { color: 'amber.100' },
+          textDecoration: 'underline',
+          cursor: 'pointer',
+          border: 'none',
+          bg: 'transparent',
+          p: 0,
+        })}
+      >
+        Reconnect
+      </button>
+    </div>
   )
 }
 
@@ -290,9 +362,22 @@ export const GeneratingLongRunning: Story = {
 
 /** Generation has been running longer than ~3min — invite the user to come back. */
 export const GeneratingVeryLongRunning: Story = {
-  render: () => (
-    <GeneratingState copy="You can come back later — we'll have it ready for you" />
-  ),
+  render: () => <GeneratingState copy="You can come back later — we'll have it ready for you" />,
+}
+
+/** Socket disconnected briefly; same shimmer with a subtle hint. */
+export const GeneratingReconnecting: Story = {
+  render: () => <GeneratingState copy="Writing your celebration song 🎵" reconnecting />,
+}
+
+/** Socket has been lost long enough to surface to the user — kid-facing copy. */
+export const GeneratingConnectionLost: Story = {
+  render: () => <ConnectionLostState />,
+}
+
+/** Same as above but with the account-owner / admin copy. */
+export const GeneratingConnectionLostOwner: Story = {
+  render: () => <ConnectionLostState ownerCopy />,
 }
 
 /**

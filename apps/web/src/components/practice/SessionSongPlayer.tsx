@@ -44,10 +44,7 @@ const VERY_LONG_GENERATION_MS = 180_000
 const LONG_GENERATION_COPY = "Still cooking — this one's taking a little longer, hang tight!"
 const VERY_LONG_GENERATION_COPY = "You can come back later — we'll have it ready for you"
 
-function getReassuranceCopy(
-  status: string | undefined,
-  elapsedMs: number | null
-): string {
+function getReassuranceCopy(status: string | undefined, elapsedMs: number | null): string {
   if (elapsedMs != null && elapsedMs >= VERY_LONG_GENERATION_MS) {
     return VERY_LONG_GENERATION_COPY
   }
@@ -57,12 +54,26 @@ function getReassuranceCopy(
   return getGeneratingCopy(status)
 }
 
+const CONNECTION_LOST_COPY =
+  "Lost the live updates — your song is still cooking, but we won't see it the moment it's done."
+const CONNECTION_LOST_OWNER_COPY =
+  'Lost the realtime connection to the server. The song is still generating in the background — reconnect to resume live updates.'
+
 export function SessionSongPlayer({
   playerId,
   planId,
   triggerFallback = false,
 }: SessionSongPlayerProps) {
-  const { song, isGenerating, isReady, failureKind, errorDetail, viewerIsOwner } = useSessionSong({
+  const {
+    song,
+    isGenerating,
+    isReady,
+    failureKind,
+    errorDetail,
+    viewerIsOwner,
+    connectionState,
+    reconnect,
+  } = useSessionSong({
     playerId,
     planId,
     enabled: true,
@@ -110,7 +121,7 @@ export function SessionSongPlayer({
         mb: 4,
       })}
     >
-      {isGenerating && !isReady && (
+      {isGenerating && !isReady && connectionState !== 'lost' && (
         <div
           className={css({
             display: 'flex',
@@ -142,7 +153,67 @@ export function SessionSongPlayer({
             })}
           >
             {getReassuranceCopy(song?.status, elapsedMs)}
+            {connectionState === 'reconnecting' && (
+              <span
+                className={css({
+                  ml: 2,
+                  fontSize: 'xs',
+                  color: 'purple.500',
+                  _dark: { color: 'purple.400' },
+                  fontStyle: 'italic',
+                })}
+              >
+                · reconnecting…
+              </span>
+            )}
           </span>
+        </div>
+      )}
+
+      {isGenerating && !isReady && connectionState === 'lost' && (
+        <div
+          data-element="connection-lost"
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'start',
+            gap: 2,
+            p: 4,
+            borderRadius: 'xl',
+            bg: 'amber.50',
+            border: '1px solid',
+            borderColor: 'amber.200',
+            _dark: { bg: 'amber.900/30', borderColor: 'amber.700' },
+          })}
+        >
+          <span
+            className={css({
+              fontSize: 'sm',
+              color: 'amber.800',
+              _dark: { color: 'amber.100' },
+              fontWeight: 'medium',
+            })}
+          >
+            {viewerIsOwner ? CONNECTION_LOST_OWNER_COPY : CONNECTION_LOST_COPY}
+          </span>
+          <button
+            type="button"
+            data-action="reconnect-session-song"
+            onClick={reconnect}
+            className={css({
+              fontSize: 'xs',
+              fontWeight: 'bold',
+              color: 'amber.900',
+              _dark: { color: 'amber.100' },
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              border: 'none',
+              bg: 'transparent',
+              p: 0,
+            })}
+          >
+            Reconnect
+          </button>
         </div>
       )}
 
