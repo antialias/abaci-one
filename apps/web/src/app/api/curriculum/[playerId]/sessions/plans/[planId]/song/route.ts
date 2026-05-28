@@ -78,27 +78,16 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
   const { playerId, planId } = (await params) as { playerId: string; planId: string }
 
   try {
-    const rows = await db
-      .select({
-        song: schema.sessionSongs,
-        taskStatus: schema.backgroundTasks.status,
-        taskLastHeartbeat: schema.backgroundTasks.lastHeartbeat,
-      })
+    const [song] = await db
+      .select()
       .from(schema.sessionSongs)
-      .leftJoin(
-        schema.backgroundTasks,
-        eq(schema.sessionSongs.backgroundTaskId, schema.backgroundTasks.id)
-      )
       .where(eq(schema.sessionSongs.sessionPlanId, planId))
       .orderBy(desc(schema.sessionSongs.createdAt))
       .limit(1)
 
-    const row = rows[0]
-    if (!row) {
-      return NextResponse.json({ song: null, serverNow: Date.now() })
+    if (!song) {
+      return NextResponse.json({ song: null })
     }
-
-    const { song, taskStatus, taskLastHeartbeat } = row
 
     // Owner = the user who owns the player profile. Admins see owner-level
     // detail for any player. Used to gate raw error details and remediation.
@@ -140,19 +129,10 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
         // Raw error string is owner/admin-only — leak nothing to other viewers.
         errorDetail: song.status === 'failed' && isOwnerOrAdmin ? song.errorMessage : null,
         viewerIsOwner: isOwnerOrAdmin,
-        // Worker liveness seed (#153). Null for songs without a background task
-        // row (legacy / synthetic). Client compares against serverNow to compute
-        // a skew-corrected freshness value, then maintains it via socket events.
-        lastHeartbeatAt:
-          taskLastHeartbeat instanceof Date
-            ? taskLastHeartbeat.getTime()
-            : (taskLastHeartbeat ?? null),
-        taskStatus: taskStatus ?? null,
         createdAt: song.createdAt instanceof Date ? song.createdAt.getTime() : song.createdAt,
         completedAt:
           song.completedAt instanceof Date ? song.completedAt.getTime() : song.completedAt,
       },
-      serverNow: Date.now(),
     })
   } catch (error) {
     console.error('Error fetching session song:', error)

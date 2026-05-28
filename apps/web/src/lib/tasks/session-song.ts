@@ -24,7 +24,6 @@ import type {
 import { AiFeature } from '@/lib/ai-usage/features'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
 import { getFlag } from '@/lib/feature-flags'
-import { createRedisClient, getRedisClient } from '@/lib/redis'
 import { getSocketIO } from '@/lib/socket-io'
 import {
   type CompositionPlan,
@@ -41,13 +40,7 @@ import {
 import { resolveSongGenres, selectSongConcept } from '../session-song/concept-selector'
 import { extractSessionStats, type SongPromptInput } from '../session-song/extract-session-stats'
 import { generateSongPrompt, type SongCompositionOutput } from '../session-song/prompt-generator'
-import {
-  createTask,
-  registerHeartbeatHandler,
-  registerTaskEndHandler,
-  type TaskHandle,
-  type TaskType,
-} from '../task-manager'
+import { createTask, type TaskHandle } from '../task-manager'
 import type { SessionSongEvent } from './events'
 
 // ============================================================================
@@ -299,158 +292,6 @@ async function emitSongPhase(planId: string, status: SessionSongStatus) {
     }
   } catch {
     // Socket.IO not available — best effort
-  }
-}
-
-// ============================================================================
-// Worker liveness fan-out (#153)
-//
-// The task-manager's centralized heartbeat tick (every 10s while the task
-// runs) writes `background_tasks.last_heartbeat`. We piggy-back on it to
-// emit `session-song:alive:<planId>` so the client can derive a freshness
-// signal without polling.
-//
-// `planIdByTaskId` is a per-pod in-memory cache so steady-state emission
-// does zero extra DB work. On a pod restart mid-task the cache is cold;
-// the handler falls back to a single DB lookup, then warms the cache.
-// ============================================================================
-
-const planIdByTaskId = new Map<string, string>()
-
-/**
- * Cache the taskId → planId mapping at task-creation time. Avoids a DB
- * read on every heartbeat tick.
- */
-export function rememberSessionSongPlan(taskId: string, planId: string): void {
-  planIdByTaskId.set(taskId, planId)
-}
-
-// ============================================================================
-// Suppress-alive testing tool (#153 follow-up)
-//
-// Admins can request "simulate stale UI for task X for N seconds" via the
-// admin songs page. Cross-pod via Redis pub/sub (the task runs on one pod
-// but the admin may hit another). Each pod that receives the broadcast adds
-// the taskId to a local Set and schedules its own expiry; emissions are
-// gated against this Set in `emitSessionSongAlive`.
-//
-// DB heartbeat is untouched — the zombie reaper still sees the worker as
-// alive. Only the socket fan-out to the client is suppressed.
-// ============================================================================
-
-const SUPPRESS_ALIVE_DURATION_MS = 60_000
-const SUPPRESS_ALIVE_CHANNEL_PREFIX = 'session-song:suppress-alive:'
-
-const suppressAliveTasks = new Set<string>()
-const suppressAliveTimers = new Map<string, ReturnType<typeof setTimeout>>()
-
-/**
- * Mark a task as "do not emit alive events" for SUPPRESS_ALIVE_DURATION_MS.
- * Idempotent — re-calling resets the timer to a fresh 60s.
- *
- * Pod-local: callers wanting cross-pod effect should publish to the Redis
- * channel `session-song:suppress-alive:<taskId>` instead, which fans out
- * to every pod's subscriber (set up in `setupSessionSongLiveness`).
- */
-export function startSuppressAliveLocal(taskId: string): void {
-  suppressAliveTasks.add(taskId)
-  const existing = suppressAliveTimers.get(taskId)
-  if (existing) clearTimeout(existing)
-  const timer = setTimeout(() => {
-    suppressAliveTasks.delete(taskId)
-    suppressAliveTimers.delete(taskId)
-  }, SUPPRESS_ALIVE_DURATION_MS)
-  suppressAliveTimers.set(taskId, timer)
-}
-
-/** Test-only — clears the suppress set immediately. */
-export function _clearSuppressAliveForTests(): void {
-  suppressAliveTasks.clear()
-  for (const t of suppressAliveTimers.values()) clearTimeout(t)
-  suppressAliveTimers.clear()
-}
-
-async function emitSessionSongAlive(taskId: string): Promise<void> {
-  if (suppressAliveTasks.has(taskId)) return
-  let planId = planIdByTaskId.get(taskId)
-  if (!planId) {
-    const rows = await db
-      .select({ planId: schema.sessionSongs.sessionPlanId })
-      .from(schema.sessionSongs)
-      .where(eq(schema.sessionSongs.backgroundTaskId, taskId))
-      .limit(1)
-    const row = rows[0]
-    if (!row) return
-    planId = row.planId
-    planIdByTaskId.set(taskId, planId)
-  }
-  try {
-    const io = await getSocketIO()
-    if (io) {
-      io.emit(`session-song:alive:${planId}`, { ts: Date.now() })
-    }
-  } catch {
-    // Socket.IO not available — best effort
-  }
-}
-
-let livenessRegistered = false
-let suppressAliveSubscriber: ReturnType<typeof createRedisClient> = null
-
-/**
- * Register session-song's heartbeat fan-out and cache cleanup with the
- * task-manager. Call once at server boot (from socket-server.ts).
- */
-export function setupSessionSongLiveness(): void {
-  if (livenessRegistered) return
-  livenessRegistered = true
-
-  registerHeartbeatHandler(async (taskId: string, type: TaskType) => {
-    if (type !== 'session-song') return
-    await emitSessionSongAlive(taskId)
-  })
-
-  registerTaskEndHandler((taskId: string, type: TaskType) => {
-    if (type !== 'session-song') return
-    planIdByTaskId.delete(taskId)
-  })
-
-  // Cross-pod suppress-alive subscriber (mirrors the cancellation pattern
-  // in task-manager.ts). Separate Redis client so it doesn't share the
-  // pmessage handler with other subsystems.
-  const sub = createRedisClient()
-  if (!sub) {
-    console.log('[SessionSong] Redis unavailable, suppress-alive is pod-local only')
-    return
-  }
-  suppressAliveSubscriber = sub
-  sub.psubscribe(`${SUPPRESS_ALIVE_CHANNEL_PREFIX}*`).catch((err) => {
-    console.error('[SessionSong] Failed to subscribe to suppress-alive channel:', err)
-  })
-  sub.on('pmessage', (_pattern, channel, _message) => {
-    if (!channel.startsWith(SUPPRESS_ALIVE_CHANNEL_PREFIX)) return
-    const taskId = channel.slice(SUPPRESS_ALIVE_CHANNEL_PREFIX.length)
-    if (!taskId) return
-    startSuppressAliveLocal(taskId)
-    console.log(`[SessionSong] Received suppress-alive for ${taskId} via Redis`)
-  })
-}
-
-/**
- * Publish a cross-pod suppress-alive request. Returns whether the publish
- * actually reached Redis (false if Redis is unavailable in this env — in
- * that case the caller should also invoke `startSuppressAliveLocal` so the
- * current pod still honors the request).
- */
-export async function publishSuppressAlive(taskId: string): Promise<boolean> {
-  const redis = getRedisClient()
-  if (!redis) return false
-  try {
-    await redis.publish(`${SUPPRESS_ALIVE_CHANNEL_PREFIX}${taskId}`, '1')
-    return true
-  } catch (err) {
-    console.error('[SessionSong] Failed to publish suppress-alive to Redis:', err)
-    return false
   }
 }
 
@@ -851,9 +692,6 @@ export async function startSessionSongGeneration(
     .set({ backgroundTaskId: taskId })
     .where(eq(schema.sessionSongs.id, songId))
 
-  // Seed the liveness cache so the first heartbeat tick can emit without a DB read.
-  rememberSessionSongPlan(taskId, input.sessionPlanId)
-
   return { taskId, songId }
 }
 
@@ -1060,8 +898,6 @@ export async function retrySessionSongGeneration(
     .update(schema.sessionSongs)
     .set({ backgroundTaskId: taskId })
     .where(eq(schema.sessionSongs.id, songId))
-
-  rememberSessionSongPlan(taskId, song.sessionPlanId)
 
   return { taskId, songId, mode }
 }

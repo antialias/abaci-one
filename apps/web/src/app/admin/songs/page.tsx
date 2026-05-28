@@ -221,23 +221,6 @@ export default function AdminSongsPage() {
     [fetchSongs, postSongAction]
   )
 
-  // QA tool — suspends `session-song:alive:` socket emissions for this task
-  // for 60s so we can watch the user-facing player flip to the stale UI without
-  // killing the worker pod. DB heartbeat is untouched; the task runs to completion.
-  const handleSimulateStale = useCallback(
-    async (songId: string) => {
-      setBusySongId(songId)
-      try {
-        await postSongAction({ songId, action: 'suppress_alive' })
-      } catch (err) {
-        alert(err instanceof Error ? err.message : 'Simulate stale failed')
-      } finally {
-        setBusySongId(null)
-      }
-    },
-    [postSongAction]
-  )
-
   const filtered = songs.filter((song) => {
     if (statusFilter && song.status !== statusFilter) return false
     if (!validationFilter) return true
@@ -394,7 +377,6 @@ export default function AdminSongsPage() {
               song={selectedSong}
               onRetry={handleRetry}
               onSpawn={handleSpawn}
-              onSimulateStale={handleSimulateStale}
               onFlagContent={handleFlagContent}
               onClearContentFlag={handleClearContentFlag}
               busy={busySongId === selectedSong.id}
@@ -655,7 +637,6 @@ function SongDetail({
   song,
   onRetry,
   onSpawn,
-  onSimulateStale,
   onFlagContent,
   onClearContentFlag,
   busy,
@@ -663,16 +644,10 @@ function SongDetail({
   song: Song
   onRetry: (songId: string, mode?: RegenerationMode, reason?: string) => void
   onSpawn: (songId: string) => void
-  onSimulateStale: (songId: string) => void
   onFlagContent: (songId: string, reason: string) => void
   onClearContentFlag: (songId: string) => void
   busy: boolean
 }) {
-  const isActive =
-    song.status === 'pending' ||
-    song.status === 'prompt_generating' ||
-    song.status === 'generating'
-  const canSimulateStale = isActive && !!song.backgroundTaskId
   const [contentReason, setContentReason] = useState('')
 
   useEffect(() => {
@@ -720,16 +695,6 @@ function SongDetail({
           >
             {busy ? 'Queueing...' : 'Spawn copy'}
           </ActionButton>
-          {canSimulateStale && (
-            <ActionButton
-              dataAction="simulate-stale"
-              tone="secondary"
-              disabled={busy}
-              onClick={() => onSimulateStale(song.id)}
-            >
-              {busy ? 'Working...' : 'Simulate stale (60s)'}
-            </ActionButton>
-          )}
           {song.status === 'failed' && (
             <>
               <ActionButton

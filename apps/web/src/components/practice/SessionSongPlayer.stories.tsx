@@ -88,51 +88,6 @@ function GeneratingState({
   )
 }
 
-function WorkerStaleState({ ownerCopy = false }: { ownerCopy?: boolean }) {
-  return (
-    <div
-      data-element="worker-stale"
-      className={css({
-        mx: 'auto',
-        maxW: '480px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 3,
-        p: 4,
-        borderRadius: 'xl',
-        bg: 'amber.50',
-        border: '1px solid',
-        borderColor: 'amber.200',
-        _dark: { bg: 'amber.900/30', borderColor: 'amber.700' },
-      })}
-    >
-      <div
-        className={css({
-          w: 8,
-          h: 8,
-          borderRadius: 'full',
-          bg: 'amber.300',
-          _dark: { bg: 'amber.600' },
-          animation: 'pulse 2s ease-in-out infinite',
-          flexShrink: 0,
-        })}
-      />
-      <span
-        className={css({
-          fontSize: 'sm',
-          color: 'amber.800',
-          _dark: { color: 'amber.100' },
-          fontWeight: 'medium',
-        })}
-      >
-        {ownerCopy
-          ? "Worker heartbeat is stale — the task may have stalled. We'll know more in a minute."
-          : 'Checking on your song...'}
-      </span>
-    </div>
-  )
-}
-
 function ConnectionLostState({ ownerCopy = false }: { ownerCopy?: boolean }) {
   return (
     <div
@@ -413,19 +368,6 @@ export const GeneratingVeryLongRunning: Story = {
 /** Socket disconnected briefly; same shimmer with a subtle hint. */
 export const GeneratingReconnecting: Story = {
   render: () => <GeneratingState copy="Writing your celebration song 🎵" reconnecting />,
-}
-
-/**
- * Worker heartbeat has gone stale (>30s since last alive event) while the
- * socket is still connected — distinct from a socket disconnect. Kid-facing copy.
- */
-export const GeneratingStale: Story = {
-  render: () => <WorkerStaleState />,
-}
-
-/** Same as above but with the account-owner / admin copy. */
-export const GeneratingStaleOwner: Story = {
-  render: () => <WorkerStaleState ownerCopy />,
 }
 
 /** Socket has been lost long enough to surface to the user — kid-facing copy. */

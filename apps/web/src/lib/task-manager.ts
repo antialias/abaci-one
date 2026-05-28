@@ -115,68 +115,8 @@ function clearTaskTimeout(taskId: string): void {
 /** Active heartbeat timers, keyed by task ID */
 const activeHeartbeats = new Map<string, ReturnType<typeof setInterval>>()
 
-/**
- * Listener registries for per-tick fan-out and task-end cleanup.
- *
- * These are intentionally separate from `TaskLifecycleHooks` (which is a
- * single-slot registration replaced wholesale by `registerTaskHooks`).
- * Multiple subsystems can register handlers without stepping on each other.
- */
-type TaskEventHandler = (taskId: string, type: TaskType) => void | Promise<void>
-const heartbeatHandlers = new Set<TaskEventHandler>()
-const taskEndHandlers = new Set<TaskEventHandler>()
-
-/**
- * Register a handler called on every heartbeat tick for every running task.
- * Handler receives taskId + type; filter inside the handler if you only care
- * about specific task types.
- *
- * Returns an unsubscribe function.
- */
-export function registerHeartbeatHandler(fn: TaskEventHandler): () => void {
-  heartbeatHandlers.add(fn)
-  return () => {
-    heartbeatHandlers.delete(fn)
-  }
-}
-
-/**
- * Register a handler called when a task's heartbeat is stopped (i.e., the
- * task finished — completed, failed, or cancelled — and the manager is
- * tearing down its per-task in-memory state). Use for releasing in-memory
- * caches keyed by taskId.
- *
- * Returns an unsubscribe function.
- */
-export function registerTaskEndHandler(fn: TaskEventHandler): () => void {
-  taskEndHandlers.add(fn)
-  return () => {
-    taskEndHandlers.delete(fn)
-  }
-}
-
-async function fireHeartbeatHandlers(taskId: string, type: TaskType): Promise<void> {
-  for (const fn of heartbeatHandlers) {
-    try {
-      await fn(taskId, type)
-    } catch (err) {
-      console.error(`[TaskManager] Heartbeat handler error for ${taskId}:`, err)
-    }
-  }
-}
-
-async function fireTaskEndHandlers(taskId: string, type: TaskType): Promise<void> {
-  for (const fn of taskEndHandlers) {
-    try {
-      await fn(taskId, type)
-    } catch (err) {
-      console.error(`[TaskManager] Task-end handler error for ${taskId}:`, err)
-    }
-  }
-}
-
 /** Start heartbeat timer for a task */
-function startHeartbeat(taskId: string, type: TaskType): void {
+function startHeartbeat(taskId: string): void {
   // Don't start duplicate heartbeats
   if (activeHeartbeats.has(taskId)) return
 
@@ -189,7 +129,6 @@ function startHeartbeat(taskId: string, type: TaskType): void {
     } catch (err) {
       console.error(`[TaskManager] Heartbeat failed for ${taskId}:`, err)
     }
-    await fireHeartbeatHandlers(taskId, type)
   }, HEARTBEAT_INTERVAL_MS)
 
   activeHeartbeats.set(taskId, timer)
@@ -673,7 +612,7 @@ export async function createTask<TInput, TOutput, TEvent extends TaskEventBase =
     await emitTaskEvent(id, 'started', {})
 
     // Start heartbeat timer
-    startHeartbeat(id, type)
+    startHeartbeat(id)
 
     // Start timeout timer
     const timeoutMs = getTaskTimeout(type)
@@ -706,7 +645,6 @@ export async function createTask<TInput, TOutput, TEvent extends TaskEventBase =
       stopHeartbeat(id)
       cancelledTasks.delete(id)
       lastProgressDbWrite.delete(id)
-      await fireTaskEndHandlers(id, type)
     }
   })
 
