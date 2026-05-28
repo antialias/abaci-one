@@ -185,6 +185,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages/templates ./packages/tem
 # Copy abacus-react package (needed for calendar generation scripts)
 COPY --from=builder --chown=nextjs:nodejs /app/packages/abacus-react ./packages/abacus-react
 
+# Copy llm-client package (required at runtime by the tsc-compiled socket-server
+# dist/ tree — Next.js bundles it for app routes, but socket-server.js resolves
+# it via the @soroban/llm-client symlink in apps/web/node_modules, which needs
+# this directory to exist or session-song liveness setup fails at boot).
+COPY --from=builder --chown=nextjs:nodejs /app/packages/llm-client ./packages/llm-client
+
 # Copy ML training scripts (for vision model training)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/scripts/train-column-classifier ./apps/web/scripts/train-column-classifier
 
