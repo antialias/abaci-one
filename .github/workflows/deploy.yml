@@ -19,6 +19,19 @@ jobs:
       packages: write
 
     steps:
+      - name: Free up runner disk space
+        run: |
+          echo "Disk before cleanup:"; df -h /
+          # ubuntu-latest ships ~25 GB of preinstalled toolchains this build never uses
+          # (Android SDK, .NET, GHC, boost). The monorepo Docker build + buildcache export
+          # otherwise fills the ~14 GB free root partition and dies with
+          # "No space left on device". Done inline (no third-party action) since this job
+          # holds GITEA_NPM_TOKEN + packages:write.
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune -af || true
+          echo "Disk after cleanup:"; df -h /
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -60,7 +73,9 @@ jobs:
             GIT_DIRTY=false
             BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          # mode=min caches only final-image layers (not every intermediate stage),
+          # keeping the buildcache blob small so cache-from/cache-to don't fill the runner.
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=min
           # Build secret consumed by `RUN --mount=type=secret,id=gitea_npm_token`
           # in the Dockerfile to authenticate pnpm against the Gitea npm registry
           # for @tidepool/* packages. Never lands in an image layer.
