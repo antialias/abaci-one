@@ -135,6 +135,20 @@ resource "helm_release" "kube_prometheus_stack" {
       }
       templateFiles = {}
     }
+    # Suppress the two stock node-exporter alerts that fire on every Woodpecker CI
+    # build burst: builds run on this node's HOST dockerd and saturate all 4 vCPUs
+    # in short, self-terminating bursts invisible to k8s cAdvisor (15d history: 122
+    # distinct load/core>2 bursts, longest continuous ~20-40 min; a wedged node
+    # stays pegged indefinitely). Tuned, build-burst-tolerant replacements are
+    # applied by null_resource.node_saturation_tuned_rule below. Per-alert disable
+    # is honored by chart 58.0.0, so this removes ONLY these two alerts and leaves
+    # every other node-exporter rule intact.
+    defaultRules = {
+      disabled = {
+        NodeSystemSaturation = true
+        NodeCPUHighUsage     = true
+      }
+    }
     # Disable components not needed for single-app monitoring
     kubeStateMetrics = {
       enabled = true
@@ -479,6 +493,79 @@ resource "null_resource" "app_service_monitor" {
   triggers = {
     namespace     = kubernetes_namespace.monitoring.metadata[0].name
     app_namespace = var.namespace
+  }
+}
+
+# =============================================================================
+# Tuned node-saturation alerts (build-burst tolerant)
+# =============================================================================
+# Replaces the two stock node-exporter alerts disabled via defaultRules.disabled
+# above. They fired on nearly every Woodpecker CI build (builds run on this node's
+# HOST dockerd and saturate all 4 vCPUs in short self-terminating bursts invisible
+# to k8s cAdvisor). Tuned thresholds (load/core > 3 for 2h; CPU > 95% for 1h) ride
+# out transient build bursts while still firing on a genuinely wedged/runaway node;
+# fast availability alerts (KubeNodeNotReady/KubeletDown @15m, TargetDown @10m)
+# remain the hard-failure net. Applied out-of-band via kubectl-apply (same idiom as
+# null_resource.app_service_monitor + the hand-applied disk-pressure-early-warning /
+# dns-probe-alerts CRs). kubernetes_manifest is intentionally avoided: it validates
+# against the operator CRDs at plan time, before they exist.
+resource "null_resource" "node_saturation_tuned_rule" {
+  depends_on = [helm_release.kube_prometheus_stack]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
+
+      # Wait for CRDs to be available
+      kubectl wait --for=condition=Established crd/prometheusrules.monitoring.coreos.com --timeout=120s
+
+      # Apply tuned PrometheusRule (replaces the two stock alerts disabled above).
+      # Inner heredoc is QUOTED (<<'EOF') so the shell does not expand the Prometheus
+      # template vars ($value / $labels) in the rule annotations.
+      cat <<'EOF' | kubectl apply -f -
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: node-saturation-tuned
+        namespace: monitoring
+        labels:
+          app: kube-prometheus-stack
+          release: kube-prometheus-stack
+      spec:
+        groups:
+          - name: node-saturation-tuned
+            rules:
+              - alert: NodeSystemSaturation
+                annotations:
+                  description: |
+                    System load per core at {{ $labels.instance }} has been above 3 for the last 2 hours, is currently at {{ printf "%.2f" $value }}.
+                    This indicates sustained CPU saturation beyond a normal CI build burst (which clears within ~45 min) and can cause this instance becoming unresponsive.
+                  runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodesystemsaturation
+                  summary: System saturated, load per core is very high (sustained).
+                expr: |-
+                  node_load1{job="node-exporter"}
+                  / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter", mode="idle"}) > 3
+                for: 2h
+                labels:
+                  severity: warning
+              - alert: NodeCPUHighUsage
+                annotations:
+                  description: |
+                    CPU usage at {{ $labels.instance }} has been above 95% for the last 1 hour, is currently at {{ printf "%.2f" $value }}%.
+                    Sustained at this level for an hour indicates a wedged/runaway node rather than a transient CI build burst.
+                  runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodecpuhighusage
+                  summary: High CPU usage (sustained).
+                expr: sum without(mode) (avg without (cpu) (rate(node_cpu_seconds_total{job="node-exporter", mode!="idle"}[2m]))) * 100 > 95
+                for: 1h
+                labels:
+                  severity: info
+      EOF
+    EOT
+  }
+
+  triggers = {
+    # Bump to force re-apply when the rule body changes.
+    rule_version = "2026-06-11-load3-2h-cpu95-1h"
   }
 }
 
