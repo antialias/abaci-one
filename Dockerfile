@@ -1,20 +1,15 @@
 # Multi-stage build for Soroban Abacus Flashcards
 FROM node:20-alpine AS base
 
-# Install Python, build tools for native dependencies, and canvas dependencies
-# canvas is an optional dep of jsdom (used by vitest) and requires cairo/pango
+# Install Python + build tools for the only native addon compiled here:
+# better-sqlite3 (node-gyp). No cairo/pango/etc: node-canvas is aliased to
+# canvas-mock (package.json) and listed in neverBuiltDependencies (.npmrc), so
+# it never compiles; @napi-rs/canvas and sharp ship prebuilt binaries.
 RUN apk add --no-cache \
     python3 \
     py3-setuptools \
     make \
-    g++ \
-    pkgconfig \
-    cairo-dev \
-    pango-dev \
-    libjpeg-turbo-dev \
-    giflib-dev \
-    librsvg-dev \
-    pixman-dev
+    g++
 
 # Install pnpm and turbo
 RUN npm install -g pnpm@9.15.4 turbo@1.10.0
