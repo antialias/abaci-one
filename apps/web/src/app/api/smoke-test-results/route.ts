@@ -51,6 +51,21 @@ interface SmokeTestResultsResponse {
 
 export const POST = withAuth(async (request): Promise<NextResponse<SmokeTestResultsResponse>> => {
   try {
+    // Internal-only: this endpoint is reported to by the in-cluster smoke
+    // CronJob over the service network (no auth), but it is ALSO reachable via
+    // the public ingress. Requests that traversed Traefik carry X-Forwarded-*
+    // headers; a direct pod->service call does not. Reject the former so the
+    // guest-POST policy can't be used to inject fake smoke results from outside.
+    if (
+      request.headers.get('x-forwarded-for') !== null ||
+      request.headers.get('x-forwarded-host') !== null
+    ) {
+      return NextResponse.json(
+        { success: false, id: '', message: 'Not found' },
+        { status: 404 }
+      )
+    }
+
     const body = (await request.json()) as SmokeTestResultsRequest
 
     // Validate required fields
