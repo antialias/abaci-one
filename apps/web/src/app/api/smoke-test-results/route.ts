@@ -53,13 +53,29 @@ export const POST = withAuth(async (request): Promise<NextResponse<SmokeTestResu
   try {
     // Internal-only: this endpoint is reported to by the in-cluster smoke
     // CronJob over the service network (no auth), but it is ALSO reachable via
-    // the public ingress. Requests that traversed Traefik carry X-Forwarded-*
-    // headers; a direct pod->service call does not. Reject the former so the
-    // guest-POST policy can't be used to inject fake smoke results from outside.
-    if (
-      request.headers.get('x-forwarded-for') !== null ||
-      request.headers.get('x-forwarded-host') !== null
-    ) {
+    // the public ingress. We can't key on header *presence* — Next.js always
+    // populates x-forwarded-host/-for (from the upstream proxy when present,
+    // else from the request's own Host/socket), so those headers exist even on
+    // a direct pod->service call. Discriminate by VALUE instead: the smoke
+    // CronJob hits abaci-app.abaci.svc.cluster.local, so a legitimate internal
+    // request's host is the cluster service FQDN; anything that arrived via the
+    // public ingress carries the public host (abaci.one). Default-deny: allow
+    // only the in-cluster host so the guest-POST policy can't be used to inject
+    // fake results from the internet.
+    const requestHost = (
+      request.headers.get('x-forwarded-host') ??
+      request.headers.get('host') ??
+      ''
+    ).toLowerCase()
+    const isInternal =
+      requestHost.endsWith('.svc.cluster.local') ||
+      requestHost === 'localhost' ||
+      requestHost.startsWith('localhost:') ||
+      requestHost.startsWith('127.0.0.1')
+    if (!isInternal) {
+      console.warn(
+        `[smoke-test-results] rejecting non-internal POST (host=${requestHost || 'none'})`
+      )
       return NextResponse.json(
         { success: false, id: '', message: 'Not found' },
         { status: 404 }
