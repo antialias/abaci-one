@@ -12,9 +12,9 @@
  */
 
 import { test as setup } from '@playwright/test'
+import { hkdfSync } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { hkdf } from '@panva/hkdf'
 import { EncryptJWT } from 'jose'
 
 const STORAGE_STATE_PATH = resolve(__dirname, '.auth/admin.json')
@@ -57,7 +57,10 @@ function getLocalAuthSecret(): string {
  */
 async function mintAdminJWT(secret: string, cookieName: string, userId: string): Promise<string> {
   const info = `Auth.js Generated Encryption Key (${cookieName})`
-  const key = await hkdf('sha256', secret, cookieName, info, 64)
+  // Node's built-in HKDF (RFC 5869) — drop-in for @panva/hkdf with the same
+  // arg order and output bytes. Avoids importing @panva/hkdf, which is only a
+  // transitive (phantom) dep here and won't resolve under strict pnpm.
+  const key = hkdfSync('sha256', secret, cookieName, info, 64)
 
   const now = Math.floor(Date.now() / 1000)
   const payload = {

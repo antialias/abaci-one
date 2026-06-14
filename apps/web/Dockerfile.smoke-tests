@@ -23,6 +23,13 @@ RUN pnpm install --frozen-lockfile --filter @soroban/web --prod=false
 COPY apps/web/playwright.config.ts ./
 COPY apps/web/e2e/smoke ./e2e/smoke/
 
+# Copy the auth/tier setup projects. playwright.config gates every smoke test
+# through auth-setup -> tier-setup (they forge the admin JWT and write
+# e2e/.auth/admin.json). Without these the dependency projects match zero files
+# and every test ENOENTs on the missing storageState.
+COPY apps/web/e2e/auth.setup.ts apps/web/e2e/tier.setup.ts ./e2e/
+RUN mkdir -p e2e/.auth
+
 # Copy the smoke test runner script
 COPY apps/web/scripts/smoke-test-runner.ts ./scripts/
 
