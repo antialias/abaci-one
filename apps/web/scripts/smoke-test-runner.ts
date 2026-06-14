@@ -9,6 +9,10 @@
  * - BASE_URL: The base URL to test against (default: http://localhost:3000)
  * - RESULTS_API_URL: The URL to POST results to (default: http://localhost:3000/api/smoke-test-results)
  * - REPORT_DIR: Directory to save HTML reports (optional, e.g., /artifacts/smoke-reports)
+ * - PUSHGATEWAY_URL: Prometheus Pushgateway base URL (optional, e.g.
+ *     http://pushgateway.monitoring.svc.cluster.local:9091). When set, the run's
+ *     result metrics are pushed as a single series (job="smoke-tests"); when
+ *     unset (local dev) the push is skipped.
  *
  * Usage:
  *   npx tsx scripts/smoke-test-runner.ts
@@ -31,6 +35,7 @@ import { join } from 'path'
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 const RESULTS_API_URL = process.env.RESULTS_API_URL || `${BASE_URL}/api/smoke-test-results`
 const REPORT_DIR = process.env.REPORT_DIR // Optional: directory to save HTML reports
+const PUSHGATEWAY_URL = process.env.PUSHGATEWAY_URL // Optional: Prometheus Pushgateway base URL
 
 interface PlaywrightTestResult {
   title: string
@@ -92,6 +97,97 @@ async function reportResults(results: {
     }
   } catch (error) {
     console.error('Error reporting results:', error)
+  }
+}
+
+/**
+ * Push the run's result metrics to the Prometheus Pushgateway as a single
+ * series (job="smoke-tests", no pod label).
+ *
+ * Why: the smoke result is one logical fact about a load-balanced run, not a
+ * per-pod fact. The abaci-app replicas each keep their own in-memory prom-client
+ * gauges, so a result POST only updates one pod's gauge and the others go stale
+ * (diverging series in Prometheus). Pushgateway is the canonical batch-job sink:
+ * a single, pod-independent series. No-op when PUSHGATEWAY_URL is unset (local
+ * dev). Best-effort — never throws, never fails the run.
+ */
+async function pushMetricsToPushgateway(m: {
+  status: 'passed' | 'failed' | 'error'
+  completedAt: string
+  durationMs?: number
+  totalTests?: number
+  passedTests?: number
+  failedTests?: number
+}): Promise<void> {
+  if (!PUSHGATEWAY_URL) return
+
+  const lines: string[] = []
+  const gauge = (name: string, help: string, value: number) => {
+    lines.push(`# HELP ${name} ${help}`)
+    lines.push(`# TYPE ${name} gauge`)
+    lines.push(`${name} ${value}`)
+  }
+
+  gauge(
+    'smoke_test_last_status',
+    'Status of the last smoke test run (1=passed, 0=failed/error)',
+    m.status === 'passed' ? 1 : 0
+  )
+  gauge(
+    'smoke_test_last_run_timestamp_seconds',
+    'Unix timestamp of the last completed smoke test run',
+    Math.floor(new Date(m.completedAt).getTime() / 1000)
+  )
+  if (m.durationMs !== undefined) {
+    gauge(
+      'smoke_test_last_duration_seconds',
+      'Duration of the last smoke test run in seconds',
+      m.durationMs / 1000
+    )
+  }
+  if (m.totalTests !== undefined) {
+    gauge(
+      'smoke_test_last_total_count',
+      'Total number of tests in the last smoke test run',
+      m.totalTests
+    )
+  }
+  if (m.passedTests !== undefined) {
+    gauge(
+      'smoke_test_last_passed_count',
+      'Number of passed tests in the last smoke test run',
+      m.passedTests
+    )
+  }
+  if (m.failedTests !== undefined) {
+    gauge(
+      'smoke_test_last_failed_count',
+      'Number of failed tests in the last smoke test run',
+      m.failedTests
+    )
+  }
+
+  // Exposition format requires a trailing newline.
+  const body = lines.join('\n') + '\n'
+  // PUT replaces the entire {job="smoke-tests"} group, so a prior run's metrics
+  // can't linger (e.g. passed_count from a run that didn't parse a report).
+  const url = `${PUSHGATEWAY_URL.replace(/\/$/, '')}/metrics/job/smoke-tests`
+
+  try {
+    console.log(`Pushing metrics to Pushgateway: ${url}`)
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/plain; version=0.0.4' },
+      body,
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      console.error(`Failed to push metrics to Pushgateway: ${response.status} ${text}`)
+    } else {
+      console.log('Metrics pushed to Pushgateway successfully')
+    }
+  } catch (error) {
+    console.error('Error pushing metrics to Pushgateway:', error)
   }
 }
 
@@ -287,6 +383,15 @@ async function runTests(): Promise<void> {
         resultsJson: JSON.stringify(report),
       })
 
+      await pushMetricsToPushgateway({
+        status: passed ? 'passed' : 'failed',
+        completedAt,
+        durationMs,
+        totalTests,
+        passedTests,
+        failedTests,
+      })
+
       console.log(`\nTest run completed:`)
       console.log(`  Total: ${totalTests}`)
       console.log(`  Passed: ${passedTests}`)
@@ -313,6 +418,12 @@ async function runTests(): Promise<void> {
         errorMessage: exitCode !== 0 ? `Playwright exited with code ${exitCode}` : undefined,
       })
 
+      await pushMetricsToPushgateway({
+        status: passed ? 'passed' : 'failed',
+        completedAt,
+        durationMs,
+      })
+
       process.exit(exitCode)
     }
   } catch (error) {
@@ -326,6 +437,12 @@ async function runTests(): Promise<void> {
       status: 'error',
       durationMs,
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    })
+
+    await pushMetricsToPushgateway({
+      status: 'error',
+      completedAt,
+      durationMs,
     })
 
     console.error('Error running tests:', error)
