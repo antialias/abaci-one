@@ -169,9 +169,14 @@ async function pushMetricsToPushgateway(m: {
 
   // Exposition format requires a trailing newline.
   const body = lines.join('\n') + '\n'
-  // PUT replaces the entire {job="smoke-tests"} group, so a prior run's metrics
-  // can't linger (e.g. passed_count from a run that didn't parse a report).
-  const url = `${PUSHGATEWAY_URL.replace(/\/$/, '')}/metrics/job/smoke-tests`
+  // Group by job + app so the pushed series carry job="smoke-tests" AND
+  // app="abaci-app". The app grouping label matches the existing Grafana
+  // "Testing" dashboard panels (which select {app="abaci-app"}), so once the
+  // per-pod app-side gauges are removed this single series is the only match and
+  // the dashboard reads correctly with no panel changes. PUT replaces the entire
+  // group, so a prior run's metrics can't linger (e.g. passed_count from a run
+  // that didn't parse a report).
+  const url = `${PUSHGATEWAY_URL.replace(/\/$/, '')}/metrics/job/smoke-tests/app/abaci-app`
 
   try {
     console.log(`Pushing metrics to Pushgateway: ${url}`)
