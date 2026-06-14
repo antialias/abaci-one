@@ -67,6 +67,10 @@ p, guest, /api/flowcharts/:id/worksheet, GET
 p, guest, /api/identity, GET
 p, guest, /api/smoke-test-status, GET
 p, guest, /api/smoke-test-results, GET
+# POST is the in-cluster smoke CronJob reporting results. The route handler 404s
+# any request that arrived via the public ingress (X-Forwarded-*), so this only
+# opens the endpoint to direct in-cluster service calls.
+p, guest, /api/smoke-test-results, POST
 p, guest, /api/metrics, GET
 p, guest, /api/coverage-results, GET
 p, guest, /api/worksheets/share/*, GET
