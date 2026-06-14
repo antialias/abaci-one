@@ -429,6 +429,18 @@ export const uniqueVisitorsDaily = new Gauge({
 // =============================================================================
 // E2E SMOKE TEST METRICS
 // =============================================================================
+//
+// MIGRATION NOTE: the smoke RESULT is now also pushed to the Prometheus
+// Pushgateway by the smoke-tests CronJob runner (one series, no pod label) —
+// see soroban infra/terraform/monitoring.tf + smoke-test-runner.ts. The six
+// per-pod smokeTestLast* gauges below are the OLD per-replica source and are
+// slated for removal once the Pushgateway is confirmed serving.
+//
+// DO NOT remove smokeTestRunsTotal (the Counter, below) or the coverage_*
+// metrics in that cleanup: they are NOT pushed to the Pushgateway, and the
+// Grafana "Testing" dashboard panels 106 ("Total Runs") and 301 ("Run History")
+// read smoke_test_runs_total directly. Deleting it would send those panels to
+// No-Data with no replacement. Only the six smokeTestLast* gauges migrate.
 
 export const smokeTestLastStatus = new Gauge({
   name: 'smoke_test_last_status',
@@ -466,6 +478,8 @@ export const smokeTestLastFailed = new Gauge({
   registers: [metricsRegistry],
 })
 
+// KEEP app-side. Not pushed to the Pushgateway; panels 106/301 depend on it.
+// (See the migration note at the top of this section.)
 export const smokeTestRunsTotal = new Counter({
   name: 'smoke_test_runs_total',
   help: 'Total number of completed smoke test runs',

@@ -135,6 +135,10 @@ export const POST = withAuth(async (request): Promise<NextResponse<SmokeTestResu
 
     // Update Prometheus metrics for completed runs
     if (body.status !== 'running') {
+      // The smokeTestLast* gauges set here are the OLD per-pod source, now
+      // superseded by the Pushgateway series the runner pushes (see metrics.ts
+      // migration note). The runsTotal.inc() below is NOT migrated — keep it
+      // when the gauges are eventually removed (panels 106/301 depend on it).
       updateSmokeTestMetrics({
         status: body.status,
         startedAt: new Date(body.startedAt),
