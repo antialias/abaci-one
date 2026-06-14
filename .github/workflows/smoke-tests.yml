@@ -57,3 +57,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          # Build secret consumed by `RUN --mount=type=secret,id=gitea_npm_token`
+          # in Dockerfile.smoke-tests to authenticate pnpm against the Gitea npm
+          # registry for @tidepool/* packages. Never lands in an image layer.
+          secrets: |
+            gitea_npm_token=${{ secrets.GITEA_NPM_TOKEN }}

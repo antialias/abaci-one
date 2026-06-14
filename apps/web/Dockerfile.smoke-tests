@@ -10,14 +10,22 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm@9.15.4
 
-# Copy package files for dependency resolution
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy package files for dependency resolution. .npmrc carries the @tidepool
+# registry mapping; the lockfile pins @tidepool/* tarballs to the Gitea npm
+# registry, which requires auth (see the secret-mounted install below).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json ./apps/web/
 
 # Install only the playwright-related dependencies
-# We use a minimal install to keep the image small
+# We use a minimal install to keep the image small.
+# Mount the Gitea npm token as a buildkit secret (no layer leak) and use a temp
+# .npmrc that combines the committed registry mapping with the auth line — same
+# mechanism as the prod Dockerfile, needed for @tidepool/* packages.
 WORKDIR /app/apps/web
-RUN pnpm install --frozen-lockfile --filter @soroban/web --prod=false
+RUN --mount=type=secret,id=gitea_npm_token \
+    cp /app/.npmrc /tmp/.npmrc \
+    && echo "//git.dev.abaci.one/api/packages/antialias/npm/:_authToken=$(cat /run/secrets/gitea_npm_token)" >> /tmp/.npmrc \
+    && NPM_CONFIG_USERCONFIG=/tmp/.npmrc pnpm install --frozen-lockfile --filter @soroban/web --prod=false
 
 # Copy Playwright config and smoke tests
 COPY apps/web/playwright.config.ts ./
