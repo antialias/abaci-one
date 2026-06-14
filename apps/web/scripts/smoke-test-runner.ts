@@ -180,10 +180,15 @@ async function pushMetricsToPushgateway(m: {
 
   try {
     console.log(`Pushing metrics to Pushgateway: ${url}`)
+    // Bound the request: this push is awaited immediately before process.exit,
+    // so a Pushgateway that accepts the connection but never responds (wedged
+    // pod, black-holed Service IP) would otherwise hang the whole CronJob until
+    // its deadline. Connection-refused already fails fast; this covers no-reply.
     const response = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'text/plain; version=0.0.4' },
       body,
+      signal: AbortSignal.timeout(5000),
     })
     if (!response.ok) {
       const text = await response.text()
