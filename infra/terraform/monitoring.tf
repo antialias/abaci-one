@@ -2440,3 +2440,172 @@ resource "kubernetes_config_map" "grafana_dashboard_testing" {
 
   depends_on = [helm_release.kube_prometheus_stack]
 }
+
+# =============================================================================
+# Prometheus Pushgateway - sink for batch-job result metrics
+# =============================================================================
+# The daily smoke-tests CronJob's result is one logical fact about a
+# load-balanced run, not a per-pod fact. It used to be recorded only as per-pod
+# in-memory prom-client gauges on abaci-app, so a result reached one replica's
+# gauge and the others went stale -> diverging smoke_test_last_status series in
+# Prometheus (only max() read correctly, masking failures). The Pushgateway is
+# the canonical sink for short-lived batch jobs: the runner PUTs to
+# /metrics/job/smoke-tests/app/abaci-app, yielding ONE series
+# (job="smoke-tests", app="abaci-app") with no pod label. See smoke-tests.tf
+# (PUSHGATEWAY_URL) and apps/web/scripts/smoke-test-runner.ts.
+resource "kubernetes_deployment" "pushgateway" {
+  depends_on = [helm_release.kube_prometheus_stack]
+
+  metadata {
+    name      = "pushgateway"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "pushgateway"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "pushgateway"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "pushgateway"
+        }
+      }
+
+      spec {
+        container {
+          name  = "pushgateway"
+          image = "prom/pushgateway:v1.9.0"
+
+          # Persist pushed metrics across container restarts (the value is
+          # written to the emptyDir). NOTE: a full pod reschedule / node reboot
+          # still blanks it until the next daily run; the durable record stays in
+          # the app DB (/api/smoke-test-status). Add a PVC here if longer
+          # persistence is wanted.
+          args = [
+            "--persistence.file=/data/pushgateway.store",
+            "--persistence.interval=5m",
+          ]
+
+          port {
+            name           = "http"
+            container_port = 9091
+          }
+
+          liveness_probe {
+            http_get {
+              path = "/-/healthy"
+              port = 9091
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 15
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/-/ready"
+              port = 9091
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+          }
+
+          resources {
+            requests = {
+              memory = "32Mi"
+              cpu    = "10m"
+            }
+            limits = {
+              memory = "128Mi"
+              cpu    = "100m"
+            }
+          }
+
+          volume_mount {
+            name       = "storage"
+            mount_path = "/data"
+          }
+        }
+
+        volume {
+          name = "storage"
+          empty_dir {}
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "pushgateway" {
+  metadata {
+    name      = "pushgateway"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "pushgateway"
+    }
+  }
+
+  spec {
+    selector = {
+      app = "pushgateway"
+    }
+    port {
+      name        = "http"
+      port        = 9091
+      target_port = 9091
+    }
+  }
+}
+
+# ServiceMonitor for the Pushgateway.
+# honorLabels: true keeps the pushed job="smoke-tests" (and app="abaci-app")
+# labels instead of overwriting them with the scrape job, so the smoke series
+# retains its identity. null_resource + kubectl for the same CRD-at-plan-time
+# reason as app_service_monitor above.
+resource "null_resource" "pushgateway_service_monitor" {
+  depends_on = [helm_release.kube_prometheus_stack, kubernetes_service.pushgateway]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
+
+      # Wait for CRDs to be available
+      kubectl wait --for=condition=Established crd/servicemonitors.monitoring.coreos.com --timeout=120s
+
+      # Apply ServiceMonitor
+      cat <<EOF | kubectl apply -f -
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: pushgateway
+        namespace: ${kubernetes_namespace.monitoring.metadata[0].name}
+        labels:
+          app: pushgateway
+      spec:
+        selector:
+          matchLabels:
+            app: pushgateway
+        namespaceSelector:
+          matchNames:
+          - ${kubernetes_namespace.monitoring.metadata[0].name}
+        endpoints:
+        - port: http
+          path: /metrics
+          interval: 30s
+          honorLabels: true
+      EOF
+    EOT
+  }
+
+  triggers = {
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+}
