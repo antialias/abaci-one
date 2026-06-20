@@ -63,6 +63,12 @@ resource "helm_release" "kube_prometheus_stack" {
     }
     grafana = {
       adminPassword = var.grafana_admin_password
+      # Allow trusted dashboards to inject raw HTML/CSS via Text panels (used by the netwatch
+      # "Space Weather × Equipment EMI" dashboard to paint a full-page background). All dashboards
+      # are provisioned by us via the ConfigMap sidecar, so there is no untrusted-HTML exposure.
+      env = {
+        GF_PANELS_DISABLE_SANITIZE_HTML = "true"
+      }
       persistence = {
         enabled          = true
         size             = "2Gi"
