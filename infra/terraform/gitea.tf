@@ -328,6 +328,14 @@ resource "kubernetes_config_map" "gitea" {
       DISABLE_GRAVATAR        = false
       ENABLE_FEDERATED_AVATAR = true
 
+      [ui]
+      # Allowed emoji-reaction set. The 8 Gitea defaults (+1 -1 laugh hooray confused heart
+      # rocket eyes) PLUS saluting_face (🫡): claude-issue-bot reacts with 🫡 on a comment to
+      # acknowledge "seen it, on it" before the agent runs. Purely additive — adding aliases
+      # never removes existing reactions. Requires a Gitea restart to take effect (init-config
+      # re-copies app.ini on pod start): kubectl -n gitea rollout restart deployment/gitea
+      REACTIONS = +1, -1, laugh, hooray, confused, heart, rocket, eyes, saluting_face
+
       [openid]
       ENABLE_OPENID_SIGNIN = false
       ENABLE_OPENID_SIGNUP = false
@@ -351,7 +359,19 @@ resource "kubernetes_config_map" "gitea" {
       DEFAULT_ACTIONS_URL = github
 
       [webhook]
-      ALLOWED_HOST_LIST = external,loopback,*.svc.cluster.local
+      # Outbound webhooks are SSRF-checked against this allowlist (host glob OR resolved IP).
+      #  - *.dev.abaci.one : our OWN internal services (Woodpecker CI at ci.dev.abaci.one, etc.).
+      #      CRITICAL: these domains resolve to the in-cluster Traefik *ClusterIP* (e.g.
+      #      ci.dev.abaci.one -> 10.43.x.x), which the `external` keyword (public IPs only) does
+      #      NOT cover and `*.svc.cluster.local` does NOT match (different hostname). Without this
+      #      entry Gitea SSRF-blocks its own push webhooks to Woodpecker — pushes silently stop
+      #      triggering pipelines (regression observed 2026-06-22; see weather-display#235 debt).
+      #  - 192.168.86.51/32 : the NAS LAN IP where claude-issue-bot listens (host port 8099). The
+      #      narrow /32 (NOT the broad `private` keyword) keeps only this one host reachable.
+      # NOTE: changing this ConfigMap does NOT auto-restart Gitea (no checksum annotation on the
+      # deployment, strategy=Recreate); init-config re-copies app.ini only on pod start. After apply:
+      #   kubectl -n gitea rollout restart deployment/gitea
+      ALLOWED_HOST_LIST = external,loopback,*.svc.cluster.local,*.dev.abaci.one,192.168.86.51/32
 
       [mirror]
       ENABLED = true
