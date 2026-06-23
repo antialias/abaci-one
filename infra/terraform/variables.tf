@@ -146,6 +146,34 @@ variable "github_repo_url" {
   default     = "https://github.com/antialias/soroban-abacus-flashcards.git"
 }
 
+# --- claude-issue-bot (answers Gitea issue-comment questions; service deployed on the NAS) ---
+# See infra/terraform/claude-issue-bot.tf and the antialias/claude-issue-bot repo.
+
+variable "claude_bot_webhook_url" {
+  description = "URL the Gitea system webhook POSTs issue_comment events to (claude-issue-bot on the NAS LAN)."
+  type        = string
+  default     = "http://192.168.86.51:8099/webhook"
+}
+
+variable "gitea_webhook_secret" {
+  description = "Shared secret for the claude-issue-bot system webhook (HMAC-SHA256 over the raw body). Must match WEBHOOK_SECRET in the NAS .env. Empty until the pilot promotes to the system webhook."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "enable_claude_bot_system_webhook" {
+  description = "Create the instance-wide claude-issue-bot webhooks (default webhook for future repos + a per-repo hook on every existing repo). Keep false during the per-repo pilot; flip to true (with gitea_webhook_secret set) to go instance-wide."
+  type        = bool
+  default     = false
+}
+
+variable "claude_bot_owner_uid" {
+  description = "Gitea user id whose existing repos get a per-repo claude-issue-bot issue_comment webhook. All repos live under this single user (no orgs). UID 1 = antialias."
+  type        = string
+  default     = "1"
+}
+
 # Authentication (Google OAuth + Gmail SMTP magic links)
 variable "auth_google_id" {
   description = "Google OAuth client ID (created via gcloud)"
