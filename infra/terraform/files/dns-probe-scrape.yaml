@@ -1,0 +1,54 @@
+# dns-exporter scrape wiring — codifies the off-cluster NAS DNS probe target.
+# The exporter runs on the NAS (192.168.86.51:9109), outside the cluster, so it is
+# scraped via a headless Service + manually-managed Endpoints + a ServiceMonitor.
+# Resulting series carry job="dns-exporter". (Was hand-applied ~2026-05-22; this is
+# the version-controlled copy — applied via null_resource.dns_exporter_scrape.)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dns-exporter
+  namespace: monitoring
+  labels:
+    app: dns-exporter
+spec:
+  # Headless + no selector: endpoints are managed manually (object below) because the
+  # target is an external host, not a pod.
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9109
+      targetPort: 9109
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: dns-exporter
+  namespace: monitoring
+  labels:
+    app: dns-exporter
+subsets:
+  - addresses:
+      - ip: 192.168.86.51
+    ports:
+      - name: metrics
+        port: 9109
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dns-exporter
+  namespace: monitoring
+  labels:
+    app: dns-exporter
+spec:
+  selector:
+    matchLabels:
+      app: dns-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 2m
+      scrapeTimeout: 30s

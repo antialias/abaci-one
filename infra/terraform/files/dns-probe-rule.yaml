@@ -1,0 +1,85 @@
+# DNS probe alerts (home router / NAS BIND DNS reliability). Epic home-infra #13.
+#
+# All rules are severity:warning and email via the existing Alertmanager -> Gmail
+# pipe. These are deliberately NOT a hard-outage pager: a full router DNS wedge is
+# already paged within ~1 min by the Uptime Kuma monitor "Router DNS (LAN
+# resolution)" (home-infra #15). These Prometheus rules cover what Kuma cannot —
+# slow-burn / leading-indicator conditions (#16).
+#
+# Two tiers:
+#   * Existing slow cold/warm-loop rules (cold failure rate, forwarding-loop latency,
+#     exporter-down) — kept verbatim; their metrics still exist.
+#   * NEW fast dual-probe early-warning rules (#14 gauges/counters) — the pre-outage
+#     signal: router flapping (the wedge canary) and per-layer fast latency creep.
+#
+# Loaded by the kube-prometheus-stack Prometheus via the release ruleSelector — the
+# app/release labels below are required or the rule is ignored.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dns-probe-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: dns-probe
+      rules:
+        # ---- existing slow cold/warm-loop rules (unchanged) ----
+        - alert: RouterDnsHighFailureRate
+          expr: |
+            (
+              sum(increase(dns_probe_cold_failures_total[1h]))
+              /
+              sum(increase(dns_probe_cold_total[1h]))
+            ) > 0.30
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: Home router DNS is failing cold lookups frequently
+            description: Over the last hour {{ $value | humanizePercentage }} of cold DNS lookups for www.googleapis.com failed. This breaks photos.haunt.house OAuth.
+        - alert: RouterDnsForwardingLoop
+          expr: dns_probe_last_cold_latency_ms > 1500
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: Home router DNS cold-lookup latency is very high (possible forwarding loop)
+            description: "Cold lookups are taking {{ $value }} ms (healthy ~100ms). ~2.4s is the signature of the router<->NAS BIND forwarding loop. Check the NAS BIND forwarders do NOT include 192.168.86.1 (DSM -> DNS Server -> Resolution; want 1.1.1.1; 8.8.8.8)."
+        - alert: DnsProbeExporterDown
+          expr: up{job="dns-exporter"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: dns-exporter on the NAS is not scrapeable
+            description: Prometheus cannot scrape the DNS probe exporter at 192.168.86.51:9109.
+        # ---- NEW fast dual-probe early-warning rules (#14/#16) ----
+        # Thresholds are starting points (fast metrics are young; baselines: latency
+        # p95 ~40ms, fast-failures ~0). Tune against the "DNS Probe" Grafana dashboard.
+        - alert: RouterDnsFlapping
+          expr: increase(dns_probe_router_fast_failures_total[15m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Router DNS is intermittently failing (wedge precursor)
+            description: "The fast probe has seen {{ $value | humanize }} router DNS timeouts in the last 15m (baseline ~0). Intermittent timeouts that recover are the canary before a hard router DNS wedge (the 2026-06-28 whole-house outage followed a brief upstream stall). If it escalates to a full wedge, reboot the Google Wifi."
+        - alert: RouterDnsFastLatencyHigh
+          expr: dns_probe_router_latency_ms > 300
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Router DNS latency elevated (fast probe)
+            description: "Fast-probe router DNS latency has been above 300ms for 10m (currently {{ $value }} ms; healthy ~40ms). The router DNS proxy is degrading and may be heading toward a wedge — watch the DNS Probe dashboard; if it wedges, reboot the Google Wifi."
+        - alert: NasBindFastLatencyHigh
+          expr: dns_probe_nasbind_latency_ms > 300
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: NAS BIND latency elevated (fast probe)
+            description: "Fast-probe NAS BIND latency above 300ms for 10m (currently {{ $value }} ms; healthy ~40ms). Could be BIND-side load or an early forwarding-loop signal — confirm DSM -> DNS Server -> Resolution forwarders are 1.1.1.1; 8.8.8.8 and do NOT include the router (192.168.86.1)."
