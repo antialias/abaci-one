@@ -62,10 +62,13 @@ import {
 import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
+  getLinearReadinessVetoes,
   getPaceAssessment,
   getPlayerCurriculum,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
+import { deriveLinearReadySkills } from './linear-readiness'
+import { isEnabled } from '@/lib/feature-flags'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { revokeSharesForSession } from '@/lib/session-share'
 import {
@@ -180,6 +183,23 @@ export class NoSkillsEnabledError extends Error {
 }
 
 /**
+ * Error thrown when every requested part type gates out (e.g. abacus was disabled
+ * by the caller and there are no visual-ready / linear-ready skills). Previously
+ * this produced a 0-part plan that crashed downstream with a NaN weight.
+ */
+export class NoEligiblePartsError extends Error {
+  code = 'NO_ELIGIBLE_PARTS' as const
+
+  constructor() {
+    super(
+      'Cannot generate a practice session: none of the requested part types have ' +
+        'eligible skills. Enable abacus practice, or advance skills to visual/linear readiness.'
+    )
+    this.name = 'NoEligiblePartsError'
+  }
+}
+
+/**
  * Generate a three-part session plan for a student
  *
  * @throws {ActiveSessionExistsError} If the player already has an active session that hasn't timed out
@@ -231,7 +251,15 @@ export async function generateSessionPlan(
 
   // 1. Load student state and app config (in parallel for performance)
   const loadDataStart = performance.now()
-  const [curriculum, skillMastery, paceAssessment, problemHistory, dbSettings] = await Promise.all([
+  const [
+    curriculum,
+    skillMastery,
+    paceAssessment,
+    problemHistory,
+    dbSettings,
+    linearVetoes,
+    linearReadinessEnabled,
+  ] = await Promise.all([
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
     getPaceAssessment(playerId),
@@ -241,6 +269,9 @@ export async function generateSessionPlan(
       : Promise.resolve([]),
     // Load term count scaling config from DB
     db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1),
+    // L3: teacher vetoes + feature gate for derived linear-readiness
+    getLinearReadinessVetoes(playerId),
+    isEnabled('linear_readiness.enabled', false),
   ])
 
   const loadDataMs = performance.now() - loadDataStart
@@ -367,8 +398,8 @@ export async function generateSessionPlan(
     : paceAssessment.avgSecondsPerProblem
 
   // 3. Build skill constraints from the student's ACTUAL practicing skills
-  //    Two constraint sets: one for abacus parts (all active skills) and one for
-  //    visualization/linear parts (only visual-ready skills)
+  //    Three constraint sets: abacus (all active skills), visualization (visual-ready
+  //    skills), and linear (skills DERIVED as "aged out" onto number sentences — L3).
   const activeSkills = skillMastery.filter((s) => isActive(s.practiceLevel))
   const visualReadySkills = skillMastery.filter((s) => isVisualReady(s.practiceLevel))
 
@@ -377,11 +408,28 @@ export async function generateSessionPlan(
     throw new NoSkillsEnabledError()
   }
 
+  // L3: linear-readiness is DERIVED (not the manual visual gate) and gated by a flag.
+  // Computed AFTER the empty-skills guard above. When the flag is off, this is empty
+  // and linear falls back to the visual coupling in the part gate below.
+  const linearReadyIds = linearReadinessEnabled
+    ? deriveLinearReadySkills({
+        skillMastery,
+        problemHistory,
+        bktResults,
+        vetoedCategories: linearVetoes,
+      })
+    : new Set<string>()
+  const linearReadySkills = skillMastery.filter((s) => linearReadyIds.has(s.skillId))
+
   const abacusConstraints = buildConstraintsFromPracticingSkills(activeSkills)
   const visualConstraints =
     visualReadySkills.length > 0
       ? buildConstraintsFromPracticingSkills(visualReadySkills)
       : abacusConstraints // Fallback: if no visual skills, use abacus constraints
+  // No fallback for linear: an empty linear pool must gate the linear part OUT (see
+  // the part gate below), never borrow the abacus set into the hardest format.
+  const linearConstraints =
+    linearReadySkills.length > 0 ? buildConstraintsFromPracticingSkills(linearReadySkills) : null
 
   // Legacy alias for compatibility within this function
   const practicingSkillConstraints = abacusConstraints
@@ -415,11 +463,25 @@ export async function generateSessionPlan(
   }
 
   // 4. Build parts using STUDENT'S MASTERED SKILLS (only enabled parts)
-  // Auto-disable visualization/linear parts when no visual-ready skills exist
+  // Gate visualization and linear INDEPENDENTLY (L3): visualization on visual-ready
+  // skills, linear on DERIVED linear-readiness. When the flag is off, hasLinearSkills
+  // falls back to the visual coupling so behavior is unchanged.
   const hasVisualSkills = visualReadySkills.length > 0
-  const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter(
-    (type) => partsToInclude[type] && (type === 'abacus' || hasVisualSkills)
-  )
+  const hasLinearSkills = linearReadinessEnabled ? linearReadySkills.length > 0 : hasVisualSkills
+  const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter((type) => {
+    if (!partsToInclude[type]) return false
+    if (type === 'abacus') return true
+    if (type === 'visualization') return hasVisualSkills
+    return hasLinearSkills // linear
+  })
+
+  // Every requested part gated out (e.g. caller disabled abacus and there are no
+  // visual/linear skills). Fail loudly instead of persisting a 0-part plan that
+  // crashes downstream with a NaN weight.
+  if (enabledPartTypes.length === 0) {
+    throw new NoEligiblePartsError()
+  }
+
   const totalEnabledWeight = enabledPartTypes.reduce(
     (sum, type) => sum + config.partTimeWeights[type],
     0
@@ -493,8 +555,16 @@ export async function generateSessionPlan(
   } of partSlotStructures) {
     const partStartTime = performance.now()
 
-    // Use visual constraints for visualization/linear parts, abacus constraints for abacus parts
-    const partConstraints = partType === 'abacus' ? abacusConstraints : visualConstraints
+    // Abacus → abacus constraints; visualization → visual constraints; linear →
+    // derived linear constraints. `linearConstraints` is non-null whenever a linear
+    // part survives the flag-on gate; the `?? visualConstraints` fallback preserves
+    // today's behavior when the linear-readiness flag is off.
+    const partConstraints =
+      partType === 'abacus'
+        ? abacusConstraints
+        : partType === 'visualization'
+          ? visualConstraints
+          : (linearConstraints ?? visualConstraints)
 
     const part = await buildSessionPartAsync(
       partNumber,

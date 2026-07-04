@@ -50,6 +50,7 @@ export {
 // Session planning
 export {
   ActiveSessionExistsError,
+  NoEligiblePartsError,
   NoSkillsEnabledError,
   applySessionFlowEvent,
   abandonSessionPlan,

@@ -23,6 +23,8 @@ export const playerKeys = {
 export const curriculumKeys = {
   all: ['curriculum'] as const,
   detail: (playerId: string) => [...curriculumKeys.all, playerId] as const,
+  linearReadiness: (playerId: string) =>
+    [...curriculumKeys.all, playerId, 'linear-readiness'] as const,
 }
 
 // Session plan query keys

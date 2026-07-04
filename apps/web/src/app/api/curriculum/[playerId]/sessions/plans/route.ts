@@ -8,6 +8,7 @@ import {
   ActiveSessionExistsError,
   type EnabledParts,
   getActiveSessionPlan,
+  NoEligiblePartsError,
   NoSkillsEnabledError,
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
@@ -223,6 +224,17 @@ export const POST = withAuth(async (request, { params }) => {
         {
           error: error.message,
           code: 'NO_SKILLS_ENABLED',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Handle every requested part gating out (e.g. abacus off + no visual/linear skills)
+    if (error instanceof NoEligiblePartsError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: 'NO_ELIGIBLE_PARTS',
         },
         { status: 400 }
       )
