@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
@@ -2508,11 +2509,17 @@ function HistoryTab({
   studentId,
   activeSession,
   onOpenActiveSession,
+  flaggedTimingCount = 0,
+  unresolvedTimingCount = 0,
 }: {
   isDark: boolean
   studentId: string
   activeSession?: SessionPlan | null
   onOpenActiveSession?: () => void
+  /** Total flagged timings in the window (Tier-1 + Tier-2, resolved or not) — gates the review link. */
+  flaggedTimingCount?: number
+  /** Flagged timings still awaiting review — shown as a badge on the link. */
+  unresolvedTimingCount?: number
 }) {
   const [showOfflineModal, setShowOfflineModal] = useState(false)
   const queryClient = useQueryClient()
@@ -2562,6 +2569,51 @@ function HistoryTab({
           >
             Track your practice sessions over time
           </p>
+
+          {/* Standing entry to the timing-review tool (#158). Shown whenever this
+              child has any flagged timing history (resolved or not) so a parent can
+              revisit it, with a badge when some still need review. */}
+          {flaggedTimingCount > 0 && (
+            <Link
+              href={`/practice/${studentId}/review-timings`}
+              data-action="review-timings-history"
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                marginTop: '0.625rem',
+                fontSize: { base: '0.75rem', sm: '0.8125rem' },
+                fontWeight: '600',
+                textDecoration: 'none',
+                color: isDark ? 'cyan.300' : 'cyan.700',
+                _hover: { textDecoration: 'underline' },
+                _focusVisible: { outline: '2px solid currentColor', outlineOffset: '2px' },
+              })}
+            >
+              <span aria-hidden="true">⏱</span>
+              Review timing data
+              {unresolvedTimingCount > 0 && (
+                <span
+                  data-element="review-timings-badge"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '1.125rem',
+                    height: '1.125rem',
+                    paddingX: '0.25rem',
+                    borderRadius: '999px',
+                    fontSize: '0.6875rem',
+                    fontWeight: '700',
+                    backgroundColor: isDark ? 'amber.500' : 'amber.400',
+                    color: 'gray.900',
+                  })}
+                >
+                  {unresolvedTimingCount}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
 
         {/* Log Offline Practice button */}
@@ -3689,6 +3741,8 @@ export function DashboardClient({
                   studentId={studentId}
                   activeSession={activeSession}
                   onOpenActiveSession={() => setIsObserving(true)}
+                  flaggedTimingCount={paceAssessment.tier1Count + paceAssessment.tier2Count}
+                  unresolvedTimingCount={paceAssessment.unresolvedCount}
                 />
               )}
 
