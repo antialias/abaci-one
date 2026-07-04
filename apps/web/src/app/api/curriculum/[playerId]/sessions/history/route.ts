@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { and, desc, eq, lt } from 'drizzle-orm'
+import { and, desc, eq, lt, ne } from 'drizzle-orm'
 import { db } from '@/db'
 import { sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
@@ -33,6 +33,12 @@ export const GET = withAuth(async (request, { params }) => {
     const cursor = searchParams.get('cursor')
     const limitParam = searchParams.get('limit')
     const limit = Math.min(Math.max(parseInt(limitParam ?? '20', 10) || 20, 1), 100)
+    // Soft-deleted sessions (#158) are hidden by default. This is the ONE
+    // status reader that filters on `completedAt` rather than a positive
+    // status allow-list, so it needs an explicit `status != 'deleted'` guard.
+    // `?includeDeleted=1` flips it to return ONLY deleted rows, powering the
+    // collapsed "N removed sessions" reveal with Restore.
+    const includeDeleted = searchParams.get('includeDeleted') === '1'
 
     if (!playerId) {
       return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
@@ -53,6 +59,9 @@ export const GET = withAuth(async (request, { params }) => {
       eq(sessionPlans.playerId, playerId),
       // Only include completed sessions
       // completedAt is not null check done via ordering
+      includeDeleted
+        ? eq(sessionPlans.status, 'deleted')
+        : ne(sessionPlans.status, 'deleted'),
     ]
 
     // If cursor provided, get sessions older than the cursor session
@@ -93,6 +102,8 @@ export const GET = withAuth(async (request, { params }) => {
         playerId: session.playerId,
         startedAt: session.startedAt,
         completedAt: session.completedAt,
+        // Present only on the includeDeleted view; powers the Restore affordance.
+        deletedAt: session.deletedAt,
         problemsAttempted: results.length,
         problemsCorrect: results.filter((r) => r.isCorrect).length,
         totalTimeMs: results.reduce((sum, r) => sum + (r.responseTimeMs ?? 0), 0),

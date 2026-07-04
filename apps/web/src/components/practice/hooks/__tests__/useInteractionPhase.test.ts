@@ -5,13 +5,17 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 import {
+  addPauseToActivePhase,
   computeHelpContext,
   computePrefixSums,
   createAttemptInput,
   findMatchedPrefixIndex,
+  foldHiddenSpanIntoActivePhase,
+  getActivePhaseAttempt,
   isDigitConsistent,
   MANUAL_SUBMIT_THRESHOLD,
   useInteractionPhase,
+  type ActivePhase,
 } from '../useInteractionPhase'
 
 // =============================================================================
@@ -260,6 +264,108 @@ describe('createAttemptInput', () => {
     expect(attempt.correctionCount).toBe(0)
     expect(attempt.manualSubmitRequired).toBe(false)
     expect(attempt.rejectedDigit).toBe(null)
+  })
+
+  it('initializes accumulatedHiddenMs to 0', () => {
+    const attempt = createAttemptInput(simpleProblem, 0, 0)
+    expect(attempt.accumulatedHiddenMs).toBe(0)
+    expect(attempt.accumulatedPauseMs).toBe(0)
+  })
+})
+
+// =============================================================================
+// Pure helpers: pause / hidden-span accounting (#156)
+// =============================================================================
+
+/** Build an inputting ActivePhase with a controlled attempt. */
+function inputtingPhase(
+  startTime: number,
+  accPause = 0,
+  accHidden = 0
+): Extract<ActivePhase, { phase: 'inputting' }> {
+  return {
+    phase: 'inputting',
+    attempt: {
+      ...createAttemptInput(simpleProblem, 0, 0),
+      startTime,
+      accumulatedPauseMs: accPause,
+      accumulatedHiddenMs: accHidden,
+    },
+  }
+}
+
+describe('addPauseToActivePhase', () => {
+  it('adds pause time to accumulatedPauseMs only (hidden:false)', () => {
+    const next = addPauseToActivePhase(inputtingPhase(1000, 500, 0), 2000, { hidden: false })
+    const attempt = getActivePhaseAttempt(next)!
+    expect(attempt.accumulatedPauseMs).toBe(2500)
+    expect(attempt.accumulatedHiddenMs).toBe(0)
+  })
+
+  it('adds hidden time to both accumulatedPauseMs and accumulatedHiddenMs (hidden:true)', () => {
+    const next = addPauseToActivePhase(inputtingPhase(1000, 500, 100), 2000, { hidden: true })
+    const attempt = getActivePhaseAttempt(next)!
+    expect(attempt.accumulatedPauseMs).toBe(2500)
+    expect(attempt.accumulatedHiddenMs).toBe(2100)
+  })
+
+  it('is a no-op for a non-positive span (returns the same phase)', () => {
+    const phase = inputtingPhase(1000, 500, 0)
+    expect(addPauseToActivePhase(phase, 0, { hidden: true })).toBe(phase)
+    expect(addPauseToActivePhase(phase, -50, { hidden: true })).toBe(phase)
+  })
+
+  it('is a no-op for phases without an attempt', () => {
+    const loading: ActivePhase = { phase: 'loading' }
+    const complete: ActivePhase = { phase: 'complete' }
+    expect(addPauseToActivePhase(loading, 1000, { hidden: true })).toBe(loading)
+    expect(addPauseToActivePhase(complete, 1000, { hidden: true })).toBe(complete)
+  })
+
+  it('folds into the incoming attempt for a transitioning phase', () => {
+    const transitioning: ActivePhase = {
+      phase: 'transitioning',
+      outgoing: { key: '0-0', problem: simpleProblem, userAnswer: '12', result: 'correct' },
+      incoming: {
+        ...createAttemptInput(simpleProblem, 1, 0),
+        startTime: 5000,
+        accumulatedPauseMs: 0,
+        accumulatedHiddenMs: 0,
+      },
+    }
+    const next = addPauseToActivePhase(transitioning, 3000, { hidden: true })
+    const attempt = getActivePhaseAttempt(next)!
+    expect(attempt.accumulatedPauseMs).toBe(3000)
+    expect(attempt.accumulatedHiddenMs).toBe(3000)
+  })
+})
+
+describe('foldHiddenSpanIntoActivePhase', () => {
+  it('folds the full span when hidden started after the attempt began', () => {
+    // hiddenAt (2000) > startTime (1000): span = now(5000) - 2000 = 3000
+    const next = foldHiddenSpanIntoActivePhase(inputtingPhase(1000), 2000, 5000)
+    expect(getActivePhaseAttempt(next)!.accumulatedHiddenMs).toBe(3000)
+  })
+
+  it('clamps to the attempt lifetime when the span straddled a problem transition', () => {
+    // A new attempt started at 4000 while the tab was already hidden (hiddenAt
+    // 2000). Clamp to startTime: span = now(5000) - max(2000, 4000) = 1000,
+    // never the full 3000 — so the new attempt can't go negative.
+    const next = foldHiddenSpanIntoActivePhase(inputtingPhase(4000), 2000, 5000)
+    expect(getActivePhaseAttempt(next)!.accumulatedHiddenMs).toBe(1000)
+  })
+
+  it('is a no-op for a phase without an attempt', () => {
+    const loading: ActivePhase = { phase: 'loading' }
+    expect(foldHiddenSpanIntoActivePhase(loading, 2000, 5000)).toBe(loading)
+  })
+})
+
+describe('getActivePhaseAttempt', () => {
+  it('returns the attempt for attempt-carrying phases and null otherwise', () => {
+    expect(getActivePhaseAttempt(inputtingPhase(1000))).not.toBeNull()
+    expect(getActivePhaseAttempt({ phase: 'loading' })).toBeNull()
+    expect(getActivePhaseAttempt({ phase: 'complete' })).toBeNull()
   })
 })
 
@@ -964,6 +1070,236 @@ describe('useInteractionPhase', () => {
       if (result.current.phase.phase === 'paused') {
         expect(result.current.phase.resumePhase.phase).toBe('submitting')
       }
+    })
+  })
+
+  // ===========================================================================
+  // Visibility layer (#156): hidden-time exclusion
+  // ===========================================================================
+
+  describe('visibility layer (hidden-time exclusion)', () => {
+    const HOUR = 60 * 60 * 1000
+
+    function setVisibilityState(state: 'hidden' | 'visible') {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => state,
+      })
+    }
+    function hide() {
+      setVisibilityState('hidden')
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+    }
+    function show() {
+      setVisibilityState('visible')
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+    }
+
+    afterEach(() => {
+      setVisibilityState('visible')
+    })
+
+    it('folds an 8h hidden span into the current attempt (pause + hidden audit)', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      }) // startTime = 1_000_000
+
+      vi.setSystemTime(1_005_000) // 5s of visible work
+      hide() // arm at 1_005_000
+
+      vi.setSystemTime(1_005_000 + 8 * HOUR)
+      show() // fold [1_005_000, +8h]
+
+      const attempt = result.current.attempt!
+      expect(attempt.accumulatedHiddenMs).toBe(8 * HOUR)
+      expect(attempt.accumulatedPauseMs).toBe(8 * HOUR)
+    })
+
+    it('folds only once for duplicate hidden signals (pagehide then visibilitychange)', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      vi.setSystemTime(1_002_000)
+      // iOS Safari can emit pagehide before visibilitychange.
+      act(() => {
+        window.dispatchEvent(new Event('pagehide'))
+      })
+      hide() // second hidden signal — must NOT re-arm
+
+      vi.setSystemTime(1_002_000 + 60_000)
+      show()
+
+      // Single span from the FIRST arm (1_002_000) → 60s, not doubled.
+      expect(result.current.attempt!.accumulatedHiddenMs).toBe(60_000)
+    })
+
+    it('does not fold when the tab is hidden while already paused (pause clock owns it)', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      act(() => {
+        result.current.pause()
+      }) // paused at 1_000_000
+      hide() // arm() must early-return (phase paused)
+
+      vi.setSystemTime(1_000_000 + 120_000)
+      show() // fold() sees no armed ref → no-op (also visible before resume)
+
+      act(() => {
+        result.current.resume()
+      }) // pause span folded (120s)
+
+      const attempt = result.current.attempt!
+      expect(attempt.accumulatedHiddenMs).toBe(0)
+      expect(attempt.accumulatedPauseMs).toBe(120_000)
+    })
+
+    it('hands a hidden span off to the pause clock without double-counting (pause while hidden)', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      hide() // arm at 1_000_000
+
+      vi.setSystemTime(1_010_000) // 10s hidden
+      act(() => {
+        result.current.pause() // folds hidden 10s, clears ref, pauseStartedAt=1_010_000
+      })
+
+      show() // visible while paused → fold no-op
+      vi.setSystemTime(1_030_000) // 20s more (paused)
+      act(() => {
+        result.current.resume() // folds pause 20s
+      })
+
+      const attempt = result.current.attempt!
+      expect(attempt.accumulatedHiddenMs).toBe(10_000)
+      // 10s hidden + 20s pause — the hidden span is not double-counted.
+      expect(attempt.accumulatedPauseMs).toBe(30_000)
+    })
+
+    it('re-arms on teacher remote-resume while still hidden (only post-resume hidden folded)', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      act(() => {
+        result.current.pause() // manual pause at 1_000_000 (tab visible)
+      })
+      hide() // tab goes hidden while paused — arm() early-returns
+
+      vi.setSystemTime(1_010_000) // 10s paused-while-hidden
+      act(() => {
+        result.current.resume() // stillHidden → folds pause 10s AND re-arms at 1_010_000
+      })
+
+      vi.setSystemTime(1_025_000) // 15s more hidden
+      show() // fold [1_010_000, 1_025_000] = 15s
+
+      const attempt = result.current.attempt!
+      expect(attempt.accumulatedPauseMs).toBe(25_000) // 10s pause + 15s hidden
+      expect(attempt.accumulatedHiddenMs).toBe(15_000) // only the post-resume hidden portion
+    })
+
+    it('accumulates across multiple hide/show cycles', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+
+      hide()
+      vi.setSystemTime(1_030_000) // +30s
+      show()
+
+      vi.setSystemTime(1_040_000) // 10s visible
+      hide()
+      vi.setSystemTime(1_060_000) // +20s
+      show()
+
+      expect(result.current.attempt!.accumulatedHiddenMs).toBe(50_000) // 30 + 20
+    })
+
+    it('clamps a span that straddles a problem load so the new attempt never goes negative', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+      hide() // arm at 1_000_000
+
+      vi.setSystemTime(1_050_000)
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 1, 0) // new attempt startTime=1_050_000
+      })
+
+      vi.setSystemTime(1_080_000)
+      show() // clamp: 1_080_000 - max(1_000_000, 1_050_000) = 30s (not 80s)
+
+      const attempt = result.current.attempt!
+      expect(attempt.startTime).toBe(1_050_000)
+      expect(attempt.accumulatedHiddenMs).toBe(30_000)
+      const responseTimeMs = 1_080_000 - attempt.startTime - attempt.accumulatedPauseMs
+      expect(responseTimeMs).toBeGreaterThanOrEqual(0)
+    })
+
+    it('resets hidden accounting for a fresh attempt', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+      hide()
+      vi.setSystemTime(1_030_000)
+      show()
+      expect(result.current.attempt!.accumulatedHiddenMs).toBe(30_000)
+
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 1, 0)
+      })
+      expect(result.current.attempt!.accumulatedHiddenMs).toBe(0)
+    })
+
+    it('is a no-op when the tab becomes visible with no prior hidden span', () => {
+      vi.setSystemTime(1_000_000)
+      const { result } = renderHook(() => useInteractionPhase())
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0)
+      })
+      show() // no arm before
+      const attempt = result.current.attempt!
+      expect(attempt.accumulatedHiddenMs).toBe(0)
+      expect(attempt.accumulatedPauseMs).toBe(0)
+    })
+
+    it('removes all visibility listeners on unmount', () => {
+      const removeDocSpy = vi.spyOn(document, 'removeEventListener')
+      const removeWinSpy = vi.spyOn(window, 'removeEventListener')
+      const { unmount } = renderHook(() => useInteractionPhase())
+      act(() => {
+        unmount()
+      })
+      expect(removeDocSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
+      expect(removeWinSpy).toHaveBeenCalledWith('pagehide', expect.any(Function))
+      expect(removeWinSpy).toHaveBeenCalledWith('pageshow', expect.any(Function))
+      removeDocSpy.mockRestore()
+      removeWinSpy.mockRestore()
     })
   })
 

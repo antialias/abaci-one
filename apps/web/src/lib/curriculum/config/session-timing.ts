@@ -26,6 +26,17 @@ export const DEFAULT_SECONDS_PER_PROBLEM = 45
 export const MIN_SECONDS_PER_PROBLEM = 10
 
 /**
+ * Maximum seconds per problem for session planning (sanity ceiling).
+ *
+ * The robust pace estimator (`timing/pace-estimation.ts`) clamps its output to
+ * this ceiling so a right-skewed history — or a residual outlier that slipped
+ * past Tier-1 quarantine — can never balloon a student's expected per-problem
+ * time and shrink sessions to a couple of problems. Mirrors the 120s
+ * convention already used in `skill-metrics.ts`.
+ */
+export const MAX_SECONDS_PER_PROBLEM = 120
+
+/**
  * How long before an inactive session is auto-abandoned (hours).
  * Sessions older than this are cleaned up when the student returns.
  */

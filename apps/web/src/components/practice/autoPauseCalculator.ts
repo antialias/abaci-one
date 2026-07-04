@@ -7,6 +7,7 @@
 
 import type { SlotResult } from '@/db/schema/session-plans'
 import type { ProgressiveAssistanceTimingConfig } from '@/constants/helpTiming'
+import { MAX_RESPONSE_TIME_CAP_MS } from '@/lib/curriculum/timing/constants'
 
 // ============================================================================
 // Constants
@@ -21,8 +22,14 @@ export const MIN_SAMPLES_FOR_STATISTICS = 5
 /** Minimum clamp for the auto-pause threshold (30 seconds) */
 export const MIN_PAUSE_THRESHOLD_MS = 30_000
 
-/** Maximum clamp for the auto-pause threshold (5 minutes) */
-export const MAX_PAUSE_THRESHOLD_MS = DEFAULT_PAUSE_TIMEOUT_MS
+/**
+ * Maximum clamp for the auto-pause threshold (5 minutes).
+ *
+ * Single source of truth lives in the timing lib as `MAX_RESPONSE_TIME_CAP_MS`
+ * (the lib never imports from components). Same numeric value as
+ * `DEFAULT_PAUSE_TIMEOUT_MS`.
+ */
+export const MAX_PAUSE_THRESHOLD_MS = MAX_RESPONSE_TIME_CAP_MS
 
 // ============================================================================
 // Types

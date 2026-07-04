@@ -329,11 +329,13 @@ export { getPlayer } from '@/lib/arcade/player-manager'
 export { getPracticeStudent } from './practice-student'
 export {
   getAllSkillMastery,
+  getPaceAssessment,
   getPaginatedSessions,
   getPlayerCurriculum,
   getRecentSessions,
 } from './progress-manager'
 export type { PaginatedSessionsResponse } from './progress-manager'
+export type { PaceAssessment } from './timing/pace-estimation'
 export {
   getActiveSessionPlan,
   getMostRecentCompletedSession,

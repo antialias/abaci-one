@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  calculateSecondsPerTerm,
   estimateProblemTimeMs,
   estimateProblemTimeSeconds,
   estimateSessionProblemCount,
@@ -8,77 +7,8 @@ import {
   convertSptToSecondsPerProblem,
   convertSecondsPerProblemToSpt,
   calculateProblemComplexityUnits,
-  calculateSecondsPerComplexityUnit,
-  getTimeEstimationProfile,
   TIME_ESTIMATION_DEFAULTS,
 } from '../time-estimation'
-
-// Helper to create a mock SlotResult
-function mockResult(responseTimeMs: number, termCount: number, skillsRequired: string[] = []) {
-  return {
-    responseTimeMs,
-    problem: {
-      terms: Array.from({ length: termCount }, (_, i) => i + 1),
-      skillsRequired,
-    },
-  } as any
-}
-
-// ============================================================================
-// calculateSecondsPerTerm
-// ============================================================================
-
-describe('calculateSecondsPerTerm', () => {
-  it('returns null with insufficient results', () => {
-    const results = [mockResult(3000, 3)]
-    expect(calculateSecondsPerTerm(results)).toBeNull()
-  })
-
-  it('calculates average SPT from valid results', () => {
-    // 5 results, each 3000ms for 3 terms = 1s/term
-    const results = Array.from({ length: 5 }, () => mockResult(3000, 3))
-    const spt = calculateSecondsPerTerm(results)
-    expect(spt).toBeCloseTo(3, 0) // clamped to min of 3
-  })
-
-  it('clamps to minimum SPT', () => {
-    // Very fast: 300ms for 3 terms = 0.1s/term → clamps to 3
-    const results = Array.from({ length: 5 }, () => mockResult(300, 3))
-    expect(calculateSecondsPerTerm(results)).toBe(TIME_ESTIMATION_DEFAULTS.minSecondsPerTerm)
-  })
-
-  it('clamps to maximum SPT', () => {
-    // Very slow: 300s for 3 terms = 100s/term → clamps to 30
-    const results = Array.from({ length: 5 }, () => mockResult(300_000, 3))
-    expect(calculateSecondsPerTerm(results)).toBe(TIME_ESTIMATION_DEFAULTS.maxSecondsPerTerm)
-  })
-
-  it('filters out results with zero response time', () => {
-    const results = [
-      ...Array.from({ length: 5 }, () => mockResult(6000, 3)), // 2s/term
-      mockResult(0, 3), // invalid
-    ]
-    const spt = calculateSecondsPerTerm(results)
-    expect(spt).toBeCloseTo(3, 0) // clamped to min
-  })
-
-  it('respects custom minResults', () => {
-    const results = Array.from({ length: 3 }, () => mockResult(9000, 3))
-    expect(calculateSecondsPerTerm(results, { minResults: 3 })).toBe(3)
-    expect(calculateSecondsPerTerm(results, { minResults: 5 })).toBeNull()
-  })
-
-  it('excludes outliers when enabled and >= 10 results', () => {
-    const results = [
-      ...Array.from({ length: 12 }, () => mockResult(9000, 3)), // 3s/term
-      mockResult(900_000, 3), // extreme outlier
-    ]
-    const withOutliers = calculateSecondsPerTerm(results, { excludeOutliers: false })
-    const withoutOutliers = calculateSecondsPerTerm(results, { excludeOutliers: true })
-    // Without outlier exclusion, the extreme value shifts the average up significantly
-    expect(withoutOutliers!).toBeLessThan(withOutliers!)
-  })
-})
 
 // ============================================================================
 // estimateProblemTimeMs / estimateProblemTimeSeconds
@@ -204,42 +134,5 @@ describe('calculateProblemComplexityUnits', () => {
 
   it('defaults to 1.0 for unknown skills', () => {
     expect(calculateProblemComplexityUnits(['something.unknown'])).toBe(1.0)
-  })
-})
-
-describe('calculateSecondsPerComplexityUnit', () => {
-  it('returns null with insufficient results', () => {
-    const results = Array.from({ length: 5 }, () => mockResult(3000, 3, ['add.direct']))
-    expect(calculateSecondsPerComplexityUnit(results)).toBeNull()
-  })
-
-  it('calculates SPCU from sufficient results', () => {
-    const results = Array.from({ length: 12 }, () => mockResult(5000, 3, ['add.direct']))
-    const spcu = calculateSecondsPerComplexityUnit(results)
-    expect(spcu).not.toBeNull()
-    expect(spcu!).toBeGreaterThanOrEqual(2)
-    expect(spcu!).toBeLessThanOrEqual(15)
-  })
-})
-
-// ============================================================================
-// getTimeEstimationProfile
-// ============================================================================
-
-describe('getTimeEstimationProfile', () => {
-  it('returns default profile when no data', () => {
-    const profile = getTimeEstimationProfile([])
-    expect(profile.isDefault).toBe(true)
-    expect(profile.secondsPerTerm).toBe(TIME_ESTIMATION_DEFAULTS.secondsPerTerm)
-    expect(profile.sampleSize).toBe(0)
-  })
-
-  it('returns calculated profile with enough data', () => {
-    const results = Array.from({ length: 10 }, () => mockResult(30_000, 3))
-    const profile = getTimeEstimationProfile(results)
-    expect(profile.isDefault).toBe(false)
-    expect(profile.sampleSize).toBe(10)
-    expect(profile.secondsPerTerm).toBeGreaterThan(0)
-    expect(profile.secondsPerProblem).toBeGreaterThan(0)
   })
 })

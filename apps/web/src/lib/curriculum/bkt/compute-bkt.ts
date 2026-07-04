@@ -8,6 +8,7 @@
 
 import { BKT_THRESHOLDS } from '../config/bkt-integration'
 import type { ProblemResultWithContext } from '../session-planner'
+import { getEffectiveResponseTimeMs } from '../timing/effective-time'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
 import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
 import { helpWeight, responseTimeWeight } from './evidence-quality'
@@ -105,6 +106,18 @@ export function computeBktFromHistory(
     const skillIds = result.skillsExercised ?? []
     if (skillIds.length === 0) continue
 
+    // Teacher/parent excluded this attempt from tracking (mastery scope,
+    // documented at session-plans.ts SlotResultSource: 'teacher-excluded').
+    // Excluded evidence is NOT practice evidence: skip it entirely — no pKnown
+    // update AND no lastPracticedAt bump (unlike recency-refresh sentinels,
+    // which DO refresh staleness below). `originalSource` is checked too so a
+    // result whose live `source` was later reassigned still stays out of
+    // mastery if it was ever excluded. Without this skip, "omit from mastery"
+    // was a placebo — the excluded attempt still moved pKnown.
+    if (result.source === 'teacher-excluded' || result.originalSource === 'teacher-excluded') {
+      continue
+    }
+
     // Check if this is a recency-refresh sentinel record
     // These update lastPracticedAt but are ZERO-WEIGHT for BKT mastery (pKnown)
     const isRecencyRefresh = result.source === 'recency-refresh'
@@ -175,9 +188,13 @@ export function computeBktFromHistory(
       }
     })
 
-    // Calculate evidence weight based on help usage, response time, and retry status
+    // Calculate evidence weight based on help usage, response time, and retry status.
+    // Use the effective (repair-aware) response time so adult adjustments and
+    // omissions flow into the weight: null (omitted / no measurement) → 0, which
+    // responseTimeWeight treats as a neutral 1.0 weight.
     const helpW = helpWeight(result.hadHelp)
-    const rtWeight = responseTimeWeight(result.responseTimeMs, result.isCorrect)
+    const effectiveResponseTimeMs = getEffectiveResponseTimeMs(result) ?? 0
+    const rtWeight = responseTimeWeight(effectiveResponseTimeMs, result.isCorrect)
     // Apply mastery weight from retry system (1.0 for first attempt, 0.5 for first retry, 0.25 for second retry)
     // If masteryWeight is undefined (old data), default to 1.0
     const retryWeight = result.masteryWeight ?? 1.0

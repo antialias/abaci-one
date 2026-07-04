@@ -36,6 +36,12 @@ export interface AttemptInput {
   startTime: number
   /** Accumulated time spent paused (ms) - subtract from elapsed time for actual response time */
   accumulatedPauseMs: number
+  /**
+   * Subset of `accumulatedPauseMs` that came from the tab being hidden /
+   * backgrounded (visibility layer, #156). Audit-only — recorded on the result
+   * as `hiddenTimeExcludedMs`; it is already included in `accumulatedPauseMs`.
+   */
+  accumulatedHiddenMs: number
   /** User's current answer input */
   userAnswer: string
   /** Number of times user used backspace or had digits rejected */
@@ -174,11 +180,86 @@ export function createAttemptInput(
     partIndex,
     startTime: Date.now(),
     accumulatedPauseMs: 0,
+    accumulatedHiddenMs: 0,
     userAnswer: '',
     correctionCount: 0,
     manualSubmitRequired: false,
     rejectedDigit: null,
   }
+}
+
+/**
+ * Returns the attempt an active phase is currently carrying, or null for phases
+ * that carry none (`loading` / `complete`).
+ */
+export function getActivePhaseAttempt(active: ActivePhase): AttemptInput | null {
+  switch (active.phase) {
+    case 'inputting':
+    case 'awaitingDisambiguation':
+    case 'helpMode':
+    case 'submitting':
+    case 'showingFeedback':
+      return active.attempt
+    case 'transitioning':
+      return active.incoming
+    case 'loading':
+    case 'complete':
+      return null
+  }
+}
+
+/**
+ * Adds `ms` to the active phase's current attempt `accumulatedPauseMs`, and —
+ * when the span was hidden-tab time — its `accumulatedHiddenMs` audit counter.
+ * No-ops for phases without an attempt or a non-positive span. Preserves the
+ * paused wrapper is NOT this function's job: callers pass an already-unwrapped
+ * {@link ActivePhase}.
+ *
+ * Extracted from `resume()` so the visibility layer folds hidden time through
+ * the identical accounting the pause clock uses.
+ */
+export function addPauseToActivePhase(
+  active: ActivePhase,
+  ms: number,
+  opts: { hidden: boolean } = { hidden: false }
+): ActivePhase {
+  if (ms <= 0) return active
+  const bump = (attempt: AttemptInput): AttemptInput => ({
+    ...attempt,
+    accumulatedPauseMs: attempt.accumulatedPauseMs + ms,
+    accumulatedHiddenMs: opts.hidden ? attempt.accumulatedHiddenMs + ms : attempt.accumulatedHiddenMs,
+  })
+  switch (active.phase) {
+    case 'inputting':
+    case 'awaitingDisambiguation':
+    case 'helpMode':
+    case 'submitting':
+    case 'showingFeedback':
+      return { ...active, attempt: bump(active.attempt) }
+    case 'transitioning':
+      // Fold into the incoming attempt (mirrors resume()'s existing behavior).
+      return { ...active, incoming: bump(active.incoming) }
+    case 'loading':
+    case 'complete':
+      return active
+  }
+}
+
+/**
+ * Folds a hidden span `[hiddenAt, now]` into the active phase's current attempt
+ * as excluded (hidden) time. The span is clamped to the attempt's own lifetime
+ * (`max(hiddenAt, attempt.startTime)`) so a hidden interval that straddled a
+ * problem transition can never drive the new attempt's response time negative.
+ */
+export function foldHiddenSpanIntoActivePhase(
+  active: ActivePhase,
+  hiddenAt: number,
+  now: number
+): ActivePhase {
+  const attempt = getActivePhaseAttempt(active)
+  if (!attempt) return active
+  const effectiveStart = Math.max(hiddenAt, attempt.startTime)
+  return addPauseToActivePhase(active, now - effectiveStart, { hidden: true })
 }
 
 /**
@@ -470,6 +551,18 @@ export function useInteractionPhase(
     }
     return { phase: 'loading' }
   })
+
+  // Live mirror of `phase` for event handlers that must read the current phase
+  // without re-subscribing (the visibility layer). Set during render — safe.
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+
+  // Visibility layer (#156): when the tab is hidden/backgrounded we record the
+  // instant here and fold the elapsed span into the current attempt on return,
+  // the identical subtraction resume() performs. `null` = not currently hidden.
+  // The pause clock and this hidden clock form a disjoint union (see pause/
+  // resume + the visibility effect below) so time is never double-counted.
+  const hiddenAtRef = useRef<number | null>(null)
 
   // ==========================================================================
   // Derived State
@@ -1007,66 +1100,85 @@ export function useInteractionPhase(
   }, [])
 
   const pause = useCallback(() => {
+    // Capture the hidden clock BEFORE the (pure) updater so StrictMode's
+    // double-invocation can't fold the same span twice.
+    const now = Date.now()
+    const hiddenAt = hiddenAtRef.current
     setPhase((prev) => {
       if (prev.phase === 'paused' || prev.phase === 'loading' || prev.phase === 'complete')
         return prev
-      return { phase: 'paused', resumePhase: prev, pauseStartedAt: Date.now() }
+      // Disjoint-union rule (b): a hidden span in flight is folded into the
+      // attempt FIRST (clamped to its lifetime); from here the pause clock owns
+      // elapsed time, so the two never double-count.
+      const base = hiddenAt != null ? foldHiddenSpanIntoActivePhase(prev, hiddenAt, now) : prev
+      return { phase: 'paused', resumePhase: base, pauseStartedAt: now }
     })
+    // The hidden span (if any) has been handed off to the pause clock.
+    hiddenAtRef.current = null
   }, [])
 
   const resume = useCallback(() => {
+    const now = Date.now()
+    // Disjoint-union rule (c): if the tab is STILL hidden (teacher remote-resume
+    // while backgrounded), re-arm the hidden clock so the still-hidden span
+    // keeps being excluded when the child actually returns.
+    const stillHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
     setPhase((prev) => {
       if (prev.phase !== 'paused') return prev
-
-      // Calculate how long we were paused
-      const pauseDuration = Date.now() - prev.pauseStartedAt
-
-      // Helper to add pause duration to an attempt
-      const addPauseDuration = (attempt: AttemptInput): AttemptInput => ({
-        ...attempt,
-        accumulatedPauseMs: attempt.accumulatedPauseMs + pauseDuration,
-      })
-
-      // Update the attempt inside the resume phase to track accumulated pause time
-      const resumePhase = prev.resumePhase
-      switch (resumePhase.phase) {
-        case 'inputting':
-          return {
-            ...resumePhase,
-            attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'awaitingDisambiguation':
-          return {
-            ...resumePhase,
-            attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'helpMode':
-          return {
-            ...resumePhase,
-            attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'submitting':
-          return {
-            ...resumePhase,
-            attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'showingFeedback':
-          return {
-            ...resumePhase,
-            attempt: addPauseDuration(resumePhase.attempt),
-          }
-        case 'transitioning':
-          // Update both outgoing (for accuracy of recorded time) and incoming
-          return {
-            ...resumePhase,
-            incoming: addPauseDuration(resumePhase.incoming),
-          }
-        case 'loading':
-        case 'complete':
-          // No attempt to update
-          return resumePhase
-      }
+      // Fold the pause span into the attempt via the shared accounting.
+      return addPauseToActivePhase(prev.resumePhase, now - prev.pauseStartedAt, { hidden: false })
     })
+    hiddenAtRef.current = stillHidden ? now : null
+  }, [])
+
+  // ==========================================================================
+  // Visibility layer (#156): fold hidden-tab time out of the response time
+  // ==========================================================================
+  //
+  // Mount-only. On hidden we arm `hiddenAtRef`; on return we fold the elapsed
+  // span into the current attempt (silently — no phase change, so no pause
+  // modal flashes). `visibilitychange` is primary; `pagehide` / persisted
+  // `pageshow` are idempotent belt-and-suspenders for iOS Safari reliability.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const arm = () => {
+      // Rule (a): arm only when not already armed (idempotent under duplicate
+      // pagehide + visibilitychange) and not paused (the pause clock owns it).
+      if (hiddenAtRef.current != null) return
+      if (phaseRef.current.phase === 'paused') return
+      hiddenAtRef.current = Date.now()
+    }
+
+    const fold = () => {
+      const hiddenAt = hiddenAtRef.current
+      if (hiddenAt == null) return
+      hiddenAtRef.current = null
+      const now = Date.now()
+      setPhase((prev) => {
+        // Rule (d): visible while paused → no-op (pause clock owns the interval).
+        if (prev.phase === 'paused') return prev
+        return foldHiddenSpanIntoActivePhase(prev, hiddenAt, now)
+      })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') arm()
+      else fold()
+    }
+    const handlePageHide = () => arm()
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) fold()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('pageshow', handlePageShow)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('pageshow', handlePageShow)
+    }
   }, [])
 
   // Is the session complete?

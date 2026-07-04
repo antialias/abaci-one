@@ -30,23 +30,24 @@
  *
  * ```typescript
  * import {
- *   calculateSecondsPerTerm,
- *   estimateProblemTime,
+ *   estimateProblemTimeMs,
  *   estimateSessionProblemCount,
  * } from '@/lib/curriculum/time-estimation'
  *
- * // Get avg seconds per term from historical data
- * const spt = calculateSecondsPerTerm(sessionResults)
- *
- * // Estimate time for a specific problem
- * const timeMs = estimateProblemTime(problem, spt)
+ * // Estimate time for a specific problem at a given seconds-per-term pace
+ * const timeMs = estimateProblemTimeMs(problem, secondsPerTerm)
  *
  * // Estimate how many problems fit in a duration
- * const count = estimateSessionProblemCount(durationMinutes, avgTermsPerProblem, spt)
+ * const count = estimateSessionProblemCount(durationMinutes, avgTermsPerProblem, secondsPerTerm)
  * ```
+ *
+ * NOTE: The historical-fit estimators (seconds-per-term / complexity-unit means)
+ * were removed once `getPaceAssessment` (progress-manager, #157) became the single
+ * producer of the pace statistic. This module now only holds the pure sizing math
+ * the Start-Practice modal uses to turn a pace into a problem count.
  */
 
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart } from '@/db/schema/session-plans'
 
 // ============================================================================
 // Constants and Configuration
@@ -113,82 +114,6 @@ export const SKILL_COMPLEXITY_WEIGHTS: Record<string, number> = {
 // ============================================================================
 // Core Calculation Functions
 // ============================================================================
-
-/**
- * Calculate average seconds per term from historical session results
- *
- * This is the core metric for time estimation. By measuring time per term
- * rather than per problem, we can more accurately estimate time for problems
- * of varying complexity.
- *
- * @param results - Array of slot results with timing and problem data
- * @param options - Configuration options
- * @returns Seconds per term, or null if insufficient data
- */
-export function calculateSecondsPerTerm(
-  results: SlotResult[],
-  options: {
-    /** Minimum number of results needed for reliable estimate */
-    minResults?: number
-    /** Whether to exclude outliers (>3 std dev from mean) */
-    excludeOutliers?: boolean
-  } = {}
-): number | null {
-  const { minResults = 5, excludeOutliers = true } = options
-
-  // Filter to results with valid timing and problem data
-  const validResults = results.filter((r) => r.responseTimeMs > 0 && r.problem?.terms?.length > 0)
-
-  if (validResults.length < minResults) {
-    return null
-  }
-
-  // Calculate seconds per term for each result
-  let sptsRaw = validResults.map((r) => {
-    const termCount = r.problem.terms.length
-    const seconds = r.responseTimeMs / 1000
-    return seconds / termCount
-  })
-
-  // Optionally exclude outliers
-  if (excludeOutliers && sptsRaw.length >= 10) {
-    const mean = sptsRaw.reduce((a, b) => a + b, 0) / sptsRaw.length
-    const stdDev = Math.sqrt(
-      sptsRaw.reduce((sum, spt) => sum + (spt - mean) ** 2, 0) / sptsRaw.length
-    )
-    const threshold = 3 * stdDev
-    sptsRaw = sptsRaw.filter((spt) => Math.abs(spt - mean) <= threshold)
-  }
-
-  if (sptsRaw.length === 0) {
-    return null
-  }
-
-  // Return weighted average (more recent results weighted slightly higher)
-  // For simplicity, we just use arithmetic mean for now
-  const avgSpt = sptsRaw.reduce((a, b) => a + b, 0) / sptsRaw.length
-
-  // Clamp to reasonable bounds
-  return Math.max(
-    TIME_ESTIMATION_DEFAULTS.minSecondsPerTerm,
-    Math.min(TIME_ESTIMATION_DEFAULTS.maxSecondsPerTerm, avgSpt)
-  )
-}
-
-/**
- * Calculate average seconds per term from session plan data
- *
- * Convenience function that extracts results from session plans.
- *
- * @param sessions - Array of session plans with results
- * @returns Seconds per term, or null if insufficient data
- */
-export function calculateSecondsPerTermFromSessions(
-  sessions: Array<{ results: SlotResult[] }>
-): number | null {
-  const allResults = sessions.flatMap((s) => s.results)
-  return calculateSecondsPerTerm(allResults)
-}
 
 /**
  * Estimate time in milliseconds for a specific problem
@@ -350,81 +275,4 @@ export function calculateProblemComplexityUnits(skillsRequired: string[]): numbe
   }
 
   return totalComplexity
-}
-
-/**
- * Calculate seconds per complexity unit from historical results
- *
- * This is the most sophisticated estimation method, accounting for
- * both problem structure and skill difficulty.
- *
- * @param results - Array of slot results
- * @returns Seconds per complexity unit, or null if insufficient data
- */
-export function calculateSecondsPerComplexityUnit(results: SlotResult[]): number | null {
-  const validResults = results.filter(
-    (r) => r.responseTimeMs > 0 && r.problem?.skillsRequired?.length > 0
-  )
-
-  if (validResults.length < 10) {
-    return null
-  }
-
-  const ratios = validResults.map((r) => {
-    const complexity = calculateProblemComplexityUnits(r.problem.skillsRequired)
-    const seconds = r.responseTimeMs / 1000
-    return seconds / complexity
-  })
-
-  const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length
-  return Math.max(2, Math.min(15, avg)) // Clamp to reasonable bounds
-}
-
-// ============================================================================
-// Utility Types
-// ============================================================================
-
-/**
- * Time estimation summary for a student
- */
-export interface TimeEstimationProfile {
-  /** Seconds per term (primary metric) */
-  secondsPerTerm: number
-  /** Seconds per complexity unit (advanced metric, if available) */
-  secondsPerComplexityUnit: number | null
-  /** Equivalent seconds per problem for UI display */
-  secondsPerProblem: number
-  /** Number of results used to calculate these estimates */
-  sampleSize: number
-  /** Whether these are default values (no historical data) */
-  isDefault: boolean
-}
-
-/**
- * Get a complete time estimation profile for a student
- *
- * @param results - Historical slot results
- * @returns Time estimation profile
- */
-export function getTimeEstimationProfile(results: SlotResult[]): TimeEstimationProfile {
-  const spt = calculateSecondsPerTerm(results)
-  const spcu = calculateSecondsPerComplexityUnit(results)
-
-  if (spt === null) {
-    return {
-      secondsPerTerm: TIME_ESTIMATION_DEFAULTS.secondsPerTerm,
-      secondsPerComplexityUnit: null,
-      secondsPerProblem: convertSptToSecondsPerProblem(TIME_ESTIMATION_DEFAULTS.secondsPerTerm),
-      sampleSize: 0,
-      isDefault: true,
-    }
-  }
-
-  return {
-    secondsPerTerm: spt,
-    secondsPerComplexityUnit: spcu,
-    secondsPerProblem: convertSptToSecondsPerProblem(spt),
-    sampleSize: results.length,
-    isDefault: false,
-  }
 }

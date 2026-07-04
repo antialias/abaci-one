@@ -54,6 +54,8 @@ export interface CurriculumData {
   curriculum: CurriculumPosition | null
   skills: SkillMasteryData[]
   recentSessions: PracticeSessionData[]
+  /** Robust pace estimate + timing-flag counts (#157); refreshes on invalidation. */
+  paceAssessment?: import('@/lib/curriculum/timing/pace-estimation').PaceAssessment
 }
 
 // ============================================================================
@@ -73,6 +75,7 @@ async function fetchCurriculum(playerId: string): Promise<CurriculumData> {
     curriculum: data.curriculum,
     skills: data.skills || [],
     recentSessions: data.recentSessions || [],
+    paceAssessment: data.paceAssessment,
   }
 }
 

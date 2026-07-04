@@ -38,6 +38,7 @@ import {
   estimateSessionProblemCount,
   TIME_ESTIMATION_DEFAULTS,
 } from '@/lib/curriculum/time-estimation'
+import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
 import {
   getSkillTutorialConfig,
   type SkillTutorialConfig,
@@ -166,6 +167,17 @@ interface StartPracticeModalContextValue {
   avgTermsPerProblem: number
   problemsPerType: { abacus: number; visualization: number; linear: number }
   estimatedProblems: number
+  /**
+   * What the estimated problem count would become if every flagged timing were
+   * repaired (from `paceAssessment.secondsPerProblemExcludingFlagged`). Null when
+   * there is nothing to preview. Drives the `TimingDataNotice` "~M instead of ~N".
+   */
+  estimatedProblemsIfRepaired: number | null
+  /**
+   * Outlier-aware pace assessment for the current student (#157). Null when not
+   * provided (e.g. Storybook). Powers the timing-data notice at this decision point.
+   */
+  paceAssessment: PaceAssessment | null
   enabledPartCount: number
   showGameBreakSettings: boolean
   practiceApprovedGames: GameInfo[]
@@ -241,6 +253,8 @@ interface StartPracticeModalProviderProps {
   comfortByMode?: Record<string, number>
   secondsPerTerm?: number
   avgSecondsPerProblem?: number
+  /** Outlier-aware pace assessment (#157) — powers the timing-data notice. */
+  paceAssessment?: PaceAssessment | null
   existingPlan?: SessionPlan | null
   /** When true, abandon existing session before generating a new one */
   startFresh?: boolean
@@ -265,6 +279,7 @@ export function StartPracticeModalProvider({
   comfortByMode: comfortByModeProp = {},
   secondsPerTerm: secondsPerTermProp,
   avgSecondsPerProblem,
+  paceAssessment = null,
   existingPlan = null,
   startFresh = false,
   onStarted,
@@ -614,6 +629,33 @@ export function StartPracticeModalProvider({
     return problemsPerType.abacus + problemsPerType.visualization + problemsPerType.linear
   }, [problemsPerType])
 
+  // "If repaired" seconds-per-term: the estimate the modal would show once every
+  // flagged timing is resolved. Derived from the same per-problem quantity the
+  // current estimate uses (`secondsPerProblemExcludingFlagged`) via the shared
+  // conversion, so ~N and ~M sit on the same footing and stay comparable.
+  const secondsPerTermIfRepaired = useMemo(() => {
+    const spp = paceAssessment?.secondsPerProblemExcludingFlagged
+    if (spp == null) return null
+    return convertSecondsPerProblemToSpt(spp)
+  }, [paceAssessment?.secondsPerProblemExcludingFlagged])
+
+  const estimatedProblemsIfRepaired = useMemo(() => {
+    if (secondsPerTermIfRepaired == null) return null
+    const totalWeight = partWeights.abacus + partWeights.visualization + partWeights.linear
+    if (totalWeight === 0) return 0
+    let total = 0
+    for (const { type } of PART_TYPES) {
+      if (partWeights[type] <= 0) continue
+      total += estimateSessionProblemCount(
+        durationMinutes * (partWeights[type] / totalWeight),
+        avgTermsPerProblem,
+        secondsPerTermIfRepaired,
+        type
+      )
+    }
+    return total
+  }, [secondsPerTermIfRepaired, durationMinutes, partWeights, avgTermsPerProblem])
+
   const modesSummary = useMemo(() => {
     const enabled = PART_TYPES.filter((p) => partWeights[p.type] > 0)
     if (enabled.length === PART_TYPES.length)
@@ -898,6 +940,8 @@ export function StartPracticeModalProvider({
     avgTermsPerProblem,
     problemsPerType,
     estimatedProblems,
+    estimatedProblemsIfRepaired,
+    paceAssessment,
     enabledPartCount,
     showGameBreakSettings,
     practiceApprovedGames,

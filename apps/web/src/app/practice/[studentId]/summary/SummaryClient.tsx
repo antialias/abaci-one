@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -73,6 +74,8 @@ import {
   useUpdateReviewProgress,
 } from '@/hooks/useWorksheetParsing'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
+import { countUnresolvedFlagged } from '@/lib/curriculum/timing/effective-time'
+import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { api } from '@/lib/queryClient'
 import { attachmentKeys } from '@/lib/queryKeys'
@@ -107,6 +110,8 @@ interface SummaryClientProps {
   session: SessionPlan | null
   /** Average seconds per problem from recent sessions */
   avgSecondsPerProblem?: number
+  /** Outlier-aware pace assessment (#157) — powers the Start-Practice timing notice. */
+  paceAssessment?: PaceAssessment | null
   /** Problem history for BKT computation in weak skills targeting */
   problemHistory?: ProblemResultWithContext[]
   /** Whether we just transitioned from active practice to this summary */
@@ -131,6 +136,7 @@ export function SummaryClient({
   player,
   session,
   avgSecondsPerProblem = 40,
+  paceAssessment = null,
   problemHistory,
   justCompleted = false,
   previousAccuracy = null,
@@ -262,6 +268,16 @@ export function SummaryClient({
     const correct = sessionResults.filter((r) => r.isCorrect).length
     return correct / sessionResults.length
   }, [sessionResults])
+
+  // Count timings in this session that still NEED adult review (#158): flagged
+  // by the classifier and not yet resolved (omitted / adjusted / confirmed). This
+  // is resolution-aware via the shared helper, so the banner shows only
+  // unresolved flags and disappears once every flag has been acted on. Single-arg
+  // (no child stats) → the read-time signal available without the child's window.
+  const flaggedTimingCount = useMemo(
+    () => countUnresolvedFlagged(sessionResults),
+    [sessionResults]
+  )
 
   // Compute BKT from problem history to get skill masteries
   const skillMasteries = useMemo<Record<string, SkillBktResult>>(() => {
@@ -537,6 +553,43 @@ export function SummaryClient({
                           }}
                           unaprovingId={getPendingAttachmentId(unapproveWorksheet)}
                         />
+                        {/* Timing-review entry point (#158): surfaces when this
+                            session has auto-quarantined (flagged) timings. */}
+                        {flaggedTimingCount > 0 && session?.id && (
+                          <Link
+                            href={`/practice/${studentId}/review-timings?session=${session.id}`}
+                            data-component="timing-review-link"
+                            data-action="open-timing-review"
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.75rem',
+                              marginTop: '1.5rem',
+                              padding: '0.85rem 1rem',
+                              borderRadius: '12px',
+                              border: '1px solid',
+                              borderColor: isDark ? 'amber.700' : 'amber.300',
+                              backgroundColor: isDark ? 'amber.950' : 'amber.50',
+                              color: isDark ? 'amber.200' : 'amber.900',
+                              textDecoration: 'none',
+                              transition: 'all 0.15s',
+                              _hover: { borderColor: isDark ? 'amber.600' : 'amber.400' },
+                            })}
+                          >
+                            <span className={css({ fontSize: '0.9rem', fontWeight: 'medium' })}>
+                              ⚠️ {flaggedTimingCount}{' '}
+                              {flaggedTimingCount === 1 ? 'timing' : 'timings'} in this session need
+                              review
+                            </span>
+                            <span
+                              className={css({ fontSize: '0.85rem', fontWeight: 'semibold', whiteSpace: 'nowrap' })}
+                            >
+                              Review timings →
+                            </span>
+                          </Link>
+                        )}
+
                         {/* All Problems - complete session listing */}
                         {hasProblems && (
                           <div className={css({ marginTop: '1.5rem' })}>
@@ -615,6 +668,7 @@ export function SummaryClient({
               comfortLevel={comfortLevel}
               comfortByMode={comfortByMode}
               avgSecondsPerProblem={avgSecondsPerProblem}
+              paceAssessment={paceAssessment}
               existingPlan={null}
               problemHistory={problemHistory}
               onClose={() => setShowStartPracticeModal(false)}

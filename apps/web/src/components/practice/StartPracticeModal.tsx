@@ -16,6 +16,7 @@ import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
 import { sessionModeKeys } from '@/hooks/useSessionMode'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { css } from '../../../styled-system/css'
@@ -37,6 +38,7 @@ import {
   PlanIndicator,
   ErrorDisplay,
   StartButton,
+  TimingDataNotice,
 } from './start-practice-modal'
 
 interface StartPracticeModalProps {
@@ -51,6 +53,11 @@ interface StartPracticeModalProps {
   secondsPerTerm?: number
   /** @deprecated Use secondsPerTerm instead */
   avgSecondsPerProblem?: number
+  /**
+   * Outlier-aware pace assessment (#157). When it carries unresolved flagged
+   * timings, the modal surfaces a `TimingDataNotice` below the session summary.
+   */
+  paceAssessment?: PaceAssessment | null
   existingPlan?: SessionPlan | null
   /** When true, abandon the existing session and generate a new one */
   startFresh?: boolean
@@ -73,6 +80,7 @@ export function StartPracticeModal({
   comfortByMode,
   secondsPerTerm,
   avgSecondsPerProblem,
+  paceAssessment,
   existingPlan,
   startFresh,
   onClose,
@@ -175,6 +183,7 @@ export function StartPracticeModal({
       comfortByMode={comfortByMode}
       secondsPerTerm={secondsPerTerm}
       avgSecondsPerProblem={avgSecondsPerProblem}
+      paceAssessment={paceAssessment}
       existingPlan={startFresh ? null : existingPlan}
       startFresh={startFresh}
       onStarted={onStarted}
@@ -638,6 +647,11 @@ function StartPracticeModalContent({
                     </div>
                   </div>
                 </div>
+
+                {/* Timing-data notice (#157): flags when the pace estimate above
+                    may be distorted by unusual/broken timings; taps through to
+                    the review page. Renders nothing when there is nothing to review. */}
+                <TimingDataNotice />
 
                 {/* Error display */}
                 <ErrorDisplay />

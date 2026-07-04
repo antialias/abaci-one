@@ -3,6 +3,7 @@ import { canPerformAction } from '@/lib/classroom/access-control'
 import {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
+  getPaceAssessment,
   getPracticeStudent,
   getRecentSessionResults,
   getRecentSessions,
@@ -41,13 +42,14 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   const justCompleted = completed === '1'
 
   // Fetch player, active session, most recent completed session, problem history, and recent sessions in parallel
-  const [player, activeSession, completedSession, problemHistory, recentSessions] =
+  const [player, activeSession, completedSession, problemHistory, recentSessions, paceAssessment] =
     await Promise.all([
       getPracticeStudent(studentId),
       getActiveSessionPlan(studentId),
       getMostRecentCompletedSession(studentId),
       getRecentSessionResults(studentId, 100),
       getRecentSessions(studentId, 10), // For trend calculation
+      getPaceAssessment(studentId), // Single producer of the robust pace statistic (#157)
     ])
 
   // 404 if player doesn't exist
@@ -65,8 +67,9 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   // Priority: show in-progress session (partial results) > completed session > null
   const sessionToShow = activeSession?.startedAt ? activeSession : completedSession
 
-  // Calculate average seconds per problem from the session
-  const avgSecondsPerProblem = sessionToShow?.avgTimePerProblemSeconds ?? 40
+  // Robust, outlier-aware pace estimate from the single producer (#157) — the
+  // stored per-session value could be poisoned by legacy/idle-capped samples.
+  const avgSecondsPerProblem = paceAssessment.avgSecondsPerProblem
 
   // Calculate previous session's accuracy for trend comparison
   // The current session (if completed) is included in recentSessions, so we need to find the one after it
@@ -98,6 +101,7 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
       player={player}
       session={sessionToShow}
       avgSecondsPerProblem={avgSecondsPerProblem}
+      paceAssessment={paceAssessment}
       problemHistory={problemHistory}
       justCompleted={justCompleted}
       previousAccuracy={previousAccuracy}

@@ -11,6 +11,7 @@ import { canPerformAction } from '@/lib/classroom'
 import {
   getPlayerCurriculum,
   getAllSkillMastery,
+  getPaceAssessment,
   getRecentSessions,
   upsertPlayerCurriculum,
 } from '@/lib/curriculum/progress-manager'
@@ -45,12 +46,14 @@ export const GET = withAuth(async (_request, { params }) => {
     }
 
     t = performance.now()
-    const [curriculum, rawSkills, recentSessions, sessionResults] = await Promise.all([
-      getPlayerCurriculum(playerId),
-      getAllSkillMastery(playerId),
-      getRecentSessions(playerId, 200),
-      getRecentSessionResults(playerId, 2000),
-    ])
+    const [curriculum, rawSkills, recentSessions, sessionResults, paceAssessment] =
+      await Promise.all([
+        getPlayerCurriculum(playerId),
+        getAllSkillMastery(playerId),
+        getRecentSessions(playerId, 200),
+        getRecentSessionResults(playerId, 2000),
+        getPaceAssessment(playerId), // Single producer (#157); embedded so React Query refreshes flags after #158 repairs
+      ])
     timings.dataFetch = performance.now() - t
 
     t = performance.now()
@@ -105,6 +108,7 @@ export const GET = withAuth(async (_request, { params }) => {
       curriculum,
       skills,
       recentSessions,
+      paceAssessment,
     })
   } catch (error) {
     console.error('Error fetching curriculum:', error)

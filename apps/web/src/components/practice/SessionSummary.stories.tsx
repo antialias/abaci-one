@@ -237,6 +237,9 @@ function createCompletedSessionPlan(config: {
     approvedAt: new Date(Date.now() - sessionDurationMs - 60000),
     startedAt: new Date(Date.now() - sessionDurationMs),
     completedAt: new Date(),
+    statusBeforeDeletion: null,
+    deletedAt: null,
+    deletedBy: null,
   }
 }
 

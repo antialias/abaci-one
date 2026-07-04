@@ -1,18 +1,68 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getSessionPlan } from '@/lib/curriculum'
-import { updateSessionPlanResults } from '@/lib/curriculum/session-planner'
+import {
+  applySlotResultReview,
+  SessionReviewError,
+  type SlotResultReviewAction,
+  type SlotReviewScope,
+} from '@/lib/curriculum'
 import { getUserId } from '@/lib/viewer'
+
+const VALID_SCOPES: readonly SlotReviewScope[] = ['timing', 'mastery', 'both']
+
+/**
+ * Translate a request body into a typed {@link SlotResultReviewAction}.
+ * Throws {@link SessionReviewError} (400) on anything unrecognized so the route
+ * surfaces a clean validation error.
+ */
+function parseReviewAction(body: unknown): SlotResultReviewAction {
+  const { action, scope, adjustedResponseTimeMs } = (body ?? {}) as {
+    action?: string
+    scope?: string
+    adjustedResponseTimeMs?: unknown
+  }
+
+  switch (action) {
+    case 'mark_correct':
+    case 'clear_time':
+    case 'confirm_timing':
+    case 'unconfirm_timing':
+      return { action }
+
+    case 'exclude':
+    case 'include': {
+      if (scope !== undefined && !VALID_SCOPES.includes(scope as SlotReviewScope)) {
+        throw new SessionReviewError('Invalid scope. Must be: timing, mastery, or both', 400)
+      }
+      return { action, scope: scope as SlotReviewScope | undefined }
+    }
+
+    case 'set_time': {
+      if (typeof adjustedResponseTimeMs !== 'number' || !Number.isFinite(adjustedResponseTimeMs)) {
+        throw new SessionReviewError('adjustedResponseTimeMs (number) is required for set_time', 400)
+      }
+      return { action, adjustedResponseTimeMs }
+    }
+
+    default:
+      throw new SessionReviewError(
+        'Invalid action. Must be: mark_correct, exclude, include, set_time, clear_time, confirm_timing, or unconfirm_timing',
+        400
+      )
+  }
+}
 
 /**
  * PATCH /api/curriculum/[playerId]/sessions/plans/[planId]/results/[resultIndex]
- * Edit a specific result in the session plan
+ * Review/repair a specific attempt in a session plan (#158).
  *
  * Actions:
- * - mark_correct: Change an incorrect result to correct
- * - exclude: Mark result as excluded from tracking (source: 'teacher-excluded')
- * - include: Remove exclusion (restore original source)
+ * - mark_correct: change an incorrect result to correct (teacher-corrected)
+ * - exclude / include: toggle exclusion, scoped `timing | mastery | both`
+ *   (default `mastery` — backward compatible with the pre-#158 body)
+ * - set_time / clear_time: set or clear an adult-entered `adjustedResponseTimeMs`
+ * - confirm_timing / unconfirm_timing: vouch a flagged value is genuine
  */
 export const PATCH = withAuth(async (request, { params }) => {
   const {
@@ -27,109 +77,24 @@ export const PATCH = withAuth(async (request, { params }) => {
   }
 
   try {
-    // Authorization: require 'start-session' permission (parent or teacher-present)
+    // Authorization: require 'repair-data' permission (parent or teacher-present)
     const userId = await getUserId()
-    const canModify = await canPerformAction(userId, playerId, 'start-session')
+    const canModify = await canPerformAction(userId, playerId, 'repair-data')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const body = await request.json()
-    const { action } = body
+    const action = parseReviewAction(body)
 
-    // Get current plan
-    const plan = await getSessionPlan(planId)
-    if (!plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
-    }
-
-    // Validate result index
-    if (resultIndex >= plan.results.length) {
-      return NextResponse.json({ error: 'Result index out of bounds' }, { status: 400 })
-    }
-
-    const result = plan.results[resultIndex]
-    const updatedResults = [...plan.results]
-
-    switch (action) {
-      case 'mark_correct': {
-        if (result.isCorrect) {
-          return NextResponse.json({ error: 'Result is already correct' }, { status: 400 })
-        }
-
-        // Mark as correct and recalculate mastery weight
-        const epochNumber = result.epochNumber ?? 0
-        const masteryWeight = 1.0 / 2 ** epochNumber
-
-        updatedResults[resultIndex] = {
-          ...result,
-          isCorrect: true,
-          masteryWeight,
-          // Add marker that this was teacher-corrected for audit trail
-          source: 'teacher-corrected' as const,
-        }
-
-        // Handle retry queue implications
-        // If this was epoch 0 and there are retry results for this slot, we should handle that
-        // For now, we'll leave the retry results in place - they still happened
-        // The BKT will recalculate based on the corrected result
-
-        break
-      }
-
-      case 'exclude': {
-        if (result.source === 'teacher-excluded') {
-          return NextResponse.json({ error: 'Result is already excluded' }, { status: 400 })
-        }
-
-        // Store original source so we can restore it
-        const originalSource = result.source
-
-        updatedResults[resultIndex] = {
-          ...result,
-          source: 'teacher-excluded' as const,
-          // Store original source in a new field for potential restoration
-          _originalSource: originalSource,
-        } as typeof result & { _originalSource?: string }
-
-        break
-      }
-
-      case 'include': {
-        if (result.source !== 'teacher-excluded') {
-          return NextResponse.json({ error: 'Result is not excluded' }, { status: 400 })
-        }
-
-        // Restore original source
-        const originalSource = (result as typeof result & { _originalSource?: string })
-          ._originalSource
-
-        updatedResults[resultIndex] = {
-          ...result,
-          source: (originalSource as typeof result.source) ?? 'practice',
-        }
-
-        // Remove the _originalSource field
-        delete (
-          updatedResults[resultIndex] as typeof result & {
-            _originalSource?: string
-          }
-        )._originalSource
-
-        break
-      }
-
-      default:
-        return NextResponse.json(
-          {
-            error: 'Invalid action. Must be: mark_correct, exclude, or include',
-          },
-          { status: 400 }
-        )
-    }
-
-    // Update the plan with modified results
-    const updatedPlan = await updateSessionPlanResults(planId, updatedResults)
+    // Ownership (plan.playerId === playerId) is enforced inside the domain call.
+    const updatedPlan = await applySlotResultReview({
+      planId,
+      playerId,
+      resultIndex,
+      reviewerUserId: userId,
+      action,
+    })
 
     return NextResponse.json({
       plan: {
@@ -150,9 +115,16 @@ export const PATCH = withAuth(async (request, { params }) => {
           updatedPlan.completedAt instanceof Date
             ? updatedPlan.completedAt.getTime()
             : updatedPlan.completedAt,
+        deletedAt:
+          updatedPlan.deletedAt instanceof Date
+            ? updatedPlan.deletedAt.getTime()
+            : updatedPlan.deletedAt,
       },
     })
   } catch (error) {
+    if (error instanceof SessionReviewError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('Error updating result:', error)
     return NextResponse.json({ error: 'Failed to update result' }, { status: 500 })
   }

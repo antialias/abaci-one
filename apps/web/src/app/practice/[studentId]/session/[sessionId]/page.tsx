@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import {
+  getPaceAssessment,
   getPracticeStudent,
   getRecentSessionResults,
   getSessionPlan,
@@ -27,10 +28,11 @@ export default async function SessionPage({ params }: SessionPageProps) {
   const { studentId, sessionId } = await params
 
   // Fetch player, session, and problem history in parallel
-  const [player, session, problemHistory] = await Promise.all([
+  const [player, session, problemHistory, paceAssessment] = await Promise.all([
     getPracticeStudent(studentId),
     getSessionPlan(sessionId),
     getRecentSessionResults(studentId, 100),
+    getPaceAssessment(studentId), // Single producer of the robust pace statistic (#157)
   ])
 
   // 404 if player doesn't exist
@@ -50,8 +52,9 @@ export default async function SessionPage({ params }: SessionPageProps) {
     notFound()
   }
 
-  // Calculate average seconds per problem from the session
-  const avgSecondsPerProblem = session.avgTimePerProblemSeconds ?? 40
+  // Robust, outlier-aware pace estimate from the single producer (#157) — the
+  // stored per-session value could be poisoned by legacy/idle-capped samples.
+  const avgSecondsPerProblem = paceAssessment.avgSecondsPerProblem
 
   return (
     <SummaryClient
@@ -59,6 +62,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
       player={player}
       session={session}
       avgSecondsPerProblem={avgSecondsPerProblem}
+      paceAssessment={paceAssessment}
       problemHistory={problemHistory}
     />
   )

@@ -40,6 +40,12 @@ export const sessionHistoryKeys = {
   list: (playerId: string) => [...sessionHistoryKeys.all, playerId] as const,
 }
 
+// Timing review & repair query keys (#158)
+export const timingReviewKeys = {
+  all: ['timingReview'] as const,
+  detail: (playerId: string) => [...timingReviewKeys.all, playerId] as const,
+}
+
 // Classroom query keys
 export const classroomKeys = {
   all: ['classrooms'] as const,

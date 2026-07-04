@@ -176,6 +176,9 @@ function createMockSessionPlan(config: {
     approvedAt: null,
     startedAt: null,
     completedAt: null,
+    statusBeforeDeletion: null,
+    deletedAt: null,
+    deletedBy: null,
   }
 }
 
