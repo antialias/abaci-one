@@ -681,13 +681,44 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
     const completedAt = session.completedAt ? session.completedAt.toISOString() : null
     session.results.forEach((result, resultIndex) => {
       const classification = classifyAttemptTiming(result, childStats)
-      if (classification.tier === 'ok') return
+
+      let displayTier: 'tier1' | 'tier2'
+      let displayReason: AttemptTimingReason | undefined
+
+      if (classification.tier === 'ok') {
+        // Acting on a flag can re-classify the attempt as 'ok' — omitting or
+        // adjusting it both null-out / replace the effective time — which would
+        // silently drop the card the instant it's touched, leaving the adult no
+        // way to undo a mis-click. Keep any acted-on attempt as a resolved card
+        // by recovering the tier it WOULD flag as without those overrides, so the
+        // card (and its Ignore↔Count / Reset controls) stays reachable.
+        // (`timingConfirmed` never forces 'ok', so it isn't handled here.)
+        const review = result.timingReview
+        const actedOn =
+          review != null &&
+          (review.omitFromTiming === true || review.adjustedResponseTimeMs != null)
+        if (!actedOn) return
+        const original = classifyAttemptTiming(
+          {
+            ...result,
+            timingReview: { ...review, omitFromTiming: false, adjustedResponseTimeMs: undefined },
+          },
+          childStats
+        )
+        if (original.tier === 'ok') return
+        displayTier = original.tier
+        displayReason = original.reason
+      } else {
+        displayTier = classification.tier
+        displayReason = classification.reason
+      }
+
       flagged.push({
         sessionId: session.id,
         completedAt,
         resultIndex,
-        tier: classification.tier,
-        reason: classification.reason as AttemptTimingReason | undefined,
+        tier: displayTier,
+        reason: displayReason,
         effectiveMs: getEffectiveResponseTimeMs(result),
         // Resolution-aware (#158 FIX A/B): a bare review stamp (e.g. mastery-only)
         // or an unconfirm doesn't resolve the timing flag — only omit/adjust/
