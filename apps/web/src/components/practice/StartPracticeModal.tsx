@@ -378,6 +378,12 @@ function StartPracticeModalContent({
               boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
               zIndex: 1001,
               outline: 'none',
+              // Bound the modal to the viewport and lay it out as a column so the
+              // content can scroll internally — otherwise tall content (e.g. the
+              // timing notice) pushes the Start button off the bottom of the page.
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: 'calc(100vh - 2rem)',
               '@media (min-width: 480px)': {
                 width: 'auto',
                 minWidth: '360px',
@@ -389,6 +395,7 @@ function StartPracticeModalContent({
                 width: '100%',
                 maxWidth: 'none',
                 height: '100%',
+                maxHeight: 'none',
                 borderRadius: 0,
                 boxShadow: 'none',
                 display: 'flex',
@@ -447,9 +454,18 @@ function StartPracticeModalContent({
                 padding: '1.5rem',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center',
+                // flex-start, NOT center: vertical centering is handled by
+                // config-and-action's marginBlock:auto, which degrades safely on
+                // overflow (margins collapse to 0 → content top-aligns and scrolls).
+                // justify-content:center would instead re-center overflowing content
+                // and push its TOP above the scroll origin, clipping it unreachably.
+                justifyContent: 'flex-start',
                 flex: 1,
-                overflow: 'hidden',
+                // Scroll internally when content exceeds the bounded modal height;
+                // minHeight:0 lets this flex child shrink below its content so the
+                // scroll actually engages.
+                minHeight: 0,
+                overflowY: 'auto',
                 '@media (max-height: 500px) and (orientation: landscape)': {
                   padding: '0.75rem 1.5rem',
                   paddingTop: '2rem',
@@ -470,6 +486,10 @@ function StartPracticeModalContent({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '1rem',
+                  // Auto block-margins keep short content vertically centered, but
+                  // collapse to 0 when content overflows so it scrolls from the top
+                  // (rather than clipping the top the way justify-content:center does).
+                  marginBlock: 'auto',
                   '@media (max-height: 500px) and (orientation: landscape)': {
                     flex: 1,
                     minHeight: 0,
