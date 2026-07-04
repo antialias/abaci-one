@@ -30,6 +30,7 @@ import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionPlanOverview } from '../practice/SessionPlanOverview'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
+import { LinearProblem } from '../practice/LinearProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
 import { ProblemVideoPlayer } from '../vision/ProblemVideoPlayer'
 import {
@@ -1189,14 +1190,25 @@ export function SessionObserverView({
                 >
                   {/* Problem - ref for height measurement */}
                   <div ref={problemRef} className={css({ flexShrink: 0 })}>
-                    <VerticalProblem
-                      terms={state.currentProblem.terms}
-                      userAnswer={state.studentAnswer}
-                      isFocused={state.phase === 'problem'}
-                      isCompleted={state.phase === 'feedback'}
-                      correctAnswer={state.currentProblem.answer}
-                      size="large"
-                    />
+                    {state.sessionParts?.[state.currentPartIndex ?? 0]?.format === 'linear' ? (
+                      <LinearProblem
+                        terms={state.currentProblem.terms}
+                        userAnswer={state.studentAnswer}
+                        isFocused={state.phase === 'problem'}
+                        isCompleted={state.phase === 'feedback'}
+                        correctAnswer={state.currentProblem.answer}
+                        isDark={isDark}
+                      />
+                    ) : (
+                      <VerticalProblem
+                        terms={state.currentProblem.terms}
+                        userAnswer={state.studentAnswer}
+                        isFocused={state.phase === 'problem'}
+                        isCompleted={state.phase === 'feedback'}
+                        correctAnswer={state.currentProblem.answer}
+                        size="large"
+                      />
+                    )}
                   </div>
 
                   {/* Vision feed or AbacusDock - flex layout instead of absolute */}

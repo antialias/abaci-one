@@ -16,6 +16,7 @@ import { AbacusDock } from '../AbacusDock'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import { NumericKeypad } from './NumericKeypad'
 import { VerticalProblem } from './VerticalProblem'
+import { LinearProblem } from './LinearProblem'
 
 export interface PracticePreviewProps {
   /** The problem slot to practice */
@@ -296,14 +297,24 @@ export function PracticePreview({
           borderColor: isDark ? 'gray.700' : 'gray.200',
         })}
       >
-        <VerticalProblem
-          terms={problem.terms}
-          userAnswer={userAnswer}
-          isCompleted={isSubmitted}
-          correctAnswer={correctAnswer}
-          size="large"
-          generationTrace={problem.generationTrace}
-        />
+        {part.format === 'linear' ? (
+          <LinearProblem
+            terms={problem.terms}
+            userAnswer={userAnswer}
+            isCompleted={isSubmitted}
+            correctAnswer={correctAnswer}
+            isDark={isDark}
+          />
+        ) : (
+          <VerticalProblem
+            terms={problem.terms}
+            userAnswer={userAnswer}
+            isCompleted={isSubmitted}
+            correctAnswer={correctAnswer}
+            size="large"
+            generationTrace={problem.generationTrace}
+          />
+        )}
 
         {/* Feedback */}
         {isSubmitted && (

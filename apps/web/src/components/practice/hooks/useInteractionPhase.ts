@@ -74,6 +74,9 @@ export interface OutgoingAttempt {
   problem: GeneratedProblem
   userAnswer: string
   result: 'correct' | 'incorrect'
+  /** Part the outgoing problem belonged to (so the transition can render its
+   *  own vertical/linear format, which may differ from the incoming part). */
+  partIndex: number
 }
 
 /**
@@ -1093,6 +1096,7 @@ export function useInteractionPhase(
           problem: prev.attempt.problem,
           userAnswer: prev.attempt.userAnswer,
           result: prev.result,
+          partIndex: prev.attempt.partIndex,
         }
 
         const incomingPartIndex = nextPartIndex ?? prev.attempt.partIndex

@@ -55,6 +55,7 @@ import { AssistanceDebugPanel } from './AssistanceDebugPanel'
 import { ProgressiveAssistanceUI } from './ProgressiveAssistanceUI'
 import { useProgressiveAssistance } from './hooks/useProgressiveAssistance'
 import { VerticalProblem } from './VerticalProblem'
+import { LinearProblem } from './LinearProblem'
 import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
 import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
 
@@ -247,111 +248,6 @@ function calculateAbacusColumns(terms: number[]): number {
  * Flip to false to make linear show only "=".
  */
 const SHOW_LINEAR_PREFIX_HINT = true
-
-/**
- * Linear problem display component for Part 3
- */
-function LinearProblem({
-  terms,
-  userAnswer,
-  isFocused,
-  isCompleted,
-  correctAnswer,
-  isDark,
-  detectedPrefixIndex,
-}: {
-  terms: number[]
-  userAnswer: string
-  isFocused: boolean
-  isCompleted: boolean
-  correctAnswer: number
-  isDark: boolean
-  /** Detected prefix index - shows "..." instead of "=" for partial sums */
-  detectedPrefixIndex?: number
-}) {
-  // Build the equation string
-  const equation = terms
-    .map((term, i) => {
-      if (i === 0) return String(term)
-      return term < 0 ? ` - ${Math.abs(term)}` : ` + ${term}`
-    })
-    .join('')
-
-  // Use "..." for prefix sums (mathematically incomplete), "=" for final answer
-  const isPrefixSum = detectedPrefixIndex !== undefined
-  const operator = isPrefixSum ? '…' : '='
-
-  // Use numeric comparison so "09" equals 9
-  const numericUserAnswer = parseInt(userAnswer, 10)
-  const answeredCorrectly = isCompleted && numericUserAnswer === correctAnswer
-
-  return (
-    <div
-      data-component="linear-problem"
-      data-prefix-mode={isPrefixSum ? 'true' : undefined}
-      className={css({
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '1rem',
-        fontFamily: 'monospace',
-        fontSize: '2rem',
-        fontWeight: 'bold',
-      })}
-    >
-      <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>
-        {equation}{' '}
-        <span
-          className={css({
-            color: isPrefixSum
-              ? isDark
-                ? 'yellow.400'
-                : 'yellow.600'
-              : isDark
-                ? 'gray.200'
-                : 'gray.800',
-          })}
-        >
-          {operator}
-        </span>
-      </span>
-      <span
-        className={css({
-          minWidth: '80px',
-          padding: '0.5rem 1rem',
-          borderRadius: '8px',
-          textAlign: 'center',
-          backgroundColor: isCompleted
-            ? answeredCorrectly
-              ? isDark
-                ? 'green.900'
-                : 'green.100'
-              : isDark
-                ? 'red.900'
-                : 'red.100'
-            : isDark
-              ? 'gray.800'
-              : 'gray.100',
-          color: isCompleted
-            ? answeredCorrectly
-              ? isDark
-                ? 'green.200'
-                : 'green.700'
-              : isDark
-                ? 'red.200'
-                : 'red.700'
-            : isDark
-              ? 'gray.200'
-              : 'gray.800',
-          border: '2px solid',
-          borderColor: isFocused ? 'blue.400' : isDark ? 'gray.600' : 'gray.300',
-        })}
-      >
-        {userAnswer || (isFocused ? '?' : '')}
-      </span>
-    </div>
-  )
-}
 
 /**
  * ActiveSession - The main practice session component
@@ -612,6 +508,11 @@ export function ActiveSession({
     activeProblem,
     disableAbacusScaffolding: isLinearActive,
   })
+
+  // Format of the OUTGOING problem's part (may differ from the current part at a
+  // part boundary), so the sliding-away problem keeps its own vertical/linear shape.
+  const outgoingFormat =
+    outgoingAttempt != null ? plan.parts[outgoingAttempt.partIndex]?.format : undefined
 
   // Progressive assistance state machine — subsumes auto-pause timer
   const handleAutoPause = useCallback(
@@ -2115,14 +2016,24 @@ export function ActiveSession({
                     position: 'relative' as const,
                   }}
                 >
-                  <VerticalProblem
-                    terms={outgoingAttempt.problem.terms}
-                    userAnswer={outgoingAttempt.userAnswer}
-                    isCompleted={true}
-                    correctAnswer={outgoingAttempt.problem.answer}
-                    size="large"
-                    generationTrace={outgoingAttempt.problem.generationTrace}
-                  />
+                  {outgoingFormat === 'linear' ? (
+                    <LinearProblem
+                      terms={outgoingAttempt.problem.terms}
+                      userAnswer={outgoingAttempt.userAnswer}
+                      isCompleted
+                      correctAnswer={outgoingAttempt.problem.answer}
+                      isDark={isDark}
+                    />
+                  ) : (
+                    <VerticalProblem
+                      terms={outgoingAttempt.problem.terms}
+                      userAnswer={outgoingAttempt.userAnswer}
+                      isCompleted={true}
+                      correctAnswer={outgoingAttempt.problem.answer}
+                      size="large"
+                      generationTrace={outgoingAttempt.problem.generationTrace}
+                    />
+                  )}
                   {/* Feedback stays with outgoing problem */}
                   <PracticeFeedback
                     isCorrect={true}
@@ -2206,6 +2117,9 @@ export function ActiveSession({
                     isCompleted={showAsCompleted}
                     correctAnswer={attempt.problem.answer}
                     isDark={isDark}
+                    // Preserve the live player's current behavior: no correct-answer
+                    // reveal on an incorrect submit (read-only surfaces opt in via default).
+                    showCorrectAnswerOnIncorrect={false}
                     detectedPrefixIndex={
                       SHOW_LINEAR_PREFIX_HINT &&
                       matchedPrefixIndex >= 0 &&
