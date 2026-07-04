@@ -41,6 +41,13 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
+// The linear graduation nudge (rendered inside PracticeModesSelector) reads
+// react-query hooks; keep it inert here so these sub-component tests stay focused.
+vi.mock('@/hooks/useLinearReadiness', () => ({
+  useLinearReadiness: () => ({ data: undefined }),
+  useLinearReadinessVeto: () => ({ setVeto: { mutate: vi.fn(), isPending: false } }),
+}))
+
 vi.mock('@/hooks/useTier', () => ({
   useTier: () => ({
     tier: 'pro',
