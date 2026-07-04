@@ -2,10 +2,15 @@
 
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react'
 import { animated, useSpring } from '@react-spring/web'
 import useMeasure from 'react-use-measure'
 import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
+import {
+  useLinearReadiness,
+  useLinearReadinessVeto,
+  type LinearReadyCategory,
+} from '@/hooks/useLinearReadiness'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
@@ -570,6 +575,79 @@ export interface ManualSkillSelectorProps {
  * - Use book level presets to auto-populate
  * - Adjust individual skills before saving
  */
+/**
+ * Passive per-category chip (L3): shown only for categories the child has "aged
+ * out" onto number sentences. Auto-conferred (no action needed); one tap vetoes
+ * ("not yet") or lifts the veto. Never touches the 3-state PracticeLevelButton.
+ */
+function LinearSentenceChip({
+  vetoed,
+  isDark,
+  disabled,
+  onToggle,
+}: {
+  vetoed: boolean
+  isDark: boolean
+  disabled?: boolean
+  onToggle: () => void
+}) {
+  const activate = (e: SyntheticEvent) => {
+    // Chip lives inside the accordion trigger button — don't toggle the accordion.
+    e.stopPropagation()
+    e.preventDefault()
+    if (!disabled) onToggle()
+  }
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-pressed={!vetoed}
+      aria-label={
+        vetoed
+          ? 'Number sentences held off for this category — tap to allow'
+          : 'These skills are ready for number sentences — tap to hold off'
+      }
+      data-element="linear-sentence-chip"
+      data-vetoed={vetoed}
+      title={
+        vetoed
+          ? 'Number sentences held off for this category'
+          : 'These skills are automatic enough for number sentences'
+      }
+      onClick={activate}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') activate(e)
+      }}
+      className={css({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '1',
+        fontSize: 'xs',
+        fontWeight: 'semibold',
+        paddingX: '8px',
+        paddingY: '2px',
+        borderRadius: '9999px',
+        border: '1px solid',
+        whiteSpace: 'nowrap',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        bg: vetoed ? (isDark ? 'gray.700' : 'gray.100') : isDark ? 'green.900' : 'green.50',
+        color: vetoed ? (isDark ? 'gray.400' : 'gray.500') : isDark ? 'green.200' : 'green.700',
+        borderColor: vetoed
+          ? isDark
+            ? 'gray.600'
+            : 'gray.300'
+          : isDark
+            ? 'green.700'
+            : 'green.300',
+      })}
+    >
+      <span aria-hidden>📝</span>
+      <span>{vetoed ? 'not yet' : 'sentences'}</span>
+    </span>
+  )
+}
+
 export function ManualSkillSelector({
   open,
   onClose,
@@ -582,6 +660,16 @@ export function ManualSkillSelector({
 }: ManualSkillSelectorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // L3: which categories have been DERIVED as linear-ready (+ their veto state).
+  // Empty unless the `linear_readiness` flag is on, so this is inert by default.
+  const { data: linearReadiness } = useLinearReadiness(playerId)
+  const { setVeto, clearVeto } = useLinearReadinessVeto(playerId)
+  const linearReadyByCategory = useMemo(() => {
+    const map = new Map<SkillCategoryKey, LinearReadyCategory>()
+    for (const c of linearReadiness?.categories ?? []) map.set(c.category, c)
+    return map
+  }, [linearReadiness])
 
   // Build initial skill levels from skillMasteryData or fallback to currentMasteredSkills
   const buildInitialLevels = useCallback((): Map<string, PracticeLevel> => {
@@ -1084,6 +1172,22 @@ export function ManualSkillSelector({
                             >
                               {category.name}
                             </span>
+                            {(() => {
+                              const lr = linearReadyByCategory.get(categoryKey)
+                              if (!lr) return null
+                              return (
+                                <LinearSentenceChip
+                                  vetoed={lr.vetoed}
+                                  isDark={isDark}
+                                  disabled={setVeto.isPending || clearVeto.isPending}
+                                  onToggle={() =>
+                                    lr.vetoed
+                                      ? clearVeto.mutate({ category: categoryKey })
+                                      : setVeto.mutate({ category: categoryKey })
+                                  }
+                                />
+                              )
+                            })()}
                           </div>
                           <div
                             className={css({

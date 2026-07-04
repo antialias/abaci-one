@@ -131,6 +131,53 @@ export async function getAllSkillMastery(playerId: string): Promise<PlayerSkillM
   })
 }
 
+// ============================================================================
+// Linear-readiness vetoes (L3)
+// ============================================================================
+
+/**
+ * Get the set of skill categories the teacher has vetoed for linear (number
+ * sentence) practice. A category's PRESENCE means "not yet"; its ABSENCE means
+ * linear-readiness is auto-conferred once derived. Categories are `SkillCategoryKey`
+ * strings (validated at the API boundary).
+ */
+export async function getLinearReadinessVetoes(playerId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ category: schema.linearReadinessVeto.category })
+    .from(schema.linearReadinessVeto)
+    .where(eq(schema.linearReadinessVeto.playerId, playerId))
+  return new Set(rows.map((r) => r.category))
+}
+
+/**
+ * Veto a skill category for linear practice. Idempotent — a repeat veto is a no-op
+ * thanks to the (player, category) unique index.
+ */
+export async function setLinearReadinessVeto(
+  playerId: string,
+  category: string,
+  reason?: string
+): Promise<void> {
+  await db
+    .insert(schema.linearReadinessVeto)
+    .values({ playerId, category, reason: reason ?? null })
+    .onConflictDoNothing({
+      target: [schema.linearReadinessVeto.playerId, schema.linearReadinessVeto.category],
+    })
+}
+
+/** Lift a linear-practice veto for a skill category. Idempotent. */
+export async function clearLinearReadinessVeto(playerId: string, category: string): Promise<void> {
+  await db
+    .delete(schema.linearReadinessVeto)
+    .where(
+      and(
+        eq(schema.linearReadinessVeto.playerId, playerId),
+        eq(schema.linearReadinessVeto.category, category)
+      )
+    )
+}
+
 /**
  * Get all skills in a player's active practice rotation (practiceLevel != 'none')
  */
