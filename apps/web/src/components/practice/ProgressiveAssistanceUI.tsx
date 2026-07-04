@@ -11,6 +11,12 @@ interface ProgressiveAssistanceUIProps {
   onHelpRequested: () => void
   onSkip: () => void
   onDismissWrongAnswerSuggestion: () => void
+  /**
+   * Whether the bead-help affordances ("I need help" + the wrong-answer
+   * "use help to work through it" suggestion) are available. False for LINEAR
+   * parts, where the abacus is put away — encouragement and skip still show.
+   */
+  showHelpAffordance?: boolean
 }
 
 export function ProgressiveAssistanceUI({
@@ -20,6 +26,7 @@ export function ProgressiveAssistanceUI({
   onHelpRequested,
   onSkip,
   onDismissWrongAnswerSuggestion,
+  showHelpAffordance = true,
 }: ProgressiveAssistanceUIProps) {
   const { state } = machineState
 
@@ -69,7 +76,7 @@ export function ProgressiveAssistanceUI({
       )}
 
       {/* Help button */}
-      {state === 'offeringHelp' && (
+      {showHelpAffordance && state === 'offeringHelp' && (
         <button
           type="button"
           data-action="request-help"
@@ -94,8 +101,8 @@ export function ProgressiveAssistanceUI({
         </button>
       )}
 
-      {/* Wrong answer suggestion */}
-      {showWrongAnswerSuggestion && (
+      {/* Wrong answer suggestion — omitted for LINEAR parts (it's about using help) */}
+      {showHelpAffordance && showWrongAnswerSuggestion && (
         <div
           data-element="wrong-answer-suggestion"
           className={css({

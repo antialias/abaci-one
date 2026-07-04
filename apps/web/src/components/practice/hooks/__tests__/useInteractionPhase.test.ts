@@ -581,6 +581,121 @@ describe('useInteractionPhase', () => {
     })
   })
 
+  describe('disableAbacusScaffolding (LINEAR parts)', () => {
+    // With the abacus put away, the prefix-sum scaffolding is disabled: every digit
+    // is free-accepted, disambiguation/help mode is never entered, and the typed
+    // answer is never wiped. The student just types the final answer.
+
+    it('accepts a digit that vertical mode would reject', () => {
+      const { result } = renderHook(() =>
+        useInteractionPhase({ disableAbacusScaffolding: true })
+      )
+
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 0, 0) // [15, 27], sums [15, 42]
+      })
+
+      // '9' is not a prefix of 15 or 42 — vertical mode rejects it and bumps
+      // correctionCount; linear accepts it verbatim.
+      act(() => {
+        result.current.handleDigit('9')
+      })
+
+      expect(result.current.phase.phase).toBe('inputting')
+      if (result.current.phase.phase === 'inputting') {
+        expect(result.current.phase.attempt.userAnswer).toBe('9')
+        expect(result.current.phase.attempt.rejectedDigit).toBeNull()
+        expect(result.current.phase.attempt.correctionCount).toBe(0)
+      }
+    })
+
+    it('never enters awaitingDisambiguation/helpMode on an intermediate prefix sum', () => {
+      const { result } = renderHook(() =>
+        useInteractionPhase({ disableAbacusScaffolding: true })
+      )
+
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 0, 0) // sums [15, 42]
+      })
+
+      // Typing "15" equals the first prefix sum — vertical mode leaves inputting
+      // (help mode). Linear stays put.
+      act(() => {
+        result.current.handleDigit('1')
+        result.current.handleDigit('5')
+      })
+
+      expect(result.current.phase.phase).toBe('inputting')
+      expect(result.current.ambiguousHelpTermIndex).toBe(-1)
+      if (result.current.phase.phase === 'inputting') {
+        expect(result.current.phase.attempt.userAnswer).toBe('15')
+      }
+    })
+
+    it('makes enterHelpMode a no-op that preserves the typed answer', () => {
+      const { result } = renderHook(() =>
+        useInteractionPhase({ disableAbacusScaffolding: true })
+      )
+
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 0, 0)
+      })
+
+      act(() => {
+        result.current.handleDigit('4')
+        result.current.handleDigit('2')
+      })
+
+      act(() => {
+        result.current.enterHelpMode(0)
+      })
+
+      expect(result.current.phase.phase).toBe('inputting')
+      expect(result.current.showHelpOverlay).toBe(false)
+      if (result.current.phase.phase === 'inputting') {
+        // Not wiped to '' (the vertical help-entry behavior)
+        expect(result.current.phase.attempt.userAnswer).toBe('42')
+      }
+    })
+
+    it('still auto-submits when the typed answer is correct', () => {
+      const { result } = renderHook(() =>
+        useInteractionPhase({ disableAbacusScaffolding: true })
+      )
+
+      act(() => {
+        result.current.loadProblem(twoDigitProblem, 0, 0) // answer 42
+      })
+
+      act(() => {
+        result.current.handleDigit('4')
+        result.current.handleDigit('2')
+      })
+
+      expect(result.current.shouldAutoSubmit).toBe(true)
+    })
+
+    it('leaves rejection/help behavior intact when the flag is off (control)', () => {
+      const { result } = renderHook(() =>
+        useInteractionPhase({ disableAbacusScaffolding: false })
+      )
+
+      act(() => {
+        result.current.loadProblem(simpleProblem, 0, 0) // sums [3, 7, 12]
+      })
+
+      act(() => {
+        result.current.handleDigit('5') // not a prefix of any sum
+      })
+
+      if (result.current.phase.phase === 'inputting') {
+        expect(result.current.phase.attempt.userAnswer).toBe('')
+        expect(result.current.phase.attempt.correctionCount).toBe(1)
+        expect(result.current.phase.attempt.rejectedDigit).toBe('5')
+      }
+    })
+  })
+
   describe('handleBackspace', () => {
     it('removes last digit', () => {
       const { result } = renderHook(() => useInteractionPhase())

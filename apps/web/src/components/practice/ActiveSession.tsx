@@ -241,6 +241,14 @@ function calculateAbacusColumns(terms: number[]): number {
 }
 
 /**
+ * Owner toggle: show the "…" partial-answer cue on LINEAR problems (renders "…"
+ * instead of "=" while the typed number equals a running subtotal). It's a generic
+ * "you're mid-calculation, keep going" hint — not a bead widget — so it stays on.
+ * Flip to false to make linear show only "=".
+ */
+const SHOW_LINEAR_PREFIX_HINT = true
+
+/**
  * Linear problem display component for Part 3
  */
 function LinearProblem({
@@ -550,6 +558,14 @@ export function ActiveSession({
 
     return null
   }, [redoState, plan.parts, plan.currentPartIndex, currentProblemInfo])
+
+  // LINEAR parts put the abacus fully away: no on-screen abacus (already gated by
+  // showAbacusDock) AND no prefix-sum/bead-help scaffolding. Keyed off the part of
+  // the problem actually loaded into the interaction hook (activeProblem.partIndex),
+  // which matches the problem on screen even in redo mode.
+  const activePartIndex = activeProblem?.partIndex ?? plan.currentPartIndex
+  const isLinearActive = plan.parts[activePartIndex]?.format === 'linear'
+
   const latestActiveProblemRef = useRef(activeProblem)
   const latestCurrentProblemInfoRef = useRef(currentProblemInfo)
   useEffect(() => {
@@ -594,6 +610,7 @@ export function ActiveSession({
   } = useInteractionPhase({
     initialProblem,
     activeProblem,
+    disableAbacusScaffolding: isLinearActive,
   })
 
   // Progressive assistance state machine — subsumes auto-pause timer
@@ -1074,7 +1091,11 @@ export function ActiveSession({
 
   // Spring for submit button entrance animation
   // Show submit button when: manual submit is required OR abacus is docked (user needs way to submit)
-  const showSubmitButton = attempt?.manualSubmitRequired || isDockedByUser
+  // Force it on for LINEAR parts: with the abacus scaffolding disabled we never reject
+  // digits, so `manualSubmitRequired` never trips — and on touch that would leave a wrong
+  // answer with no submit key (the keypad drops it when this is false). Correct answers
+  // still auto-submit.
+  const showSubmitButton = attempt?.manualSubmitRequired || isDockedByUser || isLinearActive
   const submitButtonSpring = useSpring({
     transform: showSubmitButton ? 'translateY(0px)' : 'translateY(60px)',
     opacity: showSubmitButton ? 1 : 0,
@@ -1281,6 +1302,9 @@ export function ActiveSession({
   // This effect only handles the inputting phase case for unambiguous matches
   // DISABLED when abacus is docked - user controls when to submit, help triggers on submit if needed
   useEffect(() => {
+    // LINEAR parts put the abacus away — never auto-trigger bead help. (The hook's
+    // enterHelpMode is already a no-op for linear; this avoids the wasted work.)
+    if (isLinearActive) return
     // Skip auto-help when abacus is docked - user has manual control
     if (isDockedByUser) return
 
@@ -1298,7 +1322,15 @@ export function ActiveSession({
         enterHelpMode(newConfirmedCount)
       }
     }
-  }, [phase, prefixMatch, matchedPrefixIndex, prefixSums.length, enterHelpMode, isDockedByUser])
+  }, [
+    phase,
+    prefixMatch,
+    matchedPrefixIndex,
+    prefixSums.length,
+    enterHelpMode,
+    isDockedByUser,
+    isLinearActive,
+  ])
 
   // Handle when student reaches target value on help abacus
   // Sequence: show target value → dismiss abacus → show value in answer boxes → fade to empty → exit
@@ -1834,8 +1866,10 @@ export function ActiveSession({
 
   // Handle help requested from progressive assistance UI
   const handleHelpFromAssistance = useCallback(() => {
+    // LINEAR parts have the abacus away — no bead help to request.
+    if (isLinearActive) return
     enterHelpMode(0)
-  }, [enterHelpMode])
+  }, [enterHelpMode, isLinearActive])
 
   const getHealthColor = (health: SessionHealth['overall']) => {
     switch (health) {
@@ -2173,15 +2207,20 @@ export function ActiveSession({
                     correctAnswer={attempt.problem.answer}
                     isDark={isDark}
                     detectedPrefixIndex={
-                      matchedPrefixIndex >= 0 && matchedPrefixIndex < prefixSums.length - 1
+                      SHOW_LINEAR_PREFIX_HINT &&
+                      matchedPrefixIndex >= 0 &&
+                      matchedPrefixIndex < prefixSums.length - 1
                         ? matchedPrefixIndex
                         : undefined
                     }
                   />
                 )}
 
-                {/* Help panel - absolutely positioned to the right of the problem */}
-                {showHelpOverlay && helpContext && !helpPanelDismissed && (
+                {/* Help panel - absolutely positioned to the right of the problem.
+                    Never render the bead-decomposition coach panel next to a LINEAR
+                    problem (help mode can't be entered for linear, so showHelpOverlay
+                    is already false — this hard-guarantees it). */}
+                {!isLinearActive && showHelpOverlay && helpContext && !helpPanelDismissed && (
                   <div
                     data-element="help-panel"
                     className={css({
@@ -2354,6 +2393,7 @@ export function ActiveSession({
           onHelpRequested={handleHelpFromAssistance}
           onSkip={handleSkip}
           onDismissWrongAnswerSuggestion={assistance.dismissWrongAnswerSuggestion}
+          showHelpAffordance={!isLinearActive}
         />
       )}
 
