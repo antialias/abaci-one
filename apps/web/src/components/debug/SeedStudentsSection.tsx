@@ -50,10 +50,17 @@ const PROFILE_GROUPS: ProfileGroup[] = [
     match: (p) => p.tags.includes('chart-test'),
   },
   {
+    id: 'timing',
+    label: 'Timing Data Repair',
+    description: 'Poisoned / idle / unusual response times for the timing-review tool',
+    match: (p) => p.tags.includes('timing-anomaly'),
+  },
+  {
     id: 'data-edge',
     label: 'Data Robustness',
     description: 'Empty states, extreme data, stale skills, NaN handling',
-    match: (p) => p.category === 'edge' && !p.tags.includes('chart-test'),
+    match: (p) =>
+      p.category === 'edge' && !p.tags.includes('chart-test') && !p.tags.includes('timing-anomaly'),
   },
 ]
 

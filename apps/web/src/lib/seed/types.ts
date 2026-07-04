@@ -6,6 +6,43 @@ import type { GeneratedProblem as GenProblem } from '../../utils/problemGenerato
 export type TargetClassification = 'weak' | 'developing' | 'strong'
 
 /**
+ * A timing anomaly injected into one specific generated attempt of a skill's
+ * history, keyed by attempt index. Lets a profile reproduce the shapes the
+ * timing-review tool (#158) is built to catch — a single idle 8-hour answer
+ * (legacy poison), a post-#156 idle-capped attempt, or a genuinely-unusual-for-
+ * this-child slow answer — among otherwise-normal response times.
+ *
+ * For deterministic placement (one session per anomaly), give the carrying
+ * skill a unique `ageDays` and set the profile's `minSessions: 1` so the skill
+ * collapses to a single session.
+ */
+export interface SkillTimingAnomaly {
+  /** 0-based index of the attempt (within this skill's problems) to overwrite. */
+  atIndex: number
+  /**
+   * The `responseTimeMs` to force. For legacy poison use an implausible idle
+   * value (e.g. an 8-hour answer ≈ 28_800_000). For a Tier-2 "unusual" sample
+   * use a value ≥ 60_000 that is well above the child's normal range. When
+   * `idleCapped` is set, this is the *stored (capped)* value, not the raw span.
+   */
+  responseTimeMs: number
+  /**
+   * When set, mark the attempt as auto-capped by the #156 capture guard —
+   * stamps `wasIdleCapped`, `responseTimeMsRaw` (the pre-cap span), `capReason`,
+   * `capThresholdMs`, and `capSource`. Such an attempt classifies Tier-1
+   * `idle-capped`; a flagless attempt with a huge `responseTimeMs` instead
+   * classifies Tier-1 `legacy-implausible`. Omit for legacy poison.
+   */
+  idleCapped?: {
+    /** The pre-cap raw measurement (e.g. the true 8-hour idle span). */
+    rawResponseTimeMs: number
+    capReason?: 'idle-exceeded' | 'clock-anomaly'
+    capThresholdMs?: number
+    capSource?: 'client' | 'server'
+  }
+}
+
+/**
  * Configuration for a skill's problem history in a test profile
  */
 export interface SkillConfig {
@@ -20,6 +57,13 @@ export interface SkillConfig {
   simulateLegacyData?: boolean
   /** Range for generated responseTimeMs values (default: { min: 4000, max: 6000 }) */
   responseTimeMsRange?: { min: number; max: number }
+  /**
+   * Inject timing anomalies into specific generated attempts (by index) to
+   * reproduce poisoned/unusual response times for testing the #158 review tool.
+   * Pair with a unique `ageDays` + profile `minSessions: 1` for deterministic
+   * one-session placement.
+   */
+  timingAnomalies?: SkillTimingAnomaly[]
 }
 
 /**
