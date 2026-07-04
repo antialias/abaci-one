@@ -325,7 +325,13 @@ describe('addPauseToActivePhase', () => {
   it('folds into the incoming attempt for a transitioning phase', () => {
     const transitioning: ActivePhase = {
       phase: 'transitioning',
-      outgoing: { key: '0-0', problem: simpleProblem, userAnswer: '12', result: 'correct' },
+      outgoing: {
+        key: '0-0',
+        problem: simpleProblem,
+        userAnswer: '12',
+        result: 'correct',
+        partIndex: 0,
+      },
       incoming: {
         ...createAttemptInput(simpleProblem, 1, 0),
         startTime: 5000,

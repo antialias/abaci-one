@@ -309,7 +309,8 @@ export function ProblemToReview({
             gap: '1rem',
           })}
         >
-          {/* Problem display - always vertical, annotated when expanded */}
+          {/* Problem display - vertical stack or linear sentence per part format,
+              annotated when expanded (vertical only) */}
           <AnnotatedProblem
             terms={generatedProblem.terms}
             answer={generatedProblem.answer}
@@ -319,6 +320,7 @@ export function ProblemToReview({
             skillMasteries={skillMasteries}
             expanded={isExpanded}
             isDark={isDark}
+            format={part.format}
           />
 
           {/* Collapsed mode: show weak skills summary next to problem */}

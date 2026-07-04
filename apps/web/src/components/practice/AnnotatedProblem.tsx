@@ -17,6 +17,7 @@ import { css } from '../../../styled-system/css'
 import type { GenerationTrace, SlotResult } from '@/db/schema/session-plans'
 import type { SkillBktResult } from '@/lib/curriculum/bkt'
 import { formatSkillLabel, isLikelyCause, type WeakSkillInfo } from './weakSkillUtils'
+import { LinearProblem } from './LinearProblem'
 
 export interface AnnotatedProblemProps {
   /** Problem terms (positive for addition, negative for subtraction) */
@@ -35,6 +36,8 @@ export interface AnnotatedProblemProps {
   expanded?: boolean
   /** Dark mode */
   isDark: boolean
+  /** Part format — linear problems render as a horizontal sentence (default vertical) */
+  format?: 'vertical' | 'linear'
 }
 
 /**
@@ -520,9 +523,37 @@ export function AnnotatedProblem({
   skillMasteries,
   expanded = false,
   isDark,
+  format = 'vertical',
 }: AnnotatedProblemProps) {
+  // Linear problems must render as a horizontal sentence in review too. A sentence
+  // has no per-term rows to annotate, so both collapsed and expanded show the
+  // sentence with the correct answer (and the struck student answer on a miss).
+  // Per-term skill annotations for linear are a separate follow-up.
+  if (format === 'linear') {
+    return (
+      <div
+        data-component="annotated-problem"
+        data-mode={expanded ? 'expanded' : 'collapsed'}
+        data-format="linear"
+      >
+        <LinearProblem
+          terms={terms}
+          correctAnswer={answer}
+          userAnswer={String(studentAnswer)}
+          isCompleted
+          showCorrectAnswerOnIncorrect
+          isDark={isDark}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div data-component="annotated-problem" data-mode={expanded ? 'expanded' : 'collapsed'}>
+    <div
+      data-component="annotated-problem"
+      data-mode={expanded ? 'expanded' : 'collapsed'}
+      data-format="vertical"
+    >
       {expanded ? (
         <ExpandedProblemDisplay
           terms={terms}
