@@ -8,7 +8,7 @@
  */
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import type { LinearReadinessState } from '@/hooks/useLinearReadiness'
+import type { LinearReadinessState, LinearReadyCategory } from '@/hooks/useLinearReadiness'
 
 const mockCtx = {
   studentId: 'p1',
@@ -31,8 +31,8 @@ vi.mock('@/hooks/useLinearReadiness', () => ({
 
 import { LinearGraduationBanner } from '../LinearGraduationBanner'
 
-function cat(category: string, name: string, vetoed = false) {
-  return { category, name, skillIds: [`${category}.x`], vetoed }
+function cat(category: string, name: string, vetoed = false): LinearReadyCategory {
+  return { category: category as LinearReadyCategory['category'], name, skillIds: [`${category}.x`], vetoed }
 }
 
 beforeEach(() => {
