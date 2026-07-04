@@ -445,6 +445,12 @@ export interface UseInteractionPhaseOptions {
   activeProblem?: ActiveProblem | null
   /** Called when auto-submit threshold is exceeded */
   onManualSubmitRequired?: () => void
+  /**
+   * When true (LINEAR parts), the abacus is put away entirely: never reject a
+   * digit, never enter awaitingDisambiguation, and never enter help mode. The
+   * student just types the final answer to the number sentence.
+   */
+  disableAbacusScaffolding?: boolean
 }
 
 export interface UseInteractionPhaseReturn {
@@ -537,7 +543,8 @@ export interface UseInteractionPhaseReturn {
 export function useInteractionPhase(
   options: UseInteractionPhaseOptions = {}
 ): UseInteractionPhaseReturn {
-  const { initialProblem, activeProblem, onManualSubmitRequired } = options
+  const { initialProblem, activeProblem, onManualSubmitRequired, disableAbacusScaffolding } =
+    options
 
   // Initialize state with problem if provided (for SSR hydration)
   const [phase, setPhase] = useState<InteractionPhase>(() => {
@@ -556,6 +563,12 @@ export function useInteractionPhase(
   // without re-subscribing (the visibility layer). Set during render — safe.
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+
+  // Live mirror of the abacus-scaffolding-disabled flag (LINEAR parts) so the
+  // memoized handleDigit/enterHelpMode callbacks read the current value without
+  // being re-created when it toggles. Set during render — safe.
+  const disableScaffoldingRef = useRef(disableAbacusScaffolding)
+  disableScaffoldingRef.current = disableAbacusScaffolding
 
   // Visibility layer (#156): when the tab is hidden/backgrounded we record the
   // instant here and fold the elapsed span into the current attempt on return,
@@ -629,6 +642,10 @@ export function useInteractionPhase(
       disambiguationTimerRef.current = null
     }
 
+    // LINEAR parts never enter awaitingDisambiguation (see handleDigit); with the
+    // abacus scaffolding disabled there is no bead-help to schedule. Defensive.
+    if (disableAbacusScaffolding) return
+
     // Only run timer when in awaitingDisambiguation phase
     if (phase.phase !== 'awaitingDisambiguation') return
 
@@ -668,7 +685,7 @@ export function useInteractionPhase(
         clearTimeout(disambiguationTimerRef.current)
       }
     }
-  }, [phase])
+  }, [phase, disableAbacusScaffolding])
 
   // Derive which term to show "need help?" prompt for from the phase
   // Returns -1 when not in awaitingDisambiguation phase
@@ -849,8 +866,10 @@ export function useInteractionPhase(
         const attempt = prev.attempt
         const sums = computePrefixSums(attempt.problem.terms)
 
-        // Once manual submit is required, accept any digit without validation
-        if (attempt.manualSubmitRequired) {
+        // Once manual submit is required — or during LINEAR parts, where the abacus
+        // prefix-sum scaffolding is disabled — accept any digit without validation
+        // (never reject, never enter awaitingDisambiguation/help mode).
+        if (attempt.manualSubmitRequired || disableScaffoldingRef.current) {
           const updatedAttempt = {
             ...attempt,
             userAnswer: attempt.userAnswer + digit,
@@ -977,6 +996,9 @@ export function useInteractionPhase(
   }, [onManualSubmitRequired])
 
   const enterHelpMode = useCallback((termIndex: number) => {
+    // LINEAR parts have the abacus put away — bead-decomposition help must never
+    // be entered. No-op keeps the current phase and typed answer intact.
+    if (disableScaffoldingRef.current) return
     setPhase((prev) => {
       // Allow entering help mode from inputting, awaitingDisambiguation, or helpMode (to navigate to a different term)
       if (
