@@ -1,3 +1,4 @@
+import { MAX_RESPONSE_TIME_CAP_MS } from '../curriculum/timing/constants'
 import type { ProfileCategory, ProfileInfo, TestStudentProfile } from './types'
 
 // =============================================================================
@@ -1628,6 +1629,111 @@ Use this to test:
       },
     ],
   },
+  {
+    name: '🕰️ Poisoned Timing (idle outlier)',
+    emoji: '🕰️',
+    color: '#0891b2',
+    category: 'edge',
+    description:
+      'TIMING REVIEW — clean ~5s baseline poisoned by an 8h idle answer + idle-capped + unusual samples',
+    currentPhaseId: 'L1.add.+3.five',
+    // Exactly the five skills we give explicit history to — no auto-fill, so the
+    // anomaly sessions stay deterministic (ensureAll would add ageDays:1 skills
+    // that collide with the poison session).
+    practicingSkills: MID_L1_SKILLS,
+    tutorialCompletedSkills: [
+      'basic.directAddition',
+      'basic.heavenBead',
+      'basic.simpleCombinations',
+    ],
+    // One session per distinct ageDays (minSessions:1 collapses each age group
+    // to a single session), so each anomaly lands in its own recent session.
+    minSessions: 1,
+    intentionNotes: `INTENTION: Poisoned Timing / Idle Outlier (Timing Review Tool Test — #156/#157/#158)
+
+Reproduces the data shape that broke Fern's plans: a solid clean baseline of
+~5s answers, poisoned by a single idle "8-hour" response time — plus one
+post-#156 idle-capped attempt and a few genuinely-unusual (Tier-2) samples so
+every /review-timings affordance lights up.
+
+Layout (each skill has a UNIQUE ageDays, minSessions:1 → one session each):
+  • ageDays 4/5/6 — clean baseline (~5s, default 4-6s range), 42 samples → the
+    ≥10 clean samples Tier-2 detection needs.
+  • ageDays 1 — fiveComplements.4=5-1: attempt #1 = 28,894,000ms (~8h) with NO
+    guard flags  → Tier-1 "legacy-implausible" (Fern's exact shape). Excluded
+    from the estimate at READ time; surfaces as "set aside automatically".
+  • ageDays 2 — fiveComplements.3=5-2: attempt #1 idle-capped (raw ~8h, stored
+    300,000ms, wasIdleCapped)  → Tier-1 "idle-capped" (what post-#156 capture
+    looks like).
+  • ageDays 3 — basic.directAddition: attempts #1/#3/#5 = 95,000ms each  →
+    Tier-2 "unusual-for-child" (winsorized, NOT dropped).
+
+Expected result AFTER the fix (this branch):
+  • The estimate stays HEALTHY (~5-6s/problem) despite the 8h poison — proof the
+    read-time classifier works; the old 2+2-per-part collapse does NOT recur.
+  • Start-Practice shows the "N unusual timings — review" notice (unresolvedCount>0).
+  • The two Tier-1 sessions show ⚠️ badges in the history list.
+  • /review-timings lists all ~5 flagged attempts with omit / set-time /
+    omit-from-mastery / delete-session / confirm-as-real / restore actions.
+  • The recovery header shows a visible current(~6s) vs excluding-flagged(~5s)
+    delta from the 3 Tier-2 samples; resolving them closes it.
+
+Use this to test:
+  • Tier-1 auto-quarantine + surfacing (legacy vs idle-capped reasons)
+  • Tier-2 flag-don't-drop + winsorized estimate
+  • Every FlaggedAttemptCard action and that counts are resolution-aware
+  • That a normal parent is nudged to the tool via the Start-Practice notice`,
+    skillHistory: [
+      // ---- Clean baseline: ~5s answers across three recent sessions ----------
+      { skillId: 'basic.directAddition', targetClassification: 'strong', problems: 14, ageDays: 4 },
+      { skillId: 'basic.heavenBead', targetClassification: 'strong', problems: 14, ageDays: 5 },
+      {
+        skillId: 'basic.simpleCombinations',
+        targetClassification: 'strong',
+        problems: 14,
+        ageDays: 6,
+      },
+      // ---- Tier-1b: legacy idle poison (no guard flags, ~8h) -----------------
+      {
+        skillId: 'fiveComplements.4=5-1',
+        targetClassification: 'developing',
+        problems: 4,
+        ageDays: 1,
+        timingAnomalies: [{ atIndex: 1, responseTimeMs: 28_894_000 }],
+      },
+      // ---- Tier-1a: post-#156 idle-capped (raw ~8h, stored 300k) -------------
+      {
+        skillId: 'fiveComplements.3=5-2',
+        targetClassification: 'developing',
+        problems: 4,
+        ageDays: 2,
+        timingAnomalies: [
+          {
+            atIndex: 1,
+            responseTimeMs: MAX_RESPONSE_TIME_CAP_MS,
+            idleCapped: {
+              rawResponseTimeMs: 28_894_000,
+              capReason: 'idle-exceeded',
+              capThresholdMs: MAX_RESPONSE_TIME_CAP_MS,
+              capSource: 'client',
+            },
+          },
+        ],
+      },
+      // ---- Tier-2: genuinely-unusual-for-this-child (~95s, winsorized) -------
+      {
+        skillId: 'basic.directAddition',
+        targetClassification: 'developing',
+        problems: 6,
+        ageDays: 3,
+        timingAnomalies: [
+          { atIndex: 1, responseTimeMs: 95_000 },
+          { atIndex: 3, responseTimeMs: 95_000 },
+          { atIndex: 5, responseTimeMs: 95_000 },
+        ],
+      },
+    ],
+  },
 ]
 
 // =============================================================================
@@ -1666,6 +1772,9 @@ export function deriveTags(profile: TestStudentProfile): string[] {
   }
   if (profile.skillHistory.some((s) => s.responseTimeMsRange)) {
     tags.push('progressive-assistance')
+  }
+  if (profile.skillHistory.some((s) => s.timingAnomalies && s.timingAnomalies.length > 0)) {
+    tags.push('timing-anomaly')
   }
 
   return tags

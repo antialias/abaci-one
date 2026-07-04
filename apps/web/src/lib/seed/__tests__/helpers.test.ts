@@ -12,6 +12,8 @@
 import { describe, expect, it } from 'vitest'
 import { checkSuccessCriteria, applyTuningAdjustments, generateSlotResults } from '../helpers'
 import type { SkillConfig, SuccessCriteria, TuningAdjustment } from '../types'
+import { classifyAttemptTiming } from '../../curriculum/timing/effective-time'
+import { MAX_RESPONSE_TIME_CAP_MS } from '../../curriculum/timing/constants'
 
 // =============================================================================
 // checkSuccessCriteria
@@ -415,6 +417,67 @@ describe('generateSlotResults', () => {
       expect(result.responseTimeMs).toBeGreaterThanOrEqual(4000)
       expect(result.responseTimeMs).toBeLessThan(6000)
     }
+  })
+
+  describe('timingAnomalies injection', () => {
+    it('injects a flagless legacy idle poison at the given index (Tier-1 legacy-implausible)', () => {
+      const config: SkillConfig = {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 4,
+        timingAnomalies: [{ atIndex: 1, responseTimeMs: 28_894_000 }],
+      }
+
+      const results = generateSlotResults(config, 0, new Date())
+      const poisoned = results[1]
+
+      expect(poisoned.responseTimeMs).toBe(28_894_000)
+      // Legacy poison carries NO #156 guard flags — that's what the classifier keys on.
+      expect(poisoned.wasIdleCapped).toBeUndefined()
+      expect(poisoned).not.toHaveProperty('capReason')
+      expect(poisoned).not.toHaveProperty('responseTimeMsRaw')
+      expect(classifyAttemptTiming(poisoned)).toEqual({
+        tier: 'tier1',
+        reason: 'legacy-implausible',
+      })
+
+      // Every other attempt stays in the normal generated range and classifies ok.
+      for (const [i, r] of results.entries()) {
+        if (i === 1) continue
+        expect(r.responseTimeMs).toBeGreaterThanOrEqual(4000)
+        expect(r.responseTimeMs).toBeLessThan(6000)
+        expect(classifyAttemptTiming(r).tier).toBe('ok')
+      }
+    })
+
+    it('stamps the #156 capture-guard fields for an idle-capped anomaly (Tier-1 idle-capped)', () => {
+      const config: SkillConfig = {
+        skillId: 'basic.directAddition',
+        targetClassification: 'strong',
+        problems: 3,
+        timingAnomalies: [
+          {
+            atIndex: 0,
+            responseTimeMs: MAX_RESPONSE_TIME_CAP_MS,
+            idleCapped: {
+              rawResponseTimeMs: 28_894_000,
+              capReason: 'idle-exceeded',
+              capThresholdMs: MAX_RESPONSE_TIME_CAP_MS,
+              capSource: 'client',
+            },
+          },
+        ],
+      }
+
+      const capped = generateSlotResults(config, 0, new Date())[0]
+
+      expect(capped.responseTimeMs).toBe(MAX_RESPONSE_TIME_CAP_MS)
+      expect(capped.wasIdleCapped).toBe(true)
+      expect(capped.responseTimeMsRaw).toBe(28_894_000)
+      expect(capped.capReason).toBe('idle-exceeded')
+      expect(capped.capSource).toBe('client')
+      expect(classifyAttemptTiming(capped)).toEqual({ tier: 'tier1', reason: 'idle-capped' })
+    })
   })
 
   it('incorrect attempts count is 0 for correct and 1 for incorrect', () => {

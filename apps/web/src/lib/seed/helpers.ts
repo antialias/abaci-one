@@ -1,4 +1,5 @@
 import type { GeneratedProblem, SlotResult } from '../../db/schema/session-plans'
+import { MAX_RESPONSE_TIME_CAP_MS } from '../curriculum/timing/constants'
 import type { SkillConfig, SuccessCriteria, TuningAdjustment } from './types'
 import { generateRealisticProblems } from './problem-generation'
 import { designSequenceForClassification } from './bkt-simulation'
@@ -21,6 +22,11 @@ export function generateSlotResults(
     config.targetClassification
   )
 
+  // Index the timing anomalies for O(1) lookup while mapping attempts.
+  const anomalyByIndex = new Map(
+    (config.timingAnomalies ?? []).map((anomaly) => [anomaly.atIndex, anomaly])
+  )
+
   return realisticProblems.map((realistic, i) => {
     const isCorrect = correctnessSequence[i]
 
@@ -36,6 +42,16 @@ export function generateSlotResults(
     const wrongAnswer =
       realistic.answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1)
 
+    // A timing anomaly (if any) overrides the generated response time and,
+    // when idle-capped, layers in the #156 capture-guard fields.
+    const anomaly = anomalyByIndex.get(i)
+    const responseTimeMs = anomaly
+      ? anomaly.responseTimeMs
+      : (() => {
+          const range = config.responseTimeMsRange ?? { min: 4000, max: 6000 }
+          return range.min + Math.random() * (range.max - range.min)
+        })()
+
     const baseResult = {
       slotId: crypto.randomUUID(),
       partNumber: 1 as const,
@@ -43,14 +59,22 @@ export function generateSlotResults(
       problem,
       studentAnswer: isCorrect ? realistic.answer : wrongAnswer,
       isCorrect,
-      responseTimeMs: (() => {
-        const range = config.responseTimeMsRange ?? { min: 4000, max: 6000 }
-        return range.min + Math.random() * (range.max - range.min)
-      })(),
+      responseTimeMs,
       skillsExercised: realistic.skillsUsed, // ALL skills used, not just target
       usedOnScreenAbacus: false,
       timestamp: new Date(sessionStartTime.getTime() + (startIndex + i) * 10000),
       incorrectAttempts: isCorrect ? 0 : 1,
+      // Only present for idle-capped anomalies; a bare huge responseTimeMs with
+      // no guard flags is exactly the "legacy poison" shape the classifier keys on.
+      ...(anomaly?.idleCapped
+        ? {
+            wasIdleCapped: true,
+            responseTimeMsRaw: anomaly.idleCapped.rawResponseTimeMs,
+            capReason: anomaly.idleCapped.capReason ?? 'idle-exceeded',
+            capThresholdMs: anomaly.idleCapped.capThresholdMs ?? MAX_RESPONSE_TIME_CAP_MS,
+            capSource: anomaly.idleCapped.capSource ?? 'client',
+          }
+        : {}),
     }
 
     // If simulating legacy data, omit hadHelp and helpTrigger
